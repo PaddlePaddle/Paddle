@@ -902,6 +902,32 @@ void DeviceManager::ProfilerCollectTraceData(
   dev_impl->ProfilerCollectTraceData(collector, start_ns, context);
 }
 
+// nvtx
+void DeviceManager::CudaNvtxRangePush(const std::string& name,
+                                      const nvtx::NvtxRangeColor color) {
+  auto custom_devices = DeviceManager::GetAllCustomDeviceTypes();
+  PADDLE_ENFORCE_GE(
+      custom_devices.size(),
+      1,
+      phi::errors::NotFound(
+          "Expected at least one custom device, but none found."));
+  auto device_type = custom_devices[0];
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CudaNvtxRangePush(name, color);
+}
+
+void DeviceManager::CudaNvtxRangePop() {
+  auto custom_devices = DeviceManager::GetAllCustomDeviceTypes();
+  PADDLE_ENFORCE_GE(
+      custom_devices.size(),
+      1,
+      phi::errors::NotFound(
+          "Expected at least one custom device, but none found."));
+  auto device_type = custom_devices[0];
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CudaNvtxRangePop();
+}
+
 void DeviceManager::InitBlasHandle(const Place& place,
                                    void** blas_handle,
                                    stream::stream_t stream) {

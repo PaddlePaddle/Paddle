@@ -70,7 +70,7 @@ typedef enum {
 
 typedef struct C_Device_st {
   int id;
-} * C_Device;
+}* C_Device;
 
 typedef enum {
   C_StreamCaptureModeGlobal = 0,
@@ -83,6 +83,17 @@ typedef enum {
   C_StreamCaptureStatusActive,
   C_StreamCaptureStatusInvalidated
 } C_StreamCaptureStatus;
+
+#ifndef _WIN32
+typedef enum {
+  C_Black = 0x00000000,
+  C_Red = 0x00ff0000,
+  C_Green = 0x0000ff00,
+  C_Blue = 0x000000ff,
+  C_White = 0x00ffffff,
+  C_Yellow = 0x00ffff00,
+} C_NvtxRangeColor;
+#endif
 
 typedef struct C_Stream_st* C_Stream;
 
@@ -799,6 +810,14 @@ struct C_DeviceInterface {
                                           void* user_data);
 
   void* reserved_profiler_api[8];
+
+  //////////////////
+  // nvtx api //
+  /////////////////
+  C_Status (*cudanvtxrangepush)(const std::string& name,
+                                const C_NvtxRangeColor color);
+
+  C_Status (*cudanvtxrangepop)();
 
   //////////////////
   // blas handle api //

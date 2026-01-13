@@ -191,6 +191,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
+#include "paddle/phi/backends/c_nvtx_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/capi/capi.h"
 #include "paddle/phi/core/platform/collective_helper.h"
@@ -3766,6 +3767,11 @@ All parameter, weight, gradient are variables in Paddle.
              << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
         return ostr.str();
       });
+  m.def("nvprof_nvtx_push", [](const std::string &name) {
+    phi::DeviceManager::CudaNvtxRangePush(name,
+                                          phi::nvtx::NvtxRangeColor::Green);
+  });
+  m.def("nvprof_nvtx_pop", phi::DeviceManager::CudaNvtxRangePop);
 #endif
 
 #ifdef PADDLE_WITH_IPU

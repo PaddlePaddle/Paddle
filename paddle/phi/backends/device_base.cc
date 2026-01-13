@@ -466,6 +466,14 @@ void DeviceInterface::ProfilerCollectTraceData(
   INTERFACE_UNIMPLEMENT;
 }
 
+// nvtx
+void DeviceInterface::CudaNvtxRangePush(const std::string& name,
+                                        const nvtx::NvtxRangeColor color) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::CudaNvtxRangePop() { INTERFACE_UNIMPLEMENT; }
+
 void DeviceInterface::InitBlasHandle(size_t dev_id,
                                      void** blas_handle,
                                      stream::stream_t stream) {

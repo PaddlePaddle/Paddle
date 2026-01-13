@@ -108,6 +108,10 @@ COMMON_DECLARE_string(magma_dir);
 #define FFT_LIB_NAME "libcufft.so"
 #endif
 
+#ifndef NVTOOLS_LIB_NAME
+#define NVTOOLS_LIB_NAME "libnvToolsExt.so"
+#endif
+
 #ifndef SPARSELT_LIB_NAME
 #define SPARSELT_LIB_NAME "libcusparseLt.so"
 #endif
@@ -1025,6 +1029,8 @@ void* GetNvtxDsoHandle() {
   PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
   PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Windows."));
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, NVTOOLS_LIB_NAME);
 #elif !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU)
   PADDLE_THROW(common::errors::Unimplemented(
       "Nvtx do not support without CUDA or XPU."));

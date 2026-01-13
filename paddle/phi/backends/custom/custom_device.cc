@@ -1058,6 +1058,20 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
   }
 
+  // nvtx
+  void CudaNvtxRangePush(const std::string& name,
+                         const nvtx::NvtxRangeColor color) {
+    if (pimpl_->cudanvtxrangepush) {
+      pimpl_->cudanvtxrangepush(name, static_cast<C_NvtxRangeColor>(color));
+    }
+  }
+
+  void CudaNvtxRangePop() {
+    if (pimpl_->cudanvtxrangepop) {
+      pimpl_->cudanvtxrangepop();
+    }
+  }
+
   void InitBlasHandle(size_t dev_id,
                       void** blas_handle,
                       stream::stream_t stream) override {

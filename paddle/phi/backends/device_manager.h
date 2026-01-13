@@ -23,6 +23,7 @@
 
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/c_cuda_graph_lib.h"
+#include "paddle/phi/backends/c_nvtx_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/event.h"
@@ -308,6 +309,13 @@ class PADDLE_API DeviceManager {
                                        phi::TraceEventCollector* collector,
                                        uint64_t start_ns,
                                        void* context);
+
+  // nvtx
+  static void CudaNvtxRangePush(
+      const std::string& name,
+      const nvtx::NvtxRangeColor color = nvtx::NvtxRangeColor::Green);
+
+  static void CudaNvtxRangePop();
 
   static void Release();
 

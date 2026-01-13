@@ -17,6 +17,7 @@
 
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/c_cuda_graph_lib.h"
+#include "paddle/phi/backends/c_nvtx_lib.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
@@ -321,6 +322,13 @@ class DeviceInterface {  // Driver / Runtime
   virtual void ProfilerCollectTraceData(phi::TraceEventCollector* collector,
                                         uint64_t start_ns,
                                         void* user_data);
+
+  // nvtx
+  virtual void CudaNvtxRangePush(
+      const std::string& name,
+      const nvtx::NvtxRangeColor color = nvtx::NvtxRangeColor::Green);
+
+  virtual void CudaNvtxRangePop();
 
   virtual void InitBlasHandle(size_t dev_id,
                               void** blas_handle,
