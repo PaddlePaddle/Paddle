@@ -2080,6 +2080,25 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : linear_v2_double_grad
+  forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
+  args : (Tensor input, Tensor weight, Tensor bias, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad)
+  output: Tensor(input_grad), Tensor(weight_grad), Tensor(bias_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralQuaternaryGradInferMeta
+    param : [input, weight, bias, grad_out]
+  composite: linear_v2_double_grad(input, weight, bias, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, bias_grad, grad_out_grad)
+
+- backward_op : linear_v2_grad
+  forward : linear_v2 (Tensor input, Tensor weight, Tensor bias) -> Tensor(out)
+  args: (Tensor input, Tensor weight, Tensor bias, Tensor out_grad)
+  output: Tensor(input_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta :
+    func : LinearV2GradInferMeta
+  kernel :
+    func : linear_v2_grad
+  backward: linear_v2_double_grad
+
 - backward_op : log10_grad
   forward : log10 (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
