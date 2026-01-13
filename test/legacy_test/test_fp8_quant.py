@@ -159,5 +159,81 @@ class TestFP8Quantization(unittest.TestCase):
             self.assertEqual(r1, r2)
 
 
+class TestFP8QuantizationFP16(TestFP8Quantization):
+    def setUp(self):
+        paddle.seed(42)
+        self.m = 128
+        self.n = 4096
+        self.x = paddle.randn((self.m, self.n), dtype=paddle.float16)
+        self.rmse_threshold = 3e-2
+        self.quant_method_options = ["1x128", "128x128"]
+        self.input_transpose_options = [True]  # return non-transpose afterall
+        self.output_scale_transpose_options = [True, False]
+        self.return_transpose_only_options = [True, False]
+        self.using_pow2_scale_options = [True, False]
+
+    def test_quantization_accuracy(self):
+        rmses = self.eval_all(self.x)
+        for r in rmses:
+            self.assertLessEqual(r, self.rmse_threshold)
+
+    def test_tensor_shapes(self):
+        self.assertEqual(self.x.shape, [self.m, self.n])
+        self.assertEqual(self.x.dtype, paddle.float16)
+
+
+class TestFP8QuantizationUnalignedBF16(TestFP8Quantization):
+    def setUp(self):
+        paddle.seed(42)
+        self.m = 80
+        self.n = 4096
+        self.dtype_options = paddle.bfloat16
+        self.quant_method_options = ["1x128"]
+        self.rmse_threshold = 3e-2
+
+        self.x = paddle.randn((self.m, self.n), dtype=self.dtype_options)
+
+        self.input_transpose_options = [False]
+        self.output_scale_transpose_options = [True, False]
+        self.return_transpose_only_options = [False]
+        self.using_pow2_scale_options = [True, False]
+
+    def test_quantization_accuracy(self):
+        rmses = self.eval_all(self.x)
+        for r in rmses:
+            self.assertLessEqual(r, self.rmse_threshold)
+
+
+class TestFP8QuantizationUnalignedFP16(TestFP8Quantization):
+    def setUp(self):
+        paddle.seed(42)
+        self.m = 8184
+        self.n = 2560
+        self.dtype_options = paddle.float16
+        self.quant_method_options = ["1x128"]
+        self.input_transpose_options = [True]  # return non-transpose afterall
+        self.output_scale_transpose_options = [True, False]
+        self.return_transpose_only_options = [True, False]
+        self.using_pow2_scale_options = [True, False]
+
+        self.rmse_threshold = 3e-2
+
+        self.x = paddle.randn((self.m, self.n), dtype=self.dtype_options)
+
+        self.input_transpose_options = [False]
+        self.output_scale_transpose_options = [True, False]
+        self.return_transpose_only_options = [False]
+        self.using_pow2_scale_options = [True, False]
+
+    def test_quantization_accuracy(self):
+        rmses = self.eval_all(self.x)
+        for r in rmses:
+            self.assertLessEqual(r, self.rmse_threshold)
+
+    def test_tensor_shapes(self):
+        self.assertEqual(self.x.shape, [self.m, self.n])
+        self.assertEqual(self.x.dtype, paddle.float16)
+
+
 if __name__ == '__main__':
     unittest.main()
