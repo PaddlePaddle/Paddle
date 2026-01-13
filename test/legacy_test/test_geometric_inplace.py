@@ -130,5 +130,40 @@ class TestGeometricInplaceGrad(unittest.TestCase):
         self.run_()
 
 
+class TestGeometricAliasP(unittest.TestCase):
+    def setUp(self):
+        self.shape = (100, 100)
+
+    def test_alias_p_success(self):
+        """
+        Test case 1: Verify that the 'p' parameter alias works correctly.
+        The output should follow Geometric distribution (integers >= 1).
+        """
+        # Initialize a tensor with zeros
+        tensor = paddle.zeros(self.shape, dtype='float32')
+        
+        # Use the new alias parameter 'p' instead of 'probs'
+        tensor.geometric_(p=0.5)
+        
+        # Verify 1: Check shape consistency
+        self.assertEqual(tensor.shape, self.shape)
+        
+        # Verify 2: Check value validity
+        # Geometric distribution values must be integers >= 1.
+        # This asserts that the exponential distribution bug is fixed.
+        self.assertTrue(paddle.all(tensor >= 1))
+
+    def test_alias_conflict(self):
+        """
+        Test case 2: Verify that providing both 'probs' and 'p' raises an error.
+        To avoid ambiguity, specifying both parameters is prohibited.
+        """
+        tensor = paddle.zeros(self.shape)
+        
+        # Expect TypeError or ValueError when both arguments are provided
+        with self.assertRaises((ValueError, TypeError)):
+            tensor.geometric_(probs=0.5, p=0.5)
+
+
 if __name__ == '__main__':
     unittest.main()
