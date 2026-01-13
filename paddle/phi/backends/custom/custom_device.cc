@@ -34,6 +34,8 @@ static void ConvertEnum(const void* in, void* out) {
   *reinterpret_cast<int*>(out) = value;
 }
 
+namespace phi {
+
 inline void ConvertCToCpp(C_GraphHookManager* c_mgr,
                           graph::GraphHookManager* cpp_mgr) {
   for (size_t i = 0; i < c_mgr->size; i++) {
@@ -45,8 +47,6 @@ inline void ConvertCToCpp(C_GraphHookManager* c_mgr,
     }));
   }
 }
-
-namespace phi {
 
 #define INTERFACE_UNIMPLEMENT                 \
   PADDLE_THROW(common::errors::Unimplemented( \
