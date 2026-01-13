@@ -206,6 +206,7 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
       phi::Full<T, XPUContext>(
           dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
     }
+    return;
   }
 
   // use [1] to replace [], because xpu not support []
