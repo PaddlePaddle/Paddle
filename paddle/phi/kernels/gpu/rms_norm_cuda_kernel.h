@@ -1046,7 +1046,7 @@ void RMSNormBwdKernel(const Context& dev_ctx,
   }
 
   // 2. Compute dscale
-  if (scale_data) {
+  if (dscale_data) {
     constexpr int block_dim_x = 32;
     const int sm_count = dev_ctx.GetSMCount();
     if (M > 64 * 1024 && N / block_dim_x < sm_count / 2) {

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pybind/sot/cpython_internals/internals_3_11.h"
 
+#if (PY_3_11_PLUS && !PY_3_12_PLUS)
+
 #include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
 #define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
@@ -264,3 +266,5 @@ PyFrameObject *_PyFrame_MakeAndSetFrameObject(_PyInterpreterFrame *frame) {
   frame->frame_obj = f;
   return f;
 }
+
+#endif  // (PY_3_11_PLUS && !PY_3_12_PLUS)

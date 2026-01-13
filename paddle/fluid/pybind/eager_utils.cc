@@ -840,9 +840,9 @@ std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
 #endif
 }
 
-phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
-    return ::pybind11::handle(obj).cast<phi::DenseTensor>();
+    return ::pybind11::handle(obj).cast<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "argument (position %d) must be "
@@ -852,16 +852,16 @@ phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
-                                                           ssize_t arg_pos) {
-  std::vector<phi::DenseTensor> result;
+std::vector<DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                      ssize_t arg_pos) {
+  std::vector<DenseTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_framework_tensor_pytype)) {
-        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<DenseTensor>());
       } else {
         PADDLE_THROW(common::errors::InvalidType(
             "argument (position %d) must be "
@@ -877,7 +877,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_framework_tensor_pytype)) {
-        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<DenseTensor>());
       } else {
         PADDLE_THROW(common::errors::InvalidType(
             "argument (position %d) must be "
@@ -896,7 +896,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
-    return {::pybind11::handle(obj).cast<phi::DenseTensor>()};
+    return {::pybind11::handle(obj).cast<DenseTensor>()};
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "argument (position %d) must be "
@@ -2148,15 +2148,15 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   if (var_type == paddle::framework::proto::VarType::DENSE_TENSOR) {
     // TODO(jiabin): Maybe support LegacyLoD later
-    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+    std::shared_ptr<DenseTensor> dense_tensor = nullptr;
     if (dims.size() == 1 && dims[0] == 0) {
       std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-      dense_tensor = std::make_shared<phi::DenseTensor>(
+      dense_tensor = std::make_shared<DenseTensor>(
           allocation_ptr,
           phi::DenseTensorMeta(phi::TransToPhiDataType(dtype), ddims));
     } else {
       // TODO(dev): we need enhance check for ddims.
-      dense_tensor = std::make_shared<phi::DenseTensor>(
+      dense_tensor = std::make_shared<DenseTensor>(
           std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(phi::TransToPhiDataType(dtype), ddims));
     }

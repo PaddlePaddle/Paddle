@@ -91,8 +91,7 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
 }
 
 #if defined(PADDLE_WITH_CUDA)
-std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
-                                         int32_t n) {
+std::pair<size_t, size_t> VmmMaxFreeSize(const GPUPlace& place, int32_t n) {
   FreeMemoryMetricsVisitor free_memory_metrics_visitor(n);
   allocation::AllocatorFacade::Instance().Accept(place,
                                                  &free_memory_metrics_visitor);
@@ -100,17 +99,16 @@ std::pair<size_t, size_t> VmmMaxFreeSize(const phi::GPUPlace& place,
                         free_memory_metrics_visitor.GetSumSize());
 }
 
-bool TryAllocBatch(const phi::GPUPlace& place,
-                   const std::vector<size_t>& sizes) {
+bool TryAllocBatch(const GPUPlace& place, const std::vector<size_t>& sizes) {
   TryAllocVisitor try_alloc_visitor(sizes);
   allocation::AllocatorFacade::Instance().Accept(place, &try_alloc_visitor);
   return try_alloc_visitor.IsTryAllocSuccess();
 }
 
-size_t VmmCompact(const phi::GPUPlace& place) { return memory::Compact(place); }
+size_t VmmCompact(const GPUPlace& place) { return memory::Compact(place); }
 
 std::vector<std::vector<std::pair<size_t, uintptr_t>>>
-FreeBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
+FreeBlockInfoOfVmmAllocator(const GPUPlace& place) {
   VMMFreeBlocksInfoVisitor free_blocks_info_visitor;
   allocation::AllocatorFacade::Instance().Accept(place,
                                                  &free_blocks_info_visitor);
@@ -118,7 +116,7 @@ FreeBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
 }
 
 std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
-AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
+AllBlockInfoOfVmmAllocator(const GPUPlace& place) {
   VMMAllBlocksInfoVisitor all_blocks_info_visitor;
   allocation::AllocatorFacade::Instance().Accept(place,
                                                  &all_blocks_info_visitor);
@@ -126,14 +124,14 @@ AllBlockInfoOfVmmAllocator(const phi::GPUPlace& place) {
 }
 
 std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
-GetAllocateEvent(const phi::GPUPlace& place) {
+GetAllocateEvent(const GPUPlace& place) {
   VMMAllocateRecordEventsVisitor allocate_record_event_visitor;
   allocation::AllocatorFacade::Instance().Accept(
       place, &allocate_record_event_visitor);
   return allocate_record_event_visitor.GetAllocateRecordEvents();
 }
 
-std::vector<size_t> GetCompactSize(const phi::GPUPlace& place) {
+std::vector<size_t> GetCompactSize(const GPUPlace& place) {
   VMMAllocateCompactSizeVisitor allocate_compact_visitor;
   allocation::AllocatorFacade::Instance().Accept(place,
                                                  &allocate_compact_visitor);

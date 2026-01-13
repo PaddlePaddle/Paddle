@@ -57,8 +57,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad) {
   if (out_grad.numel() == 0 && x_grad) {
     // x = [1, 2], mask = [False, False], out = [], x_grad = [0, 0]
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   // x_grad.size() == x.size()
@@ -71,7 +70,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   bool expand_x = false;
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      common::vectorize(x_grad->dims()), common::vectorize(mask.dims()));
+      vectorize(x_grad->dims()), vectorize(mask.dims()));
   auto expanded_dims = common::make_ddim(expanded_size);
 
   if (mask.dims() != expanded_dims) {

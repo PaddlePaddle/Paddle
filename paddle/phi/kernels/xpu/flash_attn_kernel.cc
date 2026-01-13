@@ -279,7 +279,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
   // q, k, v [batch_size * seq_len, num_heads, head_dim]
-  std::vector<int64_t> dims = common::vectorize(q.dims());
+  std::vector<int64_t> dims = vectorize(q.dims());
 
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
   const int64_t num_heads = dims[1];

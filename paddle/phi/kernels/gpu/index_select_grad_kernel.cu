@@ -87,8 +87,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                            int dim,
                            DenseTensor* x_grad) {
   if (out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x.dims(), 0, x_grad);
     return;
   }
 
