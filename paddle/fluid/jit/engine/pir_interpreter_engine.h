@@ -26,10 +26,6 @@
 
 namespace paddle {
 
-namespace framework {
-class InterpreterCore;
-}  // namespace framework
-
 namespace jit {
 using InterpreterCore = framework::InterpreterCore;
 // using Graph = framework::ir::Graph;
@@ -39,7 +35,7 @@ class PirInterpreterEngine : public BaseEngine {
  public:
   PirInterpreterEngine(const std::shared_ptr<PirFunctionInfo> &info,
                        const std::shared_ptr<VariableMap> &params_dict,
-                       const phi::Place &place,
+                       const Place &place,
                        const std::shared_ptr<pir::Program> &prog);
 
   ~PirInterpreterEngine() noexcept {}
@@ -59,7 +55,7 @@ class PirInterpreterEngine : public BaseEngine {
   std::shared_ptr<PirFunctionInfo> info_;
   std::shared_ptr<VariableMap> params_dict_;
   framework::Scope scope_;
-  phi::Place place_;
+  Place place_;
   std::shared_ptr<framework::PirInterpreter> inner_interpreter_;
   std::shared_ptr<pir::Program> prog_;
 };
