@@ -1308,7 +1308,7 @@ void MoeCombineAutoGradInferMeta(const MetaTensor& x,
   grad_x->set_dtype(x.dtype());
 
   grad_combine_weights_helper->set_dims(
-      common::make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
+      make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
   grad_combine_weights_helper->set_dtype(x.dtype());
   PADDLE_ENFORCE_NE(
       grad_scatter_index,
@@ -1671,28 +1671,15 @@ void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
   }
 }
 
-PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& scale,
-                                     const MetaTensor& invvar,
-                                     const MetaTensor& y_grad,
-                                     float epsilon,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* scale_grad) {
-  PADDLE_ENFORCE_EQ(
-      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
-          x.dtype() == DataType::BFLOAT16,
-      true,
-      common::errors::InvalidArgument(
-          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
-          x.dtype()));
-  PADDLE_ENFORCE_EQ(
-      scale.dtype() == DataType::FLOAT32 ||
-          scale.dtype() == DataType::FLOAT16 ||
-          scale.dtype() == DataType::BFLOAT16,
-      true,
-      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
-                                      "FLOAT16 or BFLOAT16, but got [%s]",
-                                      scale.dtype()));
+PADDLE_API void RMSNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale,
+    const MetaTensor& invvar,
+    const MetaTensor& y_grad,
+    const std::vector<int64_t>& normalized_shape,
+    double epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* scale_grad) {
   if (x_grad && x) {
     x_grad->share_meta(x);
   }

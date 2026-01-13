@@ -126,15 +126,13 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
     if (dx) {
       dev_ctx.template Alloc<T>(dx);
       if (dx->numel() != 0) {
-        phi::Full<T, OneDNNContext>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+        Full<T, OneDNNContext>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       dev_ctx.template Alloc<T>(dy);
       if (dy->numel() != 0) {
-        phi::Full<T, OneDNNContext>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, OneDNNContext>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;

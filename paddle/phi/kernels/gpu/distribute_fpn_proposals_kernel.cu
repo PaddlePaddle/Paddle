@@ -227,7 +227,7 @@ void DistributeFpnProposalsKernel(
   size_t start = 0;
 
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      sub_lod_list_cpu.data(),
                      place,
                      sub_lod_list_data,

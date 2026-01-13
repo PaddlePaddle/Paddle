@@ -67,8 +67,8 @@ void CheckTensorHasNanOrInf(InstructionBase* instruction,
         VLOG(10) << "No var found for tensor_name: " << tensor_name;
         continue;
       }
-      if (var->IsType<phi::DenseTensor>()) {
-        dense_tensor = var->GetMutable<phi::DenseTensor>();
+      if (var->IsType<DenseTensor>()) {
+        dense_tensor = var->GetMutable<DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         dense_tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
       } else {

@@ -88,14 +88,14 @@ void InitTensorWithNumpyValue(const py::object& array,
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->impl().get());
   if (phi::is_cpu_place(place)) {
-    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
     SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_pinned_place(place)) {
     SetTensorFromPyArray<phi::XPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
   } else if (phi::is_gpu_place(place)) {
-    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);

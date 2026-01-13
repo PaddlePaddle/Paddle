@@ -72,8 +72,8 @@ class CudaGraphInstruction : public InstructionBase {
   std::vector<std::string> skip_gc_names_;
 
   std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph_ = nullptr;
-  std::vector<phi::DenseTensor> input_tensors_;
-  std::vector<phi::DenseTensor> output_tensors_;
+  std::vector<DenseTensor> input_tensors_;
+  std::vector<DenseTensor> output_tensors_;
 };
 
 }  // namespace framework

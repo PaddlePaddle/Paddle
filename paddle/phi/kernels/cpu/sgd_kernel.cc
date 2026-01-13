@@ -35,8 +35,7 @@ void sgd_dense_param_dense_grad_impl(const DenseTensor& param,
   T* out_data = param_out->data<T>();
 
   auto sgd =
-      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(
-          attr);
+      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
   sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
 }
 
@@ -76,8 +75,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   attr.selected_rows_size = static_cast<int>(grad_rows.size());
 
   auto sgd =
-      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(
-          attr);
+      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
   sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
 }
 

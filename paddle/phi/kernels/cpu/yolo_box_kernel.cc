@@ -37,10 +37,8 @@ void YoloBoxKernel(const Context& dev_ctx,
                    DenseTensor* boxes,
                    DenseTensor* scores) {
   if (x.numel() == 0 || img_size.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(boxes->dims())), 0, boxes);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(scores->dims())), 0, scores);
+    Full<T, Context>(dev_ctx, boxes->dims(), 0, boxes);
+    Full<T, Context>(dev_ctx, scores->dims(), 0, scores);
     return;
   }
 

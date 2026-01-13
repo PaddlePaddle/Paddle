@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import atexit
 import collections
-import copy
 import glob
 import hashlib
 import importlib.abc
@@ -32,6 +31,8 @@ import textwrap
 import threading
 import warnings
 from importlib import machinery
+
+import paddle
 
 try:
     from subprocess import DEVNULL  # py3
@@ -393,7 +394,7 @@ def prepare_unix_cudaflags(cflags):
             '--expt-relaxed-constexpr',
             '-DNVCC',
             *cflags,
-            *get_cuda_arch_flags(cflags),
+            *_get_cuda_arch_flags(cflags),
         ]
 
     return cflags
@@ -403,7 +404,7 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = [*COMMON_NVCC_FLAGS, '-w', *cflags, *get_cuda_arch_flags(cflags)]
+    cflags = [*COMMON_NVCC_FLAGS, '-w', *cflags, *_get_cuda_arch_flags(cflags)]
 
     return cflags
 
@@ -419,15 +420,114 @@ def add_std_without_repeat(cflags, compiler_type, use_std17=False):
         cflags.append(cpp_flag)
 
 
-def get_cuda_arch_flags(cflags):
+def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     """
+    Determine CUDA arch flags to use.
+
     For an arch, say "6.1", the added compile flag will be
     ``-gencode=arch=compute_61,code=sm_61``.
     For an added "+PTX", an additional
     ``-gencode=arch=compute_xx,code=compute_xx`` is added.
     """
-    # TODO(Aurelius84):
-    return []
+    # If cflags is given, there may already be user-provided arch flags in it
+    if cflags is not None:
+        for flag in cflags:
+            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
+                continue
+            if 'arch' in flag:
+                return []
+
+    named_arches = collections.OrderedDict(
+        [
+            ('Pascal', '6.0;6.1+PTX'),
+            ('Volta+Tegra', '7.2'),
+            ('Volta', '7.0+PTX'),
+            ('Turing', '7.5+PTX'),
+            ('Ampere+Tegra', '8.7'),
+            ('Ampere', '8.0;8.6+PTX'),
+            ('Ada', '8.9+PTX'),
+            ('Hopper', '9.0+PTX'),
+            ('Blackwell+Tegra', '10.1'),
+            ('Blackwell', '10.0;12.0+PTX'),
+        ]
+    )
+
+    supported_arches = [
+        '6.0',
+        '6.1',
+        '6.2',
+        '7.0',
+        '7.2',
+        '7.5',
+        '8.0',
+        '8.6',
+        '8.7',
+        '8.9',
+        '9.0',
+        '9.0a',
+        '10.0',
+        '10.0a',
+        '10.1',
+        '10.1a',
+        '12.0',
+        '12.0a',
+    ]
+    valid_arch_strings = supported_arches + [
+        s + "+PTX" for s in supported_arches
+    ]
+
+    _arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST")
+
+    if not _arch_list:
+        warnings.warn(
+            "PADDLE_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
+            "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
+        )
+        arch_list = []
+        dev_types = core.get_all_custom_device_type()
+        if core.is_compiled_with_cuda():
+            for dev_id in range(paddle.device.cuda.device_count()):
+                capability = paddle.device.cuda.get_device_capability(
+                    dev_id
+                )  # (major, minor)
+                arch = f"{capability[0]}.{capability[1]}"
+                if arch not in arch_list:
+                    arch_list.append(arch)
+            arch_list = sorted(arch_list)
+            if arch_list:
+                arch_list[-1] += '+PTX'
+        elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
+            for dev_id in range(paddle.device.device_count()):
+                capability = paddle.device.get_device_capability(
+                    dev_types[0], dev_id
+                )
+                arch = f"{capability[0]}.{capability[1]}"
+                if arch not in arch_list:
+                    arch_list.append(arch)
+            arch_list = sorted(arch_list)
+            if arch_list:
+                arch_list[-1] += '+PTX'
+        else:
+            raise RuntimeError(
+                "Paddle is not compiled with CUDA or Custom Device, cannot determine CUDA arch."
+            )
+    else:
+        _arch_list = _arch_list.replace(' ', ';')
+        for named_arch, archival in named_arches.items():
+            _arch_list = _arch_list.replace(named_arch, archival)
+        arch_list = _arch_list.split(';')
+
+    flags = []
+    for arch in arch_list:
+        if arch not in valid_arch_strings:
+            raise ValueError(f"Unknown CUDA arch ({arch}) or GPU not supported")
+        version = arch.split('+')[0]
+        major, minor = version.split('.')
+        num = f"{major}{minor}"
+        flags.append(f"-gencode=arch=compute_{num},code=sm_{num}")
+        if arch.endswith('+PTX'):
+            flags.append(f"-gencode=arch=compute_{num},code=compute_{num}")
+    return sorted(set(flags))
 
 
 def get_rocm_arch_flags(cflags):
@@ -612,30 +712,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     if compile_dir is None:
         # Add this compile option to isolate base headers
         add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_CUSTOM_KERNEL'])
-    if core.is_compiled_with_cuda():
-        arch_list = os.getenv("PADDLE_CUDA_ARCH_LIST")
-        if arch_list:
-            arch_list = [
-                s.strip() for s in re.split(r";|\s|\,", arch_list) if s.strip()
-            ]
-            nvcc_options = list(extra_compile_args.get("nvcc", []))
-            sms = []
-            for s in arch_list:
-                sm = [int(ss) for ss in s.split(".") if ss]
-                assert len(sm) in [1, 2], f"invalid sm format: {s}"
-                if len(sm) == 2:
-                    sm = sm[0] * 10 + sm[1]
-                else:
-                    sm = sm[0]
-                sms.append(sm)
-
-            sms = sorted(set(sms))
-            for sm in sms:
-                nvcc_options.extend(
-                    ["-gencode", f"arch=compute_{sm},code=sm_{sm}"]
-                )
-            extra_compile_args = copy.deepcopy(extra_compile_args)
-            extra_compile_args["nvcc"] = nvcc_options
 
     kwargs['extra_compile_args'] = extra_compile_args
 
