@@ -183,6 +183,14 @@ PADDLE_API void CudnnLSTMGradInferMeta(
     MetaTensor* init_c_grad,
     std::vector<MetaTensor*> weight_list_grad);
 
+PADDLE_API void LinearV2GradInferMeta(const MetaTensor& input,
+                                      const MetaTensor& weight,
+                                      const MetaTensor& bias,
+                                      const MetaTensor& out_grad,
+                                      MetaTensor* input_grad,
+                                      MetaTensor* weight_grad,
+                                      MetaTensor* bias_grad);
+
 PADDLE_API void LSTMGradInferMeta(const MetaTensor& input,
                                   const MetaTensor& h0,
                                   const MetaTensor& c0,

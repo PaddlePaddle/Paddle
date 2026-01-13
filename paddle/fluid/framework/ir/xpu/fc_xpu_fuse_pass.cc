@@ -304,9 +304,8 @@ void FcXPUFusePass::CreateTheReplicatedWeights(
                                   std::to_string(mul->id());
   auto* replicated_w_var = scope->FindVar(replicated_w_name);
   if (replicated_w_var == nullptr) {
-    auto* filter_tensor =
-        scope->FindVar(mul_w_name)->GetMutable<phi::DenseTensor>();
-    phi::DenseTensor replicated_filter_tensor;
+    auto* filter_tensor = scope->FindVar(mul_w_name)->GetMutable<DenseTensor>();
+    DenseTensor replicated_filter_tensor;
     Assign(*filter_tensor, &replicated_filter_tensor);
 
     VarDesc replicated_filter_desc(replicated_w_name);
@@ -323,7 +322,7 @@ void FcXPUFusePass::CreateTheReplicatedWeights(
     block_replicated_filter_desc->SetDataType(
         replicated_filter_desc.GetDataType());
     Assign(replicated_filter_tensor,
-           scope->Var(replicated_w_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(replicated_w_name)->GetMutable<DenseTensor>());
   }
 }
 
@@ -402,8 +401,8 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   std::to_string(mul->id());
   auto* mul_w_replicated_node = FindNodeWithName(graph, replicated_w_name);
   // transfilter fp16 --> fp32
-  auto* filter_t = scope->FindVar(mul_w_replicated_node->Name())
-                       ->GetMutable<phi::DenseTensor>();
+  auto* filter_t =
+      scope->FindVar(mul_w_replicated_node->Name())->GetMutable<DenseTensor>();
   auto filter_dtype = filter_t->dtype();
   if (filter_dtype == phi::DataType::FLOAT16) {
     CastToFp32(filter_t, nullptr);
@@ -459,13 +458,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
         true,
         common::errors::InvalidArgument("bn_mean node ptr can not be null"));
 
-    auto bn_bias_t =
-        scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
-    auto bn_scale_t =
-        scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
-    auto bn_mean_t =
-        scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
-    auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
+    auto bn_bias_t = scope->Var(bn_bias->Name())->GetMutable<DenseTensor>();
+    auto bn_scale_t = scope->Var(bn_scale->Name())->GetMutable<DenseTensor>();
+    auto bn_mean_t = scope->Var(bn_mean->Name())->GetMutable<DenseTensor>();
+    auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<DenseTensor>();
     float* bn_scale_ptr = bn_scale_t->data<float>();
     float* bn_bias_ptr = bn_bias_t->data<float>();
     float* bn_mean_ptr = bn_mean_t->data<float>();
@@ -479,7 +475,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     }
 
     auto fusion_bias_t =
-        scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(fusion_bias_node->Name())->GetMutable<DenseTensor>();
     float* fusion_bias_ptr = fusion_bias_t->data<float>();
     // recompute bias and weights
     for (int i = 0; i < mean_len; ++i) {
@@ -687,7 +683,7 @@ void FcXPUFusePass::CreateFusionOutputs(
 
     float output_scale =
         GetScaleValueForNode(var_quant_scales, fc_out_var_node);
-    phi::DenseTensor out_max_in_cpu_tensor;
+    DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
     out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
@@ -697,7 +693,7 @@ void FcXPUFusePass::CreateFusionOutputs(
            output_scales.data(),
            max_ptr_size * sizeof(float));
     Assign(out_max_in_cpu_tensor,
-           scope->Var(fc_out_max_in_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(fc_out_max_in_name)->GetMutable<DenseTensor>());
     (*fusion_nodes_map)["out_max_in"] = fc_xpu_out_max_in;
   }
 
@@ -747,7 +743,7 @@ void FcXPUFusePass::CreateFusionInputs(
     x_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
     mul_x_max = graph->CreateVarNode(&x_max_desc);
     auto input_max_tensor =
-        scope->Var(mul_x_max_name)->GetMutable<phi::DenseTensor>();
+        scope->Var(mul_x_max_name)->GetMutable<DenseTensor>();
     input_max_tensor->set_type(phi::DataType::FLOAT32);
     input_max_tensor->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
@@ -833,7 +829,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       return;
     }
     auto filter_data_type = scope->FindVar(mul->Op()->Input("Y")[0])
-                                ->GetMutable<phi::DenseTensor>()
+                                ->GetMutable<DenseTensor>()
                                 ->dtype();
     std::string op_weights_precision = "float32";
     if (filter_data_type == phi::DataType::INT8) {
@@ -850,7 +846,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
           common::errors::NotFound(
               "The input persistable [%s] var of [%s] op is not found.",
               mul_w_name));
-      auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* weight_tensor = var->GetMutable<DenseTensor>();
       float* fp32_weight_data = weight_tensor->data<float>();
       std::vector<int8_t> weight_data;
       weight_data.resize(weight_tensor->numel());

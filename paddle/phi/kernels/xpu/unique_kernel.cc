@@ -124,7 +124,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   permute[axis] = 0;
   permute[0] = axis;
   if (axis != 0) {
-    auto x_shape = common::vectorize<int64_t>(x.dims());
+    auto x_shape = vectorize<int64_t>(x.dims());
     r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType*>(x_data),
                                 x_trans_data,
@@ -145,7 +145,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   DDim x_trans_flat_dims = common::flatten_to_2d(x_trans_dims, 1);
   int64_t axis_len = x_trans_flat_dims[0];
   int64_t slice_size = x_trans_flat_dims[1];
-  auto x_trans_flat_dims_vec = common::vectorize<int64_t>(x_trans_flat_dims);
+  auto x_trans_flat_dims_vec = vectorize<int64_t>(x_trans_flat_dims);
 
   auto* sorted_axis_idx = RAII_GUARD.alloc_l3_or_gm<IndexT>(axis_len);
   auto* sort_in_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(axis_len);
@@ -284,7 +284,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
   DDim out_trans_dims = x_trans_dims;
   out_trans_dims[0] = unique_len;
-  auto out_trans_dims_vec = common::vectorize<int64_t>(out_trans_dims);
+  auto out_trans_dims_vec = vectorize<int64_t>(out_trans_dims);
   if (axis != 0) {
     r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 out_trans_data,

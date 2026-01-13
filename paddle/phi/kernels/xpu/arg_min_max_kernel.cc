@@ -58,7 +58,7 @@ void ArgMaxKernel(const Context& dev_ctx,
     x_dims = x.dims();
     if (axis_val < 0) axis_val += x_dims.size();
   }
-  auto xdims_vec = common::vectorize<int64_t>(x_dims);
+  auto xdims_vec = vectorize<int64_t>(x_dims);
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.numel() == 0) return;
@@ -141,7 +141,7 @@ void ArgMinKernel(const Context& dev_ctx,
     x_dims = x.dims();
     if (axis_val < 0) axis_val += x_dims.size();
   }
-  auto xdims_vec = common::vectorize<int64_t>(x_dims);
+  auto xdims_vec = vectorize<int64_t>(x_dims);
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.numel() == 0) return;

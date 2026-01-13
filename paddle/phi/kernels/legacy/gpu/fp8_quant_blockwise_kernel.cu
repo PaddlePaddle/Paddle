@@ -25,17 +25,34 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 
-namespace phi {
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
+namespace phi {
 constexpr size_t k_block_span = 128;
 constexpr size_t k_threads_per_warp = 32;
 constexpr size_t k_warp_xdim_size = 64;
 constexpr size_t k_warp_ydim_size = 32;
 constexpr size_t k_thread_dim_size = 8;
 
-typedef struct alignas(16) bf16x8_t {
+template <typename T>
+struct CudaTypeTraits {
+  using Type = T;
+};
+
+template <>
+struct CudaTypeTraits<phi::bfloat16> {
+  using Type = __nv_bfloat16;
+};
+
+template <>
+struct CudaTypeTraits<phi::float16> {
+  using Type = __half;
+};
+
+template <typename T>
+struct alignas(16) v128_t {
   union data_t {
-    __nv_bfloat16 scalar[8];
+    T scalar[8];
     uint4 vector;  // 128-bit vector for 8x bfloat16
   };
   data_t data;
@@ -47,7 +64,12 @@ typedef struct alignas(16) bf16x8_t {
   __device__ __forceinline__ void store(void *ptr) const {
     *reinterpret_cast<uint4 *>(ptr) = data.vector;
   }
-} bf16x8_t;
+};
+
+template <typename T>
+struct alignas(8) v64_t {
+  T val[4];
+};
 
 typedef struct alignas(16) fp8x8_t {
   union data_t {
@@ -63,15 +85,50 @@ typedef struct alignas(16) fp8x8_t {
   __device__ __forceinline__ void store(void *ptr) const {
     *reinterpret_cast<uint2 *>(ptr) = data.vector;
   }
-} fp8x16_t;
-
-struct alignas(8) bf16x4_t {
-  __nv_bfloat16 val[4];
-};
+} fp8x8_t;
 
 struct alignas(4) fp8x4_t {
   __nv_fp8_e4m3 val[4];
 };
+
+__device__ __forceinline__ __half device_abs(__half x) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+  return __habs(x);
+#else
+  return __float2half(fabsf(__half2float(x)));
+#endif
+}
+
+__device__ __forceinline__ __nv_bfloat16 device_abs(__nv_bfloat16 x) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+  return __habs(x);
+#else
+  return __float2bfloat16(fabsf(__bfloat162float(x)));
+#endif
+}
+
+__device__ __forceinline__ float device_abs(float x) { return fabsf(x); }
+
+__device__ __forceinline__ __half device_max(__half a, __half b) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+  return __hmax(a, b);
+#else
+  return __float2half(fmaxf(__half2float(a), __half2float(b)));
+#endif
+}
+
+__device__ __forceinline__ __nv_bfloat16 device_max(__nv_bfloat16 a,
+                                                    __nv_bfloat16 b) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+  return __hmax(a, b);
+#else
+  return __float2bfloat16(fmaxf(__bfloat162float(a), __bfloat162float(b)));
+#endif
+}
+
+__device__ __forceinline__ float device_max(float a, float b) {
+  return fmaxf(a, b);
+}
 
 template <bool Power2Scaling>
 __device__ __forceinline__ float ScaleWrapper(const float amax,
@@ -104,12 +161,13 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
   return scale;
 }
 
-template <bool input_transpose,
+template <typename T,
+          bool input_transpose,
           bool output_scale_transpose,
           bool return_transpose_only,
           bool use_pow2_scale>
 __global__ void __launch_bounds__(256)
-    quantize_128x128_kernel(const __nv_bfloat16 *const input,
+    quantize_128x128_kernel(const T *const input,
                             __nv_fp8_e4m3 *const output,
                             __nv_fp8_e4m3 *const output_transposed,
                             float *const scale,
@@ -140,10 +198,10 @@ __global__ void __launch_bounds__(256)
   float warpwise_amax;    // Uninitialized
   float thread_local_amax = 0.0f;
 
-  bf16x8_t thread_local_input[k_thread_dim_size];  // NOLINT
-  fp8x16_t thread_local_output;
-  fp8x16_t thread_local_output_transposed[input_transpose ? k_thread_dim_size
-                                                          : 1];  // NOLINT
+  v128_t<T> thread_local_input[k_thread_dim_size];  // NOLINT
+  fp8x8_t thread_local_output;
+  fp8x8_t thread_local_output_transposed[input_transpose ? k_thread_dim_size
+                                                         : 1];  // NOLINT
 
   __shared__ float shared_warp_amax[k_warpnum_total];
 
@@ -269,17 +327,17 @@ __global__ void __launch_bounds__(256)
   }
 }
 
-template <bool use_pow2_scale>
-__device__ void ComputeColumnScale(const bf16x4_t x[8],
+template <typename T, bool use_pow2_scale>
+__device__ void ComputeColumnScale(const v64_t<T> x[8],
                                    float block_scale[128],
-                                   __nv_bfloat16 *shm,
+                                   T *shm,
                                    const float epsilon) {
   // reduce [(8), 16, 32, 4] => [16, 32, 4]
-  __nv_bfloat16 local_max[4];
+  T local_max[4];
   for (uint32_t i = 0; i < 8; i++) {
     for (uint32_t j = 0; j < 4; j++) {
-      __nv_bfloat16 val = BF16_ABS(x[i].val[j]);
-      local_max[j] = i == 0 ? val : BF16_MAX(val, local_max[j]);
+      T val = device_abs(x[i].val[j]);
+      local_max[j] = i == 0 ? val : device_max(val, local_max[j]);
     }
   }
 
@@ -295,12 +353,12 @@ __device__ void ComputeColumnScale(const bf16x4_t x[8],
   for (uint32_t offset = 8; offset > 0; offset /= 2) {
     if (threadIdx.y < offset) {
       for (uint32_t j = 0; j < 4; j++) {
-        __nv_bfloat16 other =
+        T other =
             offset == 8
                 ? local_max[j]
                 : shm[(threadIdx.y + offset) * 128 + threadIdx.x + j * 32];
-        __nv_bfloat16 new_val =
-            BF16_MAX(shm[threadIdx.y * 128 + threadIdx.x + j * 32], other);
+        T new_val =
+            device_max(shm[threadIdx.y * 128 + threadIdx.x + j * 32], other);
         if (offset > 1) {
           shm[threadIdx.y * 128 + threadIdx.x + j * 32] = new_val;
         } else {
@@ -313,24 +371,24 @@ __device__ void ComputeColumnScale(const bf16x4_t x[8],
   }
 }
 
-template <bool use_pow2_scale>
-__device__ void ComputeRowScale(const bf16x4_t x[8],
+template <typename T, bool use_pow2_scale>
+__device__ void ComputeRowScale(const v64_t<T> x[8],
                                 float block_scale[128],
-                                __nv_bfloat16 *shm,
+                                T *shm,
                                 const float epsilon) {
   for (uint32_t i = 0; i < 8; i++) {
     // reduce [32, (4)] => [32]
-    __nv_bfloat16 local_max;
+    T local_max;
     for (uint32_t j = 0; j < 4; j++) {
-      __nv_bfloat16 other = BF16_ABS(x[i].val[j]);
-      local_max = j == 0 ? other : BF16_MAX(local_max, other);
+      T other = device_abs(x[i].val[j]);
+      local_max = j == 0 ? other : device_max(local_max, other);
     }
 
     // reduce [32] => [1]
-    __nv_bfloat16 warp_max = local_max;
+    T warp_max = local_max;
     for (uint32_t offset = 16; offset > 0; offset /= 2) {
-      __nv_bfloat16 other = __shfl_down_sync(0xFFFFFFFF, warp_max, offset);
-      warp_max = BF16_MAX(warp_max, other);
+      T other = __shfl_down_sync(0xFFFFFFFF, warp_max, offset);
+      warp_max = device_max(warp_max, other);
     }
     if (threadIdx.x == 0) {
       shm[i * 16 + threadIdx.y] = warp_max;
@@ -340,19 +398,20 @@ __device__ void ComputeRowScale(const bf16x4_t x[8],
 
   // compute scale
   if (threadIdx.y < 4) {
-    __nv_bfloat16 amax = shm[threadIdx.y * 32 + threadIdx.x];
+    T amax = shm[threadIdx.y * 32 + threadIdx.x];
     block_scale[threadIdx.y * 32 + threadIdx.x] =
         ScaleWrapper<use_pow2_scale>(static_cast<float>(amax), epsilon);
   }
   __syncthreads();
 }
 
-template <bool input_transpose,
+template <typename T,
+          bool input_transpose,
           bool output_scale_transpose,
           bool return_transpose_only,
           bool use_pow2_scale>
 __global__ void __launch_bounds__(512)
-    quantize_1x128_kernel(const __nv_bfloat16 *const input,
+    quantize_1x128_kernel(const T *const input,
                           __nv_fp8_e4m3 *const output,
                           __nv_fp8_e4m3 *const output_transposed,
                           float *const scale,
@@ -369,18 +428,18 @@ __global__ void __launch_bounds__(512)
   const size_t block_offset_y = blockIdx.y * size_t(128);
 
   // 1. Load 128x128 block of input.
-  bf16x4_t x[8];
+  v64_t<T> x[8];
   for (uint32_t i = 0; i < 8; i++) {
     size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.y) + i * 16;
     size_t row_idx = block_offset_x + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = col_idx * rows + row_idx;
-    x[i] = *reinterpret_cast<const bf16x4_t *>(input + idx);
+    x[i] = *reinterpret_cast<const v64_t<T> *>(input + idx);
   }
 
   if constexpr (!return_transpose_only) {
     // 2. Compute scale along the row.
-    ComputeRowScale<use_pow2_scale>(
-        x, block_scale, reinterpret_cast<__nv_bfloat16 *>(shm), epsilon);
+    ComputeRowScale<T, use_pow2_scale>(
+        x, block_scale, reinterpret_cast<T *>(shm), epsilon);
 
     // 3. Write 1x128 scale.
     if (threadIdx.y < 4) {
@@ -413,8 +472,8 @@ __global__ void __launch_bounds__(512)
 
   if constexpr (input_transpose) {
     // 5. Compute scale along the column.
-    ComputeColumnScale<use_pow2_scale>(
-        x, block_scale, reinterpret_cast<__nv_bfloat16 *>(shm), epsilon);
+    ComputeColumnScale<T, use_pow2_scale>(
+        x, block_scale, reinterpret_cast<T *>(shm), epsilon);
 
     // 6. Write 1x128 transposed scale.
     if (threadIdx.y < 4) {
@@ -455,7 +514,89 @@ __global__ void __launch_bounds__(512)
   }
 }
 
+template <typename T, bool output_scale_transpose, bool use_pow2_scale>
+__global__ void quant_per_token_per_block_padding(
+    const T *const input,
+    __nv_fp8_e4m3 *const quanted_res,
+    float *const quanted_scale,
+    const size_t rows,
+    const size_t cols,
+    const size_t padded_rows,
+    const bool use_finegrained_range,
+    const float epsilon) {
+  const size_t bid = blockIdx.x;
+  const size_t tid = threadIdx.x;
+  const size_t warp_id = tid / 32;
+  const size_t lane_id = tid % 32;
+  const size_t num_warp = blockDim.x / 32;
+  static constexpr int NUM_PER_THREADS = 128 / 32;  // 4
+  const size_t end_iter = cols / 128;               // warp_iter_num
+
+  AlignedVector<T, NUM_PER_THREADS> load_vec;
+  AlignedVector<float, NUM_PER_THREADS> load_vec_float;
+  AlignedVector<__nv_fp8_e4m3, NUM_PER_THREADS> res_vec;
+
+  for (size_t token_idx = bid; token_idx < rows; token_idx += gridDim.x) {
+    const T *input_now = input + token_idx * cols;
+    __nv_fp8_e4m3 *quanted_res_now = quanted_res + token_idx * cols;
+    // deal a block per warp
+    for (size_t iter = warp_id; iter < end_iter; iter += num_warp) {
+      float *quanted_scale_now;
+      if constexpr (output_scale_transpose) {
+        quanted_scale_now = quanted_scale + iter * padded_rows + token_idx;
+      } else {
+        quanted_scale_now = quanted_scale + token_idx * end_iter + iter;
+      }
+      const size_t offset = iter * 128 + lane_id * NUM_PER_THREADS;
+
+      Load<T, NUM_PER_THREADS>(input_now + offset, &load_vec);
+
+      // get max value per thread
+      float max_value_thread = -5e4;
+#pragma unroll
+      for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
+        load_vec_float[vid] = static_cast<float>(load_vec[vid]);
+        max_value_thread = max(abs(load_vec_float[vid]), max_value_thread);
+      }
+      // get max value per warp
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 16),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 8),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 4),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 2),
+                             max_value_thread);
+      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 1),
+                             max_value_thread);
+      // broadcast max_value
+      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
+      // max_value_thread = max(max_value_thread, epsilon);
+
+      if (use_finegrained_range) {
+        max_value_thread *= 7.0f;
+      }
+
+      float blockwise_scale =
+          ScaleWrapper<use_pow2_scale>(max_value_thread, epsilon);
+      float scale_to_store = 1.0f / blockwise_scale;
+      // quant
+#pragma unroll
+      for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
+        res_vec[vid] =
+            static_cast<__nv_fp8_e4m3>(load_vec_float[vid] * blockwise_scale);
+      }
+      // store
+      Store<__nv_fp8_e4m3, NUM_PER_THREADS>(res_vec, quanted_res_now + offset);
+      if (lane_id == 0) {
+        *quanted_scale_now = scale_to_store;
+      }
+    }
+  }
+}
+
 template <typename Context,
+          typename T,
           bool using_1x128_vec_quant,
           bool input_transpose,
           bool output_scale_transpose,
@@ -468,48 +609,90 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                  DenseTensor *scale,
                                  DenseTensor *out_transposed,
                                  DenseTensor *scale_transposed) {
-  // using namespace cute;
   const size_t src_rows = X.dims()[0];
   const size_t src_cols = X.dims()[1];
+
   const size_t quanted_cols = scale->dims()[1];
   const size_t quanted_rows = scale_transposed->dims()[1];
 
-  dim3 block, grid;
-  if constexpr (using_1x128_vec_quant) {
-    block.x = 32;
-    block.y = 16;
-    grid.x = (src_cols + k_block_span - 1) / k_block_span;
-    grid.y = (src_rows + k_block_span - 1) / k_block_span;
-  } else {
-    block.x = 256;
-    grid.x = (src_cols + k_block_span - 1) / k_block_span;
-    grid.y = (src_rows + k_block_span - 1) / k_block_span;
-  }
+  using NvType = typename CudaTypeTraits<T>::Type;
 
-  auto kernel = using_1x128_vec_quant
-                    ? quantize_1x128_kernel<input_transpose,
-                                            output_scale_transpose,
-                                            return_transpose_only,
-                                            using_pow2_scale>
-                    : quantize_128x128_kernel<input_transpose,
+  if (src_rows % 128 == 0) {
+    dim3 block, grid;
+    if constexpr (using_1x128_vec_quant) {
+      block.x = 32;
+      block.y = 16;
+      grid.x = (src_cols + k_block_span - 1) / k_block_span;
+      grid.y = (src_rows + k_block_span - 1) / k_block_span;
+    } else {
+      block.x = 256;
+      grid.x = (src_cols + k_block_span - 1) / k_block_span;
+      grid.y = (src_rows + k_block_span - 1) / k_block_span;
+    }
+
+    auto kernel = using_1x128_vec_quant
+                      ? quantize_1x128_kernel<NvType,
+                                              input_transpose,
                                               output_scale_transpose,
                                               return_transpose_only,
-                                              using_pow2_scale>;
-  kernel<<<grid, block, 0, dev_ctx.stream()>>>(
-      reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
-      reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
-      input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
-                            out_transposed->data<phi::float8_e4m3fn>())
-                      : nullptr,
-      reinterpret_cast<float *>(scale->data<float>()),
-      input_transpose
-          ? reinterpret_cast<float *>(scale_transposed->data<float>())
-          : nullptr,
-      src_cols,
-      src_rows,
-      quanted_cols,
-      quanted_rows,
-      epsilon);
+                                              using_pow2_scale>
+                      : quantize_128x128_kernel<NvType,
+                                                input_transpose,
+                                                output_scale_transpose,
+                                                return_transpose_only,
+                                                using_pow2_scale>;
+
+    kernel<<<grid, block, 0, dev_ctx.stream()>>>(
+        reinterpret_cast<const NvType *>(X.data<T>()),
+        reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
+        input_transpose ? reinterpret_cast<__nv_fp8_e4m3 *>(
+                              out_transposed->data<phi::float8_e4m3fn>())
+                        : nullptr,
+        reinterpret_cast<float *>(scale->data<float>()),
+        input_transpose
+            ? reinterpret_cast<float *>(scale_transposed->data<float>())
+            : nullptr,
+        src_cols,
+        src_rows,
+        quanted_cols,
+        quanted_rows,
+        epsilon);
+  } else {
+    PD_CHECK(
+        !input_transpose && !return_transpose_only,
+        "When rows is not aligned to 128, only supports: input_transpose=False "
+        "and return_transpose_only=False.");
+    PD_CHECK(using_1x128_vec_quant,
+             "When rows is not aligned to 128, only supports: "
+             "using_1x128_vec_quant.");
+    PD_CHECK(src_cols % 128 == 0, "src_cols must be divisible by 128");
+
+    const int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+    const size_t min_grid_x = sm_count * 8;
+    const size_t min_block_x = 1024;
+    const size_t gridx = min(min_grid_x, src_rows);
+    const size_t blockx = min(min_block_x, src_cols / 128 * 32);
+
+    bool use_finegrained_range = false;
+    char *env_var = getenv("PER_TOKEN_QUANT_FP8_USE_FINEGRAINED_RANGE");
+    if (env_var) {
+      use_finegrained_range = static_cast<bool>(std::stoi(env_var));
+    }
+
+    quant_per_token_per_block_padding<NvType,
+                                      output_scale_transpose,
+                                      using_pow2_scale>
+        <<<gridx, blockx, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<const NvType *>(X.data<T>()),
+            reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
+            reinterpret_cast<float *>(scale->data<float>()),
+            src_rows,
+            src_cols,
+            quanted_cols,
+            use_finegrained_range,
+            epsilon);
+  }
 }
 
 // T is x's input type and out_dtype is in args
@@ -527,8 +710,9 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
                              DenseTensor *scale,
                              DenseTensor *out_transposed,
                              DenseTensor *scale_transposed) {
-  PD_CHECK(X.dtype() == phi::DataType::BFLOAT16,
-           "X datatype error, can only be bfloat16");
+  PD_CHECK(X.dtype() == phi::DataType::BFLOAT16 ||
+               X.dtype() == phi::DataType::FLOAT16,
+           "X datatype error, can only be bfloat16 or float16");
 
   dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   dev_ctx.template Alloc<float>(scale);
@@ -555,6 +739,7 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
                       using_pow2_scale,
                       k_using_pow2_scale,
                       FP8QuantBlockWiseKernelImpl<Context,
+                                                  T,
                                                   k_using_1x128_vec_quant,
                                                   k_input_transpose,
                                                   k_output_scale_transpose,
@@ -574,6 +759,7 @@ PD_REGISTER_KERNEL(fp8_quant_blockwise,
                    GPU,
                    ALL_LAYOUT,
                    phi::FP8QuantBlockWiseKernel,
+                   phi::float16,
                    phi::bfloat16,
                    float,
                    double) {}

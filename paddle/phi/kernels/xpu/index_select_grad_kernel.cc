@@ -53,8 +53,8 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   const XPUType* out_grad_data =
       reinterpret_cast<const XPUType*>(out_grad.data<T>());
 
-  auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
-  auto x_grad_shape = common::vectorize<int64_t>(x_grad->dims());
+  auto out_grad_shape = vectorize<int64_t>(out_grad.dims());
+  auto x_grad_shape = vectorize<int64_t>(x_grad->dims());
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {

@@ -731,7 +731,7 @@ PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   size_t offset = 0;
   if (self->tensor.is_dense_tensor()) {
     auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+        std::dynamic_pointer_cast<DenseTensor>(self->tensor.impl());
     if (dense_tensor == nullptr) {
       RETURN_PY_NONE;
     }
