@@ -219,6 +219,7 @@ from . import (
     special as special,
     tensor as tensor,
     utils as utils,
+    utils_internal as utils_internal,
 )
 from ._classes import classes as classes
 from ._ops import ops as ops
