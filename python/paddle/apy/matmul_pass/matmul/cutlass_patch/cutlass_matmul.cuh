@@ -24,6 +24,7 @@
 
 #include "cutlass/epilogue/thread/linear_combination_bias_elementwise.h"
 #include "cutlass/util/device_memory.h"
+#include "cutlass/arch/memory.h"
 
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/gemm/device/gemm_universal_with_broadcast.h"
@@ -35,12 +36,35 @@
 #include "cutlass_patch/batched_matrix_coord.h"
 #include "cutlass_patch/all_tuning_configs.h"
 #include "cutlass_patch/check.h"
+#include "cutlass_patch/data_type.h"
+#include "cutlass_patch/unroll.h"
+
 #include "params.h"
 
 namespace ap {
 using MatrixCoord = cutlass::BatchedMatrixCoord;
 using bfloat16 = nv_bfloat16;
 }
+
+template <typename T, int VecSize>
+using VectorType = cutlass::Array<T, VecSize>;
+
+template <int NUnroll>
+using unroll = cutlass::Unroll<NUnroll>;
+
+template <typename T, int VecSize>
+__device__ __forceinline__ auto load_vector(const T* ptr, int64_t offset, bool valid, int64_t size) {
+  using AccessType = VectorType<T, VecSize>;
+  AccessType v;
+  cutlass::arch::global_load<AccessType, sizeof(AccessType)>(v, ptr + offset, valid);
+  return v;
+}
+
+template <typename T, int VecSize>
+__device__ __forceinline__ decltype(auto)
+extract_scalar(VectorType<T, VecSize>& vec, int i) {
+    return vec[i];  
+} 
 
 namespace ap {
 
@@ -113,21 +137,7 @@ cutlass::Status SetMaxDynamicSharedMemorySize() {
   return cutlass::Status::kSuccess;
 }
 
-// Convert CUDA data type to cutlass data type
-template <typename T>
-struct CutlassDataType {
-  using Type = T;
-};
 
-template <>
-struct CutlassDataType<half> {
-  using Type = cutlass::half_t;
-};
-
-template <>
-struct CutlassDataType<__nv_bfloat16> {
-  using Type = cutlass::bfloat16_t;
-};
 
 
 // Convert to cutlass layout
@@ -159,18 +169,18 @@ void MatmulAddVariadic(
     const GemmEpilogueParams &params,
     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
   using ElementAccumulator =
-      typename CutlassDataType<ElementComputeT>::Type;  // <- data type of
+      typename cutlass::CutlassDataType<ElementComputeT>::Type;  // <- data type of
                                                         // accumulator
   using ElementComputeEpilogue =
       ElementAccumulator;  // <- data type of epilogue operations
   using ElementInputA =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of elements in
+      typename cutlass::CutlassDataType<ElementT>::Type;  // <- data type of elements in
                                                  // input matrix A
   using ElementInputB =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of elements in
+      typename cutlass::CutlassDataType<ElementT>::Type;  // <- data type of elements in
                                                  // input matrix B
   using ElementOutput =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of elements in
+      typename cutlass::CutlassDataType<ElementT>::Type;  // <- data type of elements in
                                                  // output matrix D
 
   constexpr int AlignC = AlignB;

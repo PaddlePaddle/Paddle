@@ -231,18 +231,19 @@ class EpilogueWithVariadic
             CUTLASS_PRAGMA_UNROLL
             for (int column = 0; column < ThreadMap::Iterations::kColumn;
                  ++column) {
-              bool guard = row_guard && mask.predicates[column];
-              if (!guard) {
+              bool valid = row_guard && mask.predicates[column];
+#if !CUTLASS_EPILOGUE_ENABLE_VECTORIZE
+              if (!valid) {
                 continue;
               }
-
+#endif
               int column_offset =
                   thread_start_column + column * ThreadMap::Delta::kColumn;
               int frag_offset =
                   frag_row_idx * ThreadMap::Iterations::kColumn + column;
 
               output_frag_ptr[frag_offset] = output_op(
-                  compute_frag_ptr[frag_offset], row_offset, column_offset);
+                  compute_frag_ptr[frag_offset], row_offset, column_offset, valid);
             }
           }
         }
@@ -313,11 +314,12 @@ class EpilogueWithVariadic
             CUTLASS_PRAGMA_UNROLL
             for (int column = 0; column < ThreadMap::Iterations::kColumn;
                  ++column) {
-              bool guard = row_guard && mask.predicates[column];
-              if (!guard) {
+              bool valid = row_guard && mask.predicates[column];
+#if !CUTLASS_EPILOGUE_ENABLE_VECTORIZE
+              if (!valid) {
                 continue;
               }
-
+#endif
               int column_offset =
                   thread_start_column + column * ThreadMap::Delta::kColumn;
               int frag_offset =
@@ -327,7 +329,8 @@ class EpilogueWithVariadic
                   output_op(compute_frag_ptr[frag_offset],
                             source_frag_ptr[frag_offset],
                             row_offset,
-                            column_offset);
+                            column_offset,
+                            valid);
             }
           }
         }

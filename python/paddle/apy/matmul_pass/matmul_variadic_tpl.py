@@ -71,7 +71,7 @@ class MatmulVariadicTemplate:
             + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
         )
         compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0 -DCUTLASS_EPILOGUE_ENABLE_VECTORIZE=1"
         )
         compile_cmd = (
             compile_cmd
@@ -85,7 +85,7 @@ class MatmulVariadicTemplate:
         compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
         compile_cmd = compile_cmd + " -I " + source_dir
         compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0 -DCK_EXPERIMENTAL_USE_BUFFER_LOAD_OOB_CHECK_OFFSET_TRICK=1"
         )
         compile_cmd = (
             compile_cmd
@@ -130,7 +130,7 @@ class MatmulVariadicTemplate:
 
         ap.map(self._register_name, kargs_name_pair_list)
         mut_lir_code_gen_ctx = (
-            low_level_ir_code_gen_ctx_util.CudaLikeIrCodeGenCtx(
+            low_level_ir_code_gen_ctx_util.CudaLikeVectorizedIrCodeGenCtx(
                 compute_dtype=ap.DataType.float
             )
         )
@@ -140,12 +140,8 @@ class MatmulVariadicTemplate:
             mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
         )
 
-        trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
-            indent="    "
-        )
-        print("-- matmul_binary_epilogue_code:\n", trivial_code_str)
         project_module = self.make_project(
-            trivial_code_str,
+            mut_lir_code_gen_ctx,
             input0_karg,
             input1_karg,
             output_karg,
@@ -259,13 +255,24 @@ class MatmulVariadicTemplate:
 
     def make_project(
         self,
-        trivial_code_str,
+        mut_lir_code_gen_ctx,
         input0_karg,
         input1_karg,
         output_karg,
         input0_shape_kargs,
         input1_shape_kargs,
     ):
+
+        epilogue_load_vector_stmts = mut_lir_code_gen_ctx.get_load_vector_stmts_joined_str(
+            indent="    "
+        )
+        epilogue_unroll_stmts = mut_lir_code_gen_ctx.get_unroll_stmts_joined_str(
+            indent="      "
+        )
+        print("-- matmul_binary_epilogue_load_vector_code:\n", epilogue_load_vector_stmts)
+        print("-- matmul_binary_epilogue_unroll_code:\n", epilogue_unroll_stmts)
+
+
         code_template = """
 // auto generated codes
 #include "matmul.h"
@@ -275,16 +282,26 @@ namespace ap {
 
 template <typename T>
 struct VariadicEpilogueFunctor {
+  template <int VecSize>
+  using OutVectorType = VectorType<T, VecSize>;
+  
+  template <typename T1, int VecSize>
+  using InVectorType = VectorType<T1, VecSize>;
+
   struct Arguments {
     ${AP_EPILOGUE_ARGUMENTS_FIELDS}
   };
 
   // Note: need to support vectorized operation
+  template <int VecSize>
   __forceinline__ __host__ __device__
-  T operator()(T x, const Arguments& args, const MatrixCoord& coord) const {
-    T out;
-    ${AP_EPILOGUE_COMPUTATION_STATEMENTS}
-    return out;
+  OutVectorType<VecSize> Compute(OutVectorType<VecSize>& x_vec, const Arguments& args, const MatrixCoord& coord) const {
+    OutVectorType<VecSize> out_vec;
+    ${AP_EPILOGUE_LOAD_VECTOR_STATEMENTS}
+    unroll<VecSize>{}([&](auto i){
+      ${AP_EPILOGUE_UNROLL_SCALAR_STATEMENTS}
+    });
+    return out_vec;
   }
 };
 
@@ -292,7 +309,7 @@ template <int TuningConfigId>
 static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
   using ElementT = ${input0_dtype};
   using ElementComputeT = float;
-
+  
   typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
 
   ${AP_EPILOGUE_ARGUMENTS_INIT}
@@ -332,7 +349,10 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         input0_dtype = self.dtype2type_name[input0_karg.type.data_type]
         code = (
             code_template.replace(
-                "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
+                "${AP_EPILOGUE_LOAD_VECTOR_STATEMENTS}", epilogue_load_vector_stmts
+            )
+            .replace(
+                "${AP_EPILOGUE_UNROLL_SCALAR_STATEMENTS}", epilogue_unroll_stmts
             )
             .replace(
                 "${AP_KERNEL_ARGS_DECLARE}",

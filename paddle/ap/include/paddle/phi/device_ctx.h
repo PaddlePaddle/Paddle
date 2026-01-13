@@ -16,6 +16,7 @@
 
 #include <any>
 #include "paddle/ap/include/kernel_dispatch/device_ctx.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace ap::paddle {
 
