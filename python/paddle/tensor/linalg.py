@@ -24,13 +24,13 @@ from paddle import _C_ops
 from paddle._C_ops import bincount, bmm, diagonal, dot, matmul  # noqa: F401
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
-from paddle.utils.decorator_utils import (
+from paddle.utils_internal.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     param_two_alias,
     transpose_decorator,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils_internal.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
     check_dtype,

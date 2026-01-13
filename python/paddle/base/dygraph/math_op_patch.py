@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import (
+from paddle.utils_internal.decorator_utils import (
     size_args_decorator_patch,
 )
 

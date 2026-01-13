@@ -39,7 +39,7 @@ from paddle._C_ops import (  # noqa: F401
     square,
     tan,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils_internal.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
 from ..framework import in_dynamic_or_pir_mode

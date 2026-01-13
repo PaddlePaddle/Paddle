@@ -32,9 +32,9 @@ from paddle.base.data_feeder import (
 )
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
-from paddle.utils import deprecated
-from paddle.utils.dlpack import DLDeviceType
-from paddle.utils.download import check_and_create_dir
+from paddle.utils_internal import deprecated
+from paddle.utils_internal.dlpack import DLDeviceType
+from paddle.utils_internal.download import check_and_create_dir
 
 from .. import core, framework, unique_name
 from ..framework import (

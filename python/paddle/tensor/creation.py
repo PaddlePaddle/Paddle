@@ -26,14 +26,14 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle._C_ops import diag, tril, triu  # noqa: F401
-from paddle.utils import deprecated
-from paddle.utils.decorator_utils import (
+from paddle.utils_internal import deprecated
+from paddle.utils_internal.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
     size_args_decorator,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils_internal.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
     check_dtype,

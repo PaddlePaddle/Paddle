@@ -29,7 +29,7 @@ from paddle.framework import (
     in_pir_mode,
     use_pir_api,
 )
-from paddle.utils.decorator_utils import (
+from paddle.utils_internal.decorator_utils import (
     param_one_alias,
     param_two_alias,
     size_args_decorator,

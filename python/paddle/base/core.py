@@ -589,7 +589,7 @@ def _set_prim_all_enabled(value: bool, print_flag: bool = False):
 
 
 def __check_and_set_prim_all_enabled(print_flag=False):
-    from paddle.utils.environments import strtobool
+    from paddle.utils_internal.environments import strtobool
 
     prim_all_env = os.getenv("FLAGS_prim_all")
     prim_fwd_env = os.getenv("FLAGS_prim_forward")

@@ -26,7 +26,7 @@ import paddle
 from paddle import _C_ops
 from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
 from paddle.tensor import fill_constant
-from paddle.utils.decorator_utils import (
+from paddle.utils_internal.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
@@ -37,7 +37,7 @@ from paddle.utils.decorator_utils import (
     tensor_split_decorator,
     view_decorator,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils_internal.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
     check_dtype,
@@ -71,7 +71,7 @@ if TYPE_CHECKING:
         TensorOrTensors,
     )
 from paddle._C_ops import expand_as  # noqa: F401
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils_internal.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 

@@ -26,7 +26,7 @@ import numpy as np
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.utils.decorator_utils import (
+from paddle.utils_internal.decorator_utils import (
     size_args_decorator_patch,
 )
 

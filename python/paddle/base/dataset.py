@@ -20,7 +20,7 @@ from google.protobuf import text_format
 import paddle
 from paddle.base.proto import data_feed_pb2
 
-from ..utils import deprecated
+from ..utils_internal import deprecated
 from . import core
 
 __all__ = []
