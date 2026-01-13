@@ -675,7 +675,7 @@ class MultiGRUHandler {
   const std::vector<const DenseTensor*> biases_;
   DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
-  const phi::Vector<size_t>& x_lod_;
+  const std::vector<size_t>& x_lod_;
 };
 
 template <typename T, typename Context, typename Tout = T>
