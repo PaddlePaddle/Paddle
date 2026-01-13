@@ -41,7 +41,7 @@ void ExpandAsKernel(const Context& dev_ctx,
 
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
-  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
+  auto vec_in_dims = vectorize<int64_t>(x.dims());
 
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);

@@ -90,10 +90,10 @@ void PullDenseWorker::CreatePinVar() {
     for (auto& name : dense_value_names_[tid]) {
       Variable* var = root_scope_->FindVar(name);
 
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
       auto* ptr = root_scope_->Var(name + "pin");
       InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
-      phi::DenseTensor* pin_tensor = ptr->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* pin_tensor = ptr->GetMutable<DenseTensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
 #endif
@@ -134,10 +134,10 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
           dwp_param_.program_config(0).pull_dense_table_id(x));
       for (auto& name : dense_value_names_[tid]) {
         Variable* pin_var = root_scope_->FindVar(name + "pin");
-        phi::DenseTensor* pin_tensor = pin_var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor* pin_tensor = pin_var->GetMutable<DenseTensor>();
         float* pin_w = pin_tensor->data<float>();
         Variable* var = thread_scopes_[i]->FindVar(name);
-        phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
         float* w = tensor->data<float>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         memory::Copy(places_[i],
@@ -257,9 +257,9 @@ void PullDenseWorker::MergeDenseParam() {
         dwp_param_.program_config(0).pull_dense_table_id(x));
     for (auto& name : dense_value_names_[tid]) {
       Variable* root_var = root_scope_->FindVar(name);
-      phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
       Variable* var = thread_scopes_[0]->FindVar(name);
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
       TensorCopy((*tensor), root_tensor->place(), root_tensor);
     }
   }

@@ -36,7 +36,7 @@ class ArrayOp : public framework::OperatorBase {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE_NOT_NULL(i,
                             common::errors::NotFound("Input(I) is not found."));
-    auto &i_tensor = i->Get<phi::DenseTensor>();
+    auto &i_tensor = i->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(i_tensor.numel(),
                       1,
                       common::errors::InvalidArgument(
@@ -54,7 +54,7 @@ class ArrayOp : public framework::OperatorBase {
         i_tensor.place().GetType() == phi::AllocationType::XPU ||
         i_tensor.place().GetType() == phi::AllocationType::CUSTOM) {
       // FIXME: Avoid copy from GPU to CPU
-      phi::DenseTensor t;
+      DenseTensor t;
       phi::Copy(dev_ctx, i_tensor, phi::CPUPlace(), false, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());

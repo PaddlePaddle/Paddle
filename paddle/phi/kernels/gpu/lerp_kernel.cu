@@ -97,22 +97,20 @@ void LerpKernel(const Context& dev_ctx,
       if (x.dims().size() < y.dims().size() &&
           x.dims().size() < weight.dims().size()) {
         // x broadcast to b_min
-        ExpandKernel<T, Context>(
-            dev_ctx, x, common::vectorize(b_min.dims()), &b_min);
+        ExpandKernel<T, Context>(dev_ctx, x, vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&y);
         inputs.emplace_back(&weight);
       } else if (y.dims().size() < weight.dims().size()) {
         // y broadcast to b_min
-        ExpandKernel<T, Context>(
-            dev_ctx, y, common::vectorize(b_min.dims()), &b_min);
+        ExpandKernel<T, Context>(dev_ctx, y, vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&weight);
       } else {
         // weight broadcast to b_min
         ExpandKernel<T, Context>(
-            dev_ctx, weight, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, weight, vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&y);
         inputs.emplace_back(&b_min);

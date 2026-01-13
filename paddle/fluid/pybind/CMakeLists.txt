@@ -143,21 +143,15 @@ set(PYBIND_SRCS
     sot/frame_proxy.c
     sot/eval_frame.c
     sot/guards.cc
+    sot/cpython_internals/internals_3_11.c
+    sot/cpython_internals/internals_3_12.c
+    sot/cpython_internals/internals_3_13.c
+    sot/cpython_internals/internals_3_14.c
     op_callstack_utils.cc
     python_callable_registry.cc
     arg_pre_process.cc
     args_mapper.cc
     size.cc)
-
-if(${PY_VERSION} VERSION_EQUAL "3.11")
-  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_11.c)
-elseif(${PY_VERSION} VERSION_EQUAL "3.12")
-  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_12.c)
-elseif(${PY_VERSION} VERSION_EQUAL "3.13")
-  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_13.c)
-elseif(${PY_VERSION} VERSION_EQUAL "3.14")
-  set(PYBIND_SRCS ${PYBIND_SRCS} sot/cpython_internals/internals_3_14.c)
-endif()
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)

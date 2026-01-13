@@ -65,7 +65,7 @@ class WhileOp : public framework::OperatorBase {
         scope.FindVar(Input(kCondition)),
         common::errors::NotFound("Input(Condition) of WhileOp is not found."));
 
-    auto &cond = scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>();
+    auto &cond = scope.FindVar(Input(kCondition))->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(
         cond.numel(),
         1,
@@ -155,8 +155,7 @@ class WhileOp : public framework::OperatorBase {
       }
 
       if (var->Type() == framework::proto::VarType::DENSE_TENSOR) {
-        input_var_original_places[in_name] =
-            (var->Get<phi::DenseTensor>()).place();
+        input_var_original_places[in_name] = (var->Get<DenseTensor>()).place();
       } else {
         VLOG(10) << "[while op]"
                  << "skip backup input " << in_name << " type:"
@@ -200,12 +199,12 @@ class WhileOp : public framework::OperatorBase {
               no_copy_var_names.end()) {
             std::string input_var_rename = input_var_name + kSuffix;
             framework::Variable *input_var = scope.FindVar(input_var_name);
-            if (input_var->IsType<phi::DenseTensor>()) {
+            if (input_var->IsType<DenseTensor>()) {
               rename_vars.push_back(input_var_rename);
-              auto input_var_tensor = input_var->Get<phi::DenseTensor>();
+              auto input_var_tensor = input_var->Get<DenseTensor>();
               auto *rename_input_var_tensor =
                   current_scope.Var(input_var_rename)
-                      ->GetMutable<phi::DenseTensor>();
+                      ->GetMutable<DenseTensor>();
               framework::TensorCopy(
                   input_var_tensor, dev_place, rename_input_var_tensor);
               rename_input_var_tensor->set_lod(input_var_tensor.lod());
@@ -230,8 +229,8 @@ class WhileOp : public framework::OperatorBase {
               var_rename.substr(0, var_rename.size() - strlen(kSuffix));
           current_scope.Rename(var_rename, input_var_name);
         }
-        cond_data = GetCondData(
-            scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<DenseTensor>());
       }
     } else {
       framework::Scope *current_scope = nullptr;
@@ -251,9 +250,9 @@ class WhileOp : public framework::OperatorBase {
       while (cond_data) {
         for (auto &name : current_scope->LocalVarNames()) {
           auto *var = current_scope->Var(name);
-          if (var->IsType<phi::DenseTensor>()) {
+          if (var->IsType<DenseTensor>()) {
             // Clear all lod information for all lod_tensors.
-            auto *t = var->GetMutable<phi::DenseTensor>();
+            auto *t = var->GetMutable<DenseTensor>();
             phi::LegacyLoD empty_lod;
             t->set_lod(empty_lod);
           } else if (var->IsType<phi::TensorArray>()) {
@@ -265,8 +264,8 @@ class WhileOp : public framework::OperatorBase {
 
         core_->Run({}, false);
 
-        cond_data = GetCondData(
-            scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<DenseTensor>());
       }
 
       if (!FLAGS_cache_inference_while_scope) {
@@ -390,8 +389,8 @@ class WhileGradOp : public framework::OperatorBase {
 
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto &og_outside = *scope.FindVar(outside_og_name);
-          if (og_outside.IsType<phi::DenseTensor>() &&
-              !og_outside.GetMutable<phi::DenseTensor>()->IsInitialized()) {
+          if (og_outside.IsType<DenseTensor>() &&
+              !og_outside.GetMutable<DenseTensor>()->IsInitialized()) {
             auto *var_desc = parent_block->FindVarRecursive(outside_og_name);
             PADDLE_ENFORCE_NOT_NULL(var_desc,
                                     common::errors::PreconditionNotMet(
@@ -419,9 +418,9 @@ class WhileGradOp : public framework::OperatorBase {
 
         auto &og_outside = *scope.FindVar(outside_og_name);
         auto &og_inside = *cur_scope.Var(inside_og_name);
-        if (og_outside.IsType<phi::DenseTensor>()) {
-          auto &outside_tensor = og_outside.Get<phi::DenseTensor>();
-          auto &inside_tensor = *og_inside.GetMutable<phi::DenseTensor>();
+        if (og_outside.IsType<DenseTensor>()) {
+          auto &outside_tensor = og_outside.Get<DenseTensor>();
+          auto &inside_tensor = *og_inside.GetMutable<DenseTensor>();
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<phi::TensorArray>()) {
@@ -453,7 +452,7 @@ class WhileGradOp : public framework::OperatorBase {
           }
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
-              "Currently only support phi::DenseTensor and "
+              "Currently only support DenseTensor and "
               "phi::DenseTensorArray in "
               "WhileGradOp."));
         }
@@ -528,8 +527,7 @@ class WhileGradOp : public framework::OperatorBase {
               common::errors::NotFound("Variable %s is not found.",
                                        inside_grad_name));
           PADDLE_ENFORCE_EQ(
-              var->IsType<phi::TensorArray>() ||
-                  var->IsType<phi::DenseTensor>(),
+              var->IsType<phi::TensorArray>() || var->IsType<DenseTensor>(),
               true,
               common::errors::InvalidArgument(
                   "Currently the type of var only can be phi::TensorArray, "
@@ -537,8 +535,8 @@ class WhileGradOp : public framework::OperatorBase {
                   inside_grad_name,
                   framework::ToTypeName(var->Type())));
 
-          if (!is_var_input_and_output && var->IsType<phi::DenseTensor>()) {
-            auto &inside_tensor = var->Get<phi::DenseTensor>();
+          if (!is_var_input_and_output && var->IsType<DenseTensor>()) {
+            auto &inside_tensor = var->Get<DenseTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] =
                 framework::TransToProtoVarType(inside_tensor.dtype());
@@ -552,7 +550,7 @@ class WhileGradOp : public framework::OperatorBase {
                                                 {{"Out", {var_name}}},
                                                 attrs);
             zero_op->Run(scope, dev_place);
-            scope.FindVar(var_name)->GetMutable<phi::DenseTensor>()->set_lod(
+            scope.FindVar(var_name)->GetMutable<DenseTensor>()->set_lod(
                 inside_tensor.lod());
           }
         }
@@ -580,10 +578,10 @@ class WhileGradOp : public framework::OperatorBase {
                      std::string name) const {
     auto from_var = source.FindVar(name);
     auto to_var = dest.FindVar(name);
-    if (from_var->IsType<phi::DenseTensor>()) {
-      if (from_var->Get<phi::DenseTensor>().IsInitialized()) {
-        to_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-            from_var->Get<phi::DenseTensor>());
+    if (from_var->IsType<DenseTensor>()) {
+      if (from_var->Get<DenseTensor>().IsInitialized()) {
+        to_var->GetMutable<DenseTensor>()->ShareDataWith(
+            from_var->Get<DenseTensor>());
       }
     } else if (from_var->IsType<phi::TensorArray>()) {
       auto from_arr = from_var->GetMutable<phi::TensorArray>();

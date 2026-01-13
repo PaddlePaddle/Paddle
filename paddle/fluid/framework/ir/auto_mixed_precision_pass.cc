@@ -844,8 +844,8 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           // Judge the real tensor is same to variable, Paddle-Slim weight use
           // fp32 variable to save int8 tensor.
           if (real_in_var_node->Var()->Persistable()) {
-            auto* tensor = scope->Var(real_in_var_node->Name())
-                               ->GetMutable<phi::DenseTensor>();
+            auto* tensor =
+                scope->Var(real_in_var_node->Name())->GetMutable<DenseTensor>();
             if (framework::TransToProtoVarType(tensor->type()) !=
                 real_in_var_node->Var()->GetDataType()) {
               VLOG(3) << "[AutoMixedPrecisionPass] variable "
@@ -934,15 +934,15 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
 
       auto* var = scope->FindLocalVar(var_name);
       PADDLE_ENFORCE_EQ(
-          var->IsType<phi::DenseTensor>(),
+          var->IsType<DenseTensor>(),
           true,
           common::errors::InvalidArgument(
-              "var->IsType<phi::DenseTensor>() is False, which means the "
-              "variable has invalid type instead of <phi::DenseTensor>."));
+              "var->IsType<DenseTensor>() is False, which means the "
+              "variable has invalid type instead of <DenseTensor>."));
 
-      auto* origin_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* origin_tensor = var->GetMutable<DenseTensor>();
 
-      phi::DenseTensor low_precision_tensor;
+      DenseTensor low_precision_tensor;
       low_precision_tensor.Resize(origin_tensor->dims());
       low_precision_tensor.set_type(low_precision_);
 

@@ -182,10 +182,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   // prior_box and prior_box_var have the same shape, so do not judge
   // prior_box_var
   if (prior_box.numel() == 0 || target_box.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(output_box->dims())),
-                          0,
-                          output_box);
+    Full<T, Context>(dev_ctx, output_box->dims(), 0, output_box);
     return;
   }
   if (!target_box.lod().empty()) {
