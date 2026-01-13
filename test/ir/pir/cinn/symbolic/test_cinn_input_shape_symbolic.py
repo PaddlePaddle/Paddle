@@ -24,6 +24,14 @@ import utils
 import paddle
 from paddle.static import InputSpec
 
+# NOTE(Pan Zhaowu): disable linear_v2 decomp to test infersymbolics
+paddle.set_flags(
+    {
+        "FLAGS_deny_cinn_ops": "linear_v2",
+        "FLAGS_prim_forward_blacklist": "pd_op.linear_v2",
+    }
+)
+
 
 class LayerCase(paddle.nn.Layer):
     def __init__(self, in_features=256, out_features=256):
