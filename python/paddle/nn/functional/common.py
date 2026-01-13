@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import inspect
 import math
+import os
 import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -2529,6 +2530,8 @@ def linear(
              [ 1.08524013,  1.08524013,  1.08524013,  1.08524013],
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
+    if os.getenv("USING_UNIFIED_LINEAR") == 1:
+        pass  # temporarily
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
