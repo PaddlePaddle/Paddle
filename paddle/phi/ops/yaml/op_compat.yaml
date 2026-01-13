@@ -2307,6 +2307,9 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_onednn = false]
 
+- op : linear_v2
+  backward : linear_v2_grad, linear_v2_double_grad
+
 - op : linspace
   inputs :
     {start : Start, stop : Stop, number : Num}

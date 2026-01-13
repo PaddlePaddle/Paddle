@@ -3205,6 +3205,18 @@
     skip_transform : out_size, size_tensor, scale_tensor
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : linear_v2
+  args : (Tensor input, Tensor weight, Tensor bias)
+  output : Tensor(out)
+  infer_meta :
+    func : LinearV2InferMeta
+    spmd_rule : LinearV2InferSpmd
+  kernel :
+    func : linear_v2
+    data_type : input
+  backward : linear_v2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
   output : Tensor(out)

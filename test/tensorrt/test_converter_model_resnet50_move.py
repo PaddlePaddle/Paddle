@@ -148,6 +148,18 @@ class TestConverterResNet50Move(unittest.TestCase):
         output_expected = standardize(output_expected[0])
         output_trt = standardize(output_converted[0].numpy())
 
+        print("$#$#!$!#$!#!@$!#$!@#!@$!@$#!@#!")
+        print("++++++++++++++++++++++++ expected")
+        print(output_expected)
+        print("++++++++++++++++++++++++ trt")
+        print(output_trt)
+        raise ValueError(
+            f"\n\n[DEBUG ERROR] 打印两个 Tensor 数据:\n"
+            f"--- Tensor output_expect (Shape: {output_expected.shape}) ---\n"
+            f"{output_expected}\n\n"
+            f"--- Tensor output_trt (Shape: {output_trt.shape}) ---\n"
+            f"{output_trt}"
+        )
         np.testing.assert_allclose(
             output_expected,
             output_trt,
