@@ -129,7 +129,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     DenseTensor norm_tensor;
     norm_tensor.Resize({sizeof(T)});
     dev_ctx.template Alloc<T>(&norm_tensor);
-    auto dims = common::vectorize(counts_tensor.dims());
+    auto dims = vectorize(counts_tensor.dims());
     std::vector<int> reduce_dim = {};
     for (int i = 0; i < dims.size(); i++) {
       reduce_dim.push_back(i);
@@ -138,9 +138,9 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, counts_tensor, &norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(&norm_tensor);
-    auto norm_cpu_mem = phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(T));
+    auto norm_cpu_mem = phi::memory_utils::Alloc(CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        norm_cpu_ptr,
                        dev_ctx.GetPlace(),
                        norm,

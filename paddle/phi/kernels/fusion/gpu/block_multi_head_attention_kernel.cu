@@ -45,7 +45,7 @@ int GetMaxLen(const GPUContext& dev_ctx,
   int max_len_cpu = 0;
   GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
       seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      &max_len_cpu,
                      dev_ctx.GetPlace(),
                      max_len_tensor->data<int>(),
@@ -400,7 +400,7 @@ void DispatchWithDtype(
   } else {
     PADDLE_ENFORCE_EQ(
         max_dec_len_this_time.get().place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         errors::InvalidArgument(
             "The place of input max_dec_len_this_time must be CPU, but got %s.",
             max_dec_len_this_time.get().place()));
@@ -418,7 +418,7 @@ void DispatchWithDtype(
   } else {
     PADDLE_ENFORCE_EQ(
         max_enc_len_this_time.get().place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         errors::InvalidArgument(
             "The place of input max_enc_len_this_time must be CPU, but got %s.",
             max_enc_len_this_time.get().place()));

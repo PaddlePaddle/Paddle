@@ -51,8 +51,8 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
                         "True or False at the same time."));
 
   if (scale_grad && bias_grad) {
-    *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
-    *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
+    *scale_grad = EmptyLike<T, Context>(dev_ctx, scale);
+    *bias_grad = EmptyLike<T, Context>(dev_ctx, bias);
   }
   phi::BatchNormGradKernel<T, Context>(dev_ctx,
                                        x.values(),

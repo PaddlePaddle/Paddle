@@ -492,6 +492,68 @@ void CudnnLSTMGradInferMeta(
     UnchangedMultiInferMeta(weight_list.get(), weight_list_grad);
   }
 }
+void LinearV2GradInferMeta(const MetaTensor& input,
+                           const MetaTensor& weight,
+                           const MetaTensor& bias,
+                           const MetaTensor& out_grad,
+                           MetaTensor* input_grad,
+                           MetaTensor* weight_grad,
+                           MetaTensor* bias_grad) {
+  auto input_dims = input.dims();
+  auto weight_dims = weight.dims();
+  auto bias_dims = bias.dims();
+  auto dout_dims = out_grad.dims();
+
+  auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+
+  const int64_t input_ndim = input_dims.size();
+  auto k_from_dout = input_ndim >= 2 ? dout_dims[input_ndim - 2] : 1;
+  auto k_from_input = input_ndim >= 2 ? input_dims[input_ndim - 2] : 1;
+
+  bool check_k =
+      (k_from_dout < 0 || k_from_input < 0) || (k_from_dout == k_from_input);
+
+  if (check_k) {
+    PADDLE_ENFORCE_EQ(
+        dout_mat_dims[1],
+        weight_dims[1],
+        common::errors::InvalidArgument(
+            "The last dimension of DOut should be equal with Y's last "
+            "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
+            dout_mat_dims[1],
+            weight_dims[1]));
+  }
+
+  for (int32_t i = 0; i + 2 < input_dims.size(); ++i) {
+    if (dout_dims[i] > 0 && input_dims[i] > 0) {
+      PADDLE_ENFORCE_EQ(
+          dout_dims[i],
+          input_dims[i],
+          common::errors::InvalidArgument(
+              "The i dimension of DOut should be equal with i dimension of X."
+              "But received DOut[%d] = [%d], Y[%d] = [%d].",
+              i,
+              dout_dims[i],
+              i,
+              input_dims[i]));
+    }
+  }
+
+  if (input_grad) {
+    input_grad->set_dims(input_dims);
+    input_grad->set_dtype(input.dtype());
+  }
+
+  if (weight_grad) {
+    weight_grad->set_dims(weight_dims);
+    weight_grad->set_dtype(weight.dtype());
+  }
+
+  if (bias_grad) {
+    bias_grad->set_dims(bias_dims);
+    bias_grad->set_dtype(bias.dtype());
+  }
+}
 
 void LSTMGradInferMeta(const MetaTensor& input,
                        const MetaTensor& h0,
@@ -1308,7 +1370,7 @@ void MoeCombineAutoGradInferMeta(const MetaTensor& x,
   grad_x->set_dtype(x.dtype());
 
   grad_combine_weights_helper->set_dims(
-      common::make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
+      make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
   grad_combine_weights_helper->set_dtype(x.dtype());
   PADDLE_ENFORCE_NE(
       grad_scatter_index,
@@ -1671,28 +1733,15 @@ void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
   }
 }
 
-PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& scale,
-                                     const MetaTensor& invvar,
-                                     const MetaTensor& y_grad,
-                                     float epsilon,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* scale_grad) {
-  PADDLE_ENFORCE_EQ(
-      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
-          x.dtype() == DataType::BFLOAT16,
-      true,
-      common::errors::InvalidArgument(
-          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
-          x.dtype()));
-  PADDLE_ENFORCE_EQ(
-      scale.dtype() == DataType::FLOAT32 ||
-          scale.dtype() == DataType::FLOAT16 ||
-          scale.dtype() == DataType::BFLOAT16,
-      true,
-      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
-                                      "FLOAT16 or BFLOAT16, but got [%s]",
-                                      scale.dtype()));
+PADDLE_API void RMSNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale,
+    const MetaTensor& invvar,
+    const MetaTensor& y_grad,
+    const std::vector<int64_t>& normalized_shape,
+    double epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* scale_grad) {
   if (x_grad && x) {
     x_grad->share_meta(x);
   }

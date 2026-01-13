@@ -34,6 +34,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -47,10 +48,6 @@
 #else
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -406,7 +403,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
     auto& op_device = op_base->Attr<std::string>("op_device");
     if (op_device == "cpu" || phi::is_cpu_place(place)) {
       VLOG(3) << "Switch into CPUPlace by device_guard.";
-      expected_kernel_key->place_ = phi::CPUPlace();
+      expected_kernel_key->place_ = CPUPlace();
     } else if (op_device.find("gpu") != std::string::npos &&
                phi::is_gpu_place(place)) {
       // when the Op that does not have GPUKernel is assigned to GPU, the
@@ -415,7 +412,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportGPU()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = phi::CPUPlace();
+        expected_kernel_key->place_ = CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
@@ -430,7 +427,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportXPU()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = phi::CPUPlace();
+        expected_kernel_key->place_ = CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no XPU implementation. It will be assigned to CPUPlace.";
@@ -464,7 +461,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportCustomDevice()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = phi::CPUPlace();
+        expected_kernel_key->place_ = CPUPlace();
         LOG_FIRST_N(WARNING, 1) << "Op(" << op_base->Type()
                                 << ") has no Custom Place implementation. It "
                                    "will be assigned to CPUPlace.";
@@ -1014,8 +1011,8 @@ void BuildOpFuncList(const phi::Place& place,
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
         const phi::DenseTensor* tensor{nullptr};
-        if (var->IsType<phi::DenseTensor>()) {
-          tensor = &var->Get<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          tensor = &var->Get<DenseTensor>();
         } else {
           VLOG(6) << vname << " is not DenseTensor";
           continue;
@@ -1030,8 +1027,8 @@ void BuildOpFuncList(const phi::Place& place,
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
         const phi::DenseTensor* tensor{nullptr};
-        if (var->IsType<phi::DenseTensor>()) {
-          tensor = &var->Get<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          tensor = &var->Get<DenseTensor>();
         } else {
           VLOG(6) << vname << "  is not DenseTensor";
           continue;
@@ -1103,9 +1100,9 @@ void BuildOpFuncList(const phi::Place& place,
         }
 
         VLOG(6) << "Erase variable " << var_name;
-        if (var->IsType<phi::DenseTensor>()) {
+        if (var->IsType<DenseTensor>()) {
           garbages->emplace_back(
-              var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+              var->GetMutable<DenseTensor>()->MoveMemoryHolder());
         } else if (var->IsType<phi::SelectedRows>()) {
           garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                      ->mutable_value()
@@ -1150,9 +1147,9 @@ void BuildOpFuncList(const phi::Place& place,
     auto* var = local_scope->FindVar(var_name);
     if (var == nullptr) continue;
     VLOG(6) << "Erase variable " << var_name;
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<DenseTensor>()) {
       garbages->emplace_back(
-          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+          var->GetMutable<DenseTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                  ->mutable_value()

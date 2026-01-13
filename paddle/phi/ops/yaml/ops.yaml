@@ -2707,6 +2707,7 @@
     param : [x]
   kernel :
     func : hardsigmoid
+  inplace: (x -> out)
   backward : hardsigmoid_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -3163,6 +3164,7 @@
     func : LerpInferMeta
   kernel :
     func : lerp
+    data_type : x
   inplace : (x -> out)
   backward : lerp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -3202,6 +3204,18 @@
   backward : linear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : linear_v2
+  args : (Tensor input, Tensor weight, Tensor bias)
+  output : Tensor(out)
+  infer_meta :
+    func : LinearV2InferMeta
+    spmd_rule : LinearV2InferSpmd
+  kernel :
+    func : linear_v2
+    data_type : input
+  backward : linear_v2_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : linspace
@@ -3794,6 +3808,7 @@
     spmd_rule : MishInfoSpmd
   kernel :
     func : mish
+  inplace: (x -> out)
   backward : mish_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -3895,7 +3910,7 @@
   backward : moe_gate_dispatch_permute_grad
 
 - op : moe_permute
-  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather)
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather, bool using_ue8m0_scale = false)
   output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
   infer_meta:
     func : MoePermuteInferMeta
@@ -4756,6 +4771,7 @@
   kernel :
     func : rrelu
     data_type : x
+  inplace: (x -> out)
   intermediate : noise
   backward : rrelu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -4845,6 +4861,7 @@
     spmd_rule : SeluInfoSpmd
   kernel :
     func : selu
+  inplace: (x -> out)
   backward : selu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -5392,6 +5409,7 @@
     param : [x]
   kernel :
     func : swish
+  inplace: (x -> out)
   backward : swish_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -6109,12 +6127,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: rms_norm
-  args: (Tensor x, Tensor scale, float epsilon)
+  args: (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon= 1e-5)
   output: Tensor(y), Tensor(invvar)
   infer_meta:
     func: RmsNormInferMeta
   kernel:
     func: rms_norm
     data_type: x
+  optional : scale
   backward: rms_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface

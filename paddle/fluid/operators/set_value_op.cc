@@ -51,7 +51,7 @@ class SetValue : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {
@@ -99,7 +99,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(phi::DenseTensor) Output tensor of set_value operator. The "
               "output is the "
-              "same phi::DenseTensor as input");
+              "same DenseTensor as input");
 
     // Attr
     AddAttr<int>("dtype", "data type of input.")
@@ -138,7 +138,7 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
         .SetDefault({});
     AddComment(R"DOC(SetValue operator.
-Assignment to a phi::DenseTensor in static graph mode.
+Assignment to a DenseTensor in static graph mode.
 )DOC");
   }
 };
@@ -203,14 +203,14 @@ class SetValueGrad : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto in_tensor = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto in_tensor = ctx.Input<DenseTensor>(framework::GradVarName("Out"));
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out")),
                           in_tensor->place());
   }
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StepsTensorList") {

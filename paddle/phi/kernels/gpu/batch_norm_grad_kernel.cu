@@ -584,13 +584,13 @@ void BatchNormGradFunctor(const Context &dev_ctx,
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
 
   if (Bias) {
     new_bias = bias.get();
   } else {
-    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+    new_bias = Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -861,9 +861,9 @@ void BatchNormGradFunctor(const Context &dev_ctx,
           DenseTensor block_data_tensor;
           DenseTensor flag_tensor;
           DenseTensor compute_mean_tensor =
-              phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+              Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
           DenseTensor compute_inv_var_tensor =
-              phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+              Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
 
           BatchNormParamType<T> *block_data_ptr = nullptr;
           int *flag_ptr = nullptr;
@@ -915,9 +915,9 @@ void BatchNormGradFunctor(const Context &dev_ctx,
             dbias = dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias);
           } else {
             DenseTensor dscale_mem =
-                phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+                Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
             DenseTensor dbias_mem =
-                phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+                Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
             dscale = dscale_mem.data<BatchNormParamType<T>>();
             dbias = dbias_mem.data<BatchNormParamType<T>>();
           }
@@ -1352,16 +1352,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (scale_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(scale_grad->dims())),
-          0,
-          scale_grad);
-    if (bias_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(bias_grad->dims())),
-                            0,
-                            bias_grad);
+      Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
+    if (bias_grad) Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
     return;
   }
   BatchNormGradFunctor<T, Context>(dev_ctx,
@@ -1431,7 +1423,7 @@ void BatchNormDoubleGradKernel(
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
   funcs::NormDoubleGradFunctor<Context, T>(dev_ctx,
                                            data_layout,

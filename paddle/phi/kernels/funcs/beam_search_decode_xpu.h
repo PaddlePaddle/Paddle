@@ -50,22 +50,16 @@ inline int CopyTensorByXPU(const DenseTensor& srcTensor,
       common::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
-    auto cpu_place = phi::CPUPlace();
+    auto cpu_place = CPUPlace();
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(cpu_place);
     T* dstData = dev_ctx->HostAlloc<T>(dstTensor);
-    phi::memory_utils::Copy(phi::CPUPlace(),
-                            dstData,
-                            place,
-                            srcData,
-                            srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(
+        CPUPlace(), dstData, place, srcData, srcTensor.numel() * sizeof(T));
   } else {
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     T* dstData = dev_ctx->Alloc<T>(dstTensor);
-    phi::memory_utils::Copy(place,
-                            dstData,
-                            phi::CPUPlace(),
-                            srcData,
-                            srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(
+        place, dstData, CPUPlace(), srcData, srcTensor.numel() * sizeof(T));
   }
 
   return xpu::Error_t::SUCCESS;
@@ -111,7 +105,7 @@ struct BeamSearchDecodeXPUFunctor {
     int r = 0;
 
     // First make a copy of XPU data on CPU
-    if (step_ids.at(0).place().GetType() == phi::AllocationType::XPU) {
+    if (step_ids.at(0).place().GetType() == AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
         DenseTensor out;
@@ -129,7 +123,7 @@ struct BeamSearchDecodeXPUFunctor {
       }
     }
 
-    if (step_scores.at(0).place().GetType() == phi::AllocationType::XPU) {
+    if (step_scores.at(0).place().GetType() == AllocationType::XPU) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
         DenseTensor out;

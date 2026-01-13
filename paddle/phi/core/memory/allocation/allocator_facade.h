@@ -105,14 +105,14 @@ class AllocatorFacade {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
-  uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
+  uint64_t Release(const GPUPlace& place, gpuStream_t stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
   PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
-  void SetDefaultStream(const phi::GPUPlace& place, gpuStream_t stream);
+  void SetDefaultStream(const GPUPlace& place, gpuStream_t stream);
 #elif defined(PADDLE_WITH_XPU)
   PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, XPUStream stream);

@@ -83,17 +83,17 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::CPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == AllocationType::CPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = dev_ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::CPU,
+    PADDLE_ENFORCE_EQ(out_place.GetType() == AllocationType::CPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
@@ -215,12 +215,12 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::CPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == AllocationType::CPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
@@ -698,12 +698,12 @@ struct MergeAdd<phi::XPUContext, T> {
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        y_rows_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        merge_rows.data(),
                        ym * sizeof(int64_t));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        x_rows_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        input_rows.data(),
                        xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(dev_ctx.x_context(),
@@ -796,12 +796,12 @@ struct MergeAdd<phi::XPUContext, T> {
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          y_rows_data,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          merge_rows.data(),
                          ym * sizeof(int64_t));
       memory_utils::Copy(dev_ctx.GetPlace(),
                          x_rows_data,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          input_rows.data(),
                          xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(dev_ctx.x_context(),

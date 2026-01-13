@@ -834,7 +834,7 @@ void RnnKernel(const Context& dev_ctx,
       if (dropout_state->numel() != out->numel()) dropout_state->clear();
     }
     const auto& out_dim = out->dims();
-    Full<uint8_t>(dev_ctx, {out_dim.Get(), out_dim.size()}, 1, dropout_state);
+    Full<uint8_t>(dev_ctx, out_dim, 1, dropout_state);
   }
 
   // init the output and allocate the memory

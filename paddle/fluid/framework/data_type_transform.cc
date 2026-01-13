@@ -157,7 +157,7 @@ struct CastDataType {
                phi::DenseTensor* out,
                const phi::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
-  const phi::DenseTensor in_;
+  const DenseTensor in_;
   phi::DenseTensor* out_;
   const phi::DeviceContext* ctx_;
 

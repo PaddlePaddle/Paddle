@@ -339,3 +339,7 @@ class PADDLE_API DenseTensor : public TensorBase,
 };
 
 }  // namespace phi
+
+namespace paddle {
+using DenseTensor = phi::DenseTensor;
+}

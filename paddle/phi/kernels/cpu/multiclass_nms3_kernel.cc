@@ -498,7 +498,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
                          DenseTensor* nms_rois_num) {
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
-  auto score_dims = common::vectorize<int>(scores.dims());
+  auto score_dims = vectorize<int>(scores.dims());
   auto score_size = score_dims.size();
 
   std::vector<std::map<int, std::vector<int>>> all_indices;

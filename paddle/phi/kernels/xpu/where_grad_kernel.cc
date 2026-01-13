@@ -47,8 +47,8 @@ void WhereGradKernel(const Context& dev_ctx,
   const auto* cond_data = condition.data<bool>();
   auto* dout = out_grad.data<T>();
 
-  auto cond_shape = common::vectorize(condition.dims());
-  auto out_shape = common::vectorize(out_grad.dims());
+  auto cond_shape = vectorize(condition.dims());
+  auto out_shape = vectorize(out_grad.dims());
   // use [1] to replace [], because xpu not support []
   if (cond_shape.size() == 0) {
     cond_shape = std::vector<int64_t>({1});
