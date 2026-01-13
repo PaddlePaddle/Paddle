@@ -40,6 +40,7 @@ namespace phi {
 
 template <typename Functor,
           typename OutT,
+          typename OffsetT,
           int Arity,
           int NumOuts,
           int VecSize,
@@ -47,10 +48,10 @@ template <typename Functor,
 __global__ void BinaryElementwiseKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
-    uint32_t numel,
+    int64_t numel,
     int read_lens,
     Functor func,
-    funcs::OffsetCalculator<Arity + NumOuts> offset_calc) {
+    funcs::OffsetCalculator<Arity + NumOuts, OffsetT, false> offset_calc) {
   int64_t tid = THREAD_ID_X;
   int64_t nv = BLOCK_NUM_X * vt;
   int64_t idx = nv * BLOCK_ID_X + tid;
@@ -84,6 +85,7 @@ __global__ void BinaryElementwiseKernel(
 
 template <typename Functor,
           typename OutT,
+          typename OffsetT,
           int Arity,
           int NumOuts,
           int VecSize,
@@ -91,10 +93,10 @@ template <typename Functor,
 __global__ void UnaryElementwiseKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
-    uint32_t numel,
+    int64_t numel,
     int read_lens,
     Functor func,
-    funcs::OffsetCalculator<Arity + NumOuts> offset_calc) {
+    funcs::OffsetCalculator<Arity + NumOuts, OffsetT, false> offset_calc) {
   int64_t tid = THREAD_ID_X;
   int64_t nv = BLOCK_NUM_X * vt;
   int64_t idx = nv * BLOCK_ID_X + tid;
@@ -168,24 +170,57 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
   // upgraded.
   const int64_t &numel = iter.numel();
 
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
   auto stream = dev_ctx.stream();
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
   int vec_size = STRIDE_VEC_SIZE;
-  BinaryElementwiseKernel<Functor,
-                          OutT,
-                          Arity,
-                          NumOuts,
-                          STRIDE_VEC_SIZE,
-                          unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
+
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride * sizeof(OutT))) {
+    is_big_tensor = true;
+  }
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint64_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint32_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  }
 }
 
 template <typename OutT, typename Context, typename Functor, int NumOuts = 1>
@@ -236,24 +271,57 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
   // upgraded.
   const int64_t &numel = iter.numel();
 
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
   auto stream = dev_ctx.stream();
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
   int vec_size = STRIDE_VEC_SIZE;
-  BinaryElementwiseKernel<Functor,
-                          OutT,
-                          Arity,
-                          NumOuts,
-                          STRIDE_VEC_SIZE,
-                          unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
+
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride) * sizeof(OutT)) {
+    is_big_tensor = true;
+  }
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint64_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint32_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  }
 }
 
 template <typename OutT, typename Context, typename Functor, int NumOuts = 1>
@@ -309,18 +377,52 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
   int vec_size = STRIDE_VEC_SIZE;
-  UnaryElementwiseKernel<Functor,
-                         OutT,
-                         Arity,
-                         NumOuts,
-                         STRIDE_VEC_SIZE,
-                         unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
+
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride * sizeof(OutT))) {
+    is_big_tensor = true;
+  }
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<2, false, uint64_t>(iter);
+    UnaryElementwiseKernel<Functor,
+                           OutT,
+                           uint64_t,
+                           Arity,
+                           NumOuts,
+                           STRIDE_VEC_SIZE,
+                           unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<2, false, uint32_t>(iter);
+    UnaryElementwiseKernel<Functor,
+                           OutT,
+                           uint32_t,
+                           Arity,
+                           NumOuts,
+                           STRIDE_VEC_SIZE,
+                           unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  }
 }
 
 template <typename T, typename Context, typename Functor>
