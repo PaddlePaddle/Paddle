@@ -42,7 +42,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
   phi::Place place;
-  place = phi::CPUPlace();
+  place = CPUPlace();
 
   if (argument->model_dir_valid()) {
     auto program =

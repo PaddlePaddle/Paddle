@@ -51,8 +51,8 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
 void SplitFeedTensors(const std::vector<std::string>& feed_names,
                       const int64_t micro_batch_num,
                       Scope* scope,
-                      std::vector<std::vector<phi::DenseTensor>>* out) {
-  std::vector<phi::DenseTensor> feed_tensors;
+                      std::vector<std::vector<DenseTensor>>* out) {
+  std::vector<DenseTensor> feed_tensors;
   for (size_t i = 0; i < feed_names.size(); ++i) {
     auto feed_name = feed_names[i];
     auto feed_var = scope->GetVar(feed_name);
@@ -60,7 +60,7 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
         feed_var,
         common::errors::NotFound("Variable %s should not be nullptr.",
                                  feed_names[i]));
-    feed_tensors.push_back(feed_var->Get<phi::DenseTensor>());
+    feed_tensors.push_back(feed_var->Get<DenseTensor>());
   }
 
   out->resize(micro_batch_num);
@@ -109,10 +109,10 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
     int col = find(fetch_var_names.begin(), fetch_var_names.end(), var_name) -
               fetch_var_names.begin();
     auto* var = scope->FindVar(var_name);
-    if (var->IsType<phi::DenseTensor>()) {
-      auto& src = var->Get<phi::DenseTensor>();
+    if (var->IsType<DenseTensor>()) {
+      auto& src = var->Get<DenseTensor>();
       auto* dst =
-          &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
+          &(PADDLE_GET(DenseTensor, fetch_list->at(micro_batch_id)[col]));
       if (src.IsInitialized()) {
         TensorCopy(src, CPUPlace(), dst);
         dst->set_lod(src.lod());
@@ -156,21 +156,21 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
 
   out->resize(fetch_list[0].size());
   for (size_t i = 0; i < fetch_list[0].size(); ++i) {
-    std::vector<const phi::DenseTensor*> tensors_ptr;
+    std::vector<const DenseTensor*> tensors_ptr;
     for (auto micro_batch_id = 0; micro_batch_id < micro_batch_num;
          ++micro_batch_id) {
       tensors_ptr.push_back(
-          &PADDLE_GET_CONST(phi::DenseTensor, fetch_list[micro_batch_id][i]));
+          &PADDLE_GET_CONST(DenseTensor, fetch_list[micro_batch_id][i]));
     }
-    phi::DenseTensor merged_tensor;
+    DenseTensor merged_tensor;
     MergeTensors(tensors_ptr, CPUPlace(), &merged_tensor);
     out->at(i) = std::move(merged_tensor);
   }
 }
 
-void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
+void MergeTensors(const std::vector<const DenseTensor*>& tensors,
                   const phi::Place dst_place,
-                  phi::DenseTensor* target) {
+                  DenseTensor* target) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),
       false,
@@ -201,7 +201,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
           new_type,
           framework::TransToProtoVarType(t->dtype()),
           common::errors::InvalidArgument(
-              "phi::DenseTensor data type does not match, expected type is %s, "
+              "DenseTensor data type does not match, expected type is %s, "
               "actual "
               "type is %s.",
               DataTypeToString(new_type),
@@ -210,7 +210,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
           new_layout,
           t->layout(),
           common::errors::InvalidArgument(
-              "phi::DenseTensor layout does not match, expected layout is %s, "
+              "DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
               common::DataLayoutToString(new_layout),
               common::DataLayoutToString(t->layout())));

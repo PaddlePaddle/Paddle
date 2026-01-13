@@ -418,7 +418,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         for (int j = 0; j < 6; j++) {
           tmp.push_back(1.0f / in_scale_data[i]);
         }
-        phi::DenseTensor dst_tensor;
+        DenseTensor dst_tensor;
         dst_tensor.set_type(phi::DataType::FLOAT32);
         dst_tensor.Resize({(int64_t)tmp.size()});
         memcpy(cpu_ctx->Alloc<float>(&dst_tensor),
@@ -430,8 +430,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
         auto* dst_node = FindNodeWithName(graph, dst_name);
         if (dst_node == nullptr) {
-          Assign(dst_tensor,
-                 scope->Var(dst_name)->GetMutable<phi::DenseTensor>());
+          Assign(dst_tensor, scope->Var(dst_name)->GetMutable<DenseTensor>());
           // Create dst node
           // Update dst var_desc in block
           VarDesc dst_desc(dst_name);
@@ -461,7 +460,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         return found == std::string::npos ? name : name.substr(0, found);
       };
       std::vector<float> max_bound_pow{127 * 127};  // int8_t
-      phi::DenseTensor max_bound_tensor;
+      DenseTensor max_bound_tensor;
       max_bound_tensor.set_type(phi::DataType::FLOAT32);
       max_bound_tensor.Resize({(int64_t)max_bound_pow.size()});
       memcpy(cpu_ctx->Alloc<float>(&max_bound_tensor),
@@ -472,7 +471,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
       auto names = fused_mt_int8->Op()->Input(input_name);
       int id = 0;
       for (auto name : names) {
-        phi::DenseTensor in_scale_tensor;
+        DenseTensor in_scale_tensor;
         in_scale_tensor.set_type(phi::DataType::FLOAT32);
         in_scale_tensor.Resize({1});
         memcpy(cpu_ctx->Alloc<float>(&in_scale_tensor),
@@ -484,7 +483,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         auto* dst_node = FindNodeWithName(graph, dst_name);
         if (dst_node == nullptr) {
           phi::DenseTensor* curr_tensor =
-              scope->Var(name)->GetMutable<phi::DenseTensor>();
+              scope->Var(name)->GetMutable<DenseTensor>();
           PADDLE_ENFORCE_NE(
               curr_tensor,
               nullptr,
@@ -508,7 +507,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
           old_weight_max_name->push_back(name);
           auto* dst_var = scope->FindVar(dst_name);
           if (dst_var == nullptr) {
-            phi::DenseTensor tmp_tensor;
+            DenseTensor tmp_tensor;
             tmp_tensor.set_type(phi::DataType::FLOAT32);
             tmp_tensor.Resize(curr_tensor->dims());
             memcpy(cpu_ctx->Alloc<float>(&tmp_tensor),
@@ -518,8 +517,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
                 *cpu_ctx, *curr_tensor, max_bound_tensor, &tmp_tensor);
             phi::MultiplyKernel<float>(
                 *cpu_ctx, tmp_tensor, in_scale_tensor, &tmp_tensor);
-            Assign(tmp_tensor,
-                   scope->Var(dst_name)->GetMutable<phi::DenseTensor>());
+            Assign(tmp_tensor, scope->Var(dst_name)->GetMutable<DenseTensor>());
           }
         }
         id++;
@@ -541,7 +539,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
     auto cast_tofp32_func = [&](const std::string& input_name) {
       auto names = fused_mt_int8->Op()->Input(input_name);
       for (auto name : names) {
-        auto* curr_tensor = scope->Var(name)->GetMutable<phi::DenseTensor>();
+        auto* curr_tensor = scope->Var(name)->GetMutable<DenseTensor>();
         PADDLE_ENFORCE_NE(
             curr_tensor,
             nullptr,
@@ -593,7 +591,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
     // Generate max_buffer: per_tensor_max and per_batch_max for kv_cache
     int layer_num = fused_mt_int8->Op()->Input("QKVW").size();
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-    phi::DenseTensor max_buffer_tensor;
+    DenseTensor max_buffer_tensor;
     max_buffer_tensor.set_type(phi::DataType::FLOAT32);
     int max_buffer_len = max_ptr_size * layer_num * 2;
     max_buffer_tensor.Resize({max_buffer_len});
@@ -621,7 +619,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
       auto* max_buffer_var = scope->FindVar(max_buffer_name);
       if (max_buffer_var == nullptr) {
         Assign(max_buffer_tensor,
-               scope->Var(max_buffer_name)->GetMutable<phi::DenseTensor>());
+               scope->Var(max_buffer_name)->GetMutable<DenseTensor>());
       }
     }
 

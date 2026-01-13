@@ -311,7 +311,7 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
   static std::atomic<bool> quit_flag_;
-  phi::DenseTensor sync_stat_;
+  DenseTensor sync_stat_;
   // skip vars
   std::vector<std::string> skip_vars_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>

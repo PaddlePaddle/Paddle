@@ -33,7 +33,7 @@ void TileGradKernel(const Context& dev_ctx,
     return;
   }
   auto x_dims = x.dims();
-  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
+  auto vec_x_dims = vectorize<int64_t>(x_dims);
   auto repeat_times_data = repeat_times.GetData();
   if (repeat_times_data.size() < vec_x_dims.size()) {
     size_t diff = vec_x_dims.size() - repeat_times_data.size();
@@ -67,7 +67,7 @@ void TileGradKernel(const Context& dev_ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {

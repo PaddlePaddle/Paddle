@@ -951,7 +951,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   }
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
   CallStackRecorder callstack_recorder("run_custom_op");
   callstack_recorder.Record();
   std::vector<pir::Value> op_results;
@@ -1313,7 +1313,7 @@ static PyObject *run_python_op(PyObject *self,
   }
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
   CallStackRecorder callstack_recorder("run_python_op");
   callstack_recorder.Record();
   std::vector<pir::Value> op_results;

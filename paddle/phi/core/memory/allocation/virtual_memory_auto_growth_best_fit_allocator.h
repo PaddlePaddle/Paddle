@@ -46,7 +46,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   VirtualMemoryAutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator,
       size_t alignment,
-      const phi::GPUPlace &place);
+      const GPUPlace &place);
 
   std::shared_ptr<Allocator> &GetUnderLyingAllocator() {
     return underlying_allocator_;
@@ -83,6 +83,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
   void DumpInfo(std::string phase) const;
+  std::list<Block>::iterator FindBlockByPtr(void *ptr);
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::unique_ptr<MemoryCompactionStrategy> memory_compactor_;
@@ -110,7 +111,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
       const std::shared_ptr<VirtualMemoryAutoGrowthBestFitAllocator>
           &large_allocator,
       size_t alignment,
-      const phi::GPUPlace &place)
+      const GPUPlace &place)
       : MultiScalePoolAllocator(
             small_allocator, large_allocator, alignment, place) {}
   bool IsAllocThreadSafe() const override { return true; }

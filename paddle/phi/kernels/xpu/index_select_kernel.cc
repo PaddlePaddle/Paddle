@@ -47,7 +47,7 @@ void IndexSelectKernel(const Context& dev_ctx,
                         phi::DataType::INT64));
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
-  std::vector<int64_t> in_shape = common::vectorize<int64_t>(input_dim);
+  std::vector<int64_t> in_shape = vectorize<int64_t>(input_dim);
   int64_t index_len = output->dims()[dim];
   dev_ctx.template Alloc<T>(output);
   int r = 0;

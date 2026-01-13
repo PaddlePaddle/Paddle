@@ -79,11 +79,11 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   // AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
-  if (src.IsType<phi::DenseTensor>()) {
-    if (!dst->IsType<phi::DenseTensor>()) {
+  if (src.IsType<DenseTensor>()) {
+    if (!dst->IsType<DenseTensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<phi::DenseTensor>(), dst->GetMutable<phi::DenseTensor>());
+    AllReduce(src.Get<DenseTensor>(), dst->GetMutable<DenseTensor>());
   } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {
       if (!dst->IsType<phi::SelectedRows>()) {
@@ -106,8 +106,8 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
   }
 }
 
-void GLOOParallelContext::AllReduce(const phi::DenseTensor &src_tensor,
-                                    phi::DenseTensor *dst_tensor) {
+void GLOOParallelContext::AllReduce(const DenseTensor &src_tensor,
+                                    DenseTensor *dst_tensor) {
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   dst_tensor->Resize(src_tensor.dims());
   switch (framework::TransToProtoVarType(src_tensor.dtype())) {

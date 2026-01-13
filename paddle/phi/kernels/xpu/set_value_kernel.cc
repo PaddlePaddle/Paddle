@@ -231,8 +231,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = common::vectorize<int64_t>(out->dims());
-  auto slice_shape = common::vectorize<int64_t>(slice_dims);
+  auto out_shape = vectorize<int64_t>(out->dims());
+  auto slice_shape = vectorize<int64_t>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
@@ -412,7 +412,7 @@ void SetValueKernel(const Context& dev_ctx,
       reinterpret_cast<T*>(RAII_GUARD.alloc_l3_or_gm<XPUType>(values_size));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      value_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      value_data_uint8_cpu,
                      values_length);
   auto value_dims = common::make_ddim(shape);
