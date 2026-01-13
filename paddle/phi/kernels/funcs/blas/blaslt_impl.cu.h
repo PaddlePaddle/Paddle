@@ -32,6 +32,7 @@ limitations under the License. */
 
 COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 COMMON_DECLARE_bool(enable_blaslt_global_search);
+COMMON_DECLARE_bool(use_legacy_linear);
 #endif
 
 namespace phi {
@@ -466,7 +467,9 @@ struct CublasLtBase {
     // NOTE(limingshu): As workspace_size varies from different DL framework,
     // I wonder is there any smarter idea for workspace setting, currently I
     // just followed the settings from the NVIDIA colleague`s setting.
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    size_t workspace_size = FLAGS_use_legacy_linear
+                                ? static_cast<size_t>(4) * 1024 * 1024
+                                : static_cast<size_t>(1) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace =
         GetWorkspace(dev_ctx, workspace_size);
 
@@ -490,25 +493,56 @@ struct CublasLtBase {
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
+    cublasLtMatmulHeuristicResult_t heuristic_results = {};
+    if (!FLAGS_use_legacy_linear) {
+      cublasLtMatmulPreference_t preference;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulPreferenceCreate(&preference));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulPreferenceSetAttribute(
+          preference,
+          CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+          &workspace_size,
+          sizeof(workspace_size)));
+
+      int returned_results = 0;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulAlgoGetHeuristic(cublaslt_handle,
+                                                  desc->op_desc,
+                                                  desc->y_desc,
+                                                  desc->x_desc,
+                                                  desc->out_desc,
+                                                  desc->out_desc,
+                                                  preference,
+                                                  1,
+                                                  &heuristic_results,
+                                                  &returned_results));
+      PADDLE_ENFORCE_GT(
+          returned_results,
+          0,
+          common::errors::Unavailable("No GEMM algorithm available."));
+
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulPreferenceDestroy(preference));
+    }
 
     VLOG(7) << "[Impl CublasltDescriptor] ";
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cublasLtMatmul(cublaslt_handle,
-                                desc->op_desc,
-                                static_cast<void*>(&alpha),
-                                y_ptr,
-                                desc->y_desc,
-                                x_ptr,
-                                desc->x_desc,
-                                static_cast<void*>(&beta),
-                                out_ptr,
-                                desc->out_desc,
-                                out_ptr,
-                                desc->out_desc,
-                                desc->algo,
-                                workspace->ptr(),
-                                workspace_size,
-                                dev_ctx.stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(
+        cublaslt_handle,
+        desc->op_desc,
+        static_cast<void*>(&alpha),
+        y_ptr,
+        desc->y_desc,
+        x_ptr,
+        desc->x_desc,
+        static_cast<void*>(&beta),
+        out_ptr,
+        desc->out_desc,
+        out_ptr,
+        desc->out_desc,
+        FLAGS_use_legacy_linear ? desc->algo : &heuristic_results.algo,
+        workspace->ptr(),
+        workspace_size,
+        dev_ctx.stream()));
   }
 
   static void SearchBestAlgo(const phi::GPUContext& dev_ctx,
