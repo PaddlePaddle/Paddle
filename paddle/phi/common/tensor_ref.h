@@ -25,8 +25,6 @@
 
 namespace phi {
 
-class DenseTensor;
-
 // In static model pre analysis, we can't get the data from tensor
 class TensorRef {
  public:
