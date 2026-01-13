@@ -246,7 +246,7 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   MultiScalePoolAllocator(const std::shared_ptr<Allocator>& small_allocator,
                           const std::shared_ptr<Allocator>& large_allocator,
                           size_t alignment,
-                          const phi::GPUPlace& place)
+                          const GPUPlace& place)
       : small_allocator_(small_allocator),
         large_allocator_(large_allocator),
         alignment_(alignment),

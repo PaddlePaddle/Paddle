@@ -43,7 +43,7 @@ std::shared_ptr<ThreadLocalAllocatorImpl> ThreadLocalCUDAAllocatorPool::Get(
           "The position of device should be less than the size of devices."));
   std::call_once(*init_flags_[pos], [this, pos, gpu_id] {
     platform::SetDeviceId(devices_[pos]);
-    allocators_[pos].reset(new ThreadLocalAllocatorImpl(phi::GPUPlace(gpu_id)));
+    allocators_[pos].reset(new ThreadLocalAllocatorImpl(GPUPlace(gpu_id)));
   });
   return allocators_[pos];
 }

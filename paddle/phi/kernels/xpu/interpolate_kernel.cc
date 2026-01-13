@@ -133,7 +133,7 @@ void InterpolateKernel(
   dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   bool nearest = "nearest" == interp_method;

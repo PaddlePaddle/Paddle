@@ -140,7 +140,7 @@ size_t CUDAMallocAsyncAllocation::Free() {
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    const phi::GPUPlace& place,
+    const GPUPlace& place,
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),

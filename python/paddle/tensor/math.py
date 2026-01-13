@@ -27,9 +27,13 @@ from paddle._C_ops import (  # noqa: F401
     all,
     amax,
     amin,
+    angle,
     any,
     baddbmm,
     conj,
+    fmax,
+    fmin,
+    heaviside,
     isfinite,
     isinf,
     isnan,
@@ -41,6 +45,7 @@ from paddle._C_ops import (  # noqa: F401
     maximum,
     minimum,
     multiply,
+    nextafter,
     sign,
     sin,
     sum,
@@ -72,7 +77,6 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn
 from .manipulation import cast, cast_
 from .ops import (  # noqa: F401
@@ -1423,134 +1427,6 @@ def _divide_with_axis(x, y, axis=-1, name=None):
     else:
         op_type = 'elementwise_div'
         return _elementwise_op(LayerHelper(op_type, **locals()))
-
-
-def fmax(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
-    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
-    The equation is:
-
-    .. math::
-        out = fmax(x, y)
-
-    Note:
-        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
-            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
-            >>> res = paddle.fmax(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[3, 4],
-             [7, 8]])
-
-            >>> x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            >>> y = paddle.to_tensor([3, 0, 4])
-            >>> res = paddle.fmax(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[3, 2, 4],
-             [3, 2, 4]])
-
-            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
-            >>> res = paddle.fmax(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2., 3., 5.])
-
-            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
-            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
-            >>> res = paddle.fmax(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [5.  , 3.  , inf.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.fmax(x, y)
-    else:
-        return _elementwise_op(LayerHelper('elementwise_fmax', **locals()))
-
-
-def fmin(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
-    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
-    The equation is:
-
-    .. math::
-        out = fmin(x, y)
-
-    Note:
-        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
-            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
-            >>> res = paddle.fmin(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1, 2],
-             [5, 6]])
-
-            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-            >>> y = paddle.to_tensor([3, 0, 4])
-            >>> res = paddle.fmin(x, y)
-            >>> print(res)
-            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[1, 0, 3],
-              [1, 0, 3]]])
-
-            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
-            >>> res = paddle.fmin(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1., 3., 5.])
-
-            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
-            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
-            >>> res = paddle.fmin(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [ 1.  , -inf.,  5.  ])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.fmin(x, y)
-    else:
-        return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
 
 def reduce_as(x: Tensor, target: Tensor, name: str | None = None) -> Tensor:
@@ -3335,14 +3211,14 @@ def clip_(
     Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_clip`.
     """
-    fmin = float(np.finfo(np.float32).min)
-    fmax = float(np.finfo(np.float32).max)
+    min_ = float(np.finfo(np.float32).min)
+    max_ = float(np.finfo(np.float32).max)
     if isinstance(min, Variable):
         min = min.item(0)
     if isinstance(max, Variable):
         max = max.item(0)
-    min = fmin if min is None else min
-    max = fmax if max is None else max
+    min = min_ if min is None else min
+    max = max_ if max is None else max
 
     if in_dynamic_mode():
         return _C_ops.clip_(x, min, max)
@@ -5684,128 +5560,6 @@ def diff(
     return last_out
 
 
-def angle(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
-
-    Equation:
-        .. math::
-
-            angle(x)=arctan2(x.imag, x.real)
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
-            >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
-            >>> z = x + 1j * y
-            >>> z
-            Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
-              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
-             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
-              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
-             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
-               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
-             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
-               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
-
-            >>> theta = paddle.angle(z)
-            >>> theta
-            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
-             [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
-             [-1.57079637, -1.57079637,  0.        ,  1.57079637],
-             [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.angle(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-                'uint16',
-            ],
-            'angle',
-        )
-        op_type = "angle"
-        helper = LayerHelper(op_type, **locals())
-        inputs = {"X": x}
-        out = helper.create_variable_for_type_inference(
-            dtype=_complex_to_real_dtype(x.dtype)
-        )
-        outputs = {"Out": out}
-        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
-        return out
-
-
-def heaviside(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
-
-    .. math::
-        heaviside(x, y)=
-            \left\{
-                \begin{array}{lcl}
-                0,& &\text{if} \ x < 0, \\
-                y,& &\text{if} \ x = 0, \\
-                1,& &\text{if} \ x > 0.
-                \end{array}
-            \right.
-
-    Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): The input tensor of Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
-        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
-        name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([-0.5, 0, 0.5])
-            >>> y = paddle.to_tensor([0.1])
-            >>> paddle.heaviside(x, y)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.        , 0.10000000, 1.        ])
-            >>> x = paddle.to_tensor([[-0.5, 0, 0.5], [-0.5, 0.5, 0]])
-            >>> y = paddle.to_tensor([0.1, 0.2, 0.3])
-            >>> paddle.heaviside(x, y)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.        , 0.20000000, 1.        ],
-             [0.        , 1.        , 0.30000001]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.heaviside(x, y)
-    else:
-        op_type = 'elementwise_heaviside'
-        return _elementwise_op(LayerHelper(op_type, **locals()))
-
-
 @param_one_alias(["x", "input"])
 def frac(
     x: Tensor, name: str | None = None, *, out: Tensor | None = None
@@ -6432,42 +6186,6 @@ def vander(
             )
     res = res[:, ::-1] if not increasing else res
     return res
-
-
-def nextafter(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Return the next floating-point value after input towards other, elementwise.
-    The shapes of input and other must be broadcastable.
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64.
-        y (Tensor): An N-D Tensor, the data type is float32, float64.
-        name(str, optional):Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
-            >>> out
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.00000012, 1.99999988])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.nextafter(x, y)
-    else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
-        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'nextafter')
-        op_type = "nextafter"
-        helper = LayerHelper(op_type, **locals())
-        inputs = {"x": x, "y": y}
-        out = helper.create_variable_for_type_inference(dtype=paddle.float32)
-        outputs = {"out": out}
-        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
-    return out
 
 
 def i0(x: Tensor, name: str | None = None) -> Tensor:

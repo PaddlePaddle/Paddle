@@ -129,7 +129,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     DenseTensor norm_tensor;
     norm_tensor.Resize({sizeof(T)});
     dev_ctx.template Alloc<T>(&norm_tensor);
-    auto dims = common::vectorize(counts_tensor.dims());
+    auto dims = vectorize(counts_tensor.dims());
     std::vector<int> reduce_dim = {};
     for (int i = 0; i < dims.size(); i++) {
       reduce_dim.push_back(i);

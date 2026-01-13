@@ -33,8 +33,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          const std::string& data_format,
                          DenseTensor* out) {
   if (input.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   DenseTensor* output = out;
@@ -108,7 +107,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

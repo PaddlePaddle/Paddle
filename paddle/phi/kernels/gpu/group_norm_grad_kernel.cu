@@ -306,21 +306,14 @@ void GroupNormGradKernel(const Context& dev_ctx,
     if (d_scale) {
       // If batch dim is 0, we should set d_scale to zero, or else NAN
       if (x.dims().size() > 0 && x.dims()[0] == 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              0,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), 0, d_scale);
 
       } else {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              NAN,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), NAN, d_scale);
       }
     }
     if (d_bias) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+      Full<T, Context>(dev_ctx, d_bias->dims(), 0, d_bias);
     }
     return;
   }
