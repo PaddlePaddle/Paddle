@@ -40,7 +40,7 @@ void XPUIndexElementwisePutWithTensorKernel(
     is_same_place = (input.place() == output->place());
   }
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t num_indices = 0;
@@ -60,8 +60,8 @@ void XPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -143,7 +143,7 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
     is_same_place = (input.place() == output->place());
   }
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t num_indices = 0;
@@ -254,7 +254,7 @@ void IndexElementwisePutWithTensorKernel(
   }
   if (index.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }
@@ -298,7 +298,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
   }
   if (index.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }

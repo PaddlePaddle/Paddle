@@ -27,8 +27,8 @@ namespace paddle::framework::ir {
 
 namespace {
 template <typename InType, typename OutType>
-void CastDataTypeInplace(phi::DenseTensor *tensor) {
-  phi::DenseTensor tmp_tensor;
+void CastDataTypeInplace(DenseTensor *tensor) {
+  DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<OutType>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto *cpu_ctx = static_cast<phi::CPUContext *>(
@@ -108,7 +108,7 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
     if (op->Op()->Type() == "quantize_linear" ||
         op->Op()->Type() == "dequantize_linear") {
       auto *scale_tensor = scope->FindVar(op->Op()->Input("Scale").front())
-                               ->GetMutable<phi::DenseTensor>();
+                               ->GetMutable<DenseTensor>();
       if (scale_tensor->dtype() == phi::DataType::FLOAT16) {
         CastDataTypeInplace<float16, float>(scale_tensor);
       }

@@ -45,7 +45,7 @@ static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
   return result;
 }
 
-// Check whether the variable is phi::DenseTensor based on static VarDesc info
+// Check whether the variable is DenseTensor based on static VarDesc info
 static bool IsDenseTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::DENSE_TENSOR;
 }
@@ -72,8 +72,8 @@ static int64_t GetMemorySize(
                       std::multiplies<int64_t>()));  // NOLINT
 }
 
-// Split all variables in the graph into phi::DenseTensor and
-// Non-phi::DenseTensor (e.g. SelectedRows, phi::TensorArray) Since partial GC
+// Split all variables in the graph into DenseTensor and
+// Non-DenseTensor (e.g. SelectedRows, phi::TensorArray) Since partial GC
 // is based on static analysis of memory size of each variable So we should skip
 // SelectedRows and phi::TensorArray here
 static void SplitIntoDenseTensorAndNonDenseTensorVars(
@@ -126,7 +126,7 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
   if (fraction_of_memory_size <= 0.0) return {};
 
   /**
-   * Step 1: Split all variables into phi::DenseTensor and Non-phi::DenseTensor.
+   * Step 1: Split all variables into DenseTensor and Non-phi::DenseTensor.
    * We can only calculate memory size of DenseTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;

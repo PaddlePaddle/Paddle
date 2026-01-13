@@ -61,7 +61,7 @@ void ReduceGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims, dim_size, reduce_all);
 
-  auto update_dims = common::vectorize(d_x->dims());
+  auto update_dims = vectorize(d_x->dims());
   int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (in_x->dims())[i];

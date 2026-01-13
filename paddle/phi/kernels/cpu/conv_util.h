@@ -27,7 +27,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
                                      const std::vector<T>& strides,
                                      const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = common::vectorize<T>(data_dims);
+  auto data_shape = vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
@@ -231,7 +231,7 @@ inline std::vector<int64_t> ComputeOutputShape(
     filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
   }
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   phi::UpdatePaddingAndDilation(&paddings_vec,

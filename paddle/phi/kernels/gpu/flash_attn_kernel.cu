@@ -645,26 +645,16 @@ void FlashAttnKernel(const Context& dev_ctx,
                      DenseTensor* seed_offset) {
   if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
     if (out) {
-      Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     }
     if (softmax) {
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(softmax->dims())),
-                       0,
-                       softmax);
+      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
     }
     if (softmax_lse) {
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(softmax_lse->dims())),
-                       0,
-                       softmax_lse);
+      Full<T, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
     }
     if (seed_offset) {
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(seed_offset->dims())),
-                       0,
-                       seed_offset);
+      Full<T, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
     }
     return;
   }

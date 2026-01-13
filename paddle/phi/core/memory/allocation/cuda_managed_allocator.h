@@ -22,7 +22,7 @@ namespace allocation {
 
 class CUDAManagedAllocator : public Allocator {
  public:
-  explicit CUDAManagedAllocator(const phi::GPUPlace& place) : place_(place) {}
+  explicit CUDAManagedAllocator(const GPUPlace& place) : place_(place) {}
 
   bool IsAllocThreadSafe() const override;
 
@@ -31,7 +31,7 @@ class CUDAManagedAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  phi::GPUPlace place_;
+  GPUPlace place_;
   std::once_flag once_flag_;
 };
 

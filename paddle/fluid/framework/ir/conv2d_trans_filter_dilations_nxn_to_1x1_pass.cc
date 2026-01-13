@@ -112,8 +112,7 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     // For kunlunxin, if the dilation is bigger than 8, xdnn will occur
     // XDNN_NO_ENOUGH_WORKSPACE error.
     if (dilations[0] >= 8 || dilations[1] >= 8) return;
-    auto* weights =
-        scope->FindVar(weights_name)->GetMutable<phi::DenseTensor>();
+    auto* weights = scope->FindVar(weights_name)->GetMutable<DenseTensor>();
     auto weights_shape = weights->dims();
     int kh = static_cast<int>(weights_shape[2]);
     int kw = static_cast<int>(weights_shape[3]);
@@ -121,8 +120,7 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     int new_kw = static_cast<int>(dilations[1] * (kw - 1) + 1);
     // New weights
     auto new_weights_name = weights_name + "_dilation_trans";
-    auto* new_weights =
-        scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
+    auto* new_weights = scope->Var(new_weights_name)->GetMutable<DenseTensor>();
     new_weights->Resize({weights_shape[0], weights_shape[1], new_kh, new_kw});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));

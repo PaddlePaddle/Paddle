@@ -521,11 +521,11 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
   // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
     framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
-    if (main_var == nullptr || !main_var->IsType<phi::DenseTensor>()) {
+    if (main_var == nullptr || !main_var->IsType<DenseTensor>()) {
       continue;
     }
 
-    auto &main_tensor = main_var->Get<phi::DenseTensor>();
+    auto &main_tensor = main_var->Get<DenseTensor>();
     if (!main_tensor.IsInitialized()) {
       VLOG(3) << "one in var not inited, return!";
       continue;
@@ -546,7 +546,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
           buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
-          auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
+          auto *t = local_scope->Var(var)->GetMutable<DenseTensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.dtype());
         }
@@ -609,7 +609,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
           buffer = const_cast<void *>(main_tensor.data());
         } else {
           auto local_scope = member_->local_scopes_[i];
-          auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
+          auto *t = local_scope->Var(var)->GetMutable<DenseTensor>();
           t->Resize(dims);
           buffer = t->mutable_data(place, main_tensor.dtype());
         }
@@ -649,7 +649,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
       CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
-        auto *t = local_scope->Var(var)->GetMutable<phi::DenseTensor>();
+        auto *t = local_scope->Var(var)->GetMutable<DenseTensor>();
 
         auto copy_memory = [&] {
           t->Resize(dims);

@@ -64,12 +64,11 @@ InterpreterCore::~InterpreterCore() {
   impl_.reset(nullptr);
 }
 
-FetchList InterpreterCore::Run(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch,
-    bool enable_job_schedule_profiler,
-    bool switch_stream) {
+FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
+                               const std::vector<DenseTensor>& feed_tensors,
+                               bool need_fetch,
+                               bool enable_job_schedule_profiler,
+                               bool switch_stream) {
   return impl_->Run(feed_names,
                     feed_tensors,
                     need_fetch,

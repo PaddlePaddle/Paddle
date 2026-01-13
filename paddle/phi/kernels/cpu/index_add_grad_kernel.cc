@@ -32,11 +32,7 @@ void IndexAddGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (add_value_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(add_value_grad->dims())),
-          0,
-          add_value_grad);
+      Full<T, Context>(dev_ctx, add_value_grad->dims(), 0, add_value_grad);
     }
     return;
   }

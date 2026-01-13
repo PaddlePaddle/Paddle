@@ -352,7 +352,7 @@ phi::KernelKey GetExpectedKernelType(
     kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     {% endif %}
     kt.set_backend(
-        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("{{kernel["backend"]["candidates"][0]}}")->place()));
+        phi::TransToPhiBackend(ctx.Input<DenseTensor>("{{kernel["backend"]["candidates"][0]}}")->place()));
 {% endif %}
 {% if "force_backend" in op["kernel"] and op["kernel"]["force_backend"] == "force_cpu" %}
   {% if  kernel["backend"] is none and kernel["data_type"] is none %} {# only force_cpu#}

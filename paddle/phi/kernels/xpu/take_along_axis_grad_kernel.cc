@@ -51,9 +51,9 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                         XPUType(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-  auto x_shape = common::vectorize<int64_t>(x.dims());
-  auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
-  auto index_shape = common::vectorize<int64_t>(index.dims());
+  auto x_shape = vectorize<int64_t>(x.dims());
+  auto out_grad_shape = vectorize<int64_t>(out_grad.dims());
+  auto index_shape = vectorize<int64_t>(index.dims());
 
   if (index_dtype == DataType::INT32) {
     r = xpu::paddle_put_along_axis<XPUType, int>(
