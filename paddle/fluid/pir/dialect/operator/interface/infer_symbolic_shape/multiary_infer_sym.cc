@@ -62,6 +62,61 @@ bool AccuracyOpInferSymbolicShape(
   return true;
 }
 
+bool AddcmulOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &z_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
+  std::vector<symbol::DimExpr> z_shape = z_shape_or_data.shape();
+
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int x_ndims = static_cast<int>(x_shape.size());
+  int y_ndims = static_cast<int>(y_shape.size());
+  int z_ndims = static_cast<int>(z_shape.size());
+  std::vector<symbol::DimExpr> out1_shape;
+  std::vector<symbol::DimExpr> out2_shape;
+  int diffxy = x_ndims - y_ndims;
+  if (diffxy > 0) {
+    for (int i = 0; i < diffxy; ++i) {
+      y_shape.emplace(y_shape.begin(), 1);
+    }
+  } else {
+    for (int i = 0; i < -diffxy; ++i) {
+      x_shape.emplace(x_shape.begin(), 1);
+    }
+  }
+  symbol::DimExprBuilder builder;
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+    infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+  }
+  int out1_ndims = out1_shape.size();
+  int diffxyz = z_ndims - out1_ndims;
+  if (diffxyz > 0) {
+    for (int i = 0; i < diffxyz; ++i) {
+      out1_shape.emplace(out1_shape.begin(), 1);
+    }
+  } else {
+    for (int i = 0; i < -diffxyz; ++i) {
+      z_shape.emplace(z_shape.begin(), 1);
+    }
+  }
+  for (size_t i = 0; i < z_shape.size(); ++i) {
+    out2_shape.emplace_back(builder.Broadcast(z_shape[i], out1_shape[i]));
+    infer_context->AddBroadcastableCstr(z_shape[i], out1_shape[i]);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out2_shape)});
+  return true;
+}
+
 bool AddNOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_list_shape_or_data =

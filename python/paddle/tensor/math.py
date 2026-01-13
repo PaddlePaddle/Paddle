@@ -2502,6 +2502,83 @@ def addcdiv_(
     return input
 
 
+def addcmul(
+    input: Tensor,
+    tensor1: Tensor,
+    tensor2: Tensor,
+    value: float = 1.0,
+    name: str | None = None,
+) -> Tensor:
+    """
+    **addcmul**
+
+    Performs the element-wise multiplication of tensor1 by tensor2,
+    multiplies the result by the scalar value, and adds it to input.
+
+    The equation is:
+
+    ..  math::
+        Out = input + value * tensor1 * tensor2
+
+    Args:
+        input (Tensor): The input Tensor to be added to the final result.
+        tensor1 (Tensor): The first input Tensor for element-wise multiplication.
+        tensor2 (Tensor): The second input Tensor for element-wise multiplication.
+        value (float, optional): Multiplier for tensor1 * tensor2, default is 1.0.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor of addcmul.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> input = paddle.ones([2, 2])
+            >>> tensor1 = paddle.ones([2, 2]) * 2
+            >>> tensor2 = paddle.ones([2, 2]) * 3
+
+            >>> out = paddle.addcmul(input=input, tensor1=tensor1, tensor2=tensor2, value=0.5)
+
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[4., 4.],
+             [4., 4.]])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.addcmul(input, tensor1, tensor2, value)
+    else:
+        inputs = {'Input': input, 'Tensor1': tensor1, 'Tensor2': tensor2}
+        attrs = {'value': value}
+
+        helper = LayerHelper("addcmul", **locals())
+        check_variable_and_dtype(
+            input,
+            'input',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'addcmul',
+        )
+        check_variable_and_dtype(
+            tensor1,
+            'tensor1',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'addcmul',
+        )
+        check_variable_and_dtype(
+            tensor2,
+            'tensor2',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'addcmul',
+        )
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type="addcmul", inputs=inputs, attrs=attrs, outputs={"Out": out}
+        )
+        return out
+
+
 def histc(
     input: Tensor,
     bins: int = 100,

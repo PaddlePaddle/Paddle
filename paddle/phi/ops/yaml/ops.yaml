@@ -7,6 +7,7 @@
 
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+# Trigger rebuild for addcmul
 - op : abs
   args : (Tensor x)
   output : Tensor(out)
@@ -145,6 +146,18 @@
     func: add_position_encoding
     data_type: x
   backward: add_position_encoding_grad
+
+- op : addcmul
+  args : (Tensor input, Tensor tensor1, Tensor tensor2, Scalar(float) value=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : AddcmulInferMeta
+    param : [input, tensor1, tensor2]
+  kernel :
+    func : addcmul
+    data_type : input
+  backward : addcmul_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
