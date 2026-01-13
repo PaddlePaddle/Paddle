@@ -140,6 +140,40 @@ bool DepthwiseConv2dGradOpInferSymbolicShape(
   return GeneralBinaryGradOpInferSymbolicShape(op, infer_context);
 }
 
+bool DepthwiseConv2dBiasGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  if (!paddle::dialect::details::IsFakeValue(op->result(0))) {
+    SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
+  }
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    SameShapeInfer(infer_context, op->result(1), op->operand_source(1));
+  }
+  if (!paddle::dialect::details::IsFakeValue(op->result(2))) {
+    if (op->operand_source(2)) {
+      SameShapeInfer(infer_context, op->result(2), op->operand_source(2));
+    }
+  }
+  return true;
+}
+
+bool DepthwiseConv3dBiasGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  if (!paddle::dialect::details::IsFakeValue(op->result(0))) {
+    SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
+  }
+
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    SameShapeInfer(infer_context, op->result(1), op->operand_source(1));
+  }
+  if (!paddle::dialect::details::IsFakeValue(op->result(2))) {
+    if (op->operand_source(2)) {
+      SameShapeInfer(infer_context, op->result(2), op->operand_source(2));
+    }
+  }
+
+  return true;
+}
+
 bool Pool2dGradOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
