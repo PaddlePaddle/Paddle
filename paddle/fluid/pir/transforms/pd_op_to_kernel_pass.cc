@@ -188,9 +188,9 @@ const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
 
 // Please keep the consistency with paddle/phi/kernels/memcpy_kernel.cc
 const std::unordered_map<int, phi::Place> MemcpyOpAttr2Place = {
-    {0, phi::CPUPlace()},
+    {0, CPUPlace()},
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    {1, phi::GPUPlace()},
+    {1, GPUPlace()},
     {2, phi::GPUPinnedPlace()},
 #elif defined(PADDLE_WITH_XPU)
     {3, phi::XPUPlace()},
@@ -1133,7 +1133,7 @@ bool SupportsCPUBF16(const std::string& kernel_name) {
               paddle::framework::OpKernelType::Hash>::const_reference
                  kern_pair) {
             return phi::is_cpu_place(kern_pair.first.place_) &&
-                   kern_pair.first.place_ == phi::CPUPlace() &&
+                   kern_pair.first.place_ == CPUPlace() &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::proto::VarType::Type::
                            VarType_Type_BF16;
@@ -1930,7 +1930,7 @@ void HandleForSpecialOp(
 
   if (op_item->isa<::pir::ConstantTensorOp>()) {
     op_output_types.push_back(
-        BuildOutputType(op_item->result(0).type(), phi::CPUPlace(), ctx));
+        BuildOutputType(op_item->result(0).type(), CPUPlace(), ctx));
   }
 
   if (op_item->isa<::pir::SliceOp>()) {
@@ -2139,7 +2139,7 @@ void HandleForSpecialOp(
                           "HasElementsOp's output should be bool type"));
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       op_output_types.push_back(
-          BuildOutputType(op_item->result(i).type(), phi::CPUPlace(), ctx));
+          BuildOutputType(op_item->result(i).type(), CPUPlace(), ctx));
     }
   }
 

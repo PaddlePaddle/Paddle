@@ -39,8 +39,8 @@ void ExpandGradKernel(const Context& dev_ctx,
   }
 
   auto in_grad_data = dev_ctx.template Alloc<T>(in_grad);
-  auto out_grad_dims = common::vectorize<int64_t>(out_grad.dims());
-  auto in_grad_dims = common::vectorize<int64_t>(in_grad->dims());
+  auto out_grad_dims = vectorize<int64_t>(out_grad.dims());
+  auto in_grad_dims = vectorize<int64_t>(in_grad->dims());
   in_grad_dims.insert(
       in_grad_dims.begin(), out_grad.dims().size() - in_grad->dims().size(), 1);
 
@@ -74,8 +74,8 @@ void ExpandGradKernel<double, XPUContext>(const XPUContext& dev_ctx,
   }
 
   auto in_grad_data = dev_ctx.template Alloc<double>(in_grad);
-  auto out_grad_dims = common::vectorize<int64_t>(out_grad.dims());
-  auto in_grad_dims = common::vectorize<int64_t>(in_grad->dims());
+  auto out_grad_dims = vectorize<int64_t>(out_grad.dims());
+  auto in_grad_dims = vectorize<int64_t>(in_grad->dims());
   in_grad_dims.insert(
       in_grad_dims.begin(), out_grad.dims().size() - in_grad->dims().size(), 1);
 

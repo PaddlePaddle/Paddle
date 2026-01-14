@@ -31,6 +31,9 @@ from op_test import (
 )
 
 import paddle
+
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of hard-coded op numbers in TestTensorAxis.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base import core

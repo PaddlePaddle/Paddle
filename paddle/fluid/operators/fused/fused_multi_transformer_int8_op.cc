@@ -173,7 +173,7 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";

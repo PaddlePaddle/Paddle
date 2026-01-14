@@ -779,16 +779,14 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   if (gL.get_ptr()) {
     gL_safe = gL.get();
   } else {
-    gL_safe =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(L.dims()), T(0));
+    gL_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(L.dims()), T(0));
   }
 
   DenseTensor gV_safe;
   if (gV.get_ptr()) {
     gV_safe = gV.get();
   } else {
-    gV_safe =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
+    gV_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(V.dims()), T(0));
   }
   DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);

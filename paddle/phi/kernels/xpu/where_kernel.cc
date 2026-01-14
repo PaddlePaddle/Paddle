@@ -35,8 +35,8 @@ void WhereKernel(const Context& dev_ctx,
     return;
   }
 
-  auto cond_dims = common::vectorize<int64_t>(condition.dims());
-  auto x_dims = common::vectorize<int64_t>(x.dims());
+  auto cond_dims = vectorize<int64_t>(condition.dims());
+  auto x_dims = vectorize<int64_t>(x.dims());
 
   // use [1] to replace [], because xpu not support []
   if (cond_dims.size() == 0) {

@@ -88,8 +88,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 
     // When soft_label is True, the axis column is 1.
     if (soft_label) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(loss->dims())), 0, loss);
+      Full<T, Context>(dev_ctx, loss->dims(), 0, loss);
     }
     return;
   }

@@ -190,7 +190,7 @@ struct TensorSetConstantCPU {
       : tensor_(tensor), value_(value) {}
   template <typename T>
   void apply() const {
-    auto cpu = phi::CPUPlace();
+    auto cpu = CPUPlace();
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));
   }
@@ -245,9 +245,9 @@ void set_constant_with_place<phi::CustomPlace>(
 }
 
 template <>
-void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& dev_ctx,
-                                            DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<CPUPlace>(const phi::DeviceContext& dev_ctx,
+                                       DenseTensor* tensor,
+                                       float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
@@ -293,10 +293,10 @@ void set_constant(const phi::DeviceContext& dev_ctx,
     func(phi::XPUPlace());
     return;
   } else {
-    func(phi::CPUPlace());
+    func(CPUPlace());
   }
 #else
-  func(phi::CPUPlace());
+  func(CPUPlace());
 #endif
 }
 

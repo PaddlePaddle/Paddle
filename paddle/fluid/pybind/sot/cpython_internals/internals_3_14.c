@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/cpython_internals/internals_3_14.h"
+
+#if (PY_3_14_PLUS && !PY_3_15_PLUS)
+
 #include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
-#include "paddle/fluid/pybind/sot/macros.h"
 #define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
 #define NEED_OPCODE_TABLES  // To get _PyOpcode_Caches and _PyOpcode_Deopt
 
@@ -330,3 +332,5 @@ PyObject *get_framelocals_mapping(_PyInterpreterFrame *frame) {
 
   return mapping;
 }
+
+#endif  // (PY_3_14_PLUS && !PY_3_15_PLUS)

@@ -395,11 +395,7 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &beta,
                                           out_descriptor.descriptor(),
                                           gpu_type,
-#if CUDA_VERSION >= 11040
                                           CUSPARSE_SPMV_ALG_DEFAULT,
-#else
-                                          CUSPARSE_MV_ALG_DEFAULT,
-#endif
                                           &buffer_size);
   });
 
@@ -417,17 +413,12 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                &beta,
                                out_descriptor.descriptor(),
                                gpu_type,
-#if CUDA_VERSION >= 11040
                                CUSPARSE_SPMV_ALG_DEFAULT,
-#else
-                               CUSPARSE_MV_ALG_DEFAULT,
-#endif
                                tmp_buffer_ptr);
   });
 }
 
 /************* DENSE*DENSE->SPARSE MATMUL ************/
-#if CUDA_VERSION >= 11030
 template <>
 template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
@@ -491,7 +482,6 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                 tmp_buffer_ptr);
   });
 }
-#endif
 
 /************* SPARSE*SPARSE->SPARSE MATMUL ************/
 template <typename T>

@@ -50,7 +50,7 @@ SelectOutputInstruction::SelectOutputInstruction(
   SetOutputs(outputs);
 }
 
-inline int GetBranchNumber(const phi::DenseTensor &mask) {
+inline int GetBranchNumber(const DenseTensor &mask) {
   PADDLE_ENFORCE_EQ(
       mask.numel(),
       1,
@@ -63,7 +63,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
     return mask.data<int>()[0];
   }
   // when phi::is_gpu_place(mask.place()) is true
-  std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   framework::TensorCopySync(mask, CPUPlace(), cpu_mask.get());
@@ -80,8 +80,8 @@ class AssignFunctor {
  public:
   explicit AssignFunctor(Variable *out) : out_(out) {}
 
-  void operator()(const phi::DenseTensor &dense_tensor) const {
-    auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
+  void operator()(const DenseTensor &dense_tensor) const {
+    auto &out_tensor = *out_->GetMutable<DenseTensor>();
     copy_tensor(dense_tensor, &out_tensor);
   }
 
@@ -112,8 +112,7 @@ class AssignFunctor {
   }
 
  private:
-  void copy_tensor(const phi::DenseTensor &dense_tensor,
-                   phi::DenseTensor *out) const {
+  void copy_tensor(const DenseTensor &dense_tensor, DenseTensor *out) const {
     if (!dense_tensor.IsInitialized()) return;
     auto &out_tensor = *out;
     TensorCopy(dense_tensor, dense_tensor.place(), &out_tensor);
@@ -129,7 +128,7 @@ void SelectOutputInstruction::Run() {
     CUDAErrorCheck("SelectOutputInstruction begin");
   }
 
-  auto &mask = mask_->Get<phi::DenseTensor>();
+  auto &mask = mask_->Get<DenseTensor>();
   size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
   PADDLE_ENFORCE_LE(
       output_branch,

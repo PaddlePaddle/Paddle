@@ -30,29 +30,25 @@
 #include "unsupported/Eigen/CXX11/Tensor"
 #endif
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
 namespace paddle::framework {
 class Scope;
 }  // namespace paddle::framework
 
-namespace {
+namespace paddle {
 template <typename T1, typename T2>
-void ConvertTensorType(phi::DenseTensor* tensor) {
-  phi::DenseTensor tmp_tensor;
+void ConvertTensorType(DenseTensor* tensor) {
+  DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
-  auto* tmp_data = tmp_tensor.mutable_data<T2>(phi::CPUPlace());
-  auto* data = tensor->mutable_data<T1>(phi::CPUPlace());
+  auto* tmp_data = tmp_tensor.mutable_data<T2>(CPUPlace());
+  auto* data = tensor->mutable_data<T1>(CPUPlace());
   for (int i = 0; i < tensor->numel(); i++) {
     tmp_data[i] = static_cast<T2>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, CPUPlace(), tensor);
 }
-}  // namespace
+}  // namespace paddle
 
 namespace paddle::framework::ir {
 
@@ -93,20 +89,19 @@ void recompute_bias_and_weights(const Scope* scope,
       Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
 
   // Re-compute bias of conv2d from BN
-  PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
-                    bn_bias_tensor.dims(),
-                    common::errors::InvalidArgument(
-                        "phi::DenseTensor elementwise y(%d) and batch "
-                        "norm bias(%d) must have same dims.",
-                        eltwise_y_in_tensor->dims().size(),
-                        bn_bias_tensor.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      eltwise_y_in_tensor->dims(),
+      bn_bias_tensor.dims(),
+      common::errors::InvalidArgument("DenseTensor elementwise y(%d) and batch "
+                                      "norm bias(%d) must have same dims.",
+                                      eltwise_y_in_tensor->dims().size(),
+                                      bn_bias_tensor.dims().size()));
 
   auto* scale_tensor =
-      scope->FindVar(bn_scale.Name())->GetMutable<phi::DenseTensor>();
+      scope->FindVar(bn_scale.Name())->GetMutable<DenseTensor>();
   auto* variance_tensor =
-      scope->FindVar(bn_variance.Name())->GetMutable<phi::DenseTensor>();
-  auto* mean_tensor =
-      scope->FindVar(bn_mean.Name())->GetMutable<phi::DenseTensor>();
+      scope->FindVar(bn_variance.Name())->GetMutable<DenseTensor>();
+  auto* mean_tensor = scope->FindVar(bn_mean.Name())->GetMutable<DenseTensor>();
 
   ConstEigenVectorArrayMap scale_array(
       scale_tensor->data<float>(), scale_tensor->numel(), 1);
@@ -151,7 +146,7 @@ void recompute_bias_and_weights(const Scope* scope,
 
   // Re-compute weight of conv2d from BN
   auto* weights =
-      scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
+      scope->FindVar(conv_weight->Name())->GetMutable<DenseTensor>();
   auto weights_shape = weights->dims();
   auto weights_data = weights->mutable_data<float>(phi::CPUPlace());
 
@@ -356,7 +351,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
-        scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(conv_weight->Name())->GetMutable<DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
     if (tensor_type == phi::DataType::FLOAT16) {
@@ -365,7 +360,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get batch norm bias
     auto* bn_bias_tensor =
-        scope->FindVar(bn_bias->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(bn_bias->Name())->GetMutable<DenseTensor>();
 
     float epsilon =
         PADDLE_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
@@ -390,7 +385,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       eltwise_y_in_desc.SetPersistable(true);
       eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
       eltwise_y_in_tensor =
-          scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
+          scope->Var(eltwise_y_in_node->Name())->GetMutable<DenseTensor>();
 
       // Initialize eltwise_y
       eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
@@ -431,11 +426,11 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
             1UL,
             common::errors::InvalidArgument("Find input var Bias error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
-        auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
+        auto* conv_bias_tensor = conv_bias_var->GetMutable<DenseTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
                           bn_bias_tensor->dims(),
                           common::errors::InvalidArgument(
-                              "phi::DenseTensor convolution bias(%d) and batch "
+                              "DenseTensor convolution bias(%d) and batch "
                               "normalization bias (%d) "
                               "must have same dims.",
                               conv_bias_tensor->dims().size(),
@@ -663,11 +658,11 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get eltwise_y (conv bias) variable
     auto* eltwise_y_in_tensor =
-        scope->FindVar(eltwise_y_in->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(eltwise_y_in->Name())->GetMutable<DenseTensor>();
 
     // Get batch norm bias
     auto* bn_bias_tensor =
-        scope->FindVar(bn_bias->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(bn_bias->Name())->GetMutable<DenseTensor>();
 
     // update weights and biases
     float epsilon =
@@ -675,7 +670,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
-        scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(conv_weight->Name())->GetMutable<DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
     if (tensor_type == phi::DataType::FLOAT16) {
@@ -698,7 +693,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       eltwise_y_in_desc.SetPersistable(true);
       auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
       auto* eltwise_y_in_tensor_ex =
-          scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
+          scope->Var(eltwise_y_in_node->Name())->GetMutable<DenseTensor>();
 
       // Initialize eltwise_y
       TensorCopy(*eltwise_y_in_tensor, phi::CPUPlace(), eltwise_y_in_tensor_ex);

@@ -53,8 +53,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
   funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
 
-  std::vector<int64_t> output_dims = common::vectorize<int64_t>(in.dims());
-  std::vector<int64_t> output_stride = common::vectorize<int64_t>(in.strides());
+  std::vector<int64_t> output_dims = vectorize<int64_t>(in.dims());
+  std::vector<int64_t> output_stride = vectorize<int64_t>(in.strides());
   int64_t output_offset = static_cast<int64_t>(in.offset());
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis_size = in.dims()[axes[i]];

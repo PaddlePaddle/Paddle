@@ -107,7 +107,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
   static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
     // native reduce kernels don't support bf16
     // so oneDNN kernel is enforced in that case
-    if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
+    if (ctx.Input<DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
       return true;
 
     if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
@@ -116,7 +116,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
 
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     const bool reduce_all = ctx.Attr<bool>("reduce_all");
-    int ndims = ctx.Input<phi::DenseTensor>("X")->dims().size();
+    int ndims = ctx.Input<DenseTensor>("X")->dims().size();
 
     if (reduce_all) {
       return true;
@@ -142,7 +142,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
     // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
-    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
+    if (ctx.Input<DenseTensor>("X")->dims().size() > 5 ||
         !HasOptimizedOneDNNKernel(ctx)) {
       this->SetDnnFallback(true);
     }
@@ -212,7 +212,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
 
     // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     // max 5D tensor is supported
-    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
+    if (ctx.Input<DenseTensor>("X")->dims().size() > 5) {
       dnn_fallback_ = true;
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
