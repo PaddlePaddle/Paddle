@@ -50,7 +50,7 @@ void IndexAddKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
   int dim = axis >= 0 ? axis : axis + input_dim.size();
-  auto input_vector = common::vectorize<int64_t>(input_dim);
+  auto input_vector = vectorize<int64_t>(input_dim);
   int64_t numel = add_value.numel();
   if (numel == 0) return;
   dev_ctx.template Alloc<T>(out);

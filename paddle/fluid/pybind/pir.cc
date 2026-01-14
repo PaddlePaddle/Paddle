@@ -615,7 +615,7 @@ void BindProgram(py::module *m) {
                  auto is_persistable =
                      var.attribute<BoolAttribute>(kAttrIsPersistable);
                  if (is_persistable && is_persistable.data()) {
-                   if (var.defining_op()->isa<::pir::ParameterOp>()) {
+                   if (var.defining_op()->isa<pir::ParameterOp>()) {
                      std::string var_name =
                          name_analysis::GetValueFirstName(var);
                      auto tensor =
@@ -1734,7 +1734,7 @@ std::string GetAttrsMapJson(pir::Operation *op) {
         "Operation pointer cannot be nullptr."));
   }
   auto attributes = op->attributes();
-  ::pir::ProgramWriter writer(1, false);
+  pir::ProgramWriter writer(1, false);
   auto attrs_map_info = writer.GetAttributesMapJson(op->attributes()).dump();
   return attrs_map_info;
 }
@@ -1790,7 +1790,7 @@ pir::AttributeMap ConvertAttrsToAttributeMap(py::dict attrs) {
 
 std::string GetAttrsMapJson(py::dict attrs) {
   pir::AttributeMap attrs_map = ConvertAttrsToAttributeMap(attrs);
-  ::pir::ProgramWriter writer(1, false);
+  pir::ProgramWriter writer(1, false);
   return writer.GetAttributesMapJson(attrs_map).dump();
 }
 
@@ -1799,7 +1799,7 @@ std::string GetTypeJson(pir::Operation *op, bool is_input) {
     PADDLE_THROW(
         common::errors::InvalidArgument("Operation pointer cannot be nullptr"));
   }
-  ::pir::ProgramWriter writer(1, false);
+  pir::ProgramWriter writer(1, false);
   std::stringstream type_info_ss;
   if (is_input) {
     for (auto operand : op->operands_source()) {
@@ -2104,54 +2104,53 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
+static auto GetNoNeedBufferValue(const pir::Block *whole_block,
                                  std::pair<size_t, size_t> range) {
   // filter no need buffer values.
-  std::unordered_set<::pir::Value> need_buffer_values;
-  std::unordered_set<::pir::Value> no_need_buffer_values;
-  range_block_do(
-      whole_block, range, [&need_buffer_values](::pir::Operation *op) {
-        // NOTE(SigureMo): We should process the CombineOp in it's users.
-        if (op->isa<pir::CombineOp>()) {
-          return;
-        }
-        if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
-          // not a OpYamlInfoInterface, can't have no_need_buffer.
-          for (const auto &operand : op->operands_source()) {
-            need_buffer_values.insert(operand);
-          }
-        } else {
-          auto opinfo =
-              op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-          int counter = 0;
-          for (const auto &op_input_info : std::get<0>(opinfo)) {
-            auto value = op->operand_source(counter);
-            if (!op_input_info.no_need_buffer) {
-              need_buffer_values.insert(value);
-              if (!IsFakeValue(value) && value.defining_op() &&
-                  value.defining_op()->isa<pir::CombineOp>()) {
-                for (const auto &combine_value :
-                     value.defining_op()->operands_source()) {
-                  need_buffer_values.insert(combine_value);
-                }
-              }
+  std::unordered_set<pir::Value> need_buffer_values;
+  std::unordered_set<pir::Value> no_need_buffer_values;
+  range_block_do(whole_block, range, [&need_buffer_values](pir::Operation *op) {
+    // NOTE(SigureMo): We should process the CombineOp in it's users.
+    if (op->isa<pir::CombineOp>()) {
+      return;
+    }
+    if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
+      // not a OpYamlInfoInterface, can't have no_need_buffer.
+      for (const auto &operand : op->operands_source()) {
+        need_buffer_values.insert(operand);
+      }
+    } else {
+      auto opinfo =
+          op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+      int counter = 0;
+      for (const auto &op_input_info : std::get<0>(opinfo)) {
+        auto value = op->operand_source(counter);
+        if (!op_input_info.no_need_buffer) {
+          need_buffer_values.insert(value);
+          if (!IsFakeValue(value) && value.defining_op() &&
+              value.defining_op()->isa<pir::CombineOp>()) {
+            for (const auto &combine_value :
+                 value.defining_op()->operands_source()) {
+              need_buffer_values.insert(combine_value);
             }
-            counter += 1;
+          }
+        }
+        counter += 1;
+      }
+    }
+  });
+  range_block_do(
+      whole_block,
+      range,
+      [&need_buffer_values, &no_need_buffer_values](const pir::Operation *op) {
+        for (const auto &operand : op->operands_source()) {
+          if (need_buffer_values.count(operand) == 0) {
+            no_need_buffer_values.insert(operand);
           }
         }
       });
-  range_block_do(whole_block,
-                 range,
-                 [&need_buffer_values,
-                  &no_need_buffer_values](const ::pir::Operation *op) {
-                   for (const auto &operand : op->operands_source()) {
-                     if (need_buffer_values.count(operand) == 0) {
-                       no_need_buffer_values.insert(operand);
-                     }
-                   }
-                 });
-  return std::vector<::pir::Value>(no_need_buffer_values.begin(),
-                                   no_need_buffer_values.end());
+  return std::vector<pir::Value>(no_need_buffer_values.begin(),
+                                 no_need_buffer_values.end());
 }
 
 using ValueMap = std::pair<std::vector<pir::Value>, std::vector<pir::Value>>;

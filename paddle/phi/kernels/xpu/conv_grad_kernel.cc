@@ -69,8 +69,8 @@ void ConvGradKernel(const Context& dev_ctx,
   DDim in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
   DDim filter_data_dims =
       common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
-  std::vector<int64_t> filter_shape = common::vectorize<int64_t>(filter.dims());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -244,8 +244,8 @@ void Conv3DGradKernel(const Context& dev_ctx,
   DDim in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
   DDim filter_data_dims =
       common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
-  std::vector<int64_t> filter_shape = common::vectorize<int64_t>(filter.dims());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

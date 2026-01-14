@@ -33,7 +33,7 @@ uint64_t Release(const phi::Place& place) {
   return allocation::AllocatorFacade::Instance().Release(place);
 }
 
-size_t Compact(const phi::GPUPlace& place) {
+size_t Compact(const GPUPlace& place) {
   return allocation::AllocatorFacade::Instance().Compact(place);
 }
 
@@ -61,7 +61,7 @@ void* GetBasePtr(const std::shared_ptr<Allocation>& allocation) {
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream) {
+uint64_t Release(const GPUPlace& place, gpuStream_t stream) {
   return allocation::AllocatorFacade::Instance().Release(place, stream);
 }
 

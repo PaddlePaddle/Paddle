@@ -70,7 +70,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   bool expand_x = false;
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      common::vectorize(x_grad->dims()), common::vectorize(mask.dims()));
+      vectorize(x_grad->dims()), vectorize(mask.dims()));
   auto expanded_dims = common::make_ddim(expanded_size);
 
   if (mask.dims() != expanded_dims) {

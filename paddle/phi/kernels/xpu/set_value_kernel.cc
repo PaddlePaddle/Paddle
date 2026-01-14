@@ -231,8 +231,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = common::vectorize<int64_t>(out->dims());
-  auto slice_shape = common::vectorize<int64_t>(slice_dims);
+  auto out_shape = vectorize<int64_t>(out->dims());
+  auto slice_shape = vectorize<int64_t>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),

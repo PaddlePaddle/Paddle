@@ -90,8 +90,8 @@ def fused_act_dequant(
     Args:
         x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N]. This tensor contains the quantized
             activations from previous layers.
-        x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128].
-            Each scale value corresponds to a 128-column block in the input tensor.
+        x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128] or int32 and shape [M, (N + 511) // 512].
+            Each scale value corresponds to a 128-column in the input tensor.
 
     Returns:
         Tensor. Dequantized output tensor with dtype bfloat16 and shape [M, N]. The values are
