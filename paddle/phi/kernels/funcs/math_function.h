@@ -123,7 +123,7 @@ struct TensorSetConstantXPU {
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
       memory_utils::Copy(place_,
                          begin,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          static_cast<void*>(data_cpu.get()),
                          numel * sizeof(T));
     } else if (std::is_same<T, phi::float8_e4m3fn>::value ||

@@ -135,11 +135,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(grad_x);
   if (x.numel() == 0) {
     if (grad_scale) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(grad_scale->dims())),
-          0,
-          grad_scale);
+      Full<T, Context>(dev_ctx, grad_scale->dims(), 0, grad_scale);
     }
     return;
   }

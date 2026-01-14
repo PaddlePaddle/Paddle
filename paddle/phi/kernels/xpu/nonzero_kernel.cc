@@ -67,7 +67,7 @@ void NonZeroKernel(const Context& dev_ctx,
     return;
   }
 
-  auto condition_shape = common::vectorize<int64_t>(dims);
+  auto condition_shape = vectorize<int64_t>(dims);
   ret = xpu::nonzero_compute<XPUType, int64_t, int64_t>(dev_ctx.x_context(),
                                                         cond_data,
                                                         out_data,

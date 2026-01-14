@@ -43,7 +43,7 @@ struct Tensor {
 
   int64_t dim() const { return raw_tensor_.dims().size(); }
 
-  bool is_contiguous() const { return true; }
+  bool is_contiguous() const { return raw_tensor_.is_contiguous(); }
 
   int64_t size(int64_t d) const { return raw_tensor_.dims().at(d); }
 

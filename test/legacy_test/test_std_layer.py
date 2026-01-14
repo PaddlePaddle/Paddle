@@ -109,6 +109,108 @@ class TestStdAPI_alias(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestStdAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.dtype = 'float32'
+        self.shape = [1, 3, 4, 10]
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.tensor(self.x)
+        # input arg
+        out1_1 = paddle.std(x=x)
+        out1_2 = paddle.std(input=x)
+        np.testing.assert_allclose(out1_1.numpy(), out1_2.numpy(), rtol=1e-05)
+        # dim arg
+        out2_1 = paddle.std(x, axis=3)
+        out2_2 = paddle.std(x, dim=3)
+        np.testing.assert_allclose(out2_1.numpy(), out2_2.numpy(), rtol=1e-05)
+        # out arg
+        out3_1 = paddle.empty([])
+        out3_2 = paddle.std(x, out=out3_1)
+        np.testing.assert_allclose(out3_1.numpy(), out3_2.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_compatibility(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.shape, self.dtype)
+            # input arg
+            out1_1 = paddle.std(x=x)
+            out1_2 = paddle.std(input=x)
+            # dim arg
+            out2_1 = paddle.std(x, axis=3)
+            out2_2 = paddle.std(x, dim=3)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(
+                feed={'x': self.x}, fetch_list=[out1_1, out1_2, out2_1, out2_2]
+            )
+        np.testing.assert_allclose(res[0], res[1], rtol=1e-05)
+        np.testing.assert_allclose(res[2], res[3], rtol=1e-05)
+
+
+class TestStdAPI_Correction(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.dtype = 'float32'
+        self.shape = [1, 3, 4, 10]
+        self.set_attrs()
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.axis:
+            axis = tuple(self.axis)
+            self.ref_out = np.std(self.x, axis, ddof=self.correction)
+        else:
+            self.ref_out = np.std(self.x, ddof=self.correction)
+        self.place = get_device_place()
+
+    def set_attrs(self):
+        self.correction = 1
+        self.axis = None
+
+    def test_dygraph_correction(self):
+        paddle.disable_static()
+        x = paddle.tensor(self.x)
+        if self.axis:
+            out = paddle.std(x, self.axis, correction=self.correction)
+        else:
+            out = paddle.std(x, correction=self.correction)
+        np.testing.assert_allclose(out.numpy(), self.ref_out, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_correction(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.shape, self.dtype)
+            if self.axis:
+                out = paddle.std(x, self.axis, correction=self.correction)
+            else:
+                out = paddle.std(x, correction=self.correction)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x}, fetch_list=[out])
+        np.testing.assert_allclose(res[0], self.ref_out, rtol=1e-05)
+
+
+class TestStdAPI_Correction2(TestStdAPI_Correction):
+    def set_attrs(self):
+        self.correction = 2
+        self.axis = None
+
+
+class TestStdAPI_CorrectionFloat(TestStdAPI_Correction):
+    def set_attrs(self):
+        self.correction = 1.5
+        self.axis = None
+
+
+class TestStdAPI_CorrectionWithAxis(TestStdAPI_Correction):
+    def set_attrs(self):
+        self.correction = 0
+        self.axis = [1, 2]
+
+
 class TestStdError(unittest.TestCase):
     def test_error(self):
         paddle.enable_static()
@@ -147,14 +249,14 @@ class TestStdAPI_ZeroSize1(unittest.TestCase):
         self.x_shape = []
         # x = torch.tensor([])
         # res= torch.std(x)     Here, res is nan
-        self.expact_out = np.nan
+        self.expect_out = np.nan
 
     def test_zerosize(self):
         self.init_data()
         paddle.disable_static()
         x = paddle.to_tensor(np.random.random(self.x_shape))
         out1 = paddle.std(x).numpy()
-        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        np.testing.assert_allclose(out1, self.expect_out, equal_nan=True)
         paddle.enable_static()
 
 
@@ -163,14 +265,14 @@ class TestStdAPI_UnBiased1(unittest.TestCase):
         self.x_shape = [1]
         # x = torch.randn([1])
         # res= torch.std(x,correction=0)     Here, res is 0.
-        self.expact_out = 0.0
+        self.expect_out = 0.0
 
     def test_api(self):
         self.init_data()
         paddle.disable_static()
         x = paddle.to_tensor(np.random.random(self.x_shape))
         out1 = paddle.std(x, unbiased=False).numpy()
-        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        np.testing.assert_allclose(out1, self.expect_out, equal_nan=True)
         paddle.enable_static()
 
 
@@ -179,14 +281,14 @@ class TestStdAPI_UnBiased2(unittest.TestCase):
         self.x_shape = [1]
         # x = torch.randn([1])
         # res= torch.std(x,correction=1)     Here, res is 0.
-        self.expact_out = np.nan
+        self.expect_out = np.nan
 
     def test_api(self):
         self.init_data()
         paddle.disable_static()
         x = paddle.to_tensor(np.random.random(self.x_shape))
         out1 = paddle.std(x, unbiased=True).numpy()
-        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        np.testing.assert_allclose(out1, self.expect_out, equal_nan=True)
         paddle.enable_static()
 
 

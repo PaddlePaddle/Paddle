@@ -42,23 +42,23 @@ void FusionSquaredMatSubKernel(const Context& dev_ctx,
   int o_numel = attr.m * attr.n;
 
   auto vsquare_x =
-      phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>, phi::CPUPlace>::Cache()
-          .At(attr.m * attr.k);
+      phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>, CPUPlace>::Cache().At(
+          attr.m * attr.k);
   auto vsquare_y =
-      phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>, phi::CPUPlace>::Cache()
-          .At(attr.k * attr.n);
+      phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>, CPUPlace>::Cache().At(
+          attr.k * attr.n);
   auto vsquare_xy =
-      phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>, phi::CPUPlace>::Cache()
-          .At(o_numel);
+      phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>, CPUPlace>::Cache().At(
+          o_numel);
   auto vsub =
-      phi::jit::KernelFuncs<phi::jit::VSubTuple<T>, phi::CPUPlace>::Cache().At(
+      phi::jit::KernelFuncs<phi::jit::VSubTuple<T>, CPUPlace>::Cache().At(
           o_numel);
   auto vscal =
-      phi::jit::KernelFuncs<phi::jit::VScalTuple<T>, phi::CPUPlace>::Cache().At(
+      phi::jit::KernelFuncs<phi::jit::VScalTuple<T>, CPUPlace>::Cache().At(
           o_numel);
   auto matmul =
-      phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>, phi::CPUPlace>::Cache()
-          .At(attr);
+      phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>, CPUPlace>::Cache().At(
+          attr);
 
   const T* x_data = x.data<T>();
   const T* y_data = y.data<T>();

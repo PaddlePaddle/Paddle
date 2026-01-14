@@ -28,7 +28,7 @@ namespace paddle::pybind {
 template <typename PlaceType>
 void LoadCombine(const std::string &file_path,
                  const std::vector<std::string> &names,
-                 std::vector<phi::DenseTensor *> *out,
+                 std::vector<DenseTensor *> *out,
                  bool load_as_fp16,
                  const PlaceType place) {
   pir::LoadCombineFunction(file_path, names, out, load_as_fp16, place);
@@ -39,13 +39,13 @@ void Load(const std::string &file_path,
           int64_t seek,
           const std::vector<int64_t> &shape,
           bool load_as_fp16,
-          phi::DenseTensor *out,
+          DenseTensor *out,
           const PlaceType place) {
   pir::LoadFunction(file_path, seek, shape, load_as_fp16, out, place);
 }
 void BindIO(pybind11::module *m) {
   m->def("save_dense_tensor",
-         [](const phi::DenseTensor &tensor, const std::string &str_file_name) {
+         [](const DenseTensor &tensor, const std::string &str_file_name) {
            std::ofstream fout(str_file_name, std::ios::binary);
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fout),
@@ -60,7 +60,7 @@ void BindIO(pybind11::module *m) {
          });
 
   m->def("load_dense_tensor",
-         [](phi::DenseTensor &tensor, const std::string &str_file_name) {
+         [](DenseTensor &tensor, const std::string &str_file_name) {
            std::ifstream fin(str_file_name, std::ios::binary);
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fin),
@@ -107,14 +107,14 @@ void BindIO(pybind11::module *m) {
       });
 
   m->def("save_dense_tensor_to_memory",
-         [](const phi::DenseTensor &tensor) -> py::bytes {
+         [](const DenseTensor &tensor) -> py::bytes {
            std::ostringstream ss;
            phi::SerializeToStream(ss, tensor);
            return ss.str();
          });
 
   m->def("load_dense_tensor_from_memory",
-         [](phi::DenseTensor &tensor, const std::string &tensor_bytes) {
+         [](DenseTensor &tensor, const std::string &tensor_bytes) {
            std::istringstream fin(tensor_bytes,
                                   std::ios::in | std::ios::binary);
            phi::DeserializeFromStream(fin, &tensor);
@@ -136,7 +136,7 @@ void BindIO(pybind11::module *m) {
          });
 
   m->def("load_dense_tensor", [](const std::string path) {
-    phi::DenseTensor tensor_load;
+    DenseTensor tensor_load;
     paddle::framework::LoadTensor(path, &tensor_load);
     return tensor_load;
   });

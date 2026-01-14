@@ -41,12 +41,8 @@ static std::vector<T> ToVector(const T *x,
     std::vector<CopyT> cpu_x(n);
     auto *dev_ctx = static_cast<phi::GPUContext *>(
         phi::DeviceContextPool::Instance().Get(place));
-    memory_utils::Copy(phi::CPUPlace(),
-                       cpu_x.data(),
-                       place,
-                       x,
-                       n * sizeof(T),
-                       dev_ctx->stream());
+    memory_utils::Copy(
+        CPUPlace(), cpu_x.data(), place, x, n * sizeof(T), dev_ctx->stream());
     dev_ctx->Wait();
     return std::vector<T>(cpu_x.data(), cpu_x.data() + n);
   }

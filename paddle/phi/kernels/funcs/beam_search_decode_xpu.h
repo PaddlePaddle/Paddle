@@ -50,22 +50,16 @@ inline int CopyTensorByXPU(const DenseTensor& srcTensor,
       common::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
-    auto cpu_place = phi::CPUPlace();
+    auto cpu_place = CPUPlace();
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(cpu_place);
     T* dstData = dev_ctx->HostAlloc<T>(dstTensor);
-    phi::memory_utils::Copy(phi::CPUPlace(),
-                            dstData,
-                            place,
-                            srcData,
-                            srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(
+        CPUPlace(), dstData, place, srcData, srcTensor.numel() * sizeof(T));
   } else {
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     T* dstData = dev_ctx->Alloc<T>(dstTensor);
-    phi::memory_utils::Copy(place,
-                            dstData,
-                            phi::CPUPlace(),
-                            srcData,
-                            srcTensor.numel() * sizeof(T));
+    phi::memory_utils::Copy(
+        place, dstData, CPUPlace(), srcData, srcTensor.numel() * sizeof(T));
   }
 
   return xpu::Error_t::SUCCESS;

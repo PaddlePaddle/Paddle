@@ -80,8 +80,8 @@ static DDim GetDimsDebug(const Scope& scope,
     return DDim({-1});
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {
@@ -114,8 +114,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     return "";
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
@@ -157,8 +157,8 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
     return sstream.str();
   };
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
@@ -196,8 +196,8 @@ static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
     return default_lod;
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.lod();
   } else {
     return default_lod;
@@ -380,13 +380,13 @@ void RuntimeInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<phi::DenseTensor>()) {
-    auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
+  } else if (in_var->IsType<DenseTensor>()) {
+    auto& in_lod_tensor = in_var->Get<DenseTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Currently, the input type of ShareDim only can be phi::DenseTensor "
+        "Currently, the input type of ShareDim only can be DenseTensor "
         "or SelectedRows."));
   }
 }
@@ -422,17 +422,17 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
     }
 
     Variable* in_var = in_var_list[i];
-    if (!in_var->IsType<phi::DenseTensor>()) return;
+    if (!in_var->IsType<DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
     PADDLE_ENFORCE_EQ(
-        out_var->IsType<phi::DenseTensor>(),
+        out_var->IsType<DenseTensor>(),
         true,
         common::errors::PreconditionNotMet(
             "The %d-th output of Output(%s) must be phi::DenseTensor.",
             i,
             out_var_names[i]));
-    auto& in_tensor = in_var->Get<phi::DenseTensor>();
-    auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+    auto& in_tensor = in_var->Get<DenseTensor>();
+    auto* out_tensor = out_var->GetMutable<DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_DNNL
     if (in_tensor.layout() != DataLayout::ONEDNN)
@@ -472,15 +472,15 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
                         j));
 
   Variable* in_var = in_it->second.at(i);
-  if (!in_var->IsType<phi::DenseTensor>()) return;
+  if (!in_var->IsType<DenseTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
-      out_var->IsType<phi::DenseTensor>(),
+      out_var->IsType<DenseTensor>(),
       true,
       common::errors::InvalidArgument(
           "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
-  auto& in_tensor = in_var->Get<phi::DenseTensor>();
-  auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+  auto& in_tensor = in_var->Get<DenseTensor>();
+  auto* out_tensor = out_var->GetMutable<DenseTensor>();
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
@@ -647,7 +647,7 @@ std::vector<LegacyLoD> RuntimeInferShapeContext::GetOutputsLod(
   std::vector<LegacyLoD> ret;
   for (auto* out_var : out_var_list) {
     if (out_var != nullptr) {
-      auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      auto* out_tensor = out_var->GetMutable<DenseTensor>();
       ret.push_back(out_tensor->lod());
     }
   }
@@ -669,13 +669,13 @@ std::vector<DDim> RuntimeInferShapeContext::GetOutputsDim(
 DDim RuntimeInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, common::errors::InvalidArgument("Input variable is nullptr."));
-  if (var->IsType<phi::DenseTensor>()) {
-    return var->Get<phi::DenseTensor>().dims();
+  if (var->IsType<DenseTensor>()) {
+    return var->Get<DenseTensor>().dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Only phi::DenseTensor or SelectedRows support 'GetDim', but input "
+        "Only DenseTensor or SelectedRows support 'GetDim', but input "
         "Variable's type is %s.",
         ToTypeName(var->Type())));
   }
@@ -699,13 +699,13 @@ std::vector<DDim> RuntimeInferShapeContext::GetRepeatedDims(
 }
 
 void RuntimeInferShapeContext::SetDim(Variable* var, const DDim& dim) {
-  if (var->IsType<phi::DenseTensor>()) {
-    var->GetMutable<phi::DenseTensor>()->Resize(dim);
+  if (var->IsType<DenseTensor>()) {
+    var->GetMutable<DenseTensor>()->Resize(dim);
   } else if (var->IsType<phi::SelectedRows>()) {
     var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Variable type error, expect phi::DenseTensor or SelectedRows, but "
+        "Variable type error, expect DenseTensor or SelectedRows, but "
         "received "
         "(%s).",
         ToTypeName(var->Type())));
@@ -1092,26 +1092,26 @@ void OperatorBase::GenerateTemporaryNames() {
 
 const phi::DenseTensor* GetDenseTensorOrSelectedRowsValueFromVar(
     const Variable& var) {
-  if (var.IsType<phi::DenseTensor>()) {
-    return static_cast<const phi::DenseTensor*>(&(var.Get<phi::DenseTensor>()));
+  if (var.IsType<DenseTensor>()) {
+    return static_cast<const phi::DenseTensor*>(&(var.Get<DenseTensor>()));
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable type is %s, expect phi::DenseTensor or SelectedRows.",
+        "Variable type is %s, expect DenseTensor or SelectedRows.",
         ToTypeName(var.Type())));
   }
 }
 
 phi::DenseTensor* GetMutableDenseTensorOrSelectedRowsValueFromVar(
     Variable* var) {
-  if (var->IsType<phi::DenseTensor>()) {
-    return var->GetMutable<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    return var->GetMutable<DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->GetMutable<phi::SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable type is %s, expect phi::DenseTensor or SelectedRows.",
+        "Variable type is %s, expect DenseTensor or SelectedRows.",
         ToTypeName(var->Type())));
   }
 }
@@ -1178,7 +1178,7 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
 
 template <>
 const std::vector<const phi::DenseTensor*>
-ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
+ExecutionContext::MultiInput<DenseTensor>(const std::string& name) const {
   auto vars = MultiInputVar(name);
   if (vars.empty()) {
     return {};
@@ -1191,19 +1191,19 @@ ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
                  [&](const Variable* var) -> const phi::DenseTensor* {
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE_EQ(
-                       var->IsType<phi::DenseTensor>(),
+                       var->IsType<DenseTensor>(),
                        true,
                        common::errors::InvalidArgument(
                            "Input variable should be phi::DenseTensor, "
                            "but the received type is %s.",
                            ToTypeName(var->Type())));
-                   return &(var->Get<phi::DenseTensor>());
+                   return &(var->Get<DenseTensor>());
                  });
   return res;
 }
 
 template <>
-std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
+std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<DenseTensor>(
     const std::string& name) const {
   auto vars = MultiOutputVar(name);
 
@@ -1217,7 +1217,7 @@ std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
                  std::back_inserter(res),
                  [&](Variable* var) -> phi::DenseTensor* {
                    return var == nullptr ? nullptr
-                                         : var->GetMutable<phi::DenseTensor>();
+                                         : var->GetMutable<DenseTensor>();
                  });
   return res;
 }
@@ -1323,18 +1323,16 @@ static void CheckTensorNANOrInf(const std::string& op_type,
       framework::TransToProtoVarType(tensor.dtype()) != proto::VarType::FP64) {
     return;
   }
-  PADDLE_ENFORCE_NE(framework::TensorContainsInf(tensor),
-                    true,
-                    common::errors::Fatal(
-                        "Operator %s output phi::DenseTensor %s contains Inf.",
-                        op_type,
-                        name));
-  PADDLE_ENFORCE_NE(framework::TensorContainsNAN(tensor),
-                    true,
-                    common::errors::Fatal(
-                        "Operator %s output phi::DenseTensor %s contains NAN.",
-                        op_type,
-                        name));
+  PADDLE_ENFORCE_NE(
+      framework::TensorContainsInf(tensor),
+      true,
+      common::errors::Fatal(
+          "Operator %s output DenseTensor %s contains Inf.", op_type, name));
+  PADDLE_ENFORCE_NE(
+      framework::TensorContainsNAN(tensor),
+      true,
+      common::errors::Fatal(
+          "Operator %s output DenseTensor %s contains NAN.", op_type, name));
 }
 
 bool OperatorWithKernel::SupportGPU() const {
@@ -1693,7 +1691,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
           if (phi_output == nullptr) {
             continue;
           }
-          if (!(HasSameTensorType<phi::DenseTensor>(phi_output, var_output) ||
+          if (!(HasSameTensorType<DenseTensor>(phi_output, var_output) ||
                 HasSameTensorType<phi::SparseCooTensor>(phi_output,
                                                         var_output) ||
                 HasSameTensorType<phi::Strings>(phi_output, var_output))) {
@@ -2057,7 +2055,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         for (auto& iter : Inputs()) {
           for (auto& name : iter.second) {
             all_dense_tensor_input_ &=
-                scope.FindVar(name)->IsType<phi::DenseTensor>();
+                scope.FindVar(name)->IsType<DenseTensor>();
           }
         }
 
@@ -2065,7 +2063,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         if (all_dense_tensor_input_) {
           for (auto& iter : Inputs()) {
             for (auto& name : iter.second) {
-              auto* t = scope.FindVar(name)->GetMutable<phi::DenseTensor>();
+              auto* t = scope.FindVar(name)->GetMutable<DenseTensor>();
               tensors.push_back(t);
             }
           }
@@ -2514,7 +2512,7 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
               << " var `" << var_name << "` to "
               << framework::DataTypeToString(dst_type)
               << " real var in static graph.";
-      phi::DenseTensor out;
+      DenseTensor out;
       TransComplexToReal(dst_type, src_type, *grad_tensor, &out);
       SetTensorToVariable(*grad_var, out, grad_var);
     }
@@ -2578,7 +2576,7 @@ Scope* OperatorWithKernel::PrepareData(
         // In such situation corresponding resized Var
         // has to be created and registered
         if ((tensor_in->layout() == DataLayout::ONEDNN) &&
-            (var->IsType<phi::DenseTensor>() == true) &&
+            (var->IsType<DenseTensor>() == true) &&
             (expected_kernel_key.layout() != DataLayout::ONEDNN) &&
             (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
              DataLayout::NHWC) &&
@@ -2589,12 +2587,12 @@ Scope* OperatorWithKernel::PrepareData(
           }
           auto* trans_var = new_scope->Var(var_name);
           in_vars->at(i) = trans_var;
-          auto out = trans_var->GetMutable<phi::DenseTensor>();
+          auto out = trans_var->GetMutable<DenseTensor>();
           out->Resize(tensor_in->dims());
           phi::funcs::MatchShapeToLayout(
               out, tensor_in->layout(), DataLayout::NHWC);
           VLOG(7) << "Created reshaped dummy input based on ONEDNN "
-                     "phi::DenseTensor , "
+                     "DenseTensor , "
                      "but NHWC layout"
                   << in_name << " in Operator " << type_;
         } else {
@@ -2748,7 +2746,7 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       // Do transfer
-      phi::DenseTensor out;
+      DenseTensor out;
       TransformData(
           new_expected_kernel_key ? *new_expected_kernel_key
                                   : expected_kernel_key,
@@ -2844,8 +2842,8 @@ void OperatorWithKernel::ParseInputDataType(
     proto::VarType::Type* data_type) const {
   if (var != nullptr) {
     const phi::DenseTensor* t = nullptr;
-    if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
+    if (var->IsType<DenseTensor>()) {
+      t = &var->Get<DenseTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -2875,8 +2873,8 @@ void OperatorWithKernel::ParseMultiInputDataType(
   for (auto* var : vars) {
     if (var != nullptr) {
       const phi::DenseTensor* t = nullptr;
-      if (var->IsType<phi::DenseTensor>()) {
-        t = &var->Get<phi::DenseTensor>();
+      if (var->IsType<DenseTensor>()) {
+        t = &var->Get<DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
       } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -2973,7 +2971,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
       default_data_type,
       common::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
-          "data type is empty or not phi::DenseTensor or SelectedRows or "
+          "data type is empty or not DenseTensor or SelectedRows or "
           "DenseTensorArray.",
           name,
           Type()));
@@ -2994,8 +2992,8 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
           "The variable %s is not found when promote complex types.", name));
   // 2. get tensor and check
   phi::DenseTensor* t = nullptr;
-  if (var->IsType<phi::DenseTensor>()) {
-    t = var->GetMutable<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    t = var->GetMutable<DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     t = var->GetMutable<phi::SelectedRows>()->mutable_value();
   } else {
@@ -3004,13 +3002,13 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   }
   PADDLE_ENFORCE_NOT_NULL(t,
                           common::errors::InvalidArgument(
-                              "The phi::DenseTensor of variable %s is nullptr "
+                              "The DenseTensor of variable %s is nullptr "
                               "when promote complex types."));
   PADDLE_ENFORCE_EQ(
       t->IsInitialized(),
       true,
       common::errors::InvalidArgument(
-          "The phi::DenseTensor in the %s Op's Input Variable %s(%s) is "
+          "The DenseTensor in the %s Op's Input Variable %s(%s) is "
           "not initialized.",
           Type(),
           name,
@@ -3221,7 +3219,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.empty()) &&
         (input_defs[i].type_index ==
-             std::type_index(typeid(paddle::optional<phi::DenseTensor>)) ||
+             std::type_index(typeid(paddle::optional<DenseTensor>)) ||
          input_defs[i].type_index ==
              std::type_index(typeid(paddle::optional<phi::SelectedRows>)) ||
          input_defs[i].type_index ==
@@ -3238,8 +3236,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     size_t end_idx = start_idx + ins_vector.size();
     for (auto* var : ins_vector) {
       const phi::TensorBase* tensor_in = nullptr;
-      if (var->IsType<phi::DenseTensor>()) {
-        tensor_in = &(var->Get<phi::DenseTensor>());
+      if (var->IsType<DenseTensor>()) {
+        tensor_in = &(var->Get<DenseTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<phi::SelectedRows>()) {
         tensor_in = &(var->Get<phi::SelectedRows>());
@@ -3294,8 +3292,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     for (auto* var : outs_vector) {
       phi::TensorBase* tensor_out = nullptr;
       if (var) {
-        if (var->template IsType<phi::DenseTensor>()) {
-          tensor_out = var->template GetMutable<phi::DenseTensor>();
+        if (var->template IsType<DenseTensor>()) {
+          tensor_out = var->template GetMutable<DenseTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
@@ -3695,11 +3693,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
             common::errors::InvalidArgument(
                 "OneDNN's extra input only allows one input tensor."));
         auto* var = ins_vector[0];
-        PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+        PADDLE_ENFORCE_EQ(var->IsType<DenseTensor>(),
                           true,
                           common::errors::InvalidArgument(
                               "OneDNN's extra input only can be DenseTensor."));
-        one_dnn_ctx->SetDnnInput(input_name, &(var->Get<phi::DenseTensor>()));
+        one_dnn_ctx->SetDnnInput(input_name, &(var->Get<DenseTensor>()));
       }
     }
   }

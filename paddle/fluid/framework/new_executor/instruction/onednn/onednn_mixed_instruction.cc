@@ -64,7 +64,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
                    " begin");
   }
 
-  std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
+  std::vector<std::shared_ptr<DenseTensor>> tmp_holders;
   // Step1. Mixed Dynamic Choose Kernel
   if (!has_choose_kernel_) {
     has_choose_kernel_ = true;
@@ -86,7 +86,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
     auto tmp_kernel_context = kernel_context_;
     auto tmp_infer_meta_context_ = infer_meta_context_;
     // TransLayout first
-    auto inputs = tmp_kernel_context.InputsBetween<phi::DenseTensor>(
+    auto inputs = tmp_kernel_context.InputsBetween<DenseTensor>(
         size_t(0), tmp_kernel_context.InputsSize());
 
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -98,7 +98,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
         // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
         // data_transfer.cc
         if (!input->IsInitialized() && tmp_layout == DataLayout::NHWC) {
-          tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
+          tmp_holders.emplace_back(std::make_shared<DenseTensor>(*input));
           auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
@@ -123,7 +123,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
             }
           }
         } else {
-          tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>());
+          tmp_holders.emplace_back(std::make_shared<DenseTensor>());
           auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_meta(input->meta());
           phi::funcs::TransDataLayoutFromOneDNN(phi::DataLayout::ONEDNN,

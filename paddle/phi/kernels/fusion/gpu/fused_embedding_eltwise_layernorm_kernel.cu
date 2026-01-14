@@ -65,15 +65,15 @@ void EmbeddingEltWiseLayerNormKernel(
     in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
   }
 
-  phi::memory_utils::Copy(phi::GPUPlace{},
+  phi::memory_utils::Copy(GPUPlace{},
                           in_ids_d,
-                          phi::CPUPlace{},
+                          CPUPlace{},
                           in1s.data(),
                           sizeof(int64_t) * input_num,
                           dev_ctx.stream());
-  phi::memory_utils::Copy(phi::GPUPlace{},
+  phi::memory_utils::Copy(GPUPlace{},
                           in_embs_d,
-                          phi::CPUPlace{},
+                          CPUPlace{},
                           in2s.data(),
                           sizeof(int64_t) * input_num,
                           dev_ctx.stream());

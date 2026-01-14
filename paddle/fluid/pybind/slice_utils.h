@@ -229,7 +229,7 @@ template <typename T>
 inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!(x->place().GetType() == phi::AllocationType::CPU)) {
-    phi::DenseTensor cpu_x;
+    DenseTensor cpu_x;
     framework::TensorCopy(*x, CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
@@ -461,7 +461,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
 
       if (IsNumpyArray(slice_item)) {
         paddle::Tensor index_tensor_tmp(
-            std::make_shared<phi::DenseTensor>(),
+            std::make_shared<DenseTensor>(),
             egr::Controller::Instance().GenerateUniqueName());
 
         py::object index_obj_tmp =
@@ -921,7 +921,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
     value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
   } else if (py::isinstance<py::array>(value_obj)) {
     paddle::Tensor value_tensor_tmp(
-        std::make_shared<phi::DenseTensor>(),
+        std::make_shared<DenseTensor>(),
         egr::Controller::Instance().GenerateUniqueName());
     py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     py::object value = value_obj_tmp;
