@@ -44,3 +44,12 @@
 #define C10_HOST
 #define C10_DEVICE
 #endif
+
+// Deprecated macro for marking functions as deprecated
+#if defined(__GNUC__) || defined(__clang__)
+#define C10_DEPRECATED_MESSAGE(msg) __attribute__((deprecated(msg)))
+#elif defined(_MSC_VER)
+#define C10_DEPRECATED_MESSAGE(msg) __declspec(deprecated(msg))
+#else
+#define C10_DEPRECATED_MESSAGE(msg)
+#endif

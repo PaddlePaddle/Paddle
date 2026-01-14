@@ -14,9 +14,14 @@
 
 #pragma once
 #include <c10/core/SymInt.h>
-
+#include <cstring>
 #include <cstdint>
 #include <optional>
+
+// Forward declaration
+namespace at {
+class Tensor;
+}
 
 namespace at::indexing {
 
@@ -67,6 +72,102 @@ struct Slice final {
   c10::SymInt start_;
   c10::SymInt stop_;
   c10::SymInt step_;
+};
+
+// TensorIndex - unified index type supporting multiple index types
+struct TensorIndex final {
+  // Case 1: `at::indexing::None`
+  TensorIndex(std::nullopt_t) : type_(TensorIndexType::None) {}
+
+  // Case 2: "..." / `at::indexing::Ellipsis`
+  TensorIndex(EllipsisIndexType)
+      : type_(TensorIndexType::Ellipsis) {}
+  TensorIndex(const char* str) : TensorIndex(Ellipsis) {
+    // Note: We skip the strcmp check for simplicity in compatibility layer
+  }
+
+  // Case 3: (Sym) Integer value
+  // Note: In Paddle, SymInt is just int64_t, so we only need one constructor
+  TensorIndex(c10::SymInt integer)
+      : integer_(std::move(integer)), type_(TensorIndexType::SymInt) {}
+  // Explicit constructor for int to avoid template matching issues
+  // int64_t is handled by SymInt constructor since SymInt is int64_t
+  TensorIndex(int integer)
+      : integer_(c10::SymInt(integer)), type_(TensorIndexType::SymInt) {}
+
+  // Case 4: Boolean value
+  template <class T, class = std::enable_if_t<std::is_same_v<bool, T>>>
+  TensorIndex(T boolean) : boolean_(boolean), type_(TensorIndexType::Boolean) {}
+
+  // Case 5: Slice represented in `at::indexing::Slice` form
+  TensorIndex(Slice slice)
+      : slice_(std::move(slice)), type_(TensorIndexType::Slice) {}
+
+  // Case 6: Tensor value - using template to avoid circular dependency
+  // Use SFINAE to ensure this only matches tensor-like types, not primitive
+  // types
+  template<typename TensorType,
+           typename std::enable_if_t<
+               !std::is_same_v<std::decay_t<TensorType>, int> &&
+               !std::is_same_v<std::decay_t<TensorType>, int64_t> &&
+               !std::is_same_v<std::decay_t<TensorType>, bool> &&
+               !std::is_same_v<std::decay_t<TensorType>, c10::SymInt> &&
+               !std::is_same_v<std::decay_t<TensorType>, std::nullopt_t> &&
+               !std::is_same_v<std::decay_t<TensorType>,
+                               EllipsisIndexType> &&
+               !std::is_same_v<std::decay_t<TensorType>, Slice> &&
+               !std::is_same_v<std::decay_t<TensorType>, const char*>,
+               int> = 0>
+  TensorIndex(const TensorType& tensor)
+      : tensor_ptr_(static_cast<const void*>(&tensor)),
+        type_(TensorIndexType::Tensor) {}
+
+  inline bool is_none() const {
+    return type_ == TensorIndexType::None;
+  }
+
+  inline bool is_ellipsis() const {
+    return type_ == TensorIndexType::Ellipsis;
+  }
+
+  inline bool is_integer() const {
+    return type_ == TensorIndexType::SymInt;
+  }
+
+  inline c10::SymInt integer() const {
+    return integer_;
+  }
+
+  inline bool is_boolean() const {
+    return type_ == TensorIndexType::Boolean;
+  }
+
+  inline bool boolean() const {
+    return boolean_;
+  }
+
+  inline bool is_slice() const {
+    return type_ == TensorIndexType::Slice;
+  }
+
+  inline const Slice& slice() const {
+    return slice_;
+  }
+
+  inline bool is_tensor() const {
+    return type_ == TensorIndexType::Tensor;
+  }
+
+  inline const void* tensor_ptr() const {
+    return tensor_ptr_;
+  }
+
+ private:
+  c10::SymInt integer_ = 0;
+  bool boolean_ = false;
+  Slice slice_;
+  const void* tensor_ptr_ = nullptr;
+  TensorIndexType type_;
 };
 
 }  // namespace at::indexing

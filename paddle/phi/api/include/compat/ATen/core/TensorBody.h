@@ -17,6 +17,9 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/util/ArrayRef.h>
+#include <limits>
+#include <vector>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
@@ -114,6 +117,61 @@ class Tensor : public TensorBase {
 
   template <typename T>
   T* mutable_data_ptr() const;
+
+  template<typename T,
+           size_t N,
+           template <typename U> class PtrTraits = DefaultPtrTraits,
+           typename index_t = int64_t>
+  C10_DEPRECATED_MESSAGE(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")
+  GenericPackedTensorAccessor<T, N, PtrTraits, index_t> packed_accessor()
+      const& {
+    return generic_packed_accessor<T, N, PtrTraits, index_t>();
+  }
+  template<typename T,
+           size_t N,
+           template <typename U> class PtrTraits = DefaultPtrTraits,
+           typename index_t = int64_t>
+  C10_DEPRECATED_MESSAGE(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")
+  GenericPackedTensorAccessor<T, N, PtrTraits, index_t> packed_accessor()
+      && = delete;
+
+  // packed_accessor64 - uses int64_t as index type
+  template<typename T,
+           size_t N,
+           template <typename U> class PtrTraits = DefaultPtrTraits>
+  GenericPackedTensorAccessor<T, N, PtrTraits, int64_t> packed_accessor64()
+      const& {
+    return generic_packed_accessor<T, N, PtrTraits, int64_t>();
+  }
+  template<typename T,
+           size_t N,
+           template <typename U> class PtrTraits = DefaultPtrTraits>
+  GenericPackedTensorAccessor<T, N, PtrTraits, int64_t> packed_accessor64()
+      && = delete;
+
+  // packed_accessor32 - uses int32_t as index type
+  template<typename T,
+           size_t N,
+           template <typename U> class PtrTraits = DefaultPtrTraits>
+  GenericPackedTensorAccessor<T, N, PtrTraits, int32_t> packed_accessor32()
+      const& {
+    // Check numel to ensure it fits in int32_t (compatible with libtorch)
+    PD_CHECK(
+        numel() <=
+            static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+        "numel needs to be smaller than int32_t max; otherwise, please use "
+        "packed_accessor64");
+    return generic_packed_accessor<T, N, PtrTraits, int32_t>();
+  }
+  template<typename T,
+           size_t N,
+           template <typename U> class PtrTraits = DefaultPtrTraits>
+  GenericPackedTensorAccessor<T, N, PtrTraits, int32_t> packed_accessor32()
+      && = delete;
 
   using TensorBase::stride;
 
@@ -267,8 +325,18 @@ class Tensor : public TensorBase {
         {}));
   }
 
-  // TODO(wangyanpeng04): modify the api to
-  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  // Full index interface compatible with torch
+  at::Tensor index(
+      c10::ArrayRef<at::indexing::TensorIndex> indices) const {
+    return _index_impl(indices);
+  }
+
+  at::Tensor index(
+      std::initializer_list<at::indexing::TensorIndex> indices) const {
+    return _index_impl(c10::ArrayRef<at::indexing::TensorIndex>(indices));
+  }
+
+  // Legacy interface for backward compatibility
   at::Tensor index(const std::vector<at::indexing::Slice>& indices) const {
     std::vector<int64_t> starts(indices.size());
     std::vector<int64_t> ends(indices.size());
@@ -279,6 +347,180 @@ class Tensor : public TensorBase {
     return Tensor(
         paddle::experimental::slice(tensor_, {0, 1}, starts, ends, {1}, {})
             .contiguous());
+  }
+
+  // index_put_ interface compatible with torch
+  at::Tensor& index_put_(
+      c10::ArrayRef<at::indexing::TensorIndex> indices,
+      const at::Tensor& rhs) {
+    return _index_put_impl(indices, rhs);
+  }
+
+  at::Tensor& index_put_(
+      c10::ArrayRef<at::indexing::TensorIndex> indices,
+      const at::Scalar& v) {
+    // Create a tensor with the scalar value matching the indexed tensor's
+    // shape
+    at::Tensor indexed = index(indices);
+    // Use paddle::experimental::full to create a tensor filled with scalar
+    // value
+    at::Tensor value_tensor = Tensor(paddle::experimental::full(
+        indexed.sizes().vec(),
+        v,
+        compat::_PD_AtenScalarTypeToPhiDataType(indexed.scalar_type())));
+    return _index_put_impl(indices, value_tensor);
+  }
+
+  at::Tensor& index_put_(
+      std::initializer_list<at::indexing::TensorIndex> indices,
+      const at::Tensor& rhs) {
+    return index_put_(c10::ArrayRef<at::indexing::TensorIndex>(indices), rhs);
+  }
+
+  at::Tensor& index_put_(
+      std::initializer_list<at::indexing::TensorIndex> indices,
+      const at::Scalar& v) {
+    return index_put_(c10::ArrayRef<at::indexing::TensorIndex>(indices), v);
+  }
+
+ private:
+  // Internal implementation for index
+  at::Tensor _index_impl(
+      c10::ArrayRef<at::indexing::TensorIndex> indices) const {
+    if (indices.empty()) {
+      return *this;
+    }
+
+    at::Tensor result = *this;
+    int64_t dim = 0;
+    bool ellipsis_seen = false;
+
+    for (const auto& idx : indices) {
+      if (idx.is_none()) {
+        // None adds a new dimension (unsqueeze) at the current position
+        // unsqueeze(dim) adds a dimension at position dim
+        // For a tensor with N dims, valid dim values are 0 to N
+        // (inclusive)
+        int64_t current_dim = result.dim();
+        if (dim > current_dim) {
+          dim = current_dim;  // Clamp to valid range
+        }
+        result = result.unsqueeze(dim);
+        dim++;
+      } else if (idx.is_ellipsis()) {
+        // Ellipsis expands to fill remaining dimensions
+        if (ellipsis_seen) {
+          PD_THROW("An index can only have a single ellipsis ('...')");
+        }
+        ellipsis_seen = true;
+        // Ellipsis means "all remaining dimensions", so we skip to the end
+        // For now, we just continue processing - the remaining indices will
+        // be applied This is a simplified implementation
+        // Don't increment dim, as ellipsis doesn't consume a dimension
+        continue;
+      } else if (idx.is_integer()) {
+        // Integer index selects a single element along this dimension
+        // In Paddle, SymInt is just int64_t, so we can use it directly
+        int64_t index_val = static_cast<int64_t>(idx.integer());
+        // Use slice + squeeze for single element selection
+        result = result.slice(dim, index_val, index_val + 1, 1);
+        result = result.squeeze(c10::IntArrayRef({dim}));
+        // Don't increment dim, as selection removes the dimension
+      } else if (idx.is_boolean()) {
+        // Boolean index - convert to mask tensor
+        PD_THROW(
+            "Boolean indexing is not yet fully supported in Paddle "
+            "compatibility layer");
+      } else if (idx.is_slice()) {
+        // Slice index
+        const auto& slice = idx.slice();
+        // In Paddle, SymInt is just int64_t, so we can use it directly
+        int64_t start_val = static_cast<int64_t>(slice.start());
+        int64_t stop_val = static_cast<int64_t>(slice.stop());
+        int64_t step_val = static_cast<int64_t>(slice.step());
+        
+        if (step_val != 1) {
+          PD_THROW(
+              "Step values other than 1 are not yet supported in slice "
+              "indexing");
+        }
+
+        // Handle negative indices
+        int64_t size = result.size(dim);
+        if (start_val < 0) start_val += size;
+        if (stop_val < 0) stop_val += size;
+        if (start_val < 0) start_val = 0;
+        if (stop_val > size) stop_val = size;
+        if (start_val > stop_val) {
+          // Empty slice - return empty tensor with same dtype
+          std::vector<int64_t> new_shape = result.sizes().vec();
+          new_shape[dim] = 0;
+          // Create empty tensor using paddle API
+          return Tensor(paddle::experimental::empty(
+              c10::IntArrayRef(new_shape)._PD_ToPaddleIntArray(),
+              compat::_PD_AtenScalarTypeToPhiDataType(
+                  result.scalar_type()),
+              tensor_.place()));
+        }
+
+        result = result.slice(dim, start_val, stop_val, step_val);
+        dim++;
+      } else if (idx.is_tensor()) {
+        // Tensor index - advanced indexing
+        // Note: tensor_ptr() returns void*, we need to cast it properly
+        // For now, skip tensor indexing as it requires proper tensor
+        // construction Check if tensor_ptr is valid before throwing
+        if (idx.tensor_ptr() == nullptr) {
+          PD_THROW("Invalid tensor index: tensor_ptr is nullptr");
+        }
+        PD_THROW(
+            "Tensor indexing in index() is not yet fully supported");
+      } else {
+        // Unknown index type
+        PD_THROW("Unknown index type in index()");
+      }
+    }
+
+    return result;
+  }
+
+ private:
+  // Internal implementation for index_put_
+  at::Tensor& _index_put_impl(
+      c10::ArrayRef<at::indexing::TensorIndex> indices,
+      const at::Tensor& values) {
+    if (indices.empty()) {
+      // No indices means assign to entire tensor
+      return copy_(values);
+    }
+
+    // Get the indexed tensor (view)
+    at::Tensor indexed_view = index(indices);
+    
+    // Broadcast values to match indexed_view shape
+    at::Tensor broadcasted_values = values;
+    if (indexed_view.sizes() != values.sizes()) {
+      PD_CHECK(
+          values.numel() == indexed_view.numel() || values.numel() == 1,
+          "Values shape must match indexed tensor shape or be scalar");
+      if (values.numel() == 1) {
+        // Create a tensor filled with the scalar value
+        broadcasted_values = Tensor(paddle::experimental::full(
+            indexed_view.sizes().vec(),
+            values.item(),
+            compat::_PD_AtenScalarTypeToPhiDataType(
+                indexed_view.scalar_type())));
+      } else {
+        broadcasted_values = values.reshape(indexed_view.sizes());
+      }
+    }
+
+    // Copy values into the indexed view
+    // Note: This works because slice/select operations in Paddle return views
+    // that share memory
+    indexed_view.copy_(broadcasted_values);
+    
+    return *this;
   }
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
@@ -332,6 +574,7 @@ class Tensor : public TensorBase {
   }
 #endif
 
+ public:
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };

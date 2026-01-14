@@ -104,4 +104,26 @@ class TensorAccessor<T, 1, PtrTraits, index_t>
   }
 };
 
+// GenericPackedTensorAccessor is used for packed tensor accessors
+// In Paddle, we use TensorAccessor as the implementation
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits,
+          typename index_t = int64_t>
+using GenericPackedTensorAccessor = TensorAccessor<T, N, PtrTraits, index_t>;
+
+// Type aliases for PackedTensorAccessor32 and PackedTensorAccessor64
+// Compatible with libtorch's naming convention
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits>
+using PackedTensorAccessor32 =
+    GenericPackedTensorAccessor<T, N, PtrTraits, int32_t>;
+
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits>
+using PackedTensorAccessor64 =
+    GenericPackedTensorAccessor<T, N, PtrTraits, int64_t>;
+
 }  // namespace at
