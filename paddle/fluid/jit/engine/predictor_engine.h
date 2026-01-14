@@ -19,6 +19,12 @@
 #include "paddle/fluid/jit/function_utils.h"
 
 namespace paddle {
+class AnalysisPredictor;
+class PaddlePredictor;
+
+namespace framework {
+class Scope;
+}
 
 namespace jit {
 
