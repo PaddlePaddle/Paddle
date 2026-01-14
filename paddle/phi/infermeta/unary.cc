@@ -2221,22 +2221,37 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     scale_transposed_inner_dim = scale_outer_dim;
   }
 
-  PADDLE_ENFORCE_GT(output_outer_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in output outer dim."));
-  PADDLE_ENFORCE_GT(output_inner_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in output inner dim."));
-  PADDLE_ENFORCE_GT(scale_outer_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in scale outer dim."));
-  PADDLE_ENFORCE_GT(scale_inner_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in scale inner dim."));
+  PADDLE_ENFORCE_GE(
+      output_outer_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The output_outer_dim should be greater than or equal to 0, "
+          "but received output_outer_dim is %d.",
+          output_outer_dim));
+
+  PADDLE_ENFORCE_GE(
+      output_inner_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The output_inner_dim should be greater than or equal to 0, "
+          "but received output_inner_dim is %d.",
+          output_inner_dim));
+
+  PADDLE_ENFORCE_GE(
+      scale_outer_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The scale_outer_dim should be greater than or equal to 0, "
+          "but received scale_outer_dim is %d.",
+          scale_outer_dim));
+
+  PADDLE_ENFORCE_GE(
+      scale_inner_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The scale_inner_dim should be greater than or equal to 0, "
+          "but received scale_inner_dim is %d.",
+          scale_inner_dim));
 
   if (X && out && scale) {
     if (!return_transpose_only) {
