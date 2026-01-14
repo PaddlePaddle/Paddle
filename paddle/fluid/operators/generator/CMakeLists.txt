@@ -20,7 +20,7 @@ endif()
 
 message(
   STATUS
-    "[DEBUG] ===== In paddle\fluid\operators\generator\CMakeLists.txt =====")
+    "[DEBUG] ===== In paddle/fluid/operators/generator/CMakeLists.txt =====")
 message(STATUS "[DEBUG] PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
 
 function(install_py_pyyaml)

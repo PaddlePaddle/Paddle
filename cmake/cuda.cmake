@@ -5,7 +5,7 @@ endif()
 #(risemeup1) note: CMake 3.18 needs to specify the value of CMAKE_CUDA_ARCHITECTURES，otherwise a large number of warnings may appear in cmake
 set(CMAKE_CUDA_ARCHITECTURES OFF)
 
-message(STATUS "[DEBUG] ===== In cmake\cuda.cmake =====")
+message(STATUS "[DEBUG] ===== In cmake/cuda.cmake =====")
 message(STATUS "[DEBUG] WITH_NV_JETSON: ${WITH_NV_JETSON}")
 message(STATUS "[DEBUG] NEW_RELEASE_ALL: ${NEW_RELEASE_ALL}")
 message(STATUS "[DEBUG] NEW_RELEASE_PYPI: ${NEW_RELEASE_PYPI}")

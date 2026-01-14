@@ -146,7 +146,7 @@ if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
-message(STATUS "[DEBUG] ===== In paddle\phi\api\lib\CMakeLists.txt =====")
+message(STATUS "[DEBUG] ===== In paddle/phi/api/lib/CMakeLists.txt =====")
 message(STATUS "[DEBUG] PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
 
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
