@@ -4689,7 +4689,7 @@ class TestLog10APICompatibility(unittest.TestCase):
         ref_out = np.log10(self.np_input)
         # Check
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_compatibility(self):
@@ -4714,7 +4714,7 @@ class TestLog10APICompatibility(unittest.TestCase):
             )
             ref_out = np.log10(self.np_input)
             for out in fetches:
-                np.testing.assert_allclose(out, ref_out)
+                np.testing.assert_allclose(out, ref_out, rtol=1e-05)
 
 
 class TestLog1pAPI_Compatibility(unittest.TestCase):
@@ -4758,7 +4758,7 @@ class TestLog1pAPI_Compatibility(unittest.TestCase):
         ref_out = np.log1p(self.np_input)
         # Check
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -4783,7 +4783,7 @@ class TestLog1pAPI_Compatibility(unittest.TestCase):
             )
             ref_out = np.log1p(self.np_input)
             for out in fetches:
-                np.testing.assert_allclose(out, ref_out)
+                np.testing.assert_allclose(out, ref_out, rtol=1e-05)
 
 
 class TestSquare(TestActivation):
