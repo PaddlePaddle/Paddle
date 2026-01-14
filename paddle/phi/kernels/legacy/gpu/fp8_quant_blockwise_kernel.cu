@@ -590,11 +590,15 @@ __global__ void __launch_bounds__(512)
   }
 }
 
-template <typename T, bool output_scale_transpose, bool use_pow2_scale>
+template <typename T,
+          typename ScaleT,
+          bool output_scale_transpose,
+          bool use_pow2_scale,
+          bool using_ue8m0_scale>
 __global__ void quant_per_token_per_block_padding(
     const T *const input,
     __nv_fp8_e4m3 *const quanted_res,
-    float *const quanted_scale,
+    ScaleT *const quanted_scale,
     const size_t rows,
     const size_t cols,
     const size_t padded_rows,
@@ -617,11 +621,14 @@ __global__ void quant_per_token_per_block_padding(
     __nv_fp8_e4m3 *quanted_res_now = quanted_res + token_idx * cols;
     // deal a block per warp
     for (size_t iter = warp_id; iter < end_iter; iter += num_warp) {
-      float *quanted_scale_now;
-      if constexpr (output_scale_transpose) {
-        quanted_scale_now = quanted_scale + iter * padded_rows + token_idx;
+      size_t idx;
+      if constexpr (using_ue8m0_scale) {
+        idx = output_scale_transpose
+                  ? (iter / 4) * rows * 4 + token_idx * 4 + (iter % 4)
+                  : token_idx * padded_rows * 4 + iter;
       } else {
-        quanted_scale_now = quanted_scale + token_idx * end_iter + iter;
+        idx = output_scale_transpose ? iter * padded_rows + token_idx
+                                     : token_idx * end_iter + iter;
       }
       const size_t offset = iter * 128 + lane_id * NUM_PER_THREADS;
 
@@ -653,8 +660,8 @@ __global__ void quant_per_token_per_block_padding(
         max_value_thread *= 7.0f;
       }
 
-      float blockwise_scale =
-          ScaleWrapper<use_pow2_scale>(max_value_thread, epsilon);
+      float blockwise_scale = ScaleWrapper < use_pow2_scale ||
+                              using_ue8m0_scale > (max_value_thread, epsilon);
       float scale_to_store = 1.0f / blockwise_scale;
       // quant
 #pragma unroll
@@ -665,7 +672,8 @@ __global__ void quant_per_token_per_block_padding(
       // store
       Store<__nv_fp8_e4m3, NUM_PER_THREADS>(res_vec, quanted_res_now + offset);
       if (lane_id == 0) {
-        *quanted_scale_now = scale_to_store;
+        StoreScale<ScaleT, using_ue8m0_scale>(
+            quanted_scale, idx, scale_to_store);
       }
     }
   }
@@ -714,13 +722,15 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                               input_transpose,
                                               output_scale_transpose,
                                               return_transpose_only,
-                                              using_pow2_scale>
+                                              using_pow2_scale,
+                                              using_ue8m0_scale>
                       : quantize_128x128_kernel<NvType,
                                                 ScaleT,
                                                 input_transpose,
                                                 output_scale_transpose,
                                                 return_transpose_only,
-                                                using_pow2_scale>;
+                                                using_pow2_scale,
+                                                using_ue8m0_scale>;
 
     kernel<<<grid, block, 0, dev_ctx.stream()>>>(
         reinterpret_cast<const NvType *>(X.data<T>()),
@@ -761,8 +771,10 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
     }
 
     quant_per_token_per_block_padding<NvType,
+                                      ScaleT,
                                       output_scale_transpose,
-                                      using_pow2_scale>
+                                      using_pow2_scale,
+                                      using_ue8m0_scale>
         <<<gridx, blockx, 0, dev_ctx.stream()>>>(
             reinterpret_cast<const NvType *>(X.data<T>()),
             reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),

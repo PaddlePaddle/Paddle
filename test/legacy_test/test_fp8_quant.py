@@ -185,7 +185,7 @@ class TestFP8Quantization(unittest.TestCase):
 class TestFP8QuantizationFP16(TestFP8Quantization):
     def setUp(self):
         paddle.seed(42)
-        self.m = 128
+        self.m = 128 * 12
         self.n = 4096
         self.x = paddle.randn((self.m, self.n), dtype=paddle.float16)
         self.rmse_threshold = 3e-2
@@ -194,6 +194,7 @@ class TestFP8QuantizationFP16(TestFP8Quantization):
         self.output_scale_transpose_options = [True, False]
         self.return_transpose_only_options = [True, False]
         self.using_pow2_scale_options = [True, False]
+        self.using_ue8m0_scale_options = [True, False]
 
     def test_quantization_accuracy(self):
         rmses = self.eval_all(self.x)
@@ -213,6 +214,7 @@ class TestFP8QuantizationUnalignedBF16(TestFP8Quantization):
         self.dtype_options = paddle.bfloat16
         self.quant_method_options = ["1x128"]
         self.rmse_threshold = 3e-2
+        self.using_ue8m0_scale_options = [True, False]
 
         self.x = paddle.randn((self.m, self.n), dtype=self.dtype_options)
 
@@ -238,6 +240,7 @@ class TestFP8QuantizationUnalignedFP16(TestFP8Quantization):
         self.output_scale_transpose_options = [True, False]
         self.return_transpose_only_options = [True, False]
         self.using_pow2_scale_options = [True, False]
+        self.using_ue8m0_scale_options = [True, False]
 
         self.rmse_threshold = 3e-2
 
