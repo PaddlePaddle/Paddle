@@ -26,6 +26,10 @@
 
 namespace paddle {
 
+namespace framework {
+class InterpreterCore;
+}  // namespace framework
+
 namespace jit {
 using InterpreterCore = framework::InterpreterCore;
 // using Graph = framework::ir::Graph;
