@@ -181,31 +181,33 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     const int scale_length,
     const int num_experts,
     const int topk) {
-  // printf("token_length %d scale_length %d\n", token_length,scale_length);
   using expert_infos_t = expert_infos<probs_T>;
   int local_cumsum = 0;
   int local_expert_offsets;
   int local_expert_end_offsets;
   const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
+  const int block_row_end =
+      std::min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
   __shared__ expert_infos_t
       shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
-  // Init shared memory
-  for (int i = threadIdx.x; i < CUMSUM_BLOCK_SIZE * MAX_NUM_EXPERTS;
-       i += blockDim.x) {
-    shared_expert_infos[i / MAX_NUM_EXPERTS][i % MAX_NUM_EXPERTS] =
-        expert_infos_t();
-  }
-  __syncthreads();
+  constexpr int stages = 2;
   // Preload the tokens to smem
-  extern __shared__ float smem_fp32[];
+  extern __shared__ float
+      smem_fp32[];  // NVCC do not support extern __shared__ X_T smem[];
   X_T *smem = reinterpret_cast<X_T *>(smem_fp32);
   X_T *A0 = smem + 0 * token_length;
   X_T *A1 = smem + 1 * token_length;
+
+  routemap_T *__restrict__ shared_routemap_topk =
+      reinterpret_cast<routemap_T *>(smem + token_length * stages);
+  probs_T *__restrict__ shared_probs_topk = reinterpret_cast<probs_T *>(
+      shared_routemap_topk + CUMSUM_BLOCK_SIZE * topk);
+
   cg::thread_block block = cg::this_thread_block();
   constexpr auto scope = cuda::thread_scope_block;
-  constexpr int stages = 2;
+
 // Suppress NVCC warning about dynamic initialization -
 // cuda::pipeline_shared_state is trivially initializable and designed for use
 // with __shared__ memory
@@ -213,14 +215,47 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
   __shared__ cuda::pipeline_shared_state<scope, stages> pstate;
 #pragma nv_diag_default 20054
   auto pipe = cuda::make_pipeline(block, &pstate);
-  // Prime stage 0.
+
+  const int local_rowmap_size = (block_row_end - block_row_base) * topk;
+  // Asynchronously read the topk map and probs for current block into smem
   pipe.producer_acquire();
-  cuda::memcpy_async(block,
-                     A0,
-                     X + block_row_base * token_length,
-                     cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
-                     pipe);
+  cuda::memcpy_async(
+      block,
+      shared_routemap_topk,
+      routemap_topk + block_row_base * topk,
+      cuda::aligned_size_t<32>(local_rowmap_size * sizeof(routemap_T)),
+      pipe);
+
+  cuda::memcpy_async(
+      block,
+      shared_probs_topk,
+      probs_topk + block_row_base * topk,
+      cuda::aligned_size_t<32>(local_rowmap_size * sizeof(probs_T)),
+      pipe);
   pipe.producer_commit();
+
+  if constexpr (do_gather) {
+    // Prime stage 0 for tokens prefetch read
+    pipe.producer_acquire();
+    cuda::memcpy_async(block,
+                       A0,
+                       X + block_row_base * token_length,
+                       cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
+                       pipe);
+    pipe.producer_commit();
+  }
+
+  // Init shared memory
+#pragma unroll
+  for (int i = threadIdx.x; i < CUMSUM_BLOCK_SIZE * MAX_NUM_EXPERTS;
+       i += blockDim.x) {
+    shared_expert_infos[i / MAX_NUM_EXPERTS][i % MAX_NUM_EXPERTS] =
+        expert_infos_t();
+  }
+  // waiting for the shared_routemap_topk and shared_probs_topk async loading
+  pipe.consumer_wait();
+  __syncthreads();
+  pipe.consumer_release();
 
   // ---------------Expertwise deterministic job scheduling ---------------
   if (threadIdx.x < num_experts) {
@@ -232,14 +267,15 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     // From the block with a smaller idx to the block with a larger idx
     const int mid = gridDim.x / 2;
     if (blockIdx.x < mid) {
-      for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
-           row++) {
-        if (row >= total_zipped_tokens_num) break;
+      for (int row = block_row_base; row < block_row_end; row++) {
         const int internal_row = row - block_row_base;
 #pragma unroll
         for (int k = 0; k < topk; k++) {
-          expert_infos_t proposed = {routemap_topk[row * topk + k],
-                                     probs_topk[row * topk + k]};
+          expert_infos_t proposed = {
+              shared_routemap_topk[internal_row * topk + k],
+              shared_probs_topk[internal_row * topk + k]};
+          // const expert_infos_t proposed = {routemap_topk[row * topk + k],
+          //                     probs_topk[row * topk + k]};
           if (proposed.expert_row_idx == -1) continue;
           if (threadIdx.x == proposed.expert_row_idx) {
             shared_expert_infos[internal_row][expert_id] = {
@@ -271,21 +307,19 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
                 ? -1
                 : shared_expert_infos[i][expert_id].expert_row_idx +
                       cumsum_offset;
-        // shared_expert_infos[i][threadIdx.x] =
-        // shared_expert_infos[i][expert_id];
       }
     } else {  // From the block with a larger idx to the block with a smaller
               // idx
       int local_suffixsum = 0;
-      for (int row = block_row_base + CUMSUM_BLOCK_SIZE - 1;
-           row >= block_row_base;
-           --row) {
-        if (row >= total_zipped_tokens_num) continue;
+      for (int row = block_row_end - 1; row >= block_row_base; --row) {
         const int internal_row = row - block_row_base;
 #pragma unroll
         for (int k = 0; k < topk; k++) {
-          expert_infos_t proposed = {routemap_topk[row * topk + k],
-                                     probs_topk[row * topk + k]};
+          expert_infos_t proposed = {
+              shared_routemap_topk[internal_row * topk + k],
+              shared_probs_topk[internal_row * topk + k]};
+          // const expert_infos_t proposed = {routemap_topk[row * topk + k],
+          //                   probs_topk[row * topk + k]};
           if (proposed.expert_row_idx == -1) continue;
           if (threadIdx.x == proposed.expert_row_idx) {
             shared_expert_infos[internal_row][expert_id] = {
@@ -325,28 +359,28 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
   }
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
-  const int block_row_end =
-      std::min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
+
   for (int row = block_row_base; row < block_row_end; row++) {
     // OOB check
     const int internal_row = row - block_row_base;
     X_T *a_stage = (internal_row % 2 == 0) ? A0 : A1;
     X_T *a_next = (internal_row % 2 == 0) ? A1 : A0;
+    if constexpr (do_gather) {
+      // wait current using stage
+      pipe.consumer_wait();
+      block.sync();  // ensure shared memory is ready
 
-    // wait current using stage
-    pipe.consumer_wait();
-    block.sync();  // ensure shared memory is ready
+      // start next stage
+      if (row + 1 < block_row_end) {
+        pipe.producer_acquire();
+        cuda::memcpy_async(block,
+                           a_next,
+                           X + (row + 1) * token_length,
+                           cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
+                           pipe);
 
-    // start next stage
-    if (row + 1 < block_row_end) {
-      pipe.producer_acquire();
-      cuda::memcpy_async(block,
-                         a_next,
-                         X + (row + 1) * token_length,
-                         cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
-                         pipe);
-
-      pipe.producer_commit();
+        pipe.producer_commit();
+      }
     }
 
 #pragma unroll
@@ -361,6 +395,14 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
         probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
 
       if constexpr (do_gather) {
+        // Using TMA copy data from SMEM to GMEM
+        if (threadIdx.x == 0) {
+          cuda::device::experimental::cp_async_bulk_shared_to_global(
+              &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
+              a_stage,
+              token_length * sizeof(X_T));
+          cuda::device::experimental::cp_async_bulk_commit_group();
+        }
         // vec copy
         if constexpr (has_scale) {
           // src or dst may be unaligned with 128bits
@@ -373,13 +415,20 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
         //     &X[(int64_t)row * (int64_t)token_length],
         //     &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
         //     token_length);
-        vectorized_memcpy(
-            a_stage,
-            &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
-            token_length);
+        // vectorized_memcpy(
+        //     a_stage,
+        //     &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
+        //     token_length);
       }
     }
-    pipe.consumer_release();
+    if constexpr (do_gather) {
+      // waiting async writing from SMEM to GMEM done
+      if (threadIdx.x == 0) {
+        cuda::device::experimental::cp_async_bulk_wait_group_read<0>();
+      }
+      // release stage
+      pipe.consumer_release();
+    }
   }
 }
 
@@ -407,7 +456,8 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   block.x = 256;
-  int smem = 2 * token_length * sizeof(phi::bfloat16);
+  int smem = 2 * token_length * sizeof(phi::bfloat16) +
+             (sizeof(int) + sizeof(float)) * topk * CUMSUM_BLOCK_SIZE;
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
