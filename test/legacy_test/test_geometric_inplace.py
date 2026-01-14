@@ -141,13 +141,10 @@ class TestGeometricAliasP(unittest.TestCase):
         """
         # Initialize a tensor with zeros
         tensor = paddle.zeros(self.shape, dtype='float32')
-        
         # Use the new alias parameter 'p' instead of 'probs'
         tensor.geometric_(p=0.5)
-        
         # Verify 1: Check shape consistency
         self.assertEqual(tensor.shape, self.shape)
-        
         # Verify 2: Check value validity
         # Geometric distribution values must be integers >= 1.
         # This asserts that the exponential distribution bug is fixed.
@@ -159,7 +156,6 @@ class TestGeometricAliasP(unittest.TestCase):
         To avoid ambiguity, specifying both parameters is prohibited.
         """
         tensor = paddle.zeros(self.shape)
-        
         # Expect TypeError or ValueError when both arguments are provided
         with self.assertRaises((ValueError, TypeError)):
             tensor.geometric_(probs=0.5, p=0.5)
