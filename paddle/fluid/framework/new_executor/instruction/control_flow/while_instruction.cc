@@ -154,9 +154,9 @@ WhileInstruction::WhileInstruction(
 
 void WhileInstruction::ShareInputsToOutputs() {
   for (size_t i = 0; i < outputs_.size(); ++i) {
-    if (inputs_[i]->IsType<phi::DenseTensor>()) {
-      outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          inputs_[i]->Get<phi::DenseTensor>());
+    if (inputs_[i]->IsType<DenseTensor>()) {
+      outputs_[i]->GetMutable<DenseTensor>()->ShareDataWith(
+          inputs_[i]->Get<DenseTensor>());
     } else if (inputs_[i]->IsType<phi::TensorArray>()) {
       const auto& input_array = inputs_[i]->Get<phi::TensorArray>();
       auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
@@ -174,9 +174,9 @@ void WhileInstruction::ShareOutputsToBlockArgs() {
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
 
-    if (outputs_[i]->IsType<phi::DenseTensor>()) {
-      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          outputs_[i]->Get<phi::DenseTensor>());
+    if (outputs_[i]->IsType<DenseTensor>()) {
+      inner_var->GetMutable<DenseTensor>()->ShareDataWith(
+          outputs_[i]->Get<DenseTensor>());
     } else if (outputs_[i]->IsType<phi::TensorArray>()) {
       const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
       auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
@@ -192,8 +192,8 @@ void WhileInstruction::ShareOutputsToBlockArgs() {
 
 void WhileInstruction::ShareConditionData() {
   auto inner_cond_var = body_inter_->local_scope()->GetVar(inner_cond_);
-  cond_var_->GetMutable<phi::DenseTensor>()->ShareDataWith(
-      inner_cond_var->Get<phi::DenseTensor>());
+  cond_var_->GetMutable<DenseTensor>()->ShareDataWith(
+      inner_cond_var->Get<DenseTensor>());
 }
 
 void WhileInstruction::SetOutputHooks(
@@ -228,7 +228,7 @@ void WhileInstruction::Run() {
   }
 
   VLOG(6) << "while instruction start loop ...";
-  while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
+  while (GetCondData(cond_var_->Get<DenseTensor>())) {
     VLOG(6) << "while instruction pass args to body block";
     ShareOutputsToBlockArgs();
     VLOG(6) << "while instruction interpretercore run";

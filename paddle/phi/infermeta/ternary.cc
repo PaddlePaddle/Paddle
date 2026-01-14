@@ -32,10 +32,10 @@ namespace detail {
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = common::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return common::make_ddim({});
+    return make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return common::make_ddim(x_vec);
+  return make_ddim(x_vec);
 }
 }  // namespace detail
 
@@ -1181,7 +1181,7 @@ void GlobalGatherInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument("The input tensor's dimension must be 2. "
                                       "But received input's dimension = %d.",
                                       ndim_input));
-  DDim out_dims = common::make_ddim({-1, -1});
+  DDim out_dims = make_ddim({-1, -1});
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }
@@ -1200,7 +1200,7 @@ void GlobalScatterInferMeta(const MetaTensor& x,
                                       "But received input's dimension = %d.",
                                       ndim_input));
 
-  DDim out_dims = common::make_ddim({-1, -1});
+  DDim out_dims = make_ddim({-1, -1});
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }
@@ -1622,6 +1622,79 @@ void LerpInferMeta(const MetaTensor& x,
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void LinearV2InferMeta(const MetaTensor& input,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  const auto& input_dims = input.dims();
+  const auto& weight_dims = weight.dims();
+  const int64_t weight_ndim = weight.dims().size();
+  const bool is_bias_need_broadcast = bias.numel() == 1;
+  const bool is_valid_bias =
+      is_bias_need_broadcast || bias.numel() == weight.dims()[weight_ndim - 1];
+
+  PADDLE_ENFORCE_EQ(weight_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The Input tensor Y's dimension of FusedGemmEpilogueOp "
+                        " should be 2, but got %d.",
+                        weight_dims.size()));
+  PADDLE_ENFORCE_GE(input_dims.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The Input tensor X's dimension of FusedGemmEpilogueOp "
+                        " should be >= 1, but got %d.",
+                        input_dims.size()));
+  PADDLE_ENFORCE_LE(
+      bias.dims().size(),
+      1,
+      common::errors::InvalidArgument("Bias must be lesser than 1D"));
+
+  PADDLE_ENFORCE_EQ(is_valid_bias,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Bias must be equal (or can be broadcasted) to the "
+                        "last dimension of weight"));
+
+  // regard [k] x [k, n] -> [n]
+  if (input_dims.size() == 1) {
+    out->set_dims(common::make_ddim({weight_dims[1]}));
+    out->set_dtype(input.dtype());
+    return;
+  }
+
+  auto input_mat_dims =
+      common::flatten_to_2d(input_dims, input_dims.size() - 1);
+
+  auto input_rank = input_dims.size();
+  int64_t K_from_input = input_mat_dims[1];
+  int64_t K_from_weight = weight_dims[0];
+  const bool check_dim =
+      (!config.is_runtime && K_from_input != -1) || config.is_runtime;
+  if (check_dim) {
+    PADDLE_ENFORCE_EQ(
+        K_from_input,
+        K_from_weight,
+        common::errors::InvalidArgument(
+            "The last dimension of X should be equal with Y's first dimension."
+            "But received X[-1] = [%d], Y[0] = [%d].",
+            K_from_input,
+            K_from_weight));
+  }
+  std::vector<int64_t> out_dims;
+  out_dims.reserve(input_rank);
+
+  for (int i = 0; i + 2 < input_rank; ++i) {
+    out_dims.push_back(input_dims[i]);
+  }
+  out_dims.push_back(input_dims[input_rank - 2]);
+
+  out_dims.push_back(weight_dims[1]);
+  out->set_dims(common::make_ddim(out_dims));
+  out->set_dtype(input.dtype());
 }
 
 void LinspaceInferMeta(const MetaTensor& start,
@@ -3070,7 +3143,7 @@ void QuantLinearInferMeta(const MetaTensor& x,
           in_mat_dims[1],
           in_mat_dims,
           w_dims0,
-          common::make_ddim({w_dims0, w_dims1})));
+          make_ddim({w_dims0, w_dims1})));
   output_dims.reserve(static_cast<size_t>(in_num_col_dims) +
                       static_cast<size_t>(1));
   for (int i = 0; i < in_num_col_dims; ++i) {

@@ -96,7 +96,7 @@ class XPUContext : public DeviceContext,
   void StreamWaitEvent(XPUEvent event, int s) const;
   void StreamWaitStream(int wait_stream, int record_stream) const;
   int64_t GetStreamNum() const;
-  void AddStashedMemory(int stream, const phi::DenseTensor& tensor);
+  void AddStashedMemory(int stream, const DenseTensor& tensor);
 
   void SetEigenDevice(Eigen::DefaultDevice*);
   void SetEigenDevice(std::function<Eigen::DefaultDevice*()>&&);

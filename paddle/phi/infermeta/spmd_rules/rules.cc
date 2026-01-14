@@ -814,6 +814,10 @@ PD_REGISTER_SPMD_RULE(
     fused_gemm_epilogue,
     PD_INFER_SPMD(phi::distributed::FusedGemmEpilogueInferSpmdBase));
 
+// linear_v2
+PD_REGISTER_SPMD_RULE(linear_v2,
+                      PD_INFER_SPMD(phi::distributed::LinearV2InferSpmdBase));
+
 // take_along_axis
 PD_REGISTER_SPMD_RULE(
     take_along_axis,

@@ -33,7 +33,7 @@ struct CastDataLayout {
                  phi::DenseTensor* out)
       : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
 
-  const phi::DenseTensor in_;
+  const DenseTensor in_;
   phi::DenseTensor* out_;
   const phi::DeviceContext* ctx_;
   const std::vector<int> axis_;

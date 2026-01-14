@@ -296,14 +296,12 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     multihead_op_desc.SetInput("Input_qk", {input0->Name()});
     multihead_op_desc.SetInput("Input_v", {input1->Name()});
 
-    auto* wq_tensor =
-        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wk_tensor =
-        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<DenseTensor>();
+    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<DenseTensor>();
     auto* bq_tensor =
-        scope->FindVar(elementwise0_w->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(elementwise0_w->Name())->GetMutable<DenseTensor>();
     auto* bk_tensor =
-        scope->FindVar(elementwise1_w->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(elementwise1_w->Name())->GetMutable<DenseTensor>();
 
     int64_t hidden_out = wq_tensor->dims()[1];
     int64_t head_size = hidden_out / head_number;
@@ -331,7 +329,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     combined_w_qk_desc->SetShape(
         {wq_tensor->dims()[0], 2, wq_tensor->dims()[1]});
     combined_w_qk_desc->SetPersistable(true);
-    phi::DenseTensor tmp_combined_w_qk_tensor;
+    DenseTensor tmp_combined_w_qk_tensor;
     tmp_combined_w_qk_tensor.Resize(combined_w_qk_dims);
     float* tmp_combined_w_qk_data =
         dev_ctx->template HostAlloc<float>(&tmp_combined_w_qk_tensor);
@@ -363,7 +361,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     combined_bias_desc->SetShape({2, bq_tensor->dims()[0]});
     combined_bias_desc->SetPersistable(true);
 
-    phi::DenseTensor tmp_combined_bias_tensor;
+    DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     float* tmp_combined_bias_data =
         dev_ctx->template HostAlloc<float>(&tmp_combined_bias_tensor);

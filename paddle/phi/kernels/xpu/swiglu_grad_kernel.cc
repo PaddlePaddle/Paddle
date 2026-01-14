@@ -55,7 +55,7 @@ void SwiGluGradKernel(const Context& dev_ctx,
   auto* dx_data = dev_ctx.template Alloc<T>(dx);
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
-  auto dims_vec = common::vectorize<int64_t>(dims);
+  auto dims_vec = vectorize<int64_t>(dims);
   const XPUType* y_ptr = nullptr;
   XPUType* dy_ptr = nullptr;
 
