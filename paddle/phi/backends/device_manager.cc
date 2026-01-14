@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/custom/cuda_graph.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 
@@ -951,6 +952,7 @@ void DeviceManager::Release() {
   stream::Stream::ReleaseAll();
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::distributed::XCCLCommContext::ReleaseAll();
+  phi::backends::gpu::CUDAGraph::ReleaseAll();
 #endif
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();

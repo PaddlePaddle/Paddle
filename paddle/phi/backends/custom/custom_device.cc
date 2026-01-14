@@ -1228,6 +1228,7 @@ class CustomDevice : public DeviceInterface {
   void CudaThreadExchangeStreamCaptureMode(graph::streamCaptureMode* mode) {
     if (pimpl_->cuda_thread_exchange_stream_capthure_mode) {
       C_StreamCaptureMode c_mode = C_StreamCaptureModeGlobal;
+      ConvertEnum(mode, &c_mode);
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->cuda_thread_exchange_stream_capthure_mode(&c_mode));
       ConvertEnum(&c_mode, mode);

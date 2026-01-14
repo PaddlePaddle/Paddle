@@ -24,6 +24,29 @@ std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
 std::vector<std::function<void()>> CUDAGraph::cudagraph_pre_capture_callbacks_;
 
+std::vector<CUDAGraph *> g_cuda_graph;
+std::mutex g_cuda_graph_mutex;
+static void RegisterCudaGraph(CUDAGraph *g) {
+  std::lock_guard<std::mutex> lk(g_cuda_graph_mutex);
+  g_cuda_graph.push_back(g);
+}
+
+static void UnregisterCudaGraph(CUDAGraph *g) {
+  std::lock_guard<std::mutex> lk(g_cuda_graph_mutex);
+  auto it = std::remove(g_cuda_graph.begin(), g_cuda_graph.end(), g);
+  g_cuda_graph.erase(it, g_cuda_graph.end());
+}
+
+CUDAGraph::CUDAGraph() {
+  id_ = UniqueID();
+  RegisterCudaGraph(this);
+}
+
+CUDAGraph::~CUDAGraph() {
+  Reset();
+  UnregisterCudaGraph(this);
+}
+
 void CUDAGraph::Reset() {
   if (is_reset_) return;
   for (auto graph : graphs_) {
@@ -175,6 +198,13 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   EndSegmentCapture();
   capturing_thread_id_ = paddle::none;
   return std::move(capturing_graph_);
+}
+
+void CUDAGraph::ReleaseAll() {
+  std::unique_lock lock(g_cuda_graph_mutex);
+  for (auto graph : g_cuda_graph) {
+    if (graph) graph->Reset();
+  }
 }
 
 bool CUDAGraph::IsValidCapturing() {

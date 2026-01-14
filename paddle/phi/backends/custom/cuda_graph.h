@@ -189,13 +189,13 @@ class CUDAGraph {
   // Since the constructor would throw error is CUDA_VERSION < 10010.
   // The non-static method of CUDAGraph need not check CUDA_VERSION
   // again.
-  CUDAGraph() { id_ = UniqueID(); }
+  CUDAGraph();
 
  public:
   static constexpr int64_t kDefaultPoolID = 0;
   static constexpr int64_t kInvalidPoolID = -1;
 
-  ~CUDAGraph() { Reset(); }
+  ~CUDAGraph();
 
   CUDAGraphID ID() const { return id_; }
 
@@ -212,6 +212,7 @@ class CUDAGraph {
                            graph::streamCaptureMode mode);
 
   static std::unique_ptr<CUDAGraph> EndCapture();
+  static void ReleaseAll();
 
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
 
