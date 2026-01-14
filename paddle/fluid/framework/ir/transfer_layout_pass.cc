@@ -156,7 +156,7 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
     // fused_conv2d_add_act not run at nhwc.
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
-      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      const auto &filter_tensor = filter_var->Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(
           filter_tensor.dims().size(),
           4UL,
@@ -259,11 +259,11 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
       auto filter_names = op_desc->Input("Filter");
       for (const auto &filter_name : filter_names) {
         auto *filter_var = scope->FindLocalVar(filter_name);
-        auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+        auto *filter_tensor = filter_var->GetMutable<DenseTensor>();
         if (filter_tensor->layout() == phi::DataLayout::NHWC) {
           continue;
         }
-        phi::DenseTensor temp_tensor;
+        DenseTensor temp_tensor;
 
         framework::TransDataLayout(phi::DataLayout::NCHW,
                                    phi::DataLayout::NHWC,

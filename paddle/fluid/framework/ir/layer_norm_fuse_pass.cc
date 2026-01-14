@@ -265,8 +265,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(shift, shift, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(shift_out, shift_out, layer_norm_pattern);
 
-    auto* eps_tensor =
-        scope->FindVar(eps->Name())->GetMutable<phi::DenseTensor>();
+    auto* eps_tensor = scope->FindVar(eps->Name())->GetMutable<DenseTensor>();
     const auto& x_shape = x->Var()->GetShape();
 
     // ------------------ subgraph node's validation ---------------------------
@@ -337,7 +336,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto layer_norm_x_mat_dims =
         common::flatten_to_2d(common::make_ddim(x_shape), begin_norm_axis);
     auto* gamma_tensor =
-        scope->FindVar(gamma->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(gamma->Name())->GetMutable<DenseTensor>();
     VarDesc new_gamma_desc(patterns::PDNodeName("layer_norm_fuse", "Scale"));
     new_gamma_desc.SetShape({layer_norm_x_mat_dims[1]});
     new_gamma_desc.SetDataType(
@@ -346,14 +345,13 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     new_gamma_desc.SetPersistable(true);
     auto* new_gamma_node = g->CreateVarNode(&new_gamma_desc);
     auto* new_gamma_tensor =
-        scope->Var(new_gamma_node->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(new_gamma_node->Name())->GetMutable<DenseTensor>();
     new_gamma_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_gamma_tensor->mutable_data<float>(CPUPlace()),
            gamma_tensor->mutable_data<float>(CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
 
-    auto* beta_tensor =
-        scope->FindVar(beta->Name())->GetMutable<phi::DenseTensor>();
+    auto* beta_tensor = scope->FindVar(beta->Name())->GetMutable<DenseTensor>();
     VarDesc new_beta_desc(patterns::PDNodeName("layer_norm_fuse", "Bias"));
     new_beta_desc.SetShape({layer_norm_x_mat_dims[1]});
     new_beta_desc.SetDataType(
@@ -362,7 +360,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     new_beta_desc.SetPersistable(true);
     auto* new_beta_node = g->CreateVarNode(&new_beta_desc);
     auto* new_beta_tensor =
-        scope->Var(new_beta_node->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(new_beta_node->Name())->GetMutable<DenseTensor>();
 
     new_beta_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_beta_tensor->mutable_data<float>(CPUPlace()),

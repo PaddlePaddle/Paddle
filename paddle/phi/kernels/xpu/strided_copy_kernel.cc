@@ -77,10 +77,10 @@ void StridedCopyKernel(const Context& dev_ctx,
                                    input_data,
                                    output_data,
                                    data_size,
-                                   common::vectorize<int64_t>(input.dims()),
-                                   common::vectorize<int64_t>(out->dims()),
-                                   common::vectorize<int64_t>(input.strides()),
-                                   common::vectorize<int64_t>(out->strides()));
+                                   vectorize<int64_t>(input.dims()),
+                                   vectorize<int64_t>(out->dims()),
+                                   vectorize<int64_t>(input.strides()),
+                                   vectorize<int64_t>(out->strides()));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");
   }
 }

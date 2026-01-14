@@ -170,7 +170,7 @@ void CreateInferMeta(const IntArray& shape,
               "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,
               data[i],
-              common::make_ddim(data)));
+              make_ddim(data)));
     }
   }
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
@@ -187,7 +187,7 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
                          DataLayout layout,
                          MetaTensor* out) {
-  auto out_dims = common::make_ddim(shape);
+  auto out_dims = make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(layout);
@@ -197,7 +197,7 @@ void DataInferMeta(const std::string& name,
                    const phi::IntArray& shape,
                    DataType data_type,
                    MetaTensor* out) {
-  auto out_dims = common::make_ddim(shape.GetData());
+  auto out_dims = make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(data_type);
 }
@@ -230,7 +230,7 @@ void GaussianInferMeta(const IntArray& shape,
                        int seed,
                        DataType dtype,
                        MetaTensor* out) {
-  auto out_dims = common::make_ddim(shape.GetData());
+  auto out_dims = make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
@@ -273,7 +273,7 @@ void PartialRecvInferMeta(int peer,
                           i,
                           out_shape[i]));
   }
-  auto out_dims = common::make_ddim(out_shape);
+  auto out_dims = make_ddim(out_shape);
   int64_t numel = common::product(out_dims);
   PADDLE_ENFORCE_EQ(
       (numel % num),
@@ -295,7 +295,7 @@ void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
                             MetaTensor* out) {
-  auto out_dims = common::make_ddim(shape.GetData());
+  auto out_dims = make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
@@ -457,7 +457,7 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float b,
                                       DataType dtype,
                                       MetaTensor* out) {
-  auto out_dims = common::make_ddim(shape);
+  auto out_dims = make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);
@@ -482,7 +482,7 @@ void TrilIndicesInferMeta(
     tril_size += diff_row * cols;
   }
   std::vector<int64_t> tmp = {2, tril_size};
-  auto out_dims = common::make_ddim(tmp);
+  auto out_dims = make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
@@ -511,7 +511,7 @@ void TriuIndicesInferMeta(
     tril_size += diff_row * col;
   }
   std::vector<int64_t> tmp = {2, row * col - tril_size};
-  auto out_dims = common::make_ddim(tmp);
+  auto out_dims = make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }

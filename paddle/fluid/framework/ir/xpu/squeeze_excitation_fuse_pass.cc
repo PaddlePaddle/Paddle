@@ -296,13 +296,12 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     }
     // filter
     auto mul_1_w_name = mul_1_w->Name();
-    auto* mul_1_w_t =
-        scope->FindVar(mul_1_w_name)->GetMutable<phi::DenseTensor>();
+    auto* mul_1_w_t = scope->FindVar(mul_1_w_name)->GetMutable<DenseTensor>();
     auto mul_1_w_dims = mul_1_w_t->dims();
     auto mul_1_w_len = mul_1_w_t->numel();
     int16_t* mul_1_w_ptr = mul_1_w_t->data<int16_t>();
     auto* mul_2_w_t =
-        scope->FindVar(mul_2_w->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(mul_2_w->Name())->GetMutable<DenseTensor>();
     auto mul_2_w_dims = mul_2_w_t->dims();
     auto mul_2_w_len = mul_2_w_t->numel();
     int16_t* mul_2_w_ptr = mul_2_w_t->data<int16_t>();
@@ -351,7 +350,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     block_dst_desc->SetShape(dst_desc.GetShape());
     block_dst_desc->SetDataType(dst_desc.GetDataType());
 
-    phi::DenseTensor new_filter_t;
+    DenseTensor new_filter_t;
     new_filter_t.Resize(DDim({mul_1_w_len + mul_2_w_len}));
     new_filter_t.set_type(phi::DataType::INT16);
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
@@ -363,7 +362,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
            (mul_1_w_len + mul_2_w_len) * sizeof(int16_t));
 
     Assign(new_filter_t,
-           scope->Var(new_filter_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(new_filter_name)->GetMutable<DenseTensor>());
     fused_op_desc.SetInput("filter", {new_filter_name});
 
     // filter max
@@ -375,9 +374,9 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     auto mul_1_w_max_name = mul_1_w_max->Name();
     auto mul_2_w_max_name = mul_2_w_max->Name();
     auto* mul_1_w_max_t =
-        scope->FindVar(mul_1_w_max_name)->GetMutable<phi::DenseTensor>();
+        scope->FindVar(mul_1_w_max_name)->GetMutable<DenseTensor>();
     auto* mul_2_w_max_t =
-        scope->FindVar(mul_2_w_max_name)->GetMutable<phi::DenseTensor>();
+        scope->FindVar(mul_2_w_max_name)->GetMutable<DenseTensor>();
 
     float* mul_1_w_max_ptr = mul_1_w_max_t->data<float>();
     float* mul_2_w_max_ptr = mul_2_w_max_t->data<float>();
@@ -401,7 +400,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
     block_filter_max_desc->SetShape(filter_max_desc.GetShape());
     block_filter_max_desc->SetDataType(filter_max_desc.GetDataType());
 
-    phi::DenseTensor new_filter_max_t;
+    DenseTensor new_filter_max_t;
     new_filter_max_t.Resize(DDim({filter_max_size}));
     new_filter_max_t.set_type(phi::DataType::FLOAT32);
     auto* new_filter_max_data = cpu_ctx->Alloc<float>(&new_filter_max_t);
@@ -411,7 +410,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
            (filter_max_size) * sizeof(float));
 
     Assign(new_filter_max_t,
-           scope->Var(new_filter_max_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(new_filter_max_name)->GetMutable<DenseTensor>());
 
     fused_op_desc.SetInput("filter_max", {new_filter_max_name});
 
@@ -425,9 +424,9 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
       auto mul_1_bias_name = mul_1_bias->Name();
       auto mul_2_bias_name = mul_2_bias->Name();
       auto* mul_1_bias_t =
-          scope->FindVar(mul_1_bias_name)->GetMutable<phi::DenseTensor>();
+          scope->FindVar(mul_1_bias_name)->GetMutable<DenseTensor>();
       auto* mul_2_bias_t =
-          scope->FindVar(mul_2_bias_name)->GetMutable<phi::DenseTensor>();
+          scope->FindVar(mul_2_bias_name)->GetMutable<DenseTensor>();
       int64_t mul_1_bias_numel = mul_1_bias_t->numel();
       int64_t mul_2_bias_numel = mul_2_bias_t->numel();
 
@@ -448,7 +447,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
       block_new_bias_dst_desc->SetShape(new_bias_desc.GetShape());
       block_new_bias_dst_desc->SetDataType(new_bias_desc.GetDataType());
 
-      phi::DenseTensor new_bias_t;
+      DenseTensor new_bias_t;
       new_bias_t.Resize(DDim({mul_1_bias_numel + mul_2_bias_numel}));
       new_bias_t.set_type(phi::DataType::FLOAT32);
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
@@ -458,8 +457,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
       memcpy(new_bias_data,
              encode_bias.data(),
              (mul_1_bias_numel + mul_2_bias_numel) * sizeof(float));
-      Assign(new_bias_t,
-             scope->Var(new_bias_name)->GetMutable<phi::DenseTensor>());
+      Assign(new_bias_t, scope->Var(new_bias_name)->GetMutable<DenseTensor>());
       fused_op_desc.SetInput("bias", {new_bias_name});
     }
     fused_op_desc.SetAttr("has_bias", with_bias);

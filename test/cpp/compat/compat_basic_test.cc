@@ -17,6 +17,7 @@
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
+#include <c10/core/Layout.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
@@ -339,4 +340,49 @@ TEST(TestTensorOperators, SubScriptOperator) {
   for (int i = 0; i < N * K; ++i) {
     ASSERT_EQ(tensor_2.data_ptr<float>()[i], static_cast<float>(i + offset));
   }
+}
+
+TEST(TensorBaseTest, LayoutAPI) {
+  // Test layout() API for strided tensors
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  // Default tensor should have Strided layout
+  ASSERT_EQ(tensor.layout(), c10::kStrided);
+
+  // Test layout output stream operator
+  std::ostringstream oss;
+  oss << tensor.layout();
+  ASSERT_EQ(oss.str(), "Strided");
+}
+
+TEST(TensorBaseTest, ResetAPI) {
+  // Test reset() API
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  // Verify tensor is defined before reset
+  ASSERT_TRUE(tensor.defined());
+  ASSERT_NE(tensor.data_ptr(), nullptr);
+  ASSERT_EQ(tensor.numel(), 6);
+
+  // Call reset()
+  tensor.reset();
+
+  // Verify tensor is no longer defined after reset
+  ASSERT_FALSE(tensor.defined());
+
+  // Test reset on already undefined tensor (should not crash)
+  at::TensorBase empty_tensor;
+  ASSERT_FALSE(empty_tensor.defined());
+  empty_tensor.reset();
+  ASSERT_FALSE(empty_tensor.defined());
+
+  // Test reset on tensor after assignment
+  at::TensorBase tensor2 = at::ones({3, 4}, at::kDouble);
+  at::TensorBase tensor3 = tensor2;
+  ASSERT_TRUE(tensor2.defined());
+  ASSERT_TRUE(tensor3.defined());
+
+  tensor2.reset();
+  ASSERT_FALSE(tensor2.defined());
+  ASSERT_TRUE(tensor3.defined());  // tensor3 should still be valid
 }

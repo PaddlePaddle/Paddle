@@ -282,12 +282,10 @@ void KronGradKernel(const Context &dev_ctx,
                     DenseTensor *y_grad) {
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     return;
   }

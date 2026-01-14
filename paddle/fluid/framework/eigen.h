@@ -111,7 +111,7 @@ template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
-  // Flatten reshapes a phi::DenseTensor into an EigenVector.
+  // Flatten reshapes a DenseTensor into an EigenVector.
   static typename EigenVector::Type Flatten(
       phi::DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
@@ -142,7 +142,7 @@ struct EigenScalar {
   }
 };
 
-// Define phi::DenseTensor with 32-bit index.
+// Define DenseTensor with 32-bit index.
 template <typename T, int D, int MajorType = Eigen::RowMajor>
 using Tensor32BitIndex =
     Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, int>, Eigen::Aligned>;

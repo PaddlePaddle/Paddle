@@ -398,7 +398,7 @@ void OneBeamSizeFusePass::RemoveBeamSearchAssociatedOps(
     block_not_equal_y_desc->SetShape(not_equal_y_desc.GetShape());
     block_not_equal_y_desc->SetDataType(not_equal_y_desc.GetDataType());
     auto* not_equal_y_tensor =
-        scope->Var(not_equal_y_name)->GetMutable<phi::DenseTensor>();
+        scope->Var(not_equal_y_name)->GetMutable<DenseTensor>();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
     not_equal_y_tensor->Resize({1});
@@ -410,7 +410,7 @@ void OneBeamSizeFusePass::RemoveBeamSearchAssociatedOps(
     // cast_out is 0
     cast_out->Var()->SetPersistable(true);
     auto* cast_out_tensor =
-        scope->Var(cast_out->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(cast_out->Name())->GetMutable<DenseTensor>();
     cast_out_tensor->Resize({1});
     cast_out_tensor->set_type(phi::DataType::INT64);
     auto* cast_out_data = cpu_ctx->Alloc<int64_t>(cast_out_tensor);
@@ -481,9 +481,9 @@ void OneBeamSizeFusePass::RemoveWriteReadArrayOps(ir::Graph* graph) const {
     auto* read_out = read_from_array->outputs[0];
     read_out->Var()->SetPersistable(true);
     auto* write_x_tensor =
-        scope->Var(write_x->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(write_x->Name())->GetMutable<DenseTensor>();
     auto* read_out_tensor =
-        scope->Var(read_out->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(read_out->Name())->GetMutable<DenseTensor>();
     Assign(*write_x_tensor, read_out_tensor);
 
     std::unordered_set<const Node*> delete_nodes{
@@ -543,7 +543,7 @@ void OneBeamSizeFusePass::RemoveGatherOps(ir::Graph* graph) const {
 
     // gather_i should be 0
     auto* gather_i_tensor =
-        scope->Var(gather_i->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(gather_i->Name())->GetMutable<DenseTensor>();
     auto gather_i_dims = gather_i_tensor->dims();
     if (gather_i_dims.size() != 1 || gather_i_dims[0] != 1) return;
     if (gather_i_tensor->dtype() == phi::DataType::INT32) {

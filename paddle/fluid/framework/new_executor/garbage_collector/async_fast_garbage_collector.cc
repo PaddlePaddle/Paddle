@@ -90,8 +90,8 @@ void FreeVariable(Variable* var) {
     return;
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    Garbage garbage = var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
+  if (var->IsType<DenseTensor>()) {
+    Garbage garbage = var->GetMutable<DenseTensor>()->MoveMemoryHolder();
   } else if (
       var->IsType<
           operators::reader::
