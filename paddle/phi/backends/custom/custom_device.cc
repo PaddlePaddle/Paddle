@@ -34,20 +34,19 @@ static void ConvertEnum(const void* in, void* out) {
   *reinterpret_cast<int*>(out) = value;
 }
 
+namespace phi {
+
 inline void ConvertCToCpp(C_GraphHookManager* c_mgr,
-                          phi::graph::GraphHookManager* cpp_mgr) {
+                          graph::GraphHookManager* cpp_mgr) {
   for (size_t i = 0; i < c_mgr->size; i++) {
     auto fn_c = c_mgr->hooks[i];
     void* userdata = c_mgr->user_data[i];
 
-    cpp_mgr->hooks.emplace_back(
-        ([fn_c, userdata](phi::graph::CUDAGraphExec_t exec) {
-          fn_c(reinterpret_cast<C_GraphExec>(exec), userdata);
-        }));
+    cpp_mgr->hooks.emplace_back(([fn_c, userdata](graph::CUDAGraphExec_t exec) {
+      fn_c(reinterpret_cast<C_GraphExec>(exec), userdata);
+    }));
   }
 }
-
-namespace phi {
 
 #define INTERFACE_UNIMPLEMENT                 \
   PADDLE_THROW(common::errors::Unimplemented( \
@@ -677,7 +676,7 @@ class CustomDevice : public DeviceInterface {
   }
 
   void* InitEigenDevice(const Place& place,
-                        phi::stream::stream_t stream,
+                        stream::stream_t stream,
                         phi::Allocator* allocator) override {
     void* eigen_device = nullptr;
     Place place_t = place;
@@ -970,8 +969,8 @@ class CustomDevice : public DeviceInterface {
                                 reinterpret_cast<C_Stream>(stream)));
         }
       }
-      const phi::stream::Stream stream_wrapper(
-          Place(AllocationType::CUSTOM, Type()), stream);
+      const stream::Stream stream_wrapper(Place(AllocationType::CUSTOM, Type()),
+                                          stream);
 
       int current_device_id = GetDevice();
       MemoryCopyD2D(current_device_id,
@@ -1061,7 +1060,7 @@ class CustomDevice : public DeviceInterface {
 
   void InitBlasHandle(size_t dev_id,
                       void** blas_handle,
-                      phi::stream::stream_t stream) override {
+                      stream::stream_t stream) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->init_blas_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(

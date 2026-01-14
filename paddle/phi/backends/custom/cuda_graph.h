@@ -105,7 +105,7 @@ class gpuKernelParams {
  private:
   void **kernelParams;
 };
-using GraphExecuterSetter_t = std::function<void(phi::graph::CUDAGraphExec_t)>;
+using GraphExecuterSetter_t = std::function<void(graph::CUDAGraphExec_t)>;
 
 //  ** class CUDAGraphNodeLauncher
 //
@@ -157,7 +157,7 @@ class CUDAGraphNodeLauncher {
                         gpuKernelCallback_t cudakernelCallback);
 
   std::vector<GraphExecuterSetter_t> GetParameterSettersForExecGraph(
-      const Place &place, phi::graph::CUDAGraph_t graph);
+      const Place &place, graph::CUDAGraph_t graph);
 
   parameterSetter_t GetParameterSetter(const gpuKernelParams &params);
 
@@ -207,9 +207,9 @@ class CUDAGraph {
 
   static void EndSegmentCapture();
 
-  static void BeginCapture(phi::CustomPlace place,
-                           phi::stream::stream_t stream,
-                           phi::graph::streamCaptureMode mode);
+  static void BeginCapture(CustomPlace place,
+                           stream::stream_t stream,
+                           graph::streamCaptureMode mode);
 
   static std::unique_ptr<CUDAGraph> EndCapture();
 
@@ -256,11 +256,11 @@ class CUDAGraph {
 
   bool IsReplayed() const { return is_replayed_; }
 
-  void AddJoiningStream(phi::stream::stream_t stream) {
+  void AddJoiningStream(stream::stream_t stream) {
     streams_to_join_.insert(stream);
   }
 
-  static void AddJoiningStreamDuringCapturing(phi::stream::stream_t stream) {
+  static void AddJoiningStreamDuringCapturing(stream::stream_t stream) {
     capturing_graph_->AddJoiningStream(stream);
   }
 
@@ -280,7 +280,7 @@ class CUDAGraph {
 
   static CUDAGraphID CapturingID() { return capturing_graph_->id_; }
 
-  static phi::CustomPlace CapturingPlace() { return capturing_graph_->place_; }
+  static CustomPlace CapturingPlace() { return capturing_graph_->place_; }
 
   // This API can be used to debug which GPU operation is not
   // supported during capturing CUDA Graph.
@@ -289,7 +289,7 @@ class CUDAGraph {
   static bool IsThreadLocalCapturing() {
     return IsCapturing() &&
            capturing_graph_->capture_mode_ ==
-               phi::graph::streamCaptureMode::StreamCaptureModeThreadLocal;
+               graph::streamCaptureMode::StreamCaptureModeThreadLocal;
   }
 
   static bool IsThisThreadCapturing() {
@@ -314,18 +314,18 @@ class CUDAGraph {
   }
 
  private:
-  std::vector<phi::graph::CUDAGraph_t> graphs_;
-  std::vector<phi::graph::CUDAGraphExec_t> exec_graphs_;
-  phi::graph::streamCaptureMode capture_mode_;
-  phi::stream::stream_t stream_{nullptr};
-  phi::CustomPlace place_;
+  std::vector<graph::CUDAGraph_t> graphs_;
+  std::vector<graph::CUDAGraphExec_t> exec_graphs_;
+  graph::streamCaptureMode capture_mode_;
+  stream::stream_t stream_{nullptr};
+  CustomPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
   bool is_reset_{false};
   bool is_replayed_{false};
   std::mutex mtx_;
 
-  std::unordered_set<phi::stream::stream_t> streams_to_join_;
+  std::unordered_set<stream::stream_t> streams_to_join_;
 
   // Holds callbacks that are triggered after the CUDA graph is reset. These
   // callbacks are used for operations that need to be performed following the
@@ -362,15 +362,15 @@ class CUDAGraphCaptureModeGuard {
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      phi::graph::streamCaptureMode mode =
-          phi::graph::streamCaptureMode::StreamCaptureModeRelaxed) {
+      graph::streamCaptureMode mode =
+          graph::streamCaptureMode::StreamCaptureModeRelaxed) {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
-      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+      auto device_types = DeviceManager::GetAllCustomDeviceTypes();
       for (auto &dev_type : device_types) {
-        place_ = phi::CustomPlace(dev_type);
+        place_ = CustomPlace(dev_type);
         break;
       }
-      phi::DeviceManager::CudaThreadExchangeStreamCaptureMode(place_, &mode);
+      DeviceManager::CudaThreadExchangeStreamCaptureMode(place_, &mode);
       // After cudaThreadExchangeStreamCaptureMode is called,
       // the variable "mode" would be set to the old capturing mode.
       old_mode_ = mode;
@@ -379,14 +379,13 @@ class CUDAGraphCaptureModeGuard {
 
   ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
-      phi::DeviceManager::CudaThreadExchangeStreamCaptureMode(place_,
-                                                              &old_mode_);
+      DeviceManager::CudaThreadExchangeStreamCaptureMode(place_, &old_mode_);
     }
   }
 
  private:
-  phi::graph::streamCaptureMode old_mode_;
-  phi::CustomPlace place_;
+  graph::streamCaptureMode old_mode_;
+  CustomPlace place_;
 };
 
 }  // namespace gpu
