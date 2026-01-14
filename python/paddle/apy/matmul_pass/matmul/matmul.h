@@ -15,11 +15,10 @@
 #pragma once
 
 #ifdef __HIPCC__
-#include "ck_matmul.h"
+#include "ck_patch/ck_matmul.h"
 #endif
 
 #ifdef __NVCC__
-#include "cutlass_matmul.cuh"
-#include "math_function.h"
+#include "cutlass_patch/cutlass_matmul.cuh"
 #endif
 

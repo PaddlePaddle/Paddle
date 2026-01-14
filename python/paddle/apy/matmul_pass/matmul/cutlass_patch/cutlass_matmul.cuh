@@ -31,6 +31,7 @@
 #include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
+#include "cutlass_patch/math_function.h"
 #include "cutlass_patch/batched_matrix_coord.h"
 #include "cutlass_patch/all_tuning_configs.h"
 #include "cutlass_patch/check.h"
