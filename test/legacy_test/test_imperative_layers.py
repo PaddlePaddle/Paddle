@@ -55,7 +55,7 @@ class TestLayerPrint(unittest.TestCase):
         )
 
         module = nn.ReLU()
-        self.assertEqual(str(module), 'ReLU()')
+        self.assertEqual(str(module), 'ReLU(inplace=False)')
 
         module = nn.ReLU6()
         self.assertEqual(str(module), 'ReLU6()')
@@ -67,7 +67,9 @@ class TestLayerPrint(unittest.TestCase):
         )
 
         module = nn.LeakyReLU()
-        self.assertEqual(str(module), 'LeakyReLU(negative_slope=0.01)')
+        self.assertEqual(
+            str(module), 'LeakyReLU(negative_slope=0.01, inplace=False)'
+        )
 
         module = nn.Sigmoid()
         self.assertEqual(str(module), 'Sigmoid()')
@@ -383,9 +385,9 @@ class TestLayerPrint(unittest.TestCase):
             str(module1),
             'Sequential(\n  '
             '(conv1): Conv2D(1, 20, kernel_size=[5, 5], data_format=NCHW)\n  '
-            '(relu1): ReLU()\n  '
+            '(relu1): ReLU(inplace=False)\n  '
             '(conv2): Conv2D(20, 64, kernel_size=[5, 5], data_format=NCHW)\n  '
-            '(relu2): ReLU()\n)',
+            '(relu2): ReLU(inplace=False)\n)',
         )
 
         module2 = nn.Sequential(
@@ -403,8 +405,8 @@ class TestLayerPrint(unittest.TestCase):
             '(0): Conv3DTranspose(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)\n  '
             '(1): AvgPool3D(kernel_size=2, stride=2, padding=0)\n  '
             '(2): Tanh(name=Tanh)\n  '
-            '(3): Sequential(\n    (conv1): Conv2D(1, 20, kernel_size=[5, 5], data_format=NCHW)\n    (relu1): ReLU()\n'
-            '    (conv2): Conv2D(20, 64, kernel_size=[5, 5], data_format=NCHW)\n    (relu2): ReLU()\n  )\n  '
+            '(3): Sequential(\n    (conv1): Conv2D(1, 20, kernel_size=[5, 5], data_format=NCHW)\n    (relu1): ReLU(inplace=False)\n'
+            '    (conv2): Conv2D(20, 64, kernel_size=[5, 5], data_format=NCHW)\n    (relu2): ReLU(inplace=False)\n  )\n  '
             '(4): Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)\n  '
             '(5): MaxPool3D(kernel_size=2, stride=2, padding=0)\n  '
             '(6): GELU(approximate=True)\n)',
