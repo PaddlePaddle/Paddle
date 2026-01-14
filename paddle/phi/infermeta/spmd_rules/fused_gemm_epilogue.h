@@ -19,6 +19,19 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
+void FillMatmulPartOperandNotation(const int x_ndim,
+                                   const int y_ndim,
+                                   std::string* x_axes,
+                                   std::string* y_axes,
+                                   std::string* out_axes);
+TensorDistAttr GetMatmulPartInferredDistAttr(
+    const TensorDistAttr& origin_dist_attr,
+    const std::vector<int64_t>& shape,
+    const std::string& tensor_axis,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    bool trans_axis);
+void SetTensorDistAttrReplicated(TensorDistAttr* dist_attr, const int ndim);
+
 SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
                                         const DistMetaTensor& y,
                                         const DistMetaTensor& bias,

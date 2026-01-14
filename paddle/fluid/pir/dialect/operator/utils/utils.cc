@@ -524,8 +524,8 @@ const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap() {
 
 const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
   static std::unordered_map<std::string, phi::Place> place_map{
-      {"cpu", phi::CPUPlace{}},
-      {"gpu", phi::GPUPlace{}},
+      {"cpu", CPUPlace{}},
+      {"gpu", GPUPlace{}},
       {"gpu_pinned", phi::GPUPinnedPlace{}},
       {"xpu", phi::XPUPlace{}},
       {"xpu_pinned", phi::XPUPinnedPlace{}},
@@ -538,8 +538,8 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
 const std::unordered_map<std::string, phi::DataLayout>&
 StringToDataLayoutMap() {
   static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
-      {"NHWC", phi::DataLayout::kNHWC},
-      {"NCHW", phi::DataLayout::kNCHW},
+      {"NHWC", phi::DataLayout::NHWC},
+      {"NCHW", phi::DataLayout::NCHW},
       {"Undefined", phi::DataLayout::kAnyLayout},
       {"ONEDNN", phi::DataLayout::ONEDNN},
       {"SPARSE_COO", phi::DataLayout::SPARSE_COO},

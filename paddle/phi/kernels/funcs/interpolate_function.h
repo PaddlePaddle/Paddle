@@ -52,12 +52,12 @@ inline T AreaPixelComputeScale(int64_t input_size,
 template <typename T>
 HOSTDEVICE inline T AreaPixelComputeSourceIndex(T scale,
                                                 int64_t dst_index,
-                                                bool align_corners,
-                                                T align_type_value = 0.5) {
+                                                bool align_corners) {
   if (align_corners) {
     return scale * dst_index;
   } else {
-    return scale * (dst_index + align_type_value) - align_type_value;
+    T src_idx = scale * (dst_index + T(0.5)) - T(0.5);
+    return src_idx;
   }
 }
 
@@ -129,48 +129,48 @@ inline std::vector<int> get_new_shape(
                           tensor->dims()));
     if (tensor->dtype() == phi::DataType::INT64) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      if (tensor->place().GetType() == phi::AllocationType::CUSTOM) {
+      if (tensor->place().GetType() == AllocationType::CUSTOM) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int64_t>()));
         continue;
       }
 #endif
 #ifdef PADDLE_WITH_XPU
-      if (tensor->place().GetType() == phi::AllocationType::XPU) {
+      if (tensor->place().GetType() == AllocationType::XPU) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int64_t>()));
         continue;
       }
 #endif
-      if (tensor->place().GetType() == phi::AllocationType::GPU) {
+      if (tensor->place().GetType() == AllocationType::GPU) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int64_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int64_t>()));
       }
     } else if (tensor->dtype() == phi::DataType::INT32) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      if (tensor->place().GetType() == phi::AllocationType::CUSTOM) {
+      if (tensor->place().GetType() == AllocationType::CUSTOM) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
         continue;
       }
 #endif
 #ifdef PADDLE_WITH_XPU
-      if (tensor->place().GetType() == phi::AllocationType::XPU) {
+      if (tensor->place().GetType() == AllocationType::XPU) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
         continue;
       }
 #endif
-      if (tensor->place().GetType() == phi::AllocationType::GPU) {
+      if (tensor->place().GetType() == AllocationType::GPU) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -189,22 +189,19 @@ inline std::vector<T> get_new_data_from_tensor(
   DenseTensor cpu_starts_tensor;
   auto& pool = phi::DeviceContextPool::Instance();
   phi::DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
-  if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
-    phi::Copy(
-        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
+  if (new_data_tensor->place().GetType() == AllocationType::GPU) {
+    phi::Copy(*dev_ctx, *new_data_tensor, CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (new_data_tensor->place().GetType() == phi::AllocationType::CUSTOM) {
-    phi::Copy(
-        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
+  if (new_data_tensor->place().GetType() == AllocationType::CUSTOM) {
+    phi::Copy(*dev_ctx, *new_data_tensor, CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (new_data_tensor->place().GetType() == phi::AllocationType::XPU) {
-    phi::Copy(
-        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
+  if (new_data_tensor->place().GetType() == AllocationType::XPU) {
+    phi::Copy(*dev_ctx, *new_data_tensor, CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif

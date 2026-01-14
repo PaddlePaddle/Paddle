@@ -27,7 +27,7 @@ using Array1 = Eigen::DSizes<int64_t, 1>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
+using EigenVector = EigenVector<T, MajorType, IndexType>;
 
 #if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group for GRU CPU
 template <class OpResetOutput, typename T>

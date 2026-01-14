@@ -27,7 +27,11 @@ from urllib.parse import urlparse
 from typing_extensions import TypeAlias
 
 import paddle
-from paddle.utils.download import _download, get_path_from_url
+from paddle.utils.download import (
+    _download,
+    _safe_extract_zip,
+    get_path_from_url,
+)
 
 if TYPE_CHECKING:
     import builtins
@@ -139,7 +143,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             extracted_repo = os.path.join(hub_dir, extracted_repo_name)
             _remove_if_exists(extracted_repo)
             # Unzip the code and rename the base folder
-            cached_zipfile.extractall(hub_dir)
+            _safe_extract_zip(cached_zipfile, hub_dir)
 
         _remove_if_exists(cached_file)
         _remove_if_exists(repo_dir)
@@ -415,7 +419,7 @@ def _legacy_zip_load(filename, model_dir, map_location=None):
             raise RuntimeError(
                 'Only one file(not dir) is allowed in the zipfile'
             )
-        f.extractall(model_dir)
+        _safe_extract_zip(f, model_dir)
         extracted_name = members[0].filename
         extracted_file = os.path.join(model_dir, extracted_name)
     if map_location:

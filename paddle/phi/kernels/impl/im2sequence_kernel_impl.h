@@ -40,18 +40,17 @@ void Im2SequenceKernel(const Context& dev_ctx,
                        const std::vector<int>& paddings,
                        const std::vector<int>& out_stride,
                        DenseTensor* out) {
-  const phi::DenseTensor* in = &x_in;
+  const DenseTensor* in = &x_in;
   auto in_dim = in->dims();
   int batch_size = in_dim[0];
   int img_channels = in_dim[1];
   int img_height = in_dim[2];
   int img_width = in_dim[3];
   if (y && batch_size > 1) {
-    const phi::DenseTensor* img_real_size = y.get_ptr();
+    const DenseTensor* img_real_size = y.get_ptr();
 
-    phi::DenseTensor cpu_shape_tensor;
-    phi::Copy(
-        dev_ctx, *img_real_size, phi::CPUPlace(), true, &cpu_shape_tensor);
+    DenseTensor cpu_shape_tensor;
+    Copy(dev_ctx, *img_real_size, CPUPlace(), true, &cpu_shape_tensor);
     std::vector<int> img_real_h;
     std::vector<int> img_real_w;
     std::vector<int> output_height;
@@ -86,9 +85,9 @@ void Im2SequenceKernel(const Context& dev_ctx,
     const std::vector<int> dilations({1, 1});
     int offset_out = 0;
     for (int i = 0; i < batch_size; i++) {
-      const phi::DenseTensor src =
+      const DenseTensor src =
           in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-      phi::DenseTensor dst =
+      DenseTensor dst =
           out->Slice(offset_out,
                      offset_out + output_height[i] * output_width[i])
               .Resize({output_height[i],
@@ -98,7 +97,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
                        kernels[1]});
       offset_out += output_height[i] * output_width[i];
 
-      phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, Context, T> f;
+      funcs::Im2ColFunctor<funcs::ColFormat::OCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     phi::LegacyLoD lod(1);
@@ -123,12 +122,12 @@ void Im2SequenceKernel(const Context& dev_ctx,
     auto out_dims = out->dims();
     out->Resize({batch_size, out->numel() / batch_size});
     for (int i = 0; i < batch_size; i++) {
-      const phi::DenseTensor src =
+      const DenseTensor src =
           in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-      phi::DenseTensor dst = out->Slice(i, i + 1).Resize(
+      DenseTensor dst = out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
 
-      phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, Context, T> f;
+      funcs::Im2ColFunctor<funcs::ColFormat::OCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     out->Resize(out_dims);
@@ -155,14 +154,14 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
                            const std::vector<int>& out_stride,
                            DenseTensor* x_grad) {
   auto* in = &x_in;
-  phi::DenseTensor tmp = out_grad;
-  phi::DenseTensor* d_out = &tmp;
+  DenseTensor tmp = out_grad;
+  DenseTensor* d_out = &tmp;
   auto* d_x = x_grad;
   dev_ctx.template Alloc<T>(d_x);
 
-  auto x_v = phi::EigenVector<T>::Flatten(*d_x);
+  auto x_v = EigenVector<T>::Flatten(*d_x);
   auto& place = *dev_ctx.eigen_device();
-  phi::funcs::EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(
+  funcs::EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(
       place, x_v, 0.0);
 
   auto in_dim = in->dims();
@@ -181,11 +180,11 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
   auto d_out_dims = d_out->dims();
   d_out->Resize({batch_size, d_out->numel() / batch_size});
   for (int i = 0; i < batch_size; i++) {
-    phi::DenseTensor dst =
+    DenseTensor dst =
         d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-    const phi::DenseTensor src = d_out->Slice(i, i + 1).Resize(
+    const DenseTensor src = d_out->Slice(i, i + 1).Resize(
         {output_height, output_width, img_channels, kernels[0], kernels[1]});
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, Context, T> f;
+    funcs::Col2ImFunctor<funcs::ColFormat::OCF, Context, T> f;
     f(dev_ctx, src, dilations, strides, paddings, &dst);
   }
   d_out->Resize(d_out_dims);

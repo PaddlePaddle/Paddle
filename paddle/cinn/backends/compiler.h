@@ -203,12 +203,12 @@ class Compiler final {
   std::string device_fn_code_;
   // kernel cache control
   size_t fusion_hash_{0};
-
-#ifdef CINN_WITH_CUDA
-  std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   // dynamic library support
   std::string dynamic_library_path_;
   void* dynamic_library_handle_{nullptr};
+
+#ifdef CINN_WITH_CUDA
+  std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   void* cuda_module_handle_{nullptr};
 #endif
 #ifdef CINN_WITH_HIP
@@ -219,8 +219,8 @@ class Compiler final {
 #endif
 
   // Dynamic library helper methods
-#ifdef CINN_WITH_CUDA
   std::string GetCachePath() const;
+#ifdef CINN_WITH_CUDA
   std::string GetDeviceArch();
   std::string GetComputeArch();
   std::string GenerateObjectWithoutCache(const std::string& source_code);

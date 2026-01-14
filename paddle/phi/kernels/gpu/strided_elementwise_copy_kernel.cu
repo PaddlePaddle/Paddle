@@ -24,7 +24,7 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
                                   const std::vector<int64_t>& out_strides,
                                   int64_t out_offset,
                                   DenseTensor* out) {
-  phi::DenseTensorMeta meta = input.meta();
+  DenseTensorMeta meta = input.meta();
   meta.strides = common::make_ddim(out_strides);
   meta.dims = common::make_ddim(out_dims);
   meta.offset = out_offset;
@@ -70,8 +70,8 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
   funcs::CopyStride<2>(out_dims,
                        out_strides,
                        phi::SizeOf(out->dtype()),
-                       common::vectorize<int64_t>(input.dims()),
-                       common::vectorize<int64_t>(input.strides()),
+                       vectorize<int64_t>(input.dims()),
+                       vectorize<int64_t>(input.strides()),
                        phi::SizeOf(input.dtype()),
                        &desired_shape,
                        &strides_array,

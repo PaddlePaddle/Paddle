@@ -95,7 +95,7 @@ void RMSLnBwd(const Context &dev_ctx,
     // lora specific
     if (scale.dtype() == phi::DataType::BFLOAT16) {
       DenseTensor scale_grad_tmp =
-          phi::EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
+          EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
       cuda_rms_norm_gradient<T, Context>(dev_ctx,
                                          x,
                                          scale,
@@ -107,8 +107,7 @@ void RMSLnBwd(const Context &dev_ctx,
                                          x_grad,
                                          &scale_grad_tmp);
     } else if (scale.dtype() == phi::DataType::FLOAT32) {
-      DenseTensor scale_grad_tmp =
-          phi::EmptyLike<float, Context>(dev_ctx, scale);
+      DenseTensor scale_grad_tmp = EmptyLike<float, Context>(dev_ctx, scale);
       cuda_rms_norm_gradient<T, Context>(dev_ctx,
                                          x,
                                          scale,

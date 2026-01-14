@@ -41,23 +41,13 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* singular_values) {
   using ValueType = phi::dtype::Real<T>;
   if (x.numel() == 0 || y.numel() == 0) {
-    if (solution)
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(solution->dims())),
-                       0,
-                       solution);
-    if (rank)
-      Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (solution) Full<T, Context>(dev_ctx, solution->dims(), 0, solution);
+    if (rank) Full<int64_t, Context>(dev_ctx, rank->dims(), 0, rank);
     if (residuals)
       GetResidualsTensor<Context, T>(
           dev_ctx, x, y, driver_string, solution, residuals, rank);
     if (singular_values)
-      Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(singular_values->dims())),
-          0,
-          singular_values);
+      Full<T, Context>(dev_ctx, singular_values->dims(), 0, singular_values);
     return;
   }
 
@@ -92,13 +82,13 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor new_x;
   new_x.Resize(common::make_ddim({batch_count, m, n}));
   dev_ctx.template Alloc<T>(&new_x);
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
   solution->Resize(common::make_ddim({batch_count, std::max(m, n), nrhs}));
   dev_ctx.template Alloc<T>(solution);
 
   if (m >= n) {
-    phi::Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, solution);
+    Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, solution);
   } else {
     auto* solu_data = solution->data<T>();
     auto* y_data = y.data<T>();
@@ -109,11 +99,10 @@ void LstsqKernel(const Context& dev_ctx,
     }
   }
 
-  DenseTensor input_x_trans = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
-  DenseTensor input_y_trans = phi::TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
-  phi::Copy<Context>(
-      dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
+  DenseTensor input_x_trans = TransposeLast2Dim<T>(dev_ctx, new_x);
+  DenseTensor input_y_trans = TransposeLast2Dim<T>(dev_ctx, *solution);
+  Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
 
   auto* x_vector = new_x.data<T>();
   auto* y_vector = solution->data<T>();
@@ -298,8 +287,8 @@ void LstsqKernel(const Context& dev_ctx,
     if (rank_working_ptr) *rank_working_ptr = static_cast<int>(rank_32);
   }
 
-  DenseTensor tmp_s = phi::TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, tmp_s, dev_ctx.GetPlace(), true, solution);
+  DenseTensor tmp_s = TransposeLast2Dim<T>(dev_ctx, *solution);
+  Copy<Context>(dev_ctx, tmp_s, dev_ctx.GetPlace(), true, solution);
 
   if (m > n) {
     auto* solu_data = solution->data<T>();

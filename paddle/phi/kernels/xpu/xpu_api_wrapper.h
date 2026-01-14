@@ -177,8 +177,8 @@ static std::ostream& operator<<(std::ostream& os, const XpuFcInfo& fc_inf) {
   return os;
 }
 
-static void GetFCInfo(const phi::DDim& x_dims,
-                      const phi::DDim& y_dims,
+static void GetFCInfo(const DDim& x_dims,
+                      const DDim& y_dims,
                       bool trans_x,
                       bool trans_y,
                       XpuFcInfo* info) {
@@ -187,8 +187,8 @@ static void GetFCInfo(const phi::DDim& x_dims,
   DDim new_y_dims =
       (y_dims.size() > 1) ? y_dims : common::make_ddim({y_dims[0], 1});
 
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);
 
   if (x_dims.size() >= 3 && y_dims.size() <= 2) {
     if (!trans_x || mat_dim_a.batch_size_ == 1) {

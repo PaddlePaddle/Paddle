@@ -32,16 +32,16 @@ template <typename T,
           typename TreeT = int,
           typename OutT = int>
 void TDMSamplerInner(const Context &dev_ctx,
-                     const phi::DenseTensor &input_tensor,
-                     const phi::DenseTensor &travel_dense_tensor,
-                     const phi::DenseTensor &layer_dense_tensor,
+                     const DenseTensor &input_tensor,
+                     const DenseTensor &travel_dense_tensor,
+                     const DenseTensor &layer_dense_tensor,
                      bool output_positive,
                      std::vector<int> neg_samples_num_list,
                      std::vector<int> layer_offset,
                      int seed,
-                     phi::DenseTensor *out,
-                     phi::DenseTensor *label,
-                     phi::DenseTensor *mask) {
+                     DenseTensor *out,
+                     DenseTensor *label,
+                     DenseTensor *mask) {
   // get dimension
   int64_t input_ids_num = input_tensor.numel();
 
@@ -56,7 +56,7 @@ void TDMSamplerInner(const Context &dev_ctx,
   }
   VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
-  auto travel_dim = common::vectorize<int>(travel_dense_tensor.dims());
+  auto travel_dim = vectorize<int>(travel_dense_tensor.dims());
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data

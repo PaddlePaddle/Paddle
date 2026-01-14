@@ -270,7 +270,7 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("Query");
+    auto input = ctx.Input<DenseTensor>("Query");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }

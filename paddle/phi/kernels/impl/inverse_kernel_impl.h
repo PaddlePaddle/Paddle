@@ -31,7 +31,7 @@ void InverseKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     return;
   }
-  phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
+  funcs::MatrixInverseFunctor<Context, T> mat_inv;
   mat_inv(dev_ctx, x, out);
 }
 

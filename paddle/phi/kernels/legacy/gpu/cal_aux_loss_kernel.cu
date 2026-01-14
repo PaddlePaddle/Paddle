@@ -56,7 +56,7 @@ __global__ void cal_aux_loss_kernel(
       local_seqlen_float_f += static_cast<float>(mask);
     }
     seqlen_float_f =
-        phi::funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
+        funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
 
     // 算scale_val
     if (tokens_mask && row_gate_prob != dispatch_tokens_mask_len) {
@@ -70,7 +70,7 @@ __global__ void cal_aux_loss_kernel(
         local_sum_tokens_mask += static_cast<float>(mask);
       }
       sum_tokens_mask =
-          phi::funcs::BlockReduceSum<float>(local_sum_tokens_mask, 0xFFFFFFFF);
+          funcs::BlockReduceSum<float>(local_sum_tokens_mask, 0xFFFFFFFF);
       if (threadIdx.x == 0) {
         shared_float[0] = seqlen_float_f / max(sum_tokens_mask, clip_min);
       }
@@ -88,7 +88,7 @@ __global__ void cal_aux_loss_kernel(
       local_seqlen_float_f += static_cast<float>(mask);
     }
     seqlen_float_f =
-        phi::funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
+        funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
   } else {
     seqlen_float_f = static_cast<float>(row_gate_prob) /
                      static_cast<float>(num_experts) *
@@ -119,7 +119,7 @@ __global__ void cal_aux_loss_kernel(
         local_sum_val += mask_val;
       }
       int64_t sum_val =
-          phi::funcs::BlockReduceSum<int64_t>(local_sum_val, 0xFFFFFFFF);
+          funcs::BlockReduceSum<int64_t>(local_sum_val, 0xFFFFFFFF);
       if (threadIdx.x == 0) {
         aux_loss_shared[e] = sum_val;
       }
@@ -145,8 +145,7 @@ __global__ void cal_aux_loss_kernel(
       }
       local_sum_val += gate_prob_val;
     }
-    float sum_val =
-        phi::funcs::BlockReduceSum<float>(local_sum_val, 0xFFFFFFFF);
+    float sum_val = funcs::BlockReduceSum<float>(local_sum_val, 0xFFFFFFFF);
     if (threadIdx.x == 0) {
       float ce_val = static_cast<float>(aux_loss_shared[e]) / seqlen_float_f;
       float me_val = sum_val / seqlen_float_f;

@@ -68,13 +68,6 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= CUDNN_VERSION_COMPUTE(major, minor, patch))
 
-enum class DataLayout {  // Not use
-  kNHWC,
-  kNCHW,
-  kNCDHW,
-  kNDHWC,  // add, liyamei
-};
-
 enum class PoolingMode {
   kMaximum,
   kMaximumDeterministic,
@@ -184,30 +177,13 @@ class CudnnDataType<float> {
 
 inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
   switch (order) {
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       return MIOPEN_TENSOR_NHWC;
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       return MIOPEN_TENSOR_NCHW;
-    case DataLayout::kNCDHW:
+    case DataLayout::NCDHW:
       return MIOPEN_TENSOR_NCHW;
-    case DataLayout::kNDHWC:
-      return MIOPEN_TENSOR_NHWC;
-    default:
-      PADDLE_THROW(common::errors::Unimplemented(
-          "MIOPEN has no equivalent dataLayout for input order."));
-  }
-  return MIOPEN_TENSOR_NCHW;
-}
-
-inline miopenTensorFormat_t GetCudnnTensorFormat(const phi::DataLayout& order) {
-  switch (order) {
-    case phi::DataLayout::NHWC:
-      return MIOPEN_TENSOR_NHWC;
-    case phi::DataLayout::NCHW:
-      return MIOPEN_TENSOR_NCHW;
-    case phi::DataLayout::NCDHW:
-      return MIOPEN_TENSOR_NCHW;
-    case phi::DataLayout::NDHWC:
+    case DataLayout::NDHWC:
       return MIOPEN_TENSOR_NHWC;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -268,14 +244,6 @@ class ScopedTensorDescriptor {
 
   template <typename T>
   inline miopenTensorDescriptor_t descriptor(const DataLayout& order,
-                                             const std::vector<int>& dims,
-                                             const int groups = 1) {
-    return descriptor(
-        GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
-  }
-
-  template <typename T>
-  inline miopenTensorDescriptor_t descriptor(const phi::DataLayout& order,
                                              const std::vector<int>& dims,
                                              const int groups = 1) {
     return descriptor(
@@ -429,14 +397,6 @@ class ScopedFilterDescriptor {
 
   template <typename T>
   inline miopenTensorDescriptor_t descriptor(const DataLayout& order,
-                                             const std::vector<int>& kernel,
-                                             const int groups = 1) {
-    return descriptor(
-        GetCudnnTensorFormat(order), CudnnDataType<T>::type, kernel, groups);
-  }
-
-  template <typename T>
-  inline miopenTensorDescriptor_t descriptor(const phi::DataLayout& order,
                                              const std::vector<int>& kernel,
                                              const int groups = 1) {
     return descriptor(

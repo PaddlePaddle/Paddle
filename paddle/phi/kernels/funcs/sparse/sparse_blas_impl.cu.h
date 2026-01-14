@@ -223,7 +223,7 @@ class CuSparseSpMatDescriptor {
 template <typename T>
 class CuSparseDnMatDescriptor {
  public:
-  explicit CuSparseDnMatDescriptor(const phi::DenseTensor& x,
+  explicit CuSparseDnMatDescriptor(const DenseTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -287,7 +287,7 @@ class CuSparseDnMatDescriptor {
 template <typename T>
 class CuSparseDnVecDescriptor {
  public:
-  explicit CuSparseDnVecDescriptor(const phi::DenseTensor& x,
+  explicit CuSparseDnVecDescriptor(const DenseTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -328,9 +328,9 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        bool transb,
                                        T alpha,
                                        const TensorType& mat_a,
-                                       const phi::DenseTensor& mat_b,
+                                       const DenseTensor& mat_b,
                                        T beta,
-                                       phi::DenseTensor* mat_out) const {
+                                       DenseTensor* mat_out) const {
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
   auto out_descriptor = CuSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);
@@ -377,9 +377,9 @@ template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                        T alpha,
                                        const TensorType& mat_a,
-                                       const phi::DenseTensor& vec_x,
+                                       const DenseTensor& vec_x,
                                        T beta,
-                                       phi::DenseTensor* vec_out) const {
+                                       DenseTensor* vec_out) const {
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto x_descriptor = CuSparseDnVecDescriptor<T>(vec_x, dev_ctx_);
   auto out_descriptor = CuSparseDnVecDescriptor<T>(*vec_out, dev_ctx_);
@@ -395,11 +395,7 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &beta,
                                           out_descriptor.descriptor(),
                                           gpu_type,
-#if CUDA_VERSION >= 11040
                                           CUSPARSE_SPMV_ALG_DEFAULT,
-#else
-                                          CUSPARSE_MV_ALG_DEFAULT,
-#endif
                                           &buffer_size);
   });
 
@@ -417,24 +413,19 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                &beta,
                                out_descriptor.descriptor(),
                                gpu_type,
-#if CUDA_VERSION >= 11040
                                CUSPARSE_SPMV_ALG_DEFAULT,
-#else
-                               CUSPARSE_MV_ALG_DEFAULT,
-#endif
                                tmp_buffer_ptr);
   });
 }
 
 /************* DENSE*DENSE->SPARSE MATMUL ************/
-#if CUDA_VERSION >= 11030
 template <>
 template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                         bool transb,
                                         T alpha,
-                                        const phi::DenseTensor& mat_a,
-                                        const phi::DenseTensor& mat_b,
+                                        const DenseTensor& mat_a,
+                                        const DenseTensor& mat_b,
                                         T beta,
                                         TensorType* mat_out) const {
   auto a_descriptor = CuSparseDnMatDescriptor<T>(mat_a, dev_ctx_);
@@ -491,7 +482,6 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                 tmp_buffer_ptr);
   });
 }
-#endif
 
 /************* SPARSE*SPARSE->SPARSE MATMUL ************/
 template <typename T>

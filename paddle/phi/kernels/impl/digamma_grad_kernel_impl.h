@@ -56,7 +56,7 @@ void DigammaGradKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* dx_data = x_grad->data<T>();
   auto numel = out_grad.numel();
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   DigammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }

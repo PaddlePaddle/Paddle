@@ -33,11 +33,11 @@ void LogSoftmaxKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (rank == 0) {
     dev_ctx.template Alloc<T>(out);
-    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     return;
   }
   if (x.numel() != 0) {
-    auto x_shape = common::vectorize<int64_t>(x.dims());
+    auto x_shape = vectorize<int64_t>(x.dims());
     dev_ctx.template Alloc<T>(out);
     if (axis < 0) axis += rank;
     int r =

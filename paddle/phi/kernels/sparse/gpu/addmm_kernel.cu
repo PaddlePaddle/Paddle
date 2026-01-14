@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/addmm_kernel.h"
-
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -92,7 +89,7 @@ void AddmmKernelImpl(const Context& dev_ctx,
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(alpha), x, y, static_cast<T>(beta), out);
 #else

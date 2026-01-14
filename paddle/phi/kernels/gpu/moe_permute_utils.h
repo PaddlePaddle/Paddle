@@ -73,11 +73,20 @@ struct alignas(16) VectorType<uint8_t, 16> {
   uint8_t data[16];
 };
 
+template <typename T>
+__device__ __forceinline__ void unrolled_memcpy(const T* src,
+                                                T* dst,
+                                                const int num_elements) {
+#pragma unroll
+  for (int idx = threadIdx.x; idx < num_elements; idx += blockDim.x) {
+    dst[idx] = src[idx];
+  }
+}
 // Helper function to perform vectorized memory copy
 template <typename T>
 __device__ __forceinline__ void vectorized_memcpy(const T* src,
                                                   T* dst,
-                                                  int num_elements) {
+                                                  const int num_elements) {
   constexpr int vector_size_in_bytes = 16;
   const int elements_per_vector = vector_size_in_bytes / sizeof(T);
 
@@ -98,6 +107,18 @@ __device__ __forceinline__ void vectorized_memcpy(const T* src,
     for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
       dst[offset + i] = src[offset + i];
     }
+  }
+}
+template <typename T>
+__device__ __forceinline__ void try_vectorized_memcpy(const T* src,
+                                                      T* dst,
+                                                      const int num_elements) {
+  bool is_aligned_128bit =
+      ((uintptr_t)src & 0xF) == 0 && ((uintptr_t)dst & 0xF) == 0;
+  if (is_aligned_128bit) {
+    vectorized_memcpy(src, dst, num_elements);
+  } else {
+    unrolled_memcpy(src, dst, num_elements);
   }
 }
 

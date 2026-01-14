@@ -94,7 +94,7 @@ void FusedAttentionGradKernel(
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  const phi::DenseTensor *seed_1 = nullptr;
+  const DenseTensor *seed_1 = nullptr;
 
   phi::XPUDropoutParam attn_dropout_param;
   attn_dropout_param.initXPUDropoutParam(attn_dropout_rate,
@@ -164,15 +164,15 @@ void FusedAttentionGradKernel(
   XPUTypeT *d_x_ptr =
       reinterpret_cast<XPUTypeT *>(dev_ctx.template Alloc<T>(d_x));
 
-  const phi::DenseTensor *ln_out_p = ln_out.get_ptr();
-  const phi::DenseTensor *bias_dropout_residual_out_p =
+  const DenseTensor *ln_out_p = ln_out.get_ptr();
+  const DenseTensor *bias_dropout_residual_out_p =
       bias_dropout_residual_out.get_ptr();
 
-  const phi::DenseTensor *ln_scale_p = nullptr;
-  const phi::DenseTensor *ln_mean_p = nullptr;
-  const phi::DenseTensor *ln_var_p = nullptr;
-  phi::DenseTensor *d_ln_scale = nullptr;
-  phi::DenseTensor *d_ln_bias = nullptr;
+  const DenseTensor *ln_scale_p = nullptr;
+  const DenseTensor *ln_mean_p = nullptr;
+  const DenseTensor *ln_var_p = nullptr;
+  DenseTensor *d_ln_scale = nullptr;
+  DenseTensor *d_ln_bias = nullptr;
 
   const XPUTypeT *ln_out_ptr = NULL;
   const float *ln_scale_ptr = NULL;

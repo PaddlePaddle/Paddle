@@ -33,20 +33,20 @@ namespace phi {
 namespace funcs {
 inline CONTEXT_TYPE *GetCurrentContext() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+  auto dev_types = DeviceManager::GetAllCustomDeviceTypes();
+  int device_id = DeviceManager::GetDevice(dev_types[0]);
   auto gplace = phi::CustomPlace(dev_types[0], device_id);
   auto *dev_ctx = static_cast<CustomContext *>(
       phi::DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;
 #elif defined(__NVCC__) || defined(__HIPCC__)
-  auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  auto gplace = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *dev_ctx =
       static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;
 #else
   PADDLE_THROW(common::errors::Unimplemented(
-      "Unsupported usage of phi::funcs::GetCurrentContext()! This function "
+      "Unsupported usage of funcs::GetCurrentContext()! This function "
       "only support CUDA and Custom Device."));
   return 0;
 #endif

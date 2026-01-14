@@ -138,7 +138,7 @@ class WarpRNNTFunctor {
     // There is no memory allocated operations within warp-rnnt.
     rnntStatus_t status = RNNT_STATUS_UNKNOWN_ERROR;
     bool gpu = false;
-    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gpu = true;
 #else
@@ -207,7 +207,7 @@ class WarpRNNTFunctor {
     options_.fastemit_lambda = fastemit_lambda;
     options_.batch_first = true;
 
-    if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       options_.loc = RNNT_GPU;
       options_.stream =
@@ -309,8 +309,7 @@ void WarprnntKernel(const Context& dev_ctx,
 
   warprnntgrad->Resize(input.dims());
   T* warprnntgrad_data = dev_ctx.template Alloc<T>(warprnntgrad);
-  phi::funcs::SetConstant<Context, T>()(
-      dev_ctx, warprnntgrad, static_cast<T>(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, warprnntgrad, static_cast<T>(0));
 
   // loss on cpu (B,)
   auto loss_dims = common::make_ddim({static_cast<int64_t>(B)});
@@ -333,7 +332,7 @@ void WarprnntKernel(const Context& dev_ctx,
                                 1 /*num_threads*/,
                                 warprnnt_loss_data);
 
-  phi::Copy(dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true, loss);
+  Copy(dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true, loss);
 }
 
 }  // namespace phi

@@ -244,8 +244,8 @@ __global__ void TransposeNormalKernel(const T* in_ptr,
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const DenseTensor& in,
+    DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
   auto in_stride = common::stride(in.dims());
@@ -255,7 +255,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
 
   // copy in_stride, out_stride, axis to gpu device
   const phi::Place& cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
   auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -298,7 +298,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::Place& cuda_place = dev_ctx.GetPlace();
-    phi::CPUPlace cpu_place = phi::CPUPlace();
+    CPUPlace cpu_place = CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
     auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -359,7 +359,7 @@ DEFINE_GPU_TRANS_NORMAL(phi::complex128);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const phi::DeviceContext& dev_ctx,
-                       phi::DenseTensor* tensor,
+                       DenseTensor* tensor,
                        float value)
       : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
 
@@ -372,14 +372,14 @@ struct TensorSetConstantGPU {
   }
 
   const phi::DeviceContext& dev_ctx_;
-  phi::DenseTensor* tensor_;
+  DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& dev_ctx,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<GPUPlace>(const phi::DeviceContext& dev_ctx,
+                                       DenseTensor* tensor,
+                                       float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(dev_ctx, tensor, value));
 }
@@ -398,9 +398,9 @@ __global__ void RowwiseAddKernel(
 template <typename T>
 struct RowwiseAdd<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& vector,
-                  phi::DenseTensor* output) {
+                  const DenseTensor& input,
+                  const DenseTensor& vector,
+                  DenseTensor* output) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];

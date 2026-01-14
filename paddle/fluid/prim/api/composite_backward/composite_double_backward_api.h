@@ -850,6 +850,33 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
 }
 
 template <typename T>
+void linear_v2_double_grad(const Tensor& input,
+                           const Tensor& weight,
+                           const Tensor& bias,
+                           const Tensor& grad_out,
+                           const paddle::optional<Tensor>& grad_input_grad,
+                           const paddle::optional<Tensor>& grad_weight_grad,
+                           const paddle::optional<Tensor>& grad_bias_grad,
+                           Tensor* input_grad,
+                           Tensor* weight_grad,
+                           Tensor* bias_grad,
+                           Tensor* grad_out_grad) {
+  matmul_double_grad<T>(input,
+                        weight,
+                        grad_out,
+                        grad_input_grad,
+                        grad_weight_grad,
+                        false,
+                        false,
+                        input_grad,
+                        weight_grad,
+                        grad_out_grad);
+  if (bias_grad) {
+    add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+  }
+}
+
+template <typename T>
 void subtract_double_grad(const Tensor& y,
                           const Tensor& grad_out,
                           const paddle::optional<Tensor>& grad_x_grad,
@@ -1292,6 +1319,29 @@ void index_elementwise_put_with_tensor_double_grad(
                                              index_dims,
                                              index_strides,
                                              slice_offset);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void index_elementwise_put_double_grad(
+    const std::vector<Tensor>& index,
+    const Tensor& grad_x_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& slice_offset,
+    Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp = index_elementwise_put<T>(grad_x_grad,
+                                                        index,
+                                                        0,
+                                                        input_dims,
+                                                        input_strides,
+                                                        index_dims,
+                                                        index_strides,
+                                                        slice_offset);
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }

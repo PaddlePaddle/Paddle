@@ -286,7 +286,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
 
     // recompute bias and weight for conv2d_transpose_xpu op
     auto* filter_t =
-        scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(conv_filter->Name())->GetMutable<DenseTensor>();
     // conv_filter fp16 --> fp32
     auto tensor_type = filter_t->dtype();
     if (tensor_type == phi::DataType::FLOAT16) {
@@ -301,7 +301,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     // ew bias
     if (with_ew_bias) {
       auto* ew_bias_add_y_t =
-          scope->FindVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
+          scope->FindVar(ew_bias_add_y->Name())->GetMutable<DenseTensor>();
       auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
       PADDLE_ENFORCE_EQ(out_c,
                         ew_bias_add_y_dims[0],
@@ -314,8 +314,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     // bn
     if (with_bn) {
-      auto bn_bias_t =
-          scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
+      auto bn_bias_t = scope->Var(bn_bias->Name())->GetMutable<DenseTensor>();
       PADDLE_ENFORCE_EQ(
           out_c,
           bn_bias_t->dims()[0],
@@ -323,12 +322,9 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
                                           "must equal out_channel[%d] of conv",
                                           bn_bias_t->dims()[0],
                                           out_c));
-      auto bn_scale_t =
-          scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
-      auto bn_mean_t =
-          scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
-      auto bn_var_t =
-          scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
+      auto bn_scale_t = scope->Var(bn_scale->Name())->GetMutable<DenseTensor>();
+      auto bn_mean_t = scope->Var(bn_mean->Name())->GetMutable<DenseTensor>();
+      auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<DenseTensor>();
       float* filter_ptr = filter_t->data<float>();
       float* bn_scale_ptr = bn_scale_t->data<float>();
       float* bn_bias_ptr = bn_bias_t->data<float>();
@@ -339,8 +335,8 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
       float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
       // bias
       if (fusion_bias_node) {
-        auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
-                                 ->GetMutable<phi::DenseTensor>();
+        auto fusion_bias_t =
+            scope->Var(fusion_bias_node->Name())->GetMutable<DenseTensor>();
         float* fusion_bias_ptr = fusion_bias_t->data<float>();
         for (int i = 0; i < mean_len; ++i) {
           bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
@@ -350,8 +346,8 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
         }
       } else {
         PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
-        auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
-                                 ->GetMutable<phi::DenseTensor>();
+        auto fusion_bias_t =
+            scope->Var(fusion_bias_node->Name())->GetMutable<DenseTensor>();
         float* fusion_bias_ptr = fusion_bias_t->data<float>();
         for (int i = 0; i < mean_len; ++i) {
           bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);

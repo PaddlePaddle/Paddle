@@ -2127,6 +2127,7 @@ def ravel(input: Tensor) -> Tensor:
         For example:
 
         .. code-block:: text
+
             Case 1:
               Given
                 X.shape = (3, 100, 100, 4)

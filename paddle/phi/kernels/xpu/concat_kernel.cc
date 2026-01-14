@@ -39,7 +39,7 @@ void ConcatKernel(const Context& dev_ctx,
       x[0],
       nullptr,
       common::errors::InvalidArgument("The input should not be null."));
-  axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
+  axis = funcs::ComputeAxis(axis, x[0]->dims().size());
   PADDLE_ENFORCE_GE(
       axis,
       0,
@@ -55,12 +55,12 @@ void ConcatKernel(const Context& dev_ctx,
                         axis,
                         x[0]->dims().size()));
 
-  std::vector<phi::DDim> x_dims;
+  std::vector<DDim> x_dims;
   for (size_t i = 0; i < x.size(); ++i) {
     x_dims.push_back(x[i]->dims());
   }
 
-  phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  DDim out_dims = funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {

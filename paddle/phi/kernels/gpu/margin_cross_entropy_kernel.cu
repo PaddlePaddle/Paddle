@@ -163,7 +163,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
   // copy logits to softmax variable since we can't modify logits,
   // and it also be used when calculate grad
-  phi::Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), true, softmax);
+  Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), true, softmax);
 
   DenseTensor softmax_2d;
   softmax_2d.ShareDataWith(*softmax).Resize({N, D});

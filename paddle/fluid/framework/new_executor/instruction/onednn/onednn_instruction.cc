@@ -412,11 +412,11 @@ void OneDNNPhiKernelInstruction::Run() {
     CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " begin");
   }
 
-  std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
+  std::vector<std::shared_ptr<DenseTensor>> tmp_holders;
   auto tmp_kernel_context = kernel_context_;
   auto tmp_infer_meta_context_ = infer_meta_context_;
   // Step1. TransLayout
-  auto inputs = tmp_kernel_context.InputsBetween<phi::DenseTensor>(
+  auto inputs = tmp_kernel_context.InputsBetween<DenseTensor>(
       size_t(0), tmp_kernel_context.InputsSize());
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto input = inputs[i];
@@ -433,7 +433,7 @@ void OneDNNPhiKernelInstruction::Run() {
             << ", shape = " << input->dims();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
-      tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
+      tmp_holders.emplace_back(std::make_shared<DenseTensor>(*input));
       auto transed_tensor = tmp_holders.back().get();
 
       std::set<std::string> elementwise_kernels = {"onednn_op.add",
@@ -443,10 +443,10 @@ void OneDNNPhiKernelInstruction::Run() {
 
       if (elementwise_kernels.count(phi_op_name_)) {
         if (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-                phi::DataLayout::kNHWC &&
+                phi::DataLayout::NHWC &&
             !(kernel_key_.dtype() == phi::DataType::COMPLEX64 ||
               kernel_key_.dtype() == phi::DataType::COMPLEX128)) {
-          from_layout = phi::DataLayout::kNHWC;
+          from_layout = phi::DataLayout::NHWC;
           phi::funcs::MatchShapeToLayout(
               transed_tensor, from_layout, phi::DataLayout::ONEDNN);
         }
@@ -454,13 +454,13 @@ void OneDNNPhiKernelInstruction::Run() {
         //  Handle 'layout_transform' in
         //  ops_onednn_extra.yaml(GetKernelTypeForVar)
         if (data_format_tensors_.count(i) &&
-            input_layout_ != phi::DataLayout::kAnyLayout) {
+            input_layout_ != phi::DataLayout::ANY) {
           from_layout = input_layout_;
         }
         VLOG(6) << "from_layout = " << from_layout;
 
-        if (from_layout == DataLayout::kNHWC ||
-            from_layout == DataLayout::kNDHWC) {
+        if (from_layout == DataLayout::NHWC ||
+            from_layout == DataLayout::NDHWC) {
           phi::funcs::MatchShapeToLayout(
               transed_tensor, from_layout, phi::DataLayout::ONEDNN);
           // We register only NHWC assuming that model is consistent e.g. either
@@ -468,7 +468,7 @@ void OneDNNPhiKernelInstruction::Run() {
           phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
         }
 
-        if (from_layout == DataLayout::kAnyLayout) {
+        if (from_layout == DataLayout::ANY) {
           from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
         }
       }

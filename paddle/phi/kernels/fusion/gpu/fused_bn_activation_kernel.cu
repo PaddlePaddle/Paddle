@@ -85,17 +85,17 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(y);
 
   int N, C, H, W, D;
-  const DataLayout data_layout = phi::DataLayout::NHWC;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  const DataLayout data_layout = DataLayout::NHWC;
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   if ((N * H * W * D) == 1) {
     // Only 1 element in normalization dimension,
     // skip the batch norm calculation, let y = act(x).
-    auto x_v = phi::EigenVector<T>::Flatten(x);
-    auto y_v = phi::EigenVector<T>::Flatten(*y);
+    auto x_v = EigenVector<T>::Flatten(x);
+    auto y_v = EigenVector<T>::Flatten(*y);
     auto &dev = *dev_ctx.eigen_device();
     if (act_type == "relu") {
-      phi::funcs::ReluCUDAFunctor<T>()(dev, x_v, y_v);
+      funcs::ReluCUDAFunctor<T>()(dev, x_v, y_v);
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("Unsupported activation type"));
@@ -137,7 +137,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   size_t reserve_space_size = 0;
   void *reserve_space_ptr = nullptr;
   void *workspace_ptr = nullptr;
-  phi::DenseTensor workspace_tensor;
+  DenseTensor workspace_tensor;
 
   PADDLE_ENFORCE_NOT_NULL(
       reserve_space,

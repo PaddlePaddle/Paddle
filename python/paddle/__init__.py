@@ -200,6 +200,7 @@ from paddle import (
     sparse as sparse,
     static as static,
     sysconfig as sysconfig,
+    testing as testing,
     vision as vision,
 )
 
@@ -838,6 +839,33 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         if is_compiled_with_cinn():
             cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
             set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
+
+            def _preload_nvidia_lib(nvidia_package_path: str, lib_glob: str):
+                import ctypes
+                import glob
+
+                from .version import cuda as cuda_version
+
+                cuda_major_version = cuda_version().split('.')[0]
+
+                lib_paths = []
+                lib_paths += glob.glob(
+                    os.path.join(
+                        nvidia_package_path,
+                        f'cu{cuda_major_version}',
+                        'lib',
+                        lib_glob,
+                    )
+                )
+                lib_paths += glob.glob(
+                    os.path.join(nvidia_package_path, 'lib', lib_glob)
+                )
+
+                for lib_path in lib_paths:
+                    ctypes.CDLL(lib_path)
+                    break
+
+            _preload_nvidia_lib(nvidia_package_path, "libnvrtc-builtins.so.*")
 
     elif (
         platform.system() == 'Windows'

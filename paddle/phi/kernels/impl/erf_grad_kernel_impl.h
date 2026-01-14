@@ -33,7 +33,7 @@ void ErfGradKernel(const Context& dev_ctx,
   auto eigen_dout = EigenVector<T>::Flatten(out_grad);
   auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
   auto& place = *dev_ctx.eigen_device();
-  phi::funcs::EigenErfGrad<std::decay_t<decltype(place)>, T>::Eval(
+  funcs::EigenErfGrad<std::decay_t<decltype(place)>, T>::Eval(
       place, eigen_dx, eigen_x, eigen_dout);
 }
 

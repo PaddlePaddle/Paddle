@@ -80,8 +80,8 @@ PADDLE_API std::vector<int64_t> BalancedSplit(int64_t total_nums,
 PADDLE_API CommContext* CreateOrGetCommContext(
     const DeviceContext& dev_ctx, const std::vector<int64_t>& process_ids);
 
-PADDLE_API phi::DDim InferShapeForReshardFromReplicate(
-    const std::shared_ptr<phi::DenseTensor>& global_value,
+PADDLE_API DDim InferShapeForReshardFromReplicate(
+    const std::shared_ptr<DenseTensor>& global_value,
     const TensorDistAttr& dist_attr);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

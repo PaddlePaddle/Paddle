@@ -58,7 +58,7 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
     XCCLTask(const std::vector<Place>& places,
              int rank,
              CommType CommType,
-             const std::vector<phi::DenseTensor>& inputs);
+             const std::vector<DenseTensor>& inputs);
 
    private:
     bool block_cpu_in_wait_{false};
@@ -113,8 +113,8 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors,
-      const std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<DenseTensor>* out_tensors,
+      const std::vector<DenseTensor>& in_tensors,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -154,7 +154,7 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
                                              bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Gather(
-      std::vector<phi::DenseTensor>* gather_tensors_ptr,
+      std::vector<DenseTensor>* gather_tensors_ptr,
       const phi::DenseTensor& in_tensor,
       const GatherOptions& opts,
       bool sync_op,
@@ -184,40 +184,43 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
   phi::distributed::XCCLCommContext* GetOrCreateCommContext(const Place& place);
 
-  // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const AllreduceOptions& = AllreduceOptions()) override;
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
+      const AllreduceOptions& = AllreduceOptions(),
+      bool use_calc_stream = false,
+      bool sync_op = false) override;
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
+  std::shared_ptr<ProcessGroup::Task> Send(std::vector<DenseTensor>& tensors,
+                                           int dst_rank) override;
 
-  std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+  std::shared_ptr<ProcessGroup::Task> Recv(std::vector<DenseTensor>& tensors,
+                                           int src_rank) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors) override;
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
+      bool use_calc_stream = false,
+      bool sync_op = false) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors) override;
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>& tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
+      std::vector<DenseTensor>& tensors,
+      std::vector<DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
       const ScatterOptions& opts) override;
 
  private:
@@ -236,7 +239,7 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
   std::shared_ptr<ProcessGroup::Task> RunFnInXCCLEnv(
       std::function<void(const phi::stream::Stream&)> fn,
-      const std::vector<phi::DenseTensor>& tensors,
+      const std::vector<DenseTensor>& tensors,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
@@ -253,18 +256,19 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       std::vector<Place> places,
       int rank,
       CommType op_type,
-      const std::vector<phi::DenseTensor>& inputs);
+      const std::vector<DenseTensor>& inputs);
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> Collective(
-      std::vector<phi::DenseTensor>& inputs,   // NOLINT
-      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      std::vector<DenseTensor>& inputs,   // NOLINT
+      std::vector<DenseTensor>& outputs,  // NOLINT
+      bool use_calc_stream,
       Fn fn,
       CommType op_type);
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> PointToPoint(
-      std::vector<phi::DenseTensor>& tensors,  // NOLINT
+      std::vector<DenseTensor>& tensors,  // NOLINT
       Fn fn,
       int dst_rank,
       CommType op_type);

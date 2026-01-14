@@ -84,7 +84,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     bool channelwise_onednn =
         context->IsRunONEDNNKernel() &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-         phi::DataLayout::kNHWC);
+         phi::DataLayout::NHWC);
     if (channelwise_onednn) {
       std::swap(dim_x, dim_y);
     }
@@ -186,7 +186,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -199,9 +199,9 @@ class MatMulOp : public framework::OperatorWithKernel {
       if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-              phi::DataLayout::kNHWC) {
+              phi::DataLayout::NHWC) {
         return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
+                              phi::DataLayout::NHWC,
                               expected_kernel_type.dtype());
       }
 #endif

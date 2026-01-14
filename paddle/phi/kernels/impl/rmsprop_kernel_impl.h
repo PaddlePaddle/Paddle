@@ -67,8 +67,7 @@ struct SparseRmspropGradFunctor {
         row_count_(row_count) {}
 
   HOSTDEVICE inline T operator()(int64_t idx) const {
-    auto row_idx =
-        phi::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
+    auto row_idx = funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
     return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_]
                         : static_cast<T>(0);
   }
@@ -264,7 +263,7 @@ void RmspropSparseKernel(const Context &dev_ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows *merged_grad = &tmp_merged_grad;
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, grad, merged_grad);
 
   funcs::ForRange<Context> for_range(dev_ctx, limit);

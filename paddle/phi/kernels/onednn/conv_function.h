@@ -22,13 +22,12 @@
 
 namespace phi {
 
-static dnnl::memory::data_type GetDstType(
-    bool is_int8,
-    bool is_bfloat16,
-    bool force_fp32_output,
-    std::string fuse_activation,
-    bool fuse_residual_conn,
-    const phi::DenseTensor* residual_param) {
+static dnnl::memory::data_type GetDstType(bool is_int8,
+                                          bool is_bfloat16,
+                                          bool force_fp32_output,
+                                          std::string fuse_activation,
+                                          bool fuse_residual_conn,
+                                          const DenseTensor* residual_param) {
   auto dst_dt = dnnl::memory::data_type::f32;
   if (is_int8) {
     dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")

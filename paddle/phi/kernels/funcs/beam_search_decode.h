@@ -54,15 +54,15 @@ struct BeamSearchDecoder {
    * with word score.
    * Param:
    *  sentence_vector_list: sentence_vector for each source sentence.
-   *  id_tensor: result phi::DenseTensor for sentences of id.
-   *  score_tensor: result phi::DenseTensor for sentences of score.
+   *  id_tensor: result DenseTensor for sentences of id.
+   *  score_tensor: result DenseTensor for sentences of score.
    *  reverse: whether ids of sentence in sentence_vector_list is reversed
    *  sort_by_score: whether to sort hypotheses of each sentence by scores.
    */
   void ConvertSentenceVectorToDenseTensor(
       std::vector<SentenceVector<T>> sentence_vector_list,
-      phi::DenseTensor* id_tensor,
-      phi::DenseTensor* score_tensor,
+      DenseTensor* id_tensor,
+      DenseTensor* score_tensor,
       bool reverse = true,
       bool sort_by_score = true) const;
 
@@ -72,8 +72,8 @@ struct BeamSearchDecoder {
    */
   void Backtrace(const TensorArray& step_ids,
                  const TensorArray& step_scores,
-                 phi::DenseTensor* id_tensor,
-                 phi::DenseTensor* score_tensor) const;
+                 DenseTensor* id_tensor,
+                 DenseTensor* score_tensor) const;
 
   size_t beam_size_;
   int end_id_;
@@ -82,8 +82,8 @@ struct BeamSearchDecoder {
 template <typename T>
 void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
     std::vector<SentenceVector<T>> sentence_vector_list,
-    phi::DenseTensor* id_tensor,
-    phi::DenseTensor* score_tensor,
+    DenseTensor* id_tensor,
+    DenseTensor* score_tensor,
     bool reverse,
     bool sort_by_score) const {
   size_t src_num = sentence_vector_list.size();
@@ -140,7 +140,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
   lod.push_back(source_level_lod);
   lod.push_back(sentence_level_lod);
 
-  auto& cpu_ctx = *(phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  auto& cpu_ctx = *(phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
   id_tensor->set_lod(lod);
   id_tensor->Resize({static_cast<int64_t>(id_data.size())});
@@ -156,8 +156,8 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
 template <typename T>
 void BeamSearchDecoder<T>::Backtrace(const TensorArray& step_ids,
                                      const TensorArray& step_scores,
-                                     phi::DenseTensor* id_tensor,
-                                     phi::DenseTensor* score_tensor) const {
+                                     DenseTensor* id_tensor,
+                                     DenseTensor* score_tensor) const {
   PADDLE_ENFORCE_NE(
       step_ids.empty(),
       true,

@@ -80,9 +80,9 @@ static std::stack<const Variable*> PopElements(VariableRefArray* var_array,
   return rtn;
 }
 void ShareVarData(const Variable* src_var, Variable* dst_var) {
-  if (src_var->IsType<phi::DenseTensor>()) {
-    auto& src_tensor = src_var->Get<phi::DenseTensor>();
-    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+  if (src_var->IsType<DenseTensor>()) {
+    auto& src_tensor = src_var->Get<DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<DenseTensor>();
     if (src_tensor.numel() == 0) {
       tmp_dst_tensor->set_meta(src_tensor.meta());
       if (!src_tensor.IsInitialized()) {

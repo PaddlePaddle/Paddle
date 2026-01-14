@@ -71,7 +71,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
-  const auto x_dims = common::vectorize<int64_t>(x.dims());
+  const auto x_dims = vectorize<int64_t>(x.dims());
   const int64_t N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::NCHW || data_layout == DataLayout::NCDHW;
@@ -87,7 +87,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                                        std::multiplies<int64_t>()));
 
   dev_ctx.template Alloc<T>(d_x);
-  phi::funcs::SetConstant<XPUContext, T> set_zero;
+  funcs::SetConstant<XPUContext, T> set_zero;
 
   auto* x_data = x.data<T>();
   auto* y_data = y.data<T>();

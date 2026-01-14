@@ -324,8 +324,8 @@ class TEST_API ResultPattern {
   // {"float64", phi::DataType::FLOAT64}};
   Attribute DataTypeAttr(const std::string& value) const;
 
-  // {"cpu", phi::CPUPlace{}},
-  // {"gpu", phi::GPUPlace{}},
+  // {"cpu", CPUPlace{}},
+  // {"gpu", GPUPlace{}},
   // {"gpu_pinned", phi::GPUPinnedPlace{}},
   // {"xpu", phi::XPUPlace{}},
   // {"ipu", phi::IPUPlace{}},
@@ -333,8 +333,8 @@ class TEST_API ResultPattern {
   // {"undefined", phi::Place{}}};
   Attribute PlaceAttr(const std::string& value) const;
 
-  // {"NHWC", phi::DataLayout::kNHWC},
-  // {"NCHW", phi::DataLayout::kNCHW},
+  // {"NHWC", phi::DataLayout::NHWC},
+  // {"NCHW", phi::DataLayout::NCHW},
   // {"Undefined", phi::DataLayout::kAnyLayout},
   // {"ONEDNN", phi::DataLayout::ONEDNN},
   // {"SPARSE_COO", phi::DataLayout::SPARSE_COO},

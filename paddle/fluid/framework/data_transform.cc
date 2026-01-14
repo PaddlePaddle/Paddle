@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/api/lib/data_transform.h"
 
 namespace paddle {
@@ -25,27 +26,23 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
-
 namespace paddle {
 namespace framework {
 
-static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
+static void PassTensorData(DenseTensor *from, DenseTensor *to) {
   to->ShareDataWith(*from);
   *from = phi::DenseTensor();
 }
 
 void TransformData(const phi::KernelKey &expected_kernel_type,
                    const phi::KernelKey &kernel_type_for_var,
-                   const phi::DenseTensor &input_tensor,
-                   phi::DenseTensor *output_tensor,
+                   const DenseTensor &input_tensor,
+                   DenseTensor *output_tensor,
                    const phi::Place &place) {
   bool transformed = false;
-  phi::DenseTensor in;
+  DenseTensor in;
   in.ShareDataWith(input_tensor);
-  phi::DenseTensor out;
+  DenseTensor out;
   const DataLayout lin = kernel_type_for_var.layout();
   const DataLayout lout = expected_kernel_type.layout();
 
@@ -71,7 +68,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
-        if (lin == DataLayout::kNHWC || lin == DataLayout::kNDHWC) {
+        if (lin == DataLayout::NHWC || lin == DataLayout::NDHWC) {
           phi::funcs::MatchShapeToLayout(&out, lin, lout);
           // We register only NHWC assuming that model is consistent e.g. either
           // NHWC or NCHW
@@ -134,11 +131,11 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 }
 
 void SetTensorToVariable(const Variable &in_var,
-                         const phi::DenseTensor &tensor,
+                         const DenseTensor &tensor,
                          Variable *out_var) {
-  if (in_var.IsType<phi::DenseTensor>()) {
-    auto &in_dense_tensor = in_var.Get<phi::DenseTensor>();
-    auto *tran_dense_tensor = out_var->GetMutable<phi::DenseTensor>();
+  if (in_var.IsType<DenseTensor>()) {
+    auto &in_dense_tensor = in_var.Get<DenseTensor>();
+    auto *tran_dense_tensor = out_var->GetMutable<DenseTensor>();
     tran_dense_tensor->set_lod(in_dense_tensor.lod());
     tran_dense_tensor->set_layout(in_dense_tensor.layout());
 #ifdef PADDLE_WITH_DNNL
@@ -153,7 +150,7 @@ void SetTensorToVariable(const Variable &in_var,
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
     PADDLE_THROW(common::errors::Unavailable(
-        "Unsupported variable type, only supports phi::DenseTensor or "
+        "Unsupported variable type, only supports DenseTensor or "
         "SelectedRows, "
         "but the input variable type is %s.",
         ToTypeName(in_var.Type())));

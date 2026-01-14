@@ -65,6 +65,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/python_function_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -958,6 +959,10 @@ void PirInterpreter::BuildInstruction() {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
+    } else if (op.dialect()->name() == "py_func") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<PythonFunctionInstruction>(
+              op_idx++, place_, &op, *(value_exe_info_.get())));
     } else if (paddle::dialect::IsCustomEngineOp(&op)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       vec_instruction_base_.emplace_back(
@@ -1264,8 +1269,8 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
       continue;
     }
 
-    if (var->IsType<phi::DenseTensor>()) {
-      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
+    if (var->IsType<DenseTensor>()) {
+      TensorRecordStream(*(var->GetMutable<DenseTensor>()));
     } else if (
         var->IsType<
             operators::reader::
@@ -1390,7 +1395,7 @@ void PirInterpreter::CalculateLastLiveOps() {
               "Var(id=%d,%s) should not be nullptr.",
               static_cast<int>(var_id),
               value_exe_info_->GetNameById(static_cast<int>(var_id))));
-      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
+      if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
@@ -1490,7 +1495,7 @@ void PirInterpreter::ConstructEventForJitInput() {
 
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors,
+    const std::vector<DenseTensor>& feed_tensors,
     bool need_fetch,
     bool enable_job_schedule_profiler,
     bool switch_stream) {
@@ -1505,7 +1510,7 @@ paddle::framework::FetchList PirInterpreter::Run(
           common::errors::NotFound("Variable %s should not be nullptr.",
                                    feed_names[i]));
 
-      auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
+      auto feed_tensor = feed_var->GetMutable<DenseTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }
@@ -1570,7 +1575,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     for (auto& var_name : fetch_var_names_) {
       auto* var = inner_scope->FindVar(var_name);
       VLOG(4) << "fetch " << var_name << "[" << var << "]";
-      fetch_res.push_back(var->Get<phi::DenseTensor>());
+      fetch_res.push_back(var->Get<DenseTensor>());
     }
   }
 
@@ -1649,7 +1654,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     for (auto& var_name : fetch_var_names_) {
       auto* var = inner_scope->FindVar(var_name);
       VLOG(4) << "fetch " << var_name << "[" << var << "]";
-      fetch_res.push_back(var->Get<phi::DenseTensor>());
+      fetch_res.push_back(var->Get<DenseTensor>());
     }
 
     VLOG(4) << "get fetch list size: " << fetch_res.size();

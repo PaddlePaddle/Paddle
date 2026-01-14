@@ -110,7 +110,7 @@ void InterpolateGradKernel(
     out_w = new_size[1];
   }
 
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -128,7 +128,7 @@ void InterpolateGradKernel(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 

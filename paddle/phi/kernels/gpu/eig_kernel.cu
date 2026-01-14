@@ -32,7 +32,7 @@ void EigKernel(const Context& dev_ctx,
     return;
   }
 
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
@@ -50,7 +50,7 @@ void EigKernel(const Context& dev_ctx,
 
     DenseTensor real_w_cpu, real_v_cpu;
 
-    std::vector<int64_t> real_w_dim = common::vectorize<int64_t>(out_w->dims());
+    std::vector<int64_t> real_w_dim = vectorize<int64_t>(out_w->dims());
     real_w_dim.back() *= 2;
     real_w_cpu.Resize(common::make_ddim(real_w_dim));
     (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_w_cpu);
@@ -81,8 +81,8 @@ void EigKernel(const Context& dev_ctx,
 
     // 3. construct complex vectors
     DenseTensor real_v_trans_cpu =
-        phi::TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>(
-            (*cpu_ctx), real_v_cpu);
+        TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>((*cpu_ctx),
+                                                                real_v_cpu);
     DenseTensor out_v_trans_cpu;
     out_v_trans_cpu.Resize(x.dims());
     (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_v_trans_cpu);
@@ -108,8 +108,8 @@ void EigKernel(const Context& dev_ctx,
   }
 
   // copy result from cpu to gpu tensor
-  phi::Copy(dev_ctx, out_w_cpu, phi::GPUPlace(), false, out_w);
-  phi::Copy(dev_ctx, out_v_cpu, phi::GPUPlace(), false, out_v);
+  Copy(dev_ctx, out_w_cpu, GPUPlace(), false, out_w);
+  Copy(dev_ctx, out_v_cpu, GPUPlace(), false, out_v);
 }
 
 }  // namespace phi

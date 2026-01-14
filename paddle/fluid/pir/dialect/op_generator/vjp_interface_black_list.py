@@ -43,5 +43,7 @@ vjp_interface_black_list = [
     'masked_select_grad',
     'index_elementwise_get_grad',
     'index_elementwise_put_with_tensor_grad',
+    'index_elementwise_put_grad',
+    'linear_v2_grad',
     'view_shape_grad',
 ]

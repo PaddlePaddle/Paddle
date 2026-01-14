@@ -49,7 +49,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   }
   DenseTensor roi_batch_id_list;
   roi_batch_id_list.Resize({rois_num});
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto xplace = dev_ctx.GetPlace();
 
   int rois_batch_size = 0;

@@ -39,8 +39,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
                             const std::string& data_format,
                             DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   const DataLayout data_layout = common::StringToDataLayout(data_format);
@@ -142,8 +141,8 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
       (data_layout != DataLayout::NHWC
            ? static_cast<int>(out_dims[1]) / groups
            : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
-  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
-  phi::funcs::Col2VolFunctor<Context, T> col2vol;
+  funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
+  funcs::Col2VolFunctor<Context, T> col2vol;
   funcs::ConcatFunctor<Context, T> concat_functor;
 
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward

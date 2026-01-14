@@ -54,15 +54,19 @@ def get_rng_state(
 def get_rng_state(device=None, use_index=False):
     """
     Get all random states of random generators of specified device.
+
     Args:
         device(str): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
             If None, return the generators of current device (specified by ``set_device``).
         use_index(bool): If use index is True, return the index that saved in the generator
+
     Returns:
         GeneratorState:  object.
+
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+
             >>> import paddle
             >>> sts = paddle.incubate.get_rng_state()
     """
