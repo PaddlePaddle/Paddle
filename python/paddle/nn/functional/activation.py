@@ -305,6 +305,7 @@ def hardsigmoid(
     x: Tensor,
     slope: float = 0.1666667,
     offset: float = 0.5,
+    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -327,6 +328,7 @@ def hardsigmoid(
         x (Tensor): The input Tensor with data type float32, float64.
         slope (float, optional): The slope of hardsigmoid function. Default is 0.1666667.
         offset (float, optional): The offset of hardsigmoid function. Default is 0.5.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -343,10 +345,20 @@ def hardsigmoid(
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.        , 0.66666669])
+            >>> out = F.hardsigmoid(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.hardsigmoid(x, slope, offset)
+        if inplace:
+            return _C_ops.hardsigmoid_(x, slope, offset)
+        else:
+            return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardsigmoid'
@@ -621,6 +633,7 @@ def rrelu(
     lower: float = 1.0 / 8.0,
     upper: float = 1.0 / 3.0,
     training: bool = True,
+    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -665,6 +678,7 @@ def rrelu(
         lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
         upper (float, optional): The upper bound of uniform distribution. Default: 0.3333333333333333.
         training (bool, optional): Current mode is in training or others.  Default is True.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -691,6 +705,15 @@ def rrelu(
               [[ 1.        , -0.44942653, -0.68969047,  4.        ],
                [-1.03736508,  6.        ,  7.        , -0.95799232],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
+            >>> out = F.rrelu(input_tensor, 0.1, 0.3, inplace=True)
+            >>> print(input_tensor)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-0.38849574,  3.        , -1.08560097,  5.        ],
+               [ 3.        , -0.67717779,  5.        , -1.35442924],
+               [-1.46664631, -1.08899045,  8.        ,  9.        ]],
+              [[ 1.        , -0.42030090, -0.73198748,  4.        ],
+               [-1.28576696,  6.        ,  7.        , -2.02790141],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
@@ -715,7 +738,10 @@ def rrelu(
     is_test = not training
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.rrelu(x, lower, upper, is_test)
+        if inplace:
+            return _C_ops.rrelu_(x, lower, upper, is_test)
+        else:
+            return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
             x, 'X', ['float16', 'uint16', 'float32', 'float64'], 'rrelu'
@@ -972,6 +998,7 @@ def selu(
     x: Tensor,
     scale: float = 1.0507009873554804934193349852946,
     alpha: float = 1.6732632423543772848170429916717,
+    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -991,6 +1018,7 @@ def selu(
         x (Tensor): The input Tensor with data type float32, float64.
         scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946.
         alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1008,6 +1036,15 @@ def selu(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 1.05070102],
              [2.10140204, 3.15210295]])
+            >>> out = F.selu(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
     """
     if scale <= 1.0:
         raise ValueError(
@@ -1020,7 +1057,10 @@ def selu(
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.selu(x, scale, alpha)
+        if inplace:
+            return _C_ops.selu_(x, scale, alpha)
+        else:
+            return _C_ops.selu(x, scale, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'selu'
@@ -1401,7 +1441,7 @@ def softsign(x: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
-def swish(x: Tensor, name: str | None = None) -> Tensor:
+def swish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     swish activation.
 
@@ -1411,6 +1451,7 @@ def swish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1427,9 +1468,19 @@ def swish(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
+            >>> out = F.swish(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.swish(x)
+        if inplace:
+            return _C_ops.swish_(x)
+        else:
+            return _C_ops.swish(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'swish'
@@ -1445,7 +1496,7 @@ def swish(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def mish(x: Tensor, name: str | None = None) -> Tensor:
+def mish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     mish activation.
 
@@ -1460,6 +1511,7 @@ def mish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1476,9 +1528,19 @@ def mish(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.03357624,  0.        ,  4.99955177])
+            >>> out = F.mish(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.mish(x, 20)
+        if inplace:
+            return _C_ops.mish_(x, 20)
+        else:
+            return _C_ops.mish(x, 20)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'mish'
