@@ -23,7 +23,6 @@
 namespace cinn {
 namespace runtime {
 namespace custom_device {
-  void ForceRegisterCinnCustomDeviceHostAPI();
   void ForceRegisterCinnCustomDeviceIntrinsics(); 
 
 // ============================================================
@@ -411,7 +410,6 @@ namespace {
             VLOG(0) << "!!! STATIC INIT: Triggering CINN Custom Device Registration !!!";
             
             // 强制执行注册
-            ForceRegisterCinnCustomDeviceHostAPI();
             ForceRegisterCinnCustomDeviceIntrinsics();
         }
     };

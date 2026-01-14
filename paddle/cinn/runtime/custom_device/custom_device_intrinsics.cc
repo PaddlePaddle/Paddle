@@ -15,44 +15,51 @@
 #error "STOP!!! I AM BEING COMPILED! 停下！我正在被编译！"
 #endif
 
+// 1. 头文件
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
+#include "paddle/phi/backends/device_manager.h" // <--- 【新增】用于获取设备名
 
 namespace cinn {
 namespace runtime {
 namespace custom_device {
+
 using cinn::backends::GlobalSymbolRegistry;
 using cinn::runtime::custom_device::CustomBackendAPI;
 using cinn_buffer_ptr_t = cinn_buffer_t *;
 using cinn_int_ptr_t = int *;
 
-// 普通函数，不再是宏
-void ForceRegisterCinnCustomDeviceHostAPI() {
+// 手动注册函数
+void ForceRegisterCinnCustomDeviceIntrinsics() {
+  VLOG(0) << "Force Registering Custom Device Intrinsics & Host API...";
+
+  // =======================================================
+  // Part 1: Host API 注册 (保持不变)
+  // =======================================================
   GlobalSymbolRegistry::Global().RegisterFn(
       "backend_api.custom_device",
-      reinterpret_cast<void *>(CustomBackendAPI::Global()));  // TODO(xuyuhan)
+      reinterpret_cast<void *>(CustomBackendAPI::Global()));
 
   using cinn::runtime::custom_device::cinn_call_custom_device_kernel;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_custom_device_kernel,
                               cinn::common::DefaultHostTarget())
       .template SetRetType<void>()
-      .template AddInputType<void *>()                      // kernel_fn
-      .template AddInputType<void *>()                      // args
-      .template AddInputType(cinn::common::type_of<int>())  // num_args
-      .template AddInputType(cinn::common::type_of<int>())  // grid_x
-      .template AddInputType(cinn::common::type_of<int>())  // grid_y
-      .template AddInputType(cinn::common::type_of<int>())  // grid_z
-      .template AddInputType(cinn::common::type_of<int>())  // block_x
-      .template AddInputType(cinn::common::type_of<int>())  // block_y
-      .template AddInputType(cinn::common::type_of<int>())  // block_z
-      .template AddInputType(
-          cinn::common::type_of<int>())  // shared_memory_bytes
-      .template AddInputType<void *>()   // stream
+      .template AddInputType<void *>()
+      .template AddInputType<void *>()
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType<void *>()
       .End();
-  using cinn::runtime::custom_device::infer_shape_set_value;
 
+  using cinn::runtime::custom_device::infer_shape_set_value;
   REGISTER_EXTERN_FUNC_HELPER(infer_shape_set_value,
                               cinn::common::DefaultHostTarget())
       .template SetRetType<void>()
@@ -61,12 +68,34 @@ void ForceRegisterCinnCustomDeviceHostAPI() {
       .template AddInputType(cinn::common::type_of<int64_t>())
       .template AddInputType(cinn::common::type_of<int64_t **>())
       .End();
-}
 
-void ForceRegisterCinnCustomDeviceIntrinsics() {
-  fprintf(stderr, "!!! [DEBUG] CINN Custom Device Intrinsics Registering... !!!\n");
-  auto target = cinn::common::DefaultCustomDeviceTarget();
+  // =======================================================
+  // Part 2: Intrinsics 注册 (【核心修改】)
+  // =======================================================
+  
+  // 1. 动态获取真实的 Custom Device 名字 (例如 "metax_gpu")
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  std::string custom_device_name = "unknown_custom_device"; // 默认兜底
+  int device_id = 0;
+  if (!dev_types.empty()) {
+      custom_device_name = dev_types[0];
+      device_id = phi::DeviceManager::GetDevice(custom_device_name);
+  }
+  
+  VLOG(0) << "Registering CINN Intrinsics for Target Name: " << custom_device_name;
 
+  // 2. 使用真实名字构造 Target
+  // 这样 CINN 就会把这些算子标记为 "metax_gpu" 设备
+  cinn::common::Target target(
+      cinn::common::Target::OS::Linux,
+      cinn::common::CustomDeviceArch{custom_device_name, device_id},
+      cinn::common::Target::Bit::k64,
+      {cinn::common::Target::Feature::JIT},
+      {});
+
+
+  // 3. 下面所有的宏注册逻辑保持不变 (直接粘贴原来的代码)
+  
 // bool for 1 input 1 output
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_BOOL(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(            \
@@ -457,8 +486,8 @@ void ForceRegisterCinnCustomDeviceIntrinsics() {
       .template AddInputType(cinn::common::type_of<int>())
       .template AddInputType(cinn::common::type_of<int>())
       .End();
+}
 
-}
-}
-}
-}
+} // namespace custom_device
+} // namespace runtime
+} // namespace cinn
