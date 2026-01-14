@@ -363,6 +363,7 @@ class TestFusedFFNOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_dropout_mode)
 
+
 class TestFusedFFNOpZeroSize(unittest.TestCase):
     """Test fused_feedforward with zero-size input (e.g., shape [0, 2, 2])"""
 
@@ -425,6 +426,7 @@ class TestFusedFFNOpZeroSize(unittest.TestCase):
 
         self.assertEqual(out.shape[1:], x.shape[1:])
         self.assertEqual(out.dtype, x.dtype)
+
 
 support_types = {"float32"}  # get_xpu_op_support_types('fused_feedforward')
 for stype in support_types:
