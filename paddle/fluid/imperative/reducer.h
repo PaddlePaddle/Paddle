@@ -61,10 +61,10 @@ struct DivNRanksFunctor {
 
 template <typename Dex>
 struct DivNRanksForAllReduce {
-  phi::DenseTensor* in_;
+  DenseTensor* in_;
   int64_t nranks_;
   const phi::DeviceContext& ctx_;
-  DivNRanksForAllReduce(phi::DenseTensor* in,
+  DivNRanksForAllReduce(DenseTensor* in,
                         int64_t nranks,
                         const phi::DeviceContext& ctx)
       : in_(in), nranks_(nranks), ctx_(ctx) {}
@@ -89,7 +89,7 @@ class Group {
   bool is_sparse_ = false;
 
   // for concat kernel
-  std::vector<phi::DenseTensor> dense_tensors_;
+  std::vector<DenseTensor> dense_tensors_;
 
   std::vector<size_t> length_;
 
@@ -111,7 +111,7 @@ class Group {
   void SplitTensors(const phi::DeviceContext& context);
 
   // use it in CUDA
-  void DivNRanks(phi::DenseTensor* tensor,
+  void DivNRanks(DenseTensor* tensor,
                  int64_t nranks,
                  const phi::DeviceContext& context);
 

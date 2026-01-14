@@ -247,7 +247,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
-                              ->GetMutable<phi::DenseTensor>();
+                              ->GetMutable<DenseTensor>();
     int8_t* quantized_weight_data = weight_tensor->data<int8_t>();
 
     auto w_dims = weight_tensor->dims();
@@ -256,7 +256,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     std::vector<float> weight_scale;
     auto* weight_scale_tensor =
         scope->GetVar(weight_dequantize_linear_op_scale->Name())
-            ->GetMutable<phi::DenseTensor>();
+            ->GetMutable<DenseTensor>();
     float* weight_scale_data = weight_scale_tensor->data<float>();
 
     auto weight_scale_nums = weight_scale_tensor->numel();

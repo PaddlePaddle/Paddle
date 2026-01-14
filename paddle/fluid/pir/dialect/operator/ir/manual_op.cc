@@ -1249,7 +1249,7 @@ void SplitGradOp::Build(pir::Builder &builder,
 
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
+      std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, CPUPlace());
   pir::Value axis_ = full_axis_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
@@ -1838,7 +1838,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
                         int64_t i) {
   VLOG(4) << "Start build ArrayReadOp";
   paddle::dialect::FullOp full_i_op = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{1}, i, phi::DataType::INT64, phi::CPUPlace());
+      std::vector<int64_t>{1}, i, phi::DataType::INT64, CPUPlace());
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {array, full_i_op.result(0)};
@@ -2133,7 +2133,7 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   paddle::dialect::DenseTensorType x_type;
-  phi::Place place = phi::CPUPlace();
+  phi::Place place = CPUPlace();
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
   } else {
@@ -3367,7 +3367,7 @@ void ExpandOp::Build(pir::Builder &builder,
   // Generate int_array mutable attribute: shape
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
-          shape, phi::DataType::INT64, phi::CPUPlace());
+          shape, phi::DataType::INT64, CPUPlace());
   pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
@@ -3403,7 +3403,7 @@ void ExpandOp::Build(pir::Builder &builder,
   // Generate int_array mutable attribute: shape
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
-          shape, phi::DataType::INT64, phi::CPUPlace());
+          shape, phi::DataType::INT64, CPUPlace());
   pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";

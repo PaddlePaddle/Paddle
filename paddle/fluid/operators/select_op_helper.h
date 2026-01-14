@@ -25,7 +25,7 @@ namespace operators {
 
 // Returns the integer in mask whose numel must be 1. The integer means the
 // selected branch number.
-inline int GetBranchNumber(const phi::DenseTensor &mask) {
+inline int GetBranchNumber(const DenseTensor &mask) {
   PADDLE_ENFORCE_EQ(mask.numel(),
                     1,
                     common::errors::InvalidArgument(
@@ -38,7 +38,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
     return mask.data<int>()[0];
   }
   // when mask.place().GetType() == phi::AllocationType::GPU is true
-  std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   framework::TensorCopySync(mask, phi::CPUPlace(), cpu_mask.get());

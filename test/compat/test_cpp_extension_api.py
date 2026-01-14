@@ -58,6 +58,18 @@ class TestGetCudaArchFlags(unittest.TestCase):
         self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
         self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
 
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6,9.0+PTX"
+        flags = _get_cuda_arch_flags()
+        self.assertIn("-gencode=arch=compute_86,code=sm_86", flags)
+        self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
+        self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
+
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6 9.0+PTX"
+        flags = _get_cuda_arch_flags()
+        self.assertIn("-gencode=arch=compute_86,code=sm_86", flags)
+        self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
+        self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
+
     def test_auto_detect(self):
         if "PADDLE_CUDA_ARCH_LIST" in os.environ:
             del os.environ["PADDLE_CUDA_ARCH_LIST"]

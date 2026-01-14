@@ -390,7 +390,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int t_size = sizeof(CT);
 
   const phi::Place &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
 
   // 1.1 get stored data num of per block
   int kVecSize = 4;
@@ -531,7 +531,7 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   const int t_size = sizeof(CT);
 
   const phi::Place &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
 
   // 1.1 get stored data num of per block
   const int kVecSize = 4;

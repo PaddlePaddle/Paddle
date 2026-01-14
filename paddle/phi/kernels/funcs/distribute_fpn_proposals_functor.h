@@ -38,7 +38,7 @@ inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,
     DenseTensor cpu_tensor;
     if (rois_num->place().GetType() == AllocationType::GPU ||
         rois_num->place().GetType() == AllocationType::XPU) {
-      Copy<Context>(dev_ctx, *rois_num, phi::CPUPlace(), true, &cpu_tensor);
+      Copy<Context>(dev_ctx, *rois_num, CPUPlace(), true, &cpu_tensor);
       rois_num_data = cpu_tensor.data<int64_t>();
     }
     rois_lod.push_back(static_cast<size_t>(0));
@@ -51,7 +51,7 @@ inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,
     DenseTensor cpu_tensor;
     if (rois_num->place().GetType() == AllocationType::GPU ||
         rois_num->place().GetType() == AllocationType::XPU) {
-      Copy<Context>(dev_ctx, *rois_num, phi::CPUPlace(), true, &cpu_tensor);
+      Copy<Context>(dev_ctx, *rois_num, CPUPlace(), true, &cpu_tensor);
       rois_num_data = cpu_tensor.data<int>();
     }
     rois_lod.push_back(static_cast<size_t>(0));

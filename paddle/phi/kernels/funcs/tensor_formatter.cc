@@ -136,7 +136,7 @@ void TensorFormatter::FormatData(const DenseTensor& print_tensor,
   if (print_tensor.place().GetType() == AllocationType::CPU) {
     data = print_tensor.data<T>();
   } else {
-    phi::CPUPlace cpu_place;
+    CPUPlace cpu_place;
 
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto dev_ctx = pool.Get(print_tensor.place());

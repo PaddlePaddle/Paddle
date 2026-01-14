@@ -273,8 +273,8 @@ void OneDNNLegacyKernelInstruction::Run() {
     }
     auto input_vars = kernel_context_->MultiInputVar(*input_name);
     for (auto& var : input_vars) {
-      if (var->IsType<phi::DenseTensor>()) {
-        auto input = var->GetMutable<phi::DenseTensor>();
+      if (var->IsType<DenseTensor>()) {
+        auto input = var->GetMutable<DenseTensor>();
         if (input->layout() != phi::DataLayout::ONEDNN) {
           phi::DataLayout from_layout = input->layout();
 
