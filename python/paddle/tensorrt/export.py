@@ -377,6 +377,8 @@ def convert_to_trt(program, trt_config, scope):
                     feed_dict[name] = input_tuples[j][i]
                 feeds.append(feed_dict)
         # run pir pass (including trt_op_marker_pass)
+        # NOTE(Pan Zhaowu): using legacy linear to make TRT converter work.
+        paddle.set_flags({"FLAGS_use_legacy_linear": True})
         program_with_pir = run_pir_pass(
             program,
             disable_passes=trt_config.disable_passes,
@@ -758,8 +760,6 @@ def convert(model_path, config):
         raise ValueError(
             "The `config.save_model_dir` and `model_path` cannot be the same. Please specify a different directory for saving the model."
         )
-    # NOTE(Pan Zhaowu): using legacy linear to make TRT converter work.
-    paddle.set_flags({"FLAGS_use_legacy_linear": True})
 
     scope = paddle.static.global_scope()
     place = paddle.CUDAPlace(0)
