@@ -758,6 +758,8 @@ def convert(model_path, config):
         raise ValueError(
             "The `config.save_model_dir` and `model_path` cannot be the same. Please specify a different directory for saving the model."
         )
+    # NOTE(Pan Zhaowu): using legacy linear to make TRT converter work.
+    paddle.set_flags({"FLAGS_use_legacy_linear": True})
 
     scope = paddle.static.global_scope()
     place = paddle.CUDAPlace(0)
