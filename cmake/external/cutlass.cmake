@@ -29,6 +29,9 @@ if(NOT PYTHON_EXECUTABLE)
   find_package(Python REQUIRED COMPONENTS Interpreter)
 endif()
 
+message(STATUS "[DEBUG] ===== In cmake\external\cutlass.cmake =====")
+message(STATUS "[DEBUG] PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+
 ExternalProject_Add(
   extern_cutlass
   ${EXTERNAL_PROJECT_LOG_ARGS}

@@ -5,6 +5,13 @@ endif()
 #(risemeup1) note: CMake 3.18 needs to specify the value of CMAKE_CUDA_ARCHITECTURES，otherwise a large number of warnings may appear in cmake
 set(CMAKE_CUDA_ARCHITECTURES OFF)
 
+message(STATUS "[DEBUG] ===== In cmake\cuda.cmake =====")
+message(STATUS "[DEBUG] WITH_NV_JETSON: ${WITH_NV_JETSON}")
+message(STATUS "[DEBUG] NEW_RELEASE_ALL: ${NEW_RELEASE_ALL}")
+message(STATUS "[DEBUG] NEW_RELEASE_PYPI: ${NEW_RELEASE_PYPI}")
+message(STATUS "[DEBUG] NEW_RELEASE_JIT: ${NEW_RELEASE_JIT}")
+message(STATUS "[DEBUG] NEW_RELEASE_JIT: ${NEW_RELEASE_JIT}")
+
 if(WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
@@ -38,6 +45,8 @@ else()
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
   set(paddle_known_gpu_archs12 "52 60 61 70 75 80 90 100")
 endif()
+
+message(STATUS "[DEBUG] paddle_known_gpu_archs: ${paddle_known_gpu_archs}")
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
@@ -161,6 +170,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       set(cuda_arch_bin "50")
     endif()
   elseif(${CUDA_ARCH_NAME} STREQUAL "Pascal")
+    message(STATUS "[DEBUG] Processing Pascal architecture")
     if(WITH_NV_JETSON)
       set(cuda_arch_bin "62")
     else()
