@@ -19,6 +19,9 @@
 namespace paddle {
 namespace jit {
 
+using Tensor = paddle::Tensor;
+using DenseTensor = phi::DenseTensor;
+
 class BaseEngine {
  public:
   virtual std::vector<DenseTensor> operator()(
