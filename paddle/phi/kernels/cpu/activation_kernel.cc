@@ -216,7 +216,7 @@ void PowKernel(const Context& dev_ctx,
       out, errors::InvalidArgument("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
   if (factor.to<float>() == 0) {
-    std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+    std::vector<int64_t> vec_dims = vectorize(out->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
     return;

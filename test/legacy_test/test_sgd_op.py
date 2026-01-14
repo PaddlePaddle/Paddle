@@ -322,5 +322,35 @@ class TestSGDSimple(unittest.TestCase):
         np.testing.assert_allclose(out1, out2)
 
 
+class TestSGDGradFP32(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.h = 102
+        self.w = 105
+
+    def get_available_places(self):
+        places = [paddle.CPUPlace()]
+
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+
+        if paddle.is_compiled_with_xpu():
+            places.append(paddle.XPUPlace(0))
+
+        return places
+
+    def test_sgd_execution(self):
+        for place in self.get_available_places():
+            paddle.disable_static()
+            if isinstance(place, paddle.CPUPlace):
+                param_dtype = 'bfloat16'
+            else:
+                param_dtype = 'float16'
+            param = paddle.randn([self.h, self.w], dtype=param_dtype).to(place)
+            grad = paddle.randn([self.h, self.w], dtype='float32').to(place)
+            lr = paddle.to_tensor([0.1], dtype='float32', place=place)
+            sgd_wrapper(param, lr, grad)
+
+
 if __name__ == "__main__":
     unittest.main()

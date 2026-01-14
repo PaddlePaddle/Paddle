@@ -18,19 +18,15 @@
 #include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 
 namespace phi {
-struct __custom_bfloat164 {
-  __nv_bfloat16 x;
-  __nv_bfloat16 y;
-  __nv_bfloat16 z;
-  __nv_bfloat16 w;
-};
 __device__ __nv_bfloat16 __custom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
   return static_cast<__nv_bfloat16>(static_cast<float>(x) +
                                     static_cast<float>(y));
 }
+
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 64
 #endif
+
 template <bool MP>
 __global__ __launch_bounds__(256) void tokens_zip_kernel(
     const phi::bfloat16 *__restrict__ unzipped_tokens_in,
@@ -44,6 +40,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
     const int num_experts,
     const int topk) {
   const int this_row = blockIdx.x;
+
   if (this_row >= total_zipped_tokens_num) return;
 
   const __nv_bfloat16 *unzipped_tokens =
@@ -51,14 +48,15 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   __nv_bfloat16 *zipped_tokens =
       reinterpret_cast<__nv_bfloat16 *>(zipped_tokens_out);
 
-  int local_row_fetchlist[MAX_NUM_EXPERTS];
+  __shared__ int local_row_fetchlist[MAX_NUM_EXPERTS];
 
-#pragma unroll
-  for (int expert = 0; expert < num_experts; ++expert) {
+  if (threadIdx.x < num_experts) {
     const int fetch_row =
-        zipped_expertwise_rowmap[this_row * num_experts + expert];
-    local_row_fetchlist[expert] = fetch_row;
+        zipped_expertwise_rowmap[this_row * num_experts + threadIdx.x];
+    local_row_fetchlist[threadIdx.x] = fetch_row;
   }
+
+  __syncthreads();
 
 #pragma unroll
   for (int k = 0; k < topk; ++k) {
@@ -70,53 +68,74 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
         unzipped_token_probs[expert_fetch_row];
   }
 
-  constexpr int vecSize = 4;
-  const int num_full_vec = token_length / vecSize;
-  const int remaining_elems = token_length % vecSize;
-  const int thread_stride = blockDim.x * vecSize;
+  // only support VecSize = 8
+  constexpr int VecSize = 8;
+  // use bfloat162 to pack 2 bfloat16s
+  constexpr int PACKED_VEC_SIZE = VecSize / 2;
+
+  const int num_full_vec = token_length / VecSize;
+  const int64_t thread_stride = static_cast<int64_t>(blockDim.x) * VecSize;
 
   if constexpr (MP) {
-    for (int x_offset = threadIdx.x * vecSize;
-         x_offset < num_full_vec * vecSize;
+#pragma unroll 1
+    for (int64_t x_offset = static_cast<int64_t>(threadIdx.x) * VecSize;
+         x_offset < num_full_vec * VecSize;
          x_offset += thread_stride) {
-      float4 sum = {0.0f, 0.0f, 0.0f, 0.0f};
-      __custom_bfloat164 raw = {0.0f, 0.0f, 0.0f, 0.0f};
+      __nv_bfloat162 raw[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
+      float2 sum[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
+
       int aggreg_cnt = 0;
-      __custom_bfloat164 *out_ptr = reinterpret_cast<__custom_bfloat164 *>(
-          &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
+
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         const int fetch_row = local_row_fetchlist[expert];
+
         if (fetch_row < 0) continue;
+
         aggreg_cnt++;
-        raw = *reinterpret_cast<const __custom_bfloat164 *>(
-            &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
-                             x_offset]);
-        float4 token_vec = {0.0f, 0.0f, 0.0f, 0.0f};
-        token_vec.x = static_cast<float>(raw.x);
-        token_vec.y = static_cast<float>(raw.y);
-        token_vec.z = static_cast<float>(raw.z);
-        token_vec.w = static_cast<float>(raw.w);
-        sum.x = __fadd_rn(token_vec.x, sum.x);
-        sum.y = __fadd_rn(token_vec.y, sum.y);
-        sum.z = __fadd_rn(token_vec.z, sum.z);
-        sum.w = __fadd_rn(token_vec.w, sum.w);
+
+        const __nv_bfloat162 *base_ptr =
+            reinterpret_cast<const __nv_bfloat162 *>(
+                &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
+                                 x_offset]);
+
+        // Cast the input pointer to uint4* to enforce a single 128-bit
+        // vectorized load (LDG.E.128) for optimal memory bandwidth.
+        uint4 packed_raw = *reinterpret_cast<const uint4 *>(base_ptr);
+
+        const __nv_bfloat162 *raw_ptr =
+            reinterpret_cast<const __nv_bfloat162 *>(&packed_raw);
+
+#pragma unroll
+        for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
+          raw[i] = raw_ptr[i];
+          float2 token_vec = __bfloat1622float2(raw[i]);
+          sum[i].x = __fadd_rn(token_vec.x, sum[i].x);
+          sum[i].y = __fadd_rn(token_vec.y, sum[i].y);
+        }
       }
-      if (aggreg_cnt > 1) {
-        (*out_ptr).x = static_cast<__nv_bfloat16>(sum.x);
-        (*out_ptr).y = static_cast<__nv_bfloat16>(sum.y);
-        (*out_ptr).z = static_cast<__nv_bfloat16>(sum.z);
-        (*out_ptr).w = static_cast<__nv_bfloat16>(sum.w);
-      } else {
-        *out_ptr = raw;
+
+      __nv_bfloat162 results[PACKED_VEC_SIZE];
+#pragma unroll
+      for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
+        results[i] = (aggreg_cnt > 1) ? __float22bfloat162_rn(sum[i]) : raw[i];
       }
+
+      __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
+          &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
+
+      // Cast the output pointer to uint4* to enforce a single 128-bit
+      // vectorized store (STG.E.128) for optimal memory bandwidth.
+      *reinterpret_cast<uint4 *>(out_ptr) = *reinterpret_cast<uint4 *>(results);
     }
 
-    for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
+#pragma unroll 1
+    for (int i = num_full_vec * VecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       float sum = 0.0f;
       __nv_bfloat16 raw = 0.0f;
       int aggreg_cnt = 0;
+
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         int fetch_row = local_row_fetchlist[expert];
@@ -130,29 +149,45 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
           (aggreg_cnt > 1) ? static_cast<__nv_bfloat16>(sum) : raw;
     }
   } else {
-    for (int x_offset = threadIdx.x * vecSize;
-         x_offset < num_full_vec * vecSize;
+    for (int64_t x_offset = static_cast<int64_t>(threadIdx.x) * VecSize;
+         x_offset < num_full_vec * VecSize;
          x_offset += thread_stride) {
-      __custom_bfloat164 sum = {0.0f, 0.0f, 0.0f, 0.0f};
-      __custom_bfloat164 *out_ptr = reinterpret_cast<__custom_bfloat164 *>(
+      __nv_bfloat162 sum[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
+
+      __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
+
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
-        __custom_bfloat164 token_vec =
-            *reinterpret_cast<const __custom_bfloat164 *>(
+
+        const __nv_bfloat162 *base_ptr =
+            reinterpret_cast<const __nv_bfloat162 *>(
                 &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                                  x_offset]);
-        sum.x = __custom_hadd(sum.x, token_vec.x);
-        sum.y = __custom_hadd(sum.y, token_vec.y);
-        sum.z = __custom_hadd(sum.z, token_vec.z);
-        sum.w = __custom_hadd(sum.w, token_vec.w);
+
+        // Cast the input pointer to uint4* to enforce a single 128-bit
+        // vectorized load (LDG.E.128) for optimal memory bandwidth.
+        uint4 packed_raw = *reinterpret_cast<const uint4 *>(base_ptr);
+
+        const __nv_bfloat162 *raw_ptr =
+            reinterpret_cast<const __nv_bfloat162 *>(&packed_raw);
+
+#pragma unroll
+        for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
+          __nv_bfloat162 token_vec = raw_ptr[i];
+          sum[i].x = __custom_hadd(sum[i].x, token_vec.x);
+          sum[i].y = __custom_hadd(sum[i].y, token_vec.y);
+        }
       }
-      *out_ptr = sum;
+
+      // Cast the output pointer to uint4* to enforce a single 128-bit
+      // vectorized store (STG.E.128) for optimal memory bandwidth.
+      *reinterpret_cast<uint4 *>(out_ptr) = *reinterpret_cast<uint4 *>(sum);
     }
 
-    for (int i = num_full_vec * vecSize + threadIdx.x; i < token_length;
+    for (int i = num_full_vec * VecSize + threadIdx.x; i < token_length;
          i += blockDim.x) {
       __nv_bfloat16 sum = (__nv_bfloat16)0.0f;
 #pragma unroll
@@ -166,6 +201,13 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
       zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] = sum;
     }
   }
+
+  // Optimization: A dummy synchronization primitive is placed here to act as a
+  // compiler barrier. This forces the compiler to shrink the live ranges of
+  // variables and release registers earlier. This reduces peak register usage,
+  // improving occupancy from 75% to 100% and yielding a significant performance
+  // boost.
+  __syncwarp();
 }
 
 template <typename T, typename Context>

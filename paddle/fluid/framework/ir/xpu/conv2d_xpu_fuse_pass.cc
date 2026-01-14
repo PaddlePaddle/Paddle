@@ -495,8 +495,8 @@ void Conv2dXPUFusePass::CreateTheReplicatedWeights(
   auto* replicated_filter_var = scope->FindVar(replicated_filter_name);
   if (replicated_filter_var == nullptr) {
     auto* filter_tensor =
-        scope->FindVar(conv_filter_name)->GetMutable<phi::DenseTensor>();
-    phi::DenseTensor replicated_filter_tensor;
+        scope->FindVar(conv_filter_name)->GetMutable<DenseTensor>();
+    DenseTensor replicated_filter_tensor;
     Assign(*filter_tensor, &replicated_filter_tensor);
 
     VarDesc replicated_filter_desc(replicated_filter_name);
@@ -513,7 +513,7 @@ void Conv2dXPUFusePass::CreateTheReplicatedWeights(
     block_replicated_filter_desc->SetDataType(
         replicated_filter_desc.GetDataType());
     Assign(replicated_filter_tensor,
-           scope->Var(replicated_filter_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(replicated_filter_name)->GetMutable<DenseTensor>());
   }
 }
 
@@ -544,7 +544,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   auto* conv_filter_replicated_node =
       FindNodeWithName(graph, replicated_filter_name);
   auto* filter_t =
-      scope->FindVar(replicated_filter_name)->GetMutable<phi::DenseTensor>();
+      scope->FindVar(replicated_filter_name)->GetMutable<DenseTensor>();
   auto filter_len = filter_t->numel();
   auto filter_dtype = filter_t->dtype();
   // transfilter fp16 --> fp32
@@ -568,7 +568,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
                       common::errors::InvalidArgument(
                           "ew_bias_add_y node ptr can not be null"));
     auto* ew_bias_add_y_t =
-        scope->FindVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(ew_bias_add_y->Name())->GetMutable<DenseTensor>();
     auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
     PADDLE_ENFORCE_EQ(
         filter_dims[0],
@@ -607,8 +607,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
         true,
         common::errors::InvalidArgument("bn_mean node ptr can not be null"));
 
-    auto bn_bias_t =
-        scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
+    auto bn_bias_t = scope->Var(bn_bias->Name())->GetMutable<DenseTensor>();
     PADDLE_ENFORCE_EQ(
         filter_dims[0],
         bn_bias_t->dims()[0],
@@ -616,11 +615,9 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
                                         "must equal out_channel[%d] of conv",
                                         bn_bias_t->dims()[0],
                                         filter_dims[0]));
-    auto bn_scale_t =
-        scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
-    auto bn_mean_t =
-        scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
-    auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
+    auto bn_scale_t = scope->Var(bn_scale->Name())->GetMutable<DenseTensor>();
+    auto bn_mean_t = scope->Var(bn_mean->Name())->GetMutable<DenseTensor>();
+    auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<DenseTensor>();
     float* bn_scale_ptr = bn_scale_t->data<float>();
     float* bn_bias_ptr = bn_bias_t->data<float>();
     float* bn_mean_ptr = bn_mean_t->data<float>();
@@ -633,7 +630,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     }
 
     auto fusion_bias_t =
-        scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
+        scope->Var(fusion_bias_node->Name())->GetMutable<DenseTensor>();
     float* fusion_bias_ptr = fusion_bias_t->data<float>();
     // recompute bias and weights
     for (int i = 0; i < mean_len; ++i) {
@@ -694,7 +691,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
         PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
     // recompute bias as scale op
     auto fusion_bias_t =
-        scope->GetVar(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
+        scope->GetVar(fusion_bias_node->Name())->GetMutable<DenseTensor>();
     float* fusion_bias_ptr = fusion_bias_t->data<float>();
     for (int i = 0; i < bias_len; ++i) {
       if (bias_after_scale_) {
@@ -840,7 +837,7 @@ void Conv2dXPUFusePass::CreateFusionInputs(
     conv_input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
     conv2d_xpu_input_max = graph->CreateVarNode(&conv_input_max_desc);
     auto input_max_tensor =
-        scope->Var(conv_input_max_name)->GetMutable<phi::DenseTensor>();
+        scope->Var(conv_input_max_name)->GetMutable<DenseTensor>();
     input_max_tensor->set_type(phi::DataType::FLOAT32);
     input_max_tensor->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
@@ -900,7 +897,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
           true,
           common::errors::InvalidArgument("conv node ptr can not be null"));
       auto ew_branch_add_max_tensor =
-          scope->Var(ew_branch_add_max_name)->GetMutable<phi::DenseTensor>();
+          scope->Var(ew_branch_add_max_name)->GetMutable<DenseTensor>();
       ew_branch_add_max_tensor->set_type(phi::DataType::FLOAT32);
       ew_branch_add_max_tensor->Resize({max_ptr_size});
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
@@ -1024,7 +1021,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
 
     float output_scale =
         GetScaleValueForNode(var_quant_scales, conv2d_out_var_node);
-    phi::DenseTensor out_max_in_cpu_tensor;
+    DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
     out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
@@ -1034,7 +1031,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
            output_scales.data(),
            max_ptr_size * sizeof(float));
     Assign(out_max_in_cpu_tensor,
-           scope->Var(conv_out_max_in_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(conv_out_max_in_name)->GetMutable<DenseTensor>());
     (*fusion_nodes_map)["out_max_in"] = conv2d_xpu_out_max_in;
   }
 
@@ -1138,7 +1135,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     if (!filter_node->Var()->Persistable()) return;
 
     auto filter_data_type =
-        scope->FindVar(filter_name_0)->GetMutable<phi::DenseTensor>()->dtype();
+        scope->FindVar(filter_name_0)->GetMutable<DenseTensor>()->dtype();
     std::string op_weights_precision = "float32";
     if (filter_data_type == phi::DataType::INT8) {
       op_weights_precision = "int8";

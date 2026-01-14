@@ -80,10 +80,10 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = common::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return common::make_ddim({});
+    return make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return common::make_ddim(x_vec);
+  return make_ddim(x_vec);
 }
 
 }  // namespace detail
@@ -625,7 +625,7 @@ void ConvInferMeta(const MetaTensor& input,
           in_dims.size(),
           in_dims,
           strides.size(),
-          common::make_ddim(strides),
+          make_ddim(strides),
           in_sub_stride_size));
 
   const auto input_channels =
@@ -875,7 +875,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "output_size of Op(ConvTransposeOp) should not be less than "
                 "the inferred output size. But received output_size = [%s], "
                 "whose dim %d is less than the inferred output size [%s]",
-                common::make_ddim(output_size).to_str(),
+                make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
         if (common::product(x_dims) != 0) {
@@ -889,7 +889,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                   "whose dim %d is not less than the inferred output size (%d) "
                   "+ "
                   "stride (%d) = %d",
-                  common::make_ddim(output_size).to_str(),
+                  make_ddim(output_size).to_str(),
                   i,
                   infer_shape,
                   strides[i],
@@ -906,7 +906,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "output_padding of Op(ConvTransposeOp) should not be "
                 "less than the 0. But received output_padding = "
                 "[%s], whose dim %d is less than 0",
-                common::make_ddim(output_padding).to_str(),
+                make_ddim(output_padding).to_str(),
                 i));
         PADDLE_ENFORCE_LT(
             output_padding[i],
@@ -917,7 +917,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "[%s], "
                 "whose dim %d is not less than either stride (%d)  or "
                 "dilation (%d)",
-                common::make_ddim(output_size).to_str(),
+                make_ddim(output_size).to_str(),
                 i,
                 strides[i],
                 dilations_[i]));
@@ -1451,10 +1451,9 @@ void DistributeLookupTableInferMeta(
       output->share_lod(*ids[i]);
       output->set_dtype(w.dtype());
     } else if (lookup_table_version == "lookup_table_v2") {
-      output->set_dims(
-          common::make_ddim({static_cast<int64_t>(id_dims[0]),
-                             static_cast<int64_t>(id_dims[1]),
-                             static_cast<int64_t>(table_dims[1])}));
+      output->set_dims(make_ddim({static_cast<int64_t>(id_dims[0]),
+                                  static_cast<int64_t>(id_dims[1]),
+                                  static_cast<int64_t>(table_dims[1])}));
       output->share_lod(*ids[i]);
       output->set_dtype(w.dtype());
     }
@@ -1617,7 +1616,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
             "equal to 0 and less than the dimensions of x. But "
             "received axis is {%s}, the dimension size of x is %d.",
             i,
-            common::make_ddim(axis),
+            make_ddim(axis),
             x_dims.size()));
   }
 
@@ -1750,9 +1749,9 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                             : common::vectorize<int64_t>(y_dims);
       std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
       if (x_over_y) {
-        x_dims = common::make_ddim(vdims);
+        x_dims = make_ddim(vdims);
       } else {
-        y_dims = common::make_ddim(vdims);
+        y_dims = make_ddim(vdims);
       }
     }
 #endif
@@ -1770,7 +1769,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                   out_dims_array.end());
     }
 #endif
-    auto out_dims = common::make_ddim(out_dims_array);
+    auto out_dims = make_ddim(out_dims_array);
     out->set_dims(out_dims);
   } else {
     out->set_dims(x.dims());
@@ -2071,7 +2070,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
     new_dims.push_back(1);
   }
 
-  auto ddim_out = common::make_ddim(new_dims);
+  auto ddim_out = make_ddim(new_dims);
 
   std::vector<int> shape = fused_reshape_Out;
   const std::vector<int>& axis = fused_transpose_Out;
@@ -2159,7 +2158,7 @@ void GatherInferMeta(const MetaTensor& x,
         for (int i = 1; i < input_dim.size(); ++i) {
           out_dim_vec.emplace_back(input_dim[i]);
         }
-        auto output_dims = common::make_ddim(out_dim_vec);
+        auto output_dims = make_ddim(out_dim_vec);
         out->set_dims(output_dims);
         out->set_dtype(x.dtype());
         out->share_lod(x);
@@ -2171,7 +2170,7 @@ void GatherInferMeta(const MetaTensor& x,
         for (int i = axis_v + 1; i < input_dim.size(); i++) {
           out_dim_vec.push_back(input_dim[i]);  // NOLINT
         }
-        auto output_dims = common::make_ddim(out_dim_vec);
+        auto output_dims = make_ddim(out_dim_vec);
         out->set_dims(output_dims);
         out->set_dtype(x.dtype());
         out->share_lod(x);
@@ -2202,7 +2201,7 @@ void GatherInferMeta(const MetaTensor& x,
       for (int i = axis_v + 1; i < input_dim.size(); i++) {
         out_dim_vec.push_back(input_dim[i]);  // NOLINT
       }
-      auto output_dims = common::make_ddim(out_dim_vec);
+      auto output_dims = make_ddim(out_dim_vec);
       out->set_dims(output_dims);
       out->set_dtype(x.dtype());
       out->share_lod(x);
@@ -3133,7 +3132,7 @@ void MatmulInferMeta(const MetaTensor& x,
     new_dims.push_back(N);  // NOLINT
   }
 
-  auto ddim_out = common::make_ddim(new_dims);
+  auto ddim_out = make_ddim(new_dims);
 
   out->set_dims(ddim_out);
   if (x.dtype() == DataType::INT8) {
@@ -3443,7 +3442,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                         dim_x,
                         dim_vec));
 
-  auto dim_out = common::make_ddim({dim_x[0]});
+  auto dim_out = make_ddim({dim_x[0]});
 
   out->set_dims(dim_out);
   out->set_dtype(x.dtype());
@@ -3587,7 +3586,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
     auto out_dim =
         common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
     out_dim.push_back(embedding_size);
-    outs_dims[i] = common::make_ddim(out_dim);
+    outs_dims[i] = make_ddim(out_dim);
   }
 
   for (size_t i = 0; i < n_ids; ++i) {
@@ -3625,7 +3624,7 @@ void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
     const auto ids_dims = ids[i]->dims();
     auto out_dim = common::vectorize(ids_dims);
     out_dim.push_back(hidden_size);
-    outs_dims[i] = common::make_ddim(out_dim);
+    outs_dims[i] = make_ddim(out_dim);
   }
 
   for (size_t i = 0; i < n_ids; ++i) {
@@ -4668,7 +4667,7 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     new_dims.push_back(1);
   }
 
-  auto out_dims = common::make_ddim(new_dims);
+  auto out_dims = make_ddim(new_dims);
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());

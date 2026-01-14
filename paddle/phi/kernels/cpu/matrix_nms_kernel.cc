@@ -257,7 +257,7 @@ void MatrixNMSKernel(const Context& dev_ctx,
                      DenseTensor* out,
                      DenseTensor* index,
                      DenseTensor* roisnum) {
-  auto score_dims = common::vectorize<int>(scores.dims());
+  auto score_dims = vectorize<int>(scores.dims());
   auto batch_size = score_dims[0];
   auto num_boxes = score_dims[2];
   auto box_dim = bboxes.dims()[2];

@@ -40,12 +40,10 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
                                DenseTensor* dy) {
   if (out.numel() == 0) {
     if (dx) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     if (dy) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
     }
     return;
   }
