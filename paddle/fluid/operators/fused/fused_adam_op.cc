@@ -35,7 +35,7 @@ class FusedAdamOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "Beta1Pows" || var_name == "Beta2Pows" ||
         var_name == "SkipUpdate") {

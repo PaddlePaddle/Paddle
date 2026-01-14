@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/sot/cpython_internals/internals_3_13.h"
-#include "paddle/fluid/pybind/sot/macros.h"
+
+#if (PY_3_13_PLUS && !PY_3_14_PLUS)
 
 #include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
@@ -304,3 +305,5 @@ PyObject *get_framelocals_mapping(_PyInterpreterFrame *frame) {
 
   return mapping;
 }
+
+#endif  // (PY_3_13_PLUS && !PY_3_14_PLUS)

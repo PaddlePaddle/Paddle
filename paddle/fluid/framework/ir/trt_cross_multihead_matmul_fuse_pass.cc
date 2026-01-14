@@ -301,12 +301,9 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     multihead_op_desc.SetInput("Input_q", {input0->Name()});
     multihead_op_desc.SetInput("Input_kv", {input1->Name()});
 
-    auto* wq_tensor =
-        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wk_tensor =
-        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wv_tensor =
-        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<DenseTensor>();
+    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<DenseTensor>();
+    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<DenseTensor>();
 
     int64_t hidden_out = wq_tensor->dims()[1];
     int64_t head_size = hidden_out / head_number;
@@ -330,7 +327,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     combined_w_kv_desc->SetShape(
         {wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
     combined_w_kv_desc->SetPersistable(true);
-    phi::DenseTensor tmp_combined_w_kv_tensor;
+    DenseTensor tmp_combined_w_kv_tensor;
     tmp_combined_w_kv_tensor.Resize(combined_w_kv_dims);
     float* tmp_combined_w_kv_data =
         dev_ctx->template HostAlloc<float>(&tmp_combined_w_kv_tensor);

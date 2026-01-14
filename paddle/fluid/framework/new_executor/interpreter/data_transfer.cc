@@ -237,7 +237,7 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
 // Var is initialized && var contains tensor && tensor is initialized
 bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
-    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
+    if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetDenseTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<phi::TensorArray>()) {
       return static_cast<const phi::DenseTensor*>(
@@ -508,8 +508,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           Variable* var = arguments->at(i);
 
           const phi::DenseTensor* tensor_in = nullptr;
-          if (var->IsType<phi::DenseTensor>() ||
-              var->IsType<phi::SelectedRows>()) {
+          if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
             tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<phi::TensorArray>()) {
             if (var->Get<phi::TensorArray>().empty()) {
@@ -534,10 +533,10 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               // In such situation corresponding resized Var
               // has to be created and registered
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&
-                  (var->IsType<phi::DenseTensor>() == true) &&
+                  (var->IsType<DenseTensor>() == true) &&
                   (expected_kernel_key.data_layout_ != DataLayout::ONEDNN)) {
                 VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
-                           "phi::DenseTensor , "
+                           "DenseTensor , "
                            "but NHWC layout"
                         << parameter_name << " in Operator " << op_base->Type();
                 auto op = TransferLayout(

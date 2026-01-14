@@ -200,7 +200,7 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
       if (var == nullptr) {
         feed_vec_[i] = nullptr;
       } else {
-        feed_vec_[i] = var->GetMutable<phi::DenseTensor>();
+        feed_vec_[i] = var->GetMutable<DenseTensor>();
       }
     }
   }
@@ -269,7 +269,7 @@ void DataFeed::CheckStart() {
 void DataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
-    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<phi::DenseTensor>();
+    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<DenseTensor>();
   }
 }
 
@@ -1950,8 +1950,7 @@ void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
   // set rank offset memory
   int phase = GetCurrentPhase();  // join: 1, update: 0
   if (enable_pv_merge_ && phase == 1) {
-    rank_offset_ =
-        scope.FindVar(rank_offset_name_)->GetMutable<phi::DenseTensor>();
+    rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<DenseTensor>();
   }
 }
 
@@ -2608,12 +2607,12 @@ void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   feed_vec.resize(used_slots_info_.size());
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec[i] =
-        scope.FindVar(used_slots_info_[i].slot)->GetMutable<phi::DenseTensor>();
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<DenseTensor>();
   }
 #else
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec_[i] =
-        scope.FindVar(used_slots_info_[i].slot)->GetMutable<phi::DenseTensor>();
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<DenseTensor>();
   }
 #endif
 }

@@ -55,8 +55,7 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(x_grad);
   if (x_grad->numel() == 0 || out_grad.numel() == 0) {
-    Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   DenseTensor weight_dequantized;

@@ -146,9 +146,6 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
 
         local_out = paddle.bincount(local_x, weights=local_weight)
         dist_out = paddle.bincount(dist_x, weights=dist_weight)
-        # add keywords usage case after fix code gen bug
-        # dist_out = paddle.bincount(dist_x, weights=dist_weight)
-        dist_out = paddle.bincount(dist_x, dist_weight)
 
         self.check_tensor_eq(local_out, dist_out)
 

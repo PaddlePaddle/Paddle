@@ -37,12 +37,12 @@ class ProcessGroupWithStream : public ProcessGroup {
     // TODO(liyurui): This constructor is temporary here for compatible reason,
     // will be deleted soon.
     TaskStream(int rank,
-               const std::vector<phi::DenseTensor>& inputs,
+               const std::vector<DenseTensor>& inputs,
                CommType comm_type)
         : Task(rank, inputs, comm_type) {}
 
     TaskStream(int rank,
-               const std::vector<phi::DenseTensor>& inputs,
+               const std::vector<DenseTensor>& inputs,
                CommType comm_type,
                bool sync_op,
                bool use_calc_stream)
@@ -166,8 +166,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors,
-      const std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<DenseTensor>* out_tensors,
+      const std::vector<DenseTensor>& in_tensors,
       bool sync_op) {
     return AllToAll(out_tensors,
                     in_tensors,
@@ -176,8 +176,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors UNUSED,
-      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      std::vector<DenseTensor>* out_tensors UNUSED,
+      const std::vector<DenseTensor>& in_tensors UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) override {
     PADDLE_THROW(common::errors::Unimplemented(

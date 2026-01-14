@@ -1504,34 +1504,37 @@ class Model:
     Examples:
         1. A common example
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
+            >>> # doctest: +TIMEOUT(30)
             >>> import paddle
             >>> import paddle.nn as nn
             >>> import paddle.vision.transforms as T
             >>> from paddle.static import InputSpec
 
-            >>> device = paddle.set_device('cpu') # or 'gpu'
+            >>> device = paddle.set_device('cpu')  # or 'gpu'
 
             >>> net = nn.Sequential(
             ...     nn.Flatten(1),
             ...     nn.Linear(784, 200),
             ...     nn.Tanh(),
-            ...     nn.Linear(200, 10))
-            ...
+            ...     nn.Linear(200, 10),
+            ... )
             >>> # inputs and labels are not required for dynamic graph.
             >>> input = InputSpec([None, 784], 'float32', 'x')
             >>> label = InputSpec([None, 1], 'int64', 'label')
 
             >>> model = paddle.Model(net, input, label)
-            >>> optim = paddle.optimizer.SGD(learning_rate=1e-3,
-            ...     parameters=model.parameters())
-            ...
-            >>> model.prepare(optim,
-            ...             paddle.nn.CrossEntropyLoss(),
-            ...             paddle.metric.Accuracy())
-            ...
+            >>> optim = paddle.optimizer.SGD(
+            ...     learning_rate=1e-3,
+            ...     parameters=model.parameters(),
+            ... )
+            >>> model.prepare(
+            ...     optim,
+            ...     paddle.nn.CrossEntropyLoss(),
+            ...     paddle.metric.Accuracy(),
+            ... )
             >>> transform = T.Compose([
             ...     T.Transpose(),
             ...     T.Normalize([127.5], [127.5])
@@ -1542,9 +1545,10 @@ class Model:
 
         2. An example using mixed precision training.
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
+            >>> # doctest: +TIMEOUT(30)
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
@@ -1554,30 +1558,37 @@ class Model:
             >>> def run_example_code():
             ...     device = paddle.set_device('gpu')
             ...
-            ...     net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(),
-            ...                         nn.Linear(200, 10))
+            ...     net = nn.Sequential(
+            ...         nn.Flatten(1),
+            ...         nn.Linear(784, 200),
+            ...         nn.Tanh(),
+            ...         nn.Linear(200, 10),
+            ...     )
             ...
             ...     model = paddle.Model(net)
-            ...     optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+            ...     optim = paddle.optimizer.SGD(
+            ...         learning_rate=1e-3,
+            ...         parameters=model.parameters(),
+            ...     )
             ...
             ...     amp_configs = {
             ...         "level": "O1",
             ...         "custom_white_list": {'conv2d'},
-            ...         "use_dynamic_loss_scaling": True
+            ...         "use_dynamic_loss_scaling": True,
             ...     }
-            ...     model.prepare(optim,
+            ...     model.prepare(
+            ...         optim,
             ...         paddle.nn.CrossEntropyLoss(),
             ...         paddle.metric.Accuracy(),
-            ...         amp_configs=amp_configs)
+            ...         amp_configs=amp_configs,
+            ...     )
             ...
             ...     transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
             ...     data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             ...     model.fit(data, epochs=2, batch_size=32, verbose=1)
-            ...
             >>> # mixed precision training is only supported on GPU now.
             >>> if paddle.is_compiled_with_cuda():
             ...     run_example_code()
-            ...
     """
 
     mode: Literal["train", "eval", "test"]
@@ -1650,25 +1661,27 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
                 >>> from paddle.static import InputSpec
                 >>> paddle.seed(2023)
 
-                >>> device = paddle.set_device('cpu') # or 'gpu'
+                >>> device = paddle.set_device('cpu')  # or 'gpu'
 
                 >>> net = nn.Sequential(
                 ...     nn.Linear(784, 200),
                 ...     nn.Tanh(),
-                ...     nn.Linear(200, 10))
-                ...
+                ...     nn.Linear(200, 10),
+                ... )
                 >>> input = InputSpec([None, 784], 'float32', 'x')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
                 >>> model = paddle.Model(net, input, label)
-                >>> optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                ...     parameters=model.parameters())
+                >>> optim = paddle.optimizer.SGD(
+                ...     learning_rate=1e-3,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> data = paddle.rand((4, 784), dtype="float32")
                 >>> label = paddle.randint(0, 10, (4, 1), dtype="int64")
