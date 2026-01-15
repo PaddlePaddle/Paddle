@@ -4241,7 +4241,7 @@ def bitwise_right_shift(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
-        name: str | None = None,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
 ) -> Tensor
