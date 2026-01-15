@@ -14,8 +14,10 @@
 
 #include "paddle/phi/kernels/lerp_grad_kernel.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/common/amp_type_traits.h"
@@ -27,6 +29,8 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -56,25 +60,73 @@ __global__ void LerpGradKernelImpl(const T* weight,
 }
 
 template <typename T>
-__global__ void LerpGradScalarKernelImpl(const T* weight,
+__global__ void LerpGradKernelCompatibleImpl(const T* weight,
+                                             const T* dout,
+                                             T* dx,
+                                             T* dy,
+                                             const int64_t out_size,
+                                             const int64_t x_size,
+                                             const int64_t y_size) {
+  CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
+    T weight_value = weight[idx];
+    T remaining_weight_value = static_cast<T>(1) - weight[idx];
+    if (dx) {
+      if (idx < x_size) {
+        dx[idx] = remaining_weight_value * dout[idx];
+      }
+    }
+    if (dy) {
+      if (idx < y_size) {
+        dy[idx] = weight_value * dout[idx];
+      }
+    }
+  }
+}
+
+template <typename T, typename WeightT = T>
+__global__ void LerpGradScalarKernelImpl(const WeightT* weight,
                                          const T* dout,
                                          T* dx,
                                          T* dy,
                                          const int64_t out_size,
                                          const int64_t x_size,
                                          const int64_t y_size) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType weight_scalar = static_cast<MPType>(weight[0]);
+  double weight_scalar = static_cast<double>(weight[0]);
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    MPType temp_dx = weight_scalar * static_cast<MPType>(dout[idx]);
+    double temp_dx = weight_scalar * static_cast<double>(dout[idx]);
     if (dx) {
       if (idx < x_size) {
-        dx[idx] = static_cast<T>(static_cast<MPType>(dout[idx]) - temp_dx);
+        dx[idx] = static_cast<T>(static_cast<double>(dout[idx]) - temp_dx);
       }
     }
     if (dy) {
       if (idx < y_size) {
         dy[idx] = static_cast<T>(temp_dx);
+      }
+    }
+  }
+}
+
+template <typename T, typename WeightT = T>
+__global__ void LerpGradScalarKernelCompatibleImpl(const WeightT* weight,
+                                                   const T* dout,
+                                                   T* dx,
+                                                   T* dy,
+                                                   const int64_t out_size,
+                                                   const int64_t x_size,
+                                                   const int64_t y_size) {
+  T weight_scalar = static_cast<T>(weight[0]);
+  T remaining_weight_scalar =
+      static_cast<T>(1 - static_cast<double>(weight[0]));
+  CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
+    if (dx) {
+      if (idx < x_size) {
+        dx[idx] = remaining_weight_scalar * dout[idx];
+      }
+    }
+    if (dy) {
+      if (idx < y_size) {
+        dy[idx] = weight_scalar * dout[idx];
       }
     }
   }
@@ -123,23 +175,66 @@ void SwitchKernel(const Context& dev_ctx,
                   T* y_grad_data) {
   if (weight.numel() == 1) {
     //    condition when weight is a scalar
-    const T* weight_data = weight.data<T>();
     const T* out_grad_data = out_grad.data<T>();
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
 
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
-    LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
-                                  gpu_config.GetBlockSize(),
-                                  0,
-                                  dev_ctx.stream()>>>(weight_data,
-                                                      out_grad_data,
-                                                      x_grad_data,
-                                                      y_grad_data,
-                                                      out_size,
-                                                      x_grad_size,
-                                                      y_grad_size);
+
+    if (weight.dtype() == DataType::FLOAT64) {
+      const double* weight_data = weight.data<double>();
+      if (FLAGS_use_accuracy_compatible_kernel) {
+        LerpGradScalarKernelCompatibleImpl<T, double>
+            <<<gpu_config.GetGridSize(),
+               gpu_config.GetBlockSize(),
+               0,
+               dev_ctx.stream()>>>(weight_data,
+                                   out_grad_data,
+                                   x_grad_data,
+                                   y_grad_data,
+                                   out_size,
+                                   x_grad_size,
+                                   y_grad_size);
+      } else {
+        LerpGradScalarKernelImpl<T, double><<<gpu_config.GetGridSize(),
+                                              gpu_config.GetBlockSize(),
+                                              0,
+                                              dev_ctx.stream()>>>(weight_data,
+                                                                  out_grad_data,
+                                                                  x_grad_data,
+                                                                  y_grad_data,
+                                                                  out_size,
+                                                                  x_grad_size,
+                                                                  y_grad_size);
+      }
+    } else {
+      const T* weight_data = weight.data<T>();
+      if (FLAGS_use_accuracy_compatible_kernel) {
+        LerpGradScalarKernelCompatibleImpl<T>
+            <<<gpu_config.GetGridSize(),
+               gpu_config.GetBlockSize(),
+               0,
+               dev_ctx.stream()>>>(weight_data,
+                                   out_grad_data,
+                                   x_grad_data,
+                                   y_grad_data,
+                                   out_size,
+                                   x_grad_size,
+                                   y_grad_size);
+      } else {
+        LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
+                                      gpu_config.GetBlockSize(),
+                                      0,
+                                      dev_ctx.stream()>>>(weight_data,
+                                                          out_grad_data,
+                                                          x_grad_data,
+                                                          y_grad_data,
+                                                          out_size,
+                                                          x_grad_size,
+                                                          y_grad_size);
+      }
+    }
   } else {
     //    broadcast weight with out_grad's dimensions
     const std::vector<const DenseTensor*> in_tensors = {&weight, &out_grad};
@@ -155,16 +250,29 @@ void SwitchKernel(const Context& dev_ctx,
     const int64_t weight_size = weight.numel();
     auto gpu_config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
-    LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
-                            gpu_config.GetBlockSize(),
-                            0,
-                            dev_ctx.stream()>>>(weight_data,
-                                                out_grad_data,
-                                                x_grad_data,
-                                                y_grad_data,
-                                                out_size,
-                                                x_grad_size,
-                                                y_grad_size);
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      LerpGradKernelCompatibleImpl<T><<<gpu_config.GetGridSize(),
+                                        gpu_config.GetBlockSize(),
+                                        0,
+                                        dev_ctx.stream()>>>(weight_data,
+                                                            out_grad_data,
+                                                            x_grad_data,
+                                                            y_grad_data,
+                                                            out_size,
+                                                            x_grad_size,
+                                                            y_grad_size);
+    } else {
+      LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
+                              gpu_config.GetBlockSize(),
+                              0,
+                              dev_ctx.stream()>>>(weight_data,
+                                                  out_grad_data,
+                                                  x_grad_data,
+                                                  y_grad_data,
+                                                  out_size,
+                                                  x_grad_size,
+                                                  y_grad_size);
+    }
   }
 }
 

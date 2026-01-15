@@ -1671,6 +1671,23 @@ void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
   }
 }
 
+PADDLE_API void RMSNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale,
+    const MetaTensor& invvar,
+    const MetaTensor& y_grad,
+    const std::vector<int64_t>& normalized_shape,
+    double epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* scale_grad) {
+  if (x_grad && x) {
+    x_grad->share_meta(x);
+  }
+  if (scale_grad && scale) {
+    scale_grad->share_meta(scale);
+  }
+}
+
 void RnnGradInferMeta(const MetaTensor& x,
                       const std::vector<const MetaTensor*>& pre_state,
                       const std::vector<const MetaTensor*>& weight_list,
@@ -2337,6 +2354,7 @@ PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
     scale_grad->share_meta(scale);
   }
 }
+
 void IndexElementwiseGetGradInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& index,

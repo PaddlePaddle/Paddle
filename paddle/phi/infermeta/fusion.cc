@@ -1010,9 +1010,16 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                             "and must satisfy the limitations: "
                             "(num_head * dim_head == dim_embed)"));
     }
-    num_heads = y_dim[1];
-    dim_head = y_dim[2];
-    hidden_size = y_dim[3];
+    // TODO(large-tensor): num_heads, dim_head, hidden_size may exceed INT_MAX
+    int64_t num_heads_int64 = y_dim[1];
+    int64_t dim_head_int64 = y_dim[2];
+    int64_t hidden_size_int64 = y_dim[3];
+    PADDLE_ENFORCE_LE_INT_MAX(num_heads_int64, "num_heads");
+    PADDLE_ENFORCE_LE_INT_MAX(dim_head_int64, "dim_head");
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_int64, "hidden_size");
+    num_heads = static_cast<int>(num_heads_int64);
+    dim_head = static_cast<int>(dim_head_int64);
+    hidden_size = static_cast<int>(hidden_size_int64);
   }
 
   PADDLE_ENFORCE_EQ(
