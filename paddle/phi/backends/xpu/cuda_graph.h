@@ -165,13 +165,46 @@ class CUDAGraph {
   CUDAGraph() {
     ThrowErrorIfNotSupportCUDAGraph();
     id_ = UniqueID();
+    
+    // Create a new stream and set it as the current device stream
+    int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+    phi::backends::xpu::XPUDeviceGuard guard(device_id);
+    
+    // Create new stream
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&created_stream_));
+    stream_created_ = true;
+    
+    // Get current XPUContext and save original stream
+    phi::XPUContext* dev_ctx = phi::get_xpu_context(device_id);
+    original_stream_ = dev_ctx->stream(0);
+    
+    // Set the new stream as current stream
+    dev_ctx->SetStream(created_stream_, 0);
   }
 
  public:
   static constexpr int64_t kDefaultPoolID = 0;
   static constexpr int64_t kInvalidPoolID = -1;
 
-  ~CUDAGraph() { Reset(); }
+  ~CUDAGraph() {
+    // Destroy the created stream before reset
+    if (stream_created_ && created_stream_ != nullptr) {
+      int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+      phi::backends::xpu::XPUDeviceGuard guard(device_id);
+      
+      // Restore original stream if needed
+      if (original_stream_ != nullptr) {
+        phi::XPUContext* dev_ctx = phi::get_xpu_context(device_id);
+        dev_ctx->SetStream(original_stream_, 0);
+      }
+      
+      // Destroy the created stream
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(created_stream_));
+      created_stream_ = nullptr;
+      stream_created_ = false;
+    }
+    Reset();
+  }
   CUDAGraphID ID() const { return id_; }
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
@@ -315,6 +348,11 @@ class CUDAGraph {
 
   std::mutex func_mtx_;
   bool is_first_run_{true};
+
+  // Stream created for this CUDAGraph instance
+  XPUStream created_stream_{nullptr};
+  XPUStream original_stream_{nullptr};
+  bool stream_created_{false};
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;

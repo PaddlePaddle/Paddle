@@ -226,7 +226,6 @@ struct XPUContext::Impl {
 
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
-    CreateStream();  // Cuda Graph need non default stream(not null stream)
   }
 
   void SetXContext(xpu::Context* context) {

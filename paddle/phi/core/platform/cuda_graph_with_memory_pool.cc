@@ -346,19 +346,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
 }
 #endif
 #if defined(PADDLE_WITH_XPU)
-void InitCUDNNRelatedHandle(phi::XPUContext* dev_ctx) {
-  // cunstomContext don't support cudnn.
-  // dev_ctx->cudnn_workspace_handle().ResetWorkspace();
-
-  // After PR(#43206), cudnn related initializations will change to lazy mode.
-  // It will only be initialized when op calls them. But cuda graph not
-  // support capture such kind of init, need to init all these handle before
-  // cuda graph.
-  // dev_ctx->cublas_handle();
-  // dev_ctx->cublaslt_handle();
-  // dev_ctx->cudnn_handle();
-  // dev_ctx->cusolver_dn_handle();
-}
+void InitCUDNNRelatedHandle(phi::XPUContext* dev_ctx) {}
 phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
                                                 int64_t* pool_id) {
   phi::DeviceContext* mutable_dev_ctx;
@@ -382,16 +370,17 @@ phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
                           "FLAGS_new_executor_use_cuda_graph must be True when "
                           "capturing stream is recorded."));
     if (num_stream > 1) {
-      VLOG(4) << "Use a new stream to capture cuda graph. Used in multi - stream scenarios with new executor.";
-      if (*pool_id <=
-          phi::backends::xpu::CUDAGraph::kInvalidPoolID) {
+      VLOG(4) << "Use a new stream to capture cuda graph. Used in multi - "
+                 "stream scenarios with new executor.";
+      if (*pool_id <= phi::backends::xpu::CUDAGraph::kInvalidPoolID) {
         *pool_id = phi::backends::xpu::CUDAGraph::UniqueMemoryPoolID();
       }
       mutable_dev_ctx =
           phi::backends::xpu::CUDAGraphContextManager::Instance().Get(
               *pool_id, place, 0);
     } else {
-      VLOG(4) << "Use recorded stream to capture cuda graph. Used in single -stream scenarios with new executor.";
+      VLOG(4) << "Use recorded stream to capture cuda graph. Used in single "
+                 "-stream scenarios with new executor.";
       mutable_dev_ctx = *(all_capturing_dev_ctxs.begin());
     }
   } else {
