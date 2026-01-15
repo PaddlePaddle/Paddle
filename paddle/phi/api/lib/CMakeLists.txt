@@ -148,6 +148,7 @@ endif()
 
 message(STATUS "[DEBUG] ===== In paddle/phi/api/lib/CMakeLists.txt =====")
 message(STATUS "[DEBUG] PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+message(STATUS "[DEBUG] Python_EXECUTABLE: ${Python_EXECUTABLE}")
 
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
 

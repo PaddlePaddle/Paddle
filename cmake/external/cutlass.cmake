@@ -31,6 +31,7 @@ endif()
 
 message(STATUS "[DEBUG] ===== In cmake/external/cutlass.cmake =====")
 message(STATUS "[DEBUG] PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
+message(STATUS "[DEBUG] Python_EXECUTABLE: ${Python_EXECUTABLE}")
 
 ExternalProject_Add(
   extern_cutlass
