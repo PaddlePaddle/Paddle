@@ -138,7 +138,7 @@ namespace phi {
 #define CUMSUM_BLOCK_SIZE 44
 #define CUMSUM_INVALID_TAG -1
 #ifndef MAX_NUM_EXPERTS
-#define MAX_NUM_EXPERTS 32
+#define MAX_NUM_EXPERTS 16
 #endif
 
 template <typename probs_T>
@@ -163,8 +163,9 @@ template <typename X_T,
           typename probs_T,
           typename scale_T,
           bool has_scale,
-          bool do_gather>
-__global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
+          bool do_gather,
+          int max_num_experts = 16>
+__global__ __launch_bounds__(128, 8) void tokens_unzip_stable_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
     const probs_T *__restrict__ probs_topk,
@@ -190,7 +191,7 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       std::min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
   __shared__ expert_infos_t
-      shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
+      shared_expert_infos[CUMSUM_BLOCK_SIZE][max_num_experts];
 
   constexpr int stages = 2;
   // Preload the tokens to smem
@@ -247,9 +248,9 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
 
   // Init shared memory
 #pragma unroll
-  for (int i = threadIdx.x; i < CUMSUM_BLOCK_SIZE * MAX_NUM_EXPERTS;
+  for (int i = threadIdx.x; i < CUMSUM_BLOCK_SIZE * max_num_experts;
        i += blockDim.x) {
-    shared_expert_infos[i / MAX_NUM_EXPERTS][i % MAX_NUM_EXPERTS] =
+    shared_expert_infos[i / max_num_experts][i % max_num_experts] =
         expert_infos_t();
   }
   // waiting for the shared_routemap_topk and shared_probs_topk async loading
@@ -318,8 +319,6 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
           expert_infos_t proposed = {
               shared_routemap_topk[internal_row * topk + k],
               shared_probs_topk[internal_row * topk + k]};
-          // const expert_infos_t proposed = {routemap_topk[row * topk + k],
-          //                   probs_topk[row * topk + k]};
           if (proposed.expert_row_idx == -1) continue;
           if (threadIdx.x == proposed.expert_row_idx) {
             shared_expert_infos[internal_row][expert_id] = {
@@ -455,7 +454,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  block.x = 256;
+  block.x = 128;
   int smem = 2 * token_length * sizeof(phi::bfloat16) +
              (sizeof(int) + sizeof(float)) * topk * CUMSUM_BLOCK_SIZE;
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
