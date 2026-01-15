@@ -123,13 +123,19 @@ void CUDAGraph::BeginCapture(phi::XPUPlace place,
                     false,
                     common::errors::PermissionDenied(
                         "CUDA Graph can only captured one by one."));
-  PADDLE_ENFORCE_NOT_NULL(
-      stream,
-      common::errors::PermissionDenied(
-          "CUDA Graph cannot be captured in default CUDA stream 0."));
+  // Create CUDAGraph instance, which will create a new stream in constructor
+  // and set it as the current device stream
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
-  capturing_graph_->stream_ = stream;
+  // Get the stream from the device context after constructor has set it
+  // The constructor has already created a new stream and set it as current device stream
+  phi::XPUContext* dev_ctx = phi::get_xpu_context(place.GetDeviceId());
+  XPUStream actual_stream = dev_ctx->stream(0);
+  PADDLE_ENFORCE_NOT_NULL(
+      actual_stream,
+      common::errors::PermissionDenied(
+          "CUDA Graph cannot be captured in default CUDA stream 0."));
+  capturing_graph_->stream_ = actual_stream;
   capturing_graph_->capture_mode_ = mode;
   if (mode == xpuStreamCaptureModeThreadLocal) {
     capturing_thread_id_ = std::this_thread::get_id();
