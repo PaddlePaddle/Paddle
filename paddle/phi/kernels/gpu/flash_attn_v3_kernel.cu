@@ -1099,58 +1099,6 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              DenseTensor *out,
                              DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  // umiswing: the following options have not been fully tested
-  PADDLE_ENFORCE_EQ(qv.is_initialized(),
-                    false,
-                    common::errors::InvalidArgument("q_v_ is not supported"));
-  PADDLE_ENFORCE_EQ(
-      q_descale.is_initialized(),
-      false,
-      common::errors::InvalidArgument("q_descale is not supported"));
-  PADDLE_ENFORCE_EQ(
-      k_descale.is_initialized(),
-      false,
-      common::errors::InvalidArgument("k_descale is not supported"));
-  PADDLE_ENFORCE_EQ(
-      v_descale.is_initialized(),
-      false,
-      common::errors::InvalidArgument("v_descale is not supported"));
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(softcap,
-                    0,
-                    common::errors::InvalidArgument(
-                        "softcap is not supported, please set softcap to 0"));
-  PADDLE_ENFORCE_EQ(
-      num_splits,
-      1,
-      common::errors::InvalidArgument(
-          "num_splits is not supported, please set num_splits to 1"));
-  PADDLE_ENFORCE_EQ(manual_set_pack_gqa,
-                    false,
-                    common::errors::InvalidArgument(
-                        "manual_set_pack_gqa is not supported, please set "
-                        "manual_set_pack_gqa to false"));
-  PADDLE_ENFORCE_EQ(
-      pack_gqa,
-      false,
-      common::errors::InvalidArgument(
-          "pack_gqa is not supported, please set pack_gqa to false"));
-
-  PADDLE_ENFORCE_EQ(
-      sm_margin,
-      0,
-      common::errors::InvalidArgument(
-          "sm_margin is not supported, please set sm_margin to 0"));
-
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
   const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
