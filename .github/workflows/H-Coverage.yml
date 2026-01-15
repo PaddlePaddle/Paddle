@@ -494,7 +494,7 @@ jobs:
           # git checkout ${BRANCH}
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
-          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -508,6 +508,7 @@ jobs:
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
+          pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           '
 
@@ -588,7 +589,7 @@ jobs:
           # git checkout ${BRANCH}
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
-          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -602,6 +603,7 @@ jobs:
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
+          pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           '
 

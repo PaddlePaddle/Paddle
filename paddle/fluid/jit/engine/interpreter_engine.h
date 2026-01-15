@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <vector>
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -37,7 +35,7 @@ class InterpreterEngine : public BaseEngine {
  public:
   InterpreterEngine(const std::shared_ptr<FunctionInfo> &info,
                     const std::shared_ptr<VariableMap> &params_dict,
-                    const phi::Place &place);
+                    const Place &place);
 
   ~InterpreterEngine() noexcept {}
 
@@ -56,7 +54,7 @@ class InterpreterEngine : public BaseEngine {
   std::shared_ptr<FunctionInfo> info_;
   std::shared_ptr<VariableMap> params_dict_;
   framework::Scope scope_;
-  phi::Place place_;
+  Place place_;
   std::shared_ptr<framework::InterpreterCore> inner_interpreter_;
   framework::ProgramDesc converted_prog_;
 };
