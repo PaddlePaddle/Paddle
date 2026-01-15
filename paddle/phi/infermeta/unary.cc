@@ -2142,10 +2142,13 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
       using_e5m2,
       false,
       common::errors::InvalidArgument("currently e5m2 is not support."));
-  PADDLE_ENFORCE_EQ(X.dtype(),
-                    DataType::BFLOAT16,
-                    common::errors::InvalidArgument(
-                        "currently only support bfloat16 input."));
+  PADDLE_ENFORCE_EQ(
+      (X.dtype() == DataType::BFLOAT16 || X.dtype() == DataType::FLOAT16),
+      true,
+      common::errors::InvalidArgument(
+          "The data type of input X is expected to be BFloat16 or Float16, "
+          "but received %s.",
+          X.dtype()));
 
   const int64_t rows = x_dims[0];
   const int64_t cols = x_dims[1];
@@ -2155,13 +2158,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "Currently only supports the first dim of "
                         "Input(X) <= 65535 * 128, but got %d",
                         rows));
-  PADDLE_ENFORCE_EQ(
-      rows % 128,
-      0,
-      common::errors::InvalidArgument("The first dim of "
-                                      "Input(X) should be exactly divided "
-                                      "by 128 , but got %d",
-                                      rows));
+
   PADDLE_ENFORCE_EQ(cols % 128,
                     0,
                     common::errors::InvalidArgument(
@@ -2169,8 +2166,35 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "by 128 , but got %d",
                         cols));
 
+  if (rows % 128 != 0) {
+    PADDLE_ENFORCE_EQ(
+        input_transpose,
+        0,
+        common::errors::InvalidArgument("When rows is not aligned to 128, only "
+                                        "supports input_transpose=False, "
+                                        "but received input_transpose=%d.",
+                                        input_transpose));
+    PADDLE_ENFORCE_EQ(return_transpose_only,
+                      0,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "return_transpose_only=False, "
+                          "but received return_transpose_only=%d.",
+                          return_transpose_only));
+    PADDLE_ENFORCE_EQ(using_1x128_vec_quant,
+                      1,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "using_1x128_vec_quant=True, "
+                          "but received using_1x128_vec_quant=%d.",
+                          using_1x128_vec_quant));
+  }
+
   const int64_t row_quantized = (rows + 127) / 128;
   const int64_t col_quantized = (cols + 127) / 128;
+
+  // padding to 4
+  const int64_t row_padded = (rows + 3) / 4 * 4;
 
   int64_t output_outer_dim = -1;
   int64_t output_inner_dim = -1;
@@ -2185,8 +2209,8 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
 
   if (using_1x128_vec_quant) {
     // 1x128 w/wo transpose
-    scale_outer_dim = output_scale_transpose ? col_quantized : rows;
-    scale_inner_dim = output_scale_transpose ? rows : col_quantized;
+    scale_outer_dim = output_scale_transpose ? col_quantized : row_padded;
+    scale_inner_dim = output_scale_transpose ? row_padded : col_quantized;
     scale_transposed_outer_dim = output_scale_transpose ? row_quantized : cols;
     scale_transposed_inner_dim = output_scale_transpose ? cols : row_quantized;
   } else {
@@ -2197,22 +2221,37 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     scale_transposed_inner_dim = scale_outer_dim;
   }
 
-  PADDLE_ENFORCE_GT(output_outer_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in output outer dim."));
-  PADDLE_ENFORCE_GT(output_inner_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in output inner dim."));
-  PADDLE_ENFORCE_GT(scale_outer_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in scale outer dim."));
-  PADDLE_ENFORCE_GT(scale_inner_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in scale inner dim."));
+  PADDLE_ENFORCE_GE(
+      output_outer_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The output_outer_dim should be greater than or equal to 0, "
+          "but received output_outer_dim is %d.",
+          output_outer_dim));
+
+  PADDLE_ENFORCE_GE(
+      output_inner_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The output_inner_dim should be greater than or equal to 0, "
+          "but received output_inner_dim is %d.",
+          output_inner_dim));
+
+  PADDLE_ENFORCE_GE(
+      scale_outer_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The scale_outer_dim should be greater than or equal to 0, "
+          "but received scale_outer_dim is %d.",
+          scale_outer_dim));
+
+  PADDLE_ENFORCE_GE(
+      scale_inner_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The scale_inner_dim should be greater than or equal to 0, "
+          "but received scale_inner_dim is %d.",
+          scale_inner_dim));
 
   if (X && out && scale) {
     if (!return_transpose_only) {
