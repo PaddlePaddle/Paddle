@@ -491,6 +491,7 @@ jobs:
           rm -rf * .[^.]*
           source /root/proxy
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
+          git config --global --add safe.directory /paddle
           git pull --no-edit origin pull/416/head
           git config --global --add safe.directory /paddle
           # git checkout ${BRANCH}
@@ -587,6 +588,7 @@ jobs:
           rm -rf * .[^.]*
           source /root/proxy
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
+          git config --global --add safe.directory /paddle
           git pull --no-edit origin pull/416/head
           git config --global --add safe.directory /paddle
           # git checkout ${BRANCH}
