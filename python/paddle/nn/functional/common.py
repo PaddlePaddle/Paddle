@@ -2529,50 +2529,61 @@ def linear(
              [ 1.08524013,  1.08524013,  1.08524013,  1.08524013],
              [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
-    if in_dynamic_mode():
-        # TODO(jiabin): using addmm for fast forward route
-        return _C_ops.linear(x, weight, bias)
+    # If not specified by user to use legacy linear, or not CUDA compatible, we fallback.
 
-    elif in_pir_mode():
-        out = _C_ops.matmul(x, weight, False, False)
-        if bias is not None:
-            return _C_ops.add(out, bias)
+    if (
+        paddle.get_flags("FLAGS_use_legacy_linear")["FLAGS_use_legacy_linear"]
+        or not paddle.is_compiled_with_cuda()
+        or not in_dynamic_or_pir_mode()
+    ):
+        if in_dynamic_mode():
+            return _C_ops.linear(x, weight, bias)
+
+        elif in_pir_mode():
+            out = _C_ops.matmul(x, weight, False, False)
+            if bias is not None:
+                return _C_ops.add(out, bias)
+            else:
+                return out
         else:
-            return out
-    else:
-        helper = LayerHelper('linear', **locals())
-        dtype = x.dtype
+            helper = LayerHelper('linear', **locals())
+            dtype = x.dtype
 
-        check_variable_and_dtype(
-            x, 'x', ["uint16", 'float16', 'float32', 'float64'], 'linear'
-        )
-        check_dtype(
-            dtype,
-            'dtype',
-            ["uint16", 'float16', 'float32', 'float64'],
-            'linear',
-        )
-
-        inputs = {'X': [x], 'Y': [weight]}
-        attrs = {'trans_x': False, 'trans_y': False}
-        tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='matmul_v2',
-            inputs=inputs,
-            outputs={'Out': tmp},
-            attrs=attrs,
-        )
-        if bias is not None:
-            res = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [tmp], 'Y': [bias]},
-                outputs={'Out': [res]},
-                attrs={'axis': -1},
+            check_variable_and_dtype(
+                x, 'x', ["uint16", 'float16', 'float32', 'float64'], 'linear'
             )
+            check_dtype(
+                dtype,
+                'dtype',
+                ["uint16", 'float16', 'float32', 'float64'],
+                'linear',
+            )
+
+            inputs = {'X': [x], 'Y': [weight]}
+            attrs = {'trans_x': False, 'trans_y': False}
+            tmp = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs=inputs,
+                outputs={'Out': tmp},
+                attrs=attrs,
+            )
+            if bias is not None:
+                res = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [tmp], 'Y': [bias]},
+                    outputs={'Out': [res]},
+                    attrs={'axis': -1},
+                )
+            else:
+                res = tmp
+            return res
+    else:
+        if bias is not None:
+            return _C_ops.linear_v2(x, weight, bias)
         else:
-            res = tmp
-        return res
+            return _C_ops.matmul(x, weight)
 
 
 def label_smooth(

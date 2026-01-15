@@ -46,16 +46,15 @@ void CollectShapeManager::CollectShapeInfo(
     }
     auto var_name = value_exe_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
-    if (!var || !var->IsType<phi::DenseTensor>()) {
+    if (!var || !var->IsType<DenseTensor>()) {
       VLOG(3) << "input var is null : " << (var == nullptr);
-      VLOG(3) << "input var is dense_tensor : "
-              << (var->IsType<phi::DenseTensor>());
+      VLOG(3) << "input var is dense_tensor : " << (var->IsType<DenseTensor>());
       VLOG(3) << "input is null or not dense_tensor, jump it, and input id:"
               << input.first.impl();
       continue;
     }
 
-    auto tensor = var->Get<phi::DenseTensor>();
+    auto tensor = var->Get<DenseTensor>();
     if (!tensor.has_allocation() && !instr->NoNeedBuffer().count(input.first)) {
       VLOG(3) << "input tensor is has_allocation: "
               << (tensor.has_allocation());

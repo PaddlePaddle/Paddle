@@ -613,6 +613,7 @@ class RReLU(Layer):
     Parameters:
         lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
         upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -643,27 +644,43 @@ class RReLU(Layer):
               [[ 1.        , -0.58808362, -0.74662417,  4.        ],
                [-1.01785135,  6.        ,  7.        , -1.97268605],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
+            >>> rrelu_layer = paddle.nn.RReLU(0.1, 0.3, inplace=True)
+            >>> out = rrelu_layer(input_tensor)
+            >>> print(input_tensor)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-0.59114635,  3.        , -0.43452725,  5.        ],
+               [ 3.        , -0.74111539,  5.        , -1.46350050],
+               [-0.99136055, -1.11570418,  8.        ,  9.        ]],
+              [[ 1.        , -0.35369742, -0.38761914,  4.        ],
+               [-0.72713780,  6.        ,  7.        , -1.51372027],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
 
     def __init__(
         self,
         lower: float = 1.0 / 8.0,
         upper: float = 1.0 / 3.0,
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self._lower = lower
         self._upper = upper
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
         return F.rrelu(
-            x, lower=self._lower, upper=self._upper, training=self.training
+            x,
+            lower=self._lower,
+            upper=self._upper,
+            training=self.training,
+            inplace=self._inplace,
         )
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}{name_str}'
+        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}, inplace={self._inplace}{name_str}'
 
 
 class ReLU(Layer):
@@ -769,6 +786,7 @@ class SELU(Layer):
     Parameters:
         scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946.
         alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -788,25 +806,33 @@ class SELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 1.05070102],
              [2.10140204, 3.15210295]])
+            >>> m = paddle.nn.SELU(inplace=True)
+            >>> out = m(x)
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
     """
 
     def __init__(
         self,
         scale: float = 1.0507009873554804934193349852946,
         alpha: float = 1.6732632423543772848170429916717,
+        inplace: bool = False,
         name: str | None = None,
     ) -> None:
         super().__init__()
         self._scale = scale
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.selu(x, self._scale, self._alpha, self._name)
+        return F.selu(x, self._scale, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'scale={self._scale:.16f}, alpha={self._alpha:.16f}{name_str}'
+        return f'scale={self._scale:.16f}, alpha={self._alpha:.16f}, inplace={self._inplace}{name_str}'
 
 
 class LeakyReLU(Layer):
@@ -926,6 +952,7 @@ class Hardsigmoid(Layer):
             \right.
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -946,18 +973,24 @@ class Hardsigmoid(Layer):
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.        , 0.66666669])
+            >>> m = paddle.nn.Hardsigmoid(inplace=True)
+            >>> out = m(x)
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self.name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.hardsigmoid(x, name=self.name)
+        return F.hardsigmoid(x, inplace=self._inplace, name=self.name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self.name}' if self.name else ''
-        return name_str
+        name_str = f', name={self.name}' if self.name else ''
+        return f'inplace={self._inplace}{name_str}'
 
 
 class Softplus(Layer):
@@ -1119,6 +1152,7 @@ class Swish(Layer):
         Swish(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1137,18 +1171,24 @@ class Swish(Layer):
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
+            >>> m = paddle.nn.Swish(inplace=True)
+            >>> out = m(x)
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.swish(x, self._name)
+        return F.swish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        name_str = f', name={self._name}' if self._name else ''
+        return f'inplace={self._inplace}{name_str}'
 
 
 class Mish(Layer):
@@ -1165,6 +1205,7 @@ class Mish(Layer):
         Mish(x) = x * \tanh(softplus(x))
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1184,19 +1225,25 @@ class Mish(Layer):
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.03357624,  0.        ,  4.99955177])
+            >>> m = paddle.nn.Mish(inplace=True)
+            >>> out = m(x)
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
 
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.mish(x, self._name)
+        return F.mish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        name_str = f', name={self._name}' if self._name else ''
+        return f'inplace={self._inplace}{name_str}'
 
 
 class Tanhshrink(Layer):

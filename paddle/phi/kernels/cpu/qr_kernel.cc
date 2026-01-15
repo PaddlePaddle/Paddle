@@ -39,8 +39,7 @@ static DenseTensor Fill(const Context& dev_ctx,
 
 template <class T, class Context>
 static DenseTensor identity_matrix(const Context& dev_ctx, common::DDim shape) {
-  DenseTensor M =
-      Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(shape), T(0));
+  DenseTensor M = Fill<T, Context>(dev_ctx, vectorize<int64_t>(shape), T(0));
   size_t rank = M.dims().size();
   int64_t M_diag_len = std::min(M.dims()[rank - 1], M.dims()[rank - 2]);
   std::vector<int64_t> M_diag_shape;
@@ -49,7 +48,7 @@ static DenseTensor identity_matrix(const Context& dev_ctx, common::DDim shape) {
   }
   M_diag_shape.push_back(M_diag_len);
   DenseTensor M_diag = Fill<T, Context>(
-      dev_ctx, common::vectorize<int64_t>(make_ddim(M_diag_shape)), T(1));
+      dev_ctx, vectorize<int64_t>(make_ddim(M_diag_shape)), T(1));
   M = FillDiagonalTensor<T, Context>(dev_ctx, M, M_diag, 0, rank - 2, rank - 1);
   return M;
 }

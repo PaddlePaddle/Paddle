@@ -189,8 +189,7 @@ void MultiDotKernel(const Context& dev_ctx,
   if (size_0) {
     // For example: [2, 0], [0, 4] -> [2, 4]
     if (out && out->numel() > 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -359,8 +358,7 @@ void MultiDotGradKernel(const Context& dev_ctx,
   if (size_0) {
     for (size_t i = 0; i < n; i++) {
       if (dx[i]->numel() > 0) {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx[i]->dims())), 0, dx[i]);
+        Full<T, Context>(dev_ctx, dx[i]->dims(), 0, dx[i]);
       }
     }
     return;
