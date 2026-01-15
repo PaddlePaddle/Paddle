@@ -46,6 +46,8 @@ if TYPE_CHECKING:
         preserve_rng_state: NotRequired[bool]
 
 
+from .global_states import get_state, get_state_idx, set_state
+
 __all__ = []
 
 
@@ -176,6 +178,182 @@ def switch_rng_state_tracker(
 
         if custom_state is not None:
             custom_set_state_func(orig_custom_state)
+
+
+class RecomputeOverlapFunction(PyLayer):
+    """
+    This recompute function is used when recompute PipelineParallel overlap is enabled,
+    which means self._strategy.hybrid_configs['pp_configs'].recompute_overlap = True and recompute_overlap is sent to recompute.
+    """
+
+    @staticmethod
+    def forward(
+        ctx,
+        run_function,
+        preserve_rng_state,
+        offload_indices,
+        custom_get_state_func,
+        custom_set_state_func,
+        *args,
+        **kwargs,
+    ):
+        state = {}
+
+        # store for recomputing
+        state["run_function"] = run_function
+        state["preserve_rng_state"] = preserve_rng_state
+        state["offload_indices"] = offload_indices
+        state["kwargs"] = kwargs
+
+        # NOTE the number of outputs of backward() should be equal to the number of tensors in forward()'s input
+        # the order of tensors in backward()'s output should be the same as tensors in forward()'s input
+        # None tensor inputs will be filtered in backward inputs.
+
+        # NOTE recompute with restore RNG only support one scenario where one process for one cuda gpu.
+        # one process with multiple gpu and mix-gpu-cpu scenarios are not support
+        if state["preserve_rng_state"]:
+            state["fw_rng_state"] = paddle.get_rng_state()
+            state["fwd_rng_state_tracker"] = (
+                get_rng_state_tracker().get_states_tracker()
+            )
+            state["fwd_numpy_state"] = np.random.get_state()
+            state["fwd_random_state"] = random.getstate()
+            state["fwd_custom_state"] = custom_get_state_func()
+            state["custom_get_state_func"] = custom_get_state_func
+            state["custom_set_state_func"] = custom_set_state_func
+
+        # TODO support AMP
+        tracer = framework._dygraph_tracer()
+        state["is_fw_autocast"] = (
+            False if tracer._amp_level == core.AmpLevel.O0 else True
+        )
+        if tracer._amp_level == core.AmpLevel.O2:
+            state["amp_level"] = 'O2'
+        elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
+            state["amp_level"] = 'O1'
+        else:
+            raise ValueError(f"unsupported amp level: {tracer._amp_level}")
+
+        if tracer._amp_dtype == 'float16':
+            state["amp_dtype"] = 'float16'
+        elif tracer._amp_dtype in ('bfloat16', 'float32'):
+            state["amp_dtype"] = 'bfloat16'
+        else:
+            raise ValueError(f"unsupported amp dtype: {tracer._amp_dtype}")
+
+        state["amp_white_list"], state["amp_black_list"] = (
+            tracer._get_amp_op_list()
+        )
+
+        with paddle.no_grad():
+            outputs = run_function(*args, **kwargs)
+
+        # save input for backward
+        state["inputs"] = []
+        state["tensor_indices"] = []
+        state["duplicate_tensor"] = [False for _ in range(len(args))]
+        state["tensor_inputs"] = []
+        for i, arg in enumerate(args):
+            if paddle.is_tensor(arg):
+                if i in state["offload_indices"]:
+                    cpu_arg = (
+                        arg.pin_memory()
+                        if core.is_compiled_with_cuda()
+                        else arg.cpu()
+                    )
+                    cpu_arg._share_buffer_to(arg)
+                state["tensor_inputs"].append(arg)
+                state["tensor_indices"].append(i)
+                state["inputs"].append(None)
+            elif type(arg) is tuple:
+                assert i not in state["offload_indices"], (
+                    f"offload_indices should not contain tensor tuple in position{i}"
+                )
+                is_tensors = [paddle.is_tensor(a) for a in arg]
+                if all(is_tensors):
+                    # the tuple is a tuple of tensors
+                    tensors_stop_gradient = [a.stop_gradient for a in arg]
+                    if not all(tensors_stop_gradient) and any(
+                        tensors_stop_gradient
+                    ):
+                        # tensors in the tuple have different stop_gradient value, which pylayer doesn't support
+                        raise ValueError(
+                            "Recompute receive a tuple containing tensor holds different stop gradient."
+                        )
+                    state["tensor_inputs"].append(arg)
+                    state["tensor_indices"].append(i)
+                    # Mark the tuple is a tuple of tensors
+                    state["duplicate_tensor"][i] = True
+                    state["inputs"].append(None)
+                elif any(is_tensors):
+                    # the tuple contains tensors and non-tensor values
+                    raise ValueError(
+                        "Recompute receive a tuple containing tensor and non-tensor at same time."
+                    )
+                else:
+                    state["inputs"].append(arg)
+            else:
+                state["inputs"].append(arg)
+
+        state_idx = get_state_idx()
+        ctx.state_idx = state_idx
+        set_state(state)
+
+        return outputs
+
+    @staticmethod
+    def backward(ctx, *args):
+        state = get_state(ctx.state_idx)
+        with paddle.base.dygraph.guard():
+            outputs = state["outputs"]
+            detached_inputs = state["detached_inputs"]
+            duplicate_tensor = state["duplicate_tensor"]
+            assert len(outputs) == len(args)
+
+            # run backward() with only tensor that requires grad
+            forward_outputs_with_grad = []
+            # NOTE In Transformer-like network, if user put the attention mask into the recompute segment output,
+            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of
+            # tensor that need grad does not match.
+            # the following backward_inputs_with_grad is used to avoid this case.
+            backward_inputs_with_grad = []
+            for i in range(len(outputs)):
+                if (
+                    isinstance(outputs[i], core.eager.Tensor)
+                    and not outputs[i].stop_gradient
+                ):
+                    forward_outputs_with_grad.append(outputs[i])
+                    backward_inputs_with_grad.append(args[i])
+
+            if len(forward_outputs_with_grad) == 0:
+                raise RuntimeError(
+                    "none of output has requires_grad=True, this recompute() is not necessary"
+                )
+
+            # actually backward
+            with paddle.amp.auto_cast(enable=False):
+                paddle.autograd.backward(
+                    forward_outputs_with_grad, backward_inputs_with_grad
+                )
+
+            grads = []
+            for idx, inp in enumerate(detached_inputs):
+                if isinstance(inp, core.eager.Tensor):
+                    grads.append(inp._grad_ivar())
+                elif type(inp) is tuple and duplicate_tensor[idx]:
+                    # input is a tuple and is a tuple of tensors
+                    if all(i.stop_gradient for i in inp):
+                        # all tensors in the tuple doesn't need grad, only return a None for the whole tuple
+                        grads.append(None)
+                    else:
+                        # all tensors in the tuple need grad, should return a tuple of grads
+                        grads.append(tuple(i._grad_ivar() for i in inp))
+
+            if in_dynamic_mode():
+                grads = tuple(grads)
+            else:
+                grads = list(grads)
+            return grads
 
 
 class RecomputeFunction(PyLayer):
@@ -661,6 +839,8 @@ def recompute(function, *args, **kwargs):
     # whether to use reentrant method to implement recompute
     use_reentrant = kwargs.pop('use_reentrant', True)
 
+    recompute_overlap = kwargs.pop('recompute_overlap', False)
+
     if custom_state_manager.custom_get_state_func is None:
         assert custom_state_manager.custom_set_state_func is None
         custom_get_state_func = lambda x=None: None
@@ -712,14 +892,24 @@ def recompute(function, *args, **kwargs):
             else:
                 raise ValueError("Unknown parameter kind.")
 
-        return RecomputeFunction.apply(
-            function,
-            preserve,
-            offload_indices,
-            custom_get_state_func,
-            custom_set_state_func,
-            *input_args,
-        )
+        if recompute_overlap:
+            return RecomputeOverlapFunction.apply(
+                function,
+                preserve,
+                offload_indices,
+                custom_get_state_func,
+                custom_set_state_func,
+                *input_args,
+            )
+        else:
+            return RecomputeFunction.apply(
+                function,
+                preserve,
+                offload_indices,
+                custom_get_state_func,
+                custom_set_state_func,
+                *input_args,
+            )
     else:
         return _recompute_without_reentrant(
             function,

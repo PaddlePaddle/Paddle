@@ -100,6 +100,8 @@ message PpConfig {
     optional bool sync_param = 18 [ default = false ];
     optional bool sync_moment = 19 [ default = false ];
     optional string sync_mode = 20 [ default = 'broadcast' ];
+    optional bool recompute_overlap = 21 [ default = false ];
+
 }
 
 message DygraphShardingConfig {
