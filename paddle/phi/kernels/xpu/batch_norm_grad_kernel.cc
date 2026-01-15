@@ -114,7 +114,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                         "But received 'data_layout' is [%s].",
                         data_layout));
 
-  const auto data_layout_val = common::StringToDataLayout(data_layout);
+  const auto data_layout_val = StringToDataLayout(data_layout);
 
   use_global_stats = is_test || use_global_stats;
 
