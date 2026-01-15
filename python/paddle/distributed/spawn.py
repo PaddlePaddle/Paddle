@@ -286,7 +286,9 @@ def _get_subprocess_env_list(nprocs, options):
     elif options['backend'] == 'xccl':
         args.selected_devices = None
         custom_device_name = core.get_all_custom_device_type()[0]
-        env_devices = os.getenv(f"FLAGS_selected_{custom_device_name}s", None)
+        env_devices = os.getenv(
+            f"{custom_device_name.upper()}_VISIBLE_DEVICES", None
+        )
         if env_devices is None or env_devices == "":
             env_devices_list = [
                 str(x)
@@ -300,7 +302,7 @@ def _get_subprocess_env_list(nprocs, options):
                 f"the number of visible devices({len(env_devices_list)}) is less than the number "
                 f"of spawn processes({nprocs}), please ensure that the correct "
                 "`nprocs` argument is passed or the environment variable "
-                f"`FLAGS_selected_{custom_device_name}s` is correctly configured."
+                f"`{custom_device_name.upper()}_VISIBLE_DEVICES` is correctly configured."
             )
         args.selected_devices = ",".join(
             [str(env_devices_list[x]) for x in range(0, nprocs)]
