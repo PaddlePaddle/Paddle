@@ -13,6 +13,7 @@ if(NOT PYTHON_EXECUTABLE)
     find_package(Python ${PY_VERSION} COMPONENTS Interpreter)
     set(_numpy_out 1)
   endif()
+  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 endif()
 
 if(PYTHON_EXECUTABLE)

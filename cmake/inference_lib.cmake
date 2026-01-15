@@ -28,6 +28,7 @@ if(WIN32)
       Python ${PY_VERSION}
       COMPONENTS Interpreter
       REQUIRED)
+    set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
   endif()
 endif()
 

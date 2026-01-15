@@ -147,6 +147,7 @@ if(NOT PYTHON_EXECUTABLE)
     Python ${PY_VERSION}
     COMPONENTS Interpreter
     REQUIRED)
+  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 endif()
 
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)

@@ -19,6 +19,7 @@ if(NOT PYTHON_EXECUTABLE)
     Python ${PY_VERSION}
     COMPONENTS Interpreter
     REQUIRED)
+  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 endif()
 
 function(install_py_pyyaml)
