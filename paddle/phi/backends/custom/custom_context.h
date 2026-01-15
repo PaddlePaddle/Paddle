@@ -43,12 +43,12 @@ class CustomContext : public DeviceContext,
   const Place& GetPlace() const override;
 
   /*! \brief  Return raw stream in the device context. */
-  phi::stream::stream_t stream() const;
+  stream::stream_t stream() const;
 
   /*! \brief  Return stream in the device context. */
-  std::shared_ptr<phi::stream::Stream> GetStream() const;
+  std::shared_ptr<stream::Stream> GetStream() const;
 
-  void SetStream(std::shared_ptr<phi::stream::Stream> stream);
+  void SetStream(std::shared_ptr<stream::Stream> stream);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
@@ -62,12 +62,12 @@ class CustomContext : public DeviceContext,
 
   Eigen::GpuDevice* eigen_device() const;
 
-  void WaitEvent(phi::event::event_t ev) const;
+  void WaitEvent(event::event_t ev) const;
 
-  void RecordEvent(phi::event::event_t ev,
+  void RecordEvent(event::event_t ev,
                    const std::function<void()>& callback) const;
 
-  void RecordEvent(phi::event::event_t ev) const;
+  void RecordEvent(event::event_t ev) const;
 
   static const char* name() { return "CustomContext"; }
 

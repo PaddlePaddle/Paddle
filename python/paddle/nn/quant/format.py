@@ -104,7 +104,7 @@ class LinearQuanter(Layer):
         self._scales.set_value(scales)
         self.in_accum = paddle.to_tensor(0.0, dtype="float32")
         self.in_state = paddle.to_tensor(0.0, dtype="float32")
-        zero_point = zero_point if zero_point is not None else zero_point
+        zero_point = zero_point if zero_point is not None else 0.0
         zero_point = paddle.to_tensor(zero_point, dtype="float32")
         zp_attr = paddle.framework.ParamAttr(
             name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
@@ -265,7 +265,7 @@ class LinearDequanter(Layer):
         self._scales.set_value(scales)
         self.in_accum = paddle.to_tensor(0.0, dtype="float32")
         self.in_state = paddle.to_tensor(0.0, dtype="float32")
-        zero_point = zero_point if zero_point is not None else zero_point
+        zero_point = zero_point if zero_point is not None else 0.0
         zero_point = paddle.to_tensor(zero_point, dtype="float32")
         zp_attr = paddle.framework.ParamAttr(
             name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
