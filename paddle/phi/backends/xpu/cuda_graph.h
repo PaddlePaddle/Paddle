@@ -155,7 +155,7 @@ class CUDAGraphNodeLauncher {
 
 static void ThrowErrorIfNotSupportCUDAGraph() {}
 
-using CUDAGraphID = unsigned long long;
+using CUDAGraphID = unsigned long long;  // NOLINT
 
 class CUDAGraph {
   DISABLE_COPY_AND_ASSIGN(CUDAGraph);
@@ -165,19 +165,19 @@ class CUDAGraph {
   CUDAGraph() {
     ThrowErrorIfNotSupportCUDAGraph();
     id_ = UniqueID();
-    
+
     // Create a new stream and set it as the current device stream
     int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
     phi::backends::xpu::XPUDeviceGuard guard(device_id);
-    
+
     // Create new stream
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&created_stream_));
     stream_created_ = true;
-    
+
     // Get current XPUContext and save original stream
-    phi::XPUContext* dev_ctx = phi::get_xpu_context(device_id);
+    phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
     original_stream_ = dev_ctx->stream(0);
-    
+
     // Set the new stream as current stream
     dev_ctx->SetStream(created_stream_, 0);
   }
@@ -191,13 +191,13 @@ class CUDAGraph {
     if (stream_created_ && created_stream_ != nullptr) {
       int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
       phi::backends::xpu::XPUDeviceGuard guard(device_id);
-      
+
       // Restore original stream if needed
       if (original_stream_ != nullptr) {
-        phi::XPUContext* dev_ctx = phi::get_xpu_context(device_id);
+        phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
         dev_ctx->SetStream(original_stream_, 0);
       }
-      
+
       // Destroy the created stream
       PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(created_stream_));
       created_stream_ = nullptr;

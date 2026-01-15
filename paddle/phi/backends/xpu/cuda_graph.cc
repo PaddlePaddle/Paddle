@@ -128,8 +128,9 @@ void CUDAGraph::BeginCapture(phi::XPUPlace place,
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
   // Get the stream from the device context after constructor has set it
-  // The constructor has already created a new stream and set it as current device stream
-  phi::XPUContext* dev_ctx = phi::get_xpu_context(place.GetDeviceId());
+  // The constructor has already created a new stream and set it as current
+  // device stream
+  phi::XPUContext *dev_ctx = phi::get_xpu_context(place.GetDeviceId());
   XPUStream actual_stream = dev_ctx->stream(0);
   PADDLE_ENFORCE_NOT_NULL(
       actual_stream,
