@@ -93,8 +93,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
   int64_t rois_num = boxes.dims()[0];
 
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
 

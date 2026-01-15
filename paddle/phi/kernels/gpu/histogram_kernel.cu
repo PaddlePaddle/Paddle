@@ -149,8 +149,7 @@ void HistogramKernel(const Context& dev_ctx,
   const int64_t input_numel = input.numel();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   if (input_numel == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 

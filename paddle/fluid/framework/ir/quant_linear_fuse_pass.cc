@@ -23,7 +23,7 @@ template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
-  phi::DenseTensor tmp_tensor;
+  DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto* tmp_data = dev_ctx->template HostAlloc<T2>(
@@ -192,8 +192,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     }
     // Get input scale from tensor
     const phi::DenseTensor& input_scale_tensor =
-        scope->GetVar(quantize_linear_op_scale->Name())
-            ->Get<phi::DenseTensor>();
+        scope->GetVar(quantize_linear_op_scale->Name())->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
                       common::errors::InvalidArgument(
@@ -219,13 +218,13 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     // because quant_linear kernel need weight's type be int8
     // convert weight fp32 --> int8
     auto* weight_tensor = scope->FindVar(weight_dequantize_linear_op_x->Name())
-                              ->GetMutable<phi::DenseTensor>();
+                              ->GetMutable<DenseTensor>();
     ConvertTensorType<float, int8_t>(weight_tensor);
 
     // Get scale_weights
     const phi::DenseTensor& weight_scale_tensor =
         scope->FindVar(weight_dequantize_linear_op_scale->Name())
-            ->Get<phi::DenseTensor>();
+            ->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(weight_scale_tensor.place()),
                       true,
                       common::errors::InvalidArgument(

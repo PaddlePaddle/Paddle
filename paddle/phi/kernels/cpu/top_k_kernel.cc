@@ -169,10 +169,8 @@ void TopkKernel(const Context& dev_ctx,
     indices->Resize(out_dims);
   }
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
     return;
   }
   PADDLE_ENFORCE_GE(

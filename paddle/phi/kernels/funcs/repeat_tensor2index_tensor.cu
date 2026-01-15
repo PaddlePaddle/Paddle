@@ -99,7 +99,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
 #else
   DenseTensor repeats_cpu_copy;
   if (repeats.place().GetType() != AllocationType::CPU) {
-    phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+    phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT *repeats_data =
       repeats.place().GetType() == AllocationType::CPU

@@ -111,7 +111,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           tensor->emplace(token, it->second);
         }
       } else {
-        auto *tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
+        auto *tensor = out_vars[i]->GetMutable<DenseTensor>();
 
         // Get data from fin to tensor
         phi::DeserializeFromStream(*buffer, tensor, dev_ctx);
@@ -125,7 +125,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
               phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
           auto out_kernel_type =
               phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
-          phi::DenseTensor fp16_tensor;
+          DenseTensor fp16_tensor;
           // copy LoD info to the new tensor
           fp16_tensor.set_lod(tensor->lod());
           framework::TransDataType(
@@ -133,7 +133,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
           // reset output tensor
           out_vars[i]->Clear();
-          tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
+          tensor = out_vars[i]->GetMutable<DenseTensor>();
           tensor->set_lod(fp16_tensor.lod());
           tensor->ShareDataWith(fp16_tensor);
         }

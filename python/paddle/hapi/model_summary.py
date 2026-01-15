@@ -67,7 +67,7 @@ def summary(
         dict: A summary of the network including total params and total trainable params.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             >>> # example 1: Single Input Demo
@@ -84,13 +84,11 @@ def summary(
             ...             nn.MaxPool2D(2, 2),
             ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             ...             nn.ReLU(),
-            ...             nn.MaxPool2D(2, 2))
+            ...             nn.MaxPool2D(2, 2),
+            ...         )
             ...
             ...         if num_classes > 0:
-            ...             self.fc = nn.Sequential(
-            ...                 nn.Linear(400, 120),
-            ...                 nn.Linear(120, 84),
-            ...                 nn.Linear(84, 10))
+            ...             self.fc = nn.Sequential(nn.Linear(400, 120), nn.Linear(120, 84), nn.Linear(84, 10))
             ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs)
@@ -99,9 +97,8 @@ def summary(
             ...             x = paddle.flatten(x, 1)
             ...             x = self.fc(x)
             ...         return x
-            ...
             >>> lenet = LeNet()
-            >>> params_info = paddle.summary(lenet, (1, 1, 28, 28)) # doctest: +NORMALIZE_WHITESPACE
+            >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))  # doctest: +NORMALIZE_WHITESPACE
             ---------------------------------------------------------------------------
              Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
@@ -128,7 +125,7 @@ def summary(
             >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-2
 
             >>> # example 2: multi input demo
@@ -144,13 +141,11 @@ def summary(
             ...             nn.MaxPool2D(2, 2),
             ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             ...             nn.ReLU(),
-            ...             nn.MaxPool2D(2, 2))
+            ...             nn.MaxPool2D(2, 2),
+            ...         )
             ...
             ...         if num_classes > 0:
-            ...             self.fc = nn.Sequential(
-            ...                 nn.Linear(400, 120),
-            ...                 nn.Linear(120, 84),
-            ...                 nn.Linear(84, 10))
+            ...             self.fc = nn.Sequential(nn.Linear(400, 120), nn.Linear(120, 84), nn.Linear(84, 10))
             ...
             ...     def forward(self, inputs, y):
             ...         x = self.features(inputs)
@@ -159,12 +154,11 @@ def summary(
             ...             x = paddle.flatten(x, 1)
             ...             x = self.fc(x + y)
             ...         return x
-            ...
             >>> lenet_multi_input = LeNetMultiInput()
 
-            >>> params_info = paddle.summary(lenet_multi_input,
-            ...                              [(1, 1, 28, 28), (1, 400)],
-            ...                              dtypes=['float32', 'float32']) # doctest: +NORMALIZE_WHITESPACE
+            >>> params_info = paddle.summary(
+            ...     lenet_multi_input, [(1, 1, 28, 28), (1, 400)], dtypes=['float32', 'float32']
+            ... )  # doctest: +NORMALIZE_WHITESPACE
             ---------------------------------------------------------------------------
              Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
@@ -191,7 +185,7 @@ def summary(
             >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-3
 
             >>> # example 3: List Input Demo
@@ -209,13 +203,11 @@ def summary(
             ...             nn.MaxPool2D(2, 2),
             ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             ...             nn.ReLU(),
-            ...             nn.MaxPool2D(2, 2))
+            ...             nn.MaxPool2D(2, 2),
+            ...         )
             ...
             ...         if num_classes > 0:
-            ...             self.fc = nn.Sequential(
-            ...                 nn.Linear(400, 120),
-            ...                 nn.Linear(120, 84),
-            ...                 nn.Linear(84, 10))
+            ...             self.fc = nn.Sequential(nn.Linear(400, 120), nn.Linear(120, 84), nn.Linear(84, 10))
             ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs[0])
@@ -224,10 +216,9 @@ def summary(
             ...             x = paddle.flatten(x, 1)
             ...             x = self.fc(x + inputs[1])
             ...         return x
-            ...
             >>> lenet_list_input = LeNetListInput()
             >>> input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
-            >>> params_info = paddle.summary(lenet_list_input, input=input_data) # doctest: +NORMALIZE_WHITESPACE
+            >>> params_info = paddle.summary(lenet_list_input, input=input_data)  # doctest: +NORMALIZE_WHITESPACE
             ---------------------------------------------------------------------------
              Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
@@ -255,7 +246,7 @@ def summary(
             {'total_params': 61610, 'trainable_params': 61610}
 
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-4
 
             >>> # example 4: Dict Input Demo
@@ -273,13 +264,15 @@ def summary(
             ...             nn.MaxPool2D(2, 2),
             ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             ...             nn.ReLU(),
-            ...             nn.MaxPool2D(2, 2))
+            ...             nn.MaxPool2D(2, 2),
+            ...         )
             ...
             ...         if num_classes > 0:
             ...             self.fc = nn.Sequential(
             ...                 nn.Linear(400, 120),
             ...                 nn.Linear(120, 84),
-            ...                 nn.Linear(84, 10))
+            ...                 nn.Linear(84, 10),
+            ...             )
             ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs['x1'])
@@ -288,12 +281,10 @@ def summary(
             ...             x = paddle.flatten(x, 1)
             ...             x = self.fc(x + inputs['x2'])
             ...         return x
-            ...
             >>> lenet_dict_input = LeNetDictInput()
-            >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
-            ...               'x2': paddle.rand([1, 400])}
+            >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]), 'x2': paddle.rand([1, 400])}
             >>> # The module suffix number indicates its sequence in modules of the same type, used for differentiation identification
-            >>> params_info = paddle.summary(lenet_dict_input, input=input_data) # doctest: +NORMALIZE_WHITESPACE
+            >>> params_info = paddle.summary(lenet_dict_input, input=input_data)  # doctest: +NORMALIZE_WHITESPACE
             ---------------------------------------------------------------------------
              Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
@@ -436,8 +427,6 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     if not isinstance(dtypes, (list, tuple)):
         dtypes = _build_dtypes(input_size, dtypes)
 
-    batch_size = 1
-
     summary_str = ''
 
     depth = len(list(model.sublayers()))
@@ -491,13 +480,15 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             summary[m_key]["trainable_params"] = 0
             trainable_flag = False
             for k, v in layer_state_dict.items():
-                params += np.prod(v.shape)
+                params += int(np.prod(v.shape))
 
                 try:
                     if (getattr(layer, k).trainable) and (
                         not getattr(layer, k).stop_gradient
                     ):
-                        summary[m_key]["trainable_params"] += np.prod(v.shape)
+                        summary[m_key]["trainable_params"] += int(
+                            np.prod(v.shape)
+                        )
                         summary[m_key]["trainable"] = True
                         trainable_flag = True
                     elif not trainable_flag:
@@ -624,12 +615,12 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
         total_params += summary[layer]["nb_params"]
 
         try:
-            total_output += np.sum(
-                np.prod(summary[layer]["output_shape"], axis=-1)
+            total_output += int(
+                np.sum(np.prod(summary[layer]["output_shape"], axis=-1))
             )
         except:
             for output_shape in summary[layer]["output_shape"]:
-                total_output += np.sum(np.prod(output_shape, axis=-1))
+                total_output += int(np.sum(np.prod(output_shape, axis=-1)))
 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"]:
@@ -638,7 +629,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
     def _get_input_size(input_size, size):
         if isinstance(input_size, (list, tuple)) and _all_is_number(input_size):
-            size = abs(np.prod(input_size) * 4.0 / (1024**2.0))
+            size = abs(int(np.prod(input_size)) * 4.0 / (1024**2.0))
         else:
             size = sum([_get_input_size(i, size) for i in input_size])
         return size

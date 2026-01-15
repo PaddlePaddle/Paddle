@@ -1378,16 +1378,14 @@ void DotGradKernel(const Context& dev_ctx,
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
     if (dx->numel() == 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+      Full<T, Context>(dev_ctx, y.dims(), 0, dy);
       return;
     }
   }
   if (dy) {
     dev_ctx.template Alloc<T>(dy);
     if (dy->numel() == 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+      Full<T, Context>(dev_ctx, x.dims(), 0, dx);
       return;
     }
   }

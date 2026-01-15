@@ -462,6 +462,61 @@ def amax(
 )
 
 add_doc_and_signature(
+    "angle",
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            >>> z = x + 1j * y
+            >>> z
+            Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
+              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
+             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
+              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
+             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
+               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
+             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
+               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
+
+            >>> theta = paddle.angle(z)
+            >>> theta
+            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
+             [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
+             [-1.57079637, -1.57079637,  0.        ,  1.57079637],
+             [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
+""",
+    """
+def angle(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "all",
     r"""
     Computes the ``logical and`` of tensor elements over the given dimension.
@@ -588,6 +643,7 @@ def argmax(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "argmin",
     r"""
@@ -774,6 +830,7 @@ def log2(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "log10",
     r"""
@@ -1132,6 +1189,7 @@ def matmul(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "multiply",
     r"""
@@ -1188,10 +1246,11 @@ def multiply(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "logsumexp",
     r"""
-    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+    Calculates the log of the sum of exponential of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
@@ -1250,6 +1309,7 @@ def logsumexp(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "softplus",
     r"""
@@ -1291,6 +1351,7 @@ def softplus(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "isclose",
     r"""

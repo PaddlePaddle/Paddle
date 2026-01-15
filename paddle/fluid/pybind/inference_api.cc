@@ -306,7 +306,7 @@ void PaddleInferShareExternalDataByPtrName(
 }
 
 void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
-                                  phi::DenseTensor input_tensor) {
+                                  DenseTensor input_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
     shape.push_back(input_tensor.dims()[i]);  // NOLINT
