@@ -451,7 +451,7 @@ def fp8_quant_blockwise(
             >>> print(quantized.shape)
             paddle.Size([1024, 512])
             >>> print(scale.shape)
-            paddle.Size([8, 4])
+            paddle.Size([1024, 4])
 
             # With transpose
             >>> quantized, scale, transposed_quantized, transposed_scale = F.fp8_quant_blockwise(
