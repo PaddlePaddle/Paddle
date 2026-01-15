@@ -378,13 +378,37 @@ else()
 endif()
 unset(WITH_RECORD_BUILDTIME CACHE)
 
+# some third-party CMake require a Python interpreter and need to locate Python
+# ensure Python_EXECUTABLE compatible
+if(DEFINED PYTHON_EXECUTABLE AND NOT DEFINED Python_EXECUTABLE)
+  set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+endif()
+
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.9)
-elseif(${PY_VERSION} VERSION_LESS 3.9)
+  find_package(
+    Python
+    COMPONENTS Interpreter
+    QUIET)
+  if(Python_FOUND)
+    set(PY_VERSION "${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}")
+  else()
+    set(PY_VERSION 3.9)
+  endif()
+endif()
+if(${PY_VERSION} VERSION_LESS 3.9)
   message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
+
+# [Fix for CMake < 3.20]
+# `FindPython` may pick up the unversioned python3
+if(NOT DEFINED Python_EXECUTABLE)
+  find_program(Python_EXECUTABLE_HINT NAMES python${PY_VERSION})
+  if(Python_EXECUTABLE_HINT)
+    set(Python_EXECUTABLE ${Python_EXECUTABLE_HINT})
+  endif()
+endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES
