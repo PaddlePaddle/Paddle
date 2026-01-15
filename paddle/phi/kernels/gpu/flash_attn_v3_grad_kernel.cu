@@ -583,6 +583,15 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
                            DenseTensor *dk,
                            DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
+  PADDLE_ENFORCE_EQ(softcap,
+                    0,
+                    common::errors::InvalidArgument(
+                        "softcap is not supported, please set softcap to 0"));
+  PADDLE_ENFORCE_EQ(
+      sm_margin,
+      0,
+      common::errors::InvalidArgument(
+          "sm_margin is not supported, please set sm_margin to 0"));
   // umiswing: fake grad tensor for FlashAttnV3GradBaseKernel
   DenseTensor softmax_d;
   DenseTensor softmax_lse_log2;
@@ -697,16 +706,6 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  DenseTensor *dk,
                                  DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
