@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import warnings
 from contextlib import contextmanager
 
 import numpy as np
@@ -3102,6 +3103,96 @@ class TestReluInplaceAPI(TestReluAPI):
     def executed_api(self):
         self.relu = F.relu_
 
+    def test_inplace_dygraph(self):
+        # Dedicated test for verifying inplace behavior
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            x_original_id = id(x)
+            result = F.relu_(x)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(result), x_original_id)
+            expected = np.array([0.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+            np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
+
+    def test_errors_static(self):
+        # test that calling relu_ in static mode issues a warning and falls back to relu
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype='float32')
+            # In static mode, relu_ should work but issue a warning
+            # It falls back to relu behavior
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                out = F.relu_(x)
+                # Check that a warning was issued
+                self.assertTrue(len(w) > 0)
+                self.assertIn(
+                    'does not perform inplace operation', str(w[0].message)
+                )
+
+    def test_alias_inplace(self):
+        # test input alias
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            result = F.relu_(input=x)
+            expected = np.array([0.0, 1.0])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+    def test_multidimensional_tensor(self):
+        # test with multidimensional tensors
+        with dynamic_guard():
+            x = paddle.to_tensor([[-2.0, 0.0], [1.0, 3.0], [-1.0, 2.0]])
+            x_original_id = id(x)
+            result = F.relu_(x)
+            self.assertEqual(id(result), x_original_id)
+            expected = np.array([[0.0, 0.0], [1.0, 3.0], [0.0, 2.0]])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+
+class TestReluAPIFloat64(unittest.TestCase):
+    # test paddle.nn.functional.relu with float64
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float64')
+        self.place = get_device_place()
+
+    def test_dygraph_api_float64(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.relu(x)
+            out_ref = np.maximum(self.x_np, 0)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+    def test_inplace_float64(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.relu(x, inplace=True)
+            out_ref = np.maximum(self.x_np, 0)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
+
+
+class TestReluInplaceAPIFloat64(unittest.TestCase):
+    # test paddle.nn.functional.relu_ with float64
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float64')
+        self.place = get_device_place()
+
+    def test_dygraph_api_float64(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            x_original_id = id(x)
+            out = F.relu_(x)
+            out_ref = np.maximum(self.x_np, 0)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(out), x_original_id)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
+
 
 def ref_leaky_relu(x, alpha=0.01):
     out = np.copy(x)
@@ -3249,6 +3340,145 @@ class TestLeakyReluAPI(unittest.TestCase):
             x_inplace = paddle.to_tensor([-1.0, 1.0])
             F.leaky_relu(x_inplace, inplace=True)
             np.testing.assert_allclose(x_inplace.numpy(), expected.numpy())
+
+
+class TestLeakyReluInplaceAPI(unittest.TestCase):
+    # test paddle.nn.functional.leaky_relu_
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place = get_device_place()
+
+    def test_dygraph_api(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.leaky_relu_(x)
+            out_ref = ref_leaky_relu(self.x_np)
+            np.testing.assert_allclose(out_ref, out1.numpy(), rtol=1e-05)
+            # Verify inplace behavior
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
+
+            # Test with custom negative_slope
+            x2 = paddle.to_tensor(self.x_np)
+            out2 = F.leaky_relu_(x2, 0.6)
+            out_ref2 = ref_leaky_relu(self.x_np, 0.6)
+            np.testing.assert_allclose(out_ref2, out2.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref2, x2.numpy(), rtol=1e-05)
+
+    def test_errors(self):
+        # test that calling leaky_relu_ in static mode issues a warning
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype='float32')
+            # In static mode, leaky_relu_ should work but issue a warning
+            # It falls back to leaky_relu behavior
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                out = F.leaky_relu_(x)
+                # Check that a warning was issued
+                self.assertTrue(len(w) > 0)
+                self.assertIn(
+                    'does not perform inplace operation', str(w[0].message)
+                )
+
+    def test_alias(self):
+        # test alias
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            out = F.leaky_relu_(input=x)
+            expected = ref_leaky_relu(np.array([-1.0, 1.0]))
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_inplace_behavior(self):
+        # test that output is same tensor as input
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            x_original_id = id(x)
+            result = F.leaky_relu_(x)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(result), x_original_id)
+
+    def test_multidimensional_tensor(self):
+        # test with multidimensional tensors
+        with dynamic_guard():
+            x = paddle.to_tensor([[-2.0, 0.0], [1.0, 3.0], [-1.0, 2.0]])
+            x_original_id = id(x)
+            result = F.leaky_relu_(x, 0.1)
+            self.assertEqual(id(result), x_original_id)
+            expected = ref_leaky_relu(
+                np.array([[-2.0, 0.0], [1.0, 3.0], [-1.0, 2.0]]), 0.1
+            )
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+    def test_negative_slope_zero(self):
+        # test with negative_slope=0 (should behave like relu)
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            result = F.leaky_relu_(x, 0.0)
+            expected = np.array([0.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+
+class TestLeakyReluAPIFloat64(unittest.TestCase):
+    # test paddle.nn.functional.leaky_relu with float64
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float64')
+        self.place = get_device_place()
+
+    def test_dygraph_api_float64(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.leaky_relu(x)
+            out_ref = ref_leaky_relu(self.x_np)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+    def test_dygraph_api_float64_custom_slope(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.leaky_relu(x, negative_slope=0.5)
+            out_ref = ref_leaky_relu(self.x_np, alpha=0.5)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+    def test_inplace_float64(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.leaky_relu(x, inplace=True)
+            out_ref = ref_leaky_relu(self.x_np)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
+
+
+class TestLeakyReluInplaceAPIFloat64(unittest.TestCase):
+    # test paddle.nn.functional.leaky_relu_ with float64
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float64')
+        self.place = get_device_place()
+
+    def test_dygraph_api_float64(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            x_original_id = id(x)
+            out = F.leaky_relu_(x)
+            out_ref = ref_leaky_relu(self.x_np)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(out), x_original_id)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
+
+    def test_dygraph_api_float64_custom_slope(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            x_original_id = id(x)
+            out = F.leaky_relu_(x, negative_slope=0.3)
+            out_ref = ref_leaky_relu(self.x_np, alpha=0.3)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(out), x_original_id)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
 
 
 def gelu(x, approximate):
