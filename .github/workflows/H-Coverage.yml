@@ -438,7 +438,6 @@ jobs:
 
   fleet_single_card_test:
     name: Fleet Unit test (single card)
-    needs: [build, fleet-build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-single-card
@@ -496,7 +495,7 @@ jobs:
           git config --global --add safe.directory /paddle
           # git checkout ${BRANCH}
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
-          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
+          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/77372/1cf6464f3a1653e7954d98bab18dbf2a734380be/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
           pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
           '
 
@@ -507,7 +506,7 @@ jobs:
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/77372/1cf6464f3a1653e7954d98bab18dbf2a734380be/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
@@ -542,7 +541,6 @@ jobs:
 
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
-    needs: [build, fleet-build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-multi-card
@@ -593,7 +591,7 @@ jobs:
           git config --global --add safe.directory /paddle
           # git checkout ${BRANCH}
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
-          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
+          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/77372/1cf6464f3a1653e7954d98bab18dbf2a734380be/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
           pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
           '
 
@@ -604,7 +602,7 @@ jobs:
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/77372/1cf6464f3a1653e7954d98bab18dbf2a734380be/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
