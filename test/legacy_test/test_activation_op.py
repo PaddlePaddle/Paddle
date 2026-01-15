@@ -3481,6 +3481,151 @@ class TestLeakyReluInplaceAPIFloat64(unittest.TestCase):
             np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
 
 
+class TestReluLayerExtraRepr(unittest.TestCase):
+    def test_extra_repr_without_name(self):
+        with dynamic_guard():
+            self.assertIn('inplace=False', paddle.nn.ReLU().extra_repr())
+            self.assertNotIn('name=', paddle.nn.ReLU().extra_repr())
+
+    def test_extra_repr_with_name(self):
+        with dynamic_guard():
+            s = paddle.nn.ReLU(name='test_relu').extra_repr()
+            self.assertIn('inplace=False', s)
+            self.assertIn('name=test_relu', s)
+
+    def test_extra_repr_with_inplace(self):
+        with dynamic_guard():
+            self.assertIn(
+                'inplace=True', paddle.nn.ReLU(inplace=True).extra_repr()
+            )
+
+
+class TestLeakyReluLayerExtraRepr(unittest.TestCase):
+    def test_extra_repr_without_name(self):
+        with dynamic_guard():
+            s = paddle.nn.LeakyReLU().extra_repr()
+            self.assertIn('negative_slope=0.01', s)
+            self.assertIn('inplace=False', s)
+            self.assertNotIn('name=', s)
+
+    def test_extra_repr_with_name(self):
+        with dynamic_guard():
+            s = paddle.nn.LeakyReLU(name='test_leaky_relu').extra_repr()
+            self.assertIn('negative_slope=0.01', s)
+            self.assertIn('inplace=False', s)
+            self.assertIn('name=test_leaky_relu', s)
+
+    def test_extra_repr_with_custom_params(self):
+        with dynamic_guard():
+            s = paddle.nn.LeakyReLU(
+                negative_slope=0.2, inplace=True, name='custom'
+            ).extra_repr()
+            self.assertIn('negative_slope=0.2', s)
+            self.assertIn('inplace=True', s)
+            self.assertIn('name=custom', s)
+
+
+class TestReluStaticModeInplace(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place = get_device_place()
+
+    def test_static_mode_with_inplace(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype="float32")
+            out = F.relu(x, inplace=True)
+            res = paddle.static.Executor(self.place).run(
+                feed={'X': self.x_np}, fetch_list=[out]
+            )
+            np.testing.assert_allclose(
+                np.maximum(self.x_np, 0), res[0], rtol=1e-05
+            )
+
+
+class TestLeakyReluStaticModeInplace(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place = get_device_place()
+
+    def test_static_mode_with_inplace(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype="float32")
+            out = F.leaky_relu(x, inplace=True)
+            res = paddle.static.Executor(self.place).run(
+                feed={'X': self.x_np}, fetch_list=[out]
+            )
+            np.testing.assert_allclose(
+                ref_leaky_relu(self.x_np), res[0], rtol=1e-05
+            )
+
+    def test_static_mode_with_inplace_and_negative_slope(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype="float32")
+            out = F.leaky_relu(x, negative_slope=0.2, inplace=True)
+            res = paddle.static.Executor(self.place).run(
+                feed={'X': self.x_np}, fetch_list=[out]
+            )
+            np.testing.assert_allclose(
+                ref_leaky_relu(self.x_np, alpha=0.2), res[0], rtol=1e-05
+            )
+
+
+class TestReluAliasParameter(unittest.TestCase):
+    def test_dygraph_input_alias(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(
+                F.relu(input=x).numpy(), [0.0, 0.0, 1.0, 3.0], rtol=1e-05
+            )
+
+    def test_relu_input_alias(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(
+                F.relu_(input=x).numpy(), [0.0, 0.0, 1.0, 3.0], rtol=1e-05
+            )
+
+
+class TestLeakyReluAliasParameter(unittest.TestCase):
+    def test_dygraph_input_alias(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(
+                F.leaky_relu(input=x).numpy(),
+                ref_leaky_relu(np.array([-2.0, 0.0, 1.0, 3.0])),
+                rtol=1e-05,
+            )
+
+    def test_leaky_relu_input_alias(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(
+                F.leaky_relu_(input=x).numpy(),
+                ref_leaky_relu(np.array([-2.0, 0.0, 1.0, 3.0])),
+                rtol=1e-05,
+            )
+
+    def test_leaky_relu_input_alias_with_negative_slope(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(
+                F.leaky_relu(input=x, negative_slope=0.2).numpy(),
+                ref_leaky_relu(np.array([-2.0, 0.0, 1.0, 3.0]), alpha=0.2),
+                rtol=1e-05,
+            )
+
+
 def gelu(x, approximate):
     if approximate:
         y_ref = (
