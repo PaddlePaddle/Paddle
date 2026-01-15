@@ -43,7 +43,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
   auto reduce_dims = funcs::details::GetReduceDim(dims, dim_size, reduce_all);
-  auto update_dims = common::vectorize(d_x->dims());
+  auto update_dims = vectorize(d_x->dims());
   int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (in_x->dims())[i];
@@ -85,8 +85,12 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
     funcs::BroadcastKernel<T>(
         dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
   // 2. equal_count = reduceSum(equal_out)
-  phi::SumKernel<T, Context>(
-      dev_ctx, equal_out, reduce_dims, equal_out.dtype(), false, &equal_count);
+  phi::SumKernel<T, Context>(dev_ctx,
+                             equal_out,
+                             reduce_dims,
+                             equal_out.dtype(),
+                             keep_dim,
+                             &equal_count);
   // 3. dx = dout * 1
   phi::MultiplyKernel<T, Context>(dev_ctx, new_dout, equal_out, &equal_out);
 

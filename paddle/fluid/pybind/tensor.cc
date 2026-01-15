@@ -199,7 +199,7 @@ namespace {
 #endif
 
 #if defined(__linux__)
-void ShareTensorViaVmm(const phi::DenseTensor &self, py::tuple *out) {
+void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   auto *holder =
       dynamic_cast<memory::allocation::Allocation *>(self.Holder().get());
   paddle::memory::VmmTensorPartsVisitor parts_visitor(holder->ptr());
@@ -279,7 +279,7 @@ void ShareTensorViaVmm(const phi::DenseTensor &self, py::tuple *out) {
                         device_id);
 }
 
-phi::DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
+DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
   PADDLE_ENFORCE_EQ(
       meta.size(),
       5,
@@ -401,7 +401,7 @@ phi::DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
       header->alloc_size,
       GPUPlace(device_id),
       keep);
-  phi::DenseTensor tensor;
+  DenseTensor tensor;
   tensor.Resize(phi::make_ddim(dims_vec));
   tensor.ResetHolder(std::move(alloc));
   tensor.set_type(static_cast<phi::DataType>(dtype_idx));
@@ -412,8 +412,8 @@ phi::DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
 }  // namespace
 
 template <typename PlaceType>
-static void TensorCopyFrom(phi::DenseTensor *dst,
-                           const phi::DenseTensor &src,
+static void TensorCopyFrom(DenseTensor *dst,
+                           const DenseTensor &src,
                            const PlaceType &place,
                            int64_t batch_size) {
   if (batch_size < 0) {
@@ -425,7 +425,7 @@ static void TensorCopyFrom(phi::DenseTensor *dst,
 }
 
 std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
-    const phi::DenseTensor &src,
+    const DenseTensor &src,
     const std::optional<std::tuple<int, int>> dl_device,
     std::optional<bool> copy) {
   bool force_copy = copy.has_value() && copy.value();
@@ -451,8 +451,8 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
 
   if (force_copy || src.place() != dst_place) {
     phi::Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
-    phi::DenseTensor dst(
-        std::make_shared<phi::Allocation>(nullptr, 0, dst_place), src.meta());
+    DenseTensor dst(std::make_shared<phi::Allocation>(nullptr, 0, dst_place),
+                    src.meta());
     const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
     phi::Copy(*dev_ctx, src, dst_place, false, &dst);
     return std::make_tuple(dst, true);
@@ -463,7 +463,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
 
 template <typename T>
 pybind11::capsule TensorToDLPack(
-    const phi::DenseTensor &tensor,
+    const DenseTensor &tensor,
     const std::optional<std::tuple<int, int>> dl_device = std::nullopt,
     std::optional<bool> copy = std::nullopt) {
   const auto [maybe_copied_tensor, is_copied] =
@@ -488,7 +488,7 @@ pybind11::capsule TensorToDLPack(
 
 void BindTensor(pybind11::module &m) {  // NOLINT
   using namespace paddle::framework;    // NOLINT
-  py::class_<phi::DenseTensor> framework_tensor(
+  py::class_<DenseTensor> framework_tensor(
       m, "DenseTensor", py::buffer_protocol());
   g_framework_tensor_pytype =
       reinterpret_cast<PyTypeObject *>(framework_tensor.ptr());
@@ -498,17 +498,17 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           // TensorToPyArray() according to the dtype and copy
           // parameters.
           "__array__",
-          [](phi::DenseTensor &self, py::object dtype, py::object copy) {
+          [](DenseTensor &self, py::object dtype, py::object copy) {
             return TensorToPyArray(self, copy);
           },
           py::arg("dtype") = py::none(),
           py::arg("copy") = py::none())
       .def("_ptr",
-           [](const phi::DenseTensor &self) {
+           [](const DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
            })
       .def("_slice",
-           [](phi::DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
+           [](DenseTensor &self, int64_t begin_idx, int64_t end_idx) {
              if (!self.meta().is_contiguous()) {
                PADDLE_THROW(common::errors::InvalidArgument(
                    "Tensor is not contiguous, cannot call "
@@ -518,93 +518,93 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_numel", &phi::DenseTensor::numel)
       .def("_is_initialized",
-           [](const phi::DenseTensor &self) { return self.IsInitialized(); })
+           [](const DenseTensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
-           [](const phi::DenseTensor &self) {
+           [](const DenseTensor &self) {
              return common::vectorize(self.dims());
            })
       .def("_set_dims",
-           [](phi::DenseTensor &self, const std::vector<int64_t> &dim) {
+           [](DenseTensor &self, const std::vector<int64_t> &dim) {
              self.Resize(common::make_ddim(dim));
            })
       .def("_set_layout",
-           [](phi::DenseTensor &self, const std::string &layout) {
+           [](DenseTensor &self, const std::string &layout) {
              self.set_layout(common::StringToDataLayout(layout));
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, phi::CustomPlace &place) {
+           [](DenseTensor &self, phi::CustomPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, GPUPlace &place) {
+           [](DenseTensor &self, GPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, phi::XPUPlace &place) {
+           [](DenseTensor &self, phi::XPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, CPUPlace &place) {
+           [](DenseTensor &self, CPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_double",
-           [](phi::DenseTensor &self, CPUPlace &place) {
+           [](DenseTensor &self, CPUPlace &place) {
              self.mutable_data<double>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, CPUPlace &place) {
+           [](DenseTensor &self, CPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, phi::CustomPlace &place) {
+           [](DenseTensor &self, phi::CustomPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, phi::XPUPlace &place) {
+           [](DenseTensor &self, phi::XPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, GPUPlace &place) {
+           [](DenseTensor &self, GPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](phi::DenseTensor &self, phi::GPUPinnedPlace &place) {
+           [](DenseTensor &self, phi::GPUPinnedPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_float",
-           [](phi::DenseTensor &self, phi::GPUPinnedPlace &place) {
+           [](DenseTensor &self, phi::GPUPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_mutable_data",
-           [](phi::DenseTensor &self,
+           [](DenseTensor &self,
               CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
-           [](phi::DenseTensor &self,
+           [](DenseTensor &self,
               phi::CustomPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
-           [](phi::DenseTensor &self,
+           [](DenseTensor &self,
               phi::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
-           [](phi::DenseTensor &self,
+           [](DenseTensor &self,
               GPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
-           [](phi::DenseTensor &self,
+           [](DenseTensor &self,
               phi::GPUPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
@@ -706,7 +706,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
       .def(
           "shape",
-          [](phi::DenseTensor &self) { return common::vectorize(self.dims()); },
+          [](DenseTensor &self) { return common::vectorize(self.dims()); },
           R"DOC(
            Return the shape of Tensor.
 
@@ -741,10 +741,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_get_complex64_element", TensorGetElement<paddle::complex64>)
       .def("_set_complex128_element", TensorSetElement<paddle::complex128>)
       .def("_get_complex128_element", TensorGetElement<paddle::complex128>)
-      .def("_place", [](phi::DenseTensor &self) { return self.place(); })
+      .def("_place", [](DenseTensor &self) { return self.place(); })
 #ifdef PADDLE_WITH_XPU
       .def("get_xpu_scale_value",
-           [](phi::DenseTensor &self) {
+           [](DenseTensor &self) {
              if (self.storage_properties_initialized()) {
                const phi::XPUStorageProperties &sp =
                    self.storage_properties<phi::XPUStorageProperties>();
@@ -754,25 +754,25 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
            })
       .def("set_xpu_scale_value",
-           [](phi::DenseTensor &self, float new_value) {
+           [](DenseTensor &self, float new_value) {
              std::unique_ptr<phi::StorageProperties> sp =
                  std::make_unique<phi::XPUStorageProperties>(new_value);
              self.set_storage_properties(std::move(sp));
            })
 #endif
       .def("_dtype",
-           [](phi::DenseTensor &self) {
+           [](DenseTensor &self) {
              return framework::TransToProtoVarType(self.type());
            })
       .def("_layout",
-           [](phi::DenseTensor &self) {
+           [](DenseTensor &self) {
              return common::DataLayoutToString(self.layout());
            })
       .def("_share_data_with", &phi::DenseTensor::ShareDataWith)
       .def("_share_data_nocheck_with", &phi::DenseTensor::ShareDataNoCheckWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__",
-           [](const phi::DenseTensor &self) {
+           [](const DenseTensor &self) {
              std::stringstream ostr;
              ostr << self;
              return ostr.str();
@@ -793,16 +793,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 "invalid, "
                 "the LegacyLoD converted by recursive_sequence_lengths is %s",
                 new_lod));
-        return std::make_unique<phi::DenseTensor>(new_offset_lod);
+        return std::make_unique<DenseTensor>(new_offset_lod);
       }))
-      .def(py::init([]() { return std::make_unique<phi::DenseTensor>(); }))
+      .def(py::init([]() { return std::make_unique<DenseTensor>(); }))
       // We implement offset based LegacyLoD in C++ while we use length based
       // with Python API. The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
       .def(
           "set_lod",
-          [](phi::DenseTensor &self,
-             const std::vector<std::vector<size_t>> &lod) {
+          [](DenseTensor &self, const std::vector<std::vector<size_t>> &lod) {
             // the input lod is offset-based level-of-detail info
             LegacyLoD new_lod;
             new_lod.reserve(lod.size());
@@ -839,7 +838,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            )DOC")
       .def(
           "set_recursive_sequence_lengths",
-          [](phi::DenseTensor &self,
+          [](DenseTensor &self,
              const std::vector<std::vector<size_t>>
                  &recursive_sequence_lengths) {
             // the input recursive_sequence_lengths is length-based
@@ -892,7 +891,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            )DOC")
       .def(
           "lod",
-          [](phi::DenseTensor &self) -> std::vector<std::vector<size_t>> {
+          [](DenseTensor &self) -> std::vector<std::vector<size_t>> {
             // output the offset-based lod info
             LegacyLoD lod = self.lod();
             std::vector<std::vector<size_t>> new_lod;
@@ -919,17 +918,17 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     [[0, 2, 5]]
            )DOC")
       .def("_as_type",
-           [](const phi::DenseTensor &self,
+           [](const DenseTensor &self,
               paddle::framework::proto::VarType::Type type) {
-             phi::DenseTensor dst;
+             DenseTensor dst;
              if (self.IsInitialized() && self.numel() > 0) {
                TransDataType(self, type, &dst);
              }
              return dst;
            })
-      .def("_copy", [](const phi::DenseTensor &self, const phi::Place &place) {
+      .def("_copy", [](const DenseTensor &self, const phi::Place &place) {
         // follow fetch_op's implementation
-        phi::DenseTensor dst;
+        DenseTensor dst;
         if (self.IsInitialized() && self.numel() > 0) {
           TensorCopySync(self, place, &dst);
         } else {
@@ -944,7 +943,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
 #ifdef PADDLE_WITH_CUDA
       .def("_share_buffer_with",
-           [](phi::DenseTensor &self, const phi::DenseTensor src,
+           [](DenseTensor &self, const DenseTensor src,
               py::tuple t) {
               if (!src.meta().is_contiguous()) {
                 PADDLE_THROW(common::errors::InvalidArgument(
@@ -989,7 +988,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
        )DOC")
       .def("_share_cuda",
-           [](phi::DenseTensor self) {
+           [](DenseTensor self) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0.  could not pass "
@@ -1064,7 +1063,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                    "Invalid Tensor meta info for shared cuda tensor!");
 
              // 1. Create a new C++ instance
-             phi::DenseTensor tensor;
+             DenseTensor tensor;
 
              // 2. Rebuild Allocation from handle
              const std::string &handle = t[0].cast<std::string>();
@@ -1107,7 +1106,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #endif
 #ifdef PADDLE_WITH_XPU
       .def("_share_buffer_with",
-           [](phi::DenseTensor &self, const phi::DenseTensor src,
+           [](DenseTensor &self, const DenseTensor src,
               py::tuple t) {
              if (!src.meta().is_contiguous()) {
                PADDLE_THROW(common::errors::InvalidArgument(
@@ -1157,7 +1156,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       information, device index.
            )DOC")
       .def("_share_xpu",
-           [](phi::DenseTensor &self) {
+           [](DenseTensor &self) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0. could not pass to "
@@ -1228,7 +1227,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              VLOG(6) << "[DEBUG XPU] _new_shared_xpu: current XPU device = "
                      << dev_id;
 
-             phi::DenseTensor tensor;
+             DenseTensor tensor;
              const std::string &handle = t[0].cast<std::string>();
              ptrdiff_t offset_bytes = (ptrdiff_t)t[1].cast<int64_t>();
              auto device_id = t[6].cast<int>();
@@ -1262,7 +1261,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            )DOC")
 #endif  // PADDLE_WITH_XPU
       .def("_share_filename",
-           [](phi::DenseTensor &self, bool use_file_descriptor) {
+           [](DenseTensor &self, bool use_file_descriptor) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0. could not pass to "
@@ -1348,7 +1347,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              if (t.size() != 7)
                throw std::runtime_error("Invalid Tensor meta info state!");
 
-             phi::DenseTensor tensor;
+             DenseTensor tensor;
 
              // 2. Rebuild Allocation
              const std::string &ipc_name = t[0].cast<std::string>();
@@ -1395,7 +1394,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> tensor_from_shared = paddle.to_tensor(paddle.base.core.DenseTensor._new_shared_filename(metainfo))
         )DOC")
       .def("_shared_incref",
-           [](phi::DenseTensor &self) {
+           [](DenseTensor &self) {
              auto *mmap_allocation = dynamic_cast<
                  memory::allocation::RefcountedMemoryMapAllocation *>(
                  self.Holder().get());
@@ -1407,7 +1406,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             Increase reference count of share_filename tensor.
       )DOC")
       .def("_shared_decref",
-           [](phi::DenseTensor &self) {
+           [](DenseTensor &self) {
              auto *mmap_allocation = dynamic_cast<
                  memory::allocation::RefcountedMemoryMapAllocation *>(
                  self.Holder().get());
@@ -1419,7 +1418,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             Decrease reference count of share_filename tensor.
       )DOC")
       .def(py::pickle(
-          [](const phi::DenseTensor &t) {  // __getstate__
+          [](const DenseTensor &t) {  // __getstate__
             auto holder = t.Holder();
             PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()), true,
                               common::errors::PreconditionNotMet(
@@ -1444,7 +1443,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
               throw std::runtime_error("Invalid Tensor state!");
 
             // 1. Create a new C++ instance
-            phi::DenseTensor tensor;
+            DenseTensor tensor;
 
             // 2. Rebuild Allocation
             const std::string &ipc_name = t[0].cast<std::string>();
@@ -1547,7 +1546,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](const phi::SparseCooTensor &self) -> int64_t {
              return self.numel();
            })
-      .def("indices", [](const phi::SparseCooTensor &self) -> phi::DenseTensor {
+      .def("indices", [](const phi::SparseCooTensor &self) -> DenseTensor {
         return self.indices();
       });
 }

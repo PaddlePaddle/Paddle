@@ -288,18 +288,9 @@ void LUKernel(const Context& dev_ctx,
       ::common::errors::PreconditionNotMet(
           "Invalid input x dimensionality: %d (expected ≥2)", x.dims().size()));
   if (x.numel() == 0) {
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(infos->dims())),
-                            static_cast<int>(0),
-                            infos);
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(pivots->dims())),
-                            static_cast<int>(0),
-                            pivots);
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(0),
-                          out);
+    Full<int, Context>(dev_ctx, infos->dims(), static_cast<int>(0), infos);
+    Full<int, Context>(dev_ctx, pivots->dims(), static_cast<int>(0), pivots);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(0), out);
     return;
   }
   int64_t largest_matrix = (1LL << 31) - 1;

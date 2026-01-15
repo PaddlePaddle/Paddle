@@ -56,7 +56,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
     // int broadcast_mul(Context* xpu_ctx, const T* x, const T* y, T* z, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape);
     auto x_dims = x.dims();
-    std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape = vectorize<int64_t>(x_dims);
     int r = xpu::broadcast_mul(
         dev_ctx.x_context(), x_data, scale_data, out_data, xshape, {1});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
@@ -98,8 +98,8 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
   } else if (quant_axis == 1) {
     // 准备将0和1两个维度对调
     auto x_dims = x.dims();
-    std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
-    std::vector<int64_t> xshape_back = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape = vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape_back = vectorize<int64_t>(x_dims);
     xshape_back[0] = xshape[1];
     xshape_back[1] = xshape[0];
     std::vector<int64_t> trans_axes = {1, 0};
@@ -186,8 +186,8 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   } else if (quant_axis == 1) {
     // 准备将0和1两个维度对调
     auto x_dims = x.dims();
-    std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
-    std::vector<int64_t> xshape_back = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape = vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape_back = vectorize<int64_t>(x_dims);
     xshape_back[0] = xshape[1];
     xshape_back[1] = xshape[0];
     std::vector<int64_t> trans_axes = {1, 0};

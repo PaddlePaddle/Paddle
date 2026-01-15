@@ -52,13 +52,13 @@ class PaddleDeleterManager {
 };
 
 template <typename T>
-phi::DenseTensor from_blob(void *data,
-                           T *src,
-                           const phi::DDim &shape,
-                           const phi::DDim &strides,
-                           phi::DataType dtype,
-                           const phi::Place &place,
-                           const Deleter &deleter) {
+DenseTensor from_blob(void *data,
+                      T *src,
+                      const phi::DDim &shape,
+                      const phi::DDim &strides,
+                      phi::DataType dtype,
+                      const phi::Place &place,
+                      const Deleter &deleter) {
   auto meta = phi::DenseTensorMeta(dtype, shape, strides);
 
   phi::Allocation::DeleterFnPtr f = nullptr;
@@ -293,7 +293,7 @@ phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
 
 template <typename T>
 struct PaddleDLMTensor {
-  phi::DenseTensor handle;
+  DenseTensor handle;
   T tensor;
 };
 
@@ -316,9 +316,9 @@ void FillVersionInfo<DLManagedTensorVersioned>(DLManagedTensorVersioned *tensor,
 }
 
 template <typename T>
-T *ToDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
+T *ToDLPackImpl(const DenseTensor &src, uint64_t flags) {
   PaddleDLMTensor<T> *pdDLMTensor(new PaddleDLMTensor<T>);
-  pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
+  pdDLMTensor->handle = const_cast<DenseTensor &>(src);
   pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
   pdDLMTensor->tensor.deleter = &deleter<T>;
 
@@ -336,16 +336,16 @@ T *ToDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
   return &(pdDLMTensor->tensor);
 }
 
-DLManagedTensor *ToDLPack(const phi::DenseTensor &src, uint64_t flags) {
+DLManagedTensor *ToDLPack(const DenseTensor &src, uint64_t flags) {
   return ToDLPackImpl<DLManagedTensor>(src, flags);
 }
 
-DLManagedTensorVersioned *ToDLPackVersioned(const phi::DenseTensor &src,
+DLManagedTensorVersioned *ToDLPackVersioned(const DenseTensor &src,
                                             uint64_t flags) {
   return ToDLPackImpl<DLManagedTensorVersioned>(src, flags);
 }
 
-void ToDLPackNonOwningImpl(const phi::DenseTensor &tensor, ::DLTensor *out) {
+void ToDLPackNonOwningImpl(const DenseTensor &tensor, ::DLTensor *out) {
   // Fill in the pre-allocated DLTensor struct with direct pointers
   // This is a non-owning conversion - the caller owns the tensor
   // and must keep it alive for the duration of DLTensor usage
@@ -361,7 +361,7 @@ void ToDLPackNonOwningImpl(const phi::DenseTensor &tensor, ::DLTensor *out) {
 }
 
 template <typename T>
-phi::DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
+DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
   std::vector<int64_t> shape_vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,
@@ -395,7 +395,7 @@ phi::DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
 }
 
 template <typename T>
-phi::DenseTensor FromDLPackImpl(T *src) {
+DenseTensor FromDLPackImpl(T *src) {
   auto deleter = [src](void *self [[maybe_unused]]) {
     if (src->deleter) {
       src->deleter(src);
@@ -404,11 +404,11 @@ phi::DenseTensor FromDLPackImpl(T *src) {
   return FromDLPackImpl<T>(src, std::move(deleter));
 }
 
-phi::DenseTensor FromDLPack(DLManagedTensor *src) {
+DenseTensor FromDLPack(DLManagedTensor *src) {
   return FromDLPackImpl<DLManagedTensor>(src);
 }
 
-phi::DenseTensor FromDLPackVersioned(DLManagedTensorVersioned *src) {
+DenseTensor FromDLPackVersioned(DLManagedTensorVersioned *src) {
   return FromDLPackImpl<DLManagedTensorVersioned>(src);
 }
 

@@ -3295,6 +3295,11 @@ bool RreluOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool Rrelu_OpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return RreluOpInferSymbolicShape(op, infer_context);
+}
+
 bool SequencePoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =

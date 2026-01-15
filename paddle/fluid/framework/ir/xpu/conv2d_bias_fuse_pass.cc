@@ -223,7 +223,7 @@ void Conv2dBiasFusePass::FoldConv2dBias(ir::Graph* graph) const {
     auto y_shape = ew_bias_add_y_desc->GetShape();
     ew_bias_add_y_desc->SetShape({y_shape[1]});
     auto* ew_bias_add_y_tensor =
-        scope->GetVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
+        scope->GetVar(ew_bias_add_y->Name())->GetMutable<DenseTensor>();
     ew_bias_add_y_tensor->Resize(common::make_ddim({y_shape[1]}));
     ew_bias_add_desc->Flush();
 
@@ -257,7 +257,7 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
         scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
     // get attrs of scale from ele_mul && ele_add
     const auto& ele_mul_y_t =
-        scope->GetVar(ele_mul_y->Name())->GetMutable<phi::DenseTensor>();
+        scope->GetVar(ele_mul_y->Name())->GetMutable<DenseTensor>();
     auto ele_mul_y_t_len = ele_mul_y_t->numel();
     PADDLE_ENFORCE_EQ(
         ele_mul_y_t_len,
@@ -266,7 +266,7 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
                                         "must equal 1",
                                         ele_mul_y_t_len));
     const auto& ele_add_y_t =
-        scope->GetVar(ele_add_y->Name())->GetMutable<phi::DenseTensor>();
+        scope->GetVar(ele_add_y->Name())->GetMutable<DenseTensor>();
     auto ele_add_y_t_len = ele_add_y_t->numel();
     PADDLE_ENFORCE_EQ(
         ele_add_y_t_len,

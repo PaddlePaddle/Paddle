@@ -181,8 +181,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   if (x.numel() == 0 || boxes.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
 
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(dx->dims()), 0.0, dx->dtype(), dx);
+    phi::FullKernel<T>(dev_ctx, vectorize(dx->dims()), 0.0, dx->dtype(), dx);
     return;
   }
 

@@ -69,19 +69,13 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* y_grad) {
   if (out_grad.numel() == 0) {
     if (input_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(input_grad->dims())),
-          0,
-          input_grad);
+      Full<T, Context>(dev_ctx, input_grad->dims(), 0, input_grad);
     }
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     return;
   }
@@ -193,14 +187,12 @@ void AddmmGradKernel(const Context& dev_ctx,
   }
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     return;
   }
   if (y_grad && y_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(y_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   if (x_grad) {
