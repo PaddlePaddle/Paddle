@@ -1140,6 +1140,7 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
       0,
       common::errors::InvalidArgument(
           "sm_margin is not supported, please set sm_margin to 0"));
+
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
   const int64_t max_seqlen_q_ = max_seqlen_q.to<int64_t>();
