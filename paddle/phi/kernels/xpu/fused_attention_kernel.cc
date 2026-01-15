@@ -147,8 +147,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
     if (cache_kv_out) dev_ctx.template Alloc<T>(cache_kv_out);
     if (out) dev_ctx.template Alloc<T>(out);
     return;
-  }  
-
+  }
 
   // 输入指针
   const XPUTypeT *input_x_ptr = reinterpret_cast<const XPUTypeT *>(x.data<T>());

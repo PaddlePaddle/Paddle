@@ -111,7 +111,7 @@ void FusedAttentionGradKernel(
                                     dropout_fix_seed,
                                     seed_1,
                                     dropout_seed);
-    const auto input_x_dims = x.dims();
+  const auto input_x_dims = x.dims();
   const auto qkv_w_dims = qkv_weight.dims();
 
   int64_t batch_size = input_x_dims[0];
@@ -130,7 +130,8 @@ void FusedAttentionGradKernel(
 
     if (x_grad) dev_ctx.template Alloc<T>(x_grad);
     if (qkv_weight_grad) dev_ctx.template Alloc<T>(qkv_weight_grad);
-    if (out_linear_weight_grad) dev_ctx.template Alloc<T>(out_linear_weight_grad);
+    if (out_linear_weight_grad)
+      dev_ctx.template Alloc<T>(out_linear_weight_grad);
 
     if (ln_out_grad) dev_ctx.template Alloc<T>(ln_out_grad);
     if (bias_dropout_residual_out_grad)
@@ -146,7 +147,7 @@ void FusedAttentionGradKernel(
 
     return;
   }
-                                  
+
   // get inputs.
   const XPUTypeT *d_y_ptr =
       reinterpret_cast<const XPUTypeT *>(out_grad.data<T>());
@@ -241,7 +242,6 @@ void FusedAttentionGradKernel(
   ln_var_ptr = ln_var_p->data<float>();
   d_ln_scale_ptr = dev_ctx.template Alloc<float>(d_ln_scale);
   d_ln_bias_ptr = dev_ctx.template Alloc<float>(d_ln_bias);
-
 
   int64_t embed_dims = input_x_dims[2];
   int64_t num_heads = qkv_w_dims[1];

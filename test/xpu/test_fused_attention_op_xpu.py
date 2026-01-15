@@ -339,7 +339,8 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
                 np.random.rand(0, 2, 4).astype('float32'), stop_gradient=False
             )
             qkv_weight = paddle.to_tensor(
-                np.random.rand(3, 2, 2, 4).astype('float32'), stop_gradient=False
+                np.random.rand(3, 2, 2, 4).astype('float32'),
+                stop_gradient=False,
             )
             linear_weight = paddle.to_tensor(
                 np.random.rand(4, 4).astype('float32'), stop_gradient=False
