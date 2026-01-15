@@ -26,15 +26,15 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, profiler
+from paddle._utils import deprecated
+from paddle._utils.dlpack import DLDeviceType
+from paddle._utils.download import check_and_create_dir
 from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
 )
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
-from paddle.utils_internal import deprecated
-from paddle.utils_internal.dlpack import DLDeviceType
-from paddle.utils_internal.download import check_and_create_dir
 
 from .. import core, framework, unique_name
 from ..framework import (

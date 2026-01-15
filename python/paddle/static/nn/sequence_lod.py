@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
+from paddle._utils import deprecated
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import in_dygraph_mode, in_pir_mode
 from paddle.base.layer_helper import LayerHelper
-from paddle.utils import deprecated
 
 __all__ = []
 

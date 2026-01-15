@@ -17,10 +17,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle import _C_ops
-from paddle.framework import core, in_dynamic_or_pir_mode
-from paddle.utils_internal.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ForbidKeywordsIgnoreOneParamDecorator,
 )
+from paddle.framework import core, in_dynamic_or_pir_mode
 
 from ..base.framework import convert_np_dtype_to_dtype_
 

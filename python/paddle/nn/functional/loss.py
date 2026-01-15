@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
+from paddle._utils import deprecated
+from paddle._utils.decorator_utils import ParamAliasDecorator
 from paddle.static.nn.control_flow import Assert
-from paddle.utils import deprecated
-from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (

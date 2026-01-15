@@ -17,13 +17,13 @@ from __future__ import annotations
 import os
 import unittest
 
-from paddle.jit.sot.utils import PEP508LikeEnvironmentVariable
-from paddle.utils.environments import (
+from paddle._utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
     IntegerEnvironmentVariable,
     StringEnvironmentVariable,
 )
+from paddle.jit.sot.utils import PEP508LikeEnvironmentVariable
 
 
 class TestBooleanEnvironmentVariable(unittest.TestCase):

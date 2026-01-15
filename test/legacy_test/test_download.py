@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from paddle.utils.download import get_path_from_url, get_weights_path_from_url
+from paddle._utils.download import get_path_from_url, get_weights_path_from_url
 
 
 class TestDownload(unittest.TestCase):
@@ -113,7 +113,7 @@ class TestDownload(unittest.TestCase):
         self,
     ):
         with self.assertRaises(RuntimeError):
-            from paddle.utils.download import _download
+            from paddle._utils.download import _download
 
             _download(
                 'www.baidu.com',
@@ -128,7 +128,7 @@ class TestDownload(unittest.TestCase):
             "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
         ]
 
-        from paddle.utils.download import _download
+        from paddle._utils.download import _download
 
         methods = ['get']
 

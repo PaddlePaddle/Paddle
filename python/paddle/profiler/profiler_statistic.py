@@ -15,8 +15,8 @@ import collections
 import re
 from enum import Enum
 
+from paddle._utils.flops import flops
 from paddle.base.core import TracerEventType, TracerMemEventType
-from paddle.utils_internal.flops import flops
 
 from .statistic_helper import (
     intersection_ranges,

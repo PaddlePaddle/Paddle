@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-from paddle.utils_internal.decorator_utils import (
+from paddle._utils.decorator_utils import (
     param_two_alias,
 )
 

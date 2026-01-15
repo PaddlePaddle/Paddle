@@ -22,8 +22,8 @@ import os
 import unicodedata
 from shutil import copyfile
 
+from paddle._utils.download import get_path_from_url
 from paddle.dataset.common import DATA_HOME
-from paddle.utils.download import get_path_from_url
 
 
 def convert_to_unicode(text):

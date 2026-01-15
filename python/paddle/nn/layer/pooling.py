@@ -18,7 +18,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-from paddle.utils.decorator_utils import (
+from paddle._utils.decorator_utils import (
     lp_pool_layer_decorator,
     param_one_alias,
 )

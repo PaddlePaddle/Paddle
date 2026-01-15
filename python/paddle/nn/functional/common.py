@@ -24,6 +24,8 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, pir
+from paddle._utils import deprecated
+from paddle._utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import (
@@ -33,8 +35,6 @@ from paddle.framework import (
     in_pir_mode,
 )
 from paddle.tensor.creation import full
-from paddle.utils import deprecated
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.layers_utils import NotSupportedTensorArgumentError
 
 from ...base.data_feeder import (

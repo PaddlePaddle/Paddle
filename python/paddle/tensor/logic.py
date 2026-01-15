@@ -32,14 +32,14 @@ from paddle._C_ops import (  # noqa: F401
     logical_or,
     logical_xor,
 )
-from paddle.tensor.creation import full
-from paddle.tensor.math import broadcast_shape
-from paddle.utils_internal.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
 )
-from paddle.utils_internal.inplace_utils import inplace_apis_in_dygraph_only
+from paddle._utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.tensor.creation import full
+from paddle.tensor.math import broadcast_shape
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable

@@ -18,8 +18,8 @@ from functools import reduce
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import paddle
+from paddle._utils import deprecated
 from paddle.optimizer import Optimizer
-from paddle.utils import deprecated
 
 from .line_search_dygraph import _strong_wolfe
 

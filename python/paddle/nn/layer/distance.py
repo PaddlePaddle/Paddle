@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from paddle.utils.decorator_utils import param_one_alias, param_two_alias
+from paddle._utils.decorator_utils import param_one_alias, param_two_alias
 
 from .. import functional as F
 from .layers import Layer

@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from paddle._utils.decorator_utils import param_one_alias
 from paddle.framework import get_default_dtype
-from paddle.utils.decorator_utils import param_one_alias
 
 from .. import functional as F
 from ..initializer import Constant

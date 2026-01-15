@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle import _C_ops
-from paddle.utils import deprecated
+from paddle._utils import deprecated
 
 from ....framework import in_dynamic_or_pir_mode
 

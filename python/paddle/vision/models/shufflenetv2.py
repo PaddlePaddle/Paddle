@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle import nn
+from paddle._utils.download import get_weights_path_from_url
 from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
-from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
 

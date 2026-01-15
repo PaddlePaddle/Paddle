@@ -17,7 +17,7 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.utils.flops import flops
+from paddle._utils.flops import flops
 
 from ..cluster import DeviceType, LinkType, get_default_cluster
 from ..dist_tensor import DistributedTensor

@@ -18,13 +18,13 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle.framework import core, in_dynamic_or_pir_mode
-from paddle.utils.decorator_utils import (
+from paddle._utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     softmax_param_alias,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle._utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.framework import core, in_dynamic_or_pir_mode
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.framework import convert_np_dtype_to_dtype_

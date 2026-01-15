@@ -22,7 +22,7 @@ import numpy as np
 import tvm_ffi.cpp
 
 import paddle
-from paddle.utils.dlpack import DLDeviceType
+from paddle._utils.dlpack import DLDeviceType
 
 if TYPE_CHECKING:
     from tvm_ffi import Module

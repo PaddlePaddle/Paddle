@@ -19,15 +19,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from paddle import _C_ops, in_dynamic_mode
+from paddle._utils.decorator_utils import (
+    lp_pool_function_decorator,
+    param_one_alias,
+    param_two_alias,
+)
 from paddle.base.framework import (
     Variable,
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
-)
-from paddle.utils.decorator_utils import (
-    lp_pool_function_decorator,
-    param_one_alias,
-    param_two_alias,
 )
 
 from ...base.data_feeder import check_type, check_variable_and_dtype

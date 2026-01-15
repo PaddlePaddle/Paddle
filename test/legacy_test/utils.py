@@ -22,14 +22,14 @@ import numpy as np
 
 import paddle
 from paddle import base, get_flags, set_flags, static
+from paddle._utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
 from paddle.base import core
 from paddle.base.framework import _dygraph_guard
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.pir_utils import DygraphOldIrGuard
-from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
-    EnvironmentVariableGuard,
-)
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 

@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import paddle
 from paddle import _C_ops
+from paddle._utils.decorator_utils import ParamAliasDecorator
 from paddle.framework import in_dynamic_or_pir_mode
-from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper

@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 from contextlib import contextmanager
 
-from paddle.utils.environments import (
+from paddle._utils.environments import (
     BooleanEnvironmentVariable,
     EnvironmentVariable,
     EnvironmentVariableGuard,

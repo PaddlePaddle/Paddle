@@ -20,8 +20,8 @@ import numpy as np
 
 import paddle
 from paddle import Tensor, get_flags
+from paddle._utils.decorator_utils import param_one_alias
 from paddle.base.framework import in_dygraph_mode
-from paddle.utils.decorator_utils import param_one_alias
 
 from ...device import (
     get_cudnn_version,

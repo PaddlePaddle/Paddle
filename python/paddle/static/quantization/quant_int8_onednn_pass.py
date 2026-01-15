@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle.utils import deprecated
+from paddle._utils import deprecated
 
 from ...base.framework import IrGraph
 from ...framework import _get_paddle_place

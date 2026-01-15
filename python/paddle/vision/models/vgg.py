@@ -24,7 +24,7 @@ from typing_extensions import NotRequired, Unpack
 
 import paddle
 from paddle import nn
-from paddle.utils.download import get_weights_path_from_url
+from paddle._utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
     from paddle import Tensor

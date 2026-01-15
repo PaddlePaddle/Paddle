@@ -21,8 +21,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from paddle import _C_ops, in_dynamic_mode, pir_utils
+from paddle._utils.decorator_utils import param_one_alias
 from paddle.device import get_all_custom_device_type
-from paddle.utils.decorator_utils import param_one_alias
 
 from ...base import dygraph_utils
 from ...base.data_feeder import check_variable_and_dtype

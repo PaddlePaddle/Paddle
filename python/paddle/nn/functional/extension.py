@@ -19,7 +19,7 @@ from typing import (
 )
 
 from paddle import _C_ops, tensor
-from paddle.utils import deprecated
+from paddle._utils import deprecated
 
 from ...base.data_feeder import (
     check_dtype,

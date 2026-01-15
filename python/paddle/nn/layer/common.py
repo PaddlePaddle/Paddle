@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle._utils.decorator_utils import ParamAliasDecorator, param_one_alias
 
 from .. import functional as F
 from .layers import Layer
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
     _T_Padding = TypeVar("_T_Padding", Tensor, Sequence[int])
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle._utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 

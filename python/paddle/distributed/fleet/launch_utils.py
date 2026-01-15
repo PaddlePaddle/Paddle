@@ -29,7 +29,7 @@ from contextlib import closing
 
 import paddle.utils.cpp_extension.extension_utils as utils
 from paddle import framework
-from paddle.utils import strtobool
+from paddle._utils import strtobool
 
 logger = logging.getLogger("root")
 logger.propagate = False

@@ -51,16 +51,16 @@ from paddle._C_ops import (  # noqa: F401
     sum,
     tanh,
 )
-from paddle.base.libpaddle import DataType
-from paddle.common_ops_import import VarDesc, dygraph_utils
-from paddle.pir import Value
-from paddle.utils_internal.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ParamAliasDecorator,
     floor_divide_decorator,
     param_one_alias,
     param_two_alias,
 )
-from paddle.utils_internal.inplace_utils import inplace_apis_in_dygraph_only
+from paddle._utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.base.libpaddle import DataType
+from paddle.common_ops_import import VarDesc, dygraph_utils
+from paddle.pir import Value
 
 from ..base.data_feeder import (
     check_dtype,
@@ -134,7 +134,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
-from paddle.utils_internal.decorator_utils import ForbidKeywordsDecorator
+from paddle._utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 

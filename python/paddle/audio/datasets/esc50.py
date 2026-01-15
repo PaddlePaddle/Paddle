@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 from typing_extensions import TypeAlias
 
+from paddle._utils import download
 from paddle.dataset.common import DATA_HOME
-from paddle.utils import download
 
 from .dataset import AudioClassificationDataset
 

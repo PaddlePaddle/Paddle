@@ -39,6 +39,10 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 import paddle
+from paddle._utils.environments import (
+    BooleanEnvironmentVariable,
+    IntegerEnvironmentVariable,
+)
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import (
@@ -50,10 +54,6 @@ from paddle.framework import CUDAPinnedPlace
 from paddle.jit.utils import OrderedSet
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
-from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
-    IntegerEnvironmentVariable,
-)
 
 from .ast_utils import ast_to_source_code
 

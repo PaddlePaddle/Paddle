@@ -45,6 +45,9 @@ from typing_extensions import (
 )
 
 import paddle
+from paddle._utils.environments import (
+    EnvironmentVariableGuard,
+)
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -64,9 +67,6 @@ from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
-from paddle.utils.environments import (
-    EnvironmentVariableGuard,
-)
 
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import add_ignore_module

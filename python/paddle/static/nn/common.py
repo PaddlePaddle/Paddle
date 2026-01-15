@@ -19,6 +19,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle._utils import deprecated
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import (
@@ -40,7 +41,6 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
 )
 from paddle.nn.initializer import Constant, Normal
-from paddle.utils import deprecated
 
 __all__ = []
 

@@ -209,6 +209,7 @@ from . import (
     _C as _C,
     _pir_ops as _pir_ops,
     _typing as _typing,
+    _utils as _utils,
     callbacks as callbacks,
     fft as fft,
     functional as functional,
@@ -219,10 +220,13 @@ from . import (
     special as special,
     tensor as tensor,
     utils as utils,
-    utils_internal as utils_internal,
 )
 from ._classes import classes as classes
 from ._ops import ops as ops
+from ._utils.dlpack import (
+    from_dlpack,
+    to_dlpack,
+)
 from .amp import (
     get_autocast_cpu_dtype,
     get_autocast_dtype,
@@ -755,10 +759,6 @@ from .tensor.stat import (
     var,
 )
 from .tensor.to_string import set_printoptions
-from .utils.dlpack import (
-    from_dlpack,
-    to_dlpack,
-)
 
 
 class _TensorMethodOrModule:

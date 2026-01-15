@@ -20,13 +20,13 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle._utils.decorator_utils import ForbidKeywordsDecorator
 from paddle.base import core
 from paddle.base.data_feeder import promote_types
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import nn as nn
 from .proxy import (  # noqa: F401

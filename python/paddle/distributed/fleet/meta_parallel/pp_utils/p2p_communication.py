@@ -17,6 +17,7 @@ import os
 import numpy as np
 
 import paddle
+from paddle._utils import strtobool
 from paddle.distributed.communication.batch_isend_irecv import (
     _coalescing_manager,
 )
@@ -29,7 +30,6 @@ from paddle.distributed.communication.serialization_utils import (
     convert_tensor_to_object,
 )
 from paddle.framework.recall_error import check_naninf
-from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number

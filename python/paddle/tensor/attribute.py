@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils_internal.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
 )

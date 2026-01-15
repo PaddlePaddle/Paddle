@@ -20,6 +20,7 @@ from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle._utils import strtobool
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
@@ -35,7 +36,6 @@ from paddle.framework.recall_error import (
     SHARDING_PAD_NON_ZERO_ERROR,
     check_naninf,
 )
-from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from ...utils.log_util import logger

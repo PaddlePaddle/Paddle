@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
+from paddle._utils.decorator_utils import ParamAliasDecorator
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -26,7 +27,6 @@ from paddle.device import (
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
-from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper

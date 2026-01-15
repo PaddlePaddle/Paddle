@@ -21,8 +21,8 @@ import sys
 import time
 from contextlib import closing
 
+from paddle._utils import strtobool
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
-from paddle.utils import strtobool
 
 from ..utils.log_utils import get_logger
 

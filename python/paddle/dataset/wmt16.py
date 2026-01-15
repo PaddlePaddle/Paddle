@@ -33,7 +33,7 @@ import tarfile
 from collections import defaultdict
 
 import paddle
-from paddle.utils import deprecated
+from paddle._utils import deprecated
 
 __all__ = []
 

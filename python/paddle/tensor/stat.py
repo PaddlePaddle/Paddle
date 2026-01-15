@@ -21,14 +21,14 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import (
-    in_dynamic_mode,
-    in_dynamic_or_pir_mode,
-)
-from paddle.utils.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ParamAliasDecorator,
     param_two_alias,
     param_two_alias_one_default,
+)
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
 )
 
 from ..base.data_feeder import check_type, check_variable_and_dtype

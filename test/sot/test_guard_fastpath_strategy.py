@@ -21,13 +21,13 @@ from test_case_base import (
 )
 
 import paddle
+from paddle._utils.environments import (
+    EnvironmentVariableGuard,
+)
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
 from paddle.jit.sot.utils import ENV_SOT_UNSAFE_CACHE_FASTPATH
-from paddle.utils.environments import (
-    EnvironmentVariableGuard,
-)
 
 
 def add(x, y):

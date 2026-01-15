@@ -27,6 +27,10 @@ from typing_extensions import Self, overload
 
 import paddle
 from paddle import Tensor, dtype, nn, profiler
+from paddle._utils import deprecated
+from paddle._utils.decorator_utils import (
+    param_one_alias,
+)
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -57,10 +61,6 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
 )
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
-from paddle.utils import deprecated
-from paddle.utils.decorator_utils import (
-    param_one_alias,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping, Sequence

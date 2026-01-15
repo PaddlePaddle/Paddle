@@ -19,8 +19,8 @@ from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
+from paddle._utils.dlpack import DLDeviceType
 from paddle.base import core
-from paddle.utils.dlpack import DLDeviceType
 
 
 class TestDLPack(unittest.TestCase):

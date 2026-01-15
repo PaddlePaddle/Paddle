@@ -16,7 +16,7 @@ import os
 import warnings
 from argparse import REMAINDER, ArgumentParser
 
-from paddle.utils import strtobool
+from paddle._utils import strtobool
 
 env_args_mapping = {
     'POD_IP': ('host', str),

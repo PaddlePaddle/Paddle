@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle._utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional
 from .transformer import MultiheadAttention

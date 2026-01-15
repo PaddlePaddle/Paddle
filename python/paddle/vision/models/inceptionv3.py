@@ -27,10 +27,10 @@ from typing_extensions import (
 
 import paddle
 from paddle import nn
+from paddle._utils.download import get_weights_path_from_url
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, AvgPool2D, Dropout, Linear, MaxPool2D
 from paddle.nn.initializer import Uniform
-from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
 

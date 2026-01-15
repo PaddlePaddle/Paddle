@@ -25,8 +25,8 @@ import tarfile
 import numpy as np
 from PIL import Image
 
+from paddle._utils import deprecated
 from paddle.dataset.common import download
-from paddle.utils import deprecated
 
 __all__ = []
 

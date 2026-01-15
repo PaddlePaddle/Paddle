@@ -22,14 +22,14 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle._C_ops import argmax, argmin  # noqa: F401
-from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ParamAliasDecorator,
     index_select_decorator,
     param_one_alias,
     param_two_alias,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle._utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.common_ops_import import VarDesc, Variable
 
 from ..base.data_feeder import check_variable_and_dtype
 from ..framework import (
@@ -44,7 +44,7 @@ from .creation import assign
 if TYPE_CHECKING:
     from paddle import Tensor
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle._utils.decorator_utils import ForbidKeywordsDecorator
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS
 # from ..base.layers import has_nan  #DEFINE_ALIAS

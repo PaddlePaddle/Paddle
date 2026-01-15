@@ -20,13 +20,13 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
+from paddle._utils import strtobool
 from paddle.framework import (
     _current_expected_place_,
     base as imperative_base,
     core,
 )
 from paddle.framework.recall_error import check_naninf
-from paddle.utils import strtobool
 
 from .log_util import logger
 

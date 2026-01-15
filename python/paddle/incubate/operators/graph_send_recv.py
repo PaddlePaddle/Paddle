@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from paddle import _C_ops
+from paddle._utils import deprecated
 from paddle.base.data_feeder import (
     check_dtype,
     check_type,
@@ -31,7 +32,6 @@ from paddle.geometric.message_passing.utils import (
     convert_out_size_to_list,
     get_out_size_tensor_inputs,
 )
-from paddle.utils import deprecated
 
 if TYPE_CHECKING:
     from paddle import Tensor

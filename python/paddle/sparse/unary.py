@@ -20,6 +20,9 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._utils.decorator_utils import (
+    param_one_alias,
+)
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.framework import (
     convert_np_dtype_to_dtype_,
@@ -28,9 +31,6 @@ from paddle.base.framework import (
 )
 from paddle.common_ops_import import Variable
 from paddle.framework import LayerHelper
-from paddle.utils.decorator_utils import (
-    param_one_alias,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

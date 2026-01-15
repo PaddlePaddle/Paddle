@@ -22,9 +22,9 @@ import warnings
 import numpy as np
 
 import paddle
+from paddle._utils import deprecated
 from paddle.base.framework import _set_expected_place
 from paddle.pir.core import datatype_to_vartype
-from paddle.utils_internal import deprecated
 
 from . import core
 from .data_feeder import BatchedTensorProvider, DataFeeder

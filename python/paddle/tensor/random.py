@@ -20,6 +20,11 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
+from paddle._utils.decorator_utils import (
+    param_one_alias,
+    param_two_alias,
+    size_args_decorator,
+)
 from paddle.base.framework import _current_expected_place
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import Variable
@@ -28,11 +33,6 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
     use_pir_api,
-)
-from paddle.utils_internal.decorator_utils import (
-    param_one_alias,
-    param_two_alias,
-    size_args_decorator,
 )
 
 from ..base.data_feeder import (

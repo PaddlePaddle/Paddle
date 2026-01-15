@@ -18,12 +18,12 @@ from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle import base, in_dynamic_mode
-from paddle.base.framework import in_dynamic_or_pir_mode
-from paddle.utils.decorator_utils import (
+from paddle._utils.decorator_utils import (
     ParamAliasDecorator,
     legacy_reduction_decorator,
     legacy_reduction_special_decorator,
 )
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 from .. import functional as F
 from .layers import Layer
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
     from ..functional.loss import _ReduceMode
 
-from paddle.utils.decorator_utils import param_one_alias
+from paddle._utils.decorator_utils import param_one_alias
 
 __all__ = []
 

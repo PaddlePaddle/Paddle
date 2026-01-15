@@ -23,9 +23,9 @@ from utils import dygraph_guard
 import paddle
 import paddle.nn.functional as F
 from paddle import base
+from paddle._utils.dlpack import DLDeviceType
 from paddle.base import core
 from paddle.tensor.to_string import DEFAULT_PRINT_OPTIONS
-from paddle.utils.dlpack import DLDeviceType
 
 
 class TestEagerTensor(unittest.TestCase):

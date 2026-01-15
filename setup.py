@@ -2510,7 +2510,7 @@ def get_setup_parameters():
         'paddle.utils',
         'paddle.utils.gast',
         'paddle.utils.cpp_extension',
-        'paddle.utils_internal',
+        'paddle._utils',
         'paddle.dataset',
         'paddle.reader',
         'paddle.distributed',

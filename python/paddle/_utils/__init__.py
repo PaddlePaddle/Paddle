@@ -17,6 +17,7 @@ from . import (  # noqa: F401
     dlpack,
     download,
 )
+from .bwd_graph_utils import capture_backward_subgraph_guard  # noqa: F401
 from .deprecated import deprecated
 from .environments import strtobool as strtobool
 

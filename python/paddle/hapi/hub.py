@@ -27,7 +27,7 @@ from urllib.parse import urlparse
 from typing_extensions import TypeAlias
 
 import paddle
-from paddle.utils.download import (
+from paddle._utils.download import (
     _download,
     _safe_extract_zip,
     get_path_from_url,

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.utils.flops import flops
+from paddle._utils.flops import flops
 
 
 class TestFLOPSAPI(unittest.TestCase):

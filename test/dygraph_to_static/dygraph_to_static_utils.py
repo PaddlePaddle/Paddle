@@ -28,6 +28,10 @@ from typing_extensions import TypeAlias
 
 import paddle
 from paddle import set_flags
+from paddle._utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
 from paddle.jit.api import sot_mode_guard
 from paddle.jit.dy2static.utils import (
     ENV_ENABLE_CINN_IN_DY2ST,
@@ -37,10 +41,6 @@ from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
 from paddle.jit.sot.utils.envs import min_graph_size_guard
-from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
-    EnvironmentVariableGuard,
-)
 
 """
 # Usage:

@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle._utils.decorator_utils import ParamAliasDecorator
 
 from ..base import framework
 from ..base.core import (

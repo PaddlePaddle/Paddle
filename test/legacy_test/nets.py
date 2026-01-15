@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
+from paddle._utils import deprecated
 from paddle.base.data_feeder import check_variable_and_dtype, convert_dtype
-from paddle.utils import deprecated
 
 __all__ = [
     "simple_img_conv_pool",

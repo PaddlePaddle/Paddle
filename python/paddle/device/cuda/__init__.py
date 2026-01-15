@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING, NoReturn, Union
 from typing_extensions import TypeAlias
 
 import paddle
+from paddle._utils import deprecated
 from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.utils import deprecated
 
 from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 

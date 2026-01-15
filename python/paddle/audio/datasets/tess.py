@@ -16,8 +16,8 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+from paddle._utils import download
 from paddle.dataset.common import DATA_HOME
-from paddle.utils import download
 
 from .dataset import AudioClassificationDataset
 

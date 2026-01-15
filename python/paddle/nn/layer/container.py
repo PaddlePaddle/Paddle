@@ -31,7 +31,7 @@ from .layers import Layer
 
 __all__ = []
 
-from paddle.utils.decorator_utils import (
+from paddle._utils.decorator_utils import (
     param_one_alias,
 )
 

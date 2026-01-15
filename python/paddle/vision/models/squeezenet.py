@@ -24,9 +24,9 @@ from typing_extensions import NotRequired, Unpack
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle._utils.download import get_weights_path_from_url
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, Conv2D, Dropout, MaxPool2D
-from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
     from paddle import Tensor

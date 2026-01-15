@@ -29,11 +29,11 @@ from typing import (
 from typing_extensions import ParamSpec
 
 import paddle
+from paddle._utils.decorator_utils import ParamAliasDecorator
+from paddle._utils.download import check_and_create_dir
 from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
-from paddle.utils_internal.decorator_utils import ParamAliasDecorator
-from paddle.utils_internal.download import check_and_create_dir
 
 from ..framework import _get_paddle_place
 from ..wrapped_decorator import (

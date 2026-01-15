@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops, nn
+from paddle._utils import deprecated
 from paddle.base import framework
 from paddle.base.dygraph import (
     base as imperative_base,
@@ -29,7 +30,6 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
 from paddle.framework import core
-from paddle.utils import deprecated
 
 
 class MixPrecisionLayer(nn.Layer):

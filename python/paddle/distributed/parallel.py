@@ -30,6 +30,7 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops, framework
+from paddle._utils import deprecated
 from paddle.base.core import get_all_custom_device_type
 from paddle.distributed.collective import (
     Group,
@@ -61,7 +62,6 @@ from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.nn.layer import Layer
-from paddle.utils import deprecated
 
 from . import parallel_helper
 from .backup_env import getenv_or_backup
