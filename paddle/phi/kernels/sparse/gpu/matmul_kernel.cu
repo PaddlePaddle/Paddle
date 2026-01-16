@@ -36,7 +36,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const TensorType& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
-#if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
+#if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 402
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -112,7 +112,7 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const SparseCsrTensor& y,
                         SparseCsrTensor* out) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -149,13 +149,6 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
-
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSpGEMM, "
-      "which is supported from CUDA 11.0"));
-#endif
 #endif
 }
 
@@ -179,7 +172,7 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const DenseTensor& y,
                            const SparseCsrTensor& mask,
                            SparseCsrTensor* out) {
-#if CUDA_VERSION >= 11030
+#if defined(PADDLE_WITH_CUDA)
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
   std::vector<int64_t> maskdim_vec = common::vectorize(mask.dims());
@@ -249,10 +242,6 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.masked_matmul' use cusparseSDDMM, which is supported "
-      "from CUDA 11.3"));
 #endif
 }
 
