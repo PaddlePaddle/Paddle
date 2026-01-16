@@ -113,6 +113,10 @@ __device__ __forceinline__ void vectorized_memcpy(const T* src,
     }
   }
 }
+static inline bool is_aligned_in_bytes(std::size_t offset,
+                                       std::size_t alignment = 16) {
+  return (offset & (alignment - 1)) == 0;
+}
 template <typename T>
 __device__ __forceinline__ void try_vectorized_memcpy(const T* src,
                                                       T* dst,
