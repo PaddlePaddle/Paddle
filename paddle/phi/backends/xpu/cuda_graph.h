@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 
 #ifdef PADDLE_WITH_XPU
 

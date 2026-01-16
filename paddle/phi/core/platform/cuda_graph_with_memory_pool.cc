@@ -350,9 +350,6 @@ void InitCUDNNRelatedHandle(phi::XPUContext* dev_ctx) {}
 phi::DeviceContext* SelectXPUGraphDeviceContext(phi::XPUPlace place,
                                                 int64_t* pool_id) {
   phi::DeviceContext* mutable_dev_ctx;
-  // 框架的单例管理器，负责全局管理所有参与 CUDA Graph 捕获的设备上下文
-  // GetAllCapturingDeviceContexts()：获取当前所有需要参与 Graph
-  // 捕获的设备上下文列表（每个上下文对应一个 CUDA 流）；
   auto all_capturing_dev_ctxs =
       phi::backends::xpu::CUDAGraphContextManager::Instance()
           .GetAllCapturingDeviceContexts();
