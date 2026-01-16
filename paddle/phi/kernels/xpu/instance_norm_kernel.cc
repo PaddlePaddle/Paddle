@@ -40,22 +40,13 @@ void InstanceNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(saved_var);
   if (x.numel() == 0) {
     if (y) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+      Full<T, Context>(dev_ctx, y->dims(), 0, y);
     }
     if (saved_mean) {
-      phi::Full<float, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(saved_mean->dims())),
-          0.f,
-          saved_mean);
+      Full<float, Context>(dev_ctx, saved_mean->dims(), 0.f, saved_mean);
     }
     if (saved_var) {
-      phi::Full<float, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(saved_var->dims())),
-          0.f,
-          saved_var);
+      Full<float, Context>(dev_ctx, saved_var->dims(), 0.f, saved_var);
     }
     return;
   }

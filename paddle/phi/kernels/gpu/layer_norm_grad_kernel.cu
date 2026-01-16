@@ -20,22 +20,48 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
-
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+#include "paddle/phi/kernels/funcs/fast_ln_v2.h"
+#endif
 namespace phi {
+enum class LayerNormGadKernelVariant { FAST_LN_V2, GENERIC };
+static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
+    const paddle::DataType weight_type,
+    const paddle::DataType input_type,
+    const paddle::DataType output_type,
+    const paddle::DataType compute_type,
+    const uint32_t hidden_size,
+    const int64_t x_numel,
+    const DenseTensor* scale) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  if (scale != nullptr && input_type != paddle::DataType::FLOAT32 &&
+      hidden_size != 4096 && hidden_size > 1024 && hidden_size <= 10240 &&
+      x_numel <= std::numeric_limits<uint32_t>::max()) {
+    // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
+    auto prop = funcs::fast_ln_v2::GetDeviceProp();
+    if (prop->major > 7 &&
+        funcs::fast_ln_v2::has_fast_ln_v2_bwd_kernel(
+            weight_type, input_type, output_type, compute_type, hidden_size)) {
+      return LayerNormGadKernelVariant::FAST_LN_V2;
+    }
+  }
+#endif
+  return LayerNormGadKernelVariant::GENERIC;
+}
 
 template <typename T, typename Context>
-void LayerNormGradKernel(const Context &dev_ctx,
-                         const DenseTensor &x,
-                         const paddle::optional<DenseTensor> &scale_opt,
-                         const paddle::optional<DenseTensor> &bias_opt,
-                         const DenseTensor &mean,
-                         const DenseTensor &variance,
-                         const DenseTensor &out_grad,
+void LayerNormGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const paddle::optional<DenseTensor>& scale_opt,
+                         const paddle::optional<DenseTensor>& bias_opt,
+                         const DenseTensor& mean,
+                         const DenseTensor& variance,
+                         const DenseTensor& out_grad,
                          float epsilon,
                          int begin_norm_axis,
-                         DenseTensor *x_grad,
-                         DenseTensor *scale_grad,
-                         DenseTensor *bias_grad) {
+                         DenseTensor* x_grad,
+                         DenseTensor* scale_grad,
+                         DenseTensor* bias_grad) {
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (scale_grad) {
@@ -56,26 +82,26 @@ void LayerNormGradKernel(const Context &dev_ctx,
   }
   using U = funcs::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
-  auto *d_x = x_grad;
-  auto *d_scale = scale_grad;
-  auto *d_bias = bias_grad;
+  auto* d_x = x_grad;
+  auto* d_scale = scale_grad;
+  auto* d_bias = bias_grad;
 
-  auto *scale = scale_opt.get_ptr();
-  auto *bias = bias_opt.get_ptr();
-  auto *d_y = &out_grad;
+  auto* scale = scale_opt.get_ptr();
+  auto* bias = bias_opt.get_ptr();
+  auto* d_y = &out_grad;
 
-  const auto &x_dims = x.dims();
+  const auto& x_dims = x.dims();
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 
-  auto *x_data = x.data<T>();
-  auto *d_y_data = d_y->data<T>();
+  auto* x_data = x.data<T>();
+  auto* d_y_data = d_y->data<T>();
 
-  auto *mean_data = mean.data<U>();
-  auto *var_data = variance.data<U>();
+  auto* mean_data = mean.data<U>();
+  auto* var_data = variance.data<U>();
 
-  auto *d_x_data = (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));
+  auto* d_x_data = (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));
 
   auto x_dtype = x.dtype();
 
@@ -94,15 +120,15 @@ void LayerNormGradKernel(const Context &dev_ctx,
 
 #define PADDLE_LAUNCH_LAYERNORM_BWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)  \
   do {                                                                      \
-    auto *scale_data =                                                      \
+    auto* scale_data =                                                      \
         (scale == nullptr ? nullptr : scale->data<ScaleBiasT>());           \
-    auto *d_scale_data =                                                    \
+    auto* d_scale_data =                                                    \
         (d_scale == nullptr ? nullptr                                       \
                             : dev_ctx.template Alloc<ScaleBiasT>(d_scale)); \
-    auto *d_bias_data =                                                     \
+    auto* d_bias_data =                                                     \
         (d_bias == nullptr ? nullptr                                        \
                            : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
-    auto *d_x_data =                                                        \
+    auto* d_x_data =                                                        \
         (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
     funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(x_data,       \
                                                               d_y_data,     \
@@ -118,13 +144,70 @@ void LayerNormGradKernel(const Context &dev_ctx,
                                                               dev_ctx);     \
   } while (0)
 
-  if (scale_bias_dtype == x_dtype) {
-    PADDLE_LAUNCH_LAYERNORM_BWD(T, true);
-  } else {
-    PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
+#define PADDLE_LAUNCH_FAST_LAYERNORM_V2_BWD(ScaleBiasT)                     \
+  do {                                                                      \
+    auto stream = dev_ctx.stream();                                         \
+    auto place = x.place();                                                 \
+    auto* scale_data =                                                      \
+        (scale == nullptr ? nullptr : scale->data<ScaleBiasT>());           \
+    auto* d_scale_data =                                                    \
+        (d_scale == nullptr ? nullptr                                       \
+                            : dev_ctx.template Alloc<ScaleBiasT>(d_scale)); \
+    auto* d_bias_data =                                                     \
+        (d_bias == nullptr ? nullptr                                        \
+                           : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
+    auto* d_x_data =                                                        \
+        (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
+    funcs::fast_ln_v2::LaunchNormBwd<T, Context>(dev_ctx,                   \
+                                                 stream,                    \
+                                                 place,                     \
+                                                 x_data,                    \
+                                                 scale_data,                \
+                                                 mean_data,                 \
+                                                 var_data,                  \
+                                                 d_y_data,                  \
+                                                 d_x_data,                  \
+                                                 d_scale_data,              \
+                                                 d_bias_data,               \
+                                                 scale_bias_dtype,          \
+                                                 x_dtype,                   \
+                                                 x_grad->dtype(),           \
+                                                 compute_dtype,             \
+                                                 feature_size,              \
+                                                 batch_size,                \
+                                                 feature_size,              \
+                                                 epsilon);                  \
+  } while (0)
+
+  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto kernel_variant = LayerNormGradKernelDispatch(scale_bias_dtype,
+                                                    x_dtype,
+                                                    x_dtype,
+                                                    compute_dtype,
+                                                    feature_size,
+                                                    x.numel(),
+                                                    scale);
+  switch (kernel_variant) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+    case LayerNormGadKernelVariant::FAST_LN_V2:
+      if (scale_bias_dtype == x_dtype) {
+        PADDLE_LAUNCH_FAST_LAYERNORM_V2_BWD(T);
+      } else {
+        PADDLE_LAUNCH_FAST_LAYERNORM_V2_BWD(U);
+      }
+      break;
+#endif
+    case LayerNormGadKernelVariant::GENERIC:
+    default:
+      if (scale_bias_dtype == x_dtype) {
+        PADDLE_LAUNCH_LAYERNORM_BWD(T, true);
+      } else {
+        PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
+      }
   }
 
 #undef PADDLE_LAUNCH_LAYERNORM_BWD
+#undef PADDLE_LAUNCH_FAST_LAYERNORM_V2_BWD
 }
 
 }  // namespace phi
