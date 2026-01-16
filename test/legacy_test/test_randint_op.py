@@ -239,18 +239,59 @@ class TestRandintAliasAndOut(unittest.TestCase):
     def test_alias_and_out(self):
         paddle.disable_static()
 
-        # Test alias: size -> shape
-        out1 = paddle.randint(low=0, high=10, size=[10, 10])
-        out2 = paddle.randint(low=0, high=10, shape=[10, 10])
-        self.assertEqual(out1.shape, [10, 10])
-        self.assertEqual(out2.shape, [10, 10])
+        # Test size alias (param_one_alias decorator: shape -> size)
+        result_1 = paddle.randint(5, size=[3, 4])
+        result_2 = paddle.randint(5, size=paddle.to_tensor([3, 4]))
+        self.assertEqual(result_1.shape, [3, 4])
+        self.assertEqual(result_2.shape, [3, 4])
 
-        # Test out parameter
-        out_tensor = paddle.empty([10, 10], dtype="int64")
-        paddle.randint(low=0, high=10, shape=[10, 10], out=out_tensor)
-        self.assertEqual(out_tensor.shape, [10, 10])
+        # Test out parameter with int32 dtype
+        result_3 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+        out = paddle.zeros([3, 4], dtype='int32')
+        result_4 = paddle.randint(high=5, shape=[3, 4], dtype='int32', out=out)
+        self.assertTrue(paddle.equal_all(result_4, out))
+        self.assertEqual(result_4.dtype, paddle.int32)
+
+        # Test out parameter with int64 dtype
+        out_int64 = paddle.zeros([2, 5], dtype='int64')
+        result_5 = paddle.randint(
+            high=10, shape=[2, 5], dtype='int64', out=out_int64
+        )
+        self.assertTrue(paddle.equal_all(result_5, out_int64))
+        self.assertEqual(result_5.dtype, paddle.int64)
+
+        # Test WITHOUT out parameter (out=None, triggers 'if out is None' branch)
+        result_6 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+        self.assertEqual(result_6.shape, [3, 4])
+        self.assertEqual(result_6.dtype, paddle.int32)
+
+        result_7 = paddle.randint(high=5, shape=[2, 3], dtype='int64')
+        self.assertEqual(result_7.shape, [2, 3])
+        self.assertEqual(result_7.dtype, paddle.int64)
 
         paddle.enable_static()
+
+    def test_out_static_mode(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # In static mode (PIR), out parameter is not supported (as shown by warning)
+            # Test creates new tensor (out=None), triggering 'if out is None' branch
+            result1 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+            self.assertEqual(result1.shape, (3, 4))
+
+            result2 = paddle.randint(high=10, shape=[2, 5], dtype='int64')
+            self.assertEqual(result2.shape, (2, 5))
+
+    def test_size_alias_static_mode(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # Test size parameter as an alias for shape in static mode
+            result = paddle.randint(high=5, size=[3, 4], dtype='int32')
+            self.assertEqual(result.shape, (3, 4))
 
 
 if __name__ == "__main__":
