@@ -34,6 +34,8 @@ from paddle._C_ops import (  # noqa: F401
     fmax,
     fmin,
     heaviside,
+    i1,
+    i1e,
     isfinite,
     isinf,
     isnan,
@@ -6285,89 +6287,6 @@ def i0e(x: Tensor, name: str | None = None) -> Tensor:
         helper = LayerHelper("i0e", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='i0e', inputs={'x': x}, outputs={'out': out})
-    return out
-
-
-def i1(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    The function is used to calculate modified bessel function of order 1.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> print(paddle.i1(x))
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i1(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i1",
-        )
-
-        helper = LayerHelper("i1", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='i1', inputs={'x': x}, outputs={'out': out}, attrs={}
-        )
-    return out
-
-
-def i1e(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    The function is used to calculate exponentially scaled modified Bessel function of order 1.
-
-    Args:
-
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> print(paddle.i1e(x))
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i1e(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i1e",
-        )
-
-        helper = LayerHelper("i1e", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='i1e', inputs={'x': x}, outputs={'out': out}, attrs={}
-        )
     return out
 
 

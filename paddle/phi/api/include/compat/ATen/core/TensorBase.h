@@ -227,6 +227,8 @@ class PADDLE_API TensorBase {
     }
   }
 
+  void reset() { tensor_.reset(); }
+
   // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
   // type and
   // dimension.

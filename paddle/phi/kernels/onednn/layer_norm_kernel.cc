@@ -109,7 +109,7 @@ void LayerNormKernel(const Context& dev_ctx,
 
   auto layer_norm_p = handler.AcquireForwardPrimitive();
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
                                                 {DNNL_ARG_DST, *dst_memory}};
 

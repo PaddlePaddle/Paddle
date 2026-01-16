@@ -2130,6 +2130,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 bool return_transpose_only,
                                 bool using_e5m2,
                                 bool using_pow2_scale,
+                                bool using_ue8m0_scale,
                                 MetaTensor* out,
                                 MetaTensor* scale,
                                 MetaTensor* out_transposed,
@@ -2143,10 +2144,13 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
       using_e5m2,
       false,
       common::errors::InvalidArgument("currently e5m2 is not support."));
-  PADDLE_ENFORCE_EQ(X.dtype(),
-                    DataType::BFLOAT16,
-                    common::errors::InvalidArgument(
-                        "currently only support bfloat16 input."));
+  PADDLE_ENFORCE_EQ(
+      (X.dtype() == DataType::BFLOAT16 || X.dtype() == DataType::FLOAT16),
+      true,
+      common::errors::InvalidArgument(
+          "The data type of input X is expected to be BFloat16 or Float16, "
+          "but received %s.",
+          X.dtype()));
 
   const int64_t rows = x_dims[0];
   const int64_t cols = x_dims[1];
@@ -2156,13 +2160,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "Currently only supports the first dim of "
                         "Input(X) <= 65535 * 128, but got %d",
                         rows));
-  PADDLE_ENFORCE_EQ(
-      rows % 128,
-      0,
-      common::errors::InvalidArgument("The first dim of "
-                                      "Input(X) should be exactly divided "
-                                      "by 128 , but got %d",
-                                      rows));
+
   PADDLE_ENFORCE_EQ(cols % 128,
                     0,
                     common::errors::InvalidArgument(
@@ -2170,8 +2168,35 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "by 128 , but got %d",
                         cols));
 
+  if (rows % 128 != 0) {
+    PADDLE_ENFORCE_EQ(
+        input_transpose,
+        0,
+        common::errors::InvalidArgument("When rows is not aligned to 128, only "
+                                        "supports input_transpose=False, "
+                                        "but received input_transpose=%d.",
+                                        input_transpose));
+    PADDLE_ENFORCE_EQ(return_transpose_only,
+                      0,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "return_transpose_only=False, "
+                          "but received return_transpose_only=%d.",
+                          return_transpose_only));
+    PADDLE_ENFORCE_EQ(using_1x128_vec_quant,
+                      1,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "using_1x128_vec_quant=True, "
+                          "but received using_1x128_vec_quant=%d.",
+                          using_1x128_vec_quant));
+  }
+
   const int64_t row_quantized = (rows + 127) / 128;
   const int64_t col_quantized = (cols + 127) / 128;
+
+  // padding to 4
+  const int64_t row_padded = (rows + 3) / 4 * 4;
 
   int64_t output_outer_dim = -1;
   int64_t output_inner_dim = -1;
@@ -2186,8 +2211,8 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
 
   if (using_1x128_vec_quant) {
     // 1x128 w/wo transpose
-    scale_outer_dim = output_scale_transpose ? col_quantized : rows;
-    scale_inner_dim = output_scale_transpose ? rows : col_quantized;
+    scale_outer_dim = output_scale_transpose ? col_quantized : row_padded;
+    scale_inner_dim = output_scale_transpose ? row_padded : col_quantized;
     scale_transposed_outer_dim = output_scale_transpose ? row_quantized : cols;
     scale_transposed_inner_dim = output_scale_transpose ? cols : row_quantized;
   } else {
@@ -2196,6 +2221,69 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     scale_inner_dim = output_scale_transpose ? row_quantized : col_quantized;
     scale_transposed_outer_dim = scale_inner_dim;
     scale_transposed_inner_dim = scale_outer_dim;
+  }
+
+  if (using_ue8m0_scale) {
+    // 1. Add using_ue8m0_scale param, support ue8m0 quantization scale.
+    // 2. After using using_ue8m0_scale, the method will convert the original
+    // output fp32 scale to e8m0, then store 4 groups as int32 variables,
+    // finally output int32 scale, so the output shape will become 1/4 of the
+    // original.
+    // 3. But for 128*128 quantization, there is a special point that the
+    // original output should be M/128, N/128. After using using_ue8m0_scale, it
+    // becomes M, N/128/4. Explicitly copy 128 rows and share a scale, so M is
+    // not divided by 128.
+    // Upgrade 128x128 to expanded shape
+    if (!using_1x128_vec_quant) {
+      if (output_scale_transpose) {
+        scale_inner_dim = rows;
+        scale_transposed_inner_dim = cols;
+      } else {
+        scale_outer_dim = rows;
+        scale_transposed_outer_dim = cols;
+      }
+    }
+
+    if (output_scale_transpose) {
+      PADDLE_ENFORCE_EQ(
+          scale_outer_dim % 4,
+          0,
+          common::errors::InvalidArgument(
+              "When use_ue8m0 is true, the outer dimension of scale "
+              "must be divisible by 4, but got %d",
+              scale_outer_dim));
+      scale_outer_dim /= 4;
+      if (input_transpose) {
+        PADDLE_ENFORCE_EQ(scale_transposed_outer_dim % 4,
+                          0,
+                          common::errors::InvalidArgument(
+                              "When use_ue8m0 is true, the outer dimension of "
+                              "transposed scale "
+                              "must be divisible by 4, but got %d",
+                              scale_transposed_outer_dim));
+        scale_transposed_outer_dim /= 4;
+      }
+
+    } else {
+      PADDLE_ENFORCE_EQ(
+          scale_inner_dim % 4,
+          0,
+          common::errors::InvalidArgument(
+              "When use_ue8m0 is true, the inner dimension of scale "
+              "must be divisible by 4, but got %d",
+              scale_inner_dim));
+      scale_inner_dim /= 4;
+      if (input_transpose) {
+        PADDLE_ENFORCE_EQ(scale_transposed_inner_dim % 4,
+                          0,
+                          common::errors::InvalidArgument(
+                              "When use_ue8m0 is true, the inner dimension of "
+                              "transposed scale "
+                              "must be divisible by 4, but got %d",
+                              scale_transposed_inner_dim));
+        scale_transposed_inner_dim /= 4;
+      }
+    }
   }
 
   PADDLE_ENFORCE_GT(output_outer_dim,
@@ -2220,19 +2308,20 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
       out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
       out->set_dtype(DataType::FLOAT8_E4M3FN);
       scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
-      scale->set_dtype(DataType::FLOAT32);
+      scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
     } else {
       out->set_dims(common::make_ddim({0}));
       out->set_dtype(DataType::FLOAT8_E4M3FN);
       scale->set_dims(common::make_ddim({0}));
-      scale->set_dtype(DataType::FLOAT32);
+      scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
     }
     if (input_transpose) {
       out_transposed->set_dims(make_ddim({output_inner_dim, output_outer_dim}));
       out_transposed->set_dtype(DataType::FLOAT8_E4M3FN);
       scale_transposed->set_dims(common::make_ddim(
           {scale_transposed_outer_dim, scale_transposed_inner_dim}));
-      scale_transposed->set_dtype(DataType::FLOAT32);
+      scale_transposed->set_dtype(using_ue8m0_scale ? DataType::INT32
+                                                    : DataType::FLOAT32);
     }
   } else {
     PADDLE_THROW(

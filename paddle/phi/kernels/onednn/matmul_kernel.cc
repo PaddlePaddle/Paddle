@@ -39,8 +39,7 @@ KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
     // op previously) then we also need to rotate shape NHWC -> NCWH
     if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
         (tensor.layout() != DataLayout::ONEDNN) &&
-        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-            DataLayout::NHWC) {
+        OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC) {
       return phi::KernelKey(
           tensor.place(), DataLayout::NHWC, expected_kernel_type.dtype());
     }

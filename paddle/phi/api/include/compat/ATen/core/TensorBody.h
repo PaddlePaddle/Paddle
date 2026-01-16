@@ -233,13 +233,66 @@ class Tensor : public TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
   }
 
+  at::Tensor squeeze() const {
+    return Tensor(paddle::experimental::squeeze(tensor_, {}));
+  }
+
+  at::Tensor squeeze(int64_t dim) const {
+    return Tensor(paddle::experimental::squeeze(tensor_, {dim}));
+  }
+
   at::Tensor squeeze(at::IntArrayRef dim) const {
     return Tensor(
         paddle::experimental::squeeze(tensor_, dim._PD_ToPaddleIntArray()));
   }
 
+  at::Tensor& squeeze_() const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::squeeze_(self, {});
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor& squeeze_(int64_t dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::squeeze_(self, {dim});
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor& squeeze_(at::IntArrayRef dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::squeeze_(self, dim._PD_ToPaddleIntArray());
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor unsqueeze() const {
+    return Tensor(paddle::experimental::unsqueeze(tensor_, {}));
+  }
+
   at::Tensor unsqueeze(int64_t dim) const {
     return Tensor(paddle::experimental::unsqueeze(tensor_, {dim}));
+  }
+
+  at::Tensor unsqueeze(at::IntArrayRef dim) const {
+    return Tensor(
+        paddle::experimental::unsqueeze(tensor_, dim._PD_ToPaddleIntArray()));
+  }
+
+  at::Tensor& unsqueeze_() const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::unsqueeze_(self, {});
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor& unsqueeze_(int64_t dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::unsqueeze_(self, {dim});
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor& unsqueeze_(at::IntArrayRef dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::unsqueeze_(self, dim._PD_ToPaddleIntArray());
+    return const_cast<at::Tensor&>(*this);
   }
 
   at::Tensor index_select(int64_t dim, const at::Tensor& index) const {

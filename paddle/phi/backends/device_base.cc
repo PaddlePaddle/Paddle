@@ -89,7 +89,7 @@ bool DeviceInterface::IsDnnAvailable(size_t dev_id) {
 }
 
 void* DeviceInterface::InitEigenDevice(const Place& place,
-                                       phi::stream::stream_t stream,
+                                       stream::stream_t stream,
                                        phi::Allocator* allocator) {
   VLOG(10) << Type() << " init eigen device ";
   return 0;
@@ -341,7 +341,7 @@ void DeviceInterface::CCLGetUniqueId(ccl::CCLRootId* root_id) {
 
 void DeviceInterface::CCLBroadcast(void* data,
                                    size_t num,
-                                   phi::DataType data_type,
+                                   DataType data_type,
                                    size_t root,
                                    const ccl::CCLComm& ccl_comm,
                                    const stream::stream_t& stream) {
@@ -351,7 +351,7 @@ void DeviceInterface::CCLBroadcast(void* data,
 void DeviceInterface::CCLAllReduce(void* in_data,
                                    void* out_data,
                                    size_t num,
-                                   phi::DataType data_type,
+                                   DataType data_type,
                                    ccl::CCLReduceOp reduce_op,
                                    const ccl::CCLComm& ccl_comm,
                                    const stream::stream_t& stream) {
@@ -361,7 +361,7 @@ void DeviceInterface::CCLAllReduce(void* in_data,
 void DeviceInterface::CCLReduce(void* in_data,
                                 void* out_data,
                                 size_t num,
-                                phi::DataType data_type,
+                                DataType data_type,
                                 ccl::CCLReduceOp reduce_op,
                                 size_t root_id,
                                 const ccl::CCLComm& ccl_comm,
@@ -372,7 +372,7 @@ void DeviceInterface::CCLReduce(void* in_data,
 void DeviceInterface::CCLAllGather(void* in_data,
                                    void* out_data,
                                    size_t num,
-                                   phi::DataType data_type,
+                                   DataType data_type,
                                    const ccl::CCLComm& ccl_comm,
                                    const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
@@ -381,7 +381,7 @@ void DeviceInterface::CCLAllGather(void* in_data,
 void DeviceInterface::CCLReduceScatter(void* in_data,
                                        void* out_data,
                                        size_t num,
-                                       phi::DataType data_type,
+                                       DataType data_type,
                                        ccl::CCLReduceOp op,
                                        const ccl::CCLComm& ccl_comm,
                                        const stream::stream_t& stream) {
@@ -394,7 +394,7 @@ void DeviceInterface::CCLGroupEnd() { INTERFACE_UNIMPLEMENT; }
 
 void DeviceInterface::CCLSend(void* sendbuf,
                               size_t num,
-                              phi::DataType data_type,
+                              DataType data_type,
                               size_t dst_rank,
                               const ccl::CCLComm& ccl_comm,
                               const stream::stream_t& stream) {
@@ -403,7 +403,7 @@ void DeviceInterface::CCLSend(void* sendbuf,
 
 void DeviceInterface::CCLRecv(void* recvbuf,
                               size_t num,
-                              phi::DataType data_type,
+                              DataType data_type,
                               size_t src_rank,
                               const ccl::CCLComm& ccl_comm,
                               const stream::stream_t& stream) {
@@ -412,10 +412,10 @@ void DeviceInterface::CCLRecv(void* recvbuf,
 
 void DeviceInterface::CCLAllToAll(const void** send_buf,
                                   const size_t* send_count,
-                                  const phi::DataType* send_dtype,
+                                  const DataType* send_dtype,
                                   void** recv_buf,
                                   const size_t* recv_count,
-                                  const phi::DataType* recv_dtype,
+                                  const DataType* recv_dtype,
                                   size_t rank,
                                   size_t nranks,
                                   const ccl::CCLComm& comm,
@@ -426,7 +426,7 @@ void DeviceInterface::CCLAllToAll(const void** send_buf,
 // blas
 void DeviceInterface::BlasAXPBY(size_t dev_id,
                                 const stream::stream_t& stream,
-                                phi::DataType dtype,
+                                DataType dtype,
                                 size_t numel,
                                 float alpha,
                                 void* x,
@@ -468,7 +468,7 @@ void DeviceInterface::ProfilerCollectTraceData(
 
 void DeviceInterface::InitBlasHandle(size_t dev_id,
                                      void** blas_handle,
-                                     phi::stream::stream_t stream) {
+                                     stream::stream_t stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
