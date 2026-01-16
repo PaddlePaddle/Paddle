@@ -390,6 +390,25 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             1.6329932
 
     """
+    x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
+    if x is not None and hasattr(x, 'is_cuda') and x.is_cuda:
+        axis = (
+            args[1]
+            if len(args) > 1
+            else kwargs.get('axis', kwargs.get('dim', None))
+        )
+        unbiased = args[2] if len(args) > 2 else kwargs.get('unbiased', None)
+        keepdim = args[3] if len(args) > 3 else kwargs.get('keepdim', False)
+        correction = kwargs.get('correction', 1.0)
+        out = kwargs.get('out', None)
+
+        axis = axis if axis is not None else []
+        if unbiased is not None:
+            correction = 1.0 if unbiased else 0.0
+        else:
+            correction = float(correction)
+        return _C_ops.std(x, axis, keepdim, unbiased, correction, out=out)
+
     variance = var(*args, **kwargs)
     if 'out' in kwargs:
         return paddle.sqrt(variance, out=kwargs['out'])
