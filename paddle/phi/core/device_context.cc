@@ -153,7 +153,7 @@ struct DeviceContext::Impl {
     if (phi::DenseTensor::classof(tensor)) {
       // NOTE(Ruibiao): The tensor hold zero-size allocation is not regarded as
       // `initialized`. Fix other tensor class when needed.
-      if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
+      if (static_cast<DenseTensor*>(tensor)->Holder() &&
           tensor->place() != place) {
         ClearHolder(tensor);
       }
@@ -225,7 +225,7 @@ struct DeviceContext::Impl {
     if (phi::DenseTensor::classof(tensor)) {
       // NOTE(Ruibiao): The tensor holds zero-size allocation is not regarded as
       // `initialized`. Fix other tensor class when needed.
-      if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
+      if (static_cast<DenseTensor*>(tensor)->Holder() &&
           tensor->place() != CPUPlace()) {
         ClearHolder(tensor);
       }

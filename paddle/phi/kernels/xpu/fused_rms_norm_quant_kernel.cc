@@ -60,11 +60,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
     if (out) dev_ctx.template Alloc<T>(out);
     if (residual_out) dev_ctx.template Alloc<T>(residual_out);
     if (inv_var) {
-      phi::Full<float, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(inv_var->dims())),
-          0.f,
-          inv_var);
+      Full<float, Context>(dev_ctx, inv_var->dims(), 0.f, inv_var);
     }
     return;
   }

@@ -37,18 +37,10 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (norm_weight_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(norm_weight_grad->dims())),
-          0,
-          norm_weight_grad);
+      Full<T, Context>(dev_ctx, norm_weight_grad->dims(), 0, norm_weight_grad);
     }
     if (norm_bias_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(norm_bias_grad->dims())),
-          0,
-          norm_bias_grad);
+      Full<T, Context>(dev_ctx, norm_bias_grad->dims(), 0, norm_bias_grad);
     }
     return;
   }
