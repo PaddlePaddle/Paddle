@@ -90,7 +90,7 @@ PHI_DEFINE_EXPORTED_bool(
     "Only used for unittests.");
 
 PHI_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
-                         false,
+                         true,
                          "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
 // NOTE(Ruibiao): This FLAGS is just to be compatible with
