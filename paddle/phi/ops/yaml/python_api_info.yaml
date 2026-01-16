@@ -210,6 +210,16 @@
     x : [input]
     y : [values]
 
+- op : i1
+  name : [paddle.i1,paddle.Tensor.i1]
+  args_alias :
+    use_default_mapping : True
+
+- op : i1e
+  name : [paddle.i1e,paddle.Tensor.i1e]
+  args_alias :
+    use_default_mapping : True
+
 - op : index_put
   name : [paddle.index_put, paddle.Tensor.index_put]
   args_alias :

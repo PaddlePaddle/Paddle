@@ -4185,3 +4185,72 @@ def conj(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "i1",
+    """
+    The function is used to calculate modified bessel function of order 1.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i1(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
+""",
+    """
+def i1(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i1e",
+    """
+    The function is used to calculate exponentially scaled modified Bessel function of order 1.
+
+    Args:
+
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i1e(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
+""",
+    """
+def i1e(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
+)
