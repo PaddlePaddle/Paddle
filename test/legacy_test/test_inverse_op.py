@@ -130,6 +130,16 @@ class TestInverseOpComplex128(TestInverseOp):
         self.check_grad(['Input'], 'Output', check_pir=True)
 
 
+class TestInverseOpBatchedComplex(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [2, 3, 5, 5]
+        self.dtype = "complex64"
+        self.python_api = paddle.inverse
+
+    def test_grad(self):
+        self.check_grad(['Input'], 'Output', check_pir=True)
+
+
 class TestInverseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
@@ -168,6 +178,36 @@ class TestInverseAPI(unittest.TestCase):
                 result = paddle.inverse(input)
                 np.testing.assert_allclose(
                     result.numpy(), np.linalg.inv(input_np), rtol=1e-05
+                )
+
+    def test_dygraph_with_name(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input_np = np.random.random([4, 4]).astype("float64")
+                input = paddle.to_tensor(input_np)
+                result = paddle.inverse(input, name='test_inverse')
+                np.testing.assert_allclose(
+                    result.numpy(), np.linalg.inv(input_np), rtol=1e-05
+                )
+
+    def test_static_with_name(self):
+        for place in self.places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float64"
+                )
+                result = paddle.inverse(x=input, name='test_inverse_static')
+                input_np = np.random.random([4, 4]).astype("float64")
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
+                np.testing.assert_allclose(
+                    fetches[0], np.linalg.inv(input_np), rtol=1e-05
                 )
 
 
