@@ -21,7 +21,7 @@
 
 namespace phi {
 
-template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
+template <typename T, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const Scalar& value,
@@ -40,7 +40,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   T* output_ = dev_ctx.template Alloc<T>(output);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
   int64_t numel = 0;
   int64_t num_indices = 0;
@@ -94,7 +94,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
     const bool* mask_data = index[0]->data<bool>();
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
-        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
           const auto offsets = offset_calc.get(idx);
           char* const out_data =
               out_ptr + static_cast<int64_t>(offsets[0]) + slice_offset;
@@ -103,7 +103,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
           }
         });
   } else {
-    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+    auto index_ptrs = funcs::GetIndexDataPtrs<int64_t>(index);
     funcs::index_elementwise_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
         N, value_T, [=] __device__(int idx, const T value_tmp) {
           const auto offsets = offset_calc.get(idx);
@@ -125,7 +125,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   }
 }
 
-template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
+template <typename T, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutWithTensorKernel(
     const phi::GPUContext& dev_ctx,
     const DenseTensor& input,
@@ -145,7 +145,7 @@ void GPUIndexElementwisePutWithTensorKernel(
   T* output_ = dev_ctx.template Alloc<T>(output);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t numel = 0;
@@ -160,7 +160,7 @@ void GPUIndexElementwisePutWithTensorKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::GetIndexDataPtrs<int64_t>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -169,8 +169,8 @@ void GPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -197,7 +197,7 @@ void GPUIndexElementwisePutWithTensorKernel(
   char* out_ptr = reinterpret_cast<char*>(output_);
 
   funcs::index_elementwise_with_tensor_kernel<nt, vt>
-      <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+      <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
         const auto offsets = offset_calc.get(idx);
         char* const out_data =
             out_ptr + static_cast<int64_t>(offsets[0]) + slice_offset;
@@ -241,28 +241,28 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
           phi::DataType::INT64));
 
   if (out->numel() == 0) return;
-  if (funcs::IsInUint32Range(out->numel())) {
-    GPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
-                                             x,
-                                             value,
-                                             index,
-                                             input_dims,
-                                             input_strides,
-                                             index_dims,
-                                             index_strides,
-                                             slice_offset,
-                                             out);
+  if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+    GPUIndexElementwisePutKernel<T>(dev_ctx,
+                                    x,
+                                    value,
+                                    index,
+                                    input_dims,
+                                    input_strides,
+                                    index_dims,
+                                    index_strides,
+                                    slice_offset,
+                                    out);
   } else {
-    GPUIndexElementwisePutKernel<T, int64_t, uint64_t>(dev_ctx,
-                                                       x,
-                                                       value,
-                                                       index,
-                                                       input_dims,
-                                                       input_strides,
-                                                       index_dims,
-                                                       index_strides,
-                                                       slice_offset,
-                                                       out);
+    GPUIndexElementwisePutKernel<T, uint64_t>(dev_ctx,
+                                              x,
+                                              value,
+                                              index,
+                                              input_dims,
+                                              input_strides,
+                                              index_dims,
+                                              index_strides,
+                                              slice_offset,
+                                              out);
   }
 }
 
@@ -288,29 +288,29 @@ void IndexElementwisePutWithTensorKernel(
                         phi::DataType::INT64));
 
   if (out->numel() == 0) return;
-  if (funcs::IsInUint32Range(out->numel())) {
-    GPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
-                                                       x,
-                                                       value,
-                                                       index,
-                                                       input_dims,
-                                                       input_strides,
-                                                       index_dims,
-                                                       index_strides,
-                                                       slice_offset,
-                                                       out);
+  if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+    GPUIndexElementwisePutWithTensorKernel<T>(dev_ctx,
+                                              x,
+                                              value,
+                                              index,
+                                              input_dims,
+                                              input_strides,
+                                              index_dims,
+                                              index_strides,
+                                              slice_offset,
+                                              out);
 
   } else {
-    GPUIndexElementwisePutWithTensorKernel<T, int64_t, uint64_t>(dev_ctx,
-                                                                 x,
-                                                                 value,
-                                                                 index,
-                                                                 input_dims,
-                                                                 input_strides,
-                                                                 index_dims,
-                                                                 index_strides,
-                                                                 slice_offset,
-                                                                 out);
+    GPUIndexElementwisePutWithTensorKernel<T, uint64_t>(dev_ctx,
+                                                        x,
+                                                        value,
+                                                        index,
+                                                        input_dims,
+                                                        input_strides,
+                                                        index_dims,
+                                                        index_strides,
+                                                        slice_offset,
+                                                        out);
   }
 }
 

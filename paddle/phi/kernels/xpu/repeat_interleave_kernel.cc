@@ -50,7 +50,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   index.Resize(common::make_ddim({index_size}));
 
   phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
-  auto xshape = common::vectorize(input_dim);
+  auto xshape = vectorize(input_dim);
   auto out_shape = xshape;
   out_shape[dim] = index_size;
   out->Resize(common::make_ddim(out_shape));
@@ -99,19 +99,19 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           DataTypeToString(index_type),
           DataTypeToString(phi::DataType::INT32),
           DataTypeToString(phi::DataType::INT64)));
-  auto xshape = common::vectorize(x.dims());
+  auto xshape = vectorize(x.dims());
   auto out_shape = xshape;
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -131,7 +131,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     return;
   }
   if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
@@ -159,7 +159,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dim);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_gather");
   } else {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(

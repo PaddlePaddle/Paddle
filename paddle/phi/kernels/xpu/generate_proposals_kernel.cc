@@ -31,7 +31,7 @@ static void SortDescending(const XPUContext& dev_ctx,
                            int pre_nms_top_n) {
   auto* value_data = value.data<T>();
   auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
 
   DenseTensor scores_slice_cpu;
   scores_slice_cpu.Resize({value.numel()});
@@ -180,17 +180,14 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   int keep_num;
   const auto xpu_place = dev_ctx.GetPlace();
-  memory_utils::Copy(phi::CPUPlace(),
-                     &keep_num,
-                     xpu_place,
-                     keep_num_t.data<int>(),
-                     sizeof(int));
+  memory_utils::Copy(
+      CPUPlace(), &keep_num, xpu_place, keep_num_t.data<int>(), sizeof(int));
   keep_index.Resize({keep_num});
 
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    phi::funcs::SetConstant<phi::XPUContext, T> set_zero;
+    funcs::SetConstant<phi::XPUContext, T> set_zero;
     proposals_filter.Resize(common::make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&proposals_filter);
     scores_filter.Resize(common::make_ddim({1, 1}));
@@ -317,11 +314,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     rpn_rois->Resize(common::make_ddim({0, 4}));
     if (rpn_rois_num != nullptr) {
       rpn_rois_num->Resize(common::make_ddim({}));
-      phi::Full<int64_t, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(rpn_rois_num->dims())),
-          0,
-          rpn_rois_num);
+      Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
     }
     return;
   }
@@ -354,7 +347,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   tmp_variances.Resize(common::make_ddim({tmp_variances.numel() / 4, 4}));
 
   auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
 
   int num_proposals = 0;
   std::vector<size_t> offset(1, 0);

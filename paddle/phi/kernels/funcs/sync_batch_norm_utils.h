@@ -425,7 +425,7 @@ void SyncBatchNormGradFunctor(
     DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout layout = StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -501,7 +501,7 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  phi::DenseTensor stats_tensor;
+  DenseTensor stats_tensor;
   stats_tensor.Resize({static_cast<int64_t>(bytes)});
   dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
   auto *stats_data = stats_tensor.data<BatchNormParamType<T>>();

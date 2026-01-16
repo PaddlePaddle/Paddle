@@ -94,16 +94,14 @@ inline void GetResidualsTensor(const Context& dev_ctx,
 
       auto sum_tensor = phi::Sum<T>(
           dev_ctx, pow_tensor, phi::IntArray({-2}), pow_tensor.dtype(), false);
-      phi::Copy<Context>(
-          dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
+      Copy<Context>(dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
       return;
     }
   }
 
   IntArray empty_shape({0});
-  DenseTensor empty_tensor = phi::Empty<T, Context>(dev_ctx, empty_shape);
-  phi::Copy<Context>(
-      dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
+  DenseTensor empty_tensor = Empty<T, Context>(dev_ctx, empty_shape);
+  Copy<Context>(dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
 #ifdef PADDLE_WITH_HIP
@@ -235,7 +233,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -304,7 +302,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,

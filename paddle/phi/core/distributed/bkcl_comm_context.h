@@ -52,56 +52,56 @@ class BKCLCommContext final : public CommContext {
 
   void SetDevContext(std::unique_ptr<phi::XPUContext>&& dev_ctx);
 
-  void Broadcast(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void Broadcast(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  int root,
                  XPUStream stream);
 
-  void Send(const phi::DenseTensor& in_tensor,
+  void Send(const DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
             XPUStream stream);
 
-  void Recv(phi::DenseTensor* out_tensor,
+  void Recv(DenseTensor* out_tensor,
             const int64_t& count,
             const int& peer,
             XPUStream stream);
 
-  void ReduceScatter(phi::DenseTensor* out_tensor,
-                     const phi::DenseTensor& in_tensor,
+  void ReduceScatter(DenseTensor* out_tensor,
+                     const DenseTensor& in_tensor,
                      BKCLOp reduce_type,
                      XPUStream stream);
 
 #if defined(PADDLE_WITH_FLAGCX)
-  void Scatter(phi::DenseTensor* out_tensor,
-               const phi::DenseTensor& in_tensor,
+  void Scatter(DenseTensor* out_tensor,
+               const DenseTensor& in_tensor,
                int root,
                XPUStream stream);
 #endif
 
-  void AllGather(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllGather(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  XPUStream stream);
 
-  void AllReduce(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllReduce(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  BKCLOp reduce_type,
                  XPUStream stream);
 
-  void AllToAll(phi::DenseTensor* out_tensor,
-                const phi::DenseTensor& in_tensor,
+  void AllToAll(DenseTensor* out_tensor,
+                const DenseTensor& in_tensor,
                 XPUStream stream);
 
-  void AllToAllUnequalSplit(phi::DenseTensor* out_tensor,
-                            const phi::DenseTensor& in_tensor,
-                            const phi::DenseTensor& out_size_tensor,
-                            const phi::DenseTensor& out_offset_tensor,
-                            const phi::DenseTensor& in_size_tensor,
-                            const phi::DenseTensor& in_offset_tensor,
+  void AllToAllUnequalSplit(DenseTensor* out_tensor,
+                            const DenseTensor& in_tensor,
+                            const DenseTensor& out_size_tensor,
+                            const DenseTensor& out_offset_tensor,
+                            const DenseTensor& in_size_tensor,
+                            const DenseTensor& in_offset_tensor,
                             XPUStream stream);
 
-  void Reduce(phi::DenseTensor* out_tensor,
-              const phi::DenseTensor& in_tensor,
+  void Reduce(DenseTensor* out_tensor,
+              const DenseTensor& in_tensor,
               BKCLOp reduce_type,
               int root,
               XPUStream stream);

@@ -43,13 +43,12 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     return;
   }
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
   DenseTensor roi_batch_id_list;
   roi_batch_id_list.Resize({rois_num});
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto xplace = dev_ctx.GetPlace();
 
   int rois_batch_size = 0;

@@ -20,8 +20,8 @@
 namespace phi {
 
 bool CastCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
-  if ((dev_ctx->InputAt<phi::DenseTensor>(0).dtype() != DataType::FLOAT32 &&
-       dev_ctx->InputAt<phi::DenseTensor>(0).dtype() != DataType::BFLOAT16) ||
+  if ((dev_ctx->InputAt<DenseTensor>(0).dtype() != DataType::FLOAT32 &&
+       dev_ctx->InputAt<DenseTensor>(0).dtype() != DataType::BFLOAT16) ||
       (dev_ctx->AttrAt<DataType>(0) != DataType::FLOAT32 &&
        dev_ctx->AttrAt<DataType>(0) != DataType::BFLOAT16)) {
     return false;

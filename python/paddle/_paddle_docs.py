@@ -99,7 +99,7 @@ def acos(
     name: str | None = None,
     *,
     out: Tensor | None = None,
-    ) -> Tensor
+) -> Tensor
 """,
 )
 
@@ -137,7 +137,7 @@ def acosh(
     name: str | None = None,
     *,
     out: Tensor | None = None,
-    ) -> Tensor
+) -> Tensor
 """,
 )
 
@@ -168,14 +168,14 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
-    """,
+""",
     """
 def sinh(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-    ) -> Tensor
+) -> Tensor
 """,
 )
 
@@ -322,7 +322,7 @@ def amin(
 
 add_doc_and_signature(
     "amax",
-    """
+    r"""
     Computes the maximum of tensor elements over the given axis.
 
     Note:
@@ -462,8 +462,63 @@ def amax(
 )
 
 add_doc_and_signature(
-    "all",
+    "angle",
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            >>> z = x + 1j * y
+            >>> z
+            Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
+              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
+             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
+              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
+             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
+               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
+             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
+               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
+
+            >>> theta = paddle.angle(z)
+            >>> theta
+            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
+             [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
+             [-1.57079637, -1.57079637,  0.        ,  1.57079637],
+             [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
+""",
     """
+def angle(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "all",
+    r"""
     Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
@@ -535,9 +590,10 @@ def all(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "argmax",
-    """
+    r"""
     Computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
@@ -576,20 +632,21 @@ add_doc_and_signature(
             >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
             >>> print(out4.numpy())
             [[2 2 0 1]]
-    """,
+""",
     """
-    def argmax(
+def argmax(
     x: Tensor,
     axis: int | None = None,
     keepdim: bool = False,
     dtype: DTypeLike = "int64",
     name: str | None = None,
 ) -> Tensor
-    """,
+""",
 )
+
 add_doc_and_signature(
     "argmin",
-    """
+    r"""
     Computes the indices of the min elements of the input tensor's
     element along the provided axis.
 
@@ -628,16 +685,55 @@ add_doc_and_signature(
             >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
             >>> print(out4.numpy())
             [[1 1 1 2]]
-    """,
+""",
     """
-    def argmin(
+def argmin(
     x: Tensor,
     axis: int | None = None,
     keepdim: bool = False,
     dtype: DTypeLike = "int64",
     name: str | None = None,
 ) -> Tensor
-    """,
+""",
+)
+
+add_doc_and_signature(
+    "atan",
+    r"""
+    Arctangent Operator.
+
+    .. math::
+       out = tan^{-1}(x)
+
+    Args:
+        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Same shape and dtype as input x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.atan(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.38050640, -0.19739556,  0.09966865,  0.29145682])
+""",
+    """
+def atan(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
@@ -674,7 +770,7 @@ def atanh(
     name: str | None = None,
     *,
     out: Tensor | None = None,
-    ) -> Tensor
+) -> Tensor
 """,
 )
 
@@ -724,9 +820,17 @@ add_doc_and_signature(
             >>> res
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
-    """,
-    "def log2(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
+""",
+    """
+def log2(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
+
 add_doc_and_signature(
     "log10",
     r"""
@@ -773,9 +877,172 @@ add_doc_and_signature(
             >>> res
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
-    """,
-    "def log10(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
+""",
+    """
+def log10(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
+add_doc_and_signature(
+    "asinh",
+    r"""
+    Asinh Activation Operator.
+
+    .. math::
+       out = asinh(x)
+
+    Args:
+        x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Asinh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.asinh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
+""",
+    """
+def asinh(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "reciprocal",
+    r"""
+    Reciprocal Activation Operator.
+
+    .. math::
+        out = \\frac{1}{x}
+
+    Args:
+        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Reciprocal operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.reciprocal(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-2.50000000, -5.        ,  10.       ,  3.33333325])
+""",
+    """
+def reciprocal(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "square",
+    r"""
+    Square each elements of the inputs.
+
+    .. math::
+       out = x^2
+
+    Args:
+        x (Tensor): Input of Square operator, an N-D Tensor, with data type int32, int64, float32, float64, float16, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Square operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.square(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.16000001, 0.04000000, 0.01000000, 0.09000000])
+""",
+    """
+def square(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "tan",
+    r"""
+    Tangent Operator. Computes tangent of x element-wise.
+
+    Input range is `(k*pi-pi/2, k*pi+pi/2)` and output range is `(-inf, inf)`.
+
+    .. math::
+       out = tan(x)
+
+    Args:
+        x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64, float16,
+            bfloat16, uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Tan operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.tan(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
+""",
+    """
+def tan(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
 add_doc_and_signature(
     "log1p",
     r"""
@@ -805,12 +1072,20 @@ add_doc_and_signature(
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        ],
              [0.69314718]])
-    """,
-    "def log1p(x: Tensor, name: str | None = None, * , out: Tensor | None = None) -> Tensor",
+""",
+    """
+def log1p(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
+
 add_doc_and_signature(
     "matmul",
-    """
+    r"""
     Applies matrix multiplication to two tensors. `matmul` follows
     the complete broadcast rules,
     and its behavior is consistent with `np.matmul`.
@@ -901,8 +1176,9 @@ add_doc_and_signature(
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
             paddle.Size([10, 3, 5, 5])
-    """,
-    """    def matmul(
+""",
+    """
+def matmul(
     x: Tensor,
     y: Tensor,
     transpose_x: bool = False,
@@ -910,11 +1186,13 @@ add_doc_and_signature(
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor""",
+) -> Tensor
+""",
 )
+
 add_doc_and_signature(
     "multiply",
-    """
+    r"""
     multiply two tensors element-wise. The equation is:
 
     .. math::
@@ -957,17 +1235,22 @@ add_doc_and_signature(
             [[[2, 4, 6],
               [2, 4, 6]]])
 
-    """,
-    """def multiply(x: Tensor,
-                    y: Tensor,
-                    name: str | None = None,
-                    *,
-                    out: Tensor | None = None) -> Tensor""",
+""",
+    """
+def multiply(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
 )
+
 add_doc_and_signature(
     "logsumexp",
     r"""
-    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+    Calculates the log of the sum of exponential of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
@@ -1014,7 +1297,7 @@ add_doc_and_signature(
         Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
         [2.15317822, 3.15684605])
 
-    """,
+""",
     """
 def logsumexp(
     x: Tensor,
@@ -1024,11 +1307,12 @@ def logsumexp(
     *,
     out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
+
 add_doc_and_signature(
     "softplus",
-    """
+    r"""
     softplus activation
 
     .. math::
@@ -1057,16 +1341,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-    """,
+""",
     """
-    def softplus(
-    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
+def softplus(
+    x: Tensor,
+    beta: float = 1,
+    threshold: float = 20,
+    name: str | None = None,
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "isclose",
-    """
+    r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:
 
     .. math::
@@ -1140,7 +1428,7 @@ add_doc_and_signature(
             >>> print(result2)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True, True])
-    """,
+""",
     """
 def isclose(
     x: Tensor,
@@ -1157,7 +1445,7 @@ def isclose(
 # zhengsheng
 add_doc_and_signature(
     "isfinite",
-    """
+    r"""
     Return whether every element of input tensor is finite number or not.
 
     .. note::
@@ -1181,7 +1469,7 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True , False, True , False, False])
-    """,
+""",
     """
 def isfinite(
     x: Tensor,
@@ -1192,7 +1480,7 @@ def isfinite(
 
 add_doc_and_signature(
     "isinf",
-    """
+    r"""
     Return whether every element of input tensor is `+/-INF` or not.
 
     .. note::
@@ -1216,7 +1504,7 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False, True , False, False, False])
-    """,
+""",
     """
 def isinf(
     x: Tensor,
@@ -1227,7 +1515,7 @@ def isinf(
 
 add_doc_and_signature(
     "isnan",
-    """
+    r"""
     Return whether every element of input tensor is `NaN` or not.
 
     .. note::
@@ -1252,7 +1540,7 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, False, False, False, True , True ])
-    """,
+""",
     """
 def isnan(
     x: Tensor,
@@ -1263,7 +1551,7 @@ def isnan(
 
 add_doc_and_signature(
     "roll",
-    """
+    r"""
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
     roll beyond the last position are re-introduced at the first according to 'shifts'.
     If a axis is not specified,
@@ -1314,7 +1602,7 @@ add_doc_and_signature(
             [[3. 1. 2.]
              [6. 4. 5.]
              [9. 7. 8.]]
-    """,
+""",
     """
 def roll(
     x: Tensor,
@@ -1327,7 +1615,7 @@ def roll(
 
 add_doc_and_signature(
     "ceil",
-    """
+    r"""
     Ceil Operator. Computes ceil of x element-wise.
 
     .. math::
@@ -1354,7 +1642,7 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0., 1. , 1. ])
-    """,
+""",
     """
 def ceil(
     x: Tensor,
@@ -1367,13 +1655,14 @@ def ceil(
 
 add_doc_and_signature(
     "sum",
-    """
+    r"""
     Computes the sum of tensor elements over the given dimension.
-     .. note::
-        Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
-        For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
+
+    .. note::
+        | Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
+        | For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
+        | Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
+        | For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
@@ -1461,7 +1750,7 @@ add_doc_and_signature(
             >>> out9
             Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4, 0])
-    """,
+""",
     """
 def sum(
     x: Tensor,
@@ -1477,7 +1766,7 @@ def sum(
 
 add_doc_and_signature(
     "index_put",
-    """
+    r"""
     Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
     The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
     If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
@@ -1515,7 +1804,7 @@ add_doc_and_signature(
             [[0., 1., 0.],
              [0., 0., 1.],
              [0., 1., 0.]])
-    """,
+""",
     """
 def index_put(
     x: Tensor,
@@ -1529,10 +1818,10 @@ def index_put(
 
 add_doc_and_signature(
     "index_put_",
-    """
+    r"""
     Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_index_put`.
-    """,
+""",
     """
 def index_put_(
     x: Tensor,
@@ -1547,7 +1836,7 @@ def index_put_(
 # liuyi
 add_doc_and_signature(
     "any",
-    """
+    r"""
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
 
     .. note::
@@ -1614,21 +1903,21 @@ add_doc_and_signature(
             [[True],
              [True]])
 
-    """,
+""",
     """
-    def any(
-        x: Tensor,
-        axis: int | Sequence[int] | None = None,
-        keepdim: bool = False,
-        name: str | None = None,
-        *,
-        out: Tensor | None = None
-    ) -> Tensor
-    """,
+def any(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
 )
 add_doc_and_signature(
     "expand_as",
-    """
+    r"""
 
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
 
@@ -1661,10 +1950,14 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=int32, place=Place(cpu), stop_gradient=True,
             [[1, 2, 3],
              [1, 2, 3]])
-    """,
+""",
     """
-    def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor
-    """,
+def expand_as(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
 )
 
 # shenwei
@@ -1687,7 +1980,6 @@ add_doc_and_signature(
     3rd dimension (in depth dimension) finally results is the bilinear
     interpolation or nearest value of 8 nearest corner points. The output
     tensor shape will be [N, C, D, H, W].
-
 
 
     Step 1:
@@ -1800,39 +2092,39 @@ add_doc_and_signature(
             [[[[ 0.34000000,  0.01600000,  0.08600000, -0.44800000],
                [ 0.55000000, -0.07600000,  0.35000000,  0.59000000],
                [ 0.59600000,  0.38000000,  0.52000000,  0.24000000]]]])
-    """,
+""",
     """
-    def grid_sample(
-        x: Tensor,
-        grid: Tensor,
-        mode: str = 'bilinear',
-        padding_mode: Literal["zeros", "reflection", "border"] = 'zeros',
-        align_corners: bool = True,
-        name: str | None = None,
-    ) -> Tensor
-    """,
+def grid_sample(
+    x: Tensor,
+    grid: Tensor,
+    mode: str = 'bilinear',
+    padding_mode: Literal["zeros", "reflection", "border"] = 'zeros',
+    align_corners: bool = True,
+    name: str | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
     "gelu",
-    """
+    r"""
     gelu activation.
 
     The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
 
-    approximate parameter must be True, False, "tanh", "none".
+    The approximate parameter must be True, False, "tanh", or "none".
 
-    if approximate is True or "tanh"
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\frac{2}{\\pi}} * (x + 0.044715x^{3})))
-
-    else
+    If approximate is True or "tanh":
 
     .. math::
 
-        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\\sqrt{2}}))
+        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else:
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 
      .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
@@ -1874,14 +2166,14 @@ add_doc_and_signature(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15880796,  0.34571400],
              [ 0.84119201,  1.39957154]])
-    """,
+""",
     """
-    def gelu(
-        x: Tensor,
-        approximate: Literal["tanh", "none"] | bool = False,
-        name: str | None = None,
-    ) -> Tensor
-    """,
+def gelu(
+    x: Tensor,
+    approximate: Literal["tanh", "none"] | bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
@@ -1918,21 +2210,21 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.40131235, 0.45016602, 0.52497917, 0.57444251])
-    """,
+""",
     """
-    def sigmoid(
-        x: paddle.Tensor,
-        name: str | None = None,
-        *,
-        out: Tensor | None = None,
-    ) -> paddle.Tensor
-    """,
+def sigmoid(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
 
 # zhouxin
 add_doc_and_signature(
     "greater_than",
-    """
+    r"""
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Note:
@@ -1960,17 +2252,21 @@ add_doc_and_signature(
             >>> print(result1)
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, True ])
-    """,
+""",
     """
-    def greater_than(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
-    ) -> Tensor
-    """,
+def greater_than(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
     "sin",
-    """
+    r"""
     Sine Activation Operator.
 
     .. math::
@@ -1996,17 +2292,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
-    """,
+""",
     """
 def sin(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
     "sign",
-    """
+    r"""
     Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
 
     Args:
@@ -2027,12 +2326,15 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [ 1.,  0., -1.,  1.])
-    """,
+""",
     """
 def sign(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
@@ -2065,17 +2367,20 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.69314718, 1.09861231, 1.38629436],
              [1.94591010, 2.07944155, 2.19722462]])
-    """,
+""",
     """
 def log(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
     "rsqrt",
-    """
+    r"""
     Rsqrt Activation Operator.
 
     Please make sure input is legal in case of numeric errors.
@@ -2103,17 +2408,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3.16227770, 2.23606801, 1.82574177, 1.58113885])
-    """,
+""",
     """
 def rsqrt(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
     "cos",
-    """
+    r"""
     Cosine Operator. Computes cosine of x element-wise.
 
     Input range is `(-inf, inf)` and output range is `[-1,1]`.
@@ -2141,17 +2449,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.92106098, 0.98006660, 0.99500418, 0.95533651])
-    """,
+""",
     """
 def cos(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 add_doc_and_signature(
     "cosh",
-    """
+    r"""
     Cosh Activation Operator.
 
     Input range `(-inf, inf)`, output range `(1, inf)`.
@@ -2179,13 +2490,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.08107233, 1.02006674, 1.00500417, 1.04533851])
-    """,
-    "def cosh(x: Tensor, name: str | None = None, *, out: Tensor | None = None) -> Tensor",
+""",
+    """
+def cosh(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
     "floor",
-    """
+    r"""
     Floor Activation Operator. Computes floor of x element-wise.
 
     .. math::
@@ -2211,17 +2529,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -1.,  0.,  0.])
-    """,
+""",
     """
 def floor(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 # hehongyu
 add_doc_and_signature(
     "maximum",
-    """
+    r"""
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
     .. math::
@@ -2276,21 +2597,21 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
-    """,
+""",
     """
-    def maximum(
-        x: Tensor,
-        y: Tensor,
-        name: str | None = None,
-        *,
-        out: Tensor | None = None,
-    ) -> Tensor
-    """,
+def maximum(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
     "minimum",
-    """
+    r"""
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
     .. math::
@@ -2345,21 +2666,21 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
-    """,
+""",
     """
-    def minimum(
-        x: Tensor,
-        y: Tensor,
-        name: str | None = None,
-        *,
-        out: Tensor | None = None,
-    ) -> Tensor
-    """,
+def minimum(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
 )
 
 add_doc_and_signature(
     "sqrt",
-    """
+    r"""
     Sqrt Activation Operator.
 
     .. math::
@@ -2384,7 +2705,7 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
-    """,
+""",
     """
 def sqrt(
     x: Tensor,
@@ -2392,7 +2713,7 @@ def sqrt(
     *,
     out: Tensor | None = None,
 ) -> Tensor
-    """,
+""",
 )
 
 # lousiyu
@@ -2457,7 +2778,7 @@ add_doc_and_signature(
             [[0 , 0 , 0 , 0 ],
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
-    """,
+""",
     """
 def tril(
     x: Tensor,
@@ -2530,8 +2851,7 @@ add_doc_and_signature(
             [[1 , 2 , 3 , 4 ],
              [5 , 6 , 7 , 8 ],
              [0 , 10, 11, 12]])
-
-    """,
+""",
     """
 def triu(
     x: Tensor,
@@ -2545,7 +2865,7 @@ def triu(
 
 add_doc_and_signature(
     "bmm",
-    """
+    r"""
     Applies batched matrix multiplication to two tensors.
 
     Both of the two input tensors must be three-dimensional and share the same batch size.
@@ -2582,8 +2902,7 @@ add_doc_and_signature(
               [12., 12.]],
              [[45., 45.],
               [60., 60.]]])
-
-    """,
+""",
     """
 def bmm(
     x: Tensor,
@@ -2642,14 +2961,18 @@ add_doc_and_signature(
 """,
     """
 def logical_and(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 
 add_doc_and_signature(
     "logical_or",
-    """
+    r"""
     ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
 
@@ -2693,14 +3016,18 @@ add_doc_and_signature(
 """,
     """
 def logical_or(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 
 add_doc_and_signature(
     "logical_not",
-    """
+    r"""
     ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
     Each element of ``out`` is calculated by
 
@@ -2739,7 +3066,10 @@ add_doc_and_signature(
 """,
     """
 def logical_not(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -2790,14 +3120,18 @@ add_doc_and_signature(
 """,
     """
 def logical_xor(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 
 add_doc_and_signature(
     "dot",
-    """
+    r"""
     This operator calculates inner product for vectors.
 
     Note:
@@ -2846,7 +3180,11 @@ add_doc_and_signature(
 """,
     """
 def dot(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -2887,14 +3225,17 @@ add_doc_and_signature(
 """,
     """
 def tanh(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 
 add_doc_and_signature(
     "exp",
-    """
+    r"""
 
     Computes exp of x element-wise with a natural number `e` as the base.
 
@@ -2927,14 +3268,17 @@ add_doc_and_signature(
 """,
     """
 def exp(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 
 add_doc_and_signature(
     "expm1",
-    """
+    r"""
 
     Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
 
@@ -2967,13 +3311,16 @@ add_doc_and_signature(
 """,
     """
 def expm1(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 add_doc_and_signature(
     "diag",
-    """
+    r"""
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
     If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
@@ -3082,7 +3429,7 @@ def diag(
 )
 add_doc_and_signature(
     "diagonal",
-    """
+    r"""
 
     Computes the diagonals of the input tensor x.
 
@@ -3166,7 +3513,7 @@ def diagonal(
 
 add_doc_and_signature(
     "round",
-    """
+    r"""
 
     Round the values in the input to the nearest integer value.
 
@@ -3207,14 +3554,18 @@ add_doc_and_signature(
 """,
     """
 def round(
-    x: Tensor, decimals: int = 0, name: str | None = None, *, out: Tensor | None = None,
+    x: Tensor,
+    decimals: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
 
 add_doc_and_signature(
     "abs",
-    """
+    r"""
     Perform elementwise abs for input `x`.
 
     .. math::
@@ -3247,7 +3598,10 @@ add_doc_and_signature(
 """,
     """
 def abs(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -3259,8 +3613,155 @@ def abs(
 
 # other
 add_doc_and_signature(
+    "nextafter",
+    r"""
+    Return the next floating-point value after input towards other, elementwise.
+    The shapes of input and other must be broadcastable.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        y (Tensor): An N-D Tensor, the data type is float32, float64.
+        name(str, optional):Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
+            >>> out
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.00000012, 1.99999988])
+""",
+    """
+def nextafter(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "angle",
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            >>> z = x + 1j * y
+            >>> z
+            Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
+              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
+             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
+              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
+             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
+               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
+             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
+               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
+
+            >>> theta = paddle.angle(z)
+            >>> theta
+            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
+             [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
+             [-1.57079637, -1.57079637,  0.        ,  1.57079637],
+             [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
+""",
+    """
+def angle(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "heaviside",
+    r"""
+    Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
+
+    .. math::
+        heaviside(x, y)=
+            \left\{
+                \begin{array}{lcl}
+                0,& &\text{if} \ x < 0, \\
+                y,& &\text{if} \ x = 0, \\
+                1,& &\text{if} \ x > 0.
+                \end{array}
+            \right.
+
+    Note:
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
+        name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-0.5, 0, 0.5])
+            >>> y = paddle.to_tensor([0.1])
+            >>> paddle.heaviside(x, y)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.10000000, 1.        ])
+            >>> x = paddle.to_tensor([[-0.5, 0, 0.5], [-0.5, 0.5, 0]])
+            >>> y = paddle.to_tensor([0.1, 0.2, 0.3])
+            >>> paddle.heaviside(x, y)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 0.20000000, 1.        ],
+             [0.        , 1.        , 0.30000001]])
+""",
+    """
+def heaviside(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "asin",
-    f"""
+    r"""
     Arcsine Operator.
 
     .. math::
@@ -3284,11 +3785,472 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
-    """,
+""",
     """
 def asin(
     x: Tensor,
     name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "baddbmm",
+    r"""
+    Perform batch matrix multiplication for input :math:`x` and :math:`y`.
+    :math:`input` is added to the final result.
+    The equation is:
+    .. math::
+        out = \beta \times input + \alpha \times x \times y
+    where :math:`\beta` and :math:`\alpha` are scaling factors.
+    Args:
+        input (Tensor): The input tensor to be added to the final result. It should be a 2-D or 3-D tensor.
+            Data type should be float16, float32, float64, uint16.
+        x (Tensor): The first batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, n, p].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch1``.
+        y (Tensor): The second batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, p, m].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch2``.
+        beta (float, optional): The scaling factor for input. Default: 1.0.
+        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
+        out_dtype (paddle.dtype|None, optional): The desired data type of the returned tensor. If None, the output tensor will have the same data type as input. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+    Returns:
+        Tensor: The output tensor should be a 3-D tensor with shape [b, n, m].
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2, 2])
+            >>> y = paddle.ones([2, 2, 2])
+            >>> input = paddle.ones([2, 2, 2])
+
+            >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+            >>> out
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]],
+             [[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]]])
+""",
+    """
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "allclose",
+    r"""
+    Check if all :math:`x` and :math:`y` satisfy the condition:
+
+    .. math::
+        \left| x - y \right| \leq atol + rtol \times \left| y \right|
+
+    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64.
+            Alias: ``input``.
+        y (Tensor): The input tensor, it's data type should be float16, float32, float64.
+            Alias: ``other``.
+        rtol (float, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (float, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (bool, optional): ${equal_nan_comment}. Default: False.
+        name (str|None, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: The output tensor, it's data type is bool.
+
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> x = paddle.to_tensor([1.0, float('nan')])
+            >>> y = paddle.to_tensor([1.0, float('nan')])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+""",
+    """
+def allclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "fmax",
+    r"""
+    Compares elements at corresponding positions of two tensors and returns a new tensor containing maximum value of element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmax(x, y)
+
+    Note:
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+""",
+    """
+def fmax(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "fmin",
+    r"""
+    Compares elements at corresponding positions of two tensors and returns a new tensor containing minimum value of element.
+    If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
+    The equation is:
+
+    .. math::
+        out = fmin(x, y)
+
+    Note:
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+""",
+    """
+def fmin(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bincount",
+    r"""
+    Computes frequency of each value in the input tensor.
+
+    Args:
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
+        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
+        minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
+        name (str|None, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Tensor: The tensor of frequency.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([1, 2, 1, 4, 5])
+            >>> result1 = paddle.bincount(x)
+            >>> print(result1)
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 2, 1, 0, 1, 1])
+
+            >>> w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
+            >>> result2 = paddle.bincount(x, weights=w)
+            >>> print(result2)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
+""",
+    """
+def bincount(
+    x: Tensor,
+    weights: Tensor | None = None,
+    minlength: int = 0,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+
+add_doc_and_signature(
+    "bitwise_and",
+    r"""
+    Apply ``bitwise_and`` on Tensor ``X`` and ``Y``.
+
+    .. math::
+        Out = X \\& Y
+
+    Note:
+        ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out (Tensor|None, optional): Result of ``bitwise_and``. It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_and``. It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_and(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 2, 1])
+""",
+    """
+def bitwise_and(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_not",
+    r"""
+    Apply ``bitwise_not`` on Tensor ``X``.
+
+    .. math::
+        Out = \\sim X
+
+    Note:
+        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_not``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out (Tensor|None, optional): Result of ``bitwise_not``. It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_not``. It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> res = paddle.bitwise_not(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ 4,  0, -2])
+""",
+    """
+def bitwise_not(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_xor",
+    r"""
+    Apply ``bitwise_xor`` on Tensor ``X`` and ``Y``.
+
+    .. math::
+        Out = X ^\\wedge Y
+
+    Note:
+        ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out (Tensor|None, optional): Result of ``bitwise_xor``. It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_xor``. It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_xor(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1, -3, -4])
+""",
+    """
+def bitwise_xor(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "conj",
+    r"""
+    This function computes the conjugate of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): The input Tensor which hold the complex numbers.
+            Optional data types are: bfloat16, float16, complex64, complex128, float32, float64, int32 or int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> data = paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
+            >>> data
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1+1j), (2+2j), (3+3j)],
+             [(4+4j), (5+5j), (6+6j)]])
+
+            >>> conj_data = paddle.conj(data)
+            >>> conj_data
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1-1j), (2-2j), (3-3j)],
+             [(4-4j), (5-5j), (6-6j)]])
+""",
+    """
+def conj(
+    x: Tensor,
+    name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i1",
+    """
+    The function is used to calculate modified bessel function of order 1.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i1(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
+""",
+    """
+def i1(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i1e",
+    """
+    The function is used to calculate exponentially scaled modified Bessel function of order 1.
+
+    Args:
+
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i1e(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
+""",
+    """
+def i1e(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
 ) -> Tensor
 """,
 )

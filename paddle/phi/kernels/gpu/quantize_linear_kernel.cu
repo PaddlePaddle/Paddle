@@ -54,11 +54,11 @@ __global__ void DequantizeOneScaleQuantAxisN(const T* in,
 template <typename T>
 struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
+                  const DenseTensor* in,
+                  const DenseTensor* scale,
                   T max_range,
                   const int quant_axis,
-                  phi::DenseTensor* out) {
+                  DenseTensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
@@ -92,10 +92,10 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
 template <typename T>
 struct DequantizeFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
+                  const DenseTensor* in,
+                  const DenseTensor* scale,
                   T max_range,
-                  phi::DenseTensor* out) {
+                  DenseTensor* out) {
     const T* in_data = in->data<T>();
     const T* scale_factor = scale->data<T>();
     T* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));

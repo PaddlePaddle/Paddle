@@ -64,6 +64,7 @@ from .container import (  # noqa: F401
     DictVariable,
     ListVariable,
     RangeVariable,
+    SizeVariable,
     TupleVariable,
 )
 from .iter import (  # noqa: F401

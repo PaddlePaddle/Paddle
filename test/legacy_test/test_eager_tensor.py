@@ -238,7 +238,7 @@ class TestEagerTensor(unittest.TestCase):
                 np.testing.assert_array_equal(x.numpy(), expected_result)
 
                 numpy_array = np.random.randn(3, 4)
-                # covert core.DenseTensor to paddle.Tensor
+                # convert core.DenseTensor to paddle.Tensor
                 dense_tensor = paddle.base.core.DenseTensor()
                 place = paddle.base.framework._current_expected_place()
                 dense_tensor.set(numpy_array, place)
@@ -247,7 +247,7 @@ class TestEagerTensor(unittest.TestCase):
                 self.assertEqual(x.type, core.VarDesc.VarType.DENSE_TENSOR)
                 self.assertEqual(str(x.place), str(place))
 
-                # covert core.DenseTensor to paddle.Tensor
+                # convert core.DenseTensor to paddle.Tensor
                 x = paddle.to_tensor(numpy_array)
                 dlpack = x.value().get_tensor()._to_dlpack()
                 tensor_from_dlpack = paddle.base.core.from_dlpack(dlpack)
@@ -2303,6 +2303,24 @@ class TestListToTensor(unittest.TestCase):
         self.assertEqual(b.dtype, paddle.float32)
         self.assertEqual(b[0], 2.0)
         self.assertEqual(b[1], 2.0)
+
+
+class TestEagerTensorIndex(unittest.TestCase):
+    def test__index__with_0size_tensor(self):
+        with dygraph_guard():
+            x = paddle.randn([0])
+            l = [1, 2, 3]
+            with self.assertRaisesRegex(
+                AssertionError,
+                "only one element variable can be converted to python index.",
+            ):
+                l[x]
+
+    def test__index__with_non_scalar_tensor(self):
+        with dygraph_guard():
+            l = [1, 2, 3]
+            x = paddle.to_tensor([1]).reshape(1, 1, 1)
+            self.assertEqual(l[x], l[x.item()])
 
 
 if __name__ == "__main__":

@@ -257,6 +257,15 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
 }
 
 template <typename T>
+Tensor linear_v2_decomp(const Tensor& input,
+                        const Tensor& weight,
+                        const Tensor& bias) {
+  Tensor result = matmul<T>(input, weight, false, false);
+  result = result + bias;
+  return result;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,
@@ -1408,7 +1417,8 @@ Tensor baddbmm_decomp(const Tensor& input,
                       const Tensor& x,
                       const Tensor& y,
                       const float beta,
-                      const float alpha) {
+                      const float alpha,
+                      const DataType out_dtype) {
   int64_t batch_size = x.shape()[0];
   std::vector<Tensor> batch_results;
 

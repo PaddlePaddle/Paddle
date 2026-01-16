@@ -213,8 +213,12 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
 
     """
 
-    @if_break_graph_decorator
-    def inner(self: OpcodeExecutorBase, instr: Instruction):
+    @if_break_graph_decorator(fns)
+    def inner(
+        self: OpcodeExecutorBase,
+        instr: Instruction,
+        prepared_jump_condition: VariableBase,
+    ):
         """
         Inner function that represents the wrapped POP_JUMP_IF opcode operation.
 
@@ -223,19 +227,18 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
             instr: The instruction to be executed.
 
         """
-        pred_obj = self.stack.pop()
+        tos = self.stack.pop()
 
         try:
-            self._graph.add_global_guarded_variable(pred_obj)
-            res = pred_obj
-            for fn in fns:
-                res = BuiltinVariable(
-                    fn, graph=self._graph, tracker=DanglingTracker()
-                )(res)
+            self._graph.add_global_guarded_variable(tos)
 
-            assert isinstance(res, (ConstantVariable, SymbolicVariable))
-            if isinstance(res, SymbolicVariable):
-                constraint_node, symbolic_vars = res.create_constraint_tree()
+            assert isinstance(
+                prepared_jump_condition, (ConstantVariable, SymbolicVariable)
+            )
+            if isinstance(prepared_jump_condition, SymbolicVariable):
+                constraint_node, symbolic_vars = (
+                    prepared_jump_condition.create_constraint_tree()
+                )
                 if not all(
                     var.value.is_backed() for var in symbolic_vars.values()
                 ):
@@ -244,49 +247,70 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                             f"Symbolic variable {symbolic_vars} is not backed."
                         )
                     )
-                is_jump = res.get_example_value()
+                is_jump = prepared_jump_condition.get_example_value()
                 if not is_jump:
                     constraint_node = LogicalNotConstraintNode(constraint_node)
                 for var in symbolic_vars.values():
                     var.add_constraint((constraint_node, symbolic_vars))
             else:
-                is_jump = res.get_py_value()
+                is_jump = prepared_jump_condition.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
                 assert instr.jump_to is not None
                 self.jump_to(instr.jump_to)
         except BreakGraphError:
             raise FallbackError(
-                f"Currently don't support predicate {pred_obj.__class__.__name__}"
+                f"Currently don't support predicate {tos.__class__.__name__}"
             )
 
     return inner
 
 
-def if_break_graph_decorator(normal_jump: Callable):
-    """
-    A decorator function that breaks off the graph when a JUMP-related instruction is encountered.
+def if_break_graph_decorator(prepare_jump: list[Callable[[Any], Any]]):
+    def decorator(normal_jump: Callable):
+        """
+        A decorator function that breaks off the graph when a JUMP-related instruction is encountered.
 
-    Args:
-        normal_jump: The normal jump operation.
+        Args:
+            normal_jump: The normal jump operation.
 
-    Returns:
-        The wrapped jump operation.
+        Returns:
+            The wrapped jump operation.
 
-    """
+        """
 
-    def inner(self: OpcodeExecutor, instr: Instruction):
-        result = self.stack.top
-        if isinstance(result, (TensorVariable, NumPyArrayVariable)):
-            # fallback when in OpcodeExecutor
-            # raise error in OpcodeInlineExecutor
-            log(3, "[BreakGraph] break graph for if jump tensor\n")
-            self._break_graph_when_if(result, instr)
-            return Stop(state="BreakGraph")
-        else:
-            return normal_jump(self, instr)
+        def inner(self: OpcodeExecutor, instr: Instruction):
+            tos = self.stack.top
+            jump_condition = tos
+            need_break_graph = False
 
-    return inner
+            # Prepare jump condition
+            try:
+                for fn in prepare_jump:
+                    jump_condition = BuiltinVariable(
+                        fn, graph=self._graph, tracker=DanglingTracker()
+                    )(jump_condition)
+            except BreakGraphError:
+                need_break_graph = True
+
+            need_break_graph = need_break_graph or isinstance(
+                jump_condition, (TensorVariable, NumPyArrayVariable)
+            )
+
+            if need_break_graph:
+                log(3, "[BreakGraph] break graph for if jump tensor\n")
+                if self.vframe.code in NO_BREAKGRAPH_CODES:
+                    raise InnerError(
+                        f"{self.vframe.code.co_name} should not break graph, but got a jump on tensor '{tos}'"
+                    )
+                self._break_graph_when_if(tos, instr)
+                return Stop(state="BreakGraph")
+            else:
+                return normal_jump(self, instr, jump_condition)
+
+        return inner
+
+    return decorator
 
 
 def call_break_graph_decorator(push_n: int | Callable[[int | None], int]):
@@ -1046,10 +1070,10 @@ class OpcodeExecutorBase:
             getattr, graph=self._graph, tracker=DanglingTracker()
         )(obj, method_name_var)
 
-        if isinstance(
-            method, MethodVariable
-        ) and not paddle.base.libpaddle.has_custom_getattro(
-            method.bound_instance.get_py_type()
+        if (
+            isinstance(method, MethodVariable)
+            and not paddle.base.libpaddle.has_custom_getattro(obj.get_py_type())
+            and hasattr(obj.get_py_type(), method_name)
         ):
             # bound method or the class override the __getattr__
             # push the unbound method and the self
@@ -1075,7 +1099,9 @@ class OpcodeExecutorBase:
         level = self.stack.pop().get_py_value()
         globals_dict = self.vframe.globals.get_value()
         for key, val in globals_dict.items():
-            if isinstance(val, VariableBase):
+            if isinstance(val, VariableBase) and not isinstance(
+                val, NullVariable
+            ):
                 globals_dict[key] = val.get_py_value()
         try:
             value = __import__(
@@ -1744,8 +1770,10 @@ class OpcodeExecutorBase:
             )(left, right)
         )
 
-    @if_break_graph_decorator
-    def JUMP_IF_FALSE_OR_POP(self, instr: Instruction):
+    @if_break_graph_decorator([])
+    def JUMP_IF_FALSE_OR_POP(
+        self, instr: Instruction, prepared_jump_condition: VariableBase
+    ):
         pred_obj = self.stack.top
         if isinstance(pred_obj, (ConstantVariable, ContainerVariable)):
             self._graph.add_global_guarded_variable(pred_obj)
@@ -1760,8 +1788,10 @@ class OpcodeExecutorBase:
             "Currently don't support predicate a non-const / non-tensor obj."
         )
 
-    @if_break_graph_decorator
-    def JUMP_IF_TRUE_OR_POP(self, instr: Instruction):
+    @if_break_graph_decorator([])
+    def JUMP_IF_TRUE_OR_POP(
+        self, instr: Instruction, prepared_jump_condition: VariableBase
+    ):
         pred_obj = self.stack.top
         if isinstance(pred_obj, (ConstantVariable, ContainerVariable)):
             self._graph.add_global_guarded_variable(pred_obj)

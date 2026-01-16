@@ -35,7 +35,7 @@ void TileKernel(const Context& dev_ctx,
   rank = std::max(rank, repeat_times_size);
 
   if (rank == 0) {
-    phi::Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -53,7 +53,7 @@ void TileKernel(const Context& dev_ctx,
             repeat_times_data[i]));
   }
 
-  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
+  auto vec_x_dims = vectorize<int64_t>(x_dims);
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);

@@ -901,33 +901,33 @@ class TestAssertException(TestCaseBase):
             self.try_assert, paddle.to_tensor(10), paddle.to_tensor(-1)
         )
 
-    @strict_mode_guard(False)
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_assert_true(self):
         @check_no_breakgraph
-        def try_assert_except(x):
+        def try_assert_except(x, y):
             x += 1
             try:
                 x += 2
-                assert x > -10000
+                assert y > -10000
                 x += 3
             except:
                 x += 4
 
-        self.assert_results(try_assert_except, paddle.to_tensor(10))
+        self.assert_results(try_assert_except, paddle.to_tensor(10), 10)
 
-    @strict_mode_guard(False)
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_assert_false(self):
         @check_no_breakgraph
-        def try_assert_except(x):
+        def try_assert_except(x, y):
             try:
                 x += 5
-                assert x < -10000
+                assert y < -10000
             except AssertionError:
                 x += 6
 
             return x
 
-        self.assert_results(try_assert_except, paddle.to_tensor(10))
+        self.assert_results(try_assert_except, paddle.to_tensor(10), 10)
 
 
 class TestGuard(TestCaseBase):

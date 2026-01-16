@@ -641,6 +641,21 @@ class LegacyGuardNode : public CheckGuardNode<1> {
   bool check(std::array<PyObject*, 1> values) override;
 };
 
+class IsGradEnabledGuardNode : public CheckGuardNode<0> {
+ public:
+  bool is_grad_enabled_;
+  explicit IsGradEnabledGuardNode(
+      bool is_grad_enabled,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : CheckGuardNode<0>({}, next_guard_nodes, return_cache_index) {
+    is_grad_enabled_ = is_grad_enabled;
+  }
+  virtual ~IsGradEnabledGuardNode() = default;
+  std::string get_guard_name() const override { return "IsGradEnabledGuard"; };
+  bool check(std::array<PyObject*, 0> values) override;
+};
+
 class GuardTree {
  public:
   GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNodeBase>>>&

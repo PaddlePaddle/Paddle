@@ -64,8 +64,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
     std::vector<int64_t> shape = {part_size, n2};
     DenseTensor part_grad_gamma(
         std::shared_ptr<phi::Allocation>(nullptr),
-        phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                             common::make_ddim({shape})));
+        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({shape})));
     dev_ctx.template Alloc<float>(&part_grad_gamma);
 
     cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
@@ -136,11 +135,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(grad_x);
   if (x.numel() == 0) {
     if (grad_scale) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(grad_scale->dims())),
-          0,
-          grad_scale);
+      Full<T, Context>(dev_ctx, grad_scale->dims(), 0, grad_scale);
     }
     return;
   }

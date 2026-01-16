@@ -66,7 +66,7 @@ static DDim BroadCastInferShape(const DDim x_dims,
                                   max_dim,
                                   axis);
 
-    return common::make_ddim(out_dims_array);
+    return make_ddim(out_dims_array);
   }
   return x_dims;
 }
@@ -690,7 +690,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
           in_dims.size(),
           in_dims,
           strides.size(),
-          common::make_ddim(strides),
+          make_ddim(strides),
           in_sub_stride_size));
 
   for (int i = 0; i < dilation_size; ++i) {
@@ -866,11 +866,12 @@ void FusedActDequantInferMeta(const MetaTensor& x,
           x.dtype()));
 
   PADDLE_ENFORCE_EQ(
-      x_scale.dtype(),
-      DataType::FLOAT32,
-      common::errors::InvalidArgument(
-          "The data type of X_scale should be FLOAT32, but received %s.",
-          x_scale.dtype()));
+      x_scale.dtype() == DataType::FLOAT32 ||
+          x_scale.dtype() == DataType::INT32,
+      true,
+      common::errors::InvalidArgument("The data type of X_scale should be "
+                                      "FLOAT32 or INT32, but received %s.",
+                                      x_scale.dtype()));
 
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
@@ -892,6 +893,31 @@ void FusedActDequantInferMeta(const MetaTensor& x,
       0,
       common::errors::InvalidArgument(
           "The cols of X should be positive, but received %d.", cols));
+
+  auto scale_dims = x_scale.dims();
+  int64_t scale_cols_expected = (cols + 127) / 128;
+  if (x_scale.dtype() == DataType::INT32) {
+    scale_cols_expected = (scale_cols_expected + 3) / 4;
+  }
+
+  // Check scale shape assuming it is [rows, scale_cols] or flattened
+  if (scale_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(scale_dims[0],
+                      rows,
+                      common::errors::InvalidArgument(
+                          "The rows of X_scale should be equal to rows of X"));
+    PADDLE_ENFORCE_EQ(
+        scale_dims[1],
+        scale_cols_expected,
+        common::errors::InvalidArgument("The cols of X_scale should be %d",
+                                        scale_cols_expected));
+  } else if (scale_dims.size() == 1) {
+    PADDLE_ENFORCE_EQ(
+        scale_dims[0],
+        rows * scale_cols_expected,
+        common::errors::InvalidArgument("The numel of X_scale should be %d",
+                                        rows * scale_cols_expected));
+  }
 
   out->set_dims(x_dims);
   out->set_dtype(DataType::BFLOAT16);
@@ -1010,9 +1036,16 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                             "and must satisfy the limitations: "
                             "(num_head * dim_head == dim_embed)"));
     }
-    num_heads = y_dim[1];
-    dim_head = y_dim[2];
-    hidden_size = y_dim[3];
+    // TODO(large-tensor): num_heads, dim_head, hidden_size may exceed INT_MAX
+    int64_t num_heads_int64 = y_dim[1];
+    int64_t dim_head_int64 = y_dim[2];
+    int64_t hidden_size_int64 = y_dim[3];
+    PADDLE_ENFORCE_LE_INT_MAX(num_heads_int64, "num_heads");
+    PADDLE_ENFORCE_LE_INT_MAX(dim_head_int64, "dim_head");
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_int64, "hidden_size");
+    num_heads = static_cast<int>(num_heads_int64);
+    dim_head = static_cast<int>(dim_head_int64);
+    hidden_size = static_cast<int>(hidden_size_int64);
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1512,7 +1545,7 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     if (x_dim.size() > 1) {
       return x_dim;
     }
-    return common::make_ddim({1, x_dim[0]});
+    return make_ddim({1, x_dim[0]});
   };
 
   auto mat_dim_x =
@@ -1539,8 +1572,7 @@ void FusedFeedForwardInferMeta(const MetaTensor& x,
     dropout2_mask->set_dims(dim_x);
   }
 
-  auto mean_dim =
-      common::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+  auto mean_dim = make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
   if (pre_layer_norm) {
     ln1_out->set_dims(dim_x);
     ln1_mean->set_dims(mean_dim);
@@ -2708,7 +2740,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                              left_slice_out_dims_vector.data(),
                              1,
                              true);
-  auto left_slice_out_dims = common::make_ddim(left_slice_out_dims_vector);
+  auto left_slice_out_dims = make_ddim(left_slice_out_dims_vector);
   auto grid_dims = grid.dims();
   auto left_add_out_dims =
       BroadCastInferShape(left_slice_out_dims, grid_dims, -1);
@@ -2730,7 +2762,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                              mid_slice_out_dims_vector.data(),
                              1,
                              true);
-  auto mid_slice_out_dims = common::make_ddim(mid_slice_out_dims_vector);
+  auto mid_slice_out_dims = make_ddim(mid_slice_out_dims_vector);
   auto anchor_grid_dims = anchor_grid.dims();
   auto mid_mul_out_dims =
       BroadCastInferShape(mid_slice_out_dims, anchor_grid_dims, -1);
@@ -2748,7 +2780,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                              right_slice_out_dims_vector.data(),
                              1,
                              true);
-  auto right_slice_out_dims = common::make_ddim(right_slice_out_dims_vector);
+  auto right_slice_out_dims = make_ddim(right_slice_out_dims_vector);
   // compute concat out_dims
   std::vector<DDim> in_dims;
   in_dims.reserve(3);
@@ -3193,7 +3225,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   }
   out_shape.push_back(filter_dims[0]);
   // make shape for other outputs
-  auto c_dims = common::make_ddim({filter_dims[0]});
+  auto c_dims = make_ddim({filter_dims[0]});
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_running_mean->set_dims(c_dims);
@@ -3465,7 +3497,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
             hidden));
   }
 
-  auto dim_output = common::make_ddim({batch, seq_len, hidden});
+  auto dim_output = make_ddim({batch, seq_len, hidden});
   out->set_dims(dim_output);
   out->share_lod(*ids[0]);
   out->set_dtype((*embs[0]).dtype());
@@ -3635,7 +3667,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                         "The output's shape of fc is expected to be equal to "
                         "that of input Y. But received output's shape of fc "
                         "is %s, input Y's shape is %s.",
-                        common::make_ddim(fc_out_dims),
+                        make_ddim(fc_out_dims),
                         y_dims));
 
   PADDLE_ENFORCE_LT(
@@ -3774,17 +3806,17 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
             "Attr(split_channels) = %u, the content = [%s].",
             outputs.size(),
             split_channels.size(),
-            common::make_ddim(split_channels)));
+            make_ddim(split_channels)));
 
     int64_t split_channels_sum = 0;
     std::vector<DDim> output_shapes(split_channels.size());
     for (size_t i = 0; i < split_channels.size(); ++i) {
       split_channels_sum += split_channels[i];
       if (channel_last) {
-        output_shapes[i] = common::make_ddim(
+        output_shapes[i] = make_ddim(
             {out_shape[0], out_shape[1], out_shape[2], split_channels[i]});
       } else {
-        output_shapes[i] = common::make_ddim(
+        output_shapes[i] = make_ddim(
             {out_shape[0], split_channels[i], out_shape[2], out_shape[3]});
       }
     }
@@ -4470,7 +4502,7 @@ void FCOneDNNInferMeta(const MetaTensor& input,
   funcs::FCOutputSize(
       in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
 
-  auto out_dims = common::make_ddim(output_dims);
+  auto out_dims = make_ddim(output_dims);
   auto reshape_size = fused_reshape2_shape;
   if (!reshape_size.empty()) {
     out_dims = out_dims.reshape(reshape_size);
@@ -4613,7 +4645,7 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   std::vector<int64_t> out_dims(
       {query_batch_size, query_num_head, query_seq_length, value_head_size});
 
-  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dims(make_ddim(out_dims));
   out->set_dtype(query.dtype());
   out->set_layout(query.layout());
 }
@@ -4672,7 +4704,7 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
           hidden_dim));
 
   // output shape: {B, L, HD}
-  qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
+  qkv->set_dims(make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(q.layout());
 }
@@ -4701,7 +4733,7 @@ void SinePosXPUInferMeta(const MetaTensor& x,
           "x_dims_size should be 3, but received x_dims_size is %d",
           y_dims_size));
 
-  DDim out_dim = phi::make_ddim({x_dims[0], x_dims[1], y_dims[0]});
+  DDim out_dim = make_ddim({x_dims[0], x_dims[1], y_dims[0]});
 
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
@@ -4717,16 +4749,16 @@ void Pad2dXPUInferMeta(const MetaTensor& x,
 
   DDim out_dim;
   if (data_format == "NCHW") {
-    out_dim = phi::make_ddim(
+    out_dim = make_ddim(
         {x_dims[0],
          x_dims[1],
          x_dims[2] + paddings[2] + paddings[3],    // top bottom height
          x_dims[3] + paddings[0] + paddings[1]});  // left right weight
   } else if (data_format == "NHWC") {
-    out_dim = phi::make_ddim({x_dims[0],
-                              x_dims[1] + paddings[2] + paddings[3],  // height
-                              x_dims[2] + paddings[0] + paddings[1],  // width
-                              x_dims[3]});
+    out_dim = make_ddim({x_dims[0],
+                         x_dims[1] + paddings[2] + paddings[3],  // height
+                         x_dims[2] + paddings[0] + paddings[1],  // width
+                         x_dims[3]});
   } else {
     PADDLE_THROW(common::errors::External(
         "XPU is not support data format in pad2d is %s", data_format));
@@ -4818,14 +4850,14 @@ void CrossAttentionXPUInferMeta(
 
   // output shape: {B, qL, H*D}
   qkv->set_dims(
-      phi::make_ddim({input_q_dims[0], input_q_dims[1], head_num * head_dim}));
+      make_ddim({input_q_dims[0], input_q_dims[1], head_num * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(input_q.layout());
   // TODO(Terry) optimize the max value num
   // unable to pass few PR-CIs, so just use a constant value
   // int xpu2_max_value_num = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   const int xpu2_max_value_num = 6;
-  qkv_max->set_dims(phi::make_ddim({xpu2_max_value_num}));
+  qkv_max->set_dims(make_ddim({xpu2_max_value_num}));
   qkv_max->set_dtype(out_dtype);
   qkv_max->set_layout(input_q.layout());
 }
@@ -5116,7 +5148,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
                           "Bias dim is:[%s]",
                           frame_size,
                           b_dims));
-    checked_cell->set_dims(phi::make_ddim({2, frame_size}));
+    checked_cell->set_dims(make_ddim({2, frame_size}));
     checked_cell->set_dtype(x.dtype());
   } else {
     PADDLE_ENFORCE_EQ(
@@ -5129,7 +5161,7 @@ void FusionLstmInferMeta(const MetaTensor& x,
             b_dims));
   }
 
-  auto out_dims = phi::make_ddim({x_dims[0], frame_size});
+  auto out_dims = make_ddim({x_dims[0], frame_size});
   hidden->set_dims(out_dims);
   cell->set_dims(out_dims);
   hidden->share_lod(x);
@@ -5143,14 +5175,14 @@ void FusionLstmInferMeta(const MetaTensor& x,
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
 
-    batched_input->set_dims(phi::make_ddim({x_dims[0], wx_dims[1]}));
+    batched_input->set_dims(make_ddim({x_dims[0], wx_dims[1]}));
     batched_hidden->set_dims(out_dims);
     batched_cell->set_dims(out_dims);
     batched_input->set_dtype(x.dtype());
     batched_hidden->set_dtype(x.dtype());
     batched_cell->set_dtype(x.dtype());
   }
-  xx->set_dims(phi::make_ddim({x_dims[0], xx_width}));
+  xx->set_dims(make_ddim({x_dims[0], xx_width}));
   xx->set_dtype(x.dtype());
   xx->share_lod(x);
 }
@@ -5274,7 +5306,7 @@ void FusedSeqpoolCvmInferMeta(const std::vector<const MetaTensor*>& x,
     } else {
       out_dim = {-1, dims[rank - 1] - cvm_offset};
     }
-    outs_dims[i] = common::make_ddim(out_dim);
+    outs_dims[i] = make_ddim(out_dim);
   }
   for (size_t i = 0; i < out.size(); ++i) {
     out[i]->set_dims(outs_dims[i]);
@@ -5400,8 +5432,7 @@ void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                     2,
                     common::errors::InvalidArgument(
                         "The dims size of first input should be 2."));
-  out->set_dims(
-      common::make_ddim({-1, ins_dims[axis] * static_cast<int64_t>(n)}));
+  out->set_dims(make_ddim({-1, ins_dims[axis] * static_cast<int64_t>(n)}));
   out->set_dtype((*x[0]).dtype());
 }
 
@@ -5669,7 +5700,7 @@ void FP8OutHalfGemmFusedInferMeta(
     new_dims.push_back(N);  // NOLINT
   }
 
-  auto ddim_out = common::make_ddim(new_dims);
+  auto ddim_out = make_ddim(new_dims);
 
   out->set_dims(ddim_out);
   out->set_layout(x.layout());
@@ -5868,7 +5899,7 @@ static DDim GetBitmaskDims(std::vector<int64_t> out_shape) {
   int64_t c_int32_elems = ((c + 63) & ~63) / 32;
   int64_t nhw_int32_elems = ((nhw + 31) & ~31);
   std::vector<int64_t> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
-  return common::make_ddim(bitmask_shape);
+  return make_ddim(bitmask_shape);
 }
 
 void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
@@ -6066,7 +6097,7 @@ void ResnetUnitInferMeta(const MetaTensor& x,
   if (1 == bn_param_shape.size()) {
     bn_param_shape = {1, 1, 1, bn_param_shape[0]};
   }
-  DDim bn_param_dims = common::make_ddim(bn_param_shape);
+  DDim bn_param_dims = make_ddim(bn_param_shape);
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
       4,
@@ -6116,7 +6147,7 @@ void ResnetUnitInferMeta(const MetaTensor& x,
     out_shape.push_back(output_channel);
   }
 
-  auto y_dims = common::make_ddim(out_shape);
+  auto y_dims = make_ddim(out_shape);
   auto bitmask_dims = GetBitmaskDims(out_shape);
   // Set dims of outputs
   out->set_dims(y_dims);
@@ -6463,8 +6494,8 @@ void ResnetBasicBlockInferMeta(const MetaTensor& x,
   int64_t out2_w = (out1_w + padding2 * 2 - filter2_size) / stride2 + 1;
   std::vector<int64_t> out2_shape = {batch, output2_channel, out2_h, out2_w};
 
-  auto y_dims = common::make_ddim(out2_shape);
-  auto conv1_dims = common::make_ddim(out1_shape);
+  auto y_dims = make_ddim(out2_shape);
+  auto conv1_dims = make_ddim(out1_shape);
 
   out->set_dims(y_dims);
   conv1->set_dims(conv1_dims);
@@ -6510,7 +6541,7 @@ void ResnetBasicBlockInferMeta(const MetaTensor& x,
 
   bool find_max = find_conv_input_max;
   if (find_max) {
-    auto max_dims = common::make_ddim({6});
+    auto max_dims = make_ddim({6});
     max_input1->set_dims(max_dims);
     max_filter1->set_dims(max_dims);
     max_input2->set_dims(max_dims);

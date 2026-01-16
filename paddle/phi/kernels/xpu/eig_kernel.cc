@@ -32,7 +32,7 @@ void EigKernel(const Context& dev_ctx,
     return;
   }
 
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
@@ -50,7 +50,7 @@ void EigKernel(const Context& dev_ctx,
 
     DenseTensor real_w_cpu, real_v_cpu;
 
-    std::vector<int64_t> real_w_dim = common::vectorize<int64_t>(out_w->dims());
+    std::vector<int64_t> real_w_dim = vectorize<int64_t>(out_w->dims());
     real_w_dim.back() *= 2;
     real_w_cpu.Resize(common::make_ddim(real_w_dim));
     (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_w_cpu);
@@ -61,9 +61,9 @@ void EigKernel(const Context& dev_ctx,
         dev_ctx, x, &real_w_cpu, &real_v_cpu);
 
     // 1. extract real part & imag part from real_w_cpu
-    DenseTensor real_part_cpu = phi::funcs::Slice<phi::dtype::Real<T>>(
+    DenseTensor real_part_cpu = funcs::Slice<phi::dtype::Real<T>>(
         (*cpu_ctx), real_w_cpu, {-1}, {0}, {order});
-    DenseTensor imag_part_cpu = phi::funcs::Slice<phi::dtype::Real<T>>(
+    DenseTensor imag_part_cpu = funcs::Slice<phi::dtype::Real<T>>(
         (*cpu_ctx), real_w_cpu, {-1}, {order}, {order * 2});
 
     // 2. construct complex values
@@ -71,8 +71,8 @@ void EigKernel(const Context& dev_ctx,
     auto* imag_part_data = imag_part_cpu.data<phi::dtype::Real<T>>();
     int64_t out_w_numel = static_cast<int64_t>(out_w->numel());
 
-    phi::funcs::ForRange<phi::CPUContext> for_range((*cpu_ctx), out_w_numel);
-    phi::funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
+    funcs::ForRange<phi::CPUContext> for_range((*cpu_ctx), out_w_numel);
+    funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
         real_part_data,
         imag_part_data,
         out_w_cpu.data<phi::dtype::Complex<T>>(),
@@ -81,8 +81,8 @@ void EigKernel(const Context& dev_ctx,
 
     // 3. construct complex vectors
     DenseTensor real_v_trans_cpu =
-        phi::TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>(
-            (*cpu_ctx), real_v_cpu);
+        TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>((*cpu_ctx),
+                                                                real_v_cpu);
     DenseTensor out_v_trans_cpu;
     out_v_trans_cpu.Resize(x.dims());
     (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_v_trans_cpu);
@@ -108,8 +108,8 @@ void EigKernel(const Context& dev_ctx,
   }
 
   // copy result from cpu to xpu tensor
-  phi::Copy(dev_ctx, out_w_cpu, phi::XPUPlace(), false, out_w);
-  phi::Copy(dev_ctx, out_v_cpu, phi::XPUPlace(), false, out_v);
+  Copy(dev_ctx, out_w_cpu, phi::XPUPlace(), false, out_w);
+  Copy(dev_ctx, out_v_cpu, phi::XPUPlace(), false, out_v);
 }
 
 }  // namespace phi

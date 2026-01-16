@@ -46,37 +46,37 @@ class XCCLCommContext final : public CommContext {
     dev_ctx_ = std::move(dev_ctx);
   }
 
-  void Broadcast(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void Broadcast(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  int root,
                  const phi::stream::stream_t& stream) const;
 
-  void Send(const phi::DenseTensor& in_tensor,
+  void Send(const DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
             const phi::stream::stream_t& stream) const;
 
-  void Recv(phi::DenseTensor* out_tensor,
+  void Recv(DenseTensor* out_tensor,
             const int64_t& count,
             const int& peer,
             const phi::stream::stream_t& stream) const;
 
-  void ReduceScatter(phi::DenseTensor* out_tensor,
-                     const phi::DenseTensor& in_tensor,
+  void ReduceScatter(DenseTensor* out_tensor,
+                     const DenseTensor& in_tensor,
                      phi::ccl::CCLReduceOp reduce_type,
                      const phi::stream::stream_t& stream) const;
 
-  void AllGather(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllGather(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  const phi::stream::stream_t& stream) const;
 
-  void AllReduce(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllReduce(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  phi::ccl::CCLReduceOp reduce_type,
                  const phi::stream::stream_t stream) const;
 
-  void Reduce(phi::DenseTensor* out_tensor,
-              const phi::DenseTensor& in_tensor,
+  void Reduce(DenseTensor* out_tensor,
+              const DenseTensor& in_tensor,
               phi::ccl::CCLReduceOp reduce_type,
               int root,
               const phi::stream::stream_t& stream) const;

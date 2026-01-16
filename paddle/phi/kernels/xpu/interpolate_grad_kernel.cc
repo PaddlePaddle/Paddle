@@ -43,7 +43,7 @@ void InterpolateGradKernel(
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -110,7 +110,7 @@ void InterpolateGradKernel(
     out_w = new_size[1];
   }
 
-  phi::DDim dim_grad;
+  DDim dim_grad;
   if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -128,7 +128,7 @@ void InterpolateGradKernel(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 

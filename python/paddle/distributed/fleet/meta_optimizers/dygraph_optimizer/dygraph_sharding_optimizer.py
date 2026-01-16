@@ -740,6 +740,87 @@ class DygraphShardingOptimizerV2:
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
 
+    def rebuild(self):
+        """rebuild DygraphShardingOptimizerV2."""
+
+        self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
+        self._sharding_rank = self._hcg.get_sharding_parallel_rank()
+        self.clear_color = set()
+
+        # param name -> slice_param
+        self._slice_params = {}
+        # comm_buffer_list = []
+        self._comm_buffer_list = []
+        self._color_to_comm_buffer_list = {}
+
+        # slice parameter list
+        self._local_parameter_list = [
+            self._create_slice_param(p) for p in self._inner_opt._parameter_list
+        ]
+
+        # Accessing user defined strategy
+        strategy = fleet.fleet._user_defined_strategy
+        sharding_config = strategy.hybrid_configs['sharding_configs']
+        pp_config = strategy.hybrid_configs['pp_configs']
+
+        # Asserting tensor fusion not supported
+        self.tensor_fusion = sharding_config.tensor_fusion
+        assert not self.tensor_fusion, "not supported yet"
+
+        # Setting accumulate steps and communication overlap
+        acc_steps = sharding_config.accumulate_steps
+        self.comm_overlap = sharding_config.comm_overlap
+
+        comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
+        free_grads_in_comm = sharding_config.free_grads_in_comm
+        self.offload_opt_buffer_size = sharding_config.offload_opt_buffer_size
+
+        # Setting pipeline parallelism overlap
+        self.pp_overlap = pp_config.sharding_comm_overlap
+        self.sd_release_grads = (
+            pp_config.release_gradients or sharding_config.release_gradients
+        )
+
+        # Check nccl reduce_avg setting
+        self.use_reduce_avg = sharding_config.use_reduce_avg
+        if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
+            self.use_reduce_avg = False
+
+        self.enable_fuse_optimizer_states = (
+            sharding_config.enable_fuse_optimizer_states
+        )
+
+        self.param2bucket = {}
+        self._build_comm_buffers(
+            acc_steps, comm_buffer_size_MB * 1024 * 1024, free_grads_in_comm
+        )
+        if self.enable_fuse_optimizer_states:
+            self._inner_opt.use_fusion_storage()
+        # NOTE(shenliang03): Sort the comm_buffers by dst rank,
+        # it will improve the performance in reduce communicate. Default
+        # g_shard_sort_reduce_root is True.
+
+        self._comm_buffer_list.sort(key=lambda x: x._dst)
+
+        self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
+        self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
+
+        # Ensure pp_overlap and comm_overlap are not both True
+        assert not (self.pp_overlap and self.comm_overlap), (
+            "pp_overlap and comm_overlap should not be True at the same time"
+        )
+
+        # Determine the use of pipeline parallelism
+        self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
+
+        # Register reduce overlap hook if comm_overlap is used without pp_overlap
+        if not self.pp_overlap and self.comm_overlap:
+            self.register_reduce_overlap_hook(use_comm=True)
+
+        self._all_gather_overlap_forward = False
+        self._forward_pre_hook_remove_helper = []
+        self.has_register_forward_hook = False
+
     def _set_all_gather_overlap_forward(
         self, all_gather_overlap_forward, layers
     ):

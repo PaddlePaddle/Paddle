@@ -61,7 +61,7 @@ enum class DataLayout {
   // Strictly, it means "default" or "undefined" layout,
   // and should not be mixed with other meaningful layouts
 
-  kAnyLayout = ANY,
+  kAnyLayout = ANY,  // Followings deprecated
   kNHWC = NHWC,
   kNCHW = NCHW,
   kMKLDNN = ONEDNN,  // all layouts supported by ONEDNN internally
@@ -76,15 +76,15 @@ inline DataLayout StringToDataLayout(const std::string& str) {
   }
 
   if (s == "NHWC") {
-    return DataLayout::kNHWC;
+    return DataLayout::NHWC;
   } else if (s == "NCHW") {
-    return DataLayout::kNCHW;
+    return DataLayout::NCHW;
   } else if (s == "ANYLAYOUT") {
-    return DataLayout::kAnyLayout;
+    return DataLayout::ANY;
   } else if (s == "UNDEFINED(ANYLAYOUT)") {
-    return DataLayout::kAnyLayout;
+    return DataLayout::ANY;
   } else if (s == "MKLDNNLAYOUT") {
-    return DataLayout::kMKLDNN;
+    return DataLayout::ONEDNN;
   } else if (s == "ONEDNNLAYOUT") {
     return DataLayout::ONEDNN;
   } else if (s == "SPARSE_COO") {
@@ -96,7 +96,7 @@ inline DataLayout StringToDataLayout(const std::string& str) {
   } else if (s == "PSTRING_UNION") {
     return DataLayout::PSTRING_UNION;
   } else if (s == "NCDHW") {
-    return DataLayout::kNCDHW;
+    return DataLayout::NCDHW;
   } else if (s == "STRIDED") {
     return DataLayout::STRIDED;
   } else {
@@ -106,21 +106,21 @@ inline DataLayout StringToDataLayout(const std::string& str) {
 
 inline std::string DataLayoutToString(const DataLayout& layout) {
   switch (layout) {
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       return "NHWC";
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       return "NCHW";
-    case DataLayout::kAnyLayout:
+    case DataLayout::ANY:
       return "Undefined(AnyLayout)";
-    case DataLayout::kMKLDNN:
+    case DataLayout::ONEDNN:
       return "ONEDNN";
     case DataLayout::SPARSE_COO:
       return "SPARSE_COO";
     case DataLayout::SPARSE_CSR:
       return "SPARSE_CSR";
-    case DataLayout::kNDHWC:
+    case DataLayout::NDHWC:
       return "NDHWC";
-    case DataLayout::kNCDHW:
+    case DataLayout::NCDHW:
       return "NCDHW";
     case DataLayout::PSTRING_UNION:
       return "PSTRING_UNION";
@@ -144,7 +144,9 @@ using DataLayout = common::DataLayout;
 
 namespace phi {
 using DataLayout = common::DataLayout;
-}
+using common::DataLayoutToString;
+using common::StringToDataLayout;
+}  // namespace phi
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface

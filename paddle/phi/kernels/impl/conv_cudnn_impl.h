@@ -40,15 +40,15 @@ static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
 }
 
 // inline cudnnTensorFormat_t GetCudnnTensorFormat(
-//     const phi::DataLayout& order) {  // Not use
+//     const DataLayout& order) {  // Not use
 //   switch (order) {
-//     case phi::DataLayout::NHWC:
+//     case DataLayout::NHWC:
 //       return CUDNN_TENSOR_NHWC;
-//     case phi::DataLayout::NCHW:
+//     case DataLayout::NCHW:
 //       return CUDNN_TENSOR_NCHW;
-//     case phi::DataLayout::NCDHW:
+//     case DataLayout::NCDHW:
 //       return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
-//     case phi::DataLayout::NDHWC:
+//     case DataLayout::NDHWC:
 //       return CUDNN_TENSOR_NHWC;  // add, liyamei
 //     default:
 //       PADDLE_THROW(common::errors::Unimplemented(
@@ -59,15 +59,15 @@ static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
 
 /*
 static inline void GetNCDHW(const DDim& dims,
-                            const phi::DataLayout& layout,
+                            const DataLayout& layout,
                             int* N,
                             int* C,
                             int* D,
                             int* H,
                             int* W) {
   *N = dims[0];
-  *C = layout == phi::DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == phi::DataLayout::NCHW ? 0 : 1;
+  *C = layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+  int i = layout == DataLayout::NCHW ? 0 : 1;
   if (dims.size() == 5) {
     *D = dims[2 - i];
     *H = dims[3 - i];

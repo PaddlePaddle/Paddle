@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
-inline void GetDims(const phi::DDim& dim,
+inline void GetDims(const DDim& dim,
                     int axis,
                     int64_t* m,
                     int64_t* t,
@@ -51,8 +51,7 @@ void PNormKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   auto xdim = x.dims();
@@ -134,7 +133,7 @@ void PNormKernel(const Context& dev_ctx,
 
   } else {
     DenseTensor porder_tensor;
-    phi::DDim pdim = common::make_ddim({1});
+    DDim pdim = common::make_ddim({1});
     porder_tensor.Resize(pdim);
     dev_ctx.template Alloc<T>(&porder_tensor);
     r = xpu::constant(

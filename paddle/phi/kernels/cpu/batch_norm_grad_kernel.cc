@@ -59,7 +59,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
                           DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
-  DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   auto* d_x = x_grad;
   auto* d_scale = scale_grad;
@@ -163,7 +163,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   }
 
   if (d_x && (N * sample_size) == 1 && !use_global_stats) {
-    phi::Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
+    Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
     return;
   }
   auto* Scale = scale.get_ptr();
@@ -330,16 +330,8 @@ void BatchNormGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (scale_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(scale_grad->dims())),
-          0,
-          scale_grad);
-    if (bias_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(bias_grad->dims())),
-                            0,
-                            bias_grad);
+      Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
+    if (bias_grad) Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
     return;
   }
   BatchNormGradFunctor<T, Context>(dev_ctx,
@@ -399,7 +391,7 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const auto data_layout = common::StringToDataLayout(data_layout_str);
+  const auto data_layout = StringToDataLayout(data_layout_str);
 
   const auto* ddX = x_grad_grad.get_ptr();
   const auto* ddScale = scale_grad_grad.get_ptr();

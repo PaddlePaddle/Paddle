@@ -43,7 +43,7 @@ struct DropoutParam {
   bool is_test;
   bool fix_seed;
   int increment{};
-  const phi::DenseTensor* tensor_seed;
+  const DenseTensor* tensor_seed;
   int seed_val;
 
   DropoutParam() {
@@ -61,7 +61,7 @@ struct DropoutParam {
                bool is_test_,
                bool is_upscale_in_train_,
                float dropout_prob_,
-               const phi::DenseTensor* tensor_seed_,
+               const DenseTensor* tensor_seed_,
                int seed_val_) {
     fix_seed = fix_seed_;
     seed = seed_;
@@ -72,7 +72,7 @@ struct DropoutParam {
     seed_val = seed_val_;
   }
 
-  uint64_t UpdateSeedAndIncrement(const phi::GPUContext& dev_ctx,
+  uint64_t UpdateSeedAndIncrement(const GPUContext& dev_ctx,
                                   const uint64_t offset) {
     uint64_t tmp_increment;
     funcs::GetSeedDataAndIncrement(dev_ctx,
@@ -105,7 +105,7 @@ template <typename T,
           typename OutType = T>
 class FusedDropoutHelper {
  private:
-  uint64_t GetIncrement(const phi::GPUContext& dev_ctx) {
+  uint64_t GetIncrement(const GPUContext& dev_ctx) {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     const int real_vec_size = cols_ % VecSize == 0 ? VecSize : 1;
     auto config = Get1DBlocksAnd2DGrids(dev_ctx,
@@ -125,7 +125,7 @@ class FusedDropoutHelper {
 
  public:
   FusedDropoutHelper() {}
-  FusedDropoutHelper(const phi::GPUContext& dev_ctx,
+  FusedDropoutHelper(const GPUContext& dev_ctx,
                      const int64_t rows,
                      const int64_t cols,
                      const DropoutParam& dropout_param,
@@ -137,7 +137,7 @@ class FusedDropoutHelper {
   }
 
   // out = residual + dropout( src + bias )
-  void ResidualDropoutBias(const phi::GPUContext& dev_ctx,
+  void ResidualDropoutBias(const GPUContext& dev_ctx,
                            const InType* src,
                            const T* residual,
                            const T* bias,
@@ -167,7 +167,7 @@ class FusedDropoutHelper {
         residual_alpha_);
   }
 
-  void ResidualDropoutBiasGrad(const phi::GPUContext& dev_ctx,
+  void ResidualDropoutBiasGrad(const GPUContext& dev_ctx,
                                const T* d_out,
                                const MaskType* mask,
                                T* d_src,
@@ -194,7 +194,7 @@ class FusedDropoutHelper {
   }
 
   // out = dropout(activation(src + bias))
-  void DropoutActBias(const phi::GPUContext& dev_ctx,
+  void DropoutActBias(const GPUContext& dev_ctx,
                       const InType* src,
                       const T* bias,
                       const std::string& act_method,
@@ -293,7 +293,7 @@ class FusedDropoutHelper {
     }
   }
 
-  void DropoutActBiasGrad(const phi::GPUContext& dev_ctx,
+  void DropoutActBiasGrad(const GPUContext& dev_ctx,
                           const T* dout,
                           const T* src,
                           const T* bias,
@@ -366,7 +366,7 @@ class FusedDropoutLayerNormHelper
     this->residual_alpha_ = residual_alpha;
   }
 
-  FusedDropoutLayerNormHelper(const phi::GPUContext& dev_ctx,
+  FusedDropoutLayerNormHelper(const GPUContext& dev_ctx,
                               const int64_t rows,
                               const int64_t cols,
                               const DropoutParam& dropout_param,
@@ -379,7 +379,7 @@ class FusedDropoutLayerNormHelper
   }
 
   // call layer_norm
-  void LayerNorm(const phi::GPUContext& dev_ctx,
+  void LayerNorm(const GPUContext& dev_ctx,
                  const InType* src,
                  const funcs::LayerNormParamType<T>* gamma,
                  const funcs::LayerNormParamType<T>* beta,
@@ -404,7 +404,7 @@ class FusedDropoutLayerNormHelper
                epsilon_);
   }
 
-  void LayerNormGrad(const phi::GPUContext& dev_ctx,
+  void LayerNormGrad(const GPUContext& dev_ctx,
                      const T* dout,
                      const T* src,
                      const funcs::LayerNormParamType<T>* gamma,
@@ -432,7 +432,7 @@ class FusedDropoutLayerNormHelper
   template <typename P = funcs::LayerNormParamType<T>,
             bool is_same_type = false>
   void LayernormResidualDropoutBias(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const InType* src,
       const T* residual,
       const T* bias,
@@ -494,7 +494,7 @@ class FusedDropoutLayerNormHelper
   template <typename P = funcs::LayerNormParamType<T>,
             bool is_same_type = false>
   void LayernormResidualDropoutBiasGrad(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const T* d_out,
       const T* layernorm_src,
       const MaskType* mask,

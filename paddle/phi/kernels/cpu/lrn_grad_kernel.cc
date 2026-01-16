@@ -18,23 +18,21 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/onednn/onednn_helper.h"
-#endif
 
 namespace phi {
 
 template <typename T>
 struct LRNGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor& x,
-                  const phi::DenseTensor& out,
-                  const phi::DenseTensor& mid,
-                  phi::DenseTensor* x_g,
-                  const phi::DenseTensor& out_g,
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& mid,
+                  DenseTensor* x_g,
+                  const DenseTensor& out_g,
                   int64_t N,
                   int64_t C,
                   int64_t H,
@@ -44,7 +42,7 @@ struct LRNGradFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
-    auto x_g_e = phi::EigenVector<T>::Flatten(*x_g);
+    auto x_g_e = EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
 
     auto e_x = phi::EigenTensor<T, 4>::From(x);

@@ -46,8 +46,16 @@ void AMaxStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  int64_t max_stride = 0;
+  for (int i = 0; i < x.dims().size(); i++) {
+    max_stride += x.dims()[i] * x.strides()[i];
+  }
+  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
+                       !funcs::IsInUint32Range(x.numel());
+
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
+      is_big_tensor) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -97,8 +105,16 @@ void AMinStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  int64_t max_stride = 0;
+  for (int i = 0; i < x.dims().size(); i++) {
+    max_stride += x.dims()[i] * x.strides()[i];
+  }
+  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
+                       !funcs::IsInUint32Range(x.numel());
+
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
+      is_big_tensor) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -147,8 +163,16 @@ void MaxStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  int64_t max_stride = 0;
+  for (int i = 0; i < x.dims().size(); i++) {
+    max_stride += x.dims()[i] * x.strides()[i];
+  }
+  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
+                       !funcs::IsInUint32Range(x.numel());
+
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
+      is_big_tensor) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -198,8 +222,16 @@ void MinStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  int64_t max_stride = 0;
+  for (int i = 0; i < x.dims().size(); i++) {
+    max_stride += x.dims()[i] * x.strides()[i];
+  }
+  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
+                       !funcs::IsInUint32Range(x.numel());
+
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
+      is_big_tensor) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -270,8 +302,16 @@ void AllStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  int64_t max_stride = 0;
+  for (int i = 0; i < x.dims().size(); i++) {
+    max_stride += x.dims()[i] * x.strides()[i];
+  }
+  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
+                       !funcs::IsInUint32Range(x.numel());
+
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
+      is_big_tensor) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -346,8 +386,16 @@ void AnyStrideKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
 
+  int64_t max_stride = 0;
+  for (int i = 0; i < x.dims().size(); i++) {
+    max_stride += x.dims()[i] * x.strides()[i];
+  }
+  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
+                       !funcs::IsInUint32Range(x.numel());
+
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0)) {
+  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
+      is_big_tensor) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {

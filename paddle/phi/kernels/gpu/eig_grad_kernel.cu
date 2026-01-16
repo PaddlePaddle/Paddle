@@ -211,7 +211,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   }
 
   std::vector<int> h_info(batch_count, 0);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           h_info.data(),
                           dev_ctx.GetPlace(),
                           d_info,
@@ -392,7 +392,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
   }
 
   std::vector<int> h_info(batch_count, 0);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           h_info.data(),
                           dev_ctx.GetPlace(),
                           d_info,
@@ -565,13 +565,13 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   }
 
   // Check error info
-  phi::CPUPlace cpu_place;
+  CPUPlace cpu_place;
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
   std::vector<rocblas_int> h_info(batch_count, 0);
   phi::memory_utils::Copy(
-      phi::CPUPlace(),
+      CPUPlace(),
       h_info.data(),
       dev_ctx.GetPlace(),
       d_info,
@@ -741,13 +741,13 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
         X_row,
         rhs_cols));  // X_row ldc = rhs_cols (row-major leading dimension)
   }
-  phi::CPUPlace cpu_place;
+  CPUPlace cpu_place;
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
   std::vector<rocblas_int> h_info(batch_count, 0);
   phi::memory_utils::Copy(
-      phi::CPUPlace(),
+      CPUPlace(),
       h_info.data(),
       dev_ctx.GetPlace(),
       d_info,
@@ -779,18 +779,16 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   if (gL.get_ptr()) {
     gL_safe = gL.get();
   } else {
-    gL_safe =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(L.dims()), T(0));
+    gL_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(L.dims()), T(0));
   }
 
   DenseTensor gV_safe;
   if (gV.get_ptr()) {
     gV_safe = gV.get();
   } else {
-    gV_safe =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
+    gV_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(V.dims()), T(0));
   }
-  DenseTensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
+  DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
   DenseTensor Econj = phi::Subtract<T>(dev_ctx,
@@ -799,20 +797,20 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_safe);
   DenseTensor diag_real = phi::Real<T>(dev_ctx, VhgV);
 
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
   DenseTensor diag_real_cpu;
   diag_real_cpu.Resize(diag_real.dims());
-  phi::Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
+  Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
 
   DenseTensor diag_res_cpu =
       phi::funcs::BatchDiag<T>((*cpu_ctx), diag_real_cpu, batch_count);
 
   DenseTensor diag_res;
   dev_ctx.template Alloc<T>(&diag_res);
-  phi::Copy(dev_ctx, diag_res_cpu, phi::GPUPlace(), false, &diag_res);
+  Copy(dev_ctx, diag_res_cpu, GPUPlace(), false, &diag_res);
 
   DenseTensor diag_unsqueezed = phi::funcs::Unsqueeze(diag_res, -2);
 

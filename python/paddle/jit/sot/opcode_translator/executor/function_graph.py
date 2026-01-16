@@ -350,10 +350,32 @@ class FunctionGraph:
             inputs,
         )
 
+    def load_builtin_stringified_guards(self) -> list[StringifiedExpression]:
+        return [
+            # paddle.is_grad_enabled()
+            StringifiedExpression(
+                f"paddle.is_grad_enabled() is {paddle.is_grad_enabled()}",
+                [],
+                free_vars={"paddle": paddle},
+            )
+        ]
+
+    def load_builtin_guard_chain(
+        self,
+    ) -> list[paddle.framework.core.GuardNodeBase]:
+        is_current_grad_enabled = paddle.is_grad_enabled()
+        return [
+            # paddle.is_grad_enabled()
+            paddle.framework.core.IsGradEnabledGuardNode(
+                is_current_grad_enabled
+            ),
+        ]
+
     @property
     @event_register("guard_chain")
     def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
         guard_chain: list[paddle.framework.core.GuardNodeBase] = []
+        guard_chain.extend(self.load_builtin_guard_chain())
 
         with EventGuard("guard_fn: find vars and make faster guard"):
             for variable in find_traceable_vars(
@@ -367,6 +389,7 @@ class FunctionGraph:
     def guard_fn(self) -> Guard:
         with switch_symbol_registry():
             guards: list[StringifiedExpression] = []
+            guards.extend(self.load_builtin_stringified_guards())
             with EventGuard("guard_fn: find vars and make stringified guard"):
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)
@@ -393,10 +416,18 @@ class FunctionGraph:
         restore_instr_names = [
             instr.opname for instr in restore_instrs[:current_idx]
         ]
-        # NOTE(SigureMo): Trailing KW_NAMES is no need to restore in Python 3.11+
-        if restore_instr_names[-1:] == ["KW_NAMES"]:
-            restore_instrs = restore_instrs[:-1]
-            restore_instr_names = restore_instr_names[:-1]
+        # NOTE(SigureMo): Some trailing instructions are no need to restore
+        need_trim_opcode_sequences = [
+            ["KW_NAMES"],  # Python 3.11
+            ["TO_BOOL"],  # Python 3.13+
+        ]
+        for seq in need_trim_opcode_sequences:
+            seq_len = len(seq)
+            if len(restore_instrs) < seq_len:
+                continue
+            if restore_instr_names[-seq_len:] == seq:
+                restore_instrs = restore_instrs[:-seq_len]
+                restore_instr_names = restore_instr_names[:-seq_len]
 
         self.pycode_gen.extend_instrs(restore_instrs)
         nop = self.pycode_gen.add_instr("NOP")
