@@ -533,7 +533,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                           DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -584,13 +584,13 @@ void BatchNormGradFunctor(const Context &dev_ctx,
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
 
   if (Bias) {
     new_bias = bias.get();
   } else {
-    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+    new_bias = Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1352,16 +1352,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (scale_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(scale_grad->dims())),
-          0,
-          scale_grad);
-    if (bias_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(bias_grad->dims())),
-                            0,
-                            bias_grad);
+      Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
+    if (bias_grad) Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
     return;
   }
   BatchNormGradFunctor<T, Context>(dev_ctx,
@@ -1415,7 +1407,7 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   const DenseTensor *running_mean = nullptr;
   const DenseTensor *running_variance = nullptr;
@@ -1431,7 +1423,7 @@ void BatchNormDoubleGradKernel(
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
   funcs::NormDoubleGradFunctor<Context, T>(dev_ctx,
                                            data_layout,

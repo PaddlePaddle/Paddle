@@ -60,7 +60,7 @@ void send_shape_info(const Context& dev_ctx,
   DenseTensor shape_size_tensor;
   shape_size_tensor.Resize({1});
   dev_ctx.Alloc(&shape_size_tensor, shape_dtype);
-  const auto& cpu_place = phi::CPUPlace();
+  const auto& cpu_place = CPUPlace();
   memory_utils::Copy(dev_ctx.GetPlace(),
                      shape_size_tensor.data(),
                      cpu_place,
@@ -131,7 +131,7 @@ DDim recv_shape_info(const Context& dev_ctx,
   cpu_shape_size_tensor.Resize({1});
   dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);
 
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      cpu_shape_size_tensor.data(),
                      dev_ctx.GetPlace(),
                      shape_size_tensortensor.data(),
@@ -153,7 +153,7 @@ DDim recv_shape_info(const Context& dev_ctx,
   cpu_shape_tensor.Resize({shape_size});
   dev_ctx.HostAlloc(&cpu_shape_tensor, shape_dtype);
 
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      cpu_shape_tensor.data(),
                      dev_ctx.GetPlace(),
                      shape_tensor.data(),

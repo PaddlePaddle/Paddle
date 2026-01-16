@@ -126,7 +126,7 @@ template size_t HashTensor<int8_t>(const phi::DenseTensor& in);
 
 template <>
 size_t HashTensor<float16>(const phi::DenseTensor& in) {
-  phi::DenseTensor dst_tensor;
+  DenseTensor dst_tensor;
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   dst_tensor.Resize(in.dims());
@@ -145,7 +145,7 @@ void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
                            phi::DenseTensor* weight_max,
                            bool transpose) {
   // Convert fp16 to fp32
-  phi::DenseTensor weight_fp32;
+  DenseTensor weight_fp32;
   CastToFp32(weight, &weight_fp32);
 
   if (transpose) {  // (k, n) -> (n, k)
@@ -166,7 +166,7 @@ void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   // Convert to fp16
-  phi::DenseTensor weight_fp16;
+  DenseTensor weight_fp16;
   CastToFp16(&weight_fp32, &weight_fp16);
   // Find max
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
@@ -198,11 +198,11 @@ void PrepareWeight(Graph* graph,
                    const std::vector<float>& weight_scales,
                    bool per_channel_quant) {
   auto weight_name = weight->Name();
-  auto* weight_tensor = scope->Var(weight_name)->GetMutable<phi::DenseTensor>();
-  phi::DenseTensor dst_weight_tensor;
+  auto* weight_tensor = scope->Var(weight_name)->GetMutable<DenseTensor>();
+  DenseTensor dst_weight_tensor;
   Assign(*weight_tensor, &dst_weight_tensor);
-  phi::DenseTensor dst_weight_max_tensor;
-  phi::DenseTensor dst_scale_max_tensor;
+  DenseTensor dst_weight_max_tensor;
+  DenseTensor dst_scale_max_tensor;
   ConvertWeightWrapper<Tcpu, Txpu>(&dst_weight_tensor,
                                    &dst_weight_max_tensor,
                                    &dst_scale_max_tensor,
@@ -250,9 +250,9 @@ void PrepareWeight(Graph* graph,
     if (dst_weight_var == nullptr) {
       // Create dst_weight/dst_weight_max variable/tensor
       Assign(dst_weight_tensor,
-             scope->Var(dst_weight_name)->GetMutable<phi::DenseTensor>());
+             scope->Var(dst_weight_name)->GetMutable<DenseTensor>());
       Assign(dst_weight_max_tensor,
-             scope->Var(dst_weight_max_name)->GetMutable<phi::DenseTensor>());
+             scope->Var(dst_weight_max_name)->GetMutable<DenseTensor>());
     } else {
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
@@ -298,7 +298,7 @@ void PrepareWeight(Graph* graph,
       auto* dst_scale_max_var = scope->FindVar(dst_scale_max_name);
       if (dst_scale_max_var == nullptr) {
         Assign(dst_scale_max_tensor,
-               scope->Var(dst_scale_max_name)->GetMutable<phi::DenseTensor>());
+               scope->Var(dst_scale_max_name)->GetMutable<DenseTensor>());
       } else {
         // Share the same variable
         PADDLE_ENFORCE_NOT_NULL(
@@ -377,12 +377,12 @@ template void PrepareWeight<int8_t, int8_t>(
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {
   auto src_name = src->Name();
-  auto* src_tensor = scope->Var(src_name)->GetMutable<phi::DenseTensor>();
+  auto* src_tensor = scope->Var(src_name)->GetMutable<DenseTensor>();
   if (src_tensor->dtype() == phi::DataType::FLOAT32) {
     *dst = src;
   }
 
-  phi::DenseTensor dst_tensor;
+  DenseTensor dst_tensor;
   CastToFp32(src_tensor, &dst_tensor);
   size_t dst_hash = HashTensor<float>(dst_tensor);
   std::string pre_name = GetPrefixWithoutHash(src_name);
@@ -400,7 +400,7 @@ void PrepareBias(
     block_dst_desc->SetPersistable(dst_desc.Persistable());
     block_dst_desc->SetShape(dst_desc.GetShape());
     block_dst_desc->SetDataType(dst_desc.GetDataType());
-    Assign(dst_tensor, scope->Var(dst_name)->GetMutable<phi::DenseTensor>());
+    Assign(dst_tensor, scope->Var(dst_name)->GetMutable<DenseTensor>());
   }
 }
 

@@ -850,6 +850,33 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
 }
 
 template <typename T>
+void linear_v2_double_grad(const Tensor& input,
+                           const Tensor& weight,
+                           const Tensor& bias,
+                           const Tensor& grad_out,
+                           const paddle::optional<Tensor>& grad_input_grad,
+                           const paddle::optional<Tensor>& grad_weight_grad,
+                           const paddle::optional<Tensor>& grad_bias_grad,
+                           Tensor* input_grad,
+                           Tensor* weight_grad,
+                           Tensor* bias_grad,
+                           Tensor* grad_out_grad) {
+  matmul_double_grad<T>(input,
+                        weight,
+                        grad_out,
+                        grad_input_grad,
+                        grad_weight_grad,
+                        false,
+                        false,
+                        input_grad,
+                        weight_grad,
+                        grad_out_grad);
+  if (bias_grad) {
+    add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+  }
+}
+
+template <typename T>
 void subtract_double_grad(const Tensor& y,
                           const Tensor& grad_out,
                           const paddle::optional<Tensor>& grad_x_grad,

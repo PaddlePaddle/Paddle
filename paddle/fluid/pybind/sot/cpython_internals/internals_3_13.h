@@ -14,9 +14,13 @@
 
 #pragma once
 
+#include "paddle/fluid/pybind/sot/macros.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if (PY_3_13_PLUS && !PY_3_14_PLUS)
 
 #include <Python.h>
 
@@ -32,6 +36,8 @@ _PyInterpreterFrame *Internal_PyThreadState_PushFrame(PyThreadState *tstate,
                                                       size_t size);
 
 PyObject *get_framelocals_mapping(_PyInterpreterFrame *frame);
+
+#endif  // (PY_3_13_PLUS && !PY_3_14_PLUS)
 
 #ifdef __cplusplus
 }

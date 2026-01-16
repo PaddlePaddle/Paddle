@@ -523,7 +523,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
     auto cast_tofp32_func = [&](const std::string& input_name) {
       auto names = fused_mt->Op()->Input(input_name);
       for (auto name : names) {
-        auto* curr_tensor = scope->Var(name)->GetMutable<phi::DenseTensor>();
+        auto* curr_tensor = scope->Var(name)->GetMutable<DenseTensor>();
         PADDLE_ENFORCE_NE(
             curr_tensor,
             nullptr,
@@ -546,7 +546,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
     // Generate max_buffer: per_tensor_max and per_batch_max for kv_cache
     int layer_num = fused_mt->Op()->Input("QKVW").size();
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-    phi::DenseTensor max_buffer_tensor;
+    DenseTensor max_buffer_tensor;
     max_buffer_tensor.set_type(phi::DataType::FLOAT32);
     int max_buffer_len = max_ptr_size * layer_num * 2;
     max_buffer_tensor.Resize({max_buffer_len});
@@ -577,7 +577,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
       auto* max_buffer_var = scope->FindVar(max_buffer_name);
       if (max_buffer_var == nullptr) {
         Assign(max_buffer_tensor,
-               scope->Var(max_buffer_name)->GetMutable<phi::DenseTensor>());
+               scope->Var(max_buffer_name)->GetMutable<DenseTensor>());
       }
     }
 
