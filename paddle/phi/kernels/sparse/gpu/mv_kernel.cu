@@ -26,7 +26,7 @@ void MvKernelImpl(const Context& dev_ctx,
                   const TensorType& x,
                   const DenseTensor& vec,
                   DenseTensor* out) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   std::vector<int64_t> x_dim = common::vectorize(x.dims());
   std::vector<int64_t> vec_dim = common::vectorize(vec.dims());
   auto x_ndims = x_dim.size();
