@@ -33,7 +33,6 @@ from paddle.utils.decorator_utils import (
     index_add_decorator,
     param_one_alias,
     param_two_alias,
-    param_two_alias_one_default,
     reshape_decorator,
     tensor_split_decorator,
     view_decorator,
@@ -7806,8 +7805,12 @@ def unflatten(
     return x
 
 
-@param_two_alias_one_default(
-    ["x", "input"], ["shape", "size"], ["offset", 'storage_offset']
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "shape": ["size"],
+        "offset": ["storage_offset"],
+    }
 )
 @dygraph_only
 def as_strided(

@@ -114,10 +114,10 @@ class TestAsStridedAlias(unittest.TestCase):
                 )
 
                 # 3. Test alias: size -> shape
-                out_dims = paddle.as_strided(
+                out_size = paddle.as_strided(
                     x=x, size=shape, stride=stride, offset=offset
                 )
-                np.testing.assert_array_equal(out_ref.numpy(), out_dims.numpy())
+                np.testing.assert_array_equal(out_ref.numpy(), out_size.numpy())
 
                 # 4. Test alias: storage_offset -> offset
                 out_offset = paddle.as_strided(
