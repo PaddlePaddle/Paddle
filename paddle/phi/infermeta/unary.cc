@@ -2317,23 +2317,6 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     }
   }
 
-  PADDLE_ENFORCE_GT(output_outer_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in output outer dim."));
-  PADDLE_ENFORCE_GT(output_inner_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in output inner dim."));
-  PADDLE_ENFORCE_GT(scale_outer_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in scale outer dim."));
-  PADDLE_ENFORCE_GT(scale_inner_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "invalid shape encountered in scale inner dim."));
-
   if (X && out && scale) {
     if (!return_transpose_only) {
       out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
