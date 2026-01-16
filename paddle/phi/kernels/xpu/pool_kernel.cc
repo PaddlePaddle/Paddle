@@ -36,11 +36,9 @@ void Pool2dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -181,11 +179,9 @@ void Pool3dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || pooling_type == "avg") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -326,12 +322,10 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               DenseTensor* mask) {
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<int, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<int, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }

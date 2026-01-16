@@ -1,6 +1,7 @@
 if(NOT WIN32)
   if(WITH_GPU)
     nv_test(compat_basic_test SRCS compat_basic_test.cc)
+    nv_test(compat_squeeze_test SRCS compat_squeeze_test.cc)
     cc_test(torch_library_test SRCS torch_library_test.cc)
   endif()
 endif()
