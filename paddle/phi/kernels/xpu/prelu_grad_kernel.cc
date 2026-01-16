@@ -31,11 +31,7 @@ void PReluGradKernel(const Context& dev_ctx,
   if (x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (alpha_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(alpha_grad->dims())),
-          0,
-          alpha_grad);
+      Full<T, Context>(dev_ctx, alpha_grad->dims(), 0, alpha_grad);
     }
   }
   const T* x_ptr = x.data<T>();
@@ -51,7 +47,7 @@ void PReluGradKernel(const Context& dev_ctx,
   if (x_rank == 0) {
     x_shape = std::vector<int64_t>({1});
   } else {
-    x_shape = common::vectorize<int64_t>(x_dim);
+    x_shape = vectorize<int64_t>(x_dim);
   }
 
   // mode = 0: channel_nchw, xshape = {n, c, h, w}, alpha_shape = {c}

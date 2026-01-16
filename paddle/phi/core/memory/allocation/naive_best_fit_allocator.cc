@@ -58,8 +58,8 @@ template <typename Place>
 size_t Used(const Place &place);
 
 struct Usage {
-  size_t operator()(const phi::CPUPlace &cpu) const;
-  size_t operator()(const phi::GPUPlace &gpu) const;
+  size_t operator()(const CPUPlace &cpu) const;
+  size_t operator()(const GPUPlace &gpu) const;
   size_t operator()(const phi::GPUPinnedPlace &cuda_pinned) const;
   size_t operator()(const phi::XPUPlace &xpu) const;
   size_t operator()(const phi::XPUPinnedPlace &xpu_pinned) const;
@@ -86,7 +86,7 @@ BuddyAllocator *GetCPUBuddyAllocator() {
 }
 
 template <>
-void *Alloc<phi::CPUPlace>(const phi::CPUPlace &place, size_t size) {
+void *Alloc<CPUPlace>(const CPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
@@ -97,18 +97,18 @@ void *Alloc<phi::CPUPlace>(const phi::CPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<phi::CPUPlace>(const phi::CPUPlace &place, void *p, size_t size) {
+void Free<CPUPlace>(const CPUPlace &place, void *p, size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << phi::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 
 template <>
-uint64_t Release<phi::CPUPlace>(const phi::CPUPlace &place) {
+uint64_t Release<CPUPlace>(const CPUPlace &place) {
   return GetCPUBuddyAllocator()->Release();
 }
 
 template <>
-size_t Used<phi::CPUPlace>(const phi::CPUPlace &place) {
+size_t Used<CPUPlace>(const CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
@@ -278,7 +278,7 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
 #endif
 
 template <>
-size_t Used<phi::GPUPlace>(const phi::GPUPlace &place) {
+size_t Used<GPUPlace>(const GPUPlace &place) {
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Used();
 #else
@@ -288,7 +288,7 @@ size_t Used<phi::GPUPlace>(const phi::GPUPlace &place) {
 }
 
 template <>
-void *Alloc<phi::GPUPlace>(const phi::GPUPlace &place, size_t size) {
+void *Alloc<GPUPlace>(const GPUPlace &place, size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
@@ -305,7 +305,7 @@ void *Alloc<phi::GPUPlace>(const phi::GPUPlace &place, size_t size) {
         string::HumanReadableSize(total),
         string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
         string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
-        string::HumanReadableSize(Used<phi::GPUPlace>(place))));
+        string::HumanReadableSize(Used<GPUPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
 #ifdef PADDLE_WITH_HIP
@@ -323,7 +323,7 @@ void *Alloc<phi::GPUPlace>(const phi::GPUPlace &place, size_t size) {
 }
 
 template <>
-void Free<phi::GPUPlace>(const phi::GPUPlace &place, void *p, size_t size) {
+void Free<GPUPlace>(const GPUPlace &place, void *p, size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   GetGPUBuddyAllocator(place.device)->Free(p);
 #else
@@ -333,7 +333,7 @@ void Free<phi::GPUPlace>(const phi::GPUPlace &place, void *p, size_t size) {
 }
 
 template <>
-uint64_t Release<phi::GPUPlace>(const phi::GPUPlace &place) {
+uint64_t Release<GPUPlace>(const GPUPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return GetGPUBuddyAllocator(place.device)->Release();
 #else
@@ -662,9 +662,9 @@ struct ReleaseVisitor {
   }
 };
 
-size_t Usage::operator()(const phi::CPUPlace &cpu) const { return Used(cpu); }
+size_t Usage::operator()(const CPUPlace &cpu) const { return Used(cpu); }
 
-size_t Usage::operator()(const phi::GPUPlace &gpu) const {
+size_t Usage::operator()(const GPUPlace &gpu) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return Used(gpu);
 #else

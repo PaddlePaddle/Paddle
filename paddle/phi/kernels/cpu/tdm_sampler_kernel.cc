@@ -56,7 +56,7 @@ void TDMSamplerInner(const Context &dev_ctx,
   }
   VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
-  auto travel_dim = common::vectorize<int>(travel_dense_tensor.dims());
+  auto travel_dim = vectorize<int>(travel_dense_tensor.dims());
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data

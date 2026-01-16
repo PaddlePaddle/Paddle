@@ -37,33 +37,33 @@ namespace phi {
   const int D = wh_dims[0];              \
   const int D4 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                             \
-  const T *x_data = x->data<T>();                                      \
-  const T *wx_data = wx->data<T>();                                    \
-  const T *wh_data = wh->data<T>();                                    \
-  /* diagonal weight*/                                                 \
-  const T *wp_data = bias->data<T>() + D4;                             \
-  /* for peephole only*/                                               \
-  T *checked_cell_data = nullptr;                                      \
-  if (use_peepholes) {                                                 \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                   \
-    checked_cell_data = dev_ctx.template Alloc<T>(checked_cell);       \
-  }                                                                    \
-  const phi::jit::lstm_attr_t attr(                                    \
-      D,                                                               \
-      phi::jit::to_kerneltype(gate_activation),                        \
-      phi::jit::to_kerneltype(candidate_activation),                   \
-      phi::jit::to_kerneltype(cell_activation),                        \
-      use_peepholes);                                                  \
-  phi::jit::lstm_t one_step;                                           \
-  one_step.wp = wp_data;                                               \
-  one_step.checked = checked_cell_data;                                \
-  auto ComputeC1H1 = phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>, \
-                                           phi::CPUPlace>::Cache()     \
-                         .At(attr);                                    \
-  auto ComputeCtHt = phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>, \
-                                           phi::CPUPlace>::Cache()     \
-                         .At(attr)
+#define INIT_OTHER_DEFINES                                                     \
+  const T *x_data = x->data<T>();                                              \
+  const T *wx_data = wx->data<T>();                                            \
+  const T *wh_data = wh->data<T>();                                            \
+  /* diagonal weight*/                                                         \
+  const T *wp_data = bias->data<T>() + D4;                                     \
+  /* for peephole only*/                                                       \
+  T *checked_cell_data = nullptr;                                              \
+  if (use_peepholes) {                                                         \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
+    checked_cell_data = dev_ctx.template Alloc<T>(checked_cell);               \
+  }                                                                            \
+  const phi::jit::lstm_attr_t attr(                                            \
+      D,                                                                       \
+      phi::jit::to_kerneltype(gate_activation),                                \
+      phi::jit::to_kerneltype(candidate_activation),                           \
+      phi::jit::to_kerneltype(cell_activation),                                \
+      use_peepholes);                                                          \
+  phi::jit::lstm_t one_step;                                                   \
+  one_step.wp = wp_data;                                                       \
+  one_step.checked = checked_cell_data;                                        \
+  auto ComputeC1H1 =                                                           \
+      phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>, CPUPlace>::Cache().At( \
+          attr);                                                               \
+  auto ComputeCtHt =                                                           \
+      phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>, CPUPlace>::Cache().At( \
+          attr)
 
 // Wh GEMM
 #define GEMM_WH_ADDON(bs, prev, out) \

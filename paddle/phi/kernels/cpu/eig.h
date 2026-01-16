@@ -437,7 +437,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
     gL_maybe_zero = gL.get();
   } else {
     gL_maybe_zero =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(L.dims()), T(0));
+        Fill<T, Context>(dev_ctx, vectorize<int64_t>(L.dims()), T(0));
   }
 
   DenseTensor gV_maybe_zero;
@@ -445,7 +445,7 @@ void ComputeBackwardForComplexInput(const DenseTensor& L,
     gV_maybe_zero = gV.get();
   } else {
     gV_maybe_zero =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
+        Fill<T, Context>(dev_ctx, vectorize<int64_t>(V.dims()), T(0));
   }
 
   DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);

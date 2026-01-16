@@ -2287,6 +2287,49 @@ bool FusedGemmEpilogueOpInferSymbolicShape(
   return true;
 }
 
+bool LinearV2OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape_or_data.shape();
+
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &y_dims = y_shape_or_data.shape();
+
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const auto &bias_dims = bias_shape_or_data.shape();
+
+  size_t x_rank = x_dims.size();
+  size_t y_rank = y_dims.size();
+
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(x_rank);
+
+  for (size_t i = 0; i + 2 < x_rank; ++i) {
+    out_shape.emplace_back(x_dims[i]);
+  }
+
+  symbol::DimExpr out_M = x_dims[x_rank - 2];
+  symbol::DimExpr out_N = y_dims[y_rank - 1];
+
+  out_shape.emplace_back(out_M);
+  out_shape.emplace_back(out_N);
+
+  symbol::DimExpr x_K = x_dims[x_rank - 1];
+  symbol::DimExpr y_K = y_dims[y_rank - 2];
+
+  infer_context->AddEqualCstr(x_K, y_K);
+  // bias_dims[0] equal to out_N
+  infer_context->AddEqualCstr(out_N, bias_dims[0]);
+
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        ShapeOrData{TensorExprs(out_shape)});
+
+  return true;
+}
+
 bool FusedMultiTransformerOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =

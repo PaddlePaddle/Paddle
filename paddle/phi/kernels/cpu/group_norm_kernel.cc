@@ -45,16 +45,14 @@ void GroupNormKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(y);
     // mean, var are intermediate in ops yaml config.
     if (mean) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+      Full<T, Context>(dev_ctx, mean->dims(), 0, mean);
     }
     if (var) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+      Full<T, Context>(dev_ctx, var->dims(), 0, var);
     }
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

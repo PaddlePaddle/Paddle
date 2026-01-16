@@ -22,7 +22,7 @@ namespace dialect {
 pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
 
 TEST_API std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
-    pir::Program* prog, phi::Place place = phi::CPUPlace());
+    pir::Program* prog, phi::Place place = CPUPlace());
 
 void ProcessBlock(
     const phi::Place& place,

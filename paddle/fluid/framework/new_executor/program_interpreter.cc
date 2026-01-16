@@ -270,12 +270,11 @@ void ProgramInterpreter::Build(
   }
 }
 
-FetchList ProgramInterpreter::Run(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch,
-    bool enable_job_schedule_profiler,
-    bool switch_stream) {
+FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
+                                  const std::vector<DenseTensor>& feed_tensors,
+                                  bool need_fetch,
+                                  bool enable_job_schedule_profiler,
+                                  bool switch_stream) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
 
   SetDeviceId(place_);
@@ -541,8 +540,8 @@ void ProgramInterpreter::BuildInplace() {
             auto invar = local_scope->FindVar(invar_name);
             auto outvar = local_scope->FindVar(outvar_name);
 
-            if (invar && outvar && invar->IsType<phi::DenseTensor>() &&
-                outvar->IsType<phi::DenseTensor>() &&
+            if (invar && outvar && invar->IsType<DenseTensor>() &&
+                outvar->IsType<DenseTensor>() &&
                 skip_inplace_outvars.find(outvar_name) ==
                     skip_inplace_outvars.end()) {
               instr.AddInplace(invar, outvar);
@@ -678,7 +677,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
   }
 }
 
-// At the end of each step, the holder of phi::DenseTensor in phi::TensorArray
+// At the end of each step, the holder of DenseTensor in phi::TensorArray
 // is null. Clear these Tensors and leave phi::TensorArray empty, otherwise an
 // exception will occur in the next step
 void ProgramInterpreter::ClearDenseTensorArrayInLocalScope() {
@@ -823,7 +822,7 @@ void ProgramInterpreter::Convert(
           HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
       paddle::framework::Variable* var = inner_scope->FindVar(
           var_scope_.GetNameById(static_cast<int>(var_id)));
-      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
+      if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
@@ -916,8 +915,8 @@ void ProgramInterpreter::BuildSkipShareLoDInfo() {
     bool can_skip_lod = true;
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
-        if (var->IsType<phi::DenseTensor>()) {
-          if (!var->Get<phi::DenseTensor>().lod().empty()) {
+        if (var->IsType<DenseTensor>()) {
+          if (!var->Get<DenseTensor>().lod().empty()) {
             can_skip_lod = false;
             break;
           }
@@ -1131,8 +1130,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       auto* var = local_scope->FindVar(vname);
       if (var == nullptr) continue;
       const phi::DenseTensor* tensor{nullptr};
-      if (var->IsType<phi::DenseTensor>()) {
-        tensor = &var->Get<phi::DenseTensor>();
+      if (var->IsType<DenseTensor>()) {
+        tensor = &var->Get<DenseTensor>();
       } else {
         VLOG(6) << vname << " is not DenseTensor";
         continue;
@@ -1147,8 +1146,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       auto* var = local_scope->FindVar(vname);
       if (var == nullptr) continue;
       const phi::DenseTensor* tensor{nullptr};
-      if (var->IsType<phi::DenseTensor>()) {
-        tensor = &var->Get<phi::DenseTensor>();
+      if (var->IsType<DenseTensor>()) {
+        tensor = &var->Get<DenseTensor>();
       } else {
         VLOG(6) << vname << "  is not DenseTensor";
         continue;
@@ -1490,8 +1489,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       continue;
     }
 
-    if (var->IsType<phi::DenseTensor>()) {
-      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()), instr.stream_);
+    if (var->IsType<DenseTensor>()) {
+      TensorRecordStream(*(var->GetMutable<DenseTensor>()), instr.stream_);
     } else if (
         var->IsType<
             operators::reader::
@@ -1555,11 +1554,10 @@ void ProgramInterpreter::CheckGC(const Instruction& instr) {
   }
 }
 
-void ProgramInterpreter::Prepare(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors,
-    bool prepare_feed,
-    bool switch_stream) {
+void ProgramInterpreter::Prepare(const std::vector<std::string>& feed_names,
+                                 const std::vector<DenseTensor>& feed_tensors,
+                                 bool prepare_feed,
+                                 bool switch_stream) {
   PADDLE_ENFORCE_EQ(feed_names.size(),
                     feed_tensors.size(),
                     common::errors::PreconditionNotMet(
@@ -1576,7 +1574,7 @@ void ProgramInterpreter::Prepare(
           common::errors::NotFound("Variable %s should not be nullptr.",
                                    feed_names[i]));
 
-      auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
+      auto feed_tensor = feed_var->GetMutable<DenseTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }

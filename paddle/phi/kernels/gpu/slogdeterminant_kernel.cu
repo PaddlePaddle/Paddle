@@ -212,7 +212,7 @@ template <typename T, typename Context>
 void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   // shape [*, M, M], check whether it contains 0 in '*'.
@@ -297,7 +297,7 @@ struct SlogDeterminantV2Functor {
       dev_ctx.template Alloc<T>(sign);
       if (sign->numel() > 0) {
         FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(sign->dims()),
+                               vectorize(sign->dims()),
                                static_cast<T>(1),
                                sign->dtype(),
                                sign);
@@ -305,7 +305,7 @@ struct SlogDeterminantV2Functor {
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
         FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(logdet->dims()),
+                               vectorize(logdet->dims()),
                                static_cast<phi::dtype::complex<T>>(0),
                                logdet->dtype(),
                                logdet);
@@ -448,7 +448,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
       if (sign->numel() > 0) {
         FullKernel<phi::dtype::complex<T>, Context>(
             dev_ctx,
-            common::vectorize(sign->dims()),
+            vectorize(sign->dims()),
             static_cast<phi::dtype::complex<T>>(1),
             sign->dtype(),
             sign);
@@ -456,7 +456,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
         FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(logdet->dims()),
+                               vectorize(logdet->dims()),
                                static_cast<phi::dtype::complex<T>>(0),
                                logdet->dtype(),
                                logdet);
@@ -566,7 +566,7 @@ void SlogDeterminantV2Kernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              DenseTensor* sign,
                              DenseTensor* logdet) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
   int64_t batch_count = detail::GetBatchCount(x.dims());
 

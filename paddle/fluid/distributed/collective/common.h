@@ -21,18 +21,18 @@ namespace distributed {
 
 using Place = phi::Place;
 // Get the list of devices from list of tensors
-std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors);
+std::vector<Place> GetPlaceList(const std::vector<DenseTensor>& tensors);
 // Get the deviceList String from the list of devices
 std::string GetKeyFromPlaces(const std::vector<Place>& places);
 // Get the device string from one device
 std::string GetKeyFromPlace(const Place& place);
 
-bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
+bool CheckTensorsInCudaPlace(const std::vector<DenseTensor>& tensors);
 
-bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
+bool CheckTensorsInCustomPlace(const std::vector<DenseTensor>& tensors,
                                const std::string& dev_type);
 
-bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors);
+bool CheckTensorsInXPUPlace(const std::vector<DenseTensor>& tensors);
 
 }  //  namespace distributed
 }  //  namespace paddle
