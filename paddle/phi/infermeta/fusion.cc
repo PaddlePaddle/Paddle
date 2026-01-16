@@ -866,11 +866,12 @@ void FusedActDequantInferMeta(const MetaTensor& x,
           x.dtype()));
 
   PADDLE_ENFORCE_EQ(
-      x_scale.dtype(),
-      DataType::FLOAT32,
-      common::errors::InvalidArgument(
-          "The data type of X_scale should be FLOAT32, but received %s.",
-          x_scale.dtype()));
+      x_scale.dtype() == DataType::FLOAT32 ||
+          x_scale.dtype() == DataType::INT32,
+      true,
+      common::errors::InvalidArgument("The data type of X_scale should be "
+                                      "FLOAT32 or INT32, but received %s.",
+                                      x_scale.dtype()));
 
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
@@ -892,6 +893,31 @@ void FusedActDequantInferMeta(const MetaTensor& x,
       0,
       common::errors::InvalidArgument(
           "The cols of X should be positive, but received %d.", cols));
+
+  auto scale_dims = x_scale.dims();
+  int64_t scale_cols_expected = (cols + 127) / 128;
+  if (x_scale.dtype() == DataType::INT32) {
+    scale_cols_expected = (scale_cols_expected + 3) / 4;
+  }
+
+  // Check scale shape assuming it is [rows, scale_cols] or flattened
+  if (scale_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(scale_dims[0],
+                      rows,
+                      common::errors::InvalidArgument(
+                          "The rows of X_scale should be equal to rows of X"));
+    PADDLE_ENFORCE_EQ(
+        scale_dims[1],
+        scale_cols_expected,
+        common::errors::InvalidArgument("The cols of X_scale should be %d",
+                                        scale_cols_expected));
+  } else if (scale_dims.size() == 1) {
+    PADDLE_ENFORCE_EQ(
+        scale_dims[0],
+        rows * scale_cols_expected,
+        common::errors::InvalidArgument("The numel of X_scale should be %d",
+                                        rows * scale_cols_expected));
+  }
 
   out->set_dims(x_dims);
   out->set_dtype(DataType::BFLOAT16);
@@ -1010,9 +1036,16 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                             "and must satisfy the limitations: "
                             "(num_head * dim_head == dim_embed)"));
     }
-    num_heads = y_dim[1];
-    dim_head = y_dim[2];
-    hidden_size = y_dim[3];
+    // TODO(large-tensor): num_heads, dim_head, hidden_size may exceed INT_MAX
+    int64_t num_heads_int64 = y_dim[1];
+    int64_t dim_head_int64 = y_dim[2];
+    int64_t hidden_size_int64 = y_dim[3];
+    PADDLE_ENFORCE_LE_INT_MAX(num_heads_int64, "num_heads");
+    PADDLE_ENFORCE_LE_INT_MAX(dim_head_int64, "dim_head");
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_int64, "hidden_size");
+    num_heads = static_cast<int>(num_heads_int64);
+    dim_head = static_cast<int>(dim_head_int64);
+    hidden_size = static_cast<int>(hidden_size_int64);
   }
 
   PADDLE_ENFORCE_EQ(
