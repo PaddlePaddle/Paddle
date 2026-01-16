@@ -294,5 +294,71 @@ class TestRandintAliasAndOut(unittest.TestCase):
             self.assertEqual(result.shape, (3, 4))
 
 
+class TestRandintOldStaticMode(unittest.TestCase):
+    """Test randint in old static graph mode (non-PIR mode).
+
+    This test specifically covers the else branch in randint:
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    This branch is only executed when:
+    1. Not in dynamic mode (in_dynamic_mode() returns False)
+    2. Not in PIR mode (in_pir_mode() returns False)
+    """
+
+    def test_out_none_old_static_mode(self):
+        """Test that 'if out is None' branch is covered in old static mode."""
+        from paddle.pir_utils import OldIrGuard
+
+        with OldIrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(main_program, startup_program):
+                # This should go through the else branch (old static mode)
+                # and trigger 'if out is None: out = helper.create_variable_for_type_inference(dtype=dtype)'
+                result1 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+                result2 = paddle.randint(high=10, shape=[2, 5], dtype='int64')
+
+                # Verify shapes are correct
+                self.assertEqual(result1.shape, (3, 4))
+                self.assertEqual(result2.shape, (2, 5))
+
+            # Execute the program to verify it works
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            outs = exe.run(main_program, fetch_list=[result1, result2])
+
+            # Verify the outputs
+            self.assertEqual(outs[0].shape, (3, 4))
+            self.assertEqual(outs[1].shape, (2, 5))
+            # Verify values are in expected range
+            self.assertTrue(np.all(outs[0] >= 0) and np.all(outs[0] < 5))
+            self.assertTrue(np.all(outs[1] >= 0) and np.all(outs[1] < 10))
+
+    def test_size_alias_old_static_mode(self):
+        """Test size alias in old static mode."""
+        from paddle.pir_utils import OldIrGuard
+
+        with OldIrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(main_program, startup_program):
+                # Test using 'size' parameter alias
+                result = paddle.randint(high=5, size=[4, 5], dtype='int32')
+                self.assertEqual(result.shape, (4, 5))
+
+            # Execute the program
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            outs = exe.run(main_program, fetch_list=[result])
+
+            self.assertEqual(outs[0].shape, (4, 5))
+            self.assertTrue(np.all(outs[0] >= 0) and np.all(outs[0] < 5))
+
+
 if __name__ == "__main__":
     unittest.main()
