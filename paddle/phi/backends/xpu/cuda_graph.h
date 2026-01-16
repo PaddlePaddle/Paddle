@@ -170,16 +170,18 @@ class CUDAGraph {
     int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
     phi::backends::xpu::XPUDeviceGuard guard(device_id);
 
-    // Create new stream
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&created_stream_));
-    stream_created_ = true;
-
     // Get current XPUContext and save original stream
     phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
-    original_stream_ = dev_ctx->stream(0);
+    XPUStream current_stream = dev_ctx->stream(0);
 
-    // Set the new stream as current stream
-    dev_ctx->SetStream(created_stream_, 0);
+    if (current_stream == nullptr) {
+      original_stream_ = current_stream;
+      // Create new stream
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&created_stream_));
+      stream_created_ = true;
+      // Set the new stream as current stream
+      dev_ctx->SetStream(created_stream_, 0);
+    }
   }
 
  public:
