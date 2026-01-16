@@ -144,7 +144,9 @@ using DataLayout = common::DataLayout;
 
 namespace phi {
 using DataLayout = common::DataLayout;
-}
+using common::DataLayoutToString;
+using common::StringToDataLayout;
+}  // namespace phi
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface

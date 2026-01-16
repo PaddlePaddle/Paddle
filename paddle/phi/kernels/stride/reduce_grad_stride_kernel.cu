@@ -129,7 +129,8 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
   std::vector<int64_t> out_dims;
   std::vector<int64_t> out_strides;
 
-  if (!FLAGS_use_stride_compute_kernel || !out_grad.dims().size() > 0) {
+  if ((!FLAGS_use_stride_compute_kernel) || !(out_grad.dims().size() > 0) ||
+      (out_grad.dtype() != x.dtype())) {
     invalid = true;
   }
 
