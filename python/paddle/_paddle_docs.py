@@ -142,6 +142,60 @@ def acosh(
 )
 
 add_doc_and_signature(
+    "addmm",
+    r"""
+    Perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Tensor): The input Tensor to be added to the final result.
+        x (Tensor): The first input Tensor for matrix multiplication.
+        y (Tensor): The second input Tensor for matrix multiplication.
+        beta (float, optional): Coefficient of $input$, default is 1.
+        alpha (float, optional): Coefficient of $x*y$, default is 1.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor of addmm.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2])
+            >>> y = paddle.ones([2, 2])
+            >>> input = paddle.ones([2, 2])
+
+            >>> out = paddle.addmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[10.50000000, 10.50000000],
+             [10.50000000, 10.50000000]])
+""",
+    """
+def addmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "sinh",
     r"""
     Sinh Activation Operator.

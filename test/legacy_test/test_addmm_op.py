@@ -25,6 +25,7 @@ from op_test import (
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.framework import in_pir_mode
 
 
 class TestAddMMOp(OpTest):
@@ -158,7 +159,9 @@ class TestAddMMOpError(unittest.TestCase):
             x2 = base.create_lod_tensor(
                 np.array([[-1, -1], [-1, -1]]), [[2]], base.CPUPlace()
             )
-            self.assertRaises(TypeError, paddle.addmm, input, x1, x2)
+            self.assertRaises(
+                (TypeError, ValueError), paddle.addmm, input, x1, x2
+            )
 
             # The input dtype of mul_op must be float32 or float64.
             input = paddle.static.data(
@@ -515,6 +518,152 @@ class TestAddMMAPI(unittest.TestCase):
             numpy_output, paddle_output.numpy(), rtol=1e-05
         )
 
+        paddle.enable_static()
+
+    def test_api_out(self):
+        if in_pir_mode():
+            self.skipTest("pir do not support out parameter temporarily")
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        out = paddle.zeros(shape=[2, 2], dtype='float32')
+        paddle_output = paddle.tensor.addmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha, out=out
+        )
+        numpy_output = data_beta * data_input + data_alpha * np.dot(
+            data_x, data_y
+        )
+        self.assertIs(paddle_output, out)
+        np.testing.assert_allclose(numpy_output, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_api_alias(self):
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output_original = paddle.tensor.addmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha
+        )
+        paddle_output_alias = paddle.tensor.addmm(
+            input=input, mat1=x, mat2=y, beta=data_beta, alpha=data_alpha
+        )
+        np.testing.assert_allclose(
+            paddle_output_original.numpy(),
+            paddle_output_alias.numpy(),
+            rtol=1e-05,
+        )
+        paddle.enable_static()
+
+    def test_api_out_dtype(self):
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output = paddle.tensor.addmm(
+            input=input,
+            x=x,
+            y=y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype='float64',
+        )
+        numpy_output = data_beta * data_input + data_alpha * np.dot(
+            data_x, data_y
+        )
+        np.testing.assert_allclose(
+            numpy_output, paddle_output.numpy(), rtol=1e-05
+        )
+        paddle_output_none = paddle.tensor.addmm(
+            input=input,
+            x=x,
+            y=y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype=None,
+        )
+        self.assertEqual(paddle_output_none.dtype, paddle.float32)
+        paddle.enable_static()
+
+    def test_api_out_dtype_fp16(self):
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
+            self.skipTest("only support cuda or custom_device")
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("float16 is not supported")
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+        paddle.disable_static()
+        paddle.set_device('gpu')
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output = paddle.tensor.addmm(
+            input=input,
+            x=x,
+            y=y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype='float16',
+        )
+        numpy_output = data_beta * data_input + data_alpha * np.dot(
+            data_x, data_y
+        )
+        np.testing.assert_allclose(
+            numpy_output, paddle_output.numpy(), rtol=1e-02
+        )
+        paddle.enable_static()
+
+    def test_api_alias1(self):
+        data_x = np.ones((2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        paddle_output_original = paddle.addmm(
+            input=input.clone(), x=x, y=y, beta=data_beta, alpha=data_alpha
+        )
+        paddle_output_alias = input.addmm(
+            input=input.clone(),
+            mat1=x,
+            mat2=y,
+            beta=data_beta,
+            alpha=data_alpha,
+        )
+        np.testing.assert_allclose(
+            paddle_output_original.numpy(),
+            paddle_output_alias.numpy(),
+            rtol=1e-05,
+        )
         paddle.enable_static()
 
 

@@ -96,6 +96,7 @@ void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& y,
                     float beta,
                     float alpha,
+                    phi::DataType out_dtype,
                     MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -129,7 +130,52 @@ void AddmmInferMeta(const MetaTensor& input,
       errors::InvalidArgument("The input tensor y's dimension must be 2. "
                               "But received y's dimension = [%d].",
                               ndim_y));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      y_dims[0],
+      errors::InvalidArgument("The dimension 0 of x must be equal to the "
+                              "dimension 0 of y. "
+                              "But received x's dimension 0 = [%d], y's "
+                              "dimension 0 = [%d].",
+                              x_dims[0],
+                              y_dims[0]));
 
+  if (ndim_input == 2) {
+    PADDLE_ENFORCE_EQ(
+        input_dims[0] == x_dims[0] || input_dims[0] == 1,
+        true,
+        errors::InvalidArgument("The dimension 0 of input must be equal to "
+                                "the dimension 0 of x when "
+                                "input is 2-D tensor. "
+                                "If not, the dimension 0 of input must be 1. "
+                                "But received input's dimension 0 = [%d], "
+                                "x's dimension 0 = [%d].",
+                                input_dims[0],
+                                x_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        input_dims[1] == y_dims[1] || input_dims[1] == 1,
+        true,
+        errors::InvalidArgument("The dimension 1 of input must be equal to "
+                                "the dimension 1 of y when "
+                                "input is 2-D tensor. "
+                                "If not, the dimension 1 of input must be 1. "
+                                "But received input's dimension 1 = [%d], "
+                                "y's dimension 1 = [%d].",
+                                input_dims[1],
+                                y_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        input_dims[0] == y_dims[1] || input_dims[0] == 1,
+        true,
+        errors::InvalidArgument("The dimension 0 of input must be equal to "
+                                "the dimension 1 of y when "
+                                "input is 1-D tensor. "
+                                "If not, the dimension 0 of input must be 1. "
+                                "But received input's dimension 0 = [%d], "
+                                "y's dimension 1 = [%d].",
+                                input_dims[0],
+                                y_dims[1]));
+  }
   std::vector<int64_t> output_dims;
   output_dims.push_back(x_dims[0]);
   output_dims.push_back(y_dims[1]);
@@ -137,6 +183,11 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dims(common::make_ddim(output_dims));
   out->share_lod(input);
   out->set_dtype(input.dtype());
+  if (out_dtype != phi::DataType::UNDEFINED) {
+    out->set_dtype(out_dtype);
+  } else {
+    out->set_dtype(input.dtype());
+  }
 }
 
 void BaddbmmInferMeta(const MetaTensor& input,
