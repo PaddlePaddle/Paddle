@@ -661,18 +661,17 @@ std::vector<DenseTensor> GetSplitTensor(DenseTensor* input) {
 }
 
 template <typename T, typename Context>
-void SparseAttentionCUDAKernel(
-    const Context& dev_ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& offset,
-    const DenseTensor& columns,
-    const paddle::optional<DenseTensor>& key_padding_mask,
-    const paddle::optional<DenseTensor>& attn_mask,
-    DenseTensor* out,
-    DenseTensor* sparse_dot_sdd,
-    DenseTensor* softmax) {
+void SparseAttentionCUDAKernel(const Context& dev_ctx,
+                               const DenseTensor& q,
+                               const DenseTensor& k,
+                               const DenseTensor& v,
+                               const DenseTensor& offset,
+                               const DenseTensor& columns,
+                               const optional<DenseTensor>& key_padding_mask,
+                               const optional<DenseTensor>& attn_mask,
+                               DenseTensor* out,
+                               DenseTensor* sparse_dot_sdd,
+                               DenseTensor* softmax) {
 #if defined(PADDLE_WITH_CUDA)
   auto query = q;
   auto key = k;
