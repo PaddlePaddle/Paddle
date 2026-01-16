@@ -289,13 +289,3 @@ PADDLE_API phi::XPUPlace DefaultXPUPlace();
 PADDLE_API phi::CustomPlace DefaultCustomPlace();
 
 }  // namespace paddle
-
-namespace pir {
-using AllocationType = phi::AllocationType;
-using Place = phi::Place;
-using CPUPlace = phi::CPUPlace;
-using GPUPlace = phi::GPUPlace;
-using GPUPinnedPlace = phi::GPUPinnedPlace;
-using XPUPlace = phi::XPUPlace;
-using XPUPinnedPlace = phi::XPUPinnedPlace;
-}  // namespace pir

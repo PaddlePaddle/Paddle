@@ -46,8 +46,8 @@ std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(Operation *op) {
 
 template <typename T>
 Place GetVarPlace(const paddle::framework::Variable *var,
-                  const Place &exe_place) {
-  Place place;
+                  const phi::Place &exe_place) {
+  phi::Place place;
   auto &tensor = var->Get<T>();
   if (tensor.has_allocation()) {
     place = tensor.place();
@@ -61,7 +61,7 @@ class RemoveShadowFeedPattern : public OpRewritePattern<PhiKernelOp> {
  public:
   explicit RemoveShadowFeedPattern(IrContext *context,
                                    const Block *block,
-                                   const Place &place,
+                                   const phi::Place &place,
                                    const paddle::framework::Scope *scope)
       : OpRewritePattern<PhiKernelOp>::OpRewritePattern(context),
         place_(place),
@@ -95,7 +95,7 @@ class RemoveShadowFeedPattern : public OpRewritePattern<PhiKernelOp> {
       if (!var) {
         return false;
       }
-      Place var_place, dst_place;
+      phi::Place var_place, dst_place;
       if (var->IsType<phi::DenseTensor>()) {
         var_place = GetVarPlace<phi::DenseTensor>(var, place_);
       } else if (var->IsType<phi::SelectedRows>()) {
@@ -160,7 +160,7 @@ class RemoveShadowFeedPattern : public OpRewritePattern<PhiKernelOp> {
   }
 
  private:
-  const Place place_;
+  const phi::Place place_;
   const paddle::framework::Scope *scope_;
   std::unordered_map<Value, std::string> kwargs_map_;
 };
@@ -215,7 +215,7 @@ class RemoveShadowFeedPass : public PatternRewritePass {
               "When using RemoveShadowFeedPass, scope attribute is required!"
               "Use Set method to set the scope attribute."));
       auto block = &Get<const Block>("top_block");
-      auto &place = Get<const Place>(Pass::kPlaceAttr);
+      auto &place = Get<const phi::Place>(Pass::kPlaceAttr);
       auto scope = &Get<const paddle::framework::Scope>(Pass::kParamScopeAttr);
       PADDLE_ENFORCE_NOT_NULL(
           block, common::errors::InvalidArgument("block can not be nullptr"));
