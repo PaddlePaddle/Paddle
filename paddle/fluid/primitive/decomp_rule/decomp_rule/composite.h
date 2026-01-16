@@ -1406,7 +1406,8 @@ Tensor addmm_decomp(const Tensor& input,
                     const Tensor& x,
                     const Tensor& y,
                     const float beta,
-                    const float alpha const DataType out_dtype) {
+                    const float alpha,
+                    const DataType out_dtype) {
   Tensor x_y_mat = matmul<T>(x, y);
   return full_scalar<T>(alpha, x_y_mat.dtype()) * x_y_mat +
          full_scalar<T>(beta, input.dtype()) * input;
