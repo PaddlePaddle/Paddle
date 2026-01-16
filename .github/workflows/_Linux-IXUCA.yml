@@ -30,16 +30,89 @@ jobs:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   test:
-    name: Test
+    name: Build and Test
     needs: check-bypass
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: test2
 
     steps:
+      - name: Check approval
+        id: check-approval
+        run: |
+          set -euo pipefail
+
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+
+          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
+
+          echo "Authorized reviewers: ${AUTHORIZED_REVIEWERS[*]}"
+          echo "Repository: ${{ github.repository }}"
+          echo "PR number: ${{ github.event.pull_request.number }}"
+
+          response=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
+
+          echo "Response length: ${#response}"
+
+          can_skip=$(python3 -c '
+          import json, sys
+
+          def debug(msg):
+              print(msg, file=sys.stderr)
+
+          debug("=== Review Check Debug Info ===")
+          debug(f"Authorized reviewers: {sys.argv[1:]}")
+          AUTHORIZED = set(sys.argv[1:])
+
+          try:
+              input_data = sys.stdin.read()
+              debug(f"Raw input data length: {len(input_data)}")
+              data = json.loads(input_data)
+              debug(f"Parsed {len(data)} reviews")
+          except Exception as e:
+              debug(f"JSON parse error: {str(e)}")
+              print("false")
+              sys.exit(0)
+
+          latest_state = {}
+          debug("\n=== Review States ===")
+          for r in data:
+              user = r.get("user", {}).get("login")
+              if not user:
+                  continue
+              state = r.get("state")
+              latest_state[user] = state
+              commit_id = r.get("commit_id") or ""
+              debug(f"- {user}: {state} (commit: {commit_id[:8]})")
+
+          debug("\n=== Final Check ===")
+          for user, state in latest_state.items():
+              if user in AUTHORIZED and state == "APPROVED":
+                  debug(f"Found APPROVED review from authorized user: {user}")
+                  print("true")
+                  sys.exit(0)
+
+          debug("No APPROVED review found from authorized users")
+          print("false")
+          ' "${AUTHORIZED_REVIEWERS[@]}" <<< "$response")
+
+          echo "can-skip=$can_skip" >> "$GITHUB_OUTPUT"
+
+          if [ "$can_skip" = "true" ]; then
+            echo "Found valid approval from authorized reviewer, skipping IXUCA CI"
+          else
+            echo "No valid approval found, running full CI"
+          fi
+
       - name: Download paddle.tar.gz and update test branch
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker run -i --rm \
+          --network host \
           -v ${{ github.workspace }}:/paddle \
           -e PR_ID \
           -e COMMIT_ID \
@@ -56,21 +129,16 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           git config pull.rebase false
           git checkout test
-          echo "Pull upstream develop"
-          # source ${{ github.workspace }}/../../../proxy
-          # bash ci/git_pull.sh $BRANCH
 
       - name: Determine the runner
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          # source ${{ github.workspace }}/Paddle/ci/utils.sh
-          # determine_npu_runner ${runner_name}
-          # echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
 
       - name: Clone PaddleCustomDevice repository
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
-          # source ~/.bashrc
           wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
           tar -zxf PaddleCustomDevice-develop.tar.gz
           mv PaddleCustomDevice-develop PaddleCustomDevice
@@ -80,6 +148,7 @@ jobs:
           git commit -m "add Paddle to nightly"
 
       - name: Check docker image and run container
+        if: steps.check-approval.outputs.can-skip != 'true'
         env:
           PADDLE_VERSION: 0.0.0
           WITH_COVERAGE: "OFF"
@@ -89,23 +158,9 @@ jobs:
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PYTHON_VERSION: 3.9
           no_proxy: bcebos.com
-          # USE_910B: 1
-          # FLAGS_set_to_1d: "False"
-          # NVIDIA_TF32_OVERRIDE: 0
-          # paddle_submodule: "ON"
-          # MC2: 1
-          # HCCL_OP_BASE_FFTS_MODE_ENABLE: "TRUE"
-          # PADDLE_XCCL_BACKEND: npu
-          # HCCL_SOCKET_IFNAME: =xgbe0
-          # FLAGS_eager_communication_connection: 1
-          # FLAGS_use_stride_kernel: 0
-          # FLAGS_allocator_strategy: naive_best_fit
-          # FLAGS_npu_storage_format: 0
-          # TEST_IMPORTANT: "ON"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          # home_dir: ${{ github.workspace }}/../../../..
+
         run: |
-          # echo ${ASCEND_RT_VISIBLE_DEVICES}
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run --network host --privileged --cap-add=ALL --pid=host --shm-size=128G -d -t --name ${container_name} \
@@ -137,6 +192,7 @@ jobs:
             -w /paddle ${docker_image} /bin/bash
 
       - name: Install Paddle-CPU
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
@@ -158,10 +214,24 @@ jobs:
           '
 
       - name: Build and test
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           set -x
+          set -euo pipefail
+
+          trap '\''{
+            ret=$?
+            echo "============================================================"
+            echo "IXUCA CI TEST FAILED"
+            echo "Please contact the following maintainers for help:"
+            echo "  - YqGe585"
+            echo "  - yongqiangma"
+            echo "============================================================"
+            exit $ret
+          }'\'' ERR
+
           echo "::group::Install dependencies"
           python -m pip install PyGithub
           python -m pip install wheel
@@ -172,7 +242,7 @@ jobs:
           pwd
           ls
           cd Paddle
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          git config --global --add safe.directory "*"
           cd ..
           cd backends/iluvatar_gpu/
           bash build_paddle.sh
@@ -183,7 +253,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${container_name}
