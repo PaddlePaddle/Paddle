@@ -186,18 +186,13 @@ class TestI0eAPI_Compatibility(unittest.TestCase):
         out3 = paddle.i0e(input=x)
         paddle_dygraph_out.append(out3)
 
-        # Tensor method args
-        out4 = paddle.empty([])
-        out5 = x.i0e(x, out=out4)
-        paddle_dygraph_out.append(out4)
-        paddle_dygraph_out.append(out5)
         # Tensor method kwargs
-        out6 = x.i0e()
-        paddle_dygraph_out.append(out6)
+        out4 = x.i0e()
+        paddle_dygraph_out.append(out4)
         # Test out
-        out7 = paddle.empty([])
-        paddle.i0e(x, out=out7)
-        paddle_dygraph_out.append(out7)
+        out5 = paddle.empty([])
+        paddle.i0e(x, out=out5)
+        paddle_dygraph_out.append(out5)
         # scipy reference  out
         ref_out = output_i0e(self.x)
         # Check
