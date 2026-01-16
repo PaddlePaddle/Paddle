@@ -483,7 +483,7 @@ void LarsMomentumKernel(
     const std::vector<const DenseTensor*>& velocity,
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& grad,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const optional<std::vector<const DenseTensor*>>& master_param,
     const std::vector<float>& weight_decay_arr,
     float mu,
     float lars_coeff,

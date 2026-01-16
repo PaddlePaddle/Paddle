@@ -35,7 +35,7 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
                   const DenseTensor& learning_rate,
-                  const paddle::optional<DenseTensor>& master_param,
+                  const optional<DenseTensor>& master_param,
                   float epsilon_t,
                   bool multi_precision,
                   DenseTensor* param_out_tensor,

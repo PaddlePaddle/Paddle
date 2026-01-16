@@ -217,27 +217,26 @@ static void kvReduceBatchedForGQA(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnUnpaddedGradBaseKernel(
-    const Context& dev_ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& cu_seqlens_q,
-    const DenseTensor& cu_seqlens_k,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const DenseTensor& dout,
-    const Scalar& max_seqlen_q_,
-    const Scalar& max_seqlen_k_,
-    float scale,
-    float dropout,
-    bool causal,
-    DenseTensor* dq,
-    DenseTensor* dk,
-    DenseTensor* dv,
-    bool varlen_padded) {
+void FlashAttnUnpaddedGradBaseKernel(const Context& dev_ctx,
+                                     const DenseTensor& q,
+                                     const DenseTensor& k,
+                                     const DenseTensor& v,
+                                     const DenseTensor& cu_seqlens_q,
+                                     const DenseTensor& cu_seqlens_k,
+                                     const DenseTensor& out,
+                                     const DenseTensor& softmax_lse,
+                                     const DenseTensor& seed_offset,
+                                     const optional<DenseTensor>& attn_mask,
+                                     const DenseTensor& dout,
+                                     const Scalar& max_seqlen_q_,
+                                     const Scalar& max_seqlen_k_,
+                                     float scale,
+                                     float dropout,
+                                     bool causal,
+                                     DenseTensor* dq,
+                                     DenseTensor* dk,
+                                     DenseTensor* dv,
+                                     bool varlen_padded) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
@@ -413,7 +412,7 @@ void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
                                  const DenseTensor& out,
                                  const DenseTensor& softmax_lse,
                                  const DenseTensor& seed_offset,
-                                 const paddle::optional<DenseTensor>& attn_mask,
+                                 const optional<DenseTensor>& attn_mask,
                                  const DenseTensor& dout,
                                  const Scalar& max_seqlen_q,
                                  const Scalar& max_seqlen_k,
@@ -495,23 +494,22 @@ struct ZeroFunctor {
   }
 };
 template <typename T, typename Context>
-void FlashAttnVarlenQKVPackedGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& qkv,
-    const DenseTensor& cu_seqlens_q,
-    const DenseTensor& cu_seqlens_k,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const DenseTensor& dout,
-    const Scalar& max_seqlen_q,
-    const Scalar& max_seqlen_k,
-    float scale,
-    float dropout,
-    bool causal,
-    bool varlen_padded,
-    DenseTensor* dqkv) {
+void FlashAttnVarlenQKVPackedGradKernel(const Context& dev_ctx,
+                                        const DenseTensor& qkv,
+                                        const DenseTensor& cu_seqlens_q,
+                                        const DenseTensor& cu_seqlens_k,
+                                        const DenseTensor& out,
+                                        const DenseTensor& softmax_lse,
+                                        const DenseTensor& seed_offset,
+                                        const optional<DenseTensor>& attn_mask,
+                                        const DenseTensor& dout,
+                                        const Scalar& max_seqlen_q,
+                                        const Scalar& max_seqlen_k,
+                                        float scale,
+                                        float dropout,
+                                        bool causal,
+                                        bool varlen_padded,
+                                        DenseTensor* dqkv) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [total_*, num_heads, head_dim]
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
@@ -561,22 +559,21 @@ void FlashAttnVarlenQKVPackedGradKernel(
 #endif
 }
 template <typename T, typename Context>
-void FlashAttnGradBaseKernel(
-    const Context& dev_ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const paddle::optional<DenseTensor>& startend_row_indices,
-    const DenseTensor& dout,
-    float dropout,
-    bool causal,
-    DenseTensor* dq,
-    DenseTensor* dk,
-    DenseTensor* dv) {
+void FlashAttnGradBaseKernel(const Context& dev_ctx,
+                             const DenseTensor& q,
+                             const DenseTensor& k,
+                             const DenseTensor& v,
+                             const DenseTensor& out,
+                             const DenseTensor& softmax_lse,
+                             const DenseTensor& seed_offset,
+                             const optional<DenseTensor>& attn_mask,
+                             const optional<DenseTensor>& startend_row_indices,
+                             const DenseTensor& dout,
+                             float dropout,
+                             bool causal,
+                             DenseTensor* dq,
+                             DenseTensor* dk,
+                             DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
@@ -919,7 +916,7 @@ void FlashAttnGradKernel(const Context& dev_ctx,
                          const DenseTensor& out,
                          const DenseTensor& softmax_lse,
                          const DenseTensor& seed_offset,
-                         const paddle::optional<DenseTensor>& attn_mask,
+                         const optional<DenseTensor>& attn_mask,
                          const DenseTensor& dout,
                          float dropout,
                          bool causal,
@@ -959,17 +956,16 @@ void FlashAttnGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnQKVPackedGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& qkv,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const DenseTensor& dout,
-    float dropout,
-    bool causal,
-    DenseTensor* dqkv) {
+void FlashAttnQKVPackedGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& qkv,
+                                  const DenseTensor& out,
+                                  const DenseTensor& softmax_lse,
+                                  const DenseTensor& seed_offset,
+                                  const optional<DenseTensor>& attn_mask,
+                                  const DenseTensor& dout,
+                                  float dropout,
+                                  bool causal,
+                                  DenseTensor* dqkv) {
 #ifdef PADDLE_WITH_FLASHATTN
   // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, head_dim]
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
