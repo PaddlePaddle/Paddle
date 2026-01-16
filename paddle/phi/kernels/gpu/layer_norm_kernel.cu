@@ -16,16 +16,20 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+#include "paddle/phi/kernels/funcs/fast_ln_v2.h"
+#endif
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
-
 COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
+enum class LayerNormKernelVariant { FAST_LN_V1, FAST_LN_V2, GENERIC };
+
 #ifdef PADDLE_WITH_CUDA
 template <typename U>
-__device__ inline void WelfordOnline(U val, U *mean, U *square, U *count) {
+__device__ inline void WelfordOnline(U val, U* mean, U* square, U* count) {
   *count += 1;
   U delta1 = val - *mean;
   *mean += delta1 / (*count);
@@ -35,7 +39,7 @@ __device__ inline void WelfordOnline(U val, U *mean, U *square, U *count) {
 
 template <typename U>
 __device__ inline void WelfordOnline(
-    U b_mean, U b_square, U b_cnt, U *mean, U *square, U *count) {
+    U b_mean, U b_square, U b_cnt, U* mean, U* square, U* count) {
   if (b_cnt == 0) {
     return;
   }
@@ -49,7 +53,7 @@ __device__ inline void WelfordOnline(
 }
 
 template <typename U>
-__device__ inline void WelfordWarpAllReduce(U *mean, U *square, U *count) {
+__device__ inline void WelfordWarpAllReduce(U* mean, U* square, U* count) {
   constexpr int kWarpSize = 32;
 #pragma unroll
   for (int mask = 1; mask < kWarpSize; mask *= 2) {
@@ -68,7 +72,7 @@ template <int VecSize>
 struct ThreadAssigner {
   __device__ __forceinline__ int operator()(const int cols,
                                             const int cols_per_thread,
-                                            int32_t *last_tid_idx) {
+                                            int32_t* last_tid_idx) {
     return cols_per_thread;
   }
 };
@@ -77,7 +81,7 @@ template <>
 struct ThreadAssigner<1> {
   __device__ inline int operator()(const int cols,
                                    const int cols_per_thread,
-                                   int *last_tid_idx) {
+                                   int* last_tid_idx) {
     int cols_this_thread = cols_per_thread;
     int last_tid = (cols / cols_per_thread);
     *last_tid_idx = last_tid;
@@ -92,14 +96,14 @@ struct ThreadAssigner<1> {
 
 template <typename T, typename U, int VecSize>
 struct LayerNormDataReader {
-  __device__ inline void operator()(const T *__restrict__ row_src,
-                                    U *buffer,
+  __device__ inline void operator()(const T* __restrict__ row_src,
+                                    U* buffer,
                                     const int last_tid_idx,
                                     const int read_times,
                                     const int cols_this_thread) {
     using VecT = phi::AlignedVector<T, VecSize>;
-    const VecT *__restrict__ v_src =
-        reinterpret_cast<const VecT *__restrict__>(row_src);
+    const VecT* __restrict__ v_src =
+        reinterpret_cast<const VecT* __restrict__>(row_src);
 
     for (int i = 0; i < read_times; ++i) {
       VecT temp_src = v_src[threadIdx.x + i * blockDim.x];
@@ -113,8 +117,8 @@ struct LayerNormDataReader {
 
 template <typename T, typename U>
 struct LayerNormDataReader<T, U, 1> {
-  __device__ inline void operator()(const T *__restrict__ row_src,
-                                    U *buffer,
+  __device__ inline void operator()(const T* __restrict__ row_src,
+                                    U* buffer,
                                     const int last_tid_idx,
                                     const int read_times,
                                     const int cols_this_thread) {
@@ -134,10 +138,10 @@ struct LayerNormDataReader<T, U, 1> {
 template <typename T, typename U, bool IsSameType, int VecSize>
 struct LayerNormDataWriter {
   __device__ inline void operator()(
-      T *__restrict__ row_dst,
-      const U *__restrict__ buffer,
-      const funcs::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
-      const funcs::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
+      T* __restrict__ row_dst,
+      const U* __restrict__ buffer,
+      const funcs::LayerNormScaleBiasT<T, U, IsSameType>* __restrict__ scale,
+      const funcs::LayerNormScaleBiasT<T, U, IsSameType>* __restrict__ bias,
       const U row_mean,
       const U row_inv_var,
       const int write_times,
@@ -148,7 +152,7 @@ struct LayerNormDataWriter {
     using VecT = phi::AlignedVector<T, VecSize>;
     using ScaleT = funcs::LayerNormScaleBiasT<T, U, IsSameType>;
     using VecScaleT = phi::AlignedVector<ScaleT, VecSize>;
-    VecT *v_dst = reinterpret_cast<VecT *>(row_dst);
+    VecT* v_dst = reinterpret_cast<VecT*>(row_dst);
 
     // cols_this_thread is just cols_per_thread
     if ((!valid_scale) && (!valid_bias)) {
@@ -162,10 +166,10 @@ struct LayerNormDataWriter {
         v_dst[threadIdx.x + static_cast<int64_t>(blockDim.x) * i] = temp_dst;
       }
     } else {
-      const VecScaleT *__restrict__ v_scale =
-          reinterpret_cast<const VecScaleT *__restrict__>(scale);
-      const VecScaleT *__restrict__ v_bias =
-          reinterpret_cast<const VecScaleT *__restrict__>(bias);
+      const VecScaleT* __restrict__ v_scale =
+          reinterpret_cast<const VecScaleT* __restrict__>(scale);
+      const VecScaleT* __restrict__ v_bias =
+          reinterpret_cast<const VecScaleT* __restrict__>(bias);
       if (valid_scale && valid_bias) {
         for (int i = 0; i < write_times; ++i) {
           int64_t idx = threadIdx.x + static_cast<int64_t>(blockDim.x) * i;
@@ -217,10 +221,10 @@ struct LayerNormDataWriter {
 template <typename T, typename U, bool IsSameType>
 struct LayerNormDataWriter<T, U, IsSameType, 1> {
   __device__ __forceinline__ void operator()(
-      T *__restrict__ row_dst,
-      U *__restrict__ buffer,
-      const funcs::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
-      const funcs::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
+      T* __restrict__ row_dst,
+      U* __restrict__ buffer,
+      const funcs::LayerNormScaleBiasT<T, U, IsSameType>* __restrict__ scale,
+      const funcs::LayerNormScaleBiasT<T, U, IsSameType>* __restrict__ bias,
       const U row_mean,
       const U row_inv_var,
       const int write_times,
@@ -295,12 +299,12 @@ struct LayerNormDataWriter<T, U, IsSameType, 1> {
 
 template <typename IndexT, typename T, typename U, bool IsSameType, int VecSize>
 __global__ void LayerNormFwdWithWelford(
-    const T *__restrict__ src_data,
-    T *dst_data,
-    const funcs::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
-    const funcs::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
-    U *mean,
-    U *var,
+    const T* __restrict__ src_data,
+    T* dst_data,
+    const funcs::LayerNormScaleBiasT<T, U, IsSameType>* __restrict__ scale,
+    const funcs::LayerNormScaleBiasT<T, U, IsSameType>* __restrict__ bias,
+    U* mean,
+    U* var,
     const U epsilon,
     const IndexT rows,
     const int32_t cols,
@@ -320,8 +324,8 @@ __global__ void LayerNormFwdWithWelford(
     U tid_mean = static_cast<U>(0);
     U tid_square = static_cast<U>(0);
 
-    const T *__restrict__ row_src = src_data + row_offset * cols;
-    T *row_dst = dst_data + row_offset * cols;
+    const T* __restrict__ row_src = src_data + row_offset * cols;
+    T* row_dst = dst_data + row_offset * cols;
     LayerNormDataReader<T, U, VecSize>()(
         row_src, buffer, last_tid_idx, read_times, cols_this_thread);
 
@@ -358,13 +362,13 @@ __global__ void LayerNormFwdWithWelford(
 }
 
 template <typename Context, typename T, typename U>
-void LaunchLayerNormKernel(const Context &dev_ctx,
-                           const T *x_data,
-                           T *y_data,
-                           const void *void_scale_data,
-                           const void *void_bias_data,
-                           U *mean_data,
-                           U *var_data,
+void LaunchLayerNormKernel(const Context& dev_ctx,
+                           const T* x_data,
+                           T* y_data,
+                           const void* void_scale_data,
+                           const void* void_bias_data,
+                           U* mean_data,
+                           U* var_data,
                            float epsilon,
                            const int64_t rows,
                            const int cols,
@@ -390,7 +394,7 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
         addr = valid_bias ? (addr | reinterpret_cast<uint64_t>(void_bias_data))
                           : addr;
         data_vec_size =
-            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)));
+            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr)));
       } else {
         uint64_t bias_addr = reinterpret_cast<uint64_t>(void_bias_data);
         uint64_t attr_addr = valid_scale
@@ -400,8 +404,8 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
                         ? (valid_scale ? (attr_addr | bias_addr) : attr_addr)
                         : attr_addr;
         data_vec_size = std::min(
-            phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)),
-            phi::GetVectorizedSize<U>(reinterpret_cast<U *>(attr_addr)));
+            phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr)),
+            phi::GetVectorizedSize<U>(reinterpret_cast<U*>(attr_addr)));
         data_vec_size = std::min(4, data_vec_size);
       }
     }
@@ -419,8 +423,8 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
         <<<block_size, threads, 0, dev_ctx.stream()>>>(                     \
             x_data,                                                         \
             y_data,                                                         \
-            static_cast<const scale_t *>(void_scale_data),                  \
-            static_cast<const scale_t *>(void_bias_data),                   \
+            static_cast<const scale_t*>(void_scale_data),                   \
+            static_cast<const scale_t*>(void_bias_data),                    \
             mean_data,                                                      \
             var_data,                                                       \
             static_cast<const U>(epsilon),                                  \
@@ -457,13 +461,13 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
 template <typename T, typename U>
 void LayerNormDirectCUDAFunctor<T, U>::operator()(
     gpuStream_t stream,
-    const T *input,
+    const T* input,
     std::vector<int64_t> input_shape,
-    const U *bias,
-    const U *scale,
-    T *output,
-    U *mean,
-    U *variance,
+    const U* bias,
+    const U* scale,
+    T* output,
+    U* mean,
+    U* variance,
     int begin_norm_axis,
     float eps) {
   const auto x_dims = common::make_ddim(input_shape);
@@ -488,34 +492,68 @@ template class PADDLE_API LayerNormDirectCUDAFunctor<double, double>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template class PADDLE_API LayerNormDirectCUDAFunctor<half, float>;
 #endif
+static inline LayerNormKernelVariant LayerNormKernelDispatch(
+    const paddle::DataType weight_type,
+    const paddle::DataType input_type,
+    const paddle::DataType output_type,
+    const paddle::DataType compute_type,
+    const uint32_t hidden_size,
+    const int64_t x_numel,
+    const DenseTensor* scale,
+    const DenseTensor* bias) {
+  if (scale == nullptr || bias == nullptr) {
+    return LayerNormKernelVariant::GENERIC;
+  }
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
+      hidden_size > 1024 && hidden_size <= 10240 &&
+      x_numel <= std::numeric_limits<uint32_t>::max()) {
+    // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
+    auto prop = funcs::fast_ln_v2::GetDeviceProp();
+    if (prop->major > 7 &&
+        funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
+            weight_type, input_type, output_type, compute_type, hidden_size)) {
+      return LayerNormKernelVariant::FAST_LN_V2;
+    }
+  }
+#endif
+  if ((hidden_size >= 768 && hidden_size <= 2048 && hidden_size % 256 == 0 ||
+       hidden_size == 4096) &&
+      scale != nullptr && bias != nullptr) {
+    return LayerNormKernelVariant::FAST_LN_V1;
+  }
+
+  return LayerNormKernelVariant::GENERIC;
+}
 
 template <typename T, typename Context>
-void LayerNormKernel(const Context &dev_ctx,
-                     const DenseTensor &x,
-                     const paddle::optional<DenseTensor> &scale_opt,
-                     const paddle::optional<DenseTensor> &bias_opt,
+void LayerNormKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const paddle::optional<DenseTensor>& scale_opt,
+                     const paddle::optional<DenseTensor>& bias_opt,
                      float epsilon,
                      int begin_norm_axis,
-                     DenseTensor *y,
-                     DenseTensor *mean,
-                     DenseTensor *var) {
+                     DenseTensor* y,
+                     DenseTensor* mean,
+                     DenseTensor* var) {
   using U = funcs::LayerNormParamType<T>;
-  auto *scale = scale_opt.get_ptr();
-  auto *bias = bias_opt.get_ptr();
+  auto* scale = scale_opt.get_ptr();
+  auto* bias = bias_opt.get_ptr();
 
   const auto x_dims = x.dims();
-  auto *x_data = x.data<T>();
-  auto *y_data = dev_ctx.template Alloc<T>(y);
-  auto *mean_data = dev_ctx.template Alloc<U>(mean);
-  auto *var_data = dev_ctx.template Alloc<U>(var);
+  auto* x_data = x.data<T>();
+  auto* y_data = dev_ctx.template Alloc<T>(y);
+  auto* mean_data = dev_ctx.template Alloc<U>(mean);
+  auto* var_data = dev_ctx.template Alloc<U>(var);
   if (x.numel() == 0) return;
 
   bool valid_scale = (scale != nullptr);
   bool valid_bias = (bias != nullptr);
-  auto *void_scale_data = valid_scale ? scale->data() : nullptr;
-  auto *void_bias_data = valid_bias ? bias->data() : nullptr;
+  auto* void_scale_data = valid_scale ? scale->data() : nullptr;
+  auto* void_bias_data = valid_bias ? bias->data() : nullptr;
 
   auto x_dtype = x.dtype();
+  auto y_dtype = y->dtype();
   phi::DataType scale_bias_dtype;
   if (valid_scale) {
     scale_bias_dtype = scale->dtype();
@@ -542,6 +580,7 @@ void LayerNormKernel(const Context &dev_ctx,
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   auto stream = dev_ctx.stream();
+  auto place = x.place();
 
 #define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)    \
   do {                                                                        \
@@ -550,8 +589,8 @@ void LayerNormKernel(const Context &dev_ctx,
           funcs::LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
           <<<batch_size, kBlockDim, 0, stream>>>(                             \
               x_data,                                                         \
-              static_cast<const ScaleBiasT *>(void_scale_data),               \
-              static_cast<const ScaleBiasT *>(void_bias_data),                \
+              static_cast<const ScaleBiasT*>(void_scale_data),                \
+              static_cast<const ScaleBiasT*>(void_bias_data),                 \
               y_data,                                                         \
               mean_data,                                                      \
               var_data,                                                       \
@@ -564,7 +603,7 @@ void LayerNormKernel(const Context &dev_ctx,
     }                                                                         \
   } while (0)
 
-#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, feature_size)          \
+#define PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, feature_size)       \
   case (feature_size): {                                                     \
     constexpr int WARPS_N = feature_size < 1024 ? 1 : (feature_size / 1024); \
     constexpr int WARPS_M = 4 / WARPS_N;                                     \
@@ -575,128 +614,147 @@ void LayerNormKernel(const Context &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int grid = static_cast<int>(                                       \
         std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
-    funcs::fast_ln_fwd_kernel<T,                                             \
-                              U,                                             \
-                              ScaleT,                                        \
-                              VecSize,                                       \
-                              WARPS_M,                                       \
-                              WARPS_N,                                       \
-                              BYTES_PER_LDG,                                 \
-                              feature_size>                                  \
+    funcs::fast_ln_v1::fast_ln_v1_fwd_kernel<T,                              \
+                                             U,                              \
+                                             ScaleT,                         \
+                                             VecSize,                        \
+                                             WARPS_M,                        \
+                                             WARPS_N,                        \
+                                             BYTES_PER_LDG,                  \
+                                             feature_size>                   \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \
             epsilon,                                                         \
             x_data,                                                          \
-            static_cast<const ScaleT *>(void_scale_data),                    \
-            static_cast<const ScaleT *>(void_bias_data),                     \
+            static_cast<const ScaleT*>(void_scale_data),                     \
+            static_cast<const ScaleT*>(void_bias_data),                      \
             mean_data,                                                       \
             var_data,                                                        \
             y_data);                                                         \
   } break
 
-#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 768);  \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1024); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1280); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1536); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1792); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 2048); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 4096)
+#define PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD(ScaleT)       \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 768);  \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1024); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1280); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1536); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1792); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 2048); \
+  PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 4096)
+  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto kernel_variant = LayerNormKernelDispatch(scale_bias_dtype,
+                                                x_dtype,
+                                                y_dtype,
+                                                compute_dtype,
+                                                feature_size,
+                                                x.numel(),
+                                                scale,
+                                                bias);
 
-#ifdef PADDLE_WITH_CUDA
-  bool can_call_fast_kernel = false;
-  if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
-       feature_size == 4096) &&
-      scale != nullptr && bias != nullptr) {
-    can_call_fast_kernel = true;
-  }
-
-  if (can_call_fast_kernel) {
-    if (is_scale_bias_same_dtype_with_x) {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(T);
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "256 is supported "
-              "now"));
-          break;
-      }
-    } else {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(U);
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "is supported "
-              "now"));
-          break;
-      }
-    }
-  } else {
-    // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (FLAGS_use_fast_math && feature_size <= 1024 &&
-        (!std::is_same<T, int8_t>::value)) {
-      LaunchLayerNormKernel<Context, T, U>(dev_ctx,
-                                           x_data,
-                                           y_data,
-                                           void_scale_data,
-                                           void_bias_data,
-                                           mean_data,
-                                           var_data,
-                                           epsilon,
-                                           batch_size,
-                                           feature_size,
-                                           valid_scale,
-                                           valid_bias,
-                                           is_scale_bias_same_dtype_with_x);
-    } else {
+  switch (kernel_variant) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+    case LayerNormKernelVariant::FAST_LN_V2:
+      funcs::fast_ln_v2::LaunchNormFwd<T, Context>(dev_ctx,
+                                                   stream,
+                                                   place,
+                                                   x_data,
+                                                   void_scale_data,
+                                                   void_bias_data,
+                                                   y_data,
+                                                   mean_data,
+                                                   var_data,
+                                                   scale_bias_dtype,
+                                                   x_dtype,
+                                                   y_dtype,
+                                                   compute_dtype,
+                                                   feature_size,
+                                                   batch_size,
+                                                   feature_size,
+                                                   epsilon);
+      break;
 #endif
+    case LayerNormKernelVariant::FAST_LN_V1:
       if (is_scale_bias_same_dtype_with_x) {
-        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+        switch (feature_size) {
+          PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD(T);
+          default:
+            break;
+        }
       } else {
-        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+        switch (feature_size) {
+          PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD(U);
+          default:
+            break;
+        }
       }
+      break;
+    case LayerNormKernelVariant::GENERIC:
+    default:
 #ifdef PADDLE_WITH_CUDA
-    }
-  }
+      // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
+      if (FLAGS_use_fast_math && feature_size <= 1024 &&
+          (!std::is_same<T, int8_t>::value)) {
+        LaunchLayerNormKernel<Context, T, U>(dev_ctx,
+                                             x_data,
+                                             y_data,
+                                             void_scale_data,
+                                             void_bias_data,
+                                             mean_data,
+                                             var_data,
+                                             epsilon,
+                                             batch_size,
+                                             feature_size,
+                                             valid_scale,
+                                             valid_bias,
+                                             is_scale_bias_same_dtype_with_x);
+      } else {
 #endif
+        if (is_scale_bias_same_dtype_with_x) {
+          PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+        } else {
+          PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+        }
+#ifdef PADDLE_WITH_CUDA
+      }
+#endif
+      break;
+  }
 
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
-#undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
+#undef PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD
 }
 #ifdef _WIN32
 template PADDLE_API void LayerNormKernel<float, GPUContext>(
-    const GPUContext &dev_ctx,
-    const DenseTensor &x,
-    const paddle::optional<DenseTensor> &scale_opt,
-    const paddle::optional<DenseTensor> &bias_opt,
+    const GPUContext& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& scale_opt,
+    const paddle::optional<DenseTensor>& bias_opt,
     float epsilon,
     int begin_norm_axis,
-    DenseTensor *y,
-    DenseTensor *mean,
-    DenseTensor *var);
+    DenseTensor* y,
+    DenseTensor* mean,
+    DenseTensor* var);
 template PADDLE_API void LayerNormKernel<phi::dtype::float16, GPUContext>(
-    const GPUContext &dev_ctx,
-    const DenseTensor &x,
-    const paddle::optional<DenseTensor> &scale_opt,
-    const paddle::optional<DenseTensor> &bias_opt,
+    const GPUContext& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& scale_opt,
+    const paddle::optional<DenseTensor>& bias_opt,
     float epsilon,
     int begin_norm_axis,
-    DenseTensor *y,
-    DenseTensor *mean,
-    DenseTensor *var);
+    DenseTensor* y,
+    DenseTensor* mean,
+    DenseTensor* var);
 template PADDLE_API void LayerNormKernel<double, GPUContext>(
-    const GPUContext &dev_ctx,
-    const DenseTensor &x,
-    const paddle::optional<DenseTensor> &scale_opt,
-    const paddle::optional<DenseTensor> &bias_opt,
+    const GPUContext& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& scale_opt,
+    const paddle::optional<DenseTensor>& bias_opt,
     float epsilon,
     int begin_norm_axis,
-    DenseTensor *y,
-    DenseTensor *mean,
-    DenseTensor *var);
+    DenseTensor* y,
+    DenseTensor* mean,
+    DenseTensor* var);
 #endif
 }  // namespace phi
 
