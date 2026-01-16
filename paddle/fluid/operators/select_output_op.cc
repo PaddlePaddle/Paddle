@@ -48,7 +48,7 @@ class SelectOutputOp : public framework::OperatorBase {
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<DenseTensor>();
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &out_names = Outputs("Out");
@@ -73,9 +73,8 @@ class SelectOutputOp : public framework::OperatorBase {
 class SelectOutputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "The input phi::DenseTensor or phi::DenseTensorArray or SelectedRows.");
+    AddInput("X",
+             "The input DenseTensor or phi::DenseTensorArray or SelectedRows.");
     AddInput("Mask", "Tensor with numel 1 specifying which branch to output");
     AddOutput("Out",
               "The output can contains multiple variables. The output of "

@@ -70,7 +70,7 @@ void QuantDequantXPUPass::CollectWeightScalesInfoFromDequantize(
                 "The Scales variable [%s] of dequantize op is not found.",
                 var));
 
-        auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+        auto* scale_tensor = var->GetMutable<DenseTensor>();
         auto* scale_data = scale_tensor->data<float>();
         std::vector<float> thresholds{};
         for (int i = 0; i < scale_tensor->numel(); i++) {
@@ -103,7 +103,7 @@ void QuantDequantXPUPass::CollectWeightScalesInfoFromONNXFormatDequantize(
           common::errors::NotFound(
               "The Scales variable [%s] of dequantize op is not found.", var));
 
-      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* scale_tensor = var->GetMutable<DenseTensor>();
       auto* scale_data = scale_tensor->data<float>();
 
       auto x_var_name = op_desc->Input("X")[0];
@@ -170,7 +170,7 @@ void QuantDequantXPUPass::CollectInputScalesFromQuantize(
           common::errors::NotFound(
               "The InScale variable [%s] of quantize op is not found.", var));
 
-      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* scale_tensor = var->GetMutable<DenseTensor>();
       auto* scale_data = scale_tensor->data<float>();
       float scale = scale_data[0];
       if (std::isinf(scale) || std::isnan(scale)) {
@@ -419,7 +419,7 @@ void QuantDequantXPUPass::RestoreWeightsToInt8(
         common::errors::NotFound(
             "The input persistable [%s] var of [%s] op is not found.",
             weight_var_name));
-    auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
+    auto* weight_tensor = var->GetMutable<DenseTensor>();
     float* fp32_weight_data = weight_tensor->data<float>();
     std::vector<int8_t> weight_data;
     weight_data.resize(weight_tensor->numel());

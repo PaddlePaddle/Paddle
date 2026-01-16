@@ -83,12 +83,12 @@ class TEST_API ProgramDesc {
   // fetch_ops.
   const std::vector<std::string> GetFetchTargetNames();
 
-  // The input variable of feed_op that holds input phi::DenseTensor provided by
+  // The input variable of feed_op that holds input DenseTensor provided by
   // users is referenced as feed_holder. This function is used to change or
   // unify the feed_holder variables' name.
   void SetFeedHolderName(const std::string &feed_holder_name);
 
-  // The output variable of fetch_op that holds output phi::DenseTensor needed
+  // The output variable of fetch_op that holds output DenseTensor needed
   // by users is referenced as fetch_holder. This function is used to change or
   // unify the fetch_holder variables' name.
   void SetFetchHolderName(const std::string &fetch_holder_name);

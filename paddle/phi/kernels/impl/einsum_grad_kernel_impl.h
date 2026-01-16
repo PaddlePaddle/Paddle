@@ -141,8 +141,7 @@ void EinsumGradKernel(const Context& dev_ctx,
       if (i->numel() == 0) {
         has_zero_size_tensor = true;
       }
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(i->dims())), 0, i);
+      Full<T, Context>(dev_ctx, i->dims(), 0, i);
     }
   }
   if (has_zero_size_tensor) return;

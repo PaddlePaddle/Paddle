@@ -90,8 +90,8 @@ def fused_act_dequant(
     Args:
         x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N]. This tensor contains the quantized
             activations from previous layers.
-        x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128].
-            Each scale value corresponds to a 128-column block in the input tensor.
+        x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128] or int32 and shape [M, (N + 511) // 512].
+            Each scale value corresponds to a 128-column in the input tensor.
 
     Returns:
         Tensor. Dequantized output tensor with dtype bfloat16 and shape [M, N]. The values are
@@ -388,6 +388,7 @@ def fp8_quant_blockwise(
     output_scale_transpose: bool = True,
     return_transpose_only: bool = False,
     using_pow2_scale: bool = True,
+    using_ue8m0_scale: bool = False,
     quant_method: str = "1x128",
     output_type: str = "e4m3",
     name: str | None = None,
@@ -414,6 +415,7 @@ def fp8_quant_blockwise(
             return_transpose_only,
             using_e5m2,
             using_pow2_scale,
+            using_ue8m0_scale,
         )
         # Aligned with kitchen's logic
         if not input_transpose:

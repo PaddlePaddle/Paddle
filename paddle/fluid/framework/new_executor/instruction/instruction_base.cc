@@ -33,8 +33,8 @@ static DDim GetDimsDebug(const Scope& scope,
     return DDim({-1});
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {
@@ -61,8 +61,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     return "";
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -92,8 +92,8 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
     return sstream.str();
   };
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -135,8 +135,8 @@ static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
     return default_lod;
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.lod();
   } else {
     return default_lod;
@@ -149,14 +149,12 @@ static double GetDenseTensorEleSum(const Scope& scope,
   if (var == nullptr) {
     return std::numeric_limits<double>::quiet_NaN();
   }
-  if (var->IsType<phi::DenseTensor>() &&
-      var->Get<phi::DenseTensor>().initialized()) {
-    phi::DenseTensor cpu_tensor;
+  if (var->IsType<DenseTensor>() && var->Get<DenseTensor>().initialized()) {
+    DenseTensor cpu_tensor;
     CPUPlace place;
-    paddle::framework::TensorCopy(
-        var->Get<phi::DenseTensor>(), place, &cpu_tensor);
+    paddle::framework::TensorCopy(var->Get<DenseTensor>(), place, &cpu_tensor);
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    auto& dev_ctx = *pool.Get(var->Get<phi::DenseTensor>().place());
+    auto& dev_ctx = *pool.Get(var->Get<DenseTensor>().place());
     dev_ctx.Wait();
     double sum = 0.0;
     for (int64_t i = 0; i < cpu_tensor.numel(); i++) {

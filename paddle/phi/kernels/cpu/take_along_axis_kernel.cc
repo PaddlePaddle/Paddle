@@ -35,7 +35,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   }
   if (x.numel() == 0) {
     phi::Full<T, Context>(
-        dev_ctx, common::vectorize(out->dims()), static_cast<T>(0), out);
+        dev_ctx, vectorize(out->dims()), static_cast<T>(0), out);
     return;
   }
 

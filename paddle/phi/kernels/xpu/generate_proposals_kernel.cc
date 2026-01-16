@@ -314,11 +314,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     rpn_rois->Resize(common::make_ddim({0, 4}));
     if (rpn_rois_num != nullptr) {
       rpn_rois_num->Resize(common::make_ddim({}));
-      phi::Full<int64_t, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(rpn_rois_num->dims())),
-          0,
-          rpn_rois_num);
+      Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
     }
     return;
   }

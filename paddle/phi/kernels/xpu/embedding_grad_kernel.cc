@@ -88,7 +88,7 @@ void EmbeddingSparseGradKernel(const Context& dev_ctx,
   ids_cpu.Resize(input.dims());
   dev_ctx.HostAlloc(&ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
   if (input.dtype() == phi::DataType::INT64) {
-    phi::Copy(dev_ctx, input, CPUPlace(), false, &ids_cpu);
+    Copy(dev_ctx, input, CPUPlace(), false, &ids_cpu);
 
     ids = CopyIdsToVector<int64_t, int64_t>(ids_cpu);
 

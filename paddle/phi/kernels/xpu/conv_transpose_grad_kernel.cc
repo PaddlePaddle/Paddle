@@ -45,18 +45,14 @@ void Conv2dTransposeGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     if (dx) dev_ctx.template Alloc<T>(dx);
     if (dfilter) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(dfilter->dims())),
-                            0,
-                            dfilter);
+      Full<T, Context>(dev_ctx, dfilter->dims(), 0, dfilter);
     }
     return;
   }
   if (filter.numel() == 0) {
     if (dfilter) dev_ctx.template Alloc<T>(dfilter);
     if (dx) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     return;
   }
@@ -75,7 +71,7 @@ void Conv2dTransposeGradKernel(const Context& dev_ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings_,
                            &dilations_,
                            padding_algorithm,
