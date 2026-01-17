@@ -59,7 +59,7 @@ jobs:
         run: |
           docker exec -t ${container_name} bash -c '
             CFS_CCACHE_DIR="${CCACHE_SECONDARY_STORAGE#file://}"
-            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 400G
+            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 500G
           '
 
       - name: Terminate and delete the container
