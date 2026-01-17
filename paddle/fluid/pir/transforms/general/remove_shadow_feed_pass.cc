@@ -45,8 +45,8 @@ std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(Operation *op) {
 }
 
 template <typename T>
-Place GetVarPlace(const paddle::framework::Variable *var,
-                  const phi::Place &exe_place) {
+phi::Place GetVarPlace(const paddle::framework::Variable *var,
+                       const phi::Place &exe_place) {
   phi::Place place;
   auto &tensor = var->Get<T>();
   if (tensor.has_allocation()) {
@@ -112,7 +112,7 @@ class RemoveShadowFeedPattern : public OpRewritePattern<PhiKernelOp> {
       int dst_place_type =
           op.attribute("dst_place_type").dyn_cast<Int32Attribute>().data();
       if (dst_place_type == 0) {
-        dst_place = CPUPlace();
+        dst_place = phi::CPUPlace();
       } else {
         dst_place = place_;
       }
