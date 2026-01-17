@@ -20,7 +20,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class RemoveRedundantTransposePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -81,22 +81,18 @@ class RemoveInvalidTransposePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class RemoveRedundantTransposePass : public pir::PatternRewritePass {
+class RemoveRedundantTransposePass : public PatternRewritePass {
  public:
   RemoveRedundantTransposePass()
-      : pir::PatternRewritePass("remove_redundant_transpose_pass", 2) {}
+      : PatternRewritePass("remove_redundant_transpose_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<RemoveRedundantTransposePattern>(context));
     ps.Add(paddle::drr::Create<RemoveInvalidTransposePattern>(context));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateRemoveRedundantTransposePass() {
   return std::make_unique<RemoveRedundantTransposePass>();
