@@ -2,7 +2,7 @@ name: Cleanup ccache
 
 on:
   schedule:
-    - cron: "0 16 * * Sat" # Weekly on Sunday at 00:00 UTC+8
+    - cron: "0 18 * * *" # Daily at 02:00 UTC+8
   workflow_dispatch:
 
 concurrency:
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  TASK: cleanup-ccache-weekly
+  TASK: cleanup-ccache-nightly
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -59,7 +59,7 @@ jobs:
         run: |
           docker exec -t ${container_name} bash -c '
             CFS_CCACHE_DIR="${CCACHE_SECONDARY_STORAGE#file://}"
-            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 200G
+            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 500G
           '
 
       - name: Terminate and delete the container
