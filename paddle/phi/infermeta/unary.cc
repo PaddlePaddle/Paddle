@@ -39,10 +39,10 @@ namespace detail {
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = common::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return common::make_ddim({});
+    return make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return common::make_ddim(x_vec);
+  return make_ddim(x_vec);
 }
 }  // namespace detail
 
@@ -220,20 +220,20 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
     } else {
       dim_vec[axis] = dim_vec.size() * dim_vec[axis];
     }
-    DDim dims = common::make_ddim(dim_vec);
+    DDim dims = make_ddim(dim_vec);
     out->set_dims(dims);
     return;
   }
   auto dims = x.dims();
   // if the shape is empty
-  if (dims == common::make_ddim({0UL})) return;
+  if (dims == make_ddim({0UL})) return;
   // otherwise, suppose the shape of array is the shape of tensor in the
   // array, which is consistent with what tensor_array_read_write dose
   if (use_stack) {
     auto dim_vec = common::vectorize<int>(dims);
     // use -1 for the stack dim size
     dim_vec.insert(dim_vec.begin() + axis, -1);
-    dims = common::make_ddim(dim_vec);
+    dims = make_ddim(dim_vec);
   } else {
     // use -1 for the concat dim size
     dims[axis] = -1;
@@ -404,7 +404,7 @@ void ArgsortInferMeta(const MetaTensor& input,
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
   auto out_dims_v = common::vectorize(input.dims());
   out_dims_v.push_back(2);
-  auto out_dims = common::make_ddim(out_dims_v);
+  auto out_dims = make_ddim(out_dims_v);
   output->set_dims(out_dims);
   output->share_lod(input);
   output->set_dtype(dtype::ToReal(input.dtype()));
@@ -454,7 +454,7 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
   std::transform(shape.begin(), shape.end(), shape_int64.begin(), [](int a) {
     return static_cast<int64_t>(a);
   });
-  auto output_dim = common::make_ddim(shape_int64);
+  auto output_dim = make_ddim(shape_int64);
 
   int input_dim_size = static_cast<int>(x.dims().size());
   PADDLE_ENFORCE_GE(
@@ -1671,7 +1671,7 @@ void FlattenInferMeta(const MetaTensor& x,
   for (int i = stop_axis + 1; i < in_dims_size; i++) {
     out_shape.push_back(x_dims[i]);  // NOLINT
   }
-  const auto& out_dims = common::make_ddim(out_shape);
+  const auto& out_dims = make_ddim(out_shape);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -2130,6 +2130,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 bool return_transpose_only,
                                 bool using_e5m2,
                                 bool using_pow2_scale,
+                                bool using_ue8m0_scale,
                                 MetaTensor* out,
                                 MetaTensor* scale,
                                 MetaTensor* out_transposed,
@@ -2143,10 +2144,13 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
       using_e5m2,
       false,
       common::errors::InvalidArgument("currently e5m2 is not support."));
-  PADDLE_ENFORCE_EQ(X.dtype(),
-                    DataType::BFLOAT16,
-                    common::errors::InvalidArgument(
-                        "currently only support bfloat16 input."));
+  PADDLE_ENFORCE_EQ(
+      (X.dtype() == DataType::BFLOAT16 || X.dtype() == DataType::FLOAT16),
+      true,
+      common::errors::InvalidArgument(
+          "The data type of input X is expected to be BFloat16 or Float16, "
+          "but received %s.",
+          X.dtype()));
 
   const int64_t rows = x_dims[0];
   const int64_t cols = x_dims[1];
@@ -2156,13 +2160,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "Currently only supports the first dim of "
                         "Input(X) <= 65535 * 128, but got %d",
                         rows));
-  PADDLE_ENFORCE_EQ(
-      rows % 128,
-      0,
-      common::errors::InvalidArgument("The first dim of "
-                                      "Input(X) should be exactly divided "
-                                      "by 128 , but got %d",
-                                      rows));
+
   PADDLE_ENFORCE_EQ(cols % 128,
                     0,
                     common::errors::InvalidArgument(
@@ -2170,8 +2168,35 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "by 128 , but got %d",
                         cols));
 
+  if (rows % 128 != 0) {
+    PADDLE_ENFORCE_EQ(
+        input_transpose,
+        0,
+        common::errors::InvalidArgument("When rows is not aligned to 128, only "
+                                        "supports input_transpose=False, "
+                                        "but received input_transpose=%d.",
+                                        input_transpose));
+    PADDLE_ENFORCE_EQ(return_transpose_only,
+                      0,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "return_transpose_only=False, "
+                          "but received return_transpose_only=%d.",
+                          return_transpose_only));
+    PADDLE_ENFORCE_EQ(using_1x128_vec_quant,
+                      1,
+                      common::errors::InvalidArgument(
+                          "When rows is not aligned to 128, only supports "
+                          "using_1x128_vec_quant=True, "
+                          "but received using_1x128_vec_quant=%d.",
+                          using_1x128_vec_quant));
+  }
+
   const int64_t row_quantized = (rows + 127) / 128;
   const int64_t col_quantized = (cols + 127) / 128;
+
+  // padding to 4
+  const int64_t row_padded = (rows + 3) / 4 * 4;
 
   int64_t output_outer_dim = -1;
   int64_t output_inner_dim = -1;
@@ -2186,8 +2211,8 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
 
   if (using_1x128_vec_quant) {
     // 1x128 w/wo transpose
-    scale_outer_dim = output_scale_transpose ? col_quantized : rows;
-    scale_inner_dim = output_scale_transpose ? rows : col_quantized;
+    scale_outer_dim = output_scale_transpose ? col_quantized : row_padded;
+    scale_inner_dim = output_scale_transpose ? row_padded : col_quantized;
     scale_transposed_outer_dim = output_scale_transpose ? row_quantized : cols;
     scale_transposed_inner_dim = output_scale_transpose ? cols : row_quantized;
   } else {
@@ -2196,6 +2221,69 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     scale_inner_dim = output_scale_transpose ? row_quantized : col_quantized;
     scale_transposed_outer_dim = scale_inner_dim;
     scale_transposed_inner_dim = scale_outer_dim;
+  }
+
+  if (using_ue8m0_scale) {
+    // 1. Add using_ue8m0_scale param, support ue8m0 quantization scale.
+    // 2. After using using_ue8m0_scale, the method will convert the original
+    // output fp32 scale to e8m0, then store 4 groups as int32 variables,
+    // finally output int32 scale, so the output shape will become 1/4 of the
+    // original.
+    // 3. But for 128*128 quantization, there is a special point that the
+    // original output should be M/128, N/128. After using using_ue8m0_scale, it
+    // becomes M, N/128/4. Explicitly copy 128 rows and share a scale, so M is
+    // not divided by 128.
+    // Upgrade 128x128 to expanded shape
+    if (!using_1x128_vec_quant) {
+      if (output_scale_transpose) {
+        scale_inner_dim = rows;
+        scale_transposed_inner_dim = cols;
+      } else {
+        scale_outer_dim = rows;
+        scale_transposed_outer_dim = cols;
+      }
+    }
+
+    if (output_scale_transpose) {
+      PADDLE_ENFORCE_EQ(
+          scale_outer_dim % 4,
+          0,
+          common::errors::InvalidArgument(
+              "When use_ue8m0 is true, the outer dimension of scale "
+              "must be divisible by 4, but got %d",
+              scale_outer_dim));
+      scale_outer_dim /= 4;
+      if (input_transpose) {
+        PADDLE_ENFORCE_EQ(scale_transposed_outer_dim % 4,
+                          0,
+                          common::errors::InvalidArgument(
+                              "When use_ue8m0 is true, the outer dimension of "
+                              "transposed scale "
+                              "must be divisible by 4, but got %d",
+                              scale_transposed_outer_dim));
+        scale_transposed_outer_dim /= 4;
+      }
+
+    } else {
+      PADDLE_ENFORCE_EQ(
+          scale_inner_dim % 4,
+          0,
+          common::errors::InvalidArgument(
+              "When use_ue8m0 is true, the inner dimension of scale "
+              "must be divisible by 4, but got %d",
+              scale_inner_dim));
+      scale_inner_dim /= 4;
+      if (input_transpose) {
+        PADDLE_ENFORCE_EQ(scale_transposed_inner_dim % 4,
+                          0,
+                          common::errors::InvalidArgument(
+                              "When use_ue8m0 is true, the inner dimension of "
+                              "transposed scale "
+                              "must be divisible by 4, but got %d",
+                              scale_transposed_inner_dim));
+        scale_transposed_inner_dim /= 4;
+      }
+    }
   }
 
   PADDLE_ENFORCE_GT(output_outer_dim,
@@ -2220,20 +2308,20 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
       out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
       out->set_dtype(DataType::FLOAT8_E4M3FN);
       scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
-      scale->set_dtype(DataType::FLOAT32);
+      scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
     } else {
       out->set_dims(common::make_ddim({0}));
       out->set_dtype(DataType::FLOAT8_E4M3FN);
       scale->set_dims(common::make_ddim({0}));
-      scale->set_dtype(DataType::FLOAT32);
+      scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
     }
     if (input_transpose) {
-      out_transposed->set_dims(
-          common::make_ddim({output_inner_dim, output_outer_dim}));
+      out_transposed->set_dims(make_ddim({output_inner_dim, output_outer_dim}));
       out_transposed->set_dtype(DataType::FLOAT8_E4M3FN);
       scale_transposed->set_dims(common::make_ddim(
           {scale_transposed_outer_dim, scale_transposed_inner_dim}));
-      scale_transposed->set_dtype(DataType::FLOAT32);
+      scale_transposed->set_dtype(using_ue8m0_scale ? DataType::INT32
+                                                    : DataType::FLOAT32);
     }
   } else {
     PADDLE_THROW(
@@ -2322,7 +2410,7 @@ static DDim ValidateShape(const std::vector<int64_t> shape,
           common::errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
-              common::make_ddim(shape),
+              make_ddim(shape),
               i));
       unk_dim_idx = static_cast<int>(i);
       output_shape[i] = shape[i];
@@ -2355,7 +2443,7 @@ static DDim ValidateShape(const std::vector<int64_t> shape,
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
-              common::make_ddim(shape),
+              make_ddim(shape),
               i,
               shape[i]));
       output_shape[i] = shape[i];
@@ -2393,8 +2481,8 @@ static DDim ValidateShape(const std::vector<int64_t> shape,
                 "But received X's shape = [%s], "
                 "'shape' is [%s].",
                 in_dims,
-                common::make_ddim(shape)));
-        return common::make_ddim(output_shape);
+                make_ddim(shape)));
+        return make_ddim(output_shape);
       } else if (shape_zero_cnt > in_dims_zero_cnt) {
         // more 0s after replacement, determine whether non-zero dimensions
         // are affected by 0s
@@ -2419,7 +2507,7 @@ static DDim ValidateShape(const std::vector<int64_t> shape,
                           "can not reshape %s to %s, because the unspecified "
                           "dimension %i can be any number and is ambiguous",
                           in_dims,
-                          common::make_ddim(shape),
+                          make_ddim(shape),
                           unk_dim_idx));
   }
 
@@ -2441,7 +2529,7 @@ static DDim ValidateShape(const std::vector<int64_t> shape,
               "'shape' is [%s], known capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              common::make_ddim(shape),
+              make_ddim(shape),
               capacity));
     } else {
       // such as [-1, 8, 3]->[-1, 8], out_shape will remain [-1, 8]
@@ -2460,12 +2548,12 @@ static DDim ValidateShape(const std::vector<int64_t> shape,
               "[%s], the capacity of 'shape' is %d.",
               in_dims,
               in_size,
-              common::make_ddim(shape),
+              make_ddim(shape),
               capacity));
     }
   }
 
-  return common::make_ddim(output_shape);
+  return make_ddim(output_shape);
 }
 
 void InferMetaFromVecValue(const MetaTensor& x,
@@ -2593,7 +2681,7 @@ void KthvalueInferMeta(const MetaTensor& x,
   for (int i = axis + 1; i < dim_size; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
-  DDim dims = common::make_ddim(dimvec);
+  DDim dims = make_ddim(dimvec);
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -3012,7 +3100,7 @@ void ModeInferMeta(const MetaTensor& x,
   for (int i = axis + 1; i < dim_size; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
-  DDim dims = common::make_ddim(dimvec);
+  DDim dims = make_ddim(dimvec);
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -3271,7 +3359,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
                         "Rank of Input(X) should be at least 0."));
   auto out_dims_vec = common::vectorize(x_dims);
   out_dims_vec.push_back(depth.to<int>());
-  auto out_dims = common::make_ddim(out_dims_vec);
+  auto out_dims = make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(dtype);
@@ -3289,7 +3377,7 @@ void OneHotInferMeta(const MetaTensor& x,
   int num_classes_int = num_classes.to<int>();
   auto out_dims_vec = common::vectorize(x_dims);
   out_dims_vec.push_back(num_classes_int);
-  auto out_dims = common::make_ddim(out_dims_vec);
+  auto out_dims = make_ddim(out_dims_vec);
 
   out->set_dims(out_dims);
   out->share_lod(x);
@@ -3872,7 +3960,7 @@ void PoolInferMeta(const MetaTensor& x,
                         x_dims.size(),
                         x_dims,
                         kernel_size_.size(),
-                        common::make_ddim(kernel_size_)));
+                        make_ddim(kernel_size_)));
 
   PADDLE_ENFORCE_EQ(
       kernel_size_.size(),
@@ -3884,8 +3972,8 @@ void PoolInferMeta(const MetaTensor& x,
           "size is %d, Attr(kernel_size_) is [%s], Attr(strides)is [%s].",
           kernel_size_.size(),
           strides.size(),
-          common::make_ddim(kernel_size_),
-          common::make_ddim(strides)));
+          make_ddim(kernel_size_),
+          make_ddim(strides)));
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
@@ -4072,7 +4160,7 @@ DDim ReduceInferDim(const MetaTensor& x,
     }
   }
 
-  DDim out_dim = common::make_ddim(out_dim_vector);
+  DDim out_dim = make_ddim(out_dim_vector);
   return out_dim;
 }
 
@@ -4155,7 +4243,7 @@ DDim StrictReduceInferDim(const MetaTensor& x,
     }
   }
 
-  DDim out_dim = common::make_ddim(out_dim_vector);
+  DDim out_dim = make_ddim(out_dim_vector);
   return out_dim;
 }
 
@@ -4218,7 +4306,7 @@ DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
       }
     }
   }
-  return common::make_ddim(vec_dim);
+  return make_ddim(vec_dim);
 }
 
 void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
@@ -4896,7 +4984,7 @@ void SplitInferMeta(const MetaTensor& x,
         axis_value == -1) {  // NOLINT
       out_dims = std::vector<DDim>(
           sections_data.size(),
-          common::make_ddim(std::vector<int64_t>(x.dims().size(), -1)));
+          make_ddim(std::vector<int64_t>(x.dims().size(), -1)));
     } else {
       out_dims = std::vector<DDim>(sections_data.size(), x.dims());
     }
@@ -4938,7 +5026,7 @@ void SplitInferMeta(const MetaTensor& x,
                           "Only one dimension value of Attr(num_or_sections) "
                           "in SplitOp can be -1. "
                           "But received Attr(num_or_sections) = [%s].",
-                          common::make_ddim(sections_data)));
+                          make_ddim(sections_data)));
 
     if (unknown_dim_idx != -1) {
       // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
@@ -4953,7 +5041,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections) "
               "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              common::make_ddim(sections_data),
+              make_ddim(sections_data),
               x.dims(),
               axis_value));
 
@@ -4967,7 +5055,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections)"
               " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              common::make_ddim(sections_data),
+              make_ddim(sections_data),
               x.dims(),
               axis_value));
     }
@@ -4987,7 +5075,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     std::vector<DDim> out_dims;
     if (axis_value == -1) {  // NOLINT
       out_dims = std::vector<DDim>(
-          num, common::make_ddim(std::vector<int>(x.dims().size(), -1)));
+          num, make_ddim(std::vector<int>(x.dims().size(), -1)));
     } else {
       out_dims = std::vector<DDim>(num, x.dims());
     }
@@ -5234,7 +5322,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
         new_out_shape.push_back(out_dims[i]);
       }
     }
-    out_dims = common::make_ddim(new_out_shape);
+    out_dims = make_ddim(new_out_shape);
   }
   VLOG(4) << "out_dims: " << out_dims;
   out->set_dims(out_dims);
@@ -5371,7 +5459,7 @@ void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
   std::vector<int64_t> out_dims(2);
   out_dims[0] = batch_size;
   out_dims[1] = (length == -1) ? input_len - start_index : length;
-  DDim out_dim = common::make_ddim(out_dims);
+  DDim out_dim = make_ddim(out_dims);
   out->set_dims(out_dim);
   out->set_dtype(xs[0]->dtype());
 }
@@ -5444,7 +5532,7 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
   // colnum = input_num * length
   out_dims[1] = (length < 0) ? input_len - start_index_int64 : length;
   out_dims[1] *= inputs_num;
-  DDim out_dim = common::make_ddim(out_dims);
+  DDim out_dim = make_ddim(out_dims);
   out->set_dims(out_dim);
   out->set_dtype(xs[0]->dtype());
 }
@@ -5454,7 +5542,7 @@ void SvdvalsInferMeta(const MetaTensor& x, MetaTensor* s) {
     auto x_vec = common::vectorize(x_dim);
     x_vec.erase(x_vec.end() - 2, x_vec.end());
     x_vec.push_back(k);
-    return common::make_ddim(x_vec);
+    return make_ddim(x_vec);
   };
 
   auto in_dims = x.dims();
@@ -5483,14 +5571,14 @@ void SvdInferMeta(const MetaTensor& x,
     // get x_dim and return the ddim of U
     auto x_vec = common::vectorize(x_dim);
     x_vec[x_vec.size() - 1] = k;
-    return common::make_ddim(x_vec);
+    return make_ddim(x_vec);
   };
 
   auto VHDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
     auto x_vec = common::vectorize(x_dim);
     x_vec[x_vec.size() - 2] = k;
-    return common::make_ddim(x_vec);
+    return make_ddim(x_vec);
   };
 
   auto SDDim = [](const DDim& x_dim, int64_t k) {
@@ -5498,7 +5586,7 @@ void SvdInferMeta(const MetaTensor& x,
     auto x_vec = common::vectorize(x_dim);
     x_vec[x_vec.size() - 2] = k;
     x_vec.erase(x_vec.end() - 1);  // rank - 1
-    return common::make_ddim(x_vec);
+    return make_ddim(x_vec);
   };
 
   auto in_dims = x.dims();
@@ -5896,7 +5984,7 @@ void UnbindInferMeta(const MetaTensor& x,
   for (int i = 0; i < in_dims.size(); ++i) {
     if (i != axis) out_dim.push_back(in_dims[i]);  // NOLINT
   }
-  auto out_dims = common::make_ddim(out_dim);
+  auto out_dims = make_ddim(out_dim);
 
   for (auto& out : outs) {
     out->set_dtype(x.dtype());

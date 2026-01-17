@@ -51,7 +51,7 @@ config$switch_use_feed_fetch_ops(FALSE)
 config$switch_specify_input_names(TRUE)
 ```
 
-Other configuration options and descriptions are as fallows.
+Other configuration options and descriptions are as follows.
 ``` r
 config$enable_profile() # turn on inference profile
 config$enable_use_gpu(gpu_memory_mb, gpu_id) # use GPU

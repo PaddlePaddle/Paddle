@@ -101,7 +101,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                   std::vector<float> weight_scale;
                   auto* weight_scale_tensor =
                       scope.GetVar(scale_var_node->Name())
-                          ->GetMutable<phi::DenseTensor>();
+                          ->GetMutable<DenseTensor>();
                   auto weight_scale_nums = weight_scale_tensor->numel();
 
                   if (weight_scale_tensor->dtype() == phi::DataType::FLOAT32) {

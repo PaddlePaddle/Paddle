@@ -200,7 +200,7 @@ bool NeedComputationClipForPP(
 Place GetDefaultPlace() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  if (phi::DeviceManager::GetDeviceCount(dev_types[0]) >= 0) {
+  if (phi::DeviceManager::GetDeviceCount(dev_types[0]) > 0) {
     return paddle::DefaultCustomPlace();
   }
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

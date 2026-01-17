@@ -44,8 +44,8 @@ HasElementsInstruction::HasElementsInstruction(
 
   type_ = OpFuncType::kCpuSync;
 
-  bool_tensor_ = value_exe_info_->GetVarByValue(op_->result(0))
-                     ->GetMutable<phi::DenseTensor>();
+  bool_tensor_ =
+      value_exe_info_->GetVarByValue(op_->result(0))->GetMutable<DenseTensor>();
   bool_tensor_->Resize(phi::make_ddim({1}));
 
   auto stack_value =

@@ -19,7 +19,7 @@ import inspect
 import warnings
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, get_overloads
 
 import paddle
 
@@ -943,3 +943,15 @@ def index_add_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def use_first_signature(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    overloads = get_overloads(func)
+    if not overloads:
+        return func
+    first_overload = overloads[0]
+    sig = inspect.signature(first_overload)
+    func.__signature__ = sig
+    return func

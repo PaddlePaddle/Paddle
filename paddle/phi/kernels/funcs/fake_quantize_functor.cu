@@ -688,7 +688,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
                                       out_size_data);
 
   int g_find_max;
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      &g_find_max,
                      gpu_place,
                      find_max,
@@ -697,7 +697,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
   dev_ctx.Wait();
   if (g_find_max) {
     int len;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &len,
                        gpu_place,
                        out_size_data,

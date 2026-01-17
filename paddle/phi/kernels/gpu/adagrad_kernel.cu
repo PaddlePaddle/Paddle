@@ -156,7 +156,7 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
 template <typename T>
 struct SparseAdagradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::SelectedRows& grad,
+                  const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
                   DenseTensor* moment,

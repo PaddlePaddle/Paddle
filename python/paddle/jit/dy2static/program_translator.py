@@ -278,6 +278,7 @@ class CacheKey:
         'input_args_with_spec',
         'input_kwargs_with_spec',
         'class_instance',
+        'is_grad_enabled',
         'kwargs',
         '_spec_names_id',
         '_pir_flags',
@@ -305,6 +306,7 @@ class CacheKey:
         self.input_args_with_spec = input_args_with_spec
         self.input_kwargs_with_spec = input_kwargs_with_spec
         self.class_instance = class_instance
+        self.is_grad_enabled = paddle.is_grad_enabled()
         # NOTE: `kwargs` is usually not considered as basic member for `__hash__`
         self.kwargs = kwargs
         self._spec_names_id = _hash_spec_names(
@@ -363,6 +365,7 @@ class CacheKey:
                 is_train,
                 self._pir_flags,
                 use_pir_api(),
+                self.is_grad_enabled,
             )
         )
 
