@@ -43,8 +43,6 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
-namespace pir {
-
 struct Node;
 // Since AutoLayoutPass registers a large number of
 // LayoutTransformationInterface, in order to ensure the correctness of
@@ -102,23 +100,24 @@ template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 struct Node {
-  using DataType = std::variant<const Operation*, Value, SrcNode, DstNode>;
+  using DataType =
+      std::variant<const pir::Operation*, pir::Value, SrcNode, DstNode>;
   DataType data;
 
-  explicit Node(const Operation* op) : data(op) {}
-  explicit Node(Value value) : data(value) {}
+  explicit Node(const pir::Operation* op) : data(op) {}
+  explicit Node(pir::Value value) : data(value) {}
   explicit Node(SrcNode n) : data(n) {}
   explicit Node(DstNode n) : data(n) {}
 
-  Node() : data(Value(nullptr)) {}
+  Node() : data(pir::Value(nullptr)) {}
 
   bool operator==(const Node& rhs) const {
     bool ret = std::visit(
         overloaded{
-            [](const Operation* left, const Operation* right) {
+            [](const pir::Operation* left, const pir::Operation* right) {
               return (left == right);
             },
-            [](const Value& left, const Value& right) {
+            [](const pir::Value& left, const pir::Value& right) {
               return (left == right);
             },
             [](const SrcNode& left, const SrcNode& right) { return true; },
@@ -129,10 +128,10 @@ struct Node {
     return ret;
   }
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
-    std::visit(overloaded{[&](const Operation* op) {
+    std::visit(overloaded{[&](const pir::Operation* op) {
                             os << "Op(" << op->name() << " " << op << ")";
                           },
-                          [&](const Value& value) {
+                          [&](const pir::Value& value) {
                             if (!value)
                               os << "Var(null)";
                             else
@@ -200,7 +199,7 @@ struct FlowGraph {
   std::unordered_map<Node, std::unordered_set<Node>> adjs_by_node;
   std::unordered_map<Node, EdgeIndex> cur_arcs;
   std::unordered_map<Node, size_t> heights;
-  const Program& program;
+  const pir::Program& program;
 
   void AddEdge(Node src,
                Node dst,
@@ -225,7 +224,7 @@ struct FlowGraph {
     adjs_by_node[dst].insert(src);
   }
 
-  explicit FlowGraph(const Program& program) : program(program) {
+  explicit FlowGraph(const pir::Program& program) : program(program) {
     // We assume by default that the program is topologically sorted;
     // otherwise, it will fail during destruction.
 
@@ -253,7 +252,7 @@ struct FlowGraph {
         float weight = 1.0f;
         if (operand && operand.type()) {
           weight = 1.0f / (operand.use_count());
-          if (auto t = operand.type().dyn_cast<VectorType>()) {
+          if (auto t = operand.type().dyn_cast<pir::VectorType>()) {
             weight = INF;
           }
         }
@@ -266,7 +265,7 @@ struct FlowGraph {
 
         float weight = 1.0f;
         if (op_result && op_result.type()) {
-          if (auto t = op_result.type().dyn_cast<VectorType>()) {
+          if (auto t = op_result.type().dyn_cast<pir::VectorType>()) {
             weight = INF;
           }
         }
@@ -292,7 +291,7 @@ struct FlowGraph {
       // we need to ensure the edge from src node to real src node in
       // calculation graph
 
-      if (!op.HasTrait<ImmutableLayoutTrait>() && op.num_operands() > 0) {
+      if (!op.HasTrait<pir::ImmutableLayoutTrait>() && op.num_operands() > 0) {
         continue;
       }
       Node op_node(&op);
@@ -417,8 +416,8 @@ struct FlowGraph {
 
       bool should_interrupt = std::visit(
           overloaded{
-              [&](const Operation* op) {
-                Operation* fop = const_cast<Operation*>(op);
+              [&](const pir::Operation* op) {
+                pir::Operation* fop = const_cast<pir::Operation*>(op);
 
                 auto layout_transform_iface = fop->dyn_cast<
                     paddle::dialect::LayoutTransformationInterface>();
@@ -429,7 +428,7 @@ struct FlowGraph {
                 }
                 return true;
               },
-              [&](const Value& v) {
+              [&](const pir::Value& v) {
                 if (!v) return true;
                 auto vt = v.type();
                 if (!vt) return true;
@@ -440,7 +439,7 @@ struct FlowGraph {
                   VLOG(10) << "judging var: " << v.defining_op() << " "
                            << v.type() << " " << vdt.dims();
                   can_be_transformed = judge_dense_tensor_type(vdt);
-                } else if (auto vdt = vt.dyn_cast<VectorType>()) {
+                } else if (auto vdt = vt.dyn_cast<pir::VectorType>()) {
                   if (vdt.size() == 0) return false;
                   auto vt_elem = vdt[0];
                   if (auto vdt_elem =
@@ -638,6 +637,8 @@ struct FlowGraph {
 };
 
 using Edge = FlowGraph::Edge;
+
+namespace pir {
 
 class TransferLayoutPass : public Pass {
  public:
