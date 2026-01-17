@@ -74,7 +74,12 @@ _metadata_manager = MetadataManager()
 
 
 def get_checkpoint_files(
-    path, use_cache=True, unique_id=None, process_group=None, safetensors=False
+    path,
+    use_cache=True,
+    unique_id=None,
+    process_group=None,
+    safetensors=False,
+    use_dist=None,
 ):
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
@@ -93,30 +98,71 @@ def get_checkpoint_files(
         file for file in accessible_files if file.endswith(".safetensors")
     ]
 
-    if safetensors and len(metadata_files) == 0:
-        logger.info(
-            f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
-        )
-        metadata_files = [
-            file
-            for file in accessible_files
-            if file.endswith(".auto_generated.metadata")
-        ]
+    if safetensors:
+        index_file_name = "model.safetensors.index.json"
+        if index_file_name in accessible_files:
+            index_file_path = os.path.join(path, index_file_name)
+            with open(index_file_path, "r") as f:
+                index_data = json.load(f)
+            if "weight_map" in index_data:
+                from safetensors.numpy import safe_open
+
+                mapping_key_to_safetensors_file = index_data["weight_map"]
+                global_safetensors_files = []
+                if use_dist:
+                    paddle.distributed.all_gather_object(
+                        global_safetensors_files,
+                        safetensors_files,
+                        process_group,
+                    )
+                    global_safetensors_files = list(
+                        {
+                            file
+                            for files in global_safetensors_files
+                            for file in files
+                        }
+                    )
+                else:
+                    global_safetensors_files = safetensors_files
+                for file in global_safetensors_files:
+                    if file.endswith(".safetensors"):
+                        file_path = os.path.join(path, file)
+                        with safe_open(file_path, framework="np") as f:
+                            for key in f.keys():
+                                assert key in mapping_key_to_safetensors_file, (
+                                    f"Key '{key}' is not found in the weight_map of index file"
+                                )
+                                expected_file = mapping_key_to_safetensors_file[
+                                    key
+                                ]
+                                assert expected_file == file, (
+                                    f"Key '{key}' is mapped to file '{expected_file}' in index, but found in file '{file}'"
+                                )
+
         if len(metadata_files) == 0:
             logger.info(
-                f"No metadata file found in the checkpoint directory: {path}. Creating one now."
+                f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
             )
-            create_hf_ckpt_metadata(path, process_group=process_group)
-            accessible_files = os.listdir(path)
             metadata_files = [
                 file
                 for file in accessible_files
                 if file.endswith(".auto_generated.metadata")
             ]
-            logger.info(
-                f"Created metadata file: {metadata_files[0]} successfully."
-            )
-        return (metadata_files, safetensors_files)
+            if len(metadata_files) == 0:
+                logger.info(
+                    f"No metadata file found in the checkpoint directory: {path}. Creating one now."
+                )
+                create_hf_ckpt_metadata(path, process_group=process_group)
+                accessible_files = os.listdir(path)
+                metadata_files = [
+                    file
+                    for file in accessible_files
+                    if file.endswith(".auto_generated.metadata")
+                ]
+                logger.info(
+                    f"Created metadata file: {metadata_files[0]} successfully."
+                )
+            return (metadata_files, safetensors_files)
 
     assert len(metadata_files) > 0, (
         f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
@@ -517,6 +563,7 @@ def _handle_aoa(
             unique_id=unique_id,
             process_group=process_group,
             safetensors=safetensors,
+            use_dist=use_dist,
         )
         assert len(metadata_files) == 1, "Only support one metadata file now."
         metadata = paddle.load(os.path.join(path, metadata_files[0]))
@@ -1121,6 +1168,7 @@ def load_state_dict_impl(
             unique_id=unique_id,
             process_group=process_group,
             safetensors=safetensors,
+            use_dist=use_dist,
         )
 
         if _metadata_manager.is_metadata_list_empty():

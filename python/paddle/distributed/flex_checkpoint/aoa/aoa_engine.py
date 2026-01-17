@@ -423,6 +423,11 @@ class AOAEngine:
             "When concatenating multiple tensors, there should be at least one!"
         )
         shape = list(tensors[0].shape)
+        ndim = len(shape)
+        assert 0 <= axis < ndim, (
+            f"when concat, the axis {axis} is out of range for tensors "
+            f"with shape {shape} (valid range: {0} to {ndim - 1})."
+        )
         shape[axis] = sum(t.shape[axis] for t in tensors)
         dtype = tensors[0].dtype
         assert all(t.dtype == dtype for t in tensors), (
@@ -533,6 +538,11 @@ class AOAEngine:
                     if len(left_vars) == 1:
                         in_name = left_vars[0].name
                         in_ref = _get_var_ref(left_vars[0])
+                        ndim = len(in_ref.shape)
+                        assert 0 <= axis < ndim, (
+                            f"when split, the axis {axis} is out of range for tensor {in_name} "
+                            f"with shape {in_ref.shape} (valid range: {0} to {ndim - 1})."
+                        )
                         assert in_ref.shape[axis] % len(right_vars) == 0, (
                             f"when split, the shape of the input tensor {in_name} is {in_ref.shape}, the axis is {axis}, the number of right_vars is {len(right_vars)}, but the shape of the input tensor {in_name} is not divisible by the number of right_vars."
                         )
