@@ -53,7 +53,7 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-namespace {
+namespace pir {
 
 class AutoMixedPrecisionPass : public pir::Pass {
  public:
@@ -871,9 +871,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
     return false;
   }
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateAutoMixedPrecisionPass() {
   return std::make_unique<AutoMixedPrecisionPass>();
@@ -881,4 +878,4 @@ std::unique_ptr<Pass> CreateAutoMixedPrecisionPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(auto_mixed_precision_pass, AutoMixedPrecisionPass);
+REGISTER_IR_PASS(auto_mixed_precision_pass, pir::AutoMixedPrecisionPass);
