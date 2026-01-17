@@ -99,4 +99,5 @@ std::unique_ptr<Pass> CreateRemoveRedundantTransposePass() {
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(remove_redundant_transpose_pass, RemoveRedundantTransposePass);
+REGISTER_IR_PASS(remove_redundant_transpose_pass,
+                 pir::RemoveRedundantTransposePass);
