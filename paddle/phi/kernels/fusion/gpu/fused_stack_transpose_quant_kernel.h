@@ -23,12 +23,18 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedStackQuantKernel(const Context& dev_ctx,
                            const std::vector<const DenseTensor*>& x,
+                           bool using_pow2_scaling,
+                           bool using_ue8m0_scale,
+                           bool output_scale_transpose,
                            DenseTensor* out,
                            DenseTensor* scale);
 
 template <typename T, typename Context>
 void FusedStackTransposeQuantKernel(const Context& dev_ctx,
                                     const std::vector<const DenseTensor*>& x,
+                                    bool using_pow2_scaling,
+                                    bool using_ue8m0_scale,
+                                    bool output_scale_transpose,
                                     DenseTensor* out,
                                     DenseTensor* scale);
 

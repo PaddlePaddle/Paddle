@@ -943,11 +943,17 @@ PADDLE_API void FusionSeqExpandConcatFCInferMeta(
 
 PADDLE_API void FusedStackTransposeQuantInferMeta(
     const std::vector<const MetaTensor*>& x,
+    bool using_pow2_scaling,
+    bool using_ue8m0_scale,
+    bool output_scale_transpose,
     MetaTensor* out,
     MetaTensor* scale);
 
 PADDLE_API void FusedStackQuantInferMeta(
     const std::vector<const MetaTensor*>& x,
+    bool using_pow2_scaling,
+    bool using_ue8m0_scale,
+    bool output_scale_transpose,
     MetaTensor* out,
     MetaTensor* scale);
 

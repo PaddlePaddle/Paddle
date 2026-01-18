@@ -4319,17 +4319,33 @@ std::tuple<int64_t, int64_t, int64_t> FusedStackQuantCommonCheck(
 }
 
 void FusedStackTransposeQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                                       bool using_pow2_scaling,
+                                       bool using_ue8m0_scale,
+                                       bool output_scale_transpose,
                                        MetaTensor* out,
                                        MetaTensor* scale) {
   int64_t N, M, K;
   std::tie(N, M, K) = FusedStackQuantCommonCheck(x);
 
   std::vector<int64_t> out_shape = {N * K, M};
-  std::vector<int64_t> scale_shape = {N * K / 128, M / 128};
+  std::vector<int64_t> scale_shape;
+  if (using_ue8m0_scale) {
+    if (output_scale_transpose) {
+      scale_shape = {M / 128 / 4, N * K};
+    } else {
+      scale_shape = {N * K, M / 128 / 4};
+    }
+  } else {
+    if (output_scale_transpose) {
+      scale_shape = {M / 128, N * K / 128};
+    } else {
+      scale_shape = {N * K / 128, M / 128};
+    }
+  }
   out->set_dims(common::make_ddim(out_shape));
   scale->set_dims(common::make_ddim(scale_shape));
   out->set_dtype(DataType::FLOAT8_E4M3FN);
-  scale->set_dtype(DataType::FLOAT32);
+  scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
   out->share_lod(*x.at(0));
   scale->share_lod(*x.at(0));
   out->set_layout(x.at(0)->layout());
@@ -4337,17 +4353,33 @@ void FusedStackTransposeQuantInferMeta(const std::vector<const MetaTensor*>& x,
 }
 
 void FusedStackQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                              bool using_pow2_scaling,
+                              bool using_ue8m0_scale,
+                              bool output_scale_transpose,
                               MetaTensor* out,
                               MetaTensor* scale) {
   int64_t N, M, K;
   std::tie(N, M, K) = FusedStackQuantCommonCheck(x);
 
   std::vector<int64_t> out_shape = {N * M, K};
-  std::vector<int64_t> scale_shape = {N * M / 128, K / 128};
+  std::vector<int64_t> scale_shape;
+  if (using_ue8m0_scale) {
+    if (output_scale_transpose) {
+      scale_shape = {K / 128 / 4, N * M};
+    } else {
+      scale_shape = {N * M, K / 128 / 4};
+    }
+  } else {
+    if (output_scale_transpose) {
+      scale_shape = {K / 128, N * M / 128};
+    } else {
+      scale_shape = {N * M / 128, K / 128};
+    }
+  }
   out->set_dims(common::make_ddim(out_shape));
   scale->set_dims(common::make_ddim(scale_shape));
   out->set_dtype(DataType::FLOAT8_E4M3FN);
-  scale->set_dtype(DataType::FLOAT32);
+  scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
   out->share_lod(*x.at(0));
   scale->share_lod(*x.at(0));
   out->set_layout(x.at(0)->layout());

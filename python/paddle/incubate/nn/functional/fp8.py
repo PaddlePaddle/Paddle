@@ -33,7 +33,11 @@ def _empty_tensor() -> Tensor:
 
 
 def fused_stack_transpose_quant(
-    x: Sequence[Tensor], transpose: bool = True
+    x: Sequence[Tensor],
+    transpose: bool = True,
+    using_pow2_scaling: bool = False,
+    using_ue8m0_scale: bool = False,
+    output_scale_transpose: bool = False,
 ) -> tuple[Tensor, Tensor]:
     """
     Fused operation that performs stacking, optional transposition, and quantization
@@ -44,6 +48,12 @@ def fused_stack_transpose_quant(
             has shape `[M, K]`. All tensors should have the same shape and dtype.
         transpose (bool, optional): If True, applies a transpose before quantization.
             Default is True.
+        using_pow2_scaling (bool, optional): Whether to use power-of-2 quantization
+            scaling for hardware efficiency. Default: False.
+        using_ue8m0_scale (bool, optional): Whether to use ue8m0 quantization scale.
+            Default: False.
+        output_scale_transpose (bool, optional): Whether to transpose the output scale.
+            Default: True.
 
     Returns:
         tuple:
@@ -75,9 +85,13 @@ def fused_stack_transpose_quant(
     """
     if in_dynamic_or_pir_mode():
         if transpose:
-            return _C_ops.fused_stack_transpose_quant(x)
+            return _C_ops.fused_stack_transpose_quant(
+                x, using_pow2_scaling, using_ue8m0_scale, output_scale_transpose
+            )
         else:
-            return _C_ops.fused_stack_quant(x)
+            return _C_ops.fused_stack_quant(
+                x, using_pow2_scaling, using_ue8m0_scale, output_scale_transpose
+            )
 
 
 def fused_act_dequant(

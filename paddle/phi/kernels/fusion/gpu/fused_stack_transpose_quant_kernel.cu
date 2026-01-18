@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/fusion/gpu/fused_stack_transpose_quant_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
@@ -25,6 +26,16 @@ namespace phi {
 namespace fusion {
 
 using FastDivMod = funcs::FastDivMod<int64_t>;
+
+template <typename ScaleT, bool using_ue8m0_scale>
+__device__ __forceinline__ void StoreScale(ScaleT* ptr, size_t idx, float val) {
+  if constexpr (using_ue8m0_scale) {
+    int exp = (__float_as_int(val) >> 23) & 0xFF;
+    reinterpret_cast<uint8_t*>(ptr)[idx] = static_cast<uint8_t>(exp);
+  } else {
+    ptr[idx] = val;
+  }
+}
 
 template <typename ArrayT>
 __device__ void BlockLoad(ArrayT input_array,
@@ -58,8 +69,8 @@ __device__ __nv_bfloat16 WarpReduceMax(__nv_bfloat16 x) {
   return x;
 }
 
-template <typename OutT>
-__device__ float BlockReduceScale(__nv_bfloat16 x[8][4]) {
+template <typename OutT, bool Power2Scaling = false>
+__device__ float BlockReduceScale(__nv_bfloat16 x[8][4], float eps = 1e-10f) {
   // [(8), 16, 32, (4)] => [16, 32]
   __nv_bfloat16 local_max;
   for (uint32_t i = 0; i < 8; i++) {
@@ -82,7 +93,8 @@ __device__ float BlockReduceScale(__nv_bfloat16 x[8][4]) {
   if (threadIdx.y == 0 && threadIdx.x < 16) {
     warp_max = WarpReduceMax<16>(block_max[threadIdx.x]);
     if (threadIdx.x == 0) {
-      block_scale = ComputeScale<__nv_bfloat16, OutT>(warp_max, 0.0f);
+      block_scale =
+          ComputeScale<__nv_bfloat16, OutT, Power2Scaling>(warp_max, eps);
     }
   }
   __syncthreads();
@@ -90,11 +102,16 @@ __device__ float BlockReduceScale(__nv_bfloat16 x[8][4]) {
   return block_scale;
 }
 
-template <typename OutT, typename ArrayT>
+template <typename OutT,
+          typename ArrayT,
+          typename ScaleT,
+          bool using_pow2_scaling,
+          bool using_ue8m0_scale,
+          bool output_scale_transpose>
 __global__ void __launch_bounds__(512)
     FusedStackQuantGPUKernel(ArrayT input_array,
                              OutT* __restrict__ out,
-                             float* __restrict__ scale,
+                             ScaleT* __restrict__ scale,
                              size_t M,
                              size_t K,
                              FastDivMod K_div_128) {
@@ -106,15 +123,44 @@ __global__ void __launch_bounds__(512)
   BlockLoad(input_array, x, K, block_y, block_x);
 
   // Find the scale of all elements
-  float block_scale = BlockReduceScale<OutT>(x);
+  float block_scale = BlockReduceScale < OutT,
+        using_pow2_scaling || using_ue8m0_scale > (x);
 
   // Compute scale and store back
-  if (threadIdx.x == 0 && threadIdx.y == 0) {
-    size_t idx_n = blockIdx.z;
-    size_t idx_m = block_y;
-    size_t idx_k = block_x;
-    size_t idx = (idx_n * (M / 128) + idx_m) * (K / 128) + idx_k;
-    scale[idx] = __frcp_rn(block_scale);
+  // For FusedStackQuant, logical layout: Rows=N*M, Cols=K
+  // block_y -> idx_m (row block in M/128), block_x -> idx_k (col block in
+  // K/128) idx_n -> blockIdx.z
+  int tid = threadIdx.y * 32 + threadIdx.x;
+  if constexpr (using_ue8m0_scale) {
+    if (tid < 128) {
+      size_t r = tid;
+      size_t global_row =
+          (static_cast<size_t>(blockIdx.z) * (M / 128) + block_y) * 128 + r;
+      size_t idx;
+      if constexpr (output_scale_transpose) {
+        // [K/128, N*M]
+        // idx = block_x * (static_cast<size_t>(gridDim.z) * M) + global_row;
+        size_t total_cols = static_cast<size_t>(gridDim.z) * M;
+        idx = (block_x / 4) * (total_cols * 4) + global_row * 4 + (block_x % 4);
+      } else {
+        // [N*M, K/128]
+        idx = global_row * (K / 128) + block_x;
+      }
+      StoreScale<ScaleT, using_ue8m0_scale>(scale, idx, __frcp_rn(block_scale));
+    }
+  } else {
+    if (tid == 0) {
+      size_t idx;
+      if constexpr (output_scale_transpose) {
+        // [K/128, N*M/128]
+        idx = block_x * (static_cast<size_t>(gridDim.z) * (M / 128)) +
+              (blockIdx.z * (M / 128) + block_y);
+      } else {
+        // [N*M/128, K/128]
+        idx = (blockIdx.z * (M / 128) + block_y) * (K / 128) + block_x;
+      }
+      StoreScale<ScaleT, using_ue8m0_scale>(scale, idx, __frcp_rn(block_scale));
+    }
   }
 
   // Scale X and store to out
@@ -135,11 +181,16 @@ __global__ void __launch_bounds__(512)
   }
 }
 
-template <typename OutT, typename ArrayT>
+template <typename OutT,
+          typename ArrayT,
+          typename ScaleT,
+          bool using_pow2_scaling,
+          bool using_ue8m0_scale,
+          bool output_scale_transpose>
 __global__ void __launch_bounds__(512)
     FusedStackTransposeQuantGPUKernel(ArrayT input_array,
                                       OutT* __restrict__ out,
-                                      float* __restrict__ scale,
+                                      ScaleT* __restrict__ scale,
                                       size_t M,
                                       size_t K,
                                       FastDivMod K_div_128) {
@@ -151,15 +202,44 @@ __global__ void __launch_bounds__(512)
   BlockLoad(input_array, x, K, block_y, block_x);
 
   // Find the scale of all elements
-  float block_scale = BlockReduceScale<OutT>(x);
+  float block_scale = BlockReduceScale < OutT,
+        using_pow2_scaling || using_ue8m0_scale > (x);
 
   // Compute scale and store back
-  if (threadIdx.x == 0 && threadIdx.y == 0) {
-    size_t idx_n = blockIdx.z;
-    size_t idx_k = block_x;
-    size_t idx_m = block_y;
-    size_t idx = (idx_n * (K / 128) + idx_k) * (M / 128) + idx_m;
-    scale[idx] = __frcp_rn(block_scale);
+  // For FusedStackTransposeQuant, logical layout: Rows=N*K, Cols=M
+  // block_y -> idx_m (col block in M/128), block_x -> idx_k (row block in
+  // K/128) idx_n -> blockIdx.z
+  int tid = threadIdx.y * 32 + threadIdx.x;
+  if constexpr (using_ue8m0_scale) {
+    if (tid < 128) {
+      size_t r = tid;
+      size_t global_row =
+          (static_cast<size_t>(blockIdx.z) * (K / 128) + block_x) * 128 + r;
+      size_t idx;
+      if constexpr (output_scale_transpose) {
+        // [M/128, N*K]
+        // idx = block_y * (static_cast<size_t>(gridDim.z) * K) + global_row;
+        size_t total_rows = static_cast<size_t>(gridDim.z) * K;
+        idx = (block_y / 4) * (total_rows * 4) + global_row * 4 + (block_y % 4);
+      } else {
+        // [N*K, M/128]
+        idx = global_row * (M / 128) + block_y;
+      }
+      StoreScale<ScaleT, using_ue8m0_scale>(scale, idx, __frcp_rn(block_scale));
+    }
+  } else {
+    if (tid == 0) {
+      size_t idx;
+      if constexpr (output_scale_transpose) {
+        // [M/128, N*K/128]
+        idx = block_y * (static_cast<size_t>(gridDim.z) * (K / 128)) +
+              (blockIdx.z * (K / 128) + block_x);
+      } else {
+        // [N*K/128, M/128]
+        idx = (blockIdx.z * (K / 128) + block_x) * (M / 128) + block_y;
+      }
+      StoreScale<ScaleT, using_ue8m0_scale>(scale, idx, __frcp_rn(block_scale));
+    }
   }
 
   // Scale X and transpose in shared memory
@@ -194,6 +274,9 @@ template <typename T, typename Context>
 void FusedStackTransposeQuantImpl(const Context& dev_ctx,
                                   const std::vector<const DenseTensor*>& x,
                                   bool transpose,
+                                  bool using_pow2_scaling,
+                                  bool using_ue8m0_scale,
+                                  bool output_scale_transpose,
                                   DenseTensor* out,
                                   DenseTensor* scale) {
   int N = static_cast<int>(x.size());
@@ -211,39 +294,129 @@ void FusedStackTransposeQuantImpl(const Context& dev_ctx,
   dim3 grid((M / 128) * (K / 128), 1, N);
   dim3 block(32, 16);
   auto* out_data = dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
-  auto* scale_data = dev_ctx.template Alloc<float>(scale);
+
+  if (using_ue8m0_scale) {
+    dev_ctx.template Alloc<int>(scale);
+  } else {
+    dev_ctx.template Alloc<float>(scale);
+  }
+
   FastDivMod K_div_128(K / 128);
 
-  switch (funcs::CalcArraySize(N)) {
-    SEGMENTED_ARRAY_KERNEL_HELPER({
-      funcs::ConstPointerArraySetter<Context, T, kArraySize> setter(dev_ctx, x);
-      if (transpose) {
-        FusedStackTransposeQuantGPUKernel<phi::float8_e4m3fn>
-            <<<grid, block, 0, dev_ctx.stream()>>>(
-                setter.array, out_data, scale_data, M, K, K_div_128);
-      } else {
-        FusedStackQuantGPUKernel<phi::float8_e4m3fn>
-            <<<grid, block, 0, dev_ctx.stream()>>>(
-                setter.array, out_data, scale_data, M, K, K_div_128);
-      }
-    });
-  }
+  DISPATCH_BOOL(
+      using_pow2_scaling,
+      k_using_pow2_scaling,
+      DISPATCH_BOOL(
+          using_ue8m0_scale,
+          k_using_ue8m0_scale,
+          DISPATCH_BOOL(
+              output_scale_transpose,
+              k_output_scale_transpose,
+              switch (funcs::CalcArraySize(N)) {
+                SEGMENTED_ARRAY_KERNEL_HELPER({
+                  funcs::ConstPointerArraySetter<Context, T, kArraySize> setter(
+                      dev_ctx, x);
+                  if (transpose) {
+                    if (k_using_ue8m0_scale) {
+                      FusedStackTransposeQuantGPUKernel<
+                          phi::float8_e4m3fn,
+                          decltype(setter.array),
+                          int,
+                          k_using_pow2_scaling,
+                          k_using_ue8m0_scale,
+                          k_output_scale_transpose>
+                          <<<grid, block, 0, dev_ctx.stream()>>>(
+                              setter.array,
+                              out_data,
+                              reinterpret_cast<int*>(scale->data<int>()),
+                              M,
+                              K,
+                              K_div_128);
+                    } else {
+                      FusedStackTransposeQuantGPUKernel<
+                          phi::float8_e4m3fn,
+                          decltype(setter.array),
+                          float,
+                          k_using_pow2_scaling,
+                          k_using_ue8m0_scale,
+                          k_output_scale_transpose>
+                          <<<grid, block, 0, dev_ctx.stream()>>>(
+                              setter.array,
+                              out_data,
+                              reinterpret_cast<float*>(scale->data<float>()),
+                              M,
+                              K,
+                              K_div_128);
+                    }
+                  } else {
+                    if (k_using_ue8m0_scale) {
+                      FusedStackQuantGPUKernel<phi::float8_e4m3fn,
+                                               decltype(setter.array),
+                                               int,
+                                               k_using_pow2_scaling,
+                                               k_using_ue8m0_scale,
+                                               k_output_scale_transpose>
+                          <<<grid, block, 0, dev_ctx.stream()>>>(
+                              setter.array,
+                              out_data,
+                              reinterpret_cast<int*>(scale->data<int>()),
+                              M,
+                              K,
+                              K_div_128);
+                    } else {
+                      FusedStackQuantGPUKernel<phi::float8_e4m3fn,
+                                               decltype(setter.array),
+                                               float,
+                                               k_using_pow2_scaling,
+                                               k_using_ue8m0_scale,
+                                               k_output_scale_transpose>
+                          <<<grid, block, 0, dev_ctx.stream()>>>(
+                              setter.array,
+                              out_data,
+                              reinterpret_cast<float*>(scale->data<float>()),
+                              M,
+                              K,
+                              K_div_128);
+                    }
+                  }
+                });
+              })));
 }
 
 template <typename T, typename Context>
 void FusedStackQuantKernel(const Context& dev_ctx,
                            const std::vector<const DenseTensor*>& x,
+                           bool using_pow2_scaling,
+                           bool using_ue8m0_scale,
+                           bool output_scale_transpose,
                            DenseTensor* out,
                            DenseTensor* scale) {
-  FusedStackTransposeQuantImpl<T>(dev_ctx, x, false, out, scale);
+  FusedStackTransposeQuantImpl<T>(dev_ctx,
+                                  x,
+                                  false,
+                                  using_pow2_scaling,
+                                  using_ue8m0_scale,
+                                  output_scale_transpose,
+                                  out,
+                                  scale);
 }
 
 template <typename T, typename Context>
 void FusedStackTransposeQuantKernel(const Context& dev_ctx,
                                     const std::vector<const DenseTensor*>& x,
+                                    bool using_pow2_scaling,
+                                    bool using_ue8m0_scale,
+                                    bool output_scale_transpose,
                                     DenseTensor* out,
                                     DenseTensor* scale) {
-  FusedStackTransposeQuantImpl<T>(dev_ctx, x, true, out, scale);
+  FusedStackTransposeQuantImpl<T>(dev_ctx,
+                                  x,
+                                  true,
+                                  using_pow2_scaling,
+                                  using_ue8m0_scale,
+                                  output_scale_transpose,
+                                  out,
+                                  scale);
 }
 
 }  // namespace fusion
@@ -255,7 +428,7 @@ PD_REGISTER_KERNEL(fused_stack_quant,
                    phi::fusion::FusedStackQuantKernel,
                    phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  // kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }
 
 PD_REGISTER_KERNEL(fused_stack_transpose_quant,
@@ -264,5 +437,5 @@ PD_REGISTER_KERNEL(fused_stack_transpose_quant,
                    phi::fusion::FusedStackTransposeQuantKernel,
                    phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  // kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }
