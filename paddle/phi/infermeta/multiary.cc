@@ -2621,7 +2621,7 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                              MetaTensor* mean,
                              MetaTensor* variance,
                              MetaConfig config) {
-  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
+  std::vector<int64_t> x_dims_vec = vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
 
   int64_t normalized_dims = 1;
@@ -2630,7 +2630,7 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   }
 
   if (residual) {
-    std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
+    std::vector<int64_t> residual_dims_vec = vectorize(residual.dims());
     for (size_t i = 0; i < x_dims_vec.size(); ++i) {
       if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1 ||
           x_dims_vec[i] == 0)
@@ -2645,7 +2645,7 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                             residual_dims_vec[i]));
     }
     if (bias) {
-      std::vector<int64_t> bias_dims_vec = common::vectorize(bias.dims());
+      std::vector<int64_t> bias_dims_vec = vectorize(bias.dims());
       PADDLE_ENFORCE_EQ(
           x_dims_size - begin_norm_axis,
           bias_dims_vec.size(),
@@ -5403,8 +5403,8 @@ void SendUERecvInferMeta(const MetaTensor& x,
 
   // Infer out's shape according to x and e(need broadcasting condition)
   out->set_dtype(x.dtype());
-  auto x_dims1 = common::vectorize<int64_t>(x_dims);
-  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  auto x_dims1 = vectorize<int64_t>(x_dims);
+  auto y_dims1 = vectorize<int64_t>(y_dims);
   std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
   std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
 
@@ -5477,8 +5477,8 @@ void SendUVInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  auto x_dims1 = common::vectorize<int64_t>(x_dims);
-  auto y_dims1 = common::vectorize<int64_t>(y_dims);
+  auto x_dims1 = vectorize<int64_t>(x_dims);
+  auto y_dims1 = vectorize<int64_t>(y_dims);
   std::vector<int64_t> x_dims2(x_dims1.begin() + 1, x_dims1.end());
   std::vector<int64_t> y_dims2(y_dims1.begin() + 1, y_dims1.end());
   int max_dim = static_cast<int>(std::max(x_dims2.size(), y_dims2.size()));
@@ -5601,7 +5601,7 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
           rank,
           axis));
   if (axis < 0) axis += (rank + 1);
-  auto vec = common::vectorize<int64_t>(out_dim);
+  auto vec = vectorize<int64_t>(out_dim);
   vec.insert(vec.begin() + axis, input_dims.size());  // NOLINT
   out->set_dims(make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());

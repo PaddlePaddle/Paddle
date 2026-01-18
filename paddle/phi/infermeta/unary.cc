@@ -37,7 +37,7 @@ namespace phi {
 namespace detail {
 // Used in MatrixRankInferMeta
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
-  auto x_vec = common::vectorize(dim_x);
+  auto x_vec = vectorize(dim_x);
   if (x_vec.size() == 2) {
     return make_ddim({});
   }
@@ -214,7 +214,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
       vec_dims.push_back(dims);
     }
     if (vec_dims.empty()) return;
-    auto dim_vec = common::vectorize<int>(vec_dims[0]);
+    auto dim_vec = vectorize<int>(vec_dims[0]);
     if (use_stack) {
       dim_vec.insert(dim_vec.begin() + axis, dim_vec.size() * dim_vec[axis]);
     } else {
@@ -230,7 +230,7 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
   // otherwise, suppose the shape of array is the shape of tensor in the
   // array, which is consistent with what tensor_array_read_write dose
   if (use_stack) {
-    auto dim_vec = common::vectorize<int>(dims);
+    auto dim_vec = vectorize<int>(dims);
     // use -1 for the stack dim size
     dim_vec.insert(dim_vec.begin() + axis, -1);
     dims = make_ddim(dim_vec);
@@ -402,7 +402,7 @@ void ArgsortInferMeta(const MetaTensor& input,
 }
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
-  auto out_dims_v = common::vectorize(input.dims());
+  auto out_dims_v = vectorize(input.dims());
   out_dims_v.push_back(2);
   auto out_dims = make_ddim(out_dims_v);
   output->set_dims(out_dims);
@@ -728,7 +728,7 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
       _axis = axis;
     }
     PADDLE_ENFORCE_LT(
-        common::vectorize(x_dims)[_axis],
+        vectorize(x_dims)[_axis],
         INT32_MAX,
         common::errors::OutOfRange(
             "cummax with axis %ld may be overflow, set dtype int64 to continue",
@@ -915,7 +915,7 @@ void DiagEmbedInferMeta(
 
   int64_t x_last_dim = x_dims[x_dims.size() - 1];
   int64_t new_dim_len = (x_last_dim == -1) ? -1 : offset_ + x_last_dim;
-  auto sizes = common::vectorize(x_dims);
+  auto sizes = vectorize(x_dims);
   sizes.pop_back();
   sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
   sizes.insert(sizes.begin() + std::max(dim1_, dim2_), new_dim_len);
@@ -1029,7 +1029,7 @@ void DiagonalInferMeta(const MetaTensor& input,
                                       axis1,
                                       axis2));
 
-  auto out_dims = common::vectorize(x_dims);
+  auto out_dims = vectorize(x_dims);
   // from out_dims get the dim size of axis1_.
   auto axis1_size = out_dims[axis1_];
   auto axis2_size = out_dims[axis2_];
@@ -1198,7 +1198,7 @@ void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
                           x_dims));
   }
 
-  auto out_dims = common::vectorize(x_dims);
+  auto out_dims = vectorize(x_dims);
   out_dims.resize(x_dims.size() - 1);
 
   const DataType& x_dtype = x.dtype();
@@ -2395,7 +2395,7 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
 static DDim ValidateShape(const std::vector<int64_t> shape,
                           const DDim& in_dims) {
   const int64_t in_size = common::product(in_dims);
-  auto in_dims_vec = common::vectorize(in_dims);
+  auto in_dims_vec = vectorize(in_dims);
   std::vector<int64_t> output_shape(shape.size(), 0);
   int64_t capacity = 1;
   size_t shape_zero_cnt = 0;
@@ -2765,7 +2765,7 @@ void LUInferMeta(const MetaTensor& x,
   int64_t m = x_dims[x_rank - 1];
   int64_t n = x_dims[x_rank - 2];
   int64_t min_mn = std::min(m, n);
-  auto dims_vec = common::vectorize(x_dims);
+  auto dims_vec = vectorize(x_dims);
   PADDLE_ENFORCE_NOT_NULL(
       infos,
       common::errors::InvalidArgument("Output(Infos) should not be nullptr."));
@@ -3357,7 +3357,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
                     0,
                     common::errors::InvalidArgument(
                         "Rank of Input(X) should be at least 0."));
-  auto out_dims_vec = common::vectorize(x_dims);
+  auto out_dims_vec = vectorize(x_dims);
   out_dims_vec.push_back(depth.to<int>());
   auto out_dims = make_ddim(out_dims_vec);
   out->set_dims(out_dims);
@@ -3375,7 +3375,7 @@ void OneHotInferMeta(const MetaTensor& x,
                         "Rank of Input(X) should be at least 0."));
 
   int num_classes_int = num_classes.to<int>();
-  auto out_dims_vec = common::vectorize(x_dims);
+  auto out_dims_vec = vectorize(x_dims);
   out_dims_vec.push_back(num_classes_int);
   auto out_dims = make_ddim(out_dims_vec);
 
@@ -3851,7 +3851,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                             (data_format == "NHWC" || data_format == "NDHWC");
   if (!config.is_runtime && kernel_size.FromTensor()) {
     auto x_dims = x.dims();
-    std::vector<int64_t> output_shape = common::vectorize(x_dims);
+    std::vector<int64_t> output_shape = vectorize(x_dims);
     // set dims of HW -1
     output_shape[x_dims.size() - 2] = -1;
     if (channel_last) {  // for NHWC, NDHWC
@@ -4069,7 +4069,7 @@ void QrInferMeta(const MetaTensor& x,
 
   if (compute_q) {
     int64_t k = reduced_mode ? min_mn : m;
-    auto q_dims_vec = common::vectorize(x_dims);
+    auto q_dims_vec = vectorize(x_dims);
     q_dims_vec[q_dims_vec.size() - 1] = k;
     q->set_dims(make_ddim(q_dims_vec));
   } else {
@@ -4077,7 +4077,7 @@ void QrInferMeta(const MetaTensor& x,
   }
 
   int64_t k = reduced_mode ? min_mn : m;
-  auto r_dims_vec = common::vectorize(x_dims);
+  auto r_dims_vec = vectorize(x_dims);
   r_dims_vec[r_dims_vec.size() - 2] = k;
   r_dims_vec[r_dims_vec.size() - 1] = n;
   r->set_dims(make_ddim(r_dims_vec));
@@ -4388,7 +4388,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int64_t output_size,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
-  auto output_dim = common::vectorize(input_dim);
+  auto output_dim = vectorize(input_dim);
   auto n_dim = dim;
 
   if (n_dim < 0) n_dim += input_dim.size();
@@ -5392,7 +5392,7 @@ void SumInferMeta(const MetaTensor& x,
 
 void DetInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
   // remove the last two dimension
-  auto out_dim = common::vectorize<int>(x.dims());
+  auto out_dim = vectorize<int>(x.dims());
   out_dim.pop_back();
   out_dim.pop_back();
 
@@ -5539,7 +5539,7 @@ void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
 
 void SvdvalsInferMeta(const MetaTensor& x, MetaTensor* s) {
   auto SDDim = [](const DDim& x_dim, int64_t k) {
-    auto x_vec = common::vectorize(x_dim);
+    auto x_vec = vectorize(x_dim);
     x_vec.erase(x_vec.end() - 2, x_vec.end());
     x_vec.push_back(k);
     return make_ddim(x_vec);
@@ -5569,21 +5569,21 @@ void SvdInferMeta(const MetaTensor& x,
                   MetaTensor* vh) {
   auto UDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
-    auto x_vec = common::vectorize(x_dim);
+    auto x_vec = vectorize(x_dim);
     x_vec[x_vec.size() - 1] = k;
     return make_ddim(x_vec);
   };
 
   auto VHDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
-    auto x_vec = common::vectorize(x_dim);
+    auto x_vec = vectorize(x_dim);
     x_vec[x_vec.size() - 2] = k;
     return make_ddim(x_vec);
   };
 
   auto SDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
-    auto x_vec = common::vectorize(x_dim);
+    auto x_vec = vectorize(x_dim);
     x_vec[x_vec.size() - 2] = k;
     x_vec.erase(x_vec.end() - 1);  // rank - 1
     return make_ddim(x_vec);
@@ -5695,7 +5695,7 @@ void TileInferMeta(const MetaTensor& x,
   auto out_rank =
       std::max(static_cast<size_t>(x_dims.size()), repeat_times_data.size());
   std::vector<int64_t> out_shape(out_rank);
-  auto x_dim_vec = common::vectorize<int64_t>(x_dims);
+  auto x_dim_vec = vectorize<int64_t>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
@@ -5879,7 +5879,7 @@ void TraceInferMeta(
                                       dim1,
                                       dim2));
 
-  auto sizes = common::vectorize(x_dims);
+  auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
   } else {
@@ -6560,7 +6560,7 @@ void UnStackInferMeta(const MetaTensor& x,
             x_dim[axis],
             num));
   }
-  auto vec = common::vectorize<int64_t>(x_dim);
+  auto vec = vectorize<int64_t>(x_dim);
   vec.erase(vec.begin() + axis);
   for (size_t i = 0; i < output_count; i++) {
     outs[i]->set_dims(make_ddim(vec));

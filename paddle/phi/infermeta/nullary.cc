@@ -327,7 +327,7 @@ void RandintInferMeta(
 void RandomInferMeta(const MetaTensor& x, MetaTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
       out, errors::InvalidArgument("Output(Out) of RandomOp is null."));
-  auto shape_vector = common::vectorize(x.dims());
+  auto shape_vector = vectorize(x.dims());
 
   std::vector<int64_t> tensor_shape;
   tensor_shape.reserve(shape_vector.size());

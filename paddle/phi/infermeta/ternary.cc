@@ -30,7 +30,7 @@ namespace phi {
 namespace detail {
 // Used in MatrixRankAtolRtolInferMeta
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
-  auto x_vec = common::vectorize(dim_x);
+  auto x_vec = vectorize(dim_x);
   if (x_vec.size() == 2) {
     return make_ddim({});
   }
@@ -2827,7 +2827,7 @@ void SendURecvInferMeta(const MetaTensor& x,
   }
 
   auto dims = x.dims();
-  std::vector<int64_t> dims_ = common::vectorize(dims);
+  std::vector<int64_t> dims_ = vectorize(dims);
   dims_[0] = -1;
   out->set_dims(make_ddim(dims_));
   out->set_dtype(x.dtype());

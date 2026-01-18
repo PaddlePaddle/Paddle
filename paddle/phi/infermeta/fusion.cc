@@ -736,7 +736,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   DDim in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims =
       common::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -2898,7 +2898,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
     x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -3206,7 +3206,7 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   DDim in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
   DDim filter_data_dims =
       common::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -5642,8 +5642,8 @@ void FP8OutHalfGemmFusedInferMeta(
     const std::string& output_dtype,
     const std::string& activation_type,
     MetaTensor* out) {
-  std::vector<int64_t> dims_x = common::vectorize(x.dims());
-  std::vector<int64_t> dims_y = common::vectorize(y.dims());
+  std::vector<int64_t> dims_x = vectorize(x.dims());
+  std::vector<int64_t> dims_y = vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
@@ -6093,7 +6093,7 @@ void ResnetUnitInferMeta(const MetaTensor& x,
   // Check dims of inputs
   const auto& x_dims = x.dims();
   const auto& w_dims = filter_x.dims();
-  std::vector<int64_t> bn_param_shape = common::vectorize(scale_x.dims());
+  std::vector<int64_t> bn_param_shape = vectorize(scale_x.dims());
   if (1 == bn_param_shape.size()) {
     bn_param_shape = {1, 1, 1, bn_param_shape[0]};
   }

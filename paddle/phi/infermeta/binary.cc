@@ -78,7 +78,7 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 
 // Used in MatrixRankTolInferMeta
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
-  auto x_vec = common::vectorize(dim_x);
+  auto x_vec = vectorize(dim_x);
   if (x_vec.size() == 2) {
     return make_ddim({});
   }
@@ -343,8 +343,8 @@ void BinomialInferMeta(const MetaTensor& count,
 }
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  std::vector<int64_t> x_dims = common::vectorize(x.dims());
-  std::vector<int64_t> y_dims = common::vectorize(y.dims());
+  std::vector<int64_t> x_dims = vectorize(x.dims());
+  std::vector<int64_t> y_dims = vectorize(y.dims());
   std::size_t x_ndims = x_dims.size();
   std::size_t y_ndims = y_dims.size();
 
@@ -458,8 +458,8 @@ void CholeskySolveInferMeta(const MetaTensor& x,
                         x_dims[x_dims_n - 2],
                         y_dims[y_dims_n - 2]));
 
-  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
-  std::vector<int64_t> y_dims_vec = common::vectorize(y_dims);
+  std::vector<int64_t> x_dims_vec = vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = vectorize(y_dims);
 
   std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
   std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
@@ -525,7 +525,7 @@ void ComplexInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
                       MetaTensor* out) {
   if (x.dims() == y.dims()) {
-    auto sizes = common::vectorize(x.dims());
+    auto sizes = vectorize(x.dims());
     out->set_dims(make_ddim(sizes));
     out->set_dtype(dtype::ToComplex(x.dtype()));
     // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
@@ -684,7 +684,7 @@ void ConvInferMeta(const MetaTensor& input,
     filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
   }
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -850,7 +850,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
     x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -1154,7 +1154,7 @@ void CrossEntropy2InferMeta(const MetaTensor& x,
   CrossEntropyInferMeta(x, label, false, ignore_index, out);
 
   auto x_dims = x.dims();
-  auto x_dims_vec = common::vectorize(x_dims);
+  auto x_dims_vec = vectorize(x_dims);
   x_dims_vec.push_back(0);
   x_shape->set_dims(make_ddim(x_dims_vec));
   x_dims[x_dims.size() - 1] = 1;
@@ -1681,7 +1681,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   if (x_rank == 2 && x_dims[0] != 0 && y_dims[0] == 0) {
     out_dims[0] = 0;
   }
-  std::vector<int64_t> out_dims_vec = common::vectorize(out_dims);
+  std::vector<int64_t> out_dims_vec = vectorize(out_dims);
   std::vector<int64_t> out_dims_vec_cut(out_dims_vec.begin(),
                                         out_dims_vec.end() - 1);
   out->set_dims(make_ddim(out_dims_vec_cut));
@@ -1745,8 +1745,8 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     if (should_rotate) {
       // Pick bigger shape and rotate this one
       bool x_over_y = (common::product(x_dims) > common::product(y_dims));
-      auto vdims = x_over_y ? common::vectorize<int64_t>(x_dims)
-                            : common::vectorize<int64_t>(y_dims);
+      auto vdims =
+          x_over_y ? vectorize<int64_t>(x_dims) : vectorize<int64_t>(y_dims);
       std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
       if (x_over_y) {
         x_dims = make_ddim(vdims);
@@ -1812,7 +1812,7 @@ void EmbeddingInferMeta(const MetaTensor& x,
           table_dims.size(),
           table_dims));
 
-  auto output_dims = common::vectorize(ids_dims);
+  auto output_dims = vectorize(ids_dims);
   output_dims.push_back(table_dims[1]);
   out->set_dims(make_ddim(output_dims));
   out->set_dtype(weight.dtype());
@@ -1838,7 +1838,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
           table_dims.size(),
           table_dims));
 
-  auto output_dims = common::vectorize(ids_dims);
+  auto output_dims = vectorize(ids_dims);
   output_dims.push_back(table_dims[1]);
   out->set_dims(make_ddim(output_dims));
   out->set_dtype(weight.dtype());
@@ -1980,7 +1980,7 @@ static std::vector<int64_t> GetInputShape(DDim dim,
   if (is_input_fused) {
     dim = dim.reshape(shape).transpose(axis);
   }
-  return common::vectorize(dim);
+  return vectorize(dim);
 }
 
 void FusedMatmulInferMeta(const MetaTensor& x,
@@ -2545,7 +2545,7 @@ void IndexSelectInferMeta(const MetaTensor& x,
     dim += input_dim.size();
   }
 
-  auto output_dim = common::vectorize(input_dim);
+  auto output_dim = vectorize(input_dim);
 
   output_dim[dim] = index_dim[0];
   output->set_dims(make_ddim(output_dim));
@@ -2570,7 +2570,7 @@ void IndexSelectStridedInferMeta(const MetaTensor& x,
           input_dim.size() - 1,
           dim));
 
-  auto output_dim = common::vectorize(input_dim);
+  auto output_dim = vectorize(input_dim);
   if (dim < 0) {
     dim += input_dim.size();
   }
@@ -2882,8 +2882,7 @@ void LookupTableDequantInferMeta(const MetaTensor& w,
           ids_dims[ids_rank - 1],
           ids_dims));
 
-  auto output_dims =
-      common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  auto output_dims = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
   PADDLE_ENFORCE_GE(table_dims[1],
                     2,
                     common::errors::InvalidArgument(
@@ -2979,8 +2978,7 @@ void LookupTableInferMeta(const MetaTensor& w,
           ids_dims[ids_rank - 1],
           ids_dims));
 
-  auto output_dims =
-      common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  auto output_dims = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
   output_dims.push_back(table_dims[1]);
   out->set_dims(make_ddim(output_dims));
   out->set_dtype(w.dtype());
@@ -3069,8 +3067,8 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_x,
                      bool trans_y,
                      MetaTensor* out) {
-  std::vector<int64_t> dims_x = common::vectorize(x.dims());
-  std::vector<int64_t> dims_y = common::vectorize(y.dims());
+  std::vector<int64_t> dims_x = vectorize(x.dims());
+  std::vector<int64_t> dims_y = vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
@@ -3583,8 +3581,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
                           "Shape error in %lu id, the last dimension of the "
                           "'Ids' tensor must be 1.",
                           i));
-    auto out_dim =
-        common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+    auto out_dim = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
     out_dim.push_back(embedding_size);
     outs_dims[i] = make_ddim(out_dim);
   }
@@ -3622,7 +3619,7 @@ void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
   outs_dims.resize(n_ids);
   for (size_t i = 0; i < n_ids; ++i) {
     const auto ids_dims = ids[i]->dims();
-    auto out_dim = common::vectorize(ids_dims);
+    auto out_dim = vectorize(ids_dims);
     out_dim.push_back(hidden_size);
     outs_dims[i] = make_ddim(out_dim);
   }
@@ -3815,8 +3812,7 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
                           "Shape error in %lu id, the last dimension of the "
                           "'Ids' tensor must be 1.",
                           i));
-    auto out_dim =
-        common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+    auto out_dim = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
     out_dim.push_back(hidden_size);
     output->set_dims(make_ddim(out_dim));
     output->share_lod(*ids[i]);
@@ -3830,7 +3826,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               int64_t output_size,
                                               MetaTensor* out) {
   const auto& input_dim = x.dims();
-  auto output_dim = common::vectorize(input_dim);
+  auto output_dim = vectorize(input_dim);
   PADDLE_ENFORCE_EQ(
       dim < input_dim.size() && dim >= (0 - input_dim.size()),
       true,
@@ -4113,7 +4109,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
                            int maxlen,
                            DataType out_dtype,
                            MetaTensor* y) {
-  auto dim = common::vectorize<int>(x.dims());
+  auto dim = vectorize<int>(x.dims());
 
   if (max_len_tensor) {
     dim.push_back(-1);
@@ -4290,7 +4286,7 @@ void TdmChildInferMeta(const MetaTensor& x,
           info_dims.size(),
           info_dims));
 
-  auto output_dims = common::vectorize(input_dims);
+  auto output_dims = vectorize(input_dims);
   output_dims.push_back(child_nums);
   if (child != nullptr) {
     child->set_dims(make_ddim(output_dims));
@@ -4341,8 +4337,8 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                         x_dims[x_dims_n - 2],
                         x_dims[x_dims_n - 1]));
 
-  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
-  std::vector<int64_t> y_dims_vec = common::vectorize(y_dims);
+  std::vector<int64_t> x_dims_vec = vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = vectorize(y_dims);
 
   std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
   std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
@@ -4592,8 +4588,8 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
 
-  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
-  std::vector<int64_t> y_dims_vec = common::vectorize(y.dims());
+  std::vector<int64_t> x_dims_vec = vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = vectorize(y.dims());
 
   auto x_dims_n = x_dims_vec.size();
   auto y_dims_n = y_dims_vec.size();
