@@ -551,11 +551,6 @@ cc_library(
   SRCS dlpack_tensor.cc
   DEPS dlpack phi)
 
-cc_library(
-  op_compatible_info
-  SRCS op_compatible_info.cc
-  DEPS string_helper proto_desc)
-
 # Get the current working branch
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
