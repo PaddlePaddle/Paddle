@@ -185,9 +185,9 @@
 
 - op : cumprod
   version :
-    - checkpoint : Upgrade cumprod add 2 new attributes [exclusive] and [reverse].
+    - checkpoint : Upgrade cumprod add 2 new attributes [exlucsive] and [reverse].
       action :
-        - add_attr : exclusive
+        - add_attr : exlucsive
           comment : In order to perform exclusive cumprod.
           default : "false"
         - add_attr : reverse
