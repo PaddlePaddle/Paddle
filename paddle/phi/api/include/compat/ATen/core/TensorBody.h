@@ -25,6 +25,7 @@
 #include "paddle/phi/core/memory/malloc.h"
 
 namespace at {
+
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
 class Tensor : public TensorBase {
@@ -118,10 +119,10 @@ class Tensor : public TensorBase {
   template <typename T>
   T* mutable_data_ptr() const;
 
-  template<typename T,
-           size_t N,
-           template <typename U> class PtrTraits = DefaultPtrTraits,
-           typename index_t = int64_t>
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
   C10_DEPRECATED_MESSAGE(
       "packed_accessor is deprecated, use packed_accessor32 or "
       "packed_accessor64 instead")
@@ -129,49 +130,48 @@ class Tensor : public TensorBase {
       const& {
     return generic_packed_accessor<T, N, PtrTraits, index_t>();
   }
-  template<typename T,
-           size_t N,
-           template <typename U> class PtrTraits = DefaultPtrTraits,
-           typename index_t = int64_t>
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
   C10_DEPRECATED_MESSAGE(
       "packed_accessor is deprecated, use packed_accessor32 or "
       "packed_accessor64 instead")
-  GenericPackedTensorAccessor<T, N, PtrTraits, index_t> packed_accessor()
-      && = delete;
+  GenericPackedTensorAccessor<T, N, PtrTraits, index_t> packed_accessor() && =
+      delete;
 
   // packed_accessor64 - uses int64_t as index type
-  template<typename T,
-           size_t N,
-           template <typename U> class PtrTraits = DefaultPtrTraits>
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
   GenericPackedTensorAccessor<T, N, PtrTraits, int64_t> packed_accessor64()
       const& {
     return generic_packed_accessor<T, N, PtrTraits, int64_t>();
   }
-  template<typename T,
-           size_t N,
-           template <typename U> class PtrTraits = DefaultPtrTraits>
-  GenericPackedTensorAccessor<T, N, PtrTraits, int64_t> packed_accessor64()
-      && = delete;
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  GenericPackedTensorAccessor<T, N, PtrTraits, int64_t> packed_accessor64() && =
+      delete;
 
   // packed_accessor32 - uses int32_t as index type
-  template<typename T,
-           size_t N,
-           template <typename U> class PtrTraits = DefaultPtrTraits>
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
   GenericPackedTensorAccessor<T, N, PtrTraits, int32_t> packed_accessor32()
       const& {
     // Check numel to ensure it fits in int32_t (compatible with libtorch)
     PD_CHECK(
-        numel() <=
-            static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+        numel() <= static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
         "numel needs to be smaller than int32_t max; otherwise, please use "
         "packed_accessor64");
     return generic_packed_accessor<T, N, PtrTraits, int32_t>();
   }
-  template<typename T,
-           size_t N,
-           template <typename U> class PtrTraits = DefaultPtrTraits>
-  GenericPackedTensorAccessor<T, N, PtrTraits, int32_t> packed_accessor32()
-      && = delete;
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  GenericPackedTensorAccessor<T, N, PtrTraits, int32_t> packed_accessor32() && =
+      delete;
 
   using TensorBase::stride;
 
@@ -326,8 +326,7 @@ class Tensor : public TensorBase {
   }
 
   // Full index interface compatible with torch
-  at::Tensor index(
-      c10::ArrayRef<at::indexing::TensorIndex> indices) const {
+  at::Tensor index(c10::ArrayRef<at::indexing::TensorIndex> indices) const {
     return _index_impl(indices);
   }
 
@@ -350,15 +349,13 @@ class Tensor : public TensorBase {
   }
 
   // index_put_ interface compatible with torch
-  at::Tensor& index_put_(
-      c10::ArrayRef<at::indexing::TensorIndex> indices,
-      const at::Tensor& rhs) {
+  at::Tensor& index_put_(c10::ArrayRef<at::indexing::TensorIndex> indices,
+                         const at::Tensor& rhs) {
     return _index_put_impl(indices, rhs);
   }
 
-  at::Tensor& index_put_(
-      c10::ArrayRef<at::indexing::TensorIndex> indices,
-      const at::Scalar& v) {
+  at::Tensor& index_put_(c10::ArrayRef<at::indexing::TensorIndex> indices,
+                         const at::Scalar& v) {
     // Create a tensor with the scalar value matching the indexed tensor's
     // shape
     at::Tensor indexed = index(indices);
@@ -438,7 +435,7 @@ class Tensor : public TensorBase {
         int64_t start_val = static_cast<int64_t>(slice.start());
         int64_t stop_val = static_cast<int64_t>(slice.stop());
         int64_t step_val = static_cast<int64_t>(slice.step());
-        
+
         if (step_val != 1) {
           PD_THROW(
               "Step values other than 1 are not yet supported in slice "
@@ -458,8 +455,7 @@ class Tensor : public TensorBase {
           // Create empty tensor using paddle API
           return Tensor(paddle::experimental::empty(
               c10::IntArrayRef(new_shape)._PD_ToPaddleIntArray(),
-              compat::_PD_AtenScalarTypeToPhiDataType(
-                  result.scalar_type()),
+              compat::_PD_AtenScalarTypeToPhiDataType(result.scalar_type()),
               tensor_.place()));
         }
 
@@ -473,8 +469,7 @@ class Tensor : public TensorBase {
         if (idx.tensor_ptr() == nullptr) {
           PD_THROW("Invalid tensor index: tensor_ptr is nullptr");
         }
-        PD_THROW(
-            "Tensor indexing in index() is not yet fully supported");
+        PD_THROW("Tensor indexing in index() is not yet fully supported");
       } else {
         // Unknown index type
         PD_THROW("Unknown index type in index()");
@@ -486,9 +481,8 @@ class Tensor : public TensorBase {
 
  private:
   // Internal implementation for index_put_
-  at::Tensor& _index_put_impl(
-      c10::ArrayRef<at::indexing::TensorIndex> indices,
-      const at::Tensor& values) {
+  at::Tensor& _index_put_impl(c10::ArrayRef<at::indexing::TensorIndex> indices,
+                              const at::Tensor& values) {
     if (indices.empty()) {
       // No indices means assign to entire tensor
       return copy_(values);
@@ -496,20 +490,19 @@ class Tensor : public TensorBase {
 
     // Get the indexed tensor (view)
     at::Tensor indexed_view = index(indices);
-    
+
     // Broadcast values to match indexed_view shape
     at::Tensor broadcasted_values = values;
     if (indexed_view.sizes() != values.sizes()) {
-      PD_CHECK(
-          values.numel() == indexed_view.numel() || values.numel() == 1,
-          "Values shape must match indexed tensor shape or be scalar");
+      PD_CHECK(values.numel() == indexed_view.numel() || values.numel() == 1,
+               "Values shape must match indexed tensor shape or be scalar");
       if (values.numel() == 1) {
         // Create a tensor filled with the scalar value
-        broadcasted_values = Tensor(paddle::experimental::full(
-            indexed_view.sizes().vec(),
-            values.item(),
-            compat::_PD_AtenScalarTypeToPhiDataType(
-                indexed_view.scalar_type())));
+        broadcasted_values = Tensor(
+            paddle::experimental::full(indexed_view.sizes().vec(),
+                                       values.item(),
+                                       compat::_PD_AtenScalarTypeToPhiDataType(
+                                           indexed_view.scalar_type())));
       } else {
         broadcasted_values = values.reshape(indexed_view.sizes());
       }
@@ -519,7 +512,7 @@ class Tensor : public TensorBase {
     // Note: This works because slice/select operations in Paddle return views
     // that share memory
     indexed_view.copy_(broadcasted_values);
-    
+
     return *this;
   }
 

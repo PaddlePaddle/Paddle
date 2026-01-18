@@ -256,7 +256,7 @@ class PADDLE_API TensorBase {
     }
     auto sizes_array = sizes();
     auto strides_array = strides();
-    
+
     // If index_t is int64_t, use the original pointers directly
     if constexpr (std::is_same_v<index_t, int64_t>) {
       return GenericPackedTensorAccessor<T, N, PtrTraits, index_t>(

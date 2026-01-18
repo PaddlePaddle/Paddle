@@ -14,8 +14,8 @@
 
 #pragma once
 #include <c10/core/SymInt.h>
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <optional>
 
 // Forward declaration
@@ -80,8 +80,7 @@ struct TensorIndex final {
   TensorIndex(std::nullopt_t) : type_(TensorIndexType::None) {}
 
   // Case 2: "..." / `at::indexing::Ellipsis`
-  TensorIndex(EllipsisIndexType)
-      : type_(TensorIndexType::Ellipsis) {}
+  TensorIndex(EllipsisIndexType) : type_(TensorIndexType::Ellipsis) {}
   TensorIndex(const char* str) : TensorIndex(Ellipsis) {
     // Note: We skip the strcmp check for simplicity in compatibility layer
   }
@@ -106,61 +105,41 @@ struct TensorIndex final {
   // Case 6: Tensor value - using template to avoid circular dependency
   // Use SFINAE to ensure this only matches tensor-like types, not primitive
   // types
-  template<typename TensorType,
-           typename std::enable_if_t<
-               !std::is_same_v<std::decay_t<TensorType>, int> &&
-               !std::is_same_v<std::decay_t<TensorType>, int64_t> &&
-               !std::is_same_v<std::decay_t<TensorType>, bool> &&
-               !std::is_same_v<std::decay_t<TensorType>, c10::SymInt> &&
-               !std::is_same_v<std::decay_t<TensorType>, std::nullopt_t> &&
-               !std::is_same_v<std::decay_t<TensorType>,
-                               EllipsisIndexType> &&
-               !std::is_same_v<std::decay_t<TensorType>, Slice> &&
-               !std::is_same_v<std::decay_t<TensorType>, const char*>,
-               int> = 0>
+  template <
+      typename TensorType,
+      typename std::enable_if_t<
+          !std::is_same_v<std::decay_t<TensorType>, int> &&
+              !std::is_same_v<std::decay_t<TensorType>, int64_t> &&
+              !std::is_same_v<std::decay_t<TensorType>, bool> &&
+              !std::is_same_v<std::decay_t<TensorType>, c10::SymInt> &&
+              !std::is_same_v<std::decay_t<TensorType>, std::nullopt_t> &&
+              !std::is_same_v<std::decay_t<TensorType>, EllipsisIndexType> &&
+              !std::is_same_v<std::decay_t<TensorType>, Slice> &&
+              !std::is_same_v<std::decay_t<TensorType>, const char*>,
+          int> = 0>
   TensorIndex(const TensorType& tensor)
       : tensor_ptr_(static_cast<const void*>(&tensor)),
         type_(TensorIndexType::Tensor) {}
 
-  inline bool is_none() const {
-    return type_ == TensorIndexType::None;
-  }
+  inline bool is_none() const { return type_ == TensorIndexType::None; }
 
-  inline bool is_ellipsis() const {
-    return type_ == TensorIndexType::Ellipsis;
-  }
+  inline bool is_ellipsis() const { return type_ == TensorIndexType::Ellipsis; }
 
-  inline bool is_integer() const {
-    return type_ == TensorIndexType::SymInt;
-  }
+  inline bool is_integer() const { return type_ == TensorIndexType::SymInt; }
 
-  inline c10::SymInt integer() const {
-    return integer_;
-  }
+  inline c10::SymInt integer() const { return integer_; }
 
-  inline bool is_boolean() const {
-    return type_ == TensorIndexType::Boolean;
-  }
+  inline bool is_boolean() const { return type_ == TensorIndexType::Boolean; }
 
-  inline bool boolean() const {
-    return boolean_;
-  }
+  inline bool boolean() const { return boolean_; }
 
-  inline bool is_slice() const {
-    return type_ == TensorIndexType::Slice;
-  }
+  inline bool is_slice() const { return type_ == TensorIndexType::Slice; }
 
-  inline const Slice& slice() const {
-    return slice_;
-  }
+  inline const Slice& slice() const { return slice_; }
 
-  inline bool is_tensor() const {
-    return type_ == TensorIndexType::Tensor;
-  }
+  inline bool is_tensor() const { return type_ == TensorIndexType::Tensor; }
 
-  inline const void* tensor_ptr() const {
-    return tensor_ptr_;
-  }
+  inline const void* tensor_ptr() const { return tensor_ptr_; }
 
  private:
   c10::SymInt integer_ = 0;

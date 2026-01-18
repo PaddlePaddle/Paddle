@@ -47,6 +47,7 @@
 
 // Deprecated macro for marking functions as deprecated
 #if defined(__GNUC__) || defined(__clang__)
+
 #define C10_DEPRECATED_MESSAGE(msg) __attribute__((deprecated(msg)))
 #elif defined(_MSC_VER)
 #define C10_DEPRECATED_MESSAGE(msg) __declspec(deprecated(msg))
