@@ -432,6 +432,7 @@ def fp8_quant_blockwise(
             - transposed_scale (Tensor): Transposed scale tensor (if input_transpose).
     Examples:
         .. code-block:: pycon
+
             >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F
