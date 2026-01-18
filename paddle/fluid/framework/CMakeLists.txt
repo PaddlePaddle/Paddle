@@ -450,16 +450,13 @@ if(WITH_DISTRIBUTE)
          trainer_factory.cc
          trainer.cc
          data_feed_factory.cc
-         heterxpu_trainer.cc
          data_feed.cc
          device_worker.cc
          hogwild_worker.cc
-         hetercpu_worker.cc
          ps_gpu_worker.cc
          ps_gpu_trainer.cc
          downpour_worker.cc
          downpour_worker_opt.cc
-         data_feed.cu
          pull_dense_worker.cc
          section_worker.cc
          device_worker_factory.cc
@@ -469,10 +466,7 @@ if(WITH_DISTRIBUTE)
          glog
          framework_io
          fleet_wrapper
-         heter_wrapper
-         ps_gpu_wrapper
-         box_wrapper
-         metrics
+         gloo_wrapper
          densetensor_printer
          feed_fetch_method
          feed_hook
@@ -489,16 +483,13 @@ else()
          trainer_factory.cc
          trainer.cc
          data_feed_factory.cc
-         heterxpu_trainer.cc
          data_feed.cc
          device_worker.cc
          hogwild_worker.cc
-         hetercpu_worker.cc
          ps_gpu_worker.cc
          ps_gpu_trainer.cc
          downpour_worker.cc
          downpour_worker_opt.cc
-         data_feed.cu
          pull_dense_worker.cc
          section_worker.cc
          device_worker_factory.cc
@@ -508,9 +499,6 @@ else()
          glog
          framework_io
          fleet_wrapper
-         heter_wrapper
-         ps_gpu_wrapper
-         box_wrapper
          densetensor_printer
          feed_fetch_method
          feed_hook
