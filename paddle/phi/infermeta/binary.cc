@@ -95,7 +95,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
   if (x.numel() != 0 && y.numel() != 0) {
     detail::BinarySameInputDimsCheck(x, y, config);
   }
-  out->set_dims(common::make_ddim({}));
+  out->set_dims(make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -140,7 +140,7 @@ void KLDivInferMeta(const MetaTensor& x,
   if ("none" == reduction) {
     out->set_dims(dim_x);
   } else {
-    out->set_dims(common::make_ddim({}));
+    out->set_dims(make_ddim({}));
   }
   out->set_dtype(x.dtype());
 }
@@ -304,7 +304,7 @@ void BincountInferMeta(const MetaTensor& x,
               input_dim));
     }
   }
-  out->set_dims(common::make_ddim({-1}));
+  out->set_dims(make_ddim({-1}));
   if (weights) {
     out->set_dtype(weights.dtype());
   } else {
@@ -383,7 +383,7 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
       "Y's batch size [%s]"));
   dim_out.push_back(x_dims[1]);
   dim_out.push_back(y_dims[2]);
-  out->set_dims(common::make_ddim(dim_out));
+  out->set_dims(make_ddim(dim_out));
   out->share_lod(x);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -472,7 +472,7 @@ void CholeskySolveInferMeta(const MetaTensor& x,
                           {x_dims_vec[x_dims_n - 2], x_dims_vec[x_dims_n - 1]});
 
   // dim of 'out' is the same with 'X' after broadcast
-  out->set_dims(common::make_ddim(x_broadcast_dims));
+  out->set_dims(make_ddim(x_broadcast_dims));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
@@ -500,7 +500,7 @@ void CompareRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-    out->set_dims(common::make_ddim(out_dims_array));
+    out->set_dims(make_ddim(out_dims_array));
     out->share_lod(x);
   }
   if (!out->is_same_tensor(x)) {
@@ -518,7 +518,7 @@ void CompareAllInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out) {
   out->share_lod(x);
-  out->set_dims(common::make_ddim({}));
+  out->set_dims(make_ddim({}));
 }
 
 void ComplexInferMeta(const MetaTensor& x,
@@ -526,7 +526,7 @@ void ComplexInferMeta(const MetaTensor& x,
                       MetaTensor* out) {
   if (x.dims() == y.dims()) {
     auto sizes = common::vectorize(x.dims());
-    out->set_dims(common::make_ddim(sizes));
+    out->set_dims(make_ddim(sizes));
     out->set_dtype(dtype::ToComplex(x.dtype()));
     // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
     // so tensors with lod are not supported here
@@ -547,7 +547,7 @@ void ComplexInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-    out->set_dims(common::make_ddim(out_dims_array));
+    out->set_dims(make_ddim(out_dims_array));
     out->set_dtype(dtype::ToComplex(x.dtype()));
   }
 }
@@ -717,7 +717,7 @@ void ConvInferMeta(const MetaTensor& input,
     }
   }
 
-  out->set_dims(common::make_ddim(output_shape));
+  out->set_dims(make_ddim(output_shape));
   out->set_dtype(input.dtype());
 }
 
@@ -931,7 +931,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
 
-  out->set_dims(common::make_ddim(output_shape));
+  out->set_dims(make_ddim(output_shape));
   out->set_dtype(x.dtype());
 }
 
@@ -996,7 +996,7 @@ void CorrelationInferMeta(const MetaTensor& input1,
                                                             kernel_size,
                                                             pad_size,
                                                             max_displacement);
-  out->set_dims(common::make_ddim(output_shape));
+  out->set_dims(make_ddim(output_shape));
   out->set_dtype(input1.dtype());
 }
 
@@ -1156,7 +1156,7 @@ void CrossEntropy2InferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto x_dims_vec = common::vectorize(x_dims);
   x_dims_vec.push_back(0);
-  x_shape->set_dims(common::make_ddim(x_dims_vec));
+  x_shape->set_dims(make_ddim(x_dims_vec));
   x_dims[x_dims.size() - 1] = 1;
   match_x->set_dims(x_dims);
   x_shape->set_dtype(x.dtype());
@@ -1414,7 +1414,7 @@ void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,
                    MetaTensor* out) {
-  out->set_dims(common::make_ddim({}));
+  out->set_dims(make_ddim({}));
   out->set_dtype(x.dtype());
 }
 
@@ -1447,7 +1447,7 @@ void DistributeLookupTableInferMeta(
     MetaTensor* output = outputs[i];
     auto id_dims = ids[i]->dims();
     if (lookup_table_version == "lookup_table") {
-      output->set_dims(common::make_ddim({id_dims[0], table_dims[1]}));
+      output->set_dims(make_ddim({id_dims[0], table_dims[1]}));
       output->share_lod(*ids[i]);
       output->set_dtype(w.dtype());
     } else if (lookup_table_version == "lookup_table_v2") {
@@ -1632,7 +1632,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
           mask_dims[t] = x_dims[static_cast<int>(t)];
         });
 
-    mask->set_dims(common::make_ddim(mask_dims));
+    mask->set_dims(make_ddim(mask_dims));
     mask->set_dtype(DataType::UINT8);
   }
 }
@@ -1684,7 +1684,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   std::vector<int64_t> out_dims_vec = common::vectorize(out_dims);
   std::vector<int64_t> out_dims_vec_cut(out_dims_vec.begin(),
                                         out_dims_vec.end() - 1);
-  out->set_dims(common::make_ddim(out_dims_vec_cut));
+  out->set_dims(make_ddim(out_dims_vec_cut));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
@@ -1814,7 +1814,7 @@ void EmbeddingInferMeta(const MetaTensor& x,
 
   auto output_dims = common::vectorize(ids_dims);
   output_dims.push_back(table_dims[1]);
-  out->set_dims(common::make_ddim(output_dims));
+  out->set_dims(make_ddim(output_dims));
   out->set_dtype(weight.dtype());
   out->share_lod(x);
 }
@@ -1840,7 +1840,7 @@ void CEmbeddingInferMeta(const MetaTensor& weight,
 
   auto output_dims = common::vectorize(ids_dims);
   output_dims.push_back(table_dims[1]);
-  out->set_dims(common::make_ddim(output_dims));
+  out->set_dims(make_ddim(output_dims));
   out->set_dtype(weight.dtype());
   out->share_lod(x);
 
@@ -1878,7 +1878,7 @@ void ExpandAsInferMeta(const MetaTensor& x,
                         "to %d. But received: rank %u.",
                         MAX_RANK_SUPPORTED,
                         target_shape.size()));
-  out->set_dims(common::make_ddim(target_shape));
+  out->set_dims(make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
 }
@@ -2237,7 +2237,7 @@ void GatherNdInferMeta(const MetaTensor& x,
     result_dims.emplace_back(x_dims[i]);
   }
 
-  out->set_dims(common::make_ddim(result_dims));
+  out->set_dims(make_ddim(result_dims));
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
@@ -2548,7 +2548,7 @@ void IndexSelectInferMeta(const MetaTensor& x,
   auto output_dim = common::vectorize(input_dim);
 
   output_dim[dim] = index_dim[0];
-  output->set_dims(common::make_ddim(output_dim));
+  output->set_dims(make_ddim(output_dim));
   output->set_dtype(x.dtype());
   output->set_layout(x.layout());
   output->share_lod(x);
@@ -2575,7 +2575,7 @@ void IndexSelectStridedInferMeta(const MetaTensor& x,
     dim += input_dim.size();
   }
   output_dim.erase(output_dim.begin() + dim);
-  output->set_dims(common::make_ddim(output_dim));
+  output->set_dims(make_ddim(output_dim));
   output->set_dtype(x.dtype());
   output->set_layout(x.layout());
   output->share_lod(x);
@@ -2705,7 +2705,7 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const bool accumulate,
                                   const bool is_combined,
                                   MetaTensor* out) {
-  out->set_dims(common::make_ddim(input_dims));
+  out->set_dims(make_ddim(input_dims));
   out->set_dtype(x.dtype());
 }
 
@@ -2723,7 +2723,7 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
     dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
   }
-  out->set_dims(common::make_ddim(dim_out));
+  out->set_dims(make_ddim(dim_out));
   out->set_dtype(x.dtype());
 }
 
@@ -2747,7 +2747,7 @@ void LegacyCropInferMeta(const MetaTensor& x,
     for (size_t i = 0; i < shape.size(); ++i) {
       tensor_shape[i] = static_cast<int64_t>(shape[i]);
     }
-    out->set_dims(common::make_ddim(tensor_shape));
+    out->set_dims(make_ddim(tensor_shape));
     out->set_dtype(x.dtype());
   } else {
     const auto& y_dim = y.dims();
@@ -2894,7 +2894,7 @@ void LookupTableDequantInferMeta(const MetaTensor& w,
 
   output_dims.push_back((table_dims[1] - 2) * 4);
 
-  out->set_dims(common::make_ddim(output_dims));
+  out->set_dims(make_ddim(output_dims));
   out->share_lod(ids);
   out->set_dtype(w.dtype());
 }
@@ -2982,7 +2982,7 @@ void LookupTableInferMeta(const MetaTensor& w,
   auto output_dims =
       common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
   output_dims.push_back(table_dims[1]);
-  out->set_dims(common::make_ddim(output_dims));
+  out->set_dims(make_ddim(output_dims));
   out->set_dtype(w.dtype());
   out->share_lod(ids);
 }
@@ -3217,7 +3217,7 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
     output_dims.push_back(y_dims[i]);
   }
 
-  out->set_dims(common::make_ddim(output_dims));
+  out->set_dims(make_ddim(output_dims));
   if (x.dtype() == DataType::INT8) {
     out->set_dtype(DataType::INT32);
   } else {
@@ -3320,7 +3320,7 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
   auto dim_tol = atol_tensor.dims();
   if (x.numel() == 0) {
     if (dim_x.size() == 2) {
-      out->set_dims(common::make_ddim({}));
+      out->set_dims(make_ddim({}));
     } else {
       out->set_dims(dim_x_batch);
     }
@@ -3339,7 +3339,7 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-    out->set_dims(common::make_ddim(out_dims_array));
+    out->set_dims(make_ddim(out_dims_array));
   }
   out->share_lod(x);
 }
@@ -3764,8 +3764,8 @@ void PriorBoxInferMeta(const MetaTensor& input,
 
   out->set_dtype(input.dtype());
   var->set_dtype(input.dtype());
-  out->set_dims(common::make_ddim(dim_vec));
-  var->set_dims(common::make_ddim(dim_vec));
+  out->set_dims(make_ddim(dim_vec));
+  var->set_dims(make_ddim(dim_vec));
 }
 
 void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
@@ -3818,7 +3818,7 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
     auto out_dim =
         common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
     out_dim.push_back(hidden_size);
-    output->set_dims(common::make_ddim(out_dim));
+    output->set_dims(make_ddim(out_dim));
     output->share_lod(*ids[i]);
     output->set_dtype(w.dtype());
   }
@@ -3877,7 +3877,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
     }
   }
 
-  out->set_dims(common::make_ddim(output_dim));
+  out->set_dims(make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
@@ -4121,7 +4121,7 @@ void SequenceMaskInferMeta(const MetaTensor& x,
     dim.push_back(maxlen > 0 ? maxlen : -1);
   }
 
-  y->set_dims(common::make_ddim(dim));
+  y->set_dims(make_ddim(dim));
   y->set_dtype(out_dtype);
 }
 
@@ -4234,7 +4234,7 @@ void StftInferMeta(const MetaTensor& x,
   }
   output_shape.push_back(n_frames);
 
-  out->set_dims(common::make_ddim(output_shape));
+  out->set_dims(make_ddim(output_shape));
   out->set_dtype(phi::dtype::ToComplex(x.dtype()));
 }
 
@@ -4293,8 +4293,8 @@ void TdmChildInferMeta(const MetaTensor& x,
   auto output_dims = common::vectorize(input_dims);
   output_dims.push_back(child_nums);
   if (child != nullptr) {
-    child->set_dims(common::make_ddim(output_dims));
-    leaf_mask->set_dims(common::make_ddim(output_dims));
+    child->set_dims(make_ddim(output_dims));
+    leaf_mask->set_dims(make_ddim(output_dims));
     child->share_lod(x);
     leaf_mask->share_lod(x);
     child->set_dtype(x.dtype());
@@ -4355,7 +4355,7 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                           {y_dims_vec[y_dims_n - 2], y_dims_vec[y_dims_n - 1]});
 
   // dim of 'out' is the same with 'Y' after broadcast
-  out->set_dims(common::make_ddim(y_broadcast_dims));
+  out->set_dims(make_ddim(y_broadcast_dims));
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
@@ -4425,35 +4425,35 @@ void LstsqInferMeta(const MetaTensor& x,
           y_dims[y_rank - 2]));
 
   if (x.numel() == 0 || y.numel() == 0) {
-    rank->set_dims(common::make_ddim({0}));
+    rank->set_dims(make_ddim({0}));
   } else {
-    rank->set_dims(common::make_ddim(batch_dims_vec));
+    rank->set_dims(make_ddim(batch_dims_vec));
   }
 
   if (m > n && driver != "gelsy") {
     if (driver == "gelss" || driver == "gelsd") {
-      residuals->set_dims(common::make_ddim({-1}));
+      residuals->set_dims(make_ddim({-1}));
     } else {
       batch_dims_vec.emplace_back(nrhs);
-      residuals->set_dims(common::make_ddim(batch_dims_vec));
+      residuals->set_dims(make_ddim(batch_dims_vec));
       batch_dims_vec.pop_back();
     }
   } else {
-    residuals->set_dims(common::make_ddim({0}));
+    residuals->set_dims(make_ddim({0}));
   }
   residuals->set_dtype(y.dtype());
 
   batch_dims_vec.emplace_back(std::min(m, n));
   if (x.numel() == 0 || y.numel() == 0) {
-    singular_values->set_dims(common::make_ddim({0}));
+    singular_values->set_dims(make_ddim({0}));
   } else {
-    singular_values->set_dims(common::make_ddim(batch_dims_vec));
+    singular_values->set_dims(make_ddim(batch_dims_vec));
   }
   singular_values->set_dtype(y.dtype());
 
   batch_dims_vec[x_rank - 2] = n;
   batch_dims_vec.emplace_back(nrhs);
-  solution->set_dims(common::make_ddim(batch_dims_vec));
+  solution->set_dims(make_ddim(batch_dims_vec));
   solution->set_dtype(y.dtype());
 }
 
@@ -4562,11 +4562,11 @@ void YoloBoxInferMeta(const MetaTensor& x,
     box_num = -1;
   }
   std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
-  boxes->set_dims(common::make_ddim(dim_boxes));
+  boxes->set_dims(make_ddim(dim_boxes));
   boxes->set_dtype(x.dtype());
 
   std::vector<int64_t> dim_scores({dim_x[0], box_num, class_num});
-  scores->set_dims(common::make_ddim(dim_scores));
+  scores->set_dims(make_ddim(dim_scores));
 }
 
 void YoloBoxHeadInferMeta(const MetaTensor& x,
@@ -4751,7 +4751,7 @@ void UnpoolInferMeta(const MetaTensor& x,
     }
   }
   if (out != nullptr) {
-    out->set_dims(common::make_ddim(output_shape));
+    out->set_dims(make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
 }
@@ -4792,7 +4792,7 @@ void Unpool3dInferMeta(const MetaTensor& x,
     }
   }
   if (out != nullptr) {
-    out->set_dims(common::make_ddim(output_shape));
+    out->set_dims(make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
 }
@@ -4865,7 +4865,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   }
   int64_t n = x.dims()[1];
   int64_t k = real_channel_shape;
-  out->set_dims(common::make_ddim({n, k}));
+  out->set_dims(make_ddim({n, k}));
   out->set_dtype(scale.dtype());
 }
 
@@ -4972,7 +4972,7 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
     // input_hidden_size or output_hidden_size.
 
     const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
-    output->set_dims(common::make_ddim({total_tokens, hidden_out}));
+    output->set_dims(make_ddim({total_tokens, hidden_out}));
 
   } else {
     // =============================================================================
@@ -4991,7 +4991,7 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
 
     const int64_t hidden_in = lhs_shape[1];
     const int64_t hidden_out = rhs_shape[1];
-    output->set_dims(common::make_ddim({num_experts, hidden_in, hidden_out}));
+    output->set_dims(make_ddim({num_experts, hidden_in, hidden_out}));
   }
   output->set_dtype(DataType::BFLOAT16);
 }
