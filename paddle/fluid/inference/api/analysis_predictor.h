@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
