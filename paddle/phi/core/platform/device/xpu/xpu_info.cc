@@ -19,6 +19,7 @@
 #include <string>
 
 #include "paddle/common/flags.h"
+#include "paddle/phi/backends/xpu/cuda_graph.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
@@ -181,6 +182,7 @@ class RecordedXPUMallocHelper {
     }
 
     XPUDeviceGuard guard(dev_id_);
+    phi::backends::xpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     VLOG(10) << "Allocate " << size << " bytes with ptr = " << &(ptr);
     auto result = xpu_malloc(ptr, size);
     if (result == XPU_SUCCESS) {

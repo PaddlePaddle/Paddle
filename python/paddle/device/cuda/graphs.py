@@ -17,10 +17,12 @@ import os
 from paddle.base.core import (
     CUDAPlace,
     CustomPlace,
+    XPUPlace,
     get_all_custom_device_type,
     is_compiled_with_cuda,
     is_compiled_with_custom_device,
     is_compiled_with_rocm,
+    is_compiled_with_xpu,
 )
 
 
@@ -43,7 +45,11 @@ if (
 
     def is_cuda_graph_supported():
         return True
+elif is_compiled_with_xpu():
+    from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
+    def is_cuda_graph_supported():
+        return True
 else:
     CoreCUDAGraph = None
 
@@ -72,11 +78,15 @@ class CUDAGraph:
         )
 
         self._graph = None
-        if place is None and check_compiled_with_custom_device():
-            place = current_expected_place()
-        elif place is None:
-            device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-            place = CUDAPlace(device_id)
+        if place is None:
+            if is_compiled_with_cuda():
+                device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+                place = CUDAPlace(device_id)
+            elif is_compiled_with_xpu():
+                device_id = int(os.environ.get('FLAGS_selected_xpus', 0))
+                place = XPUPlace(device_id)
+            else:
+                raise RuntimeError("Not Supported devices")
 
         self._place = place
         assert mode in ALL_MODES
