@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
-
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
@@ -98,7 +98,6 @@ class CinnJitInstruction::FnPtrImpl {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void Run(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
            void* stream,
            bool is_gpu) {
@@ -115,7 +114,7 @@ class CinnJitInstruction::FnPtrImpl {
             reinterpret_cast<uint8_t*>(kernel_tensor_args[i]->data());
       }
     }
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // Launch host kernel
     if (FLAGS_cinn_measure_kernel_time ||
         FLAGS_tile_config_policy == "search") {
@@ -165,9 +164,20 @@ class CinnJitInstruction::FnPtrImpl {
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
     }
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    // --- Custom Device 专用逻辑 (简单直接) ---
+    // Custom Device 目前不支持 CINN 的 Tuning 和 CUDA Graph
+    if (is_gpu) {
+       ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+    } else {
+       ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+    }
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
-#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
                   const std::vector<phi::DDim>& ir_dim,
@@ -345,15 +355,25 @@ void CinnJitInstruction::Run() {
     CUDAErrorCheck("CinnJitInstruction begin");
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   void* running_stream = nullptr;
   bool is_gpu = false;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU) {
     is_gpu = true;
     running_stream =
         static_cast<void*>(static_cast<phi::GPUContext*>(dev_ctx_)->stream());
   }
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (place_.GetType() == phi::AllocationType::CUSTOM) {
+    is_gpu = true; // CINN 视 Custom Device 为 GPU 类设备
+    running_stream =
+        static_cast<void*>(static_cast<phi::CustomContext*>(dev_ctx_)->stream());
+  }
+#endif
 
   // 1. prepare kernel arguments
   fn_ptr_impl_->InitFuncArgs(tensor_args_);
