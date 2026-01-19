@@ -602,7 +602,6 @@ __global__ void quant_per_token_per_block_padding(
     const size_t rows,
     const size_t cols,
     const size_t padded_rows,
-    const bool use_finegrained_range,
     const float epsilon) {
   const size_t bid = blockIdx.x;
   const size_t tid = threadIdx.x;
@@ -639,26 +638,15 @@ __global__ void quant_per_token_per_block_padding(
 #pragma unroll
       for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
         load_vec_float[vid] = static_cast<float>(load_vec[vid]);
-        max_value_thread = max(abs(load_vec_float[vid]), max_value_thread);
+        max_value_thread = fmax(fabs(load_vec_float[vid]), max_value_thread);
       }
-      // get max value per warp
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 16),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 8),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 4),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 2),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 1),
-                             max_value_thread);
-      // broadcast max_value
-      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
-      // max_value_thread = max(max_value_thread, epsilon);
 
-      if (use_finegrained_range) {
-        max_value_thread *= 7.0f;
+#pragma unroll
+      for (uint32_t offset = 16; offset > 0; offset /= 2) {
+        float other = __shfl_down_sync(0xFFFFFFFF, max_value_thread, offset);
+        max_value_thread = fmax(max_value_thread, other);
       }
+      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
 
       float blockwise_scale = ScaleWrapper < use_pow2_scale ||
                               using_ue8m0_scale > (max_value_thread, epsilon);
@@ -764,12 +752,6 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
     const size_t gridx = min(min_grid_x, src_rows);
     const size_t blockx = min(min_block_x, src_cols / 128 * 32);
 
-    bool use_finegrained_range = false;
-    char *env_var = getenv("PER_TOKEN_QUANT_FP8_USE_FINEGRAINED_RANGE");
-    if (env_var) {
-      use_finegrained_range = static_cast<bool>(std::stoi(env_var));
-    }
-
     quant_per_token_per_block_padding<NvType,
                                       ScaleT,
                                       output_scale_transpose,
@@ -782,7 +764,6 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
             src_rows,
             src_cols,
             quanted_cols,
-            use_finegrained_range,
             epsilon);
   }
 }
@@ -821,6 +802,10 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
     } else {
       dev_ctx.template Alloc<float>(scale_transposed);
     }
+  }
+
+  if (X.numel() == 0) {
+    return;
   }
 
   // Currently we only support bfloat16 as input type,
