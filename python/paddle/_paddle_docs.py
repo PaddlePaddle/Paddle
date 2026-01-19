@@ -4293,7 +4293,7 @@ add_doc_and_signature(
                    [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: bitwise_left_shift_example2
 
             >>> import paddle
@@ -4355,7 +4355,7 @@ add_doc_and_signature(
                    [[5 , 5 , 5 , 5 ],
                     [4 , 2 , 8 , 32]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: bitwise_right_shift_example2
 
             >>> import paddle
