@@ -193,6 +193,7 @@ def get_device_properties(device: DeviceLike = None):
             >>> import paddle
 
             >>> paddle.device.set_device('gpu')
+
             # Get the properties of the current device
             >>> props = paddle.cuda.get_device_properties()
             >>> print(props)
