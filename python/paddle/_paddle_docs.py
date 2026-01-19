@@ -4282,7 +4282,7 @@ add_doc_and_signature(
         Tensor: Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: bitwise_left_shift_example1
 
             >>> import paddle
@@ -4301,7 +4301,7 @@ add_doc_and_signature(
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
             >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                [[2  , 8  , 32 , 128],
+                   [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
      """,
     """
@@ -4312,6 +4312,7 @@ def bitwise_left_shift(
     name: str | None = None,
     *,
     out: Tensor | None = None,
+) -> Tensor
 """,
 )
 
@@ -4343,7 +4344,7 @@ add_doc_and_signature(
         Tensor: Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: bitwise_right_shift_example1
 
             >>> import paddle
@@ -4373,5 +4374,6 @@ def bitwise_right_shift(
     name: str | None = None,
     *,
     out: Tensor | None = None,
+) -> Tensor
 """,
 )
