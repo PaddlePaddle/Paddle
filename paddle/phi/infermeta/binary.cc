@@ -3941,7 +3941,6 @@ void RmsNormInferMeta(const MetaTensor& x,
 
   auto matrix_dim = common::flatten_to_2d(x_dim, begin_norm_axis);
   auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
-  int64_t right = matrix_dim[1];
 
   PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
                     true,
