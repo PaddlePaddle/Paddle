@@ -54,8 +54,8 @@ void CPUIndexElementwisePutGradKernel(
   std::vector<int64_t> value_dims;
   std::vector<int64_t> value_strides;
   if (value_grad) {
-    value_dims = common::vectorize<int64_t>(value_grad->dims());
-    value_strides = common::vectorize<int64_t>(value_grad->strides());
+    value_dims = vectorize<int64_t>(value_grad->dims());
+    value_strides = vectorize<int64_t>(value_grad->strides());
   }
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
@@ -231,9 +231,8 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
                                                    slice_offset,
                                                    x_grad,
                                                    &tmp_value_grad);
-      std::vector<int64_t> after_dims =
-          common::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims = vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
       funcs::CalCompressedDimsWith1AndWithout1(
@@ -351,7 +350,7 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
+                             vectorize(value_grad->dims()),
                              0.0f,
                              value_grad->dtype(),
                              value_grad);

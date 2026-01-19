@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void MultiClassNMSKernel(const Context& dev_ctx,
                          const DenseTensor& bboxes,
                          const DenseTensor& scores,
-                         const paddle::optional<DenseTensor>& rois_num,
+                         const optional<DenseTensor>& rois_num,
                          float score_threshold,
                          int nums_top_k,
                          int keep_top_k,
@@ -48,7 +48,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
   bool return_index = index != nullptr;
   bool has_rois_num = rois_num.get_ptr() != nullptr;
   bool return_rois_num = nms_rois_num != nullptr;
-  auto score_dims = common::vectorize<int64_t>(scores.dims());
+  auto score_dims = vectorize<int64_t>(scores.dims());
   auto score_size = score_dims.size();
   bool is_lod = score_size == 2 ? true : false;
 

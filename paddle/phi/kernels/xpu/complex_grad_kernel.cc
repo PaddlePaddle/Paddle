@@ -81,7 +81,7 @@ void RealGradKernel(const Context& dev_ctx,
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   DenseTensor imag = Fill<phi::dtype::Real<T>, Context>(
-      dev_ctx, common::vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
+      dev_ctx, vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
   int r = xfft_internal::xpu::combine_as_complex(
       dev_ctx.x_context()->xpu_stream,
       numel,
@@ -106,7 +106,7 @@ void ImagGradKernel(const Context& dev_ctx,
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   DenseTensor real = Fill<phi::dtype::Real<T>, Context>(
-      dev_ctx, common::vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
+      dev_ctx, vectorize<int>(dout.dims()), phi::dtype::Real<T>(0.0));
   int r = xfft_internal::xpu::combine_as_complex(
       dev_ctx.x_context()->xpu_stream,
       numel,
@@ -131,16 +131,14 @@ void ComplexGradKernel(const Context& dev_ctx,
       if (dx->numel() == 0) {
         dev_ctx.template Alloc<T>(dx);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+        Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       if (dy->numel() == 0) {
         dev_ctx.template Alloc<T>(dy);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;

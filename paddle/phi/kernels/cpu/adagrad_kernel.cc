@@ -67,7 +67,7 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
 template <typename T>
 struct SparseAdagradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::SelectedRows& grad,
+                  const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
                   DenseTensor* moment,

@@ -200,6 +200,13 @@ void BindGuardTree(pybind11::module *m) {
           },
           py::arg("frame"));
 
+  py::class_<CheckGuardNode<0>,
+             GuardNodeBase,
+             std::shared_ptr<CheckGuardNode<0>>>(*m, "CheckGuardNode0")
+      .def_property_readonly("exprs",
+                             [](CheckGuardNode<0> &self) { return self.exprs; })
+      .def("get_guard_name", &CheckGuardNode<0>::get_guard_name);
+
   py::class_<CheckGuardNode<1>,
              GuardNodeBase,
              std::shared_ptr<CheckGuardNode<1>>>(*m, "CheckGuardNode1")
@@ -213,6 +220,17 @@ void BindGuardTree(pybind11::module *m) {
       .def_property_readonly("exprs",
                              [](CheckGuardNode<2> &self) { return self.exprs; })
       .def("get_guard_name", &CheckGuardNode<2>::get_guard_name);
+
+  py::class_<IsGradEnabledGuardNode,
+             CheckGuardNode<0>,
+             std::shared_ptr<IsGradEnabledGuardNode>>(
+      *m, "IsGradEnabledGuardNode", R"DOC(IsGradEnabledGuardNode Class.)DOC")
+      .def(py::init<bool,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("is_grad_enabled"),
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none());
 
   py::class_<LegacyGuardNode,
              CheckGuardNode<1>,

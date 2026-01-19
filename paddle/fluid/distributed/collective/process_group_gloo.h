@@ -34,7 +34,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
                    public std::enable_shared_from_this<GlooTask> {
    public:
     explicit GlooTask(int rank,
-                      const std::vector<phi::DenseTensor>& input_tensors,
+                      const std::vector<DenseTensor>& input_tensors,
                       CommType comm_type);
 
     ~GlooTask() = default;
@@ -136,30 +136,30 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& inputs,
-      std::vector<phi::DenseTensor>& outputs,
+      std::vector<DenseTensor>& inputs,
+      std::vector<DenseTensor>& outputs,
       const BroadcastOptions& = BroadcastOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& inputs,
-      std::vector<phi::DenseTensor>& outputs,
+      std::vector<DenseTensor>& inputs,
+      std::vector<DenseTensor>& outputs,
       const BroadcastOptions& opts,
       bool sync_op) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& inputs, int dst_rank) override;
+  std::shared_ptr<ProcessGroup::Task> Send(std::vector<DenseTensor>& inputs,
+                                           int dst_rank) override;
 
-  std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& outputs, int src_rank) override;
+  std::shared_ptr<ProcessGroup::Task> Recv(std::vector<DenseTensor>& outputs,
+                                           int src_rank) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& inputs,
-      std::vector<phi::DenseTensor>& outputs,
+      std::vector<DenseTensor>& inputs,
+      std::vector<DenseTensor>& outputs,
       const AllreduceOptions& opts = AllreduceOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& inputs,
-      std::vector<phi::DenseTensor>& outputs,
+      std::vector<DenseTensor>& inputs,
+      std::vector<DenseTensor>& outputs,
       const AllreduceOptions& opts,
       bool sync_op) override;
 
@@ -167,22 +167,22 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       const BarrierOptions& = BarrierOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors) override;
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
       bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
+      std::vector<DenseTensor>& in_tensors,
+      std::vector<DenseTensor>& out_tensors,
       const ScatterOptions&) override;
 
   std::shared_ptr<::gloo::Context> get_context() { return _context; }

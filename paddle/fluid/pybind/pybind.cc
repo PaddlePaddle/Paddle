@@ -183,6 +183,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/cuda_graph.h"
 #include "paddle/phi/core/memory/allocation/xpu_ipc_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
@@ -1828,6 +1829,39 @@ PYBIND11_MODULE(libpaddle, m) {
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  py::class_<phi::backends::xpu::CUDAGraph>(m, "CUDAGraph")
+      .def_static(
+          "begin_capture",
+          [](phi::XPUPlace place, int mode) {
+            platform::BeginCUDAGraphCapture(
+                place,
+                static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
+          })
+      .def_static(
+          "begin_capture_with_pool_id",
+          [](phi::XPUPlace place, int mode, std::optional<int64_t> pool_id) {
+            if (pool_id.has_value()) {
+              platform::BeginCUDAGraphCapture(
+                  place,
+                  static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode),
+                  pool_id.value());
+            } else {
+              platform::BeginCUDAGraphCapture(
+                  place,
+                  static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
+            }
+          })
+      .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def_static("gen_new_memory_pool_id",
+                  &phi::backends::xpu::CUDAGraph::UniqueMemoryPoolID)
+      .def("replay", &phi::backends::xpu::CUDAGraph::Replay)
+      .def("reset", &phi::backends::xpu::CUDAGraph::Reset)
+      .def("print_to_dot_files",
+           &phi::backends::xpu::CUDAGraph::PrintToDotFiles);
+
+#endif
+
   m.def("wait_device", [](const phi::Place &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
@@ -3180,7 +3214,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
               const std::unordered_map<std::string,
-                                       std::shared_ptr<::pir::Program>> &>(),
+                                       std::shared_ptr<pir::Program>> &>(),
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
