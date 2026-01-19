@@ -465,6 +465,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
 
       if constexpr (do_gather) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 1000
         // Using TMA copy data from SMEM to GMEM
         if (threadIdx.x == 0) {
           cuda::device::experimental::cp_async_bulk_shared_to_global(
@@ -473,6 +474,12 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
               token_length * sizeof(X_T));
           cuda::device::experimental::cp_async_bulk_commit_group();
         }
+#else
+        vectorized_memcpy(
+            a_stage,
+            &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
+            token_length);
+#endif
         // vec copy
         if constexpr (has_scale) {
           // src or dst may be unaligned with 128bits
@@ -484,10 +491,12 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       }
     }
     if constexpr (do_gather) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 1000
       // waiting async writing from SMEM to GMEM done
       if (threadIdx.x == 0) {
         cuda::device::experimental::cp_async_bulk_wait_group_read<0>();
       }
+#endif
       // release stage
       pipe.consumer_release();
     }
