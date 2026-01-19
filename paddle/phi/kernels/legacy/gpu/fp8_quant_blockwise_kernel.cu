@@ -623,7 +623,7 @@ __global__ void quant_per_token_per_block_padding(
       size_t idx;
       if constexpr (using_ue8m0_scale) {
         idx = output_scale_transpose
-                  ? (iter / 4) * rows * 4 + token_idx * 4 + (iter % 4)
+                  ? (iter / 4) * padded_rows * 4 + token_idx * 4 + (iter % 4)
                   : token_idx * padded_rows * 4 + iter;
       } else {
         idx = output_scale_transpose ? iter * padded_rows + token_idx
