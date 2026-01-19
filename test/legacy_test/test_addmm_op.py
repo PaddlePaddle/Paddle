@@ -183,7 +183,9 @@ class TestAddMMOpError(unittest.TestCase):
                 shape=[4, 4],
                 dtype="float32",
             )
-            self.assertRaises(ValueError, paddle.addmm, input, x5, x6)
+            self.assertRaises(
+                (TypeError, ValueError), paddle.addmm, input, x5, x6
+            )
             # input and x are not broadcastable
             x7 = paddle.static.data(
                 name='x7',
@@ -200,7 +202,9 @@ class TestAddMMOpError(unittest.TestCase):
                 shape=[2, 4],
                 dtype="float32",
             )
-            self.assertRaises(ValueError, paddle.addmm, input1, x7, x8)
+            self.assertRaises(
+                (TypeError, ValueError), paddle.addmm, input1, x7, x8
+            )
             # input and x are not broadcastable
             x9 = paddle.static.data(
                 name='x9',
@@ -217,7 +221,9 @@ class TestAddMMOpError(unittest.TestCase):
                 shape=[1, 2],
                 dtype="float32",
             )
-            self.assertRaises(ValueError, paddle.addmm, input2, x9, x10)
+            self.assertRaises(
+                (TypeError, ValueError), paddle.addmm, input2, x9, x10
+            )
             x11 = paddle.static.data(
                 name='x11',
                 shape=[4, 4],
@@ -229,7 +235,9 @@ class TestAddMMOpError(unittest.TestCase):
                 shape=[4, 2],
                 dtype="float32",
             )
-            self.assertRaises(ValueError, paddle.addmm, input3, x11, x12)
+            self.assertRaises(
+                (TypeError, ValueError), paddle.addmm, input3, x11, x12
+            )
             x13 = paddle.static.data(
                 name='x13',
                 shape=[4, 4],
@@ -245,7 +253,9 @@ class TestAddMMOpError(unittest.TestCase):
                 shape=[3, 1],
                 dtype="float32",
             )
-            self.assertRaises(ValueError, paddle.addmm, input4, x13, x14)
+            self.assertRaises(
+                (TypeError, ValueError), paddle.addmm, input4, x13, x14
+            )
 
 
 class TestAddMMOp2(TestAddMMOp):

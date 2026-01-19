@@ -131,13 +131,13 @@ void AddmmInferMeta(const MetaTensor& input,
                               "But received y's dimension = [%d].",
                               ndim_y));
   PADDLE_ENFORCE_EQ(
-      x_dims[0],
+      x_dims[1],
       y_dims[0],
-      errors::InvalidArgument("The dimension 0 of x must be equal to the "
+      errors::InvalidArgument("The dimension 1 of x must be equal to the "
                               "dimension 0 of y. "
-                              "But received x's dimension 0 = [%d], y's "
+                              "But received x's dimension 1 = [%d], y's "
                               "dimension 0 = [%d].",
-                              x_dims[0],
+                              x_dims[1],
                               y_dims[0]));
 
   if (ndim_input == 2) {
