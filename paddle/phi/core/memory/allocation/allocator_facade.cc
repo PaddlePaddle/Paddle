@@ -60,6 +60,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_graph.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_pinned_allocator.h"
@@ -686,6 +687,16 @@ class AllocatorFacadePrivate {
     } else {
       VLOG(6) << "RecordStream for a non-StreamSafeXPUAllocation";
       return false;
+    }
+  }
+
+  void EraseStream(std::shared_ptr<phi::Allocation> allocation,
+                   phi::stream::stream_t stream) {
+    if (auto stream_safe_cuda_allocation =
+            std::dynamic_pointer_cast<StreamSafeXPUAllocation>(allocation)) {
+      stream_safe_cuda_allocation->EraseStream(stream);
+    } else {
+      VLOG(6) << "EraseStream for a non-StreamSafeCUDAAllocation";
     }
   }
 
@@ -1683,6 +1694,20 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
     return iter->second.get();
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  if (UNLIKELY(IsCUDAGraphCapturing()) &&
+      !FLAGS_use_cuda_malloc_async_allocator) {
+    auto id = phi::backends::xpu::XPUGraph::CapturingPoolID();
+    auto iter = cuda_graph_map_.find(id);
+    PADDLE_ENFORCE_NE(
+        iter,
+        cuda_graph_map_.end(),
+        common::errors::PermissionDenied(
+            "No memory pool is prepared for CUDA Graph capturing."));
+    VLOG(10) << "Choose CUDA Graph memory pool";
+    return iter->second.get();
+  }
+#endif
   return m_;
 }
 
@@ -1953,6 +1978,72 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
   } else {
     VLOG(10) << "Decrease memory pool ID " << id << " reference count to be "
              << ref_cnt;
+  }
+}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+void AllocatorFacade::PrepareMemoryPoolForXPUGraph(int64_t id) {
+  PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
+                    AllocatorStrategy::kAutoGrowth,
+                    common::errors::InvalidArgument(
+                        "CUDA Graph is only supported when the "
+                        "FLAGS_allocator_strategy=\"auto_growth\", but got "
+                        "FLAGS_allocator_strategy=\"%s\"",
+                        FLAGS_allocator_strategy));
+  auto& allocator = cuda_graph_map_[id];
+  auto& ref_cnt = cuda_graph_ref_cnt_[id];
+  ++ref_cnt;
+
+  if (FLAGS_use_cuda_malloc_async_allocator) return;
+  if (allocator.get() == nullptr) {
+    allocator = std::make_unique<AllocatorFacadePrivate>(
+        /*allow_free_idle_chunk=*/false);
+    VLOG(10) << "Create memory pool for CUDA Graph with memory ID " << id;
+  } else {
+    VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;
+  }
+}
+
+void AllocatorFacade::RemoveMemoryPoolOfXPUGraph(int64_t id) {
+  auto ref_cnt_iter = cuda_graph_ref_cnt_.find(id);
+  PADDLE_ENFORCE_NE(ref_cnt_iter,
+                    cuda_graph_ref_cnt_.end(),
+                    common::errors::InvalidArgument(
+                        "Cannot find CUDA Graph with memory ID = %d", id));
+  auto& ref_cnt = ref_cnt_iter->second;
+  --ref_cnt;
+  if (ref_cnt == 0) {
+    cuda_graph_map_.erase(id);
+    cuda_graph_ref_cnt_.erase(ref_cnt_iter);
+  } else {
+    VLOG(10) << "Decrease memory pool ID " << id << " reference count to be "
+             << ref_cnt;
+  }
+}
+const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
+    const phi::Place& place, XPUStream stream) {
+  AllocatorFacadePrivate* m = GetPrivate();
+
+  // The XPU currently does not have the concept of MallocAsyncAllocatorUsed
+  // and shares the logic of IsStreamSafeCUDAAllocatorUsed.
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
+    VLOG(6) << "Warning: StreamSafeCUDAAllocator "
+               "are not used!";
+    return GetAllocator(place);
+  }
+
+  if (phi::is_xpu_place(place) && FLAGS_use_system_allocator == false) {
+    return m->GetAllocator(place,
+                           stream,
+                           /*create_if_not_found=*/true);
+  }
+  return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+}
+void AllocatorFacade::SetDefaultStream(const phi::XPUPlace& place,
+                                       XPUStream stream) {
+  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
+    m_->SetDefaultStream(place, stream);
   }
 }
 #endif
