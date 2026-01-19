@@ -32,6 +32,7 @@ def moe_permute(
     tokens_per_expert: list,
     padding_alignment: int,
     do_gather: bool = True,
+    using_ue8m0_scale: bool = False,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     r"""
@@ -46,6 +47,7 @@ def moe_permute(
         3. The padding_alignment parameter affects memory efficiency but not correctness.
         4. Any output tokens can find an exact-match in the original input tokens.
         5. This permute function has overcomed the aadiff issue, is deterministic.
+        6. If using_ue8m0_scale is True, then the data type of scale must be int32, and each int32 is packaged from 4 ue8m0 scaling factors.
 
     Args:
         hidden_states (Tensor): The input tensor containing tokens to be permuted, stored in row-major layout.
@@ -53,8 +55,8 @@ def moe_permute(
             Shape: [sequence_length, token_dimension]
         scale (Tensor|None): Scaling factors required when hidden_states is of float8 type.
             For float8 inputs, this tensor provides the scaling factors for dequantization.
-            Shape: [sequence_length, ceil(token_dimension / 128)]
-            Data type: float32
+            Shape: [sequence_length, ceil(token_dimension / 128)]. If using_ue8m0_scale is True, the shape is [sequence_length, ceil(ceil(token_dimension / 128)/4)].
+            Data type: float32 or int32(Only when using_ue8m0_scale is True). If using_ue8m0_scale is True, the data type of scale is int32 which is packed of four ue8m0 scaling factors.
         expert_routemap_topk (Tensor): Tensor indicating expert assignments for each token (top-k experts).
             Each value represents the expert index the token is assigned to (-1 indicates not assigned).
             Shape: [sequence_length, top_k_experts]
@@ -69,6 +71,7 @@ def moe_permute(
         padding_alignment (int): Tokens alignment requirement for expert buffers (in bytes).
             Must be a power of 2. Typical values are 16, 32 or 64 for optimal memory access.
         do_gather(bool): Decide whether do actual tokens gather operation or not, default is True.
+        using_ue8m0_scale (bool): Whether to use the ue8m0 scaling for float8 inputs. Default is False.
         name (str|None, optional): Name prefix for the operation (optional).
             Default: None
 
@@ -84,8 +87,8 @@ def moe_permute(
                 Shape: [total_tokens_after_broadcast, 1]
                 Data type: float32
             - scale_unzipped (Tensor): Broadcasted scale tensor (only valid for float8 inputs).
-                Shape: [total_tokens_after_broadcast, ceil(token_dimension / 128)]
-                Data type: float32
+                Shape: [total_tokens_after_broadcast, scale.shape[-1]]
+                Data type: float32 or int32. It is same as scale.
 
     Examples:
         .. code-block:: python
@@ -136,6 +139,7 @@ def moe_permute(
             tokens_per_expert,
             padding_alignment,
             do_gather,
+            using_ue8m0_scale,
         )
         return (
             hidden_states_unzipped,

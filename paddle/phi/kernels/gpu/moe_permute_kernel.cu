@@ -46,18 +46,19 @@ struct expert_infos {
 template <typename X_T,
           typename routemap_T,
           typename probs_T,
+          typename scale_T,
           bool has_scale,
           bool do_gather>
 __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
     const probs_T *__restrict__ probs_topk,
-    const float *__restrict__ XScale,
+    const scale_T *__restrict__ XScale,
     const int *__restrict__ expert_base_offset,
     X_T *__restrict__ X_unzipped,
     int *__restrict__ zipped_expertwise_rowmap,
     probs_T *__restrict__ probs_unzipped,
-    float *__restrict__ XScale_unzipped,
+    scale_T *__restrict__ XScale_unzipped,
     int *global_expertwise_block_cumsum,
     const int total_zipped_tokens_num,
     const int token_length,
@@ -137,10 +138,11 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
       if constexpr (do_gather) {
         // vec copy
         if constexpr (has_scale) {
-          vectorized_memcpy(&XScale[(int64_t)row * (int64_t)scale_length],
-                            &XScale_unzipped[(int64_t)proposed_row_idx *
-                                             (int64_t)scale_length],
-                            scale_length);
+          // src or dst may be unaligned with 128bits
+          try_vectorized_memcpy(&XScale[(int64_t)row * (int64_t)scale_length],
+                                &XScale_unzipped[(int64_t)proposed_row_idx *
+                                                 (int64_t)scale_length],
+                                scale_length);
         }
         vectorized_memcpy(
             &X[(int64_t)row * (int64_t)token_length],
@@ -167,7 +169,8 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const int topk,  // deprecated
                                   const int num_experts,
                                   const int scale_length,
-                                  const bool do_gather) {
+                                  const bool do_gather,
+                                  const bool using_ue8m0_scale) {
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
@@ -175,34 +178,41 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
-#define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, DO_GATHER) \
-  auto kernel = tokens_unzip_stable_kernel<TOKEN_T,                 \
-                                           INT_T,                   \
-                                           PROB_T,                  \
-                                           HAS_SCALE,               \
-                                           DO_GATHER>;              \
-  kernel<<<grid, block, 0, dev_ctx.stream()>>>(                     \
-      GET_DATA(X, TOKEN_T),                                         \
-      GET_DATA(expert_routemap_topk, INT_T),                        \
-      GET_DATA(expert_prob_topk, PROB_T),                           \
-      XScale ? XScale.get_ptr()->data<float>() : nullptr,           \
-      GET_DATA(expert_offsets, int),                                \
-      GET_PTR_DATA(X_unzipped, TOKEN_T),                            \
-      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                \
-      GET_PTR_DATA(token_prob_unzipped, PROB_T),                    \
-      XScale_unzipped->data<float>(),                               \
-      global_expertwise_block_cumsum->data<int>(),                  \
-      total_zipped_tokens_num,                                      \
-      token_length,                                                 \
-      scale_length,                                                 \
-      num_experts,                                                  \
+#define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER) \
+  auto kernel = tokens_unzip_stable_kernel<TOKEN_T,                          \
+                                           INT_T,                            \
+                                           PROB_T,                           \
+                                           SCALE_T,                          \
+                                           HAS_SCALE,                        \
+                                           DO_GATHER>;                       \
+  kernel<<<grid, block, 0, dev_ctx.stream()>>>(                              \
+      GET_DATA(X, TOKEN_T),                                                  \
+      GET_DATA(expert_routemap_topk, INT_T),                                 \
+      GET_DATA(expert_prob_topk, PROB_T),                                    \
+      XScale ? GET_PTR_DATA(XScale.get_ptr(), SCALE_T) : nullptr,            \
+      GET_DATA(expert_offsets, int),                                         \
+      GET_PTR_DATA(X_unzipped, TOKEN_T),                                     \
+      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                         \
+      GET_PTR_DATA(token_prob_unzipped, PROB_T),                             \
+      GET_PTR_DATA(XScale_unzipped, SCALE_T),                                \
+      global_expertwise_block_cumsum->data<int>(),                           \
+      total_zipped_tokens_num,                                               \
+      token_length,                                                          \
+      scale_length,                                                          \
+      num_experts,                                                           \
       topk);
 
-#define HANDLE_GATHER_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE) \
-  if (do_gather) {                                            \
-    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, true)    \
-  } else {                                                    \
-    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, false)   \
+#define HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, DO_GATHER)  \
+  if (using_ue8m0_scale) {                                               \
+    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, int32_t, HAS_SCALE, DO_GATHER) \
+  } else {                                                               \
+    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, float, HAS_SCALE, DO_GATHER)   \
+  }
+#define HANDLE_GATHER_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE)   \
+  if (do_gather) {                                              \
+    HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, true)  \
+  } else {                                                      \
+    HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, false) \
   }
 
 #define HANDLE_TOKEN_TYPE(PROB_T, INT_T)                        \
@@ -241,6 +251,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const std::vector<int> &tokens_per_expert,
                       const int padding_multiplex,
                       const bool do_gather,
+                      const bool using_ue8m0_scale,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
@@ -317,14 +328,22 @@ void MoePermuteKernel(const Context &dev_ctx,
     }
   }
   dev_ctx.template Alloc<T>(X_unzipped);
-  dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   auto token_prob_unzipped_ptr =
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
-  auto XScale_unzipped_ptr =
-      reinterpret_cast<void *>(XScale_unzipped->data<float>());
+  void *XScale_unzipped_ptr = nullptr;
+  if (using_ue8m0_scale) {
+    // if using the ue8m0 scale, four ue8m0 scale will be packed into one int32
+    dev_ctx.template Alloc<int32_t>(XScale_unzipped);
+    XScale_unzipped_ptr =
+        reinterpret_cast<void *>(XScale_unzipped->data<int32_t>());
+  } else {
+    dev_ctx.template Alloc<float>(XScale_unzipped);
+    XScale_unzipped_ptr =
+        reinterpret_cast<void *>(XScale_unzipped->data<float>());
+  }
 
   // -------- Memset all padding area to zero, with regard to do_gather
   auto memset_invalid_rows =
@@ -345,7 +364,9 @@ void MoePermuteKernel(const Context &dev_ctx,
   if (do_gather) {  // no gather, no memset
     memset_invalid_rows(X_unzipped_ptr, sizeof(T), cols);
     if (XScale) {
-      memset_invalid_rows(XScale_unzipped_ptr, sizeof(float), quanted_cols);
+      memset_invalid_rows(XScale_unzipped_ptr,
+                          using_ue8m0_scale ? sizeof(int32_t) : sizeof(float),
+                          quanted_cols);
     }
   }
   // Probs will be memset to zero whatsoever
@@ -377,7 +398,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                                            static_cast<int>(topk),
                                            num_experts,
                                            static_cast<int>(quanted_cols),
-                                           do_gather);
+                                           do_gather,
+                                           using_ue8m0_scale);
 }
 #undef CUMSUM_BLOCK_SIZE
 #undef CUMSUM_INVALID_TAG
