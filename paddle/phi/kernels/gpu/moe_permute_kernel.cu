@@ -413,7 +413,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
 
       if constexpr (do_gather) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 1000
+#if CUDA_VERSION >= 12080
         // Using TMA copy data from SMEM to GMEM
         if (threadIdx.x == 0) {
           cuda::device::experimental::cp_async_bulk_shared_to_global(
@@ -439,7 +439,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       }
     }
     if constexpr (do_gather) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 1000
+#if CUDA_VERSION >= 12080
       // waiting async writing from SMEM to GMEM done
       if (threadIdx.x == 0) {
         cuda::device::experimental::cp_async_bulk_wait_group_read<0>();
