@@ -78,7 +78,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       trans_out_grad = out_grad_;
 
       std::vector<int> perm_x_grad{1, 0};
-      auto x_grad_dims_vec = common::vectorize(x_grad->dims());
+      auto x_grad_dims_vec = vectorize(x_grad->dims());
       for (int i = 0; i < x_grad->dims().size(); ++i) {
         x_grad_dims_vec[i] = x_grad->dims()[perm_x_grad[i]];
       }
@@ -88,7 +88,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
     } else {
       std::vector<int> perm_d_out{1, 0};
-      auto out_grad_dims_vec = common::vectorize(out_grad_.dims());
+      auto out_grad_dims_vec = vectorize(out_grad_.dims());
       for (int i = 0; i < out_grad_.dims().size(); ++i) {
         out_grad_dims_vec[i] = out_grad_.dims()[perm_d_out[i]];
       }
@@ -98,7 +98,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
           perm_d_out.size(), dev_ctx, out_grad_, &trans_out_grad, perm_d_out);
 
       std::vector<int> perm_x_grad{2, 1, 0};
-      auto x_grad_dims_vec = common::vectorize(x_grad->dims());
+      auto x_grad_dims_vec = vectorize(x_grad->dims());
       for (int i = 0; i < x_grad->dims().size(); ++i) {
         x_grad_dims_vec[i] = x_grad->dims()[perm_x_grad[i]];
       }

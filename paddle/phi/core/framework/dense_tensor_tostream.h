@@ -28,13 +28,13 @@
 namespace phi {
 
 TEST_API void TensorToStream(std::ostream& os,
-                             const phi::DenseTensor& tensor,
+                             const DenseTensor& tensor,
                              const phi::DeviceContext& dev_ctx);
 TEST_API void TensorFromStream(std::istream& is,
-                               phi::DenseTensor* tensor,
+                               DenseTensor* tensor,
                                const phi::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      DenseTensor* tensor,
                       const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape);

@@ -77,18 +77,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                             static_cast<AccT>(d_var_data));
 
       if (flags & kHasScale) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#else
-        CudaAtomicAddWithWarp(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#endif
+        CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
       }
       if (flags & kHasBias) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#else
-        CudaAtomicAddWithWarp(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#endif
+        CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
       }
     }
   }
@@ -306,26 +298,19 @@ void GroupNormGradKernel(const Context& dev_ctx,
     if (d_scale) {
       // If batch dim is 0, we should set d_scale to zero, or else NAN
       if (x.dims().size() > 0 && x.dims()[0] == 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              0,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), 0, d_scale);
 
       } else {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              NAN,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), NAN, d_scale);
       }
     }
     if (d_bias) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+      Full<T, Context>(dev_ctx, d_bias->dims(), 0, d_bias);
     }
     return;
   }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

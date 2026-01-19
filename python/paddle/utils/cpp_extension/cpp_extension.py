@@ -843,8 +843,10 @@ class BuildExtension(build_ext):
         else:
             self.compiler.__class__.compile = unix_custom_single_compiler
 
+        # Ensure object files are generated under build_temp, not build_lib,
+        # to avoid accidental inclusion into wheel contents.
         self.compiler.object_filenames = object_filenames_with_cuda(
-            self.compiler.object_filenames, self.build_lib
+            self.compiler.object_filenames, self.build_temp
         )
         self._record_op_info()
 

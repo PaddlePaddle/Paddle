@@ -271,7 +271,7 @@ void PowKernel(const Context& dev_ctx,
     }
   }
   if (factor.to<double>() == 0) {
-    std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+    std::vector<int64_t> vec_dims = vectorize(out->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
     return;

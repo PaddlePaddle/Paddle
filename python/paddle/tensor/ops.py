@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from paddle._C_ops import (  # noqa: F401
     abs,
+    abs_,
     acos,
     acosh,
     asin,
@@ -60,7 +61,6 @@ __inplace_unary_func__ = [
     'floor_',
     'reciprocal_',
     'sigmoid_',
-    'abs_',
     'sin_',
     'sinh_',
     'asin_',

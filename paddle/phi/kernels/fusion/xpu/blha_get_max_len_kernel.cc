@@ -55,7 +55,7 @@ void BlhaGetMaxLenKernel(const Context& dev_ctx,
                          DenseTensor* max_enc_len_this_time,
                          DenseTensor* max_dec_len_this_time) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto& dev_ctx_cpu = *pool.Get(phi::CPUPlace());
+  auto& dev_ctx_cpu = *pool.Get(CPUPlace());
   // decoder
   max_dec_len_this_time->Resize({{1}});
   if (seq_lens_decoder.numel() > 0) {

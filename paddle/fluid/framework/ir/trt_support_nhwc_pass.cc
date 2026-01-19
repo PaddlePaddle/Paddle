@@ -283,9 +283,9 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
           auto weight_names = op_desc->Input(weight);
           for (const auto &weight_name : weight_names) {
             auto *weight_var = scope->FindLocalVar(weight_name);
-            auto *weight_tensor = weight_var->GetMutable<phi::DenseTensor>();
+            auto *weight_tensor = weight_var->GetMutable<DenseTensor>();
             if (weight_tensor->dims().size() == 4) {
-              phi::DenseTensor temp_tensor = *weight_tensor;
+              DenseTensor temp_tensor = *weight_tensor;
               weight_tensor->clear();
 
               framework::TransDataLayout(phi::DataLayout::NHWC,

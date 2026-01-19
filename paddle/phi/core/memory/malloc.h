@@ -42,7 +42,7 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 PADDLE_API extern uint64_t Release(const phi::Place& place);
 
 // Compact memory of free blocks held by the VmmAllocator.
-PADDLE_API extern size_t Compact(const phi::GPUPlace& place);
+PADDLE_API extern size_t Compact(const GPUPlace& place);
 
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream);
@@ -59,8 +59,7 @@ PADDLE_API extern void* GetBasePtr(
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(PADDLE_WITH_CUSTOM_DEVICE)
-PADDLE_API extern uint64_t Release(const phi::GPUPlace& place,
-                                   gpuStream_t stream);
+PADDLE_API extern uint64_t Release(const GPUPlace& place, gpuStream_t stream);
 
 PADDLE_API bool RecordStream(std::shared_ptr<Allocation> allocation,
                              gpuStream_t stream);

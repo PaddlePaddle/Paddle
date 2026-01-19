@@ -442,18 +442,18 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
-  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
-  std::map<phi::DenseTensor*, std::shared_ptr<phi::Allocation>>
+  std::map<DenseTensor*, DenseTensor*> need_backup_inputs2outputs;
+  std::map<DenseTensor*, std::shared_ptr<phi::Allocation>>
       need_backup_inputs2holder;
-  std::map<phi::DenseTensor*, phi::DDim> need_backup_inputs2strides;
-  std::map<phi::DenseTensor*, size_t> need_backup_inputs2offset;
+  std::map<DenseTensor*, phi::DDim> need_backup_inputs2strides;
+  std::map<DenseTensor*, size_t> need_backup_inputs2offset;
   if (FLAGS_use_stride_kernel) {
     for (auto& iter : inplace_map) {
       auto inputs_iter = ins.find(iter.first);
       for (size_t i = 0; i < inputs_iter->second.size(); i++) {
         auto var = inputs_iter->second[i]->MutableVar();
-        if (var->IsType<phi::DenseTensor>()) {
-          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<DenseTensor>();
           if (!dense_tensor->meta().is_contiguous()) {
             NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
             auto outputs_iter = tmp_out->find(iter.second);
@@ -462,7 +462,7 @@ void Tracer::TraceOp(const std::string& type,
             need_backup_inputs2outputs[dense_tensor] =
                 outputs_iter->second[i]
                     ->MutableVar()
-                    ->GetMutable<phi::DenseTensor>();
+                    ->GetMutable<DenseTensor>();
             need_backup_inputs2holder[dense_tensor] = dense_tensor->Holder();
             need_backup_inputs2strides[dense_tensor] = dense_tensor->strides();
             need_backup_inputs2offset[dense_tensor] = dense_tensor->offset();
@@ -519,15 +519,15 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
 
-  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
+  std::map<DenseTensor*, DenseTensor*> need_backup_inputs2outputs;
 
   if (FLAGS_use_stride_kernel) {
     for (auto& iter : inplace_map) {
       auto inputs_iter = ins.find(iter.first);
       for (size_t i = 0; i < inputs_iter->second.size(); i++) {
         auto var = inputs_iter->second[i]->MutableVar();
-        if (var->IsType<phi::DenseTensor>()) {
-          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<DenseTensor>();
           if (!dense_tensor->meta().is_contiguous()) {
             NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
             auto outputs_iter = tmp_out->find(iter.second);
@@ -536,7 +536,7 @@ void Tracer::TraceOp(const std::string& type,
             need_backup_inputs2outputs[dense_tensor] =
                 outputs_iter->second[i]
                     ->MutableVar()
-                    ->GetMutable<phi::DenseTensor>();
+                    ->GetMutable<DenseTensor>();
           }
         }
       }

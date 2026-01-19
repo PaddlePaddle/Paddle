@@ -186,7 +186,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input

@@ -24,10 +24,24 @@ import utils
 import paddle
 from paddle.static import InputSpec
 
+# NOTE(Pan Zhaowu): disable linear_v2 decomp to test infersymbolics
+paddle.set_flags(
+    {
+        "FLAGS_deny_cinn_ops": "linear_v2",
+        "FLAGS_prim_forward_blacklist": "pd_op.linear_v2",
+    }
+)
+
 
 class LayerCase(paddle.nn.Layer):
-    def __init__(self):
+    def __init__(self, in_features=256, out_features=256):
         super().__init__()
+        self.parameter_2 = self.create_parameter(
+            shape=[in_features, out_features], dtype='float32'
+        )
+        self.parameter_1 = self.create_parameter(
+            shape=[out_features], dtype='float32'
+        )
 
     def forward(
         self,
@@ -35,13 +49,19 @@ class LayerCase(paddle.nn.Layer):
         var_1,  # (shape: [], dtype: paddle.int32, stop_gradient: True)
     ):
         var_2 = var_0.unsqueeze(axis=0)
-        var_3 = var_2.transpose(
+
+        var_linear = paddle.nn.functional.linear(
+            x=var_2, weight=self.parameter_2, bias=self.parameter_1, name=None
+        )
+
+        var_3 = var_linear.transpose(
             (
                 0,
                 2,
                 1,
             )
         )
+
         var_4 = var_3.expand(
             (
                 var_1,

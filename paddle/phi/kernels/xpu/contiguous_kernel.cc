@@ -49,8 +49,8 @@ void ContiguousKernel(const Context& dev_ctx,
     r = xpu::as_strided<XPUType>(dev_ctx.x_context(),
                                  input_data,
                                  output_data,
-                                 common::vectorize<int64_t>(input.dims()),
-                                 common::vectorize<int64_t>(input.strides()),
+                                 vectorize<int64_t>(input.dims()),
+                                 vectorize<int64_t>(input.strides()),
                                  0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
@@ -78,8 +78,8 @@ ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
   // as_strided<int8_t> to preserve both real/imag parts and handle large
   // strides safely.
   dev_ctx.template Alloc<T>(out);
-  auto bytes_shape = common::vectorize<int64_t>(input.dims());
-  auto bytes_strides = common::vectorize<int64_t>(input.strides());
+  auto bytes_shape = vectorize<int64_t>(input.dims());
+  auto bytes_strides = vectorize<int64_t>(input.strides());
   const int64_t bytes_per_elem = static_cast<int64_t>(sizeof(T));
   for (auto& s : bytes_strides) {
     s *= bytes_per_elem;
