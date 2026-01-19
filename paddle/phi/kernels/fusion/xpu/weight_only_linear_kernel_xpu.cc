@@ -20,7 +20,7 @@ template <typename T, typename Context>
 void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& weight,
-                               const paddle::optional<DenseTensor>& bias,
+                               const optional<DenseTensor>& bias,
                                const DenseTensor& weight_scale,
                                const std::string& weight_dtype,
                                const int32_t arch,
