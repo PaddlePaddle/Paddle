@@ -17,7 +17,13 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -118,6 +124,58 @@ def layer_norm_wrapper(
     normalized_shape = input_shape[begin_norm_axis:]
     return paddle.nn.functional.layer_norm(
         x, normalized_shape, weight=scale, bias=bias, epsilon=epsilon
+    )
+
+
+def layer_norm_wrapper_compatibility_1(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        x, normalized_shape, weight=scale, bias=bias, eps=epsilon
+    )
+
+
+def layer_norm_wrapper_compatibility_2(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        input=x,
+        normalized_shape=normalized_shape,
+        weight=scale,
+        bias=bias,
+        eps=epsilon,
+    )
+
+
+def layer_norm_wrapper_compatibility_3(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        weight=scale,
+        eps=epsilon,
+        input=x,
+        normalized_shape=normalized_shape,
+        bias=bias,
+    )
+
+
+def layer_norm_wrapper_compatibility_4(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        weight=scale,
+        eps=epsilon,
+        x=x,
+        normalized_shape=normalized_shape,
+        bias=bias,
     )
 
 
@@ -223,9 +281,9 @@ class TestLayerNormOpByOpTest(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLayerNormBF16OpByOpTest(OpTest):
@@ -240,7 +298,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0),
+            place=get_device_place(),
             no_check_set=["Mean", "Variance"],
             atol=self.ori_atol,
             rtol=self.ori_rtol,
@@ -251,7 +309,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             self.check_grad_input_list,
             ['Y'],
             max_relative_error=self.max_relative_error,
@@ -350,9 +408,9 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLayerNormBF16OpByOpTest_case2(TestLayerNormBF16OpByOpTest):
@@ -403,9 +461,9 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLayerNormBF16OpByOpTest_case3(TestLayerNormBF16OpByOpTest):
@@ -456,9 +514,9 @@ class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLayerNormBF16OpByOpTest_case4(TestLayerNormBF16OpByOpTest):
@@ -579,6 +637,50 @@ class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
         self.check_pir = True
 
 
+class TestLayerNormOpByOpTestFP32_compatibility_1(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_1
+        self.public_python_api = layer_norm_wrapper_compatibility_1
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_2(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_2
+        self.public_python_api = layer_norm_wrapper_compatibility_2
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_3(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_3
+        self.public_python_api = layer_norm_wrapper_compatibility_3
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_4(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_4
+        self.public_python_api = layer_norm_wrapper_compatibility_4
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
 class TestDygraphLayerNormAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -603,7 +705,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA or not support the float16",
 )
 class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
@@ -651,9 +753,9 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
@@ -713,7 +815,8 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA or not support the FastMath",
 )
 class TestFastMathLayerNormOp(unittest.TestCase):
@@ -795,9 +898,9 @@ class TestFastMathLayerNormOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestFastMathLayerNormBF16Op(TestFastMathLayerNormOp):
@@ -806,7 +909,8 @@ class TestFastMathLayerNormBF16Op(TestFastMathLayerNormOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestLayerNormBF16OpByOpTest_ZeroSize(TestLayerNormOpByOpTest):
@@ -826,6 +930,226 @@ class TestLayerNormBF16OpByOpTest_ZeroSize(TestLayerNormOpByOpTest):
         self.check_prim = False
         self.check_prim_pir = False
         self.check_pir = True
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
+)
+class TestFastLNV2(unittest.TestCase):
+    """
+    Tests the correctness of forward and backward propagation for fast_ln v2 in layernorn kernel.
+    """
+
+    def _fast_ln_ref(
+        self, x_in, scale_in, bias_in, epsilon, has_bias=True, has_scale=True
+    ):
+        """
+        High-precision (float64) reference implementation for LayerNorm.
+        """
+        x = paddle.cast(x_in, 'float64')
+        if has_scale:
+            scale = paddle.cast(scale_in, 'float64')
+        if has_bias:
+            bias = paddle.cast(bias_in, 'float64')
+        mean = paddle.mean(x, axis=-1, keepdim=True)
+        variance = paddle.mean(paddle.square(x - mean), axis=-1, keepdim=True)
+        invvar = paddle.rsqrt(variance + epsilon)
+        y = (x - mean) * invvar
+        if has_scale:
+            y = y * scale
+        if has_bias:
+            y = y + bias
+        return y.astype(x_in.dtype), mean, invvar
+
+    def _assert_allclose(self, a, b, atol, rtol, msg=""):
+        """
+        Custom assertion to report maximum absolute and relative errors.
+        """
+        a_f32 = a.astype('float32')
+        b_f32 = b.astype('float32')
+        abs_error = paddle.abs(a_f32 - b_f32)
+        max_abs_error = paddle.max(abs_error).item()
+
+        # Avoid division by zero
+        rel_error = abs_error / (paddle.abs(b_f32) + 1e-9)
+        max_rel_error = paddle.max(rel_error).item()
+
+        if max_rel_error > rtol or max_abs_error > atol:
+            self.fail(
+                f"{msg} - Verification failed! "
+                f"Max absolute error: {max_abs_error:.6e} (Tolerance: {atol:.6e}), "
+                f"Max relative error: {max_rel_error:.6e} (Tolerance: {rtol:.6e})"
+            )
+
+    def test_fast_ln_forward_backward(self):
+        """
+        Tests the forward and gradient correctness of fast_ln.
+        """
+        paddle.seed(114514)
+        paddle.disable_static()
+
+        params = [
+            (5, 128, 1024, "float16", 1e-2),
+            (5, 128, 1536, "float16", 1e-2),
+            (5, 128, 2048, "float16", 1e-2),
+            (5, 128, 5120, "float16", 1e-2),
+            (5, 128, 10240, "float16", 1e-1),
+            (5, 128, 1024, "bfloat16", 2e-2),
+            (5, 128, 1536, "bfloat16", 2e-2),
+            (5, 128, 2048, "bfloat16", 4e-2),
+            (1, 128, 2304, "bfloat16", 1e-1),
+            (1, 128, 3072, "bfloat16", 1e-1),
+            (1, 128, 3840, "bfloat16", 1e-1),
+            (1, 32, 5120, "bfloat16", 1e-1),
+            (1, 32, 6144, "bfloat16", 1e-1),
+            (1, 32, 8192, "bfloat16", 1e-1),
+            (1, 32, 10240, "bfloat16", 1e-1),
+            (1, 32, 11264, "bfloat16", 1e-1),
+        ]
+
+        fixed_rtol = 1.0
+
+        for B, C, H, dtype, atol in params:
+            with self.subTest(shape=(B, C, H), dtype=dtype):
+                # 1. Initialize inputs
+                shape = [B, C, H]
+                x_ref = paddle.randn(shape=shape, dtype=dtype)
+                x_proposed = x_ref.clone()
+                x_ref.stop_gradient = False
+                x_proposed.stop_gradient = False
+
+                scale_init = paddle.ones(shape=[H], dtype=dtype)
+                bias_init = paddle.zeros(shape=[H], dtype=dtype)
+
+                scale_ref = scale_init.clone()
+                scale_proposed = scale_init.clone()
+                bias_ref = bias_init.clone()
+                bias_proposed = bias_init.clone()
+
+                scale_ref.stop_gradient = False
+                scale_proposed.stop_gradient = False
+                bias_ref.stop_gradient = False
+                bias_proposed.stop_gradient = False
+
+                epsilon = 1e-5
+
+                # 2. Forward computation
+                y_ref, _, _ = self._fast_ln_ref(
+                    x_ref, scale_ref, bias_ref, epsilon=epsilon
+                )
+                y_proposed = paddle.nn.functional.layer_norm(
+                    x_proposed,
+                    [H],
+                    scale_proposed,
+                    bias_proposed,
+                    epsilon=epsilon,
+                )
+
+                # 3. Gradient computation
+                y_ref.sum().backward()
+                y_proposed.sum().backward()
+
+                # 4. Verification (Forward)
+                self._assert_allclose(
+                    y_ref,
+                    y_proposed,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2  forward failed, dtype={dtype}",
+                )
+
+                # 5. Verification (Gradient)
+                self._assert_allclose(
+                    x_ref.grad,
+                    x_proposed.grad,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2 input gradient failed, dtype={dtype}",
+                )
+                self._assert_allclose(
+                    scale_ref.grad,
+                    scale_proposed.grad,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2 Scale gradient failed, dtype={dtype}",
+                )
+                self._assert_allclose(
+                    bias_ref.grad,
+                    bias_proposed.grad,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2 Bias gradient failed, dtype={dtype}",
+                )
+        paddle.enable_static()
+
+    def test_fast_ln_forward_backward_no_bias_scale(self):
+        """
+        Tests the forward and gradient correctness of fast_ln.
+        """
+        paddle.seed(114514)
+        paddle.disable_static()
+
+        params = [
+            (1, 100, 5120, "float16", 1e-2),
+            (1, 100, 3072, "float16", 1e-2),
+            (1, 100, 3840, "bfloat16", 1e-1),
+            (5, 128, 2304, "float16", 1e-2),
+            (5, 128, 3840, "bfloat16", 1e-1),
+        ]
+
+        fixed_rtol = 1.0
+
+        for B, C, H, dtype, atol in params:
+            with self.subTest(shape=(B, C, H), dtype=dtype):
+                # 1. Initialize inputs
+                shape = [B, C, H]
+                x_ref = paddle.randn(shape=shape, dtype=dtype)
+                x_proposed = x_ref.clone()
+                x_ref.stop_gradient = False
+                x_proposed.stop_gradient = False
+
+                epsilon = 1e-5
+
+                # 2. Forward computation
+                y_ref, _, _ = self._fast_ln_ref(
+                    x_ref,
+                    None,
+                    None,
+                    epsilon=epsilon,
+                    has_bias=False,
+                    has_scale=False,
+                )
+                y_proposed = paddle.nn.functional.layer_norm(
+                    x_proposed,
+                    [H],
+                    None,
+                    None,
+                    epsilon=epsilon,
+                )
+
+                # 3. Gradient computation
+                y_ref.sum().backward()
+                y_proposed.sum().backward()
+
+                # 4. Verification (Forward)
+                self._assert_allclose(
+                    y_ref,
+                    y_proposed,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2  forward failed, dtype={dtype}",
+                )
+
+                # 5. Verification (Gradient)
+                self._assert_allclose(
+                    x_ref.grad,
+                    x_proposed.grad,
+                    atol=atol,
+                    rtol=fixed_rtol,
+                    msg=f"fast_ln v2 input gradient failed, dtype={dtype}",
+                )
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

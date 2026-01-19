@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterable, Sequence
-from typing import Literal, Union, overload
+from typing import Any, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -70,11 +70,16 @@ class CustomOpDef:
         )
         return fn
 
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return PYTHON_OP_REGISTRY.get_operator(
+            f"{self._namespace}::{self._name}"
+        )(*args, **kwargs)
+
 
 @overload
 def custom_op(
     name: str,
-    fn: Literal[None] = None,
+    fn: None = None,
     /,
     *,
     mutates_args: str | Iterable[str],
@@ -153,3 +158,11 @@ def register_fake(
     warn_about_unimplemented_torch_features(
         "register_fake", "torch.library.register_fake"
     )
+
+    def register(func):
+        return func
+
+    if func is None:
+        return register
+    else:
+        return register(func)

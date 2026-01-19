@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -43,9 +44,11 @@ limitations under the License. */
 // clang-format on
 #endif
 
-namespace phi {
+#include "paddle/common/flags.h"
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
+namespace phi {
 
 template <typename T, typename Context>
 void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
@@ -54,8 +57,8 @@ void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
                                     const std::vector<int>& strides,
                                     const std::vector<int>& padding_common,
                                     const std::vector<int>& dilations_,
-                                    GPUDNNDataLayout data_layout,
-                                    GPUDNNDataLayout layout,
+                                    DataLayout data_layout,
+                                    DataLayout layout,
                                     bool exhaustive_search,
                                     bool deterministic,
                                     int groups,
@@ -165,8 +168,8 @@ void ConvTransposeCudnnKernelImplV8(const DenseTensor* transformed_x,
                                     const std::vector<int>& strides,
                                     const std::vector<int>& padding_common,
                                     const std::vector<int>& dilations_,
-                                    GPUDNNDataLayout data_layout,
-                                    GPUDNNDataLayout layout,
+                                    DataLayout data_layout,
+                                    DataLayout layout,
                                     bool exhaustive_search,
                                     bool deterministic,
                                     int groups,
@@ -248,8 +251,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
                                   const std::string& data_format,
                                   DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 
@@ -269,14 +271,13 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
 
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
-  const GPUDNNDataLayout data_layout =
-      (data_format != "NHWC" ? GPUDNNDataLayout::kNCHW
-                             : GPUDNNDataLayout::kNHWC);
+  const DataLayout data_layout =
+      (data_format != "NHWC" ? DataLayout::NCHW : DataLayout::NHWC);
   std::vector<int64_t> x_vec = common::vectorize<int64_t>(x.dims());
   std::vector<int64_t> out_vec = common::vectorize<int64_t>(out->dims());
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
-  if (data_layout == GPUDNNDataLayout::kNHWC) {
+  if (data_layout == DataLayout::NHWC) {
     if (strides.size() == 2U) {
       std::vector<int> axis = {0, 3, 1, 2};
       for (size_t i = 0; i < axis.size(); ++i) {
@@ -385,11 +386,11 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     transformed_out.Resize(common::make_ddim(transformed_out_vec));
   }
 
-  GPUDNNDataLayout layout;
+  DataLayout layout;
   if (strides.size() == 2U) {
-    layout = GPUDNNDataLayout::kNCHW;
+    layout = DataLayout::NCHW;
   } else {
-    layout = GPUDNNDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
   }
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
@@ -442,7 +443,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
         dev_ctx, &transformed_out, out, starts, ends, axes);
   }
 
-  if (data_layout == GPUDNNDataLayout::kNHWC) {
+  if (data_layout == DataLayout::NHWC) {
     DenseTensor out_transpose;
     DenseTensor out_nchw;
     out_nchw.ShareDataWith(*out);
@@ -457,6 +458,41 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+template <typename T, typename Context>
+void ConvTransposeRawGPUDNNKernelV8(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& filter,
+                                    const std::vector<int>& strides,
+                                    const std::vector<int>& paddings,
+                                    const std::string& padding_algorithm,
+                                    int groups,
+                                    const std::vector<int>& dilations,
+                                    const std::string& data_format,
+                                    DenseTensor* out) {
+  DenseTensor dummy_input;
+  dummy_input.Resize(out->dims());
+
+  dev_ctx.template Alloc<T>(out);
+  dummy_input.ShareDataWith(*out);
+
+  DenseTensor* filter_grad_ptr = nullptr;
+
+  ConvCudnnGradKernel<T, Context>(dev_ctx,
+                                  dummy_input,
+                                  filter,
+                                  x,
+                                  strides,
+                                  paddings,
+                                  padding_algorithm,
+                                  dilations,
+                                  groups,
+                                  data_format,
+                                  out,
+                                  filter_grad_ptr);
+}
+#endif
+
 template <typename T, typename Context>
 void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                  const DenseTensor& x,
@@ -470,6 +506,31 @@ void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                  const std::vector<int>& dilations,
                                  const std::string& data_format,
                                  DenseTensor* out) {
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (dynload::IsCudnnFrontendEnabled() && FLAGS_use_accuracy_compatible_kernel)
+    ConvTransposeRawGPUDNNKernelV8<T, Context>(dev_ctx,
+                                               x,
+                                               filter,
+                                               strides,
+                                               paddings,
+                                               padding_algorithm,
+                                               groups,
+                                               dilations,
+                                               data_format,
+                                               out);
+  else
+    ConvTransposeRawGPUDNNKernel<T, Context>(dev_ctx,
+                                             x,
+                                             filter,
+                                             strides,
+                                             paddings,
+                                             padding_algorithm,
+                                             groups,
+                                             dilations,
+                                             data_format,
+                                             out);
+
+#else
   ConvTransposeRawGPUDNNKernel<T, Context>(dev_ctx,
                                            x,
                                            filter,
@@ -480,6 +541,7 @@ void Conv2dTransposeGPUDNNKernel(const Context& dev_ctx,
                                            dilations,
                                            data_format,
                                            out);
+#endif
 }
 
 template <typename T, typename Context>

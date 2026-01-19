@@ -61,7 +61,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   }
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      common::vectorize(x.dims()), common::vectorize(mask.dims()));
+      vectorize(x.dims()), vectorize(mask.dims()));
 
   DDim expand_dims = common::make_ddim(expanded_size);
   if (mask.dims() != expand_dims) {
@@ -91,7 +91,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         mask_dim));
 
   using Functor = MaskedSelectFunctor<bool, T, T>;
-  phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
+  funcs::SelectKernel<bool, T, T, 1, Functor>(
       dev_ctx, mask_expand, x_expand, out, Functor());
 }
 

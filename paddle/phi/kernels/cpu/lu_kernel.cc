@@ -36,18 +36,9 @@ void LUKernel(const Context& dev_ctx,
                         "but got pivots=False"));
 
   if (x.numel() == 0) {
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(infos->dims())),
-                            static_cast<int>(0),
-                            infos);
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(pivots->dims())),
-                            static_cast<int>(0),
-                            pivots);
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(0),
-                          out);
+    Full<int, Context>(dev_ctx, infos->dims(), static_cast<int>(0), infos);
+    Full<int, Context>(dev_ctx, pivots->dims(), static_cast<int>(0), pivots);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(0), out);
     return;
   }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
@@ -78,7 +69,7 @@ void LUKernel(const Context& dev_ctx,
     auto out_data_item = &out_data[b * m * n];
     int* info_data_item = &info_data[b];
     int* ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-    phi::funcs::lapackLu<T>(
+    funcs::lapackLu<T>(
         m, n, out_data_item, lda, ipiv_data_item, info_data_item);
   }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, *out);

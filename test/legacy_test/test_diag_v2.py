@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, static
@@ -250,7 +255,7 @@ class TestDiagV2API(unittest.TestCase):
             result12 = paddle.diag(x5, offset=-1)
             result13 = paddle.diag(x6, offset=-1)
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        place = get_device_place() if use_gpu else base.CPUPlace()
         exe = static.Executor(place)
         exe.run(sp)
         [
@@ -316,13 +321,90 @@ class TestDiagV2API(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
         self.run_static(use_gpu=True)
+
+
+class TestDiagV2Compatibility(unittest.TestCase):
+    def setUp(self):
+        # input arg
+        self.input_np1 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected1 = np.diag(self.input_np1)
+
+        # diagonal arg
+        self.input_np2 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected2 = np.diag(self.input_np2, k=1)
+
+        # out arg
+        self.input_np3 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected3 = np.diag(self.input_np3)
+        self.input_np4 = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected4 = np.diag(self.input_np4)
+
+    def run_dygraph(self):
+        # input arg
+        x = paddle.to_tensor(self.input_np1)
+        y = paddle.diag(input=x)
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
+
+        # diagonal arg
+        x = paddle.to_tensor(self.input_np2)
+        y = paddle.diag(x, diagonal=1)
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
+
+        # out arg
+        x = paddle.to_tensor(self.input_np3)
+        out = paddle.empty([])
+        y = paddle.diag(x, out=out)
+        np.testing.assert_allclose(out.numpy(), self.expected3, rtol=1e-05)
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
+
+        x = paddle.to_tensor(self.input_np4)
+        out = paddle.empty([])
+        paddle.diag(x, out=out)
+        np.testing.assert_allclose(out.numpy(), self.expected4, rtol=1e-05)
+
+    def run_static(self, use_gpu=False):
+        mp, sp = static.Program(), static.Program()
+        with static.program_guard(mp, sp):
+            x1 = paddle.static.data(
+                name='input1', shape=[10, 10], dtype='float32'
+            )
+            x2 = paddle.static.data(
+                name='input2', shape=[10, 10], dtype='float32'
+            )
+            # input arg
+            result1 = paddle.diag(input=x1)
+            # diagonal arg
+            result2 = paddle.diag(x2, diagonal=1)
+
+        place = get_device_place() if use_gpu else base.CPUPlace()
+        exe = static.Executor(place)
+        exe.run(sp)
+        [res1, res2] = exe.run(
+            mp,
+            feed={
+                "input1": self.input_np1,
+                "input2": self.input_np2,
+            },
+            fetch_list=[result1, result2],
+        )
+        # input arg
+        np.testing.assert_allclose(res1, self.expected1, rtol=1e-05)
+        # diagonal arg
+        np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
+
+    def test_compatibility(self):
+        paddle.disable_static(place=paddle.base.CPUPlace())
+        self.run_dygraph()
+
+        paddle.enable_static()
+        self.run_static()
 
 
 class TestDiagV2FP16OP(TestDiagV2Op):
@@ -331,8 +413,8 @@ class TestDiagV2FP16OP(TestDiagV2Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDiagV2BF16OP(OpTest):
@@ -356,12 +438,12 @@ class TestDiagV2BF16OP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X'], 'Out', check_pir=True, check_prim_pir=True
         )

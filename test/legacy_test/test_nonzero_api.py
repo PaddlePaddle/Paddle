@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -232,8 +237,8 @@ class TestZeroSizeOpCase2(TestNonzeroOp):
 class TestNonzeroCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.input_data = [[1, 0, 3], [0, 5, 0], [7, 0, 9]]
         self.expected_indices = np.array(
             [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]]

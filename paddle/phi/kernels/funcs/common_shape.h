@@ -97,7 +97,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
 }
 
 inline void GetPrePostNumel(
-    const DDim &dim, int axis, int *pre, int *n, int *post) {
+    const DDim &dim, int axis, int64_t *pre, int64_t *n, int64_t *post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -267,7 +267,7 @@ inline DDim GetOutputDimsForDynamicShape(const DDim &s_dims,
   return common::make_ddim(shapes);
 }
 
-inline int64_t CalStride(phi::DDim dim) {
+inline int64_t CalStride(DDim dim) {
   int rank = dim.size();
   int64_t dimsum = 1;
   int64_t strides = 0;

@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle.incubate.optimizer import (
-    lbfgs as incubate_lbfgs,
     line_search_dygraph,
 )
 from paddle.optimizer import lbfgs
@@ -69,7 +68,7 @@ class TestLbfgs(unittest.TestCase):
             return w * x
 
         net = Net(np_w, func)
-        opt = incubate_lbfgs.LBFGS(
+        opt = lbfgs.LBFGS(
             learning_rate=1,
             max_iter=10,
             max_eval=None,
@@ -116,7 +115,7 @@ class TestLbfgs(unittest.TestCase):
         extreme_point = np.array([-2.34, 1.45]).astype('float32')
         net1 = Net(extreme_point, func1)
         # converge of old_sk.pop()
-        opt1 = incubate_lbfgs.LBFGS(
+        opt1 = lbfgs.LBFGS(
             learning_rate=1,
             max_iter=10,
             max_eval=None,
@@ -129,7 +128,7 @@ class TestLbfgs(unittest.TestCase):
 
         net2 = Net(extreme_point, func2)
         # converge of line_search = None
-        opt2 = incubate_lbfgs.LBFGS(
+        opt2 = lbfgs.LBFGS(
             learning_rate=1,
             max_iter=50,
             max_eval=None,
@@ -155,7 +154,7 @@ class TestLbfgs(unittest.TestCase):
         def error_func1():
             extreme_point = np.array([-1, 2]).astype('float32')
             extreme_point = paddle.to_tensor(extreme_point)
-            return incubate_lbfgs.LBFGS(
+            return lbfgs.LBFGS(
                 learning_rate=1,
                 max_iter=10,
                 max_eval=None,
@@ -185,7 +184,7 @@ class TestLbfgs(unittest.TestCase):
         extreme_point = np.array([-2.34, 1.45]).astype('float32')
         net2 = Net(extreme_point, func2)
         # converge of line_search = None
-        opt2 = incubate_lbfgs.LBFGS(
+        opt2 = lbfgs.LBFGS(
             learning_rate=1,
             max_iter=50,
             max_eval=None,
@@ -294,7 +293,7 @@ class TestLbfgs(unittest.TestCase):
                 shape=[-1, 2],
                 dtype=net.w.dtype,
             )
-            opt = incubate_lbfgs.LBFGS(
+            opt = lbfgs.LBFGS(
                 learning_rate=1,
                 max_iter=10,
                 max_eval=None,

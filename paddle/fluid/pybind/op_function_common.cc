@@ -98,26 +98,36 @@ bool PyObject_CheckLong(PyObject* obj) {
 }
 
 int32_t PyObject_ToInt32(PyObject* obj) {
-  int32_t res = 0;
+  int64_t res = 0;
   if ((PyLong_Check(obj) && !PyBool_Check(obj)) ||  // NOLINT
       PyObject_CheckVarType(obj) ||                 // NOLINT
       PyObject_CheckDataType(obj) ||                // NOLINT
       (PyObject_CheckTensor(obj) &&
        reinterpret_cast<TensorObject*>(obj)->tensor.numel() == 1)) {
-    res = static_cast<int32_t>(PyLong_AsLong(obj));
-    return res;
-  }
-  std::string type_name =
-      std::string(reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name);
-  if (type_name.find("numpy.int") != std::string::npos) {
-    auto num_obj = PyNumber_Long(obj);
-    res = static_cast<int32_t>(PyLong_AsLong(num_obj));
-    Py_DECREF(num_obj);
+    res = PyLong_AsLongLong(obj);
   } else {
-    PADDLE_THROW(
-        common::errors::InvalidType("Cannot convert %s to long", type_name));
+    std::string type_name =
+        std::string(reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name);
+    if (type_name.find("numpy.int") != std::string::npos) {
+      auto num_obj = PyNumber_Long(obj);
+      res = PyLong_AsLongLong(num_obj);
+      Py_DECREF(num_obj);
+    } else {
+      PADDLE_THROW(
+          common::errors::InvalidType("Cannot convert %s to int32", type_name));
+    }
   }
-  return res;
+
+  if (res > std::numeric_limits<int32_t>::max() ||
+      res < std::numeric_limits<int32_t>::min()) {
+    PADDLE_THROW(common::errors::OutOfRange(
+        "Integer value %ld exceeds int32 range [%d, %d]",
+        res,
+        std::numeric_limits<int32_t>::min(),
+        std::numeric_limits<int32_t>::max()));
+  }
+
+  return static_cast<int32_t>(res);
 }
 
 uint32_t PyObject_ToUInt32(PyObject* obj) {
@@ -1121,7 +1131,7 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
       (::pybind11::detail::instance*)obj;  // NOLINT
   void** vh = inst->simple_layout ? inst->simple_value_holder
                                   : &inst->nonsimple.values_and_holders[0];
-  attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
+  attrs[key] = reinterpret_cast<pir::Block*&>(vh[0]);
 }
 
 void CastPyArg2AttrIRProgram(PyObject* obj,
@@ -1130,8 +1140,8 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos) {
   VLOG(3) << "After Process pir::Program*";
-  const std::shared_ptr<::pir::Program> program =
-      ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
+  const std::shared_ptr<pir::Program> program =
+      ::py::handle(obj).cast<std::shared_ptr<pir::Program>>();
   attrs[key] = program;
 }
 
@@ -1140,7 +1150,7 @@ void CastPyArg2AttrValues(PyObject* obj,
                           const std::string& key,
                           const std::string& op_type,
                           ssize_t arg_pos) {
-  std::vector<::pir::Value> results;
+  std::vector<pir::Value> results;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -1151,7 +1161,7 @@ void CastPyArg2AttrValues(PyObject* obj,
           (::pybind11::detail::instance*)item;  // NOLINT
       void** vh = inst->simple_layout ? inst->simple_value_holder
                                       : &inst->nonsimple.values_and_holders[0];
-      ::pir::Value* value = reinterpret_cast<::pir::Value*>(vh[0]);
+      pir::Value* value = reinterpret_cast<pir::Value*>(vh[0]);
       results.emplace_back(pir::Value(value->impl()));
     }
   } else {
@@ -1288,8 +1298,6 @@ void ConstructAttrMapForLegacyRunProgram(
       {"x_names", CastPyArg2AttrStrings},
       {"out_grad_names", CastPyArg2AttrStrings},
       {"x_grad_names", CastPyArg2AttrStrings},
-      {"cuda_graph_capture_mode", CastPyArg2AttrString},
-      {"cuda_graph_pool_id", CastPyArg2AttrLong},
       {"in_pir_pt_mode", CastPyArg2AttrBoolean},
       {"use_interpretorcore", CastPyArg2AttrBoolean},
       {"global_block", CastPyArg2AttrBlock},
@@ -1551,8 +1559,8 @@ PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
       return arg;
     }
   } else {
-    // get item from kwargs if kwargs has unused items
-    if (kwargs && *remaining_kwargs > 0) {
+    // get item from kwargs
+    if (kwargs) {
       PyObject* arg = nullptr;
       for (const std::string& keyword : keywords) {
         arg = PyDict_GetItemString(kwargs, keyword.c_str());
@@ -1574,19 +1582,20 @@ PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
 void CheckRemainingParamsValidity(PyObject* args,
                                   PyObject* kwargs,
                                   int remaining_kwargs,
-                                  int nargs) {
+                                  int nargs,
+                                  bool inplace) {
   const std::string ignored_arg_name = "name";
   const std::string ignored_arg_out = "out";
   if (remaining_kwargs == 0) return;
   PyObject* name = PyDict_GetItemString(kwargs, ignored_arg_name.c_str());
   PyObject* out = PyDict_GetItemString(kwargs, ignored_arg_out.c_str());
-  if (remaining_kwargs == 1 && (name || out)) {
-    return;
-  } else if (remaining_kwargs == 2 && (name && out)) {
-    return;
+  if (inplace) {
+    if (remaining_kwargs == 1 && name) return;
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument("has too many arguments"));
+    if (remaining_kwargs == 1 && (name || out)) return;
+    if (remaining_kwargs == 2 && (name && out)) return;
   }
+  PADDLE_THROW(common::errors::InvalidArgument("has too many arguments"));
   return;
 }
 }  // namespace paddle::pybind

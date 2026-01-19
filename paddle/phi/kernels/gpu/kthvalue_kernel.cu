@@ -56,13 +56,13 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
                                : maxGridDimX;
-  phi::funcs::InitIndex<int64_t><<<grid_size, block_size, 0, cu_stream>>>(
+  funcs::InitIndex<int64_t><<<grid_size, block_size, 0, cu_stream>>>(
       input_indices.data<int64_t>(), num_rows, num_cols);
   cub::CountingInputIterator<int64_t> counting_iter(0);
   cub::TransformInputIterator<int64_t,
-                              phi::funcs::SegmentOffsetIter,
+                              funcs::SegmentOffsetIter,
                               cub::CountingInputIterator<int64_t>>
-      segment_offsets_t(counting_iter, phi::funcs::SegmentOffsetIter(num_cols));
+      segment_offsets_t(counting_iter, funcs::SegmentOffsetIter(num_cols));
   T* sorted_values_ptr;
   int64_t* sorted_indices_ptr;
   DenseTensor temp_values, temp_indices;
@@ -164,10 +164,8 @@ void KthvalueKernel(const Context& dev_ctx,
                     DenseTensor* output,
                     DenseTensor* indices) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    Full<T, Context>(dev_ctx, output->dims(), NAN, output);
+    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
     return;
   }
 
@@ -186,8 +184,8 @@ void KthvalueKernel(const Context& dev_ctx,
                           "elements number of the input X, but received %lld .",
                           k));
 
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 

@@ -53,7 +53,10 @@ endif()
 if(WITH_GPU)
   list(APPEND PYBIND_DEPS gpu_event_timer)
   if(WIN32)
-    list(APPEND PYBIND_DEPS dynload_cuda cuda_graph_lib dynload_tensorrt)
+    list(APPEND PYBIND_DEPS dynload_cuda cuda_graph_lib)
+    if(TENSORRT_FOUND)
+      list(APPEND PYBIND_DEPS dynload_tensorrt)
+    endif()
   endif()
 endif()
 
@@ -110,6 +113,7 @@ set(PYBIND_SRCS
     pir.cc
     pir_utils.cc
     graph.cc
+    native_meta_tensor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
@@ -120,8 +124,6 @@ set(PYBIND_SRCS
     const_value.cc
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
-    heter_wrapper_py.cc
-    ps_gpu_wrapper_py.cc
     gloo_wrapper_py.cc
     box_helper_py.cc
     metrics_py.cc
@@ -138,14 +140,18 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     sot/eval_frame_tools.cc
-    sot/cpython_internals.c
     sot/frame_proxy.c
     sot/eval_frame.c
     sot/guards.cc
+    sot/cpython_internals/internals_3_11.c
+    sot/cpython_internals/internals_3_12.c
+    sot/cpython_internals/internals_3_13.c
+    sot/cpython_internals/internals_3_14.c
     op_callstack_utils.cc
     python_callable_registry.cc
     arg_pre_process.cc
-    args_mapper.cc)
+    args_mapper.cc
+    size.cc)
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
@@ -153,6 +159,14 @@ if(WITH_DISTRIBUTE)
   string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
   if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
     set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+    set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+    add_definitions(-DPADDLE_WITH_DEEP_EP)
+    if(WITH_NVSHMEM)
+      set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
+    endif()
+  endif()
+  if(WITH_XPU AND WITH_XPU_XRE5)
+    set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep_xpu)
     set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
     add_definitions(-DPADDLE_WITH_DEEP_EP)
     if(WITH_NVSHMEM)
@@ -282,10 +296,10 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
   endif()
 
-  if(WITH_GPU)
-    if(WIN32)
-      list(APPEND EAGER_GENERATOR_DEPS dynload_tensorrt)
-    endif()
+  if(WITH_GPU
+     AND WIN32
+     AND TENSORRT_FOUND)
+    list(APPEND EAGER_GENERATOR_DEPS dynload_tensorrt)
   endif()
 
   add_executable(
@@ -614,7 +628,7 @@ if(WITH_PYTHON)
   endif()
   set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
   if(WIN32)
-    if(WITH_GPU)
+    if(WITH_GPU AND TENSORRT_FOUND)
       cc_library(
         ${SHARD_LIB_NAME} SHARED
         SRCS ${PYBIND_SRCS}

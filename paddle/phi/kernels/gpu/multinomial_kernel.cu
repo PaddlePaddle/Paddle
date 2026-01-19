@@ -13,16 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/multinomial_kernel.h"
-#include "paddle/phi/kernels/funcs/multinomial_kernel_helper.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -30,11 +20,13 @@ namespace cub = hipcub;
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arg_min_max_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/inclusive_scan.h"
 #include "paddle/phi/kernels/funcs/multinomial_functor.h"
+#include "paddle/phi/kernels/funcs/multinomial_kernel_helper.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {
@@ -45,8 +37,11 @@ __global__ void NormalizeProbability(MT* norm_probs,
                                      MT* sum_rows,
                                      int64_t num_distributions,
                                      int64_t num_categories) {
-  int id = threadIdx.x + blockIdx.x * blockDim.x +
-           blockIdx.y * gridDim.x * blockDim.x;
+  int64_t id =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.x) *
+          static_cast<int64_t>(blockDim.x);
   if (id < num_distributions * num_categories) {
     PADDLE_ENFORCE(
         static_cast<MT>(in_data[id]) >= 0.0,
@@ -101,8 +96,11 @@ __global__ void sampleMultinomialWithReplacement(
     uint64_t offset) {
   // use binary search to get the selected category sample id.
   // let cumulative_probs_data[id-1] < rng_number < cumulative_probs_data[id].
-  size_t idx = gridDim.x * blockDim.x * blockIdx.y + blockDim.x * blockIdx.x +
-               threadIdx.x;
+  size_t idx =
+      static_cast<size_t>(gridDim.x) * static_cast<size_t>(blockDim.x) *
+          static_cast<size_t>(blockIdx.y) +
+      static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) +
+      static_cast<size_t>(threadIdx.x);
 
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
@@ -112,8 +110,10 @@ __global__ void sampleMultinomialWithReplacement(
   hiprand_init(seed, idx, offset, &state);
 #endif
 
-  int sample = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
+  int64_t sample =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
+  for (int64_t dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
     if (sample < num_samples) {
 #if defined(__NVCC__)
       T rng_number = static_cast<T>(curand_uniform4(&state).x);
@@ -166,8 +166,7 @@ void MultinomialKernel(const Context& dev_ctx,
       ArgMaxKernel<T, Context>(
           dev_ctx, rand, -1, true, false, DataType::INT64, out);
     } else {
-      std::vector<int64_t> out_dim_vec =
-          common::vectorize<int64_t>(out->dims());
+      std::vector<int64_t> out_dim_vec = vectorize<int64_t>(out->dims());
       DenseTensor value = Empty<T, Context>(dev_ctx, IntArray(out_dim_vec));
       TopkKernel<T, Context>(
           dev_ctx, rand, num_samples, -1, true, true, &value, out);
@@ -222,7 +221,7 @@ void MultinomialKernel(const Context& dev_ctx,
   cumulative_probs_tensor.Resize({num_distributions, num_categories});
   auto* cumulative_probs_data =
       dev_ctx.template Alloc<MT>(&cumulative_probs_tensor);
-  // 'phi::funcs::InclusiveScan' has higher accuracy than
+  // 'funcs::InclusiveScan' has higher accuracy than
   // 'thrust::inclusive_scan'
   funcs::InclusiveScan<MT, std::plus<MT>>(
       /*in*/ norm_probs_data,

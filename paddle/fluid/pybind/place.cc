@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/dense_tensor_array.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -85,12 +86,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/graph.h"
-#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/metrics_py.h"
-#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -146,10 +145,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/crypto.h"
 #endif
 
-#if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/pybind/fleet_py.h"
-#endif
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -202,8 +197,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   platformplace.def(py::init<>())
       .def("_type", &PlaceIndex<phi::Place>)
       .def("_equals", &IsSamePlace<phi::Place, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::Place, phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::Place, phi::CPUPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, GPUPlace>)
+      .def("_equals", &IsSamePlace<phi::Place, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::Place, phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::Place, phi::IPUPlace>)
       .def("_equals", &IsSamePlace<phi::Place, phi::GPUPinnedPlace>)
@@ -240,18 +235,16 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](phi::Place &self) { return self.GetDeviceType(); })
       .def("set_place",
            [](phi::Place &self, const phi::Place &other) { self = other; })
-      .def("set_place",
-           [](phi::Place &self, const phi::CPUPlace &cpu_place) {
-             self = cpu_place;
-           })
+      .def(
+          "set_place",
+          [](phi::Place &self, const CPUPlace &cpu_place) { self = cpu_place; })
       .def("set_place",
            [](phi::Place &self, const phi::XPUPlace &xpu_place) {
              self = xpu_place;
            })
-      .def("set_place",
-           [](phi::Place &self, const phi::GPUPlace &gpu_place) {
-             self = gpu_place;
-           })
+      .def(
+          "set_place",
+          [](phi::Place &self, const GPUPlace &gpu_place) { self = gpu_place; })
       .def("set_place",
            [](phi::Place &self, const phi::GPUPinnedPlace &cuda_pinned_place) {
              self = cuda_pinned_place;
@@ -267,6 +260,12 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("set_place",
            [](phi::Place &self, const phi::CustomPlace &plug_place) {
              self = plug_place;
+           })
+      .def("__dlpack_device__",
+           [](const phi::Place &self) {
+             ::DLDevice dl_device = paddle::framework::PlaceToDLDevice(self);
+             return py::make_tuple(static_cast<int32_t>(dl_device.device_type),
+                                   dl_device.device_id);
            })
       .def("__repr__", string::to_string<const phi::Place &>)
       .def("__str__", string::to_string<const phi::Place &>);
@@ -308,12 +307,23 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
+#if defined(PADDLE_WITH_CUDA)
+                   LOG(ERROR)
+                       << "Cannot use " << device_type
+                       << " because there is no " << device_type
+                       << " detected on your machine."
+                       << "Please check your environment variables "
+                          "and device configuration. "
+                       << "Device type: " << device_type
+                       << ", CUDA_VISIBLE_DEVICES: "
+                       << std::getenv("CUDA_VISIBLE_DEVICES")
+#else
                    LOG(ERROR) << "Cannot use " << device_type
                               << " because there is no " << device_type
-                              << " detected on your "
-                                 "machine.";
-                   PADDLE_THROW(::common::errors::InvalidArgument(
-                       "use wrong place, Please check."));
+                              << " detected on your machine.";
+#endif
+                              PADDLE_THROW(::common::errors::InvalidArgument(
+                                  "use wrong place, Please check."));
                  } else {
                    LOG(ERROR) << string::Sprintf(
                        "Invalid CustomPlace(%s, %d), dev_id must "
@@ -369,7 +379,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     return phi::DeviceManager::IsBFloat16Supported(place);
   });
 #endif
-  py::class_<phi::GPUPlace, phi::Place> cudaplace(m, "CUDAPlace", R"DOC(
+  py::class_<GPUPlace, phi::Place> cudaplace(m, "CUDAPlace", R"DOC(
 
     CUDAPlace is a descriptor of a device.
     It represents a GPU device allocated or to be allocated with Tensor.
@@ -396,7 +406,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
   cudaplace
       .def("__init__",
-           [](phi::GPUPlace &self, int dev_id) {
+           [](GPUPlace &self, int dev_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
              if (UNLIKELY(dev_id < 0)) {
                LOG(ERROR) << string::Sprintf(
@@ -426,7 +436,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                }
              }
 
-             new (&self) phi::GPUPlace(dev_id);
+             new (&self) GPUPlace(dev_id);
 #else
              LOG(ERROR) << string::Sprintf(
                  "Cannot use GPU because you have installed CPU version "
@@ -442,21 +452,21 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("get_device_id",
-           [](const phi::GPUPlace &self) { return self.GetDeviceId(); })
-      .def("_type", &PlaceIndex<phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::CPUPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::XPUPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::GPUPinnedPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPlace, phi::XPUPinnedPlace>)
+           [](const GPUPlace &self) { return self.GetDeviceId(); })
+      .def("_type", &PlaceIndex<GPUPlace>)
+      .def("_equals", &IsSamePlace<GPUPlace, phi::Place>)
+      .def("_equals", &IsSamePlace<GPUPlace, GPUPlace>)
+      .def("_equals", &IsSamePlace<GPUPlace, CPUPlace>)
+      .def("_equals", &IsSamePlace<GPUPlace, phi::XPUPlace>)
+      .def("_equals", &IsSamePlace<GPUPlace, phi::GPUPinnedPlace>)
+      .def("_equals", &IsSamePlace<GPUPlace, phi::XPUPinnedPlace>)
       .def("_get_device_id",
-           [](phi::GPUPlace &self) -> int { return self.GetDeviceId(); })
+           [](GPUPlace &self) -> int { return self.GetDeviceId(); })
 #endif
-      .def("__repr__", string::to_string<const phi::GPUPlace &>)
-      .def("__str__", string::to_string<const phi::GPUPlace &>);
+      .def("__repr__", string::to_string<const GPUPlace &>)
+      .def("__str__", string::to_string<const GPUPlace &>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("is_float16_supported", [](const phi::GPUPlace &place) -> bool {
+  m.def("is_float16_supported", [](const GPUPlace &place) -> bool {
   // Only GPUs with Compute Capability >= 53 support float16
 #ifdef PADDLE_WITH_HIP
     return true;
@@ -464,7 +474,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     return platform::GetGPUComputeCapability(place.device) >= 53;
 #endif
   });
-  m.def("is_bfloat16_supported", [](const phi::GPUPlace &place) -> bool {
+  m.def("is_bfloat16_supported", [](const GPUPlace &place) -> bool {
   // Only GPUs with Compute Capability >= 80 support bfloat16
 #ifdef PADDLE_WITH_HIP
     return true;
@@ -532,8 +542,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #ifdef PADDLE_WITH_XPU
       .def("_type", &PlaceIndex<phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::XPUPlace, phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::XPUPlace, phi::CPUPlace>)
+      .def("_equals", &IsSamePlace<phi::XPUPlace, GPUPlace>)
+      .def("_equals", &IsSamePlace<phi::XPUPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPlace, phi::XPUPinnedPlace>)
@@ -579,7 +589,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   });
 #endif
 
-  py::class_<phi::CPUPlace, phi::Place> cpuplace(m, "CPUPlace", R"DOC(
+  py::class_<CPUPlace, phi::Place> cpuplace(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
     It represents a CPU device on which a tensor will be allocated and a model will run.
 
@@ -592,18 +602,18 @@ void BindPlace(pybind11::module &m) {  // NOLINT
         )DOC");
   g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
   cpuplace.def(py::init<>())
-      .def("_type", &PlaceIndex<phi::CPUPlace>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::XPUPlace>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::CPUPlace>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::GPUPinnedPlace>)
-      .def("_equals", &IsSamePlace<phi::CPUPlace, phi::XPUPinnedPlace>)
-      .def("__repr__", string::to_string<const phi::CPUPlace &>)
-      .def("__str__", string::to_string<const phi::CPUPlace &>);
+      .def("_type", &PlaceIndex<CPUPlace>)
+      .def("_equals", &IsSamePlace<CPUPlace, phi::Place>)
+      .def("_equals", &IsSamePlace<CPUPlace, phi::XPUPlace>)
+      .def("_equals", &IsSamePlace<CPUPlace, GPUPlace>)
+      .def("_equals", &IsSamePlace<CPUPlace, CPUPlace>)
+      .def("_equals", &IsSamePlace<CPUPlace, phi::GPUPinnedPlace>)
+      .def("_equals", &IsSamePlace<CPUPlace, phi::XPUPinnedPlace>)
+      .def("__repr__", string::to_string<const CPUPlace &>)
+      .def("__str__", string::to_string<const CPUPlace &>);
   m.def("is_float16_supported",
-        [](const phi::CPUPlace &place) -> bool { return false; });
-  m.def("is_bfloat16_supported", [](const phi::CPUPlace &place) -> bool {
+        [](const CPUPlace &place) -> bool { return false; });
+  m.def("is_bfloat16_supported", [](const CPUPlace &place) -> bool {
 #ifndef PADDLE_WITH_DNNL
     return false;
 #else
@@ -643,9 +653,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       }))
       .def("_type", &PlaceIndex<phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::GPUPlace>)
+      .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, GPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::XPUPlace>)
-      .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::CPUPlace>)
+      .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::XPUPinnedPlace>)
       .def("__repr__", string::to_string<const phi::GPUPinnedPlace &>)
@@ -682,9 +692,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       }))
       .def("_type", &PlaceIndex<phi::XPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::GPUPlace>)
+      .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, GPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::XPUPlace>)
-      .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::CPUPlace>)
+      .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::XPUPinnedPlace>)
       .def("__repr__", string::to_string<const phi::XPUPinnedPlace &>)
@@ -732,8 +742,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            })
       .def("_type", &PlaceIndex<phi::IPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::Place>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, phi::GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, phi::CPUPlace>)
+      .def("_equals", &IsSamePlace<phi::IPUPlace, GPUPlace>)
+      .def("_equals", &IsSamePlace<phi::IPUPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::XPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::IPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::GPUPinnedPlace>)

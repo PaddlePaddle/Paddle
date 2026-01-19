@@ -57,14 +57,13 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
   auto *prefix_ptr = prefix.data<RepeatsT>();
 
   auto stream = dev_ctx.stream();
-  phi::funcs::
-      CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
-          repeats_ptr,
-          prefix_ptr,
-          num_reps,
-          static_cast<RepeatsT>(0),
-          cub::Sum(),
-          dev_ctx);
+  funcs::CubExclusiveScan<const RepeatsT *, RepeatsT *, cub::Sum, RepeatsT>(
+      repeats_ptr,
+      prefix_ptr,
+      num_reps,
+      static_cast<RepeatsT>(0),
+      cub::Sum(),
+      dev_ctx);
 
   // get last prefix and repeat to compute total size of index tensor
   RepeatsT last_prefix = 0;
@@ -99,11 +98,11 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
                       stream>>>(index_ptr, prefix_ptr, repeats_ptr, num_reps);
 #else
   DenseTensor repeats_cpu_copy;
-  if (repeats.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+  if (repeats.place().GetType() != AllocationType::CPU) {
+    phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT *repeats_data =
-      repeats.place().GetType() == phi::AllocationType::CPU
+      repeats.place().GetType() == AllocationType::CPU
           ? repeats.data<RepeatsT>()
           : repeats_cpu_copy.data<RepeatsT>();
 

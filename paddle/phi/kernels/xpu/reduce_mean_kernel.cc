@@ -30,8 +30,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool reduce_all,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
 
@@ -71,5 +70,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,
                    float,
+                   int,
+                   int64_t,
                    phi::float16,
                    phi::bfloat16) {}

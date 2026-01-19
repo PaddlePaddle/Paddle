@@ -16,7 +16,12 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -42,8 +47,8 @@ class TestSvdOp(OpTest):
 
     def _get_places(self):
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def generate_input(self):
@@ -380,8 +385,8 @@ class TestSvdAPI(unittest.TestCase):
 
             places = []
             places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if core.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 x = paddle.to_tensor(a, place=place)
                 u, s, vh = paddle.linalg.svd(x)
@@ -428,8 +433,8 @@ class TestSvdAPI(unittest.TestCase):
 
             places = []
             places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if core.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()

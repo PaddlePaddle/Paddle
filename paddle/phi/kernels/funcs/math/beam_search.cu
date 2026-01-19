@@ -405,13 +405,13 @@ template <typename T>
 class BeamSearchFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* pre_ids,
-                  const phi::DenseTensor* pre_scores,
-                  const phi::DenseTensor* ids,
-                  const phi::DenseTensor* scores,
-                  phi::DenseTensor* selected_ids,
-                  phi::DenseTensor* selected_scores,
-                  phi::DenseTensor* parent_idx,
+                  const DenseTensor* pre_ids,
+                  const DenseTensor* pre_scores,
+                  const DenseTensor* ids,
+                  const DenseTensor* scores,
+                  DenseTensor* selected_ids,
+                  DenseTensor* selected_scores,
+                  DenseTensor* parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -534,7 +534,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
 template class BeamSearchFunctor<phi::GPUContext, int>;
 template class BeamSearchFunctor<phi::GPUContext, int64_t>;
-template class BeamSearchFunctor<phi::GPUContext, float>;
+template class PADDLE_API BeamSearchFunctor<phi::GPUContext, float>;
 template class BeamSearchFunctor<phi::GPUContext, double>;
 
 }  // namespace math

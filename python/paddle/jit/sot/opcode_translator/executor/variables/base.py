@@ -163,7 +163,7 @@ def map_variables(
         new_dataclass = dataclass_from_dict(
             variable.get_py_type(),
             {
-                fd.name: map_func(variable.getattr(fd.name))
+                fd.name: _map_variable(variable.getattr(fd.name))
                 for fd in fields(variable.get_py_type())
             },
         )
@@ -495,6 +495,7 @@ class VariableBase:
             from .callable import MethodVariable
 
             fn = None
+            instance = self
             if inspect.ismethoddescriptor(
                 getattr(attr.__self__.__class__, name, None)
             ):
@@ -508,9 +509,11 @@ class VariableBase:
                     self.graph,
                     GetAttrTracker(class_var, name),
                 )
+            if not hasattr(self.get_py_type(), name):
+                instance = None
             return MethodVariable.wrap_method(
                 value=attr,
-                instance=self,
+                instance=instance,
                 fn=fn,
                 graph=self.graph,
                 tracker=GetAttrTracker(self, name),

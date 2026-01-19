@@ -81,5 +81,12 @@ INSTANTIATE_ISFINITE_KERNEL_Isinf(int, GPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, GPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::float16, GPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::bfloat16, GPUContext);
+
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(float, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(double, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(int, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(int64_t, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(phi::float16, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isfinite(phi::bfloat16, GPUContext);
 }  // namespace phi
 #endif

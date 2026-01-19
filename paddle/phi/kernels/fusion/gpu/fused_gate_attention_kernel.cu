@@ -37,12 +37,11 @@ struct SigmoidMultiplyFunctor {
 };
 
 template <typename T>
-void ComputeMergedQKVMatmulForward(
-    const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *query,
-    phi::DenseTensor *qkv_out,
-    const phi::DenseTensor &qkv_weight_in) {
+void ComputeMergedQKVMatmulForward(const GPUContext &dev_ctx,
+                                   const funcs::GateAttentionConfig<T> &config,
+                                   const DenseTensor *query,
+                                   DenseTensor *qkv_out,
+                                   const DenseTensor &qkv_weight_in) {
   // query: shape=[batch_size, seq_len_m, seq_len_r, qkv_dim]
   // qkv_weight: shape=[3, num_heads, head_dim, qkv_dim]
   // qkv_out: shape=[batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
@@ -60,15 +59,15 @@ void ComputeMergedQKVMatmulForward(
 template <typename T>
 void ComputeSeparatedQKVMatmulForward(
     const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *query,
-    const phi::DenseTensor *key,
-    phi::DenseTensor *query_out,
-    phi::DenseTensor *key_out,
-    phi::DenseTensor *value_out,
-    const phi::DenseTensor &query_weight_in,
-    const phi::DenseTensor &key_weight_in,
-    const phi::DenseTensor &value_weight_in) {
+    const funcs::GateAttentionConfig<T> &config,
+    const DenseTensor *query,
+    const DenseTensor *key,
+    DenseTensor *query_out,
+    DenseTensor *key_out,
+    DenseTensor *value_out,
+    const DenseTensor &query_weight_in,
+    const DenseTensor &key_weight_in,
+    const DenseTensor &value_weight_in) {
   auto *query_weight = &query_weight_in;
   auto *key_weight = &key_weight_in;
   auto *value_weight = &value_weight_in;
@@ -100,15 +99,14 @@ void ComputeSeparatedQKVMatmulForward(
 }
 
 template <typename T>
-void ComputeGatingLinearForward(
-    const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *query,
-    const phi::DenseTensor *fmha_out,
-    phi::DenseTensor *gate_bias_out,
-    bool use_fused_matmul_bias,
-    const phi::DenseTensor &gate_weight_in,
-    const phi::DenseTensor &gate_bias_in) {
+void ComputeGatingLinearForward(const GPUContext &dev_ctx,
+                                const funcs::GateAttentionConfig<T> &config,
+                                const DenseTensor *query,
+                                const DenseTensor *fmha_out,
+                                DenseTensor *gate_bias_out,
+                                bool use_fused_matmul_bias,
+                                const DenseTensor &gate_weight_in,
+                                const DenseTensor &gate_bias_in) {
   auto *gate_weight = &gate_weight_in;
   auto *gate_bias = &gate_bias_in;
 
@@ -129,21 +127,19 @@ void ComputeGatingLinearForward(
                              use_fused_matmul_bias);
 
   // gate_out = sigmoid(gate_out) * fmha_out
-  std::vector<const phi::DenseTensor *> ins = {gate_bias_out, fmha_out};
-  std::vector<phi::DenseTensor *> outs = {gate_bias_out};
-  phi::funcs::ElementwiseKernel<T>(
-      dev_ctx, ins, &outs, SigmoidMultiplyFunctor<T>());
+  std::vector<const DenseTensor *> ins = {gate_bias_out, fmha_out};
+  std::vector<DenseTensor *> outs = {gate_bias_out};
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, SigmoidMultiplyFunctor<T>());
 }
 
 template <typename T>
-void ComputeOutputLinearForward(
-    const GPUContext &dev_ctx,
-    const phi::funcs::GateAttentionConfig<T> &config,
-    const phi::DenseTensor *fmha_or_gate_out,
-    phi::DenseTensor *out,
-    bool use_fused_matmul_bias,
-    const phi::DenseTensor &out_linear_weight_in,
-    const phi::DenseTensor &out_linear_bias_in) {
+void ComputeOutputLinearForward(const GPUContext &dev_ctx,
+                                const funcs::GateAttentionConfig<T> &config,
+                                const DenseTensor *fmha_or_gate_out,
+                                DenseTensor *out,
+                                bool use_fused_matmul_bias,
+                                const DenseTensor &out_linear_weight_in,
+                                const DenseTensor &out_linear_bias_in) {
   const auto *out_linear_weight = &out_linear_weight_in;
   const auto *out_linear_bias = &out_linear_bias_in;
 
@@ -162,32 +158,31 @@ void ComputeOutputLinearForward(
 }
 
 template <typename T, typename Context>
-void FusedGateAttentionOpKernel(
-    const Context &dev_ctx,
-    const DenseTensor &query_in,
-    const paddle::optional<DenseTensor> &key_in,
-    const paddle::optional<DenseTensor> &query_weight_in,
-    const paddle::optional<DenseTensor> &key_weight_in,
-    const paddle::optional<DenseTensor> &value_weight_in,
-    const paddle::optional<DenseTensor> &qkv_weight_in,
-    const paddle::optional<DenseTensor> &nonbatched_bias_in,
-    const DenseTensor &src_mask_in,
-    const paddle::optional<DenseTensor> &gate_weight_in,
-    const paddle::optional<DenseTensor> &gate_bias_in,
-    const DenseTensor &out_linear_weight_in,
-    const DenseTensor &out_linear_bias_in,
-    bool has_gating,
-    bool merge_qkv,
-    bool use_flash_attn,
-    DenseTensor *query_transpose_out,
-    DenseTensor *key_transpose_out,
-    DenseTensor *value_transpose_out,
-    DenseTensor *qkv_transpose_out,
-    DenseTensor *softmax_out,
-    DenseTensor *softmax_lse,
-    DenseTensor *fmha_out,
-    DenseTensor *gate_out,
-    DenseTensor *out) {
+void FusedGateAttentionOpKernel(const Context &dev_ctx,
+                                const DenseTensor &query_in,
+                                const optional<DenseTensor> &key_in,
+                                const optional<DenseTensor> &query_weight_in,
+                                const optional<DenseTensor> &key_weight_in,
+                                const optional<DenseTensor> &value_weight_in,
+                                const optional<DenseTensor> &qkv_weight_in,
+                                const optional<DenseTensor> &nonbatched_bias_in,
+                                const DenseTensor &src_mask_in,
+                                const optional<DenseTensor> &gate_weight_in,
+                                const optional<DenseTensor> &gate_bias_in,
+                                const DenseTensor &out_linear_weight_in,
+                                const DenseTensor &out_linear_bias_in,
+                                bool has_gating,
+                                bool merge_qkv,
+                                bool use_flash_attn,
+                                DenseTensor *query_transpose_out,
+                                DenseTensor *key_transpose_out,
+                                DenseTensor *value_transpose_out,
+                                DenseTensor *qkv_transpose_out,
+                                DenseTensor *softmax_out,
+                                DenseTensor *softmax_lse,
+                                DenseTensor *fmha_out,
+                                DenseTensor *gate_out,
+                                DenseTensor *out) {
   const auto *query = &query_in;
   const auto *key = key_in.get_ptr();
   const auto *query_weight = query_weight_in.get_ptr();
@@ -201,21 +196,21 @@ void FusedGateAttentionOpKernel(
   auto *v_transpose_out = value_transpose_out;
 
   bool use_fused_matmul_bias = true;
-  phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
+  funcs::AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
   if (has_gating) {
-    phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
   }
-  phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "out", out);
+  funcs::AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
   // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
-  phi::funcs::GateAttentionConfig<T> config(dev_ctx,
-                                            query,
-                                            key,
-                                            query_weight,
-                                            qkv_weight,
-                                            merge_qkv,
-                                            has_gating,
-                                            use_flash_attn);
+  funcs::GateAttentionConfig<T> config(dev_ctx,
+                                       query,
+                                       key,
+                                       query_weight,
+                                       qkv_weight,
+                                       merge_qkv,
+                                       has_gating,
+                                       use_flash_attn);
 
   if (merge_qkv) {
     PADDLE_ENFORCE_EQ(
@@ -227,7 +222,7 @@ void FusedGateAttentionOpKernel(
                                 query));
 
     // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
-    phi::DenseTensor *qkv_out = config.GetQKVOut();
+    DenseTensor *qkv_out = config.GetQKVOut();
     ComputeMergedQKVMatmulForward<T>(
         dev_ctx, config, query, qkv_out, qkv_weight_in.get());
 
@@ -239,13 +234,13 @@ void FusedGateAttentionOpKernel(
                                                    config.num_heads,
                                                    config.head_dim}));
     }
-    phi::funcs::AllocWithDebugInfo<T>(
+    funcs::AllocWithDebugInfo<T>(
         dev_ctx, "qkv_transpose_out", qkv_transpose_out);
   } else {
     // 1. Separated QKV Matmul
-    phi::DenseTensor *query_out = config.GetQueryOut();
-    phi::DenseTensor *key_out = config.GetKeyOut();
-    phi::DenseTensor *value_out = config.GetValueOut();
+    DenseTensor *query_out = config.GetQueryOut();
+    DenseTensor *key_out = config.GetKeyOut();
+    DenseTensor *value_out = config.GetValueOut();
     ComputeSeparatedQKVMatmulForward<T>(dev_ctx,
                                         config,
                                         query,
@@ -257,17 +252,14 @@ void FusedGateAttentionOpKernel(
                                         key_weight_in.get(),
                                         value_weight_in.get());
 
-    phi::funcs::AllocWithDebugInfo<T>(
-        dev_ctx, "q_transpose_out", q_transpose_out);
-    phi::funcs::AllocWithDebugInfo<T>(
-        dev_ctx, "k_transpose_out", k_transpose_out);
-    phi::funcs::AllocWithDebugInfo<T>(
-        dev_ctx, "v_transpose_out", v_transpose_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "q_transpose_out", q_transpose_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "k_transpose_out", k_transpose_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "v_transpose_out", v_transpose_out);
   }
 
   // 2. FMHA
   if (config.CanUseFlashAttn()) {
-    auto fmha_compute = phi::funcs::FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+    auto fmha_compute = funcs::FlashAttnWithGating<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeForward(nonbatched_bias,
                                 src_mask,
                                 qkv_transpose_out,
@@ -275,9 +267,9 @@ void FusedGateAttentionOpKernel(
                                 fmha_out,
                                 &config);
   } else {
-    phi::funcs::AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
+    funcs::AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
 
-    auto fmha_compute = phi::funcs::FMHAGateRef<T>(dev_ctx, merge_qkv);
+    auto fmha_compute = funcs::FMHAGateRef<T>(dev_ctx, merge_qkv);
     fmha_compute.ComputeForward(nonbatched_bias,
                                 src_mask,
                                 q_transpose_out,
@@ -303,7 +295,7 @@ void FusedGateAttentionOpKernel(
   }
 
   // 4. Output Linear
-  phi::DenseTensor *fmha_or_gate_out = has_gating ? gate_out : fmha_out;
+  DenseTensor *fmha_or_gate_out = has_gating ? gate_out : fmha_out;
   ComputeOutputLinearForward<T>(dev_ctx,
                                 config,
                                 fmha_or_gate_out,

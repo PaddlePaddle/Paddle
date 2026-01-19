@@ -84,10 +84,10 @@ struct NumericTraits<phi::bfloat16>
 namespace phi {
 namespace funcs {
 
-using Tensor = phi::DenseTensor;
+using Tensor = DenseTensor;
 
 inline void GetDims(
-    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
+    const DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -875,7 +875,10 @@ __global__ void GatherKthValue(const T* input,
   void* shared_mem = static_cast<void*>(shared_mem_char);
 
   IndexType row =
-      blockIdx.z * gridDim.y * gridDim.x + blockIdx.y * gridDim.x + blockIdx.x;
+      static_cast<IndexType>(blockIdx.z) * static_cast<IndexType>(gridDim.y) *
+          static_cast<IndexType>(gridDim.x) +
+      static_cast<IndexType>(blockIdx.y) * static_cast<IndexType>(gridDim.x) +
+      static_cast<IndexType>(blockIdx.x);
   if (row >= num_rows) return;
   const T* cur_input = input + row * num_cols;
 
@@ -1077,12 +1080,12 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 // use the radix sort for the topk
 template <typename T>
 bool SortTopk(const phi::GPUContext& dev_ctx,
-              const phi::DenseTensor* input_tensor,
+              const DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
               const int k,
-              phi::DenseTensor* out_tensor,
-              phi::DenseTensor* indices_tensor,
+              DenseTensor* out_tensor,
+              DenseTensor* indices_tensor,
               bool largest = true) {
   auto cu_stream = dev_ctx.stream();
 
@@ -1305,9 +1308,9 @@ bool SortTopk(const phi::GPUContext& dev_ctx,
     auto e_tmp_values =
         phi::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
 
-    phi::funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
         dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
-    phi::funcs::EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
         dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   }
   return true;

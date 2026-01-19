@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/core/platform/device/device_wrapper.h"
@@ -29,6 +30,78 @@ template <typename InType, typename OutType>
 struct CastDataTypeFunctor {
   HOSTDEVICE inline OutType operator()(InType in) const {
     return static_cast<OutType>(in);
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e5m2,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::float8_e5m2 in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e5m2,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::float8_e5m2 in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e4m3fn,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::float8_e4m3fn in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float8_e4m3fn,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::float8_e4m3fn in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float16,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::float16 in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::float16,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::float16 in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::bfloat16,
+                           ::phi::dtype::complex<float>> {
+  HOSTDEVICE ::phi::dtype::complex<float> operator()(
+      ::phi::dtype::bfloat16 in) const {
+    return ::phi::dtype::complex<float>(static_cast<float>(in));
+  }
+};
+
+template <>
+struct CastDataTypeFunctor<::phi::dtype::bfloat16,
+                           ::phi::dtype::complex<double>> {
+  HOSTDEVICE ::phi::dtype::complex<double> operator()(
+      ::phi::dtype::bfloat16 in) const {
+    return ::phi::dtype::complex<double>(static_cast<double>(in));
   }
 };
 
@@ -84,7 +157,7 @@ struct CastDataType {
                phi::DenseTensor* out,
                const phi::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
-  const phi::DenseTensor in_;
+  const DenseTensor in_;
   phi::DenseTensor* out_;
   const phi::DeviceContext* ctx_;
 
@@ -123,9 +196,24 @@ struct CastDataType {
             out_begin,
             CastDataTypeFunctor<InType, OutType>());
 #endif
+#if defined(PADDLE_WITH_XPU)
+    } else if (phi::is_xpu_place(in_.place())) {
+      if (in_.dtype() == phi::DataType::COMPLEX64 &&
+          out_->dtype() == phi::DataType::FLOAT32) {
+        auto* context = static_cast<const phi::XPUContext*>(ctx_);
+        phi::RealKernel<phi::dtype::complex<float>>(*context, in_, out_);
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Place type is not supported when casting data type from %s to %s.",
+            in_.dtype(),
+            out_->dtype()));
+      }
+#endif
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "Place type is not supported when casting data type."));
+          "Place type is not supported when casting data type from %s to %s.",
+          in_.dtype(),
+          out_->dtype()));
     }
   }
 };

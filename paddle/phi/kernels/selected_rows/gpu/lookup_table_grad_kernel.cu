@@ -30,19 +30,20 @@ __global__ void LookupTableGrad(T *table,
                                 const int64_t K,
                                 const int64_t D) {
   int idx = threadIdx.x;
-  int idy = blockIdx.x + threadIdx.y * GridDimX;
+  int64_t idy = static_cast<int64_t>(blockIdx.x) +
+                static_cast<int64_t>(threadIdx.y) * GridDimX;
 
   while (idy < K) {
     int64_t id = ids[idy];
     PADDLE_ENFORCE(
         id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table_grad) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);
     PADDLE_ENFORCE(
         id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
+        "Variable value (input) of OP(lookup_table_grad) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N,
         id);
@@ -82,14 +83,14 @@ void LookupTableGradCUDAKernel(
   auto d_output_t = &out_grad;
   auto d_table_t = w_grad;
 
-  int N = d_table_t->dims()[0];
-  int D = d_table_t->dims()[1];
-  int K = ids_t->numel();
+  int64_t N = d_table_t->dims()[0];
+  int64_t D = d_table_t->dims()[1];
+  int64_t K = ids_t->numel();
   const int64_t *ids = ids_t->data<int64_t>();
   const T *d_output = d_output_t->data<T>();
   T *d_table = dev_ctx.template Alloc<T>(d_table_t);
 
-  auto t = phi::EigenVector<T>::Flatten(*d_table_t);
+  auto t = EigenVector<T>::Flatten(*d_table_t);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
 #ifdef PADDLE_WITH_HIP

@@ -38,7 +38,7 @@ jobs:
     needs: check-bypass
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: model-bm
+      group: model-benchmark
     steps:
       - name: Check docker image and run container
         env:

@@ -34,21 +34,20 @@ limitations under the License.
 // The following code modified from OneFlow's implementation, and change to use
 // single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
 
+#include "paddle/phi/kernels/fused_layernorm_kernel.h"
 #include <assert.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #define GPU(str) hip##str
 #define GPUMultiProcessorCount hipDeviceAttributeMultiprocessorCount
 #else
-#include <cub/cub.cuh>
 #define GPU(str) cuda##str
 #define GPUMultiProcessorCount cudaDevAttrMultiProcessorCount
 #endif
@@ -184,12 +183,12 @@ struct DefaultComputeType<half> {
   using type = float;
 };
 
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
 template <>
 struct DefaultComputeType<nv_bfloat16> {
   using type = float;
 };
-#endif  // CUDA_VERSION >= 11000
+#endif
 
 template <typename T>
 class HasCanPackAs {
@@ -995,10 +994,10 @@ struct SkipLoadAndStoreResidual {
 template <typename T, typename Context>
 void FusedLayerNormKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& bias,
-                          const paddle::optional<DenseTensor>& residual,
-                          const paddle::optional<DenseTensor>& norm_weight,
-                          const paddle::optional<DenseTensor>& norm_bias,
+                          const optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& residual,
+                          const optional<DenseTensor>& norm_weight,
+                          const optional<DenseTensor>& norm_bias,
                           const float epsilon,
                           const float residual_alpha,
                           const int begin_norm_axis,
@@ -1043,7 +1042,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                           quant_scale));
   }
 
-  using U = phi::funcs::LayerNormParamType<T>;
+  using U = funcs::LayerNormParamType<T>;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     if (residual_out) dev_ctx.template Alloc<T>(residual_out);

@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import unittest
+
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.io import Dataset
@@ -64,10 +65,10 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
 
     def test_single_process(self):
         self.run_check_on_cpu()
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             # Get (image, label) tuple from MNIST dataset
             # - the image is on CUDAPlace, label is on CPUPlace
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             loader = self.get_dataloader(0)
             for image, label in loader:
                 self.assertTrue(image.place.is_gpu_place())
@@ -78,10 +79,10 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
         # DataLoader with multi-process mode is not supported on MacOs and Windows currently
         if sys.platform != 'darwin' and sys.platform != 'win32':
             self.run_check_on_cpu()
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 # Get (image, label) tuple from MNIST dataset
                 # - the image and label are on CPUPlace
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
                 loader = self.get_dataloader(1)
                 for image, label in loader:
                     self.assertTrue(image.place.is_cuda_pinned_place())

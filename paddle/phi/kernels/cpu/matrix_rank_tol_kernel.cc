@@ -49,21 +49,21 @@ void LapackSVD(const T* x_data,
   std::vector<int> iwork(8 * mn);
   int info = 0;
 
-  phi::funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
-                                                rows,
-                                                cols,
-                                                a,
-                                                lda,
-                                                eigenvalues_data,
-                                                nullptr,
-                                                1,
-                                                nullptr,
-                                                1,
-                                                work.data(),
-                                                lwork,
-                                                rwork.data(),
-                                                iwork.data(),
-                                                &info);
+  funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
+                                           rows,
+                                           cols,
+                                           a,
+                                           lda,
+                                           eigenvalues_data,
+                                           nullptr,
+                                           1,
+                                           nullptr,
+                                           1,
+                                           work.data(),
+                                           lwork,
+                                           rwork.data(),
+                                           iwork.data(),
+                                           &info);
 
   if (info < 0) {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -106,8 +106,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<int64_t>(out);
     if (out && out->numel() != 0) {
-      phi::Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -125,12 +124,12 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto* eigenvalue_data = dev_ctx.template Alloc<RealType>(&eigenvalue_tensor);
 
   if (hermitian) {
-    phi::funcs::MatrixEighFunctor<Context, T> functor;
+    funcs::MatrixEighFunctor<Context, T> functor;
     functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
     phi::AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
   } else {
-    DenseTensor trans_x = phi::TransposeLast2Dim<T>(dev_ctx, x);
+    DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, x);
     auto* x_data = trans_x.data<T>();
     BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols);
   }
@@ -215,8 +214,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(out);
   if (x.numel() == 0) {
     if (out && out->numel() != 0) {
-      phi::Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -228,12 +226,12 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   auto* eigenvalue_data = dev_ctx.template Alloc<RealType>(&eigenvalue_tensor);
 
   if (hermitian) {
-    phi::funcs::MatrixEighFunctor<Context, T> functor;
+    funcs::MatrixEighFunctor<Context, T> functor;
     functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
     phi::AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
   } else {
-    DenseTensor trans_x = phi::TransposeLast2Dim<T>(dev_ctx, x);
+    DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, x);
     auto* x_data = trans_x.data<T>();
     BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols);
   }
@@ -284,7 +282,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
         dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
 
     DenseTensor zero_tensor;
-    zero_tensor = phi::FullLike<RealType, Context>(
+    zero_tensor = FullLike<RealType, Context>(
         dev_ctx, default_rtol_tensor, static_cast<RealType>(0.0));
 
     DenseTensor atol_compare_result;

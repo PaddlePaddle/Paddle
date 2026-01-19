@@ -29,7 +29,8 @@ __global__ void fill_constant_kernel(const int64_t featuresize,
                                      int offset,
                                      T fillvar,
                                      int dims) {
-  for (int64_t idx = blockIdx.x * featuresize + threadIdx.x;
+  for (int64_t idx = static_cast<int64_t>(blockIdx.x) * featuresize +
+                     static_cast<int64_t>(threadIdx.x);
        idx * strides + offset < (blockIdx.x + 1) * featuresize;
        idx += blockDim.x) {
     // to check if the new position with offset is still in the same line;
@@ -54,7 +55,7 @@ void FillDiagonalGradKernel(const Context& dev_ctx,
   auto* in_data = dev_ctx.template Alloc<T>(x_grad);
   if (x_grad && x_grad->numel() == 0) return;
 
-  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
   auto size = x_grad->numel();
   auto out_dims = x_grad->dims();

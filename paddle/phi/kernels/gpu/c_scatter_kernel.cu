@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/c_scatter_kernel.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
@@ -33,7 +34,7 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
                           DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto x = &input;
-  int numel = x->numel();
+  int64_t numel = x->numel();
   ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
 
   int root_id = root;
@@ -74,19 +75,19 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
     stream = dev_ctx.stream();
   }
 
-  phi::DDim x_dims = x->dims();
-  phi::DDim out_dims(x_dims);
-  phi::DenseTensor temp;
+  DDim x_dims = x->dims();
+  DDim out_dims(x_dims);
+  DenseTensor temp;
   temp.Resize(out_dims);
   auto out_ptr = dev_ctx.template Alloc<T>(&temp);
 
   if (root_id == comm_ctx->GetRank()) {
-    comm_ctx->Broadcast(const_cast<phi::DenseTensor*>(x), *x, root_id, stream);
-    phi::Copy(dev_ctx,
-              *static_cast<const phi::DenseTensor*>(x),
-              place,
-              false,
-              static_cast<phi::DenseTensor*>(&temp));
+    comm_ctx->Broadcast(const_cast<DenseTensor*>(x), *x, root_id, stream);
+    Copy(dev_ctx,
+         *static_cast<const DenseTensor*>(x),
+         place,
+         false,
+         static_cast<DenseTensor*>(&temp));
   } else {
     comm_ctx->Broadcast(&temp, temp, root_id, stream);
   }
@@ -98,11 +99,11 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
   temp.Resize(out_dims);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx,
-            *static_cast<const phi::DenseTensor*>(&temp),
-            place,
-            true,
-            static_cast<phi::DenseTensor*>(out));
+  Copy(dev_ctx,
+       *static_cast<const DenseTensor*>(&temp),
+       place,
+       true,
+       static_cast<DenseTensor*>(out));
   out->Resize(out_dims);
 #else
   PADDLE_ENFORCE_EQ(

@@ -17,7 +17,12 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import check_out_dtype, get_places
+from op_test import (
+    check_out_dtype,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 sys.path.append("../../legacy_test")
 
@@ -31,8 +36,8 @@ from paddle.base import core
 
 class ApiMaxTest(unittest.TestCase):
     def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -227,7 +232,8 @@ class TestMaxOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+    not core.is_bfloat16_supported(get_device_place()),
+    "place does not support BF16 evaluation",
 )
 class TestMaxBfloat16(unittest.TestCase):
     def init_data(self):

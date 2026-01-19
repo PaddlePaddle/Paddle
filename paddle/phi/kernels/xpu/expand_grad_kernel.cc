@@ -19,6 +19,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -29,9 +30,16 @@ void ExpandGradKernel(const Context& dev_ctx,
                       const IntArray& shape,
                       DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+  if ((in_grad && in_grad->numel() == 0) || out_grad.numel() == 0) {
+    Full<T, Context>(dev_ctx, in_grad->dims(), 0, in_grad);
+    return;
+  }
+
   auto in_grad_data = dev_ctx.template Alloc<T>(in_grad);
-  auto out_grad_dims = common::vectorize<int64_t>(out_grad.dims());
-  auto in_grad_dims = common::vectorize<int64_t>(in_grad->dims());
+  auto out_grad_dims = vectorize<int64_t>(out_grad.dims());
+  auto in_grad_dims = vectorize<int64_t>(in_grad->dims());
   in_grad_dims.insert(
       in_grad_dims.begin(), out_grad.dims().size() - in_grad->dims().size(), 1);
 
@@ -50,6 +58,52 @@ void ExpandGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "expand_grad");
 }
 
+template <>
+void ExpandGradKernel<double, XPUContext>(const XPUContext& dev_ctx,
+                                          const DenseTensor& x,
+                                          const DenseTensor& out_grad,
+                                          const IntArray& shape,
+                                          DenseTensor* in_grad) {
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
+  if ((in_grad && in_grad->numel() == 0) || out_grad.numel() == 0) {
+    Full<double, XPUContext>(dev_ctx, in_grad->dims(), 0, in_grad);
+    return;
+  }
+
+  auto in_grad_data = dev_ctx.template Alloc<double>(in_grad);
+  auto out_grad_dims = vectorize<int64_t>(out_grad.dims());
+  auto in_grad_dims = vectorize<int64_t>(in_grad->dims());
+  in_grad_dims.insert(
+      in_grad_dims.begin(), out_grad.dims().size() - in_grad->dims().size(), 1);
+
+  // Two zero
+  if (out_grad_dims.size() == 0 && in_grad_dims.size() == 0) {
+    out_grad_dims = {1};
+    in_grad_dims = {1};
+  }
+
+  float* out_grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(out_grad.numel());
+  float* in_grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(in_grad->numel());
+  int r = 0;
+  r = xpu::cast<double, float>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const double*>(out_grad.data<double>()),
+      out_grad_fp32,
+      out_grad.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  r = xpu::expand_grad<float>(dev_ctx.x_context(),
+                              out_grad_fp32,
+                              in_grad_fp32,
+                              out_grad_dims,
+                              in_grad_dims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "expand_grad");
+  r = xpu::cast<float, double>(dev_ctx.x_context(),
+                               in_grad_fp32,
+                               reinterpret_cast<double*>(in_grad_data),
+                               in_grad->numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(expand_grad,
@@ -57,5 +111,7 @@ PD_REGISTER_KERNEL(expand_grad,
                    ALL_LAYOUT,
                    phi::ExpandGradKernel,
                    float,
+                   int64_t,
+                   double,
                    phi::bfloat16,
                    phi::float16) {}

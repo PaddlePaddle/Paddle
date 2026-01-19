@@ -16,6 +16,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_gate_dispatch_kernel.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_ops_utils.h"
 
 namespace phi {
@@ -128,8 +129,7 @@ void MoeGateDispatchKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
 
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
   auto x_dims = x.dims();
   auto gate_logits_dims = gate_logits.dims();
 

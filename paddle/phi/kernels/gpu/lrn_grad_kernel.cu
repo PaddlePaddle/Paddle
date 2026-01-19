@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/lrn_kernel_impl.h"
 namespace phi {
@@ -36,8 +37,8 @@ __global__ void KeCMRNormDiff(int img_size,
     const int h = (idx / W) % H;
     const int n = idx / W / H;
     const int offset =
-        (data_layout != DataLayout::kNHWC ? (n * C * H + h) * W + w
-                                          : ((n * H + h) * W + w) * C);
+        (data_layout != DataLayout::NHWC ? (n * C * H + h) * W + w
+                                         : ((n * H + h) * W + w) * C);
     x += offset;
     out += offset;
     mid += offset;
@@ -53,18 +54,18 @@ __global__ void KeCMRNormDiff(int img_size,
     // TODO(gongwb): optimize this with thread shared array.
     while (index < C + post_pad) {
       if (index < C) {
-        int idx = (data_layout != DataLayout::kNHWC ? index * step : index);
+        int idx = (data_layout != DataLayout::NHWC ? index * step : index);
         x_g[idx] = 0.0;
         accum += out_g[idx] * out[idx] / mid[idx];
       }
       if (index >= size) {
-        int idx = (data_layout != DataLayout::kNHWC ? (index - size) * step
-                                                    : index - size);
+        int idx = (data_layout != DataLayout::NHWC ? (index - size) * step
+                                                   : index - size);
         accum -= out_g[idx] * out[idx] / mid[idx];
       }
       if (index >= post_pad) {
-        int idx = (data_layout != DataLayout::kNHWC ? (index - post_pad) * step
-                                                    : index - post_pad);
+        int idx = (data_layout != DataLayout::NHWC ? (index - post_pad) * step
+                                                   : index - post_pad);
         x_g[idx] +=
             out_g[idx] * pow(mid[idx], negative_beta) - ratio * x[idx] * accum;
       }
@@ -80,47 +81,50 @@ void CrossMapNormalGrad(const phi::GPUContext& dev_ctx,
                         const T* mid,
                         T* x_g,
                         const T* out_g,
-                        int N,
-                        int C,
-                        int H,
-                        int W,
+                        int64_t N,
+                        int64_t C,
+                        int64_t H,
+                        int64_t W,
                         int n,
                         T alpha,
                         T beta,
                         const DataLayout data_layout) {
-  int img_size = N * H * W;
+  int64_t img_size = N * H * W;
 
   const int block_size = 1024;
-  int grid_size = (img_size + block_size - 1) / block_size;
+  int64_t grid_size = (img_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_INT_MAX(grid_size, "grid_size");
+  PADDLE_ENFORCE_LE_INT_MAX(C, "C");
 
   KeCMRNormDiff<T>
-      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(img_size,
-                                                       x,
-                                                       out,
-                                                       mid,
-                                                       x_g,
-                                                       out_g,
-                                                       C,
-                                                       H,
-                                                       W,
-                                                       n,
-                                                       -beta,
-                                                       2.0f * alpha * beta,
-                                                       data_layout);
+      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
+          static_cast<int>(img_size),
+          x,
+          out,
+          mid,
+          x_g,
+          out_g,
+          static_cast<int>(C),
+          static_cast<int>(H),
+          static_cast<int>(W),
+          n,
+          -beta,
+          2.0f * alpha * beta,
+          data_layout);
 }
 
 template <typename T>
 struct LRNGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& x,
-                  const phi::DenseTensor& out,
-                  const phi::DenseTensor& mid,
-                  phi::DenseTensor* x_g,
-                  const phi::DenseTensor& out_g,
-                  int N,
-                  int C,
-                  int H,
-                  int W,
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& mid,
+                  DenseTensor* x_g,
+                  const DenseTensor& out_g,
+                  int64_t N,
+                  int64_t C,
+                  int64_t H,
+                  int64_t W,
                   int n,
                   T alpha,
                   T beta,

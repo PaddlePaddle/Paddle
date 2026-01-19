@@ -65,12 +65,7 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
 
 class TEST_API VarDesc {
  public:
-  explicit VarDesc(const std::string &name) {
-    desc_.set_name(name);
-    // TODO(paddle-dev): Why default to DenseTensor.
-    desc_.mutable_type()->set_type(proto::VarType::DENSE_TENSOR);
-    need_updated_ = true;
-  }
+  explicit VarDesc(const std::string &name);
 
   explicit VarDesc(const proto::VarDesc &desc);
 

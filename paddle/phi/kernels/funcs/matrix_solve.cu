@@ -71,7 +71,7 @@ __global__ void UnpackPivot(const int* __restrict__ pivot,
  * and is stored in B.
  */
 template <typename Context, typename T>
-void SolveLU(const phi::funcs::BlasT<Context, T>& blas,
+void SolveLU(const funcs::BlasT<Context, T>& blas,
              int m,
              int n,
              const T* A,
@@ -109,7 +109,7 @@ void SolveLU(const phi::funcs::BlasT<Context, T>& blas,
 
 // Batched version of SolveLU.
 template <typename Context, typename T>
-void BatchedSolveLU(const phi::funcs::BlasT<Context, T>& blas,
+void BatchedSolveLU(const funcs::BlasT<Context, T>& blas,
                     int m,
                     int n,
                     const T** A,
@@ -181,7 +181,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   const auto& new_b_dims = getNewDimsVec(b_dims);
   out->Resize(common::make_ddim(new_b_dims));
   dev_ctx.template Alloc<T>(out);
-  phi::funcs::TransposeNormal<Context, T> trans;
+  funcs::TransposeNormal<Context, T> trans;
   std::vector<int> new_axis = getNewAxis(b_rank);
   trans(dev_ctx, b, out, new_axis);
 
@@ -201,7 +201,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      tmp_gpu_ptrs_data->ptr(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      static_cast<void*>(cpu_ptrs.data()),
                      cpu_ptrs.size() * sizeof(T*),
                      dev_ctx.stream());
@@ -217,7 +217,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   // only for singular checking
   std::vector<int> info;
@@ -235,7 +235,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   // After: P @ A^T = L @ U
 
   // check whether BatchedGETRF is executed successfully or not
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      info.data(),
                      dev_ctx.GetPlace(),
                      gpu_info_ptr,
@@ -274,7 +274,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   DenseTensor tmp_b(b.type());
   tmp_b.Resize(b_dims);
   dev_ctx.template Alloc<T>(&tmp_b);
-  phi::funcs::TransposeNormal<Context, T> trans2;
+  funcs::TransposeNormal<Context, T> trans2;
   trans2(dev_ctx, *out, &tmp_b, new_axis);
 
   // 8. Permute B according to pivots to get the final result.

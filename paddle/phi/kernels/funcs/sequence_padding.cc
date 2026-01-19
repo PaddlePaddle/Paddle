@@ -24,8 +24,8 @@ limitations under the License. */
 namespace phi::funcs {
 
 template <typename T>
-void CopyValidData(phi::DenseTensor* dst_tensor,
-                   const phi::DenseTensor* src_tensor,
+void CopyValidData(DenseTensor* dst_tensor,
+                   const DenseTensor* src_tensor,
                    const phi::Vector<size_t>& seq_offsets,
                    int pad_seq_len,
                    int step_width,
@@ -98,9 +98,9 @@ template <typename T>
 class PaddingDenseTensorFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& seq_tensor,
-                  phi::DenseTensor* pad_tensor,
-                  const phi::DenseTensor& pad_value,
+                  const DenseTensor& seq_tensor,
+                  DenseTensor* pad_tensor,
+                  const DenseTensor& pad_value,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -138,7 +138,7 @@ class PaddingDenseTensorFunctor<phi::CPUContext, T> {
       fast_mem_init<T>(
           pad_data, pad_tensor->numel(), pad_value_data, sizeof(T));
     } else {
-      for (int i = 0; i < pad_tensor->numel(); i += step_width) {
+      for (int64_t i = 0; i < pad_tensor->numel(); i += step_width) {
         memcpy(pad_data + i, pad_value_data, step_width * sizeof(T));
       }
     }
@@ -158,8 +158,8 @@ template <typename T>
 class UnpaddingDenseTensorFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& dev_ctx UNUSED,
-                  const phi::DenseTensor& pad_tensor,
-                  phi::DenseTensor* seq_tensor,
+                  const DenseTensor& pad_tensor,
+                  DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -195,8 +195,8 @@ template <typename T>
 class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
  public:
   void operator()(const phi::XPUContext& dev_ctx,
-                  const phi::DenseTensor& pad_tensor,
-                  phi::DenseTensor* seq_tensor,
+                  const DenseTensor& pad_tensor,
+                  DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -207,7 +207,7 @@ class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
-    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int64_t step_width = seq_tensor->numel() / seq_tensor_dims[0];
 
     CheckDims(seq_tensor_dims,
               pad_tensor_dims,

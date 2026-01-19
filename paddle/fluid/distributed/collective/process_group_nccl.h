@@ -62,7 +62,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
     NCCLTask(const std::vector<Place>& places,
              int rank,
              CommType CommType,
-             const std::vector<phi::DenseTensor>& inputs);
+             const std::vector<DenseTensor>& inputs);
 
     void RemoveHolderStreamInGroup();
 
@@ -126,8 +126,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors,
-      const std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<DenseTensor>* out_tensors,
+      const std::vector<DenseTensor>& in_tensors,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -167,7 +167,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                              bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Gather(
-      std::vector<phi::DenseTensor>* gather_tensors_ptr,
+      std::vector<DenseTensor>* gather_tensors_ptr,
       const phi::DenseTensor& in_tensor,
       const GatherOptions& opts,
       bool sync_op,
@@ -230,7 +230,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t)> fn,
-      const std::vector<phi::DenseTensor>& tensors,
+      const std::vector<DenseTensor>& tensors,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
@@ -254,18 +254,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetCommContext(
       const std::string* key = nullptr);
 
-  void EraseTensorHolders() {
-    for (const auto& allocation_stream : allocation_stream_pairs_) {
-      auto holder_ptr = allocation_stream.first.lock();
-      if (holder_ptr) {
-        memory::EraseStream(holder_ptr, allocation_stream.second);
-      }
-    }
-    VLOG(5) << "After task wait/synchronize, total "
-            << allocation_stream_pairs_.size()
-            << " tensor(s) allocation stream have been removed.";
-    allocation_stream_pairs_.clear();
-  }
+  void EraseTensorHolders();
 
   virtual void StartCoalescing();
 
@@ -303,7 +292,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   // For coalescing tensors processing (eg. batch_isend_irecv)
   bool is_coalescing_{false};
-  std::vector<std::shared_ptr<phi::DenseTensor>> coalescing_tensors_;
+  std::vector<std::shared_ptr<DenseTensor>> coalescing_tensors_;
   std::vector<std::string> coalescing_place_keys_;
 
   std::unordered_map<std::string, phi::distributed::P2POption>

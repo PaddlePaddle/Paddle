@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.base import core
 from paddle.base.framework import in_pir_mode
 
-devices = ['cpu', 'gpu']
+devices = ['cpu', get_device()]
 
 
 class TestSparseCreate(unittest.TestCase):
@@ -180,6 +180,29 @@ class TestSparseConvert(unittest.TestCase):
             dense_x.grad.numpy(), out_grad.to_dense().numpy()
         )
 
+    def test_coo_to_coo(self):
+        indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        sparse_x = paddle.sparse.sparse_coo_tensor(
+            paddle.to_tensor(indices),
+            paddle.to_tensor(values),
+            shape=[3, 4],
+            stop_gradient=False,
+        )
+        sparse_x_ = sparse_x.to_sparse_coo(2)
+        assert sparse_x is sparse_x_
+
+    def test_csr_to_csr(self):
+        crows = [0, 2, 3, 5]
+        cols = [1, 3, 2, 0, 1]
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        cols = paddle.to_tensor(cols, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        sparse_x = paddle.sparse.sparse_csr_tensor(crows, cols, values)
+        sparse_x_ = sparse_x.to_sparse_csr()
+        assert sparse_x is sparse_x_
+
     def test_coo_to_dense(self):
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
         values = [1.0, 2.0, 3.0, 4.0, 5.0]
@@ -279,7 +302,8 @@ class TestSparseConvert(unittest.TestCase):
     def test_sparse_coo_tensor_grad(self):
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 paddle.device.set_device(device)
                 indices = [[0, 1], [0, 1]]
@@ -326,7 +350,8 @@ class TestSparseConvert(unittest.TestCase):
     def test_sparse_coo_tensor_sorted(self):
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 paddle.device.set_device(device)
                 # test unsorted and duplicate indices
@@ -396,7 +421,8 @@ class TestSparseConvert(unittest.TestCase):
     def test_zero_nnz(self):
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 paddle.device.set_device(device)
                 x1 = paddle.zeros([2, 2, 2])

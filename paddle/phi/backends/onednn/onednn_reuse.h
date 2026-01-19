@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-
+#ifdef PADDLE_WITH_DNNL
 #include <algorithm>
 #include <memory>
 #include <set>
@@ -979,7 +979,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       src_y_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
       if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
-          DataLayout::kNHWC) {
+          DataLayout::NHWC) {
         std::rotate(dims1_ex.begin() + 1, dims1_ex.end() - 1, dims1_ex.end());
       }
       src1_md = src1_md.reshape(dims1_ex);
@@ -990,7 +990,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       src_x_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
       if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
-          DataLayout::kNHWC) {
+          DataLayout::NHWC) {
         std::rotate(dims0_ex.begin() + 1, dims0_ex.end() - 1, dims0_ex.end());
       }
       src0_md = src0_md.reshape(dims0_ex);
@@ -1844,7 +1844,7 @@ template <typename T>
 class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusOneDNNHandler(const OneDNNContext& dev_ctx,
-                        const phi::DenseTensor* x,
+                        const DenseTensor* x,
                         const float beta,
                         const std::string& fuse_activation = "",
                         const float fuse_alpha = 0.0f,
@@ -1893,7 +1893,7 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
 
 static void SetOutMemDescWithUnsqueeze2FuseSupport(
     const std::vector<int> fused_unsqueeze2_axes,
-    phi::DenseTensor* out,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   const std::vector<int64_t>& op_tz = out_md.get_dims();
   std::vector<int64_t> unsqueezed_op_tz(
@@ -1916,12 +1916,15 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
 
 static void SetOutMemDescWithReshape2FuseSupport(
     const std::vector<int> fused_reshape2_shape_,
-    phi::DenseTensor* out,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
                                             fused_reshape2_shape_.end());
 
-  const int out_shape_numel = out->numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_shape_numel = out->numel();
+
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
                                               fused_reshape2_shape.end(),
                                               1,
@@ -1940,3 +1943,4 @@ static void SetOutMemDescWithReshape2FuseSupport(
 
 }  // namespace funcs
 }  // namespace phi
+#endif

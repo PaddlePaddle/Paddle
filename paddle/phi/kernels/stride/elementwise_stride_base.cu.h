@@ -40,6 +40,7 @@ namespace phi {
 
 template <typename Functor,
           typename OutT,
+          typename OffsetT,
           int Arity,
           int NumOuts,
           int VecSize,
@@ -47,10 +48,10 @@ template <typename Functor,
 __global__ void BinaryElementwiseKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
-    uint32_t numel,
+    int64_t numel,
     int read_lens,
     Functor func,
-    funcs::OffsetCalculator<Arity + NumOuts> offset_calc) {
+    funcs::OffsetCalculator<Arity + NumOuts, OffsetT, false> offset_calc) {
   int64_t tid = THREAD_ID_X;
   int64_t nv = BLOCK_NUM_X * vt;
   int64_t idx = nv * BLOCK_ID_X + tid;
@@ -58,7 +59,7 @@ __global__ void BinaryElementwiseKernel(
   for (int i = 0; i < vt; i++) {
     if (idx < numel) {
       auto offsets = offset_calc.get(idx);
-      using Traits = phi::funcs::FunctionTraits<Functor>;
+      using Traits = funcs::FunctionTraits<Functor>;
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
@@ -84,6 +85,7 @@ __global__ void BinaryElementwiseKernel(
 
 template <typename Functor,
           typename OutT,
+          typename OffsetT,
           int Arity,
           int NumOuts,
           int VecSize,
@@ -91,10 +93,10 @@ template <typename Functor,
 __global__ void UnaryElementwiseKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
-    uint32_t numel,
+    int64_t numel,
     int read_lens,
     Functor func,
-    funcs::OffsetCalculator<Arity + NumOuts> offset_calc) {
+    funcs::OffsetCalculator<Arity + NumOuts, OffsetT, false> offset_calc) {
   int64_t tid = THREAD_ID_X;
   int64_t nv = BLOCK_NUM_X * vt;
   int64_t idx = nv * BLOCK_ID_X + tid;
@@ -102,7 +104,7 @@ __global__ void UnaryElementwiseKernel(
   for (int i = 0; i < vt; i++) {
     if (idx < numel) {
       auto offsets = offset_calc.get(idx);
-      using Traits = phi::funcs::FunctionTraits<Functor>;
+      using Traits = funcs::FunctionTraits<Functor>;
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
@@ -129,7 +131,7 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
                                  std::vector<DenseTensor *> *outs,
                                  Functor func,
                                  int axis = -1) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
   for (auto i = 0; i < outs->size(); ++i) {
     if (i > 0) {
@@ -164,25 +166,61 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
   config.add_const_input(*(ins[0]));
   config.add_const_input(*(ins[1]));
   DenseTensorIterator iter = config.build();
-  const int &numel = iter.numel();
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t &numel = iter.numel();
+
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
   auto stream = dev_ctx.stream();
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
   int vec_size = STRIDE_VEC_SIZE;
-  BinaryElementwiseKernel<Functor,
-                          OutT,
-                          Arity,
-                          NumOuts,
-                          STRIDE_VEC_SIZE,
-                          unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
+
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride * sizeof(OutT))) {
+    is_big_tensor = true;
+  }
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint64_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint32_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  }
 }
 
 template <typename OutT, typename Context, typename Functor, int NumOuts = 1>
@@ -190,7 +228,7 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
                                    const std::vector<const DenseTensor *> &ins,
                                    std::vector<DenseTensor *> *outs,
                                    Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
   bool have_0_size = false;
   for (int i = 0; i < outs->size(); ++i) {
@@ -229,25 +267,61 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
   config.add_const_input(*(ins[0]));
   config.add_const_input(*(ins[1]));
   DenseTensorIterator iter = config.build();
-  const int &numel = iter.numel();
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t &numel = iter.numel();
+
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
   auto stream = dev_ctx.stream();
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
   int vec_size = STRIDE_VEC_SIZE;
-  BinaryElementwiseKernel<Functor,
-                          OutT,
-                          Arity,
-                          NumOuts,
-                          STRIDE_VEC_SIZE,
-                          unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
+
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride) * sizeof(OutT)) {
+    is_big_tensor = true;
+  }
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint64_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+    BinaryElementwiseKernel<Functor,
+                            OutT,
+                            uint32_t,
+                            Arity,
+                            NumOuts,
+                            STRIDE_VEC_SIZE,
+                            unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  }
 }
 
 template <typename OutT, typename Context, typename Functor, int NumOuts = 1>
@@ -255,7 +329,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
                                   const std::vector<const DenseTensor *> &ins,
                                   std::vector<DenseTensor *> *outs,
                                   Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
   bool have_0_size = false;
   for (int i = 0; i < outs->size(); ++i) {
@@ -293,33 +367,95 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
   config.add_output(*((*outs)[0]));
   config.add_const_input(*(ins[0]));
   DenseTensorIterator iter = config.build();
-  const int &numel = iter.numel();
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t &numel = iter.numel();
+
   funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<2>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
   auto stream = dev_ctx.stream();
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
   int vec_size = STRIDE_VEC_SIZE;
-  UnaryElementwiseKernel<Functor,
-                         OutT,
-                         Arity,
-                         NumOuts,
-                         STRIDE_VEC_SIZE,
-                         unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
+
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride * sizeof(OutT))) {
+    is_big_tensor = true;
+  }
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<2, false, uint64_t>(iter);
+    UnaryElementwiseKernel<Functor,
+                           OutT,
+                           uint64_t,
+                           Arity,
+                           NumOuts,
+                           STRIDE_VEC_SIZE,
+                           unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<2, false, uint32_t>(iter);
+    UnaryElementwiseKernel<Functor,
+                           OutT,
+                           uint32_t,
+                           Arity,
+                           NumOuts,
+                           STRIDE_VEC_SIZE,
+                           unroll_factor>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         numel,
+                                         vec_size,
+                                         func,
+                                         offset_calc);
+  }
+}
+
+template <typename T, typename Context, typename Functor>
+void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
+                                        const DenseTensor &x,
+                                        Functor func,
+                                        DenseTensor *out) {
+  std::vector<const DenseTensor *> inputs = {&x};
+  std::vector<DenseTensor *> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
+}
+
+template <typename T, typename Context, typename Functor>
+void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
+                                         const DenseTensor &x,
+                                         const DenseTensor &y,
+                                         Functor func,
+                                         int axis,
+                                         DenseTensor *out) {
+  std::vector<const DenseTensor *> inputs = {&x, &y};
+  std::vector<DenseTensor *> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  BinaryStrideBroadcastKernel<T, Context>(
+      dev_ctx, inputs, &outputs, func, axis);
 }
 
 template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
-                                   const phi::DenseTensor &tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+DenseTensor Tensor2Contiguous(const Context &dev_ctx,
+                              const DenseTensor &tensor) {
+  DenseTensor dense_out;
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
                        phi::ContiguousKernel<data_t, Context>(

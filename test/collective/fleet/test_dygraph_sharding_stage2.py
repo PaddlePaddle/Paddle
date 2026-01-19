@@ -18,6 +18,11 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
+import paddle
+
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of array equal.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 class TestDygraphShardingStage2(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode

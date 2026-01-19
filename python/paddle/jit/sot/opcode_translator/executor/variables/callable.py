@@ -62,6 +62,7 @@ from ....utils import (
     log_do,
     magic_method_builtin_dispatch,
     map_if,
+    need_capture_control_flow,
 )
 from ....utils.exceptions import (
     BreakGraphError,
@@ -420,6 +421,15 @@ class PaddleApiVariable(FunctionVariable):
             value
         ):
             return PaddleApiVariable(value, graph, tracker)
+        if callable(value) and need_capture_control_flow(value):
+            # NOTE(SigureMo): We assume that if a function use AST transform,
+            # it already be already unified in dynamic and static graph.
+            to_unified_fn = (
+                paddle.jit.dy2static.program_translator.convert_to_static
+            )
+            unified_fn = to_unified_fn(value)
+            paddle.jit.marker.unified(unified_fn, for_sot=True)
+            return PaddleApiVariable(unified_fn, graph, tracker)
         return None
 
     @property
@@ -1303,6 +1313,32 @@ class PureClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isclass(value) and value in PD_PURE_CLASSES:
             return PureClassVariable(value, graph, tracker)
+        return None
+
+
+class PaddleSizeClassVariable(ClassVariable):
+    def __init__(self, class_: type, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        from .container import ListVariable, SizeVariable, TupleVariable
+
+        assert len(args) == 1 and len(kwargs) == 0, (
+            f"Size constructor takes one argument, got {len(args)} "
+            f"arguments and {len(kwargs)} keyword arguments."
+        )
+        arg0 = args[0]
+        assert isinstance(arg0, (ListVariable, TupleVariable))
+        return SizeVariable(
+            arg0.get_wrapped_items(),
+            self.graph,
+            tracker=CreateLayerTracker(self, args, kwargs),
+        )
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if value is paddle.Size:
+            return PaddleSizeClassVariable(value, graph, tracker)
         return None
 
 

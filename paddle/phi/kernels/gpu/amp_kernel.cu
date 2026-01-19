@@ -41,7 +41,7 @@ __global__ void CheckFiniteAndUnscale(const T** xs,
 
   // copy starts array from global memory to shared memory
   extern __shared__ int64_t s_starts[];
-  for (int i = threadIdx.x; i <= size; i += blockDim.x) {
+  for (int64_t i = threadIdx.x; i <= size; i += blockDim.x) {
     s_starts[i] = starts[i];
   }
   __syncthreads();
@@ -118,7 +118,7 @@ __global__ void FusedFillIf(T** outs,
 
   // copy starts array from global memory to shared memory
   extern __shared__ int64_t s_starts[];
-  for (int i = threadIdx.x; i <= xs_size; i += blockDim.x) {
+  for (size_t i = threadIdx.x; i <= xs_size; i += blockDim.x) {
     s_starts[i] = starts[i];
   }
   __syncthreads();
@@ -155,7 +155,7 @@ class LazyZeros<phi::GPUContext, T> {
     size_t xs_size = xs.size();
     if (xs_size == 0) return;
 
-    const auto& cpu_place = phi::CPUPlace();
+    const auto& cpu_place = CPUPlace();
     // alloc each tensor's start index and copy to device
     auto h_in_starts_mem =
         phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
@@ -284,7 +284,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   size_t xs_size = xs.size();
   if (xs_size == 0) return;
 
-  const auto& cpu_place = phi::CPUPlace();
+  const auto& cpu_place = CPUPlace();
   // calculate each tensor's start index and copy to device
   auto h_starts_tensor =
       phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));

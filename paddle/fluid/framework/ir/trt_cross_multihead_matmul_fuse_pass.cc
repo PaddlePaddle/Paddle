@@ -287,7 +287,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
                           Node* scale_out) {
     // get Device context
     auto* dev_ctx = static_cast<phi::CPUContext*>(
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
@@ -301,21 +301,18 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     multihead_op_desc.SetInput("Input_q", {input0->Name()});
     multihead_op_desc.SetInput("Input_kv", {input1->Name()});
 
-    auto* wq_tensor =
-        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wk_tensor =
-        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wv_tensor =
-        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<DenseTensor>();
+    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<DenseTensor>();
+    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<DenseTensor>();
 
-    int hidden_out = wq_tensor->dims()[1];
-    int head_size = hidden_out / head_number;
+    int64_t hidden_out = wq_tensor->dims()[1];
+    int64_t head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
-      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+      VLOG(3) << "scale of multihead matmul do not fit the requirement of "
                  "flash attention plugin, Stop fusing.";
       return;
     }
-    VLOG(5) << "trt cross attention get wq_tensor name = " << mul0_w->Name()
+    VLOG(5) << "trt cross attention wq_tensor name = " << mul0_w->Name()
             << "trt cross attention wk_tensor name = " << mul1_w->Name()
             << "trt cross attention wv_tensor name = " << mul2_w->Name();
 
@@ -330,7 +327,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     combined_w_kv_desc->SetShape(
         {wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
     combined_w_kv_desc->SetPersistable(true);
-    phi::DenseTensor tmp_combined_w_kv_tensor;
+    DenseTensor tmp_combined_w_kv_tensor;
     tmp_combined_w_kv_tensor.Resize(combined_w_kv_dims);
     float* tmp_combined_w_kv_data =
         dev_ctx->template HostAlloc<float>(&tmp_combined_w_kv_tensor);

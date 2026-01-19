@@ -36,7 +36,9 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
     DenseTensor* x_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
-  const int& index_size = dst_index.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = dst_index.dims()[0];
 
   dev_ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();
@@ -109,8 +111,7 @@ void SendURecvGradKernel(const Context& dev_ctx,
 
   if (out_grad.numel() == 0 || x.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
 

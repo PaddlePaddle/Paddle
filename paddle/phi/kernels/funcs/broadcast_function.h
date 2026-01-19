@@ -62,7 +62,7 @@ struct BroadcastTypeClassifier {
 
     InitBroadcastConfigs(ins, outs, axis);
 
-    using Traits = phi::funcs::FunctionTraits<Functor>;
+    using Traits = funcs::FunctionTraits<Functor>;
     using ArgsT = typename Traits::ArgsTuple;
     ArgsT arg;
     UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
@@ -212,7 +212,9 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
     using VecType = phi::kps::details::VectorType<Type, VecSize>;
     VecType vec_temp;
 
-    int thread_offset = threadIdx.x + blockIdx.x * blockDim.x;
+    int64_t thread_offset =
+        static_cast<int64_t>(threadIdx.x) +
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
     const VecType *__restrict__ vec_input =
         reinterpret_cast<const VecType *__restrict__>(ins[Index]);
     vec_temp = vec_input[thread_offset];
@@ -294,11 +296,11 @@ __device__ void VectorizedBroadcastKernelImpl(
     const Array<bool, Arity> &use_broadcast,
     const uint32_t numel,
     const Array<kps::details::BroadcastConfig, Arity> &configs,
-    int num,
-    int block_offset,
+    uint32_t num,
+    uint32_t block_offset,
     int read_lens,
     Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   __simd__ ArgsT args[VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
@@ -316,7 +318,7 @@ __device__ void VectorizedBroadcastKernelImpl(
       uint32_t idx = thread_offset + k;
       if (IsBoundary && idx == numel) break;
 #pragma unroll
-      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      for (int i = 0; i < DDim::kMaxRank; ++i) {
         if (i == configs[0].rank) break;
         auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
         idx = fast_divmoder.val[0];
@@ -337,9 +339,8 @@ __device__ void VectorizedBroadcastKernelImpl(
                                      Functor,
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
-  phi::funcs::
-      ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
-          outs, result, block_offset, num, read_lens);
+  funcs::ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, block_offset, num, read_lens);
 }
 
 template <typename Functor,
@@ -354,8 +355,8 @@ __global__ void VectorizedBroadcastKernel(
     Array<bool, Arity> use_broadcast,
     uint32_t numel,
     Array<kps::details::BroadcastConfig, Arity> configs,
-    int main_offset,
-    int tail_tid,
+    uint32_t main_offset,
+    uint32_t tail_tid,
     int read_lens,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
@@ -445,8 +446,8 @@ void LaunchBroadcastKernel(
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
   auto stream = dev_ctx.x_context()->xpu_stream;
-  int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
-  int tail_tid = numel % (read_lens * threads);
+  uint32_t main_offset = (numel / (read_lens * threads)) * read_lens * threads;
+  uint32_t tail_tid = numel % (read_lens * threads);
 
   VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
       <<<blocks, threads, 0, stream>>>(classifier.ins_data,
@@ -459,14 +460,14 @@ void LaunchBroadcastKernel(
                                        read_lens,
                                        func);
 #else
-  const int &numel = classifier.numel;
+  const int64_t &numel = classifier.numel;
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
   auto stream = dev_ctx.stream();
   auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  int tail_tid = numel % (VecSize * threads);
+  uint32_t main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  uint32_t tail_tid = numel % (VecSize * threads);
 
   if (classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,
@@ -531,18 +532,34 @@ BroadcastKernelForDifferentVecSize(const KPDevice &dev_ctx,
                                    std::vector<DenseTensor *> *outs,
                                    int axis,
                                    Functor func) {
+  auto classifier =
+      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
 #ifdef PADDLE_WITH_XPU_KP
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = classifier.configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  // Calculate the max vec_size for all ins and outs.
-  int vec_size = GetVectorizedSizeForTensors(ins, *outs);
+  static int capability = dev_ctx.GetComputeCapability();
+  // For Hopper and Blackwell, max vectorized size is VecSizeL(8).
+  static int max_vec_size = capability >= 90 ? VecSizeVL : VecSizeL;
+  // calculate the max vec_size for all ins and outs
+  int vec_size = GetVectorizedSizeForTensors(ins, *outs, true);
+  vec_size = std::min(vec_size, max_vec_size);
+  int64_t numel = classifier.numel;
+  // For small tensor, using VecSizeL can improve performance more than
+  // VecSizeVL
+  constexpr int64_t large_vect_threshold = 1024 * 1024 * 4;
+  if (numel < large_vect_threshold) {
+    vec_size = std::min(vec_size, VecSizeL);
+  }
 #endif
 
-  auto classifier =
-      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
+    case VecSizeVL: {
+      LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeVL>(
+          dev_ctx, classifier, func);
+      break;
+    }
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           dev_ctx, classifier, func);
@@ -673,7 +690,7 @@ void BroadcastKernelSplit(const KPDevice &dev_ctx,
   for (int iter = 0; iter < loop_num; iter++) {
     std::vector<const DenseTensor *> new_ins = {};
     std::vector<DenseTensor *> new_outs = {};
-    phi::DenseTensor tmp_in[kArity];
+    DenseTensor tmp_in[kArity];
     DenseTensor tmp_out[NumOuts];
 
     int64_t tmp_size = iter;
@@ -739,7 +756,8 @@ void BroadcastKernelApply(const KPDevice &dev_ctx,
                           int axis,
                           Functor func) {
 #ifndef PADDLE_WITH_XPU_KP
-  auto compute_size = std::numeric_limits<int32_t>::max();
+  auto compute_size =
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 1;
   bool use_int64_index_kernel = false;
   for (auto *out : *outs) {
     if (out->numel() >= compute_size) {
@@ -764,7 +782,7 @@ void BroadcastKernel(const KPDevice &dev_ctx,
                      int axis = -1) {
   // When there are multiple inputs, the outputs's rank should be equal the
   // maximum rank of all inputs.
-  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using Traits = funcs::FunctionTraits<Functor>;
   const int kArity = Traits::arity;
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -811,7 +829,7 @@ void BroadcastKernel(const KPDevice &dev_ctx,
     return;
   }
   int max_rank = 0;
-  int min_rank = phi::DDim::kMaxRank;
+  int min_rank = DDim::kMaxRank;
   for (auto *in : ins) {
     max_rank = std::max(max_rank, in->dims().size());
     min_rank = std::min(min_rank, in->dims().size());

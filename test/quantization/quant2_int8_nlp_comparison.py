@@ -283,7 +283,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         return set(map(int, string.split(',')))
 
     def test_graph_transformation(self):
-        if not base.core.is_compiled_with_mkldnn():
+        if not base.core.is_compiled_with_onednn():
             return
 
         quant_model_path = test_case_args.quant_model

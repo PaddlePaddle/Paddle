@@ -21,9 +21,9 @@
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaximumNumBlocks = 4096;
+static constexpr int64_t kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
+static inline int NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaximumNumBlocks);
 }
@@ -60,23 +60,23 @@ void AssignPosKernel(const Context& dev_ctx,
   T* cum_data = const_cast<T*>(cum_count_ptr->data<T>());
   auto cum_size = cum_count_ptr->numel();
 
-  phi::DenseTensor cpu_eff_num_len;
+  DenseTensor cpu_eff_num_len;
   int64_t cpu_eff_num_len_data = 0;
-  bool is_cpu_place = eff_num_len_ptr->place() == phi::CPUPlace();
+  bool is_cpu_place = eff_num_len_ptr->place() == CPUPlace();
   if (is_cpu_place) {
     cpu_eff_num_len_data = eff_num_len_ptr->data<T>()[0];
   } else {
-    phi::Copy(dev_ctx, eff_num_len, phi::CPUPlace(), false, &cpu_eff_num_len);
+    Copy(dev_ctx, eff_num_len, CPUPlace(), false, &cpu_eff_num_len);
     cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
   }
 
-  phi::DDim out_dims = common::make_ddim({cpu_eff_num_len_data});
+  DDim out_dims = common::make_ddim({cpu_eff_num_len_data});
   out->Resize(out_dims);
   auto out_data = dev_ctx.template Alloc<T>(out);
 
   const T* num_data = numbers->data<T>();
 
-  int blocks = NumBlocks(numel);
+  int64_t blocks = NumBlocks(numel);
   int threads = kNumCUDAThreads;
 
   AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(

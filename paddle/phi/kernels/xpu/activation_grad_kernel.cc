@@ -67,6 +67,21 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);       \
   }
 
+#define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                 \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr,                           \
+                        DenseTensor* dx) {                     \
+    functor_class<T> functor;                                  \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = static_cast<float>(attr);             \
+    ActivationGradXPUImpl<T, Context, functor_class<T>>(       \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
+  }
+
 #define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(  \
     name, functor_class, attr1, attr2)                   \
   template <typename T, typename Context>                \
@@ -183,7 +198,7 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
         dev_ctx.x_context(), tmp, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-    auto x_dims = common::vectorize<int64_t>(x->dims());
+    auto x_dims = vectorize<int64_t>(x->dims());
 
     // use [1] to replace [], because xpu not support []
     if (x_dims.size() == 0) {
@@ -330,8 +345,16 @@ struct XPUReluGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* out,
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
+    auto relu_grad_func = [](xpu::Context* context,
+                             const XPUType* /*x_data*/,
+                             const XPUType* y_data,
+                             const XPUType* y_grad,
+                             XPUType* x_grad,
+                             int64_t len) -> int {
+      return xpu::relu_grad<XPUType>(context, y_data, y_grad, x_grad, len);
+    };
     int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::relu_grad<XPUType>);
+        dev_ctx, x, out, dout, dx, relu_grad_func);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   }
 };
@@ -367,7 +390,7 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
 
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
-      if (!std::is_same<T, ::phi::bfloat16>::value) {
+      if (!std::is_same<T, phi::bfloat16>::value) {
         // use fast_silu_grad if NOT bf16
         int r = xpu::fast_silu_grad(
             dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
@@ -459,9 +482,9 @@ void PowGradKernel(const Context& dev_ctx,
   T* x_grad = dx->data<T>();
 
   // check dims: all dims should equal
-  auto x_dims = common::vectorize<int64_t>(x.dims());
-  auto dy_dims = common::vectorize<int64_t>(dout.dims());
-  auto dx_dims = common::vectorize<int64_t>(dx->dims());
+  auto x_dims = vectorize<int64_t>(x.dims());
+  auto dy_dims = vectorize<int64_t>(dout.dims());
+  auto dx_dims = vectorize<int64_t>(dx->dims());
   PADDLE_ENFORCE_EQ(x_dims,
                     dy_dims,
                     errors::PreconditionNotMet("x_dims should match dy_dims."));
@@ -652,18 +675,29 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, XPUCosGradFunctor);
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                XPUMishGradFunctor,
                                                threshold);
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               XPULeakyReluGradFunctor,
-                                               alpha);
+DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      XPULeakyReluGradFunctor,
+                                                      alpha);
 
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               XPUSoftPlusGradFunctor,
-                                               beta,
-                                               threshold)
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  XPUHardSigmoidGradFunctor,
                                                  slope,
                                                  offset)
+
+template <typename T, typename Context>
+void SoftplusGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& dout,
+                        double beta,
+                        double threshold,
+                        DenseTensor* dx) {
+  XPUSoftPlusGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = static_cast<float>(beta);
+  *(attrs[1].second) = static_cast<float>(threshold);
+  ActivationGradXPUImpl<T, Context, XPUSoftPlusGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,

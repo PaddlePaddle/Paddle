@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -102,9 +107,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_1 = paddle.static.data(
@@ -129,9 +136,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_1 = paddle.static.data(
@@ -157,9 +166,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_2 = paddle.static.data(
@@ -182,9 +193,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                place = get_device_place() if use_cuda else paddle.CPUPlace()
 
                 paddle.enable_static()
                 x_2 = paddle.static.data(
@@ -219,9 +232,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
         npresult = channel_shuffle_np(x, groups, data_format)
 
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
 
             paddle.disable_static(place=place)
 
@@ -320,8 +335,8 @@ class TestChannelShuffleFP16OP(TestChannelShuffleOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestChannelShuffleBF16OP(OpTest):
@@ -350,11 +365,11 @@ class TestChannelShuffleBF16OP(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 

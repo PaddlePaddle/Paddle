@@ -17,7 +17,7 @@ import unittest
 from contextlib import contextmanager
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import static
@@ -261,7 +261,8 @@ class TestFloorDivideOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseFloorDivOp_Stride(OpTest):
     no_need_check_grad = True
@@ -292,7 +293,7 @@ class TestElementwiseFloorDivOp_Stride(OpTest):
         self.val_dtype = np.float64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

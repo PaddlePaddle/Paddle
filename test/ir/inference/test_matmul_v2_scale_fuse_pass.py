@@ -119,7 +119,7 @@ class TestMatmulV2ScaleFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=100,
             passes=["matmul_v2_scale_fuse_pass"],

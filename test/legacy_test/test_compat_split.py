@@ -173,5 +173,27 @@ class TestCompatSplit(unittest.TestCase):
         self.assertEqual(str(cm.exception), msg_gt_5)
 
 
+class TestFunctionalSplit(unittest.TestCase):
+    def test_functional_split(self):
+        x = paddle.rand([3, 9, 5])
+        out_expect = paddle.compat.split(
+            x, split_size_or_sections=[2, 3, 4], dim=1
+        )
+        out_res = paddle.functional.split(
+            x, split_size_or_sections=[2, 3, 4], dim=1
+        )
+        for expect, res in zip(out_expect, out_res):
+            np.testing.assert_allclose(
+                expect.numpy(), res.numpy(), atol=1e-8, rtol=1e-8
+            )
+
+        out_expect = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
+        out_res = paddle.functional.split(x, split_size_or_sections=3, dim=-2)
+        for expect, res in zip(out_expect, out_res):
+            np.testing.assert_allclose(
+                expect.numpy(), res.numpy(), atol=1e-8, rtol=1e-8
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

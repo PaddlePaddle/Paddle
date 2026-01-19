@@ -38,10 +38,10 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86)),
+      ((arch == 80) || (arch == 86) || (arch == 90 || (arch == 100))),
       true,
-      common::errors::InvalidArgument(
-          "Currently weightonly linear grad only support arch = 80 or 86. "));
+      common::errors::InvalidArgument("Currently weightonly linear grad only "
+                                      "support arch = 80, 86, 90 or 100. "));
 
   PADDLE_ENFORCE_EQ(
       group_size,
@@ -49,12 +49,13 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "Currently weightonly linear grad only support per-channel mode. "));
 
-  int n = weight_scale.dims()[0];
-  int k = weight.dims()[1];
+  int64_t n = weight_scale.dims()[0];
+
+  int64_t k = weight.dims()[1];
+
   dev_ctx.template Alloc<T>(x_grad);
   if (x_grad->numel() == 0 || out_grad.numel() == 0) {
-    Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   DenseTensor weight_dequantized;

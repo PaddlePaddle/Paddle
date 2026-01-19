@@ -46,7 +46,7 @@ jobs:
   check-bypass:
     name: Check bypass
     if: ${{ inputs.can-skip != 'true' }}
-    uses: ./.github/workflows/check-bypass.yml
+    uses: ./.github/workflows/check-bypass-slice.yml
     with:
       workflow-name: "slice"
     secrets:

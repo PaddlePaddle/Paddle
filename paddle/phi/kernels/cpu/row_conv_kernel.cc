@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/row_conv_kernel.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -67,12 +68,12 @@ void RowConvKernel(const Context &dev_ctx,
       current_timesteps = end - start;
     }
     // int current_timesteps = end - start;
-    phi::DenseTensor cur_input_sequence =
+    DenseTensor cur_input_sequence =
         x->Slice(start, end);  // Current input sequence
     cur_input_sequence =
         cur_input_sequence.Resize({current_timesteps, input_dim});
 
-    phi::DenseTensor cur_output_sequence =
+    DenseTensor cur_output_sequence =
         out->Slice(start, end);  // Current output sequence
     cur_output_sequence =
         cur_output_sequence.Resize({current_timesteps, input_dim});

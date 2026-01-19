@@ -42,15 +42,15 @@ struct LabelSmoothFunctor {
 };
 
 template <typename T>
-__global__ void LabelSmoothRunDistKernel(const int N,
+__global__ void LabelSmoothRunDistKernel(const int64_t N,
                                          const float epsilon,
                                          const int dist_numel,
                                          const T* src,
                                          const T* dist_data,
                                          T* dst) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  CUDA_KERNEL_LOOP(idx, N) {
-    int dist_idx = idx % dist_numel;
+  CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
+    int64_t dist_idx = idx % dist_numel;
     dst[idx] =
         static_cast<T>((static_cast<MPType>(1) - static_cast<MPType>(epsilon)) *
                            static_cast<MPType>(src[idx]) +
@@ -84,7 +84,7 @@ void LabelSmoothKernel(const Context& dev_ctx,
     std::vector<const DenseTensor*> ins = {&label};
     std::vector<DenseTensor*> outs = {out};
     auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
-    phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   }
 }
 

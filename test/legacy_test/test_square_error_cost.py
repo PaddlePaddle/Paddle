@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -34,7 +34,9 @@ class TestSquareErrorCost(unittest.TestCase):
         np_result = sub * sub
 
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             with paddle.static.program_guard(paddle.static.Program()):
                 input_var = paddle.static.data(
@@ -47,7 +49,7 @@ class TestSquareErrorCost(unittest.TestCase):
                     input=input_var, label=label_var
                 )
 
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = Executor(place)
                 (result,) = exe.run(
                     paddle.static.default_main_program(),

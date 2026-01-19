@@ -26,7 +26,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#if IS_TRT_VERSION_GE(6000)
 class GatherNdPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit GatherNdPluginDynamic(bool with_fp16) { with_fp16_ = with_fp16; }
@@ -48,10 +47,11 @@ class GatherNdPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nbInputs,
-                                          nvinfer1::IExprBuilder& exprBuilder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -136,7 +136,6 @@ class GatherNdPluginDynamicCreator : public nvinfer1::IPluginCreator {
 };
 
 REGISTER_TRT_PLUGIN_V2(GatherNdPluginDynamicCreator);
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

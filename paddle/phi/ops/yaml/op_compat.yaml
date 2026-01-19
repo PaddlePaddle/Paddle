@@ -1337,6 +1337,16 @@
       data_type : int64_t
       support_tensor : true
 
+- op : flash_attn_v3_varlen
+  backward : flash_attn_v3_varlen_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
+
 - op : flash_attn_varlen_qkvpacked
   backward : flash_attn_varlen_qkvpacked_grad
   scalar :
@@ -2037,6 +2047,14 @@
      out : Out
   attrs : {slice_offset : slice_offset, accumulate : accumulate, is_combined : is_combined}
 
+- op : index_elementwise_put
+  backward : index_elementwise_put_grad, index_elementwise_put_double_grad
+
+- op : index_elementwise_put_with_tensor
+  backward : index_elementwise_put_with_tensor_grad, index_elementwise_put_with_tensor_double_grad
+  outputs :
+     out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
@@ -2288,6 +2306,9 @@
     data_format: data_layout
   extra :
     attrs : [bool use_mkldnn = false, bool use_onednn = false]
+
+- op : linear_v2
+  backward : linear_v2_grad, linear_v2_double_grad
 
 - op : linspace
   inputs :
@@ -4028,6 +4049,9 @@
       tensor_name : StopUpdate
   get_expected_kernel_type :
     update_loss_scaling_ : GetUpdateLossScalingExpectedKernelType
+
+- op : view_shape
+  backward : view_shape_grad, view_shape_double_grad
 
 - op : viterbi_decode
   inputs :

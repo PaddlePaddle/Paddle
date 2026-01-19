@@ -13,16 +13,8 @@
 // limitations under the License.
 
 #include <algorithm>
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/impl/sequence_softmax_kernel_impl.h"
 
@@ -43,13 +35,13 @@ __global__ void sequence_softmax_kernel(const T *in_data,
   __shared__ T shared_max_data;
   __shared__ T shared_sum_data;
 
-  for (int i = blockIdx.x; i < src_height; i += gridDim.x) {
+  for (size_t i = blockIdx.x; i < src_height; i += gridDim.x) {
     size_t start = ref_lod[i];
     size_t span = ref_lod[i + 1] - start;
 
     // Find the max ele
     T max_ele = -FLT_MAX;
-    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
       max_ele = max_ele > ele ? max_ele : ele;
     }
@@ -62,9 +54,9 @@ __global__ void sequence_softmax_kernel(const T *in_data,
 
     // sum
     T sum_data = 0;
-    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
-      sum_data += phi::funcs::real_exp(ele - shared_max_data);
+      sum_data += funcs::real_exp(ele - shared_max_data);
     }
     sum_data =
         BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, cub::Sum());
@@ -74,9 +66,9 @@ __global__ void sequence_softmax_kernel(const T *in_data,
     __syncthreads();
 
     // get final resit
-    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
-      ele = phi::funcs::real_exp(ele - shared_max_data) / shared_sum_data;
+      ele = funcs::real_exp(ele - shared_max_data) / shared_sum_data;
       out_data[start + tid] = ele;
     }
   }

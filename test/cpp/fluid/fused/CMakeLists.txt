@@ -35,9 +35,6 @@ if(WITH_GPU OR WITH_ROCM)
            phi
            common
            ${CINN_DEPS})
-  endif()
-  # resnet_unit needs cudnn 8.0 above
-  if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))
     nv_test(
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc

@@ -19,14 +19,14 @@ namespace phi {
 
 template <typename T>
 class ShuffleChannelONEDNNHandler
-    : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
+    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
  public:
-  ShuffleChannelONEDNNHandler(const phi::DenseTensor* x,
+  ShuffleChannelONEDNNHandler(const DenseTensor* x,
                               const int group,
                               const dnnl::engine engine,
                               phi::Place cpu_place)
-      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(
-            engine, cpu_place) {
+      : funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(engine,
+                                                                 cpu_place) {
     static constexpr int channel_axis = 1;
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             x->mem_desc(),

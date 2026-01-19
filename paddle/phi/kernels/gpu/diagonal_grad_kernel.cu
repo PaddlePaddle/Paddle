@@ -40,8 +40,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto dout_dim = dout->dims().Get();
   auto dout_dim_size = dout->dims().size();
 
-  std::vector<int64_t> res_dout =
-      common::vectorize(common::stride(dout->dims()));
+  std::vector<int64_t> res_dout = vectorize(common::stride(dout->dims()));
   DenseTensor dout_stride_tensor;
   phi::TensorFromVector<int64_t>(res_dout, dev_ctx, &dout_stride_tensor);
   int64_t* dout_stride = dout_stride_tensor.data<int64_t>();
@@ -51,7 +50,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto dx_dim = dx->dims().Get();
   auto dx_dim_size = dx->dims().size();
 
-  std::vector<int64_t> res_dx = common::vectorize(common::stride(dx->dims()));
+  std::vector<int64_t> res_dx = vectorize(common::stride(dx->dims()));
   DenseTensor dx_stride_tensor;
   phi::TensorFromVector<int64_t>(res_dx, dev_ctx, &dx_stride_tensor);
   int64_t* dx_stride = dx_stride_tensor.data<int64_t>();
@@ -63,7 +62,8 @@ void DiagonalGradKernel(const Context& dev_ctx,
   int64_t numel = dx->numel();
 
   int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
+  int64_t blocks_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int blocks = std::min((numel + threads - 1) / threads, blocks_max);
 
   int64_t dout_numel = out_grad.numel();
   phi::backends::gpu::GpuMemsetAsync(
@@ -168,7 +168,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
       break;
     default:
       PADDLE_THROW(errors::InvalidArgument(
-          "The rank of output(input@Grad) should be less than 10, but "
+          "The rank of output(input@GRAD) should be less than 10, but "
           "received %d.",
           dx_dim_size));
   }

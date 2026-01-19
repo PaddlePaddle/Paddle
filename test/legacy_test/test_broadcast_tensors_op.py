@@ -16,7 +16,12 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -177,19 +182,20 @@ class TestCPUBroadcastTensorsOp_complex128(TestCPUBroadcastTensorsOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBroadcastTensorsFP16Op(TestCPUBroadcastTensorsOp):
     def set_place(self):
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def set_dtypes(self):
         self.dtypes = ['float16']
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestBroadcastTensorsBF16Op(OpTest):
@@ -205,7 +211,7 @@ class TestBroadcastTensorsBF16Op(OpTest):
             gen_mixed_tensors_test,
         ]
         self.python_api = paddle.broadcast_tensors
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def run_dual_test(self, test_func, args):
         for gen_func in self.test_gen_func_list:

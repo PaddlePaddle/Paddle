@@ -26,14 +26,14 @@ template <typename T, typename Context>
 void InterpolateKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -43,12 +43,12 @@ void InterpolateKernel(
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
-  phi::funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+  funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
 
   if (size_tensor && size_tensor->size() > 0) {
     // have size tensor
@@ -123,8 +123,8 @@ void InterpolateKernel(
       errors::InvalidArgument("out_w in Attr(out_shape) of Op(interpolate) "
                               "should be greater than 0."));
 
-  phi::DDim dim_out;
-  if (data_layout == DataLayout::kNCHW) {
+  DDim dim_out;
+  if (data_layout == DataLayout::NCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
     dim_out = {n, out_h, out_w, c};
@@ -133,7 +133,7 @@ void InterpolateKernel(
   dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   bool nearest = "nearest" == interp_method;
@@ -141,7 +141,7 @@ void InterpolateKernel(
   if (nearest) {
     trans_mode = (align_corners == true) ? 0 : 2;
     PADDLE_ENFORCE_EQ(
-        (data_layout == DataLayout::kNCHW),
+        (data_layout == DataLayout::NCHW),
         true,
         errors::InvalidArgument("XPU nearest is only support NCHW"));
   }
@@ -158,7 +158,7 @@ void InterpolateKernel(
                                   out_w,
                                   nearest,
                                   trans_mode,
-                                  (data_layout == DataLayout::kNCHW));
+                                  (data_layout == DataLayout::NCHW));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d");
 }
 
@@ -166,14 +166,14 @@ template <typename T, typename Context>
 void BilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -198,14 +198,14 @@ template <typename T, typename Context>
 void NearestInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,

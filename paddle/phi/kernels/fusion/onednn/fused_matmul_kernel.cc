@@ -110,7 +110,7 @@ class FusedMatmulOneDNNHandler
     // TODO(jczaja): Why not for int8??
     if (!funcs::is_int8<OT>() && is_output_fused) {
       std::vector<int> transpose_axis = {0, 2, 1, 3};
-      out_strides = phi::funcs::FakeTransposeStrides(out_ddims, transpose_axis);
+      out_strides = funcs::FakeTransposeStrides(out_ddims, transpose_axis);
     }
 
     auto x_md = memory::desc(x_dims, funcs::OneDNNGetDataType<XT>(), x_strides);
@@ -221,7 +221,7 @@ class FusedMatmulOneDNNHandler
       const DenseTensor *input) {
     const XT *input_data = input->data<XT>();
     auto residual_memory_p = this->AcquireMemoryFromPrimitive(
-        input->mem_desc(), phi::funcs::to_void_cast<XT>(input_data));
+        input->mem_desc(), funcs::to_void_cast<XT>(input_data));
     return residual_memory_p;
   }
 
@@ -440,7 +440,7 @@ template <typename T, typename Context>
 void FusedMatmulKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        const DenseTensor &y,
-                       const paddle::optional<DenseTensor> &residual_data,
+                       const optional<DenseTensor> &residual_data,
                        bool transpose_x,
                        bool transpose_y,
                        const float matmul_alpha,

@@ -23,13 +23,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class ComputePropagateScalesMkldnnPass : public FusePassBase {
+class ComputePropagateScalesOnednnPass : public FusePassBase {
  public:
-  ComputePropagateScalesMkldnnPass() = default;
-  virtual ~ComputePropagateScalesMkldnnPass() {}
+  ComputePropagateScalesOnednnPass() = default;
+  virtual ~ComputePropagateScalesOnednnPass() {}
 
 #ifdef PADDLE_WITH_TESTING
-  friend class ComputePropagateScalesMkldnnPassTest;
+  friend class ComputePropagateScalesOnednnPassTest;
 #endif
 
  protected:

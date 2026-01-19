@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -1003,8 +1003,8 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.with_weight = True
         place = base.CPUPlace()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
@@ -1054,8 +1054,8 @@ class TestNLLLossOp1DNoReduce(OpTest):
         self.with_weight = True
         place = base.CPUPlace()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
@@ -1104,8 +1104,8 @@ class TestNLLLossOp2DWithReduce(OpTest):
         self.with_weight = True
         place = base.CPUPlace()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
@@ -1155,8 +1155,8 @@ class TestNLLLossOp2DNoReduce(OpTest):
         self.with_weight = True
         place = base.CPUPlace()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
     def init_test_case(self):

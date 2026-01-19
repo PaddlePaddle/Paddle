@@ -63,11 +63,7 @@ __global__ void YoloBoxHeadKernel(const float* input,
 
 int YoloBoxHeadPlugin::enqueue(int batch_size,
                                const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                               void** outputs,
-#else
                                void* const* outputs,
-#endif
                                void* workspace,
                                cudaStream_t stream) TRT_NOEXCEPT {
   const int h = input_dims_[0].d[1];

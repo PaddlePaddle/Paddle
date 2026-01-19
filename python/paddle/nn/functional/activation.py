@@ -14,13 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     param_one_alias,
+    param_two_alias,
     softmax_param_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -36,8 +37,18 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DataLayout2D, DTypeLike
 
+from paddle._C_ops import (  # noqa: F401
+    gelu,
+    softplus,
+)
 
-def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
+
+def celu(
+    x: Tensor,
+    alpha: float = 1.0,
+    inplace: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     celu activation.
 
@@ -50,6 +61,7 @@ def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, or float64.
         alpha (float, optional): The 'alpha' value of the CELU formula. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -67,11 +79,23 @@ def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.19865242,  6.        ],
              [ 1.        , 15.60000038]])
+            >>> out = F.celu(x, alpha=0.2, inplace=True)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
     if in_dynamic_or_pir_mode():
-        return _C_ops.celu(x, alpha)
+        if inplace:
+            return _C_ops.celu_(x, alpha)
+        else:
+            return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'celu'
@@ -151,89 +175,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     return _C_ops.elu_(x, alpha)
 
 
-def gelu(
-    x: Tensor,
-    approximate: Literal["tanh", "none"] | bool = False,
-    name: str | None = None,
-) -> Tensor:
-    r"""
-    gelu activation.
-
-    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
-
-    approximate parameter must be True, False, "tanh", "none".
-
-    if approximate is True or "tanh"
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
-
-    else
-
-    .. math::
-
-        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        approximate (str|bool, optional): Whether to enable approximation. Default is False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
-            >>> out1 = F.gelu(x)
-            >>> print(out1)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out2 = F.gelu(x, True)
-            >>> print(out2)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-            >>> out3 = F.gelu(x, "none")
-            >>> print(out3)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15865529,  0.34573123],
-             [ 0.84134471,  1.39978933]])
-            >>> out4 = F.gelu(x, "tanh")
-            >>> print(out4)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.15880796,  0.34571400],
-             [ 0.84119201,  1.39957154]])
-    """
-
-    if approximate == "tanh":
-        approximate = True
-    elif approximate == "none":
-        approximate = False
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.gelu(x, approximate)
-    else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'gelu'
-        )
-        helper = LayerHelper("gelu", **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='gelu',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'approximate': approximate},
-        )
-        return out
-
-
+@param_two_alias(["x", "input"], ["threshold", "lambd"])
 def hardshrink(
     x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
@@ -363,6 +305,7 @@ def hardsigmoid(
     x: Tensor,
     slope: float = 0.1666667,
     offset: float = 0.5,
+    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -385,6 +328,7 @@ def hardsigmoid(
         x (Tensor): The input Tensor with data type float32, float64.
         slope (float, optional): The slope of hardsigmoid function. Default is 0.1666667.
         offset (float, optional): The offset of hardsigmoid function. Default is 0.5.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -401,10 +345,20 @@ def hardsigmoid(
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.        , 0.66666669])
+            >>> out = F.hardsigmoid(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.hardsigmoid(x, slope, offset)
+        if inplace:
+            return _C_ops.hardsigmoid_(x, slope, offset)
+        else:
+            return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardsigmoid'
@@ -670,6 +624,7 @@ def rrelu(
     lower: float = 1.0 / 8.0,
     upper: float = 1.0 / 3.0,
     training: bool = True,
+    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -714,6 +669,7 @@ def rrelu(
         lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
         upper (float, optional): The upper bound of uniform distribution. Default: 0.3333333333333333.
         training (bool, optional): Current mode is in training or others.  Default is True.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -740,6 +696,15 @@ def rrelu(
               [[ 1.        , -0.44942653, -0.68969047,  4.        ],
                [-1.03736508,  6.        ,  7.        , -0.95799232],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
+            >>> out = F.rrelu(input_tensor, 0.1, 0.3, inplace=True)
+            >>> print(input_tensor)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-0.38849574,  3.        , -1.08560097,  5.        ],
+               [ 3.        , -0.67717779,  5.        , -1.35442924],
+               [-1.46664631, -1.08899045,  8.        ,  9.        ]],
+              [[ 1.        , -0.42030090, -0.73198748,  4.        ],
+               [-1.28576696,  6.        ,  7.        , -2.02790141],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
@@ -764,7 +729,10 @@ def rrelu(
     is_test = not training
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.rrelu(x, lower, upper, is_test)
+        if inplace:
+            return _C_ops.rrelu_(x, lower, upper, is_test)
+        else:
+            return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
             x, 'X', ['float16', 'uint16', 'float32', 'float64'], 'rrelu'
@@ -833,6 +801,7 @@ def relu_(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.relu_(x)
 
 
+@param_one_alias(["x", "input"])
 def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     log_sigmoid activation.
@@ -843,6 +812,7 @@ def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1013,6 +983,7 @@ def selu(
     x: Tensor,
     scale: float = 1.0507009873554804934193349852946,
     alpha: float = 1.6732632423543772848170429916717,
+    inplace: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1032,6 +1003,7 @@ def selu(
         x (Tensor): The input Tensor with data type float32, float64.
         scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946.
         alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1049,6 +1021,15 @@ def selu(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 1.05070102],
              [2.10140204, 3.15210295]])
+            >>> out = F.selu(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
     """
     if scale <= 1.0:
         raise ValueError(
@@ -1061,7 +1042,10 @@ def selu(
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.selu(x, scale, alpha)
+        if inplace:
+            return _C_ops.selu_(x, scale, alpha)
+        else:
+            return _C_ops.selu(x, scale, alpha)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'selu'
@@ -1343,67 +1327,7 @@ def softmax_(
     return _C_ops.softmax_(outs_cast, axis)
 
 
-def softplus(
-    x: Tensor, beta: float = 1, threshold: float = 20, name: str | None = None
-) -> Tensor:
-    r"""
-    softplus activation
-
-    .. math::
-        softplus(x)=\begin{cases}
-                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
-                x,&x>\frac{\varepsilon}{\beta}.
-            \end{cases}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
-        beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
-        threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            >>> out = F.softplus(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.softplus(x, beta, threshold)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'softplus',
-        )
-        helper = LayerHelper('softplus', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='softplus',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'beta': beta, 'threshold': threshold},
-        )
-        return out
-
-
+@param_two_alias(["x", "input"], ["threshold", "lambd"])
 def softshrink(
     x: Tensor, threshold: float = 0.5, name: str | None = None
 ) -> Tensor:
@@ -1502,7 +1426,7 @@ def softsign(x: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
-def swish(x: Tensor, name: str | None = None) -> Tensor:
+def swish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     swish activation.
 
@@ -1512,6 +1436,7 @@ def swish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1528,9 +1453,19 @@ def swish(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
+            >>> out = F.swish(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.swish(x)
+        if inplace:
+            return _C_ops.swish_(x)
+        else:
+            return _C_ops.swish(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'swish'
@@ -1546,7 +1481,7 @@ def swish(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def mish(x: Tensor, name: str | None = None) -> Tensor:
+def mish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     mish activation.
 
@@ -1561,6 +1496,7 @@ def mish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1577,9 +1513,19 @@ def mish(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.03357624,  0.        ,  4.99955177])
+            >>> out = F.mish(x, inplace=True)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
+            >>> print(x)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.mish(x, 20)
+        if inplace:
+            return _C_ops.mish_(x, 20)
+        else:
+            return _C_ops.mish(x, 20)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'mish'
@@ -1822,6 +1768,7 @@ def log_softmax(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
     r"""
     The gated linear unit. The input is evenly splited into 2 parts along a
@@ -1953,3 +1900,38 @@ def gumbel_softmax(
         attrs={'temperature': temperature, 'hard': hard, 'axis': axis},
     )
     return out
+
+
+def swiglu(
+    x: Tensor, y: Tensor | None = None, name: str | None = None
+) -> Tensor:
+    """
+    This function performs SwiGLU activation to the input Tensor.
+
+    .. math::
+
+        out = silu(x) * y when y is not None
+        out = silu(xs[0]) * xs[1] when y is None, where xs = paddle.chunk(x, 2, axis=-1)
+
+    Args:
+        x (Tensor): The first input Tensor of SwiGLU.
+        y (Tensor, optional): The second input Tensor of SwiGLU. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        A Tensor with the same data type with x and y.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+            >>> x = paddle.to_tensor([1, 2], dtype='float32')
+            >>> out1, out2 = F.swiglu(x), F.swiglu(x, x)
+            >>> print(out1, out2)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [1.46211720]) Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [0.73105860, 3.52318811])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.swiglu(x, y)

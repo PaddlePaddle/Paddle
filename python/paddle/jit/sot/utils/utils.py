@@ -211,6 +211,10 @@ def already_unified_in_dynamic_and_static_graph(fn):
     )
 
 
+def need_capture_control_flow(fn):
+    return TransformOptions.check_fn_need_capture_control_flow(fn)
+
+
 def is_builtin_fn(fn):
     special_builtin_fns = [weakref.ref]
     if fn in special_builtin_fns:
@@ -460,6 +464,8 @@ def get_api_fullname(api):
     api_name = api.__name__
     module_str = api.__module__
     while len(module_str) > 0:
+        if module_str not in sys.modules:
+            return api_name
         module = sys.modules[module_str]
         if hasattr(module, api_name):
             return module_str + "." + api_name

@@ -65,10 +65,10 @@ void QrGradKernel(const Context& dev_ctx,
   DenseTensor& dA = *x_grad;
 
   dev_ctx.template Alloc<T>(&dA);
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, &dA, T(0));
 
   bool compute_q, reduced;
-  std::tie(compute_q, reduced) = phi::funcs::ParseQrMode(mode);
+  std::tie(compute_q, reduced) = funcs::ParseQrMode(mode);
   if (!compute_q) {
     PADDLE_THROW(errors::InvalidArgument(
         "The derivative of qr is not implemented when mode='%s'.", mode));
@@ -76,8 +76,8 @@ void QrGradKernel(const Context& dev_ctx,
 
   auto a_dims = A.dims();
   int a_rank = a_dims.size();
-  int m = a_dims[a_rank - 2];
-  int n = a_dims[a_rank - 1];
+  int64_t m = a_dims[a_rank - 2];
+  int64_t n = a_dims[a_rank - 1];
 
   if ((m > n) && (!reduced)) {
     PADDLE_THROW(errors::InvalidArgument(
@@ -88,7 +88,7 @@ void QrGradKernel(const Context& dev_ctx,
   }
 
   // m >= n case
-  auto m_gt_n_case = [](const Context& dev_ctx,
+  auto m_ge_n_case = [](const Context& dev_ctx,
                         const DenseTensor& dQ,
                         const DenseTensor& dR,
                         const DenseTensor& A UNUSED,
@@ -186,8 +186,8 @@ void QrGradKernel(const Context& dev_ctx,
   };
 
   if (m >= n) {
-    auto dA_tmp = m_gt_n_case(dev_ctx, dQ, dR, A, Q, R);
-    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
+    auto dA_tmp = m_ge_n_case(dev_ctx, dQ, dR, A, Q, R);
+    Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   } else {
     // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
     // Calculate dX and dY individually and concatenate them to get dA
@@ -214,11 +214,11 @@ void QrGradKernel(const Context& dev_ctx,
     if (dQ.initialized()) {
       dQ_prime = Add<T, Context>(dev_ctx, dQ, dQ_prime);
     }
-    dX = m_gt_n_case(dev_ctx, dQ_prime, dU, A, Q, U);
+    dX = m_ge_n_case(dev_ctx, dQ_prime, dU, A, Q, U);
     dY = Matmul<T, Context>(dev_ctx, Q, dV);
     // Concatenate dX and dY to get dA.
     auto dA_tmp = Concat<T, Context>(dev_ctx, {&dX, &dY}, -1);
-    phi::Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
+    Copy(dev_ctx, dA_tmp, dA.place(), false, &dA);
   }
 }
 

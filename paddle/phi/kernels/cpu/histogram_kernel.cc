@@ -39,8 +39,7 @@ void HistogramKernel(const Context& dev_ctx,
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   auto input_numel = input.numel();
   if (input_numel == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -91,7 +90,7 @@ void HistogramKernel(const Context& dev_ctx,
 
   if (density || weight_data) {
     float* out_data = dev_ctx.template Alloc<float>(output);
-    phi::funcs::SetConstant<Context, float>()(
+    funcs::SetConstant<Context, float>()(
         dev_ctx, output, static_cast<float>(0));
     for (int64_t i = 0; i < input_numel; i++) {
       if (input_data[i] >= output_min && input_data[i] <= output_max) {
@@ -113,7 +112,7 @@ void HistogramKernel(const Context& dev_ctx,
     }
   } else {
     int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(
+    funcs::SetConstant<Context, int64_t>()(
         dev_ctx, output, static_cast<int64_t>(0));
     for (int64_t i = 0; i < input_numel; i++) {
       if (input_data[i] >= output_min && input_data[i] <= output_max) {

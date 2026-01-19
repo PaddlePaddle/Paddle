@@ -148,7 +148,7 @@ class TestSeqpoolCvmConcatFusePass(PassAutoScanTest):
         yield config, ["im2sequence", "fusion_seqpool_cvm_concat"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, passes=["seqpool_cvm_concat_fuse_pass"]
         )
 

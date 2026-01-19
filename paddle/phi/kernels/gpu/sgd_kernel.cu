@@ -23,16 +23,16 @@
 
 namespace phi {
 
-template <typename T, typename MT>
+template <typename T, typename MT, typename GradT>
 __global__ void SGDKernelMT(const T* param,
-                            const T* grad,
+                            const GradT* grad,
                             const T* learning_rate,
-                            const int num,
+                            const int64_t num,
                             T* param_out,
                             const MT* master_param,
                             MT* master_param_out) {
   MT lr = static_cast<MT>(learning_rate[0]);
-  CUDA_KERNEL_LOOP(i, num) {
+  CUDA_KERNEL_LOOP_TYPE(i, num, int64_t) {
     MT p_data = master_param ? master_param[i] : static_cast<MT>(param[i]);
     MT g_data = static_cast<MT>(grad[i]);
     p_data = p_data - lr * g_data;
@@ -85,18 +85,30 @@ void SGDDenseKernel(const Context& dev_ctx,
   MPDType* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
                       : nullptr;
+  const bool use_float32_grad = grad.dtype() == phi::DataType::FLOAT32;
 
   int block = 512;
-  int grid = (param.numel() + block - 1) / block;
-
-  SGDKernelMT<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
-      param.data<T>(),
-      grad.data<T>(),
-      learning_rate.data<T>(),
-      param.numel(),
-      dev_ctx.template Alloc<T>(param_out),
-      master_in_data,
-      master_out_data);
+  int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int grid = std::min((param.numel() + block - 1) / block, grid_max);
+  if (use_float32_grad) {
+    SGDKernelMT<T, MPDType, float><<<grid, block, 0, dev_ctx.stream()>>>(
+        param.data<T>(),
+        grad.data<float>(),
+        learning_rate.data<T>(),
+        param.numel(),
+        dev_ctx.template Alloc<T>(param_out),
+        master_in_data,
+        master_out_data);
+  } else {
+    SGDKernelMT<T, MPDType, T><<<grid, block, 0, dev_ctx.stream()>>>(
+        param.data<T>(),
+        grad.data<T>(),
+        learning_rate.data<T>(),
+        param.numel(),
+        dev_ctx.template Alloc<T>(param_out),
+        master_in_data,
+        master_out_data);
+  }
 }
 
 template <typename T, typename Context>

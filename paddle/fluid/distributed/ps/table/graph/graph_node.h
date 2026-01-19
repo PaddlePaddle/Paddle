@@ -142,7 +142,7 @@ class FeatureNode : public Node {
                                 "get_feature_ids res should not be null"));
     errno = 0;
     for (auto &feature_item : feature) {
-      const uint64_t *feas = (const uint64_t *)(feature_item.c_str());
+      const char *data = feature_item.c_str();
       size_t num = feature_item.length() / sizeof(uint64_t);
       PADDLE_ENFORCE_EQ((feature_item.length() % sizeof(uint64_t)),
                         0,
@@ -151,7 +151,8 @@ class FeatureNode : public Node {
       size_t n = res->size();
       res->resize(n + num);
       for (size_t i = 0; i < num; ++i) {
-        (*res)[n + i] = feas[i];
+        std::memcpy(&val, data + i * sizeof(uint64_t), sizeof(uint64_t));
+        (*res)[n + i] = val;
       }
     }
     PADDLE_ENFORCE_EQ(

@@ -29,7 +29,9 @@ __global__ void SumArrayPartialCUDAKernel(T **in,
                                           int64_t start_index,
                                           int64_t length,
                                           int64_t row_length) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   while (id < lod_length) {
     T total = static_cast<T>(0);
     int b_id = id / length;
@@ -54,7 +56,9 @@ __global__ void PartialSumGradCUDAKernel(T **res_grad,
                                          int64_t start_index,
                                          int64_t length,
                                          int64_t row_length) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   while (id < lod_length) {
     T total = static_cast<T>(0);
     int b_id = id / length;
@@ -122,7 +126,7 @@ void PartialSumOpCUDAKernel(const Context &dev_ctx,
 
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             tmp_in_array->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             reinterpret_cast<void *>(in_data.data()),
                             in_data.size() * sizeof(T *));
 
@@ -160,7 +164,7 @@ void PartialSumGradOpCUDAKernel(const Context &dev_ctx,
   auto &place = *dev_ctx.eigen_device();
   for (size_t i = 0; i < outs.size(); ++i) {
     dev_ctx.template Alloc<T>(outs[i]);
-    auto dxt = phi::EigenVector<T>::Flatten(*outs[i]);
+    auto dxt = EigenVector<T>::Flatten(*outs[i]);
     dxt.device(place) = dxt.constant(static_cast<T>(0));
   }
 
@@ -203,7 +207,7 @@ void PartialSumGradOpCUDAKernel(const Context &dev_ctx,
 
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             tmp_out_array->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             reinterpret_cast<void *>(out_data.data()),
                             out_data.size() * sizeof(T *));
 

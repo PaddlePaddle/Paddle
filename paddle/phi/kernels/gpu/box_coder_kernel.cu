@@ -162,10 +162,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   // prior_box and prior_box_var have the same shape, so do not judge
   // prior_box_var
   if (prior_box.numel() == 0 || target_box.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(output_box->dims())),
-                          0,
-                          output_box);
+    Full<T, Context>(dev_ctx, output_box->dims(), 0, output_box);
     return;
   }
 
@@ -200,10 +197,10 @@ void BoxCoderKernel(const Context &dev_ctx,
                           " supports LoD with one level."));
   }
   const int var_size = static_cast<int>(variance.size());
-  auto code_type = phi::funcs::GetBoxCodeType(code_type_str);
+  auto code_type = funcs::GetBoxCodeType(code_type_str);
   int64_t row = target_box.dims()[0];
   int64_t col = prior_box.dims()[0];
-  if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     col = target_box.dims()[1];
   }
   int64_t len = prior_box.dims()[1];
@@ -216,7 +213,7 @@ void BoxCoderKernel(const Context &dev_ctx,
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float *dev_var_data = reinterpret_cast<float *>(dev_var->ptr());
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
   memory_utils::Copy(
       gplace, dev_var_data, cplace, &variance[0], bytes, dev_ctx.stream());
@@ -225,7 +222,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(output_box);
   T *output = output_box->data<T>();
 
-  if (code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kEncodeCenterSize) {
     EncodeCenterSizeKernel<T>
         <<<grid, block, 0, dev_ctx.stream()>>>(prior_box_data,
                                                prior_box_var_data,
@@ -238,7 +235,7 @@ void BoxCoderKernel(const Context &dev_ctx,
                                                dev_var_data,
                                                var_size,
                                                output);
-  } else if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  } else if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     DecodeCenterSizeKernel<T>
         <<<grid, block, 0, dev_ctx.stream()>>>(prior_box_data,
                                                prior_box_var_data,

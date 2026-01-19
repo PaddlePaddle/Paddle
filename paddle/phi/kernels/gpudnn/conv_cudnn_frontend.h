@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -27,6 +28,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -41,7 +44,7 @@ class CudnnFrontendConvHelper {
     return false;
   }
 
-  static uint8_t GetAlignment(const phi::DenseTensor* tensor) {
+  static uint8_t GetAlignment(const DenseTensor* tensor) {
     // alignment are in bytes
     uint8_t alignment = 1;
     uint64_t address = reinterpret_cast<uint64_t>(tensor->data());
@@ -60,7 +63,7 @@ class CudnnFrontendConvHelper {
   static std::vector<int64_t> GenerateStrides(
       const std::vector<int64_t>& dim, cudnnTensorFormat_t filter_format) {
     // ref:
-    // https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/helpers.cpp
+    // https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/legacy_samples/helpers.cpp
     // For INT8x4 and INT8x32 we still compute standard strides here to input
     // into the cuDNN functions. We will manually scale by resizeFactor in the
     // cpu ref.
@@ -84,7 +87,7 @@ class CudnnFrontendConvHelper {
   }
 
   static cudnn_frontend::Tensor GetTensorDescriptor(
-      const phi::DenseTensor* tensor,
+      const DenseTensor* tensor,
       int64_t id,
       cudnnTensorFormat_t layout_format) {
     auto transformed_dims = common::vectorize<int64_t>(tensor->dims());
@@ -154,9 +157,9 @@ class CudnnFrontendConvHelper {
 
   template <cudnnBackendDescriptorType_t op_mode>
   static cudnn_frontend::OperationGraph BuildConvOperationGraph(
-      const phi::DenseTensor* x_tensor,
-      const phi::DenseTensor* y_tensor,
-      const phi::DenseTensor* w_tensor,
+      const DenseTensor* x_tensor,
+      const DenseTensor* y_tensor,
+      const DenseTensor* w_tensor,
       cudnnTensorFormat_t layout_format,
       const std::vector<int>& strides,
       const std::vector<int>& padding_common,
@@ -212,7 +215,10 @@ class CudnnFrontendConvHelper {
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
     auto predicate_function =
         [=](cudnn_frontend::ExecutionPlan const& plan) -> bool {
-      return plan.getWorkspaceSize() > workspace_size_limit;
+      if (FLAGS_use_accuracy_compatible_kernel)
+        return false;
+      else
+        return plan.getWorkspaceSize() > workspace_size_limit;
     };
     VLOG(6) << "[cudnn_frontend] Max workspace size: " << workspace_size_limit;
     cudnn_frontend::executionPlans_t plans;

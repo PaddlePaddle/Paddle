@@ -154,7 +154,7 @@ def pty_run(command: list[str]) -> subprocess.CompletedProcess[str]:
 
 class MypyChecker(TypeChecker):
     REGEX_MYPY_ERROR_ITEM = re.compile(
-        r'^(?P<filepath>.*\.py):(?P<lineno>\d+):((?P<colno>\d+):)? (?P<level>error|note):(?P<msg>.*)$'
+        r'^(?P<filepath>.*\.py):(?P<lineno>\d+):((?P<colno>\d+):)? (?P<level>error):(?P<msg>.*)$'
     )
     REGEX_MYPY_ERROR_SUMMARY = re.compile(
         r'Found (?P<num_errors>\d+) errors? in (?P<num_files>\d+) files?'

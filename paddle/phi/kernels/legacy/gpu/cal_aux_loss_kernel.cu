@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/gpu/cal_aux_loss_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {
@@ -47,27 +47,30 @@ __global__ void cal_aux_loss_kernel(
   float seqlen_float_f = 0.f;
   if (dispatch_tokens_mask) {
     float local_seqlen_float_f = 0.f;
-    int64_t num_k = (dispatch_tokens_mask_len + blockDim.x - 1) / blockDim.x;
+    int64_t num_k =
+        (dispatch_tokens_mask_len + static_cast<int64_t>(blockDim.x) - 1) /
+        static_cast<int64_t>(blockDim.x);
     for (int64_t k = 0; k < num_k; ++k) {
       if (k * blockDim.x + threadIdx.x >= dispatch_tokens_mask_len) continue;
       bool mask = dispatch_tokens_mask[k * blockDim.x + threadIdx.x];
       local_seqlen_float_f += static_cast<float>(mask);
     }
     seqlen_float_f =
-        phi::funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
+        funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
 
     // 算scale_val
     if (tokens_mask && row_gate_prob != dispatch_tokens_mask_len) {
       float sum_tokens_mask = 0.f;
       float local_sum_tokens_mask = 0.f;
-      int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+      int64_t num_k = (row_gate_prob + static_cast<int64_t>(blockDim.x) - 1) /
+                      static_cast<int64_t>(blockDim.x);
       for (int64_t k = 0; k < num_k; ++k) {
         if (k * blockDim.x + threadIdx.x >= row_gate_prob) continue;
         T mask = tokens_mask[k * blockDim.x + threadIdx.x];
         local_sum_tokens_mask += static_cast<float>(mask);
       }
       sum_tokens_mask =
-          phi::funcs::BlockReduceSum<float>(local_sum_tokens_mask, 0xFFFFFFFF);
+          funcs::BlockReduceSum<float>(local_sum_tokens_mask, 0xFFFFFFFF);
       if (threadIdx.x == 0) {
         shared_float[0] = seqlen_float_f / max(sum_tokens_mask, clip_min);
       }
@@ -77,14 +80,15 @@ __global__ void cal_aux_loss_kernel(
 
   } else if (tokens_mask) {
     float local_seqlen_float_f = 0.f;
-    int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+    int64_t num_k = (row_gate_prob + static_cast<int64_t>(blockDim.x) - 1) /
+                    static_cast<int64_t>(blockDim.x);
     for (int64_t k = 0; k < num_k; ++k) {
       if (k * blockDim.x + threadIdx.x >= row_gate_prob) continue;
       T mask = tokens_mask[k * blockDim.x + threadIdx.x];
       local_seqlen_float_f += static_cast<float>(mask);
     }
     seqlen_float_f =
-        phi::funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
+        funcs::BlockReduceSum<float>(local_seqlen_float_f, 0xFFFFFFFF);
   } else {
     seqlen_float_f = static_cast<float>(row_gate_prob) /
                      static_cast<float>(num_experts) *
@@ -100,7 +104,8 @@ __global__ void cal_aux_loss_kernel(
   __syncthreads();
   // 处理dispatch_mask
   if (col_dispatch_mask > 1) {
-    int64_t num_k = (row_dispatch_mask + blockDim.x - 1) / blockDim.x;
+    int64_t num_k = (row_dispatch_mask + static_cast<int64_t>(blockDim.x) - 1) /
+                    static_cast<int64_t>(blockDim.x);
 
     for (int64_t e = 0; e < col_dispatch_mask; e++) {
       int64_t local_sum_val = 0.f;
@@ -114,7 +119,7 @@ __global__ void cal_aux_loss_kernel(
         local_sum_val += mask_val;
       }
       int64_t sum_val =
-          phi::funcs::BlockReduceSum<int64_t>(local_sum_val, 0xFFFFFFFF);
+          funcs::BlockReduceSum<int64_t>(local_sum_val, 0xFFFFFFFF);
       if (threadIdx.x == 0) {
         aux_loss_shared[e] = sum_val;
       }
@@ -128,7 +133,8 @@ __global__ void cal_aux_loss_kernel(
 
   // 算me和l_aux
   float l_aux = 0.f;
-  int64_t num_k = (row_gate_prob + blockDim.x - 1) / blockDim.x;
+  int64_t num_k = (row_gate_prob + static_cast<int64_t>(blockDim.x) - 1) /
+                  static_cast<int64_t>(blockDim.x);
   for (int64_t e = 0; e < col_gate_prob; e++) {
     float local_sum_val = 0.f;
     for (int64_t k = 0; k < num_k; ++k) {
@@ -139,8 +145,7 @@ __global__ void cal_aux_loss_kernel(
       }
       local_sum_val += gate_prob_val;
     }
-    float sum_val =
-        phi::funcs::BlockReduceSum<float>(local_sum_val, 0xFFFFFFFF);
+    float sum_val = funcs::BlockReduceSum<float>(local_sum_val, 0xFFFFFFFF);
     if (threadIdx.x == 0) {
       float ce_val = static_cast<float>(aux_loss_shared[e]) / seqlen_float_f;
       float me_val = sum_val / seqlen_float_f;

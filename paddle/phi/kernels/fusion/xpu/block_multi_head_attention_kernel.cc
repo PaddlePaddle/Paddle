@@ -25,8 +25,8 @@ namespace fusion {
 
 template <typename Context>
 int GetMaxLen(const Context& dev_ctx,
-              const phi::DenseTensor& seq_lens_tensor,
-              phi::DenseTensor* max_len_tensor,
+              const DenseTensor& seq_lens_tensor,
+              DenseTensor* max_len_tensor,
               const int batch_size) {
   int max_len_cpu = 0;
   int r = baidu::xpu::api::reduce_max<int>(dev_ctx.x_context(),
@@ -141,21 +141,21 @@ void BlockMultiheadAttentionXPUKernel(
     const DenseTensor& block_tables,
     const DenseTensor& cache_k_per_batch_maxs,
     const DenseTensor& cache_v_per_batch_maxs,
-    const paddle::optional<DenseTensor>& pre_key_cache,
-    const paddle::optional<DenseTensor>& pre_value_cache,
-    const paddle::optional<DenseTensor>& rope_emb,
-    const paddle::optional<DenseTensor>& mask,
-    const paddle::optional<DenseTensor>& tgt_mask,
-    const paddle::optional<DenseTensor>& cache_k_quant_scales,
-    const paddle::optional<DenseTensor>& cache_v_quant_scales,
-    const paddle::optional<DenseTensor>& cache_k_dequant_scales,
-    const paddle::optional<DenseTensor>& cache_v_dequant_scales,
-    const paddle::optional<DenseTensor>& qkv_out_scale,
-    const paddle::optional<DenseTensor>& qkv_bias,
-    const paddle::optional<DenseTensor>& out_shift,
-    const paddle::optional<DenseTensor>& out_smooth,
-    const paddle::optional<DenseTensor>& max_enc_len_this_time,
-    const paddle::optional<DenseTensor>& max_dec_len_this_time,
+    const optional<DenseTensor>& pre_key_cache,
+    const optional<DenseTensor>& pre_value_cache,
+    const optional<DenseTensor>& rope_emb,
+    const optional<DenseTensor>& mask,
+    const optional<DenseTensor>& tgt_mask,
+    const optional<DenseTensor>& cache_k_quant_scales,
+    const optional<DenseTensor>& cache_v_quant_scales,
+    const optional<DenseTensor>& cache_k_dequant_scales,
+    const optional<DenseTensor>& cache_v_dequant_scales,
+    const optional<DenseTensor>& qkv_out_scale,
+    const optional<DenseTensor>& qkv_bias,
+    const optional<DenseTensor>& out_shift,
+    const optional<DenseTensor>& out_smooth,
+    const optional<DenseTensor>& max_enc_len_this_time,
+    const optional<DenseTensor>& max_dec_len_this_time,
     int max_seq_len,
     int block_size,
     bool use_neox_style,
@@ -175,8 +175,8 @@ void BlockMultiheadAttentionXPUKernel(
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  phi::DenseTensor qkv_buf;
-  phi::DenseTensor fmha_buf;
+  DenseTensor qkv_buf;
+  DenseTensor fmha_buf;
   VLOG(3) << "fmha_out " << fmha_out->dims();
   if (out_scale <= 0) {
     dev_ctx.template Alloc<T>(fmha_out);
@@ -196,18 +196,30 @@ void BlockMultiheadAttentionXPUKernel(
   const int dim_head = key_cache_dims[3];
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
   const int q_num_head = total_num_head - 2 * kv_num_head;
-  const int bsz = cum_offsets.dims()[0];
-  const int max_block_per_seq = block_tables.dims()[1];
-  const int out_row = fmha_out->dims()[0];
-  const int out_col = fmha_out->dims()[1];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t bsz = cum_offsets.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_block_per_seq = block_tables.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_row = fmha_out->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_col = fmha_out->dims()[1];
+
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
           << " q_num_head: " << q_num_head << " kv_num_head: " << kv_num_head
           << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
-  bool causual = true;
+  bool causal = true;
   if (mask) {
-    causual = false;
+    causal = false;
   }
   bool use_pre_cache = false;
   int pre_cache_length = 0;
@@ -220,7 +232,7 @@ void BlockMultiheadAttentionXPUKernel(
 
   int max_dec_len_this_time_data(0);
   if (!max_dec_len_this_time) {
-    phi::DenseTensor max_dec_len_tensor;
+    DenseTensor max_dec_len_tensor;
     max_dec_len_tensor.Resize({{1}});
     dev_ctx.template Alloc<int>(&max_dec_len_tensor,
                                 max_dec_len_tensor.numel() * sizeof(int));
@@ -229,7 +241,7 @@ void BlockMultiheadAttentionXPUKernel(
   } else {
     PADDLE_ENFORCE_EQ(
         max_dec_len_this_time.get().place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         errors::InvalidArgument(
             "The place of input max_dec_len_this_time must be CPU, but got %s.",
             max_dec_len_this_time.get().place()));
@@ -237,7 +249,7 @@ void BlockMultiheadAttentionXPUKernel(
   }
   int max_enc_len_this_time_data(0);
   if (!max_enc_len_this_time) {
-    phi::DenseTensor max_enc_len_tensor;
+    DenseTensor max_enc_len_tensor;
     max_enc_len_tensor.Resize({{1}});
     dev_ctx.template Alloc<int>(&max_enc_len_tensor,
                                 max_enc_len_tensor.numel() * sizeof(int));
@@ -246,7 +258,7 @@ void BlockMultiheadAttentionXPUKernel(
   } else {
     PADDLE_ENFORCE_EQ(
         max_enc_len_this_time.get().place().GetType(),
-        phi::AllocationType::CPU,
+        AllocationType::CPU,
         errors::InvalidArgument(
             "The place of input max_enc_len_this_time must be CPU, but got %s.",
             max_enc_len_this_time.get().place()));
@@ -255,9 +267,9 @@ void BlockMultiheadAttentionXPUKernel(
 
   const int MAXPTR_N = xpu_context->max_ptr_size();
   VLOG(3) << "max_len end";
-  phi::DenseTensor unpadding_q, unpadding_k, unpadding_v;
-  phi::DenseTensor softmax_out, softmax_lse, seed_offset;
-  phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
+  DenseTensor unpadding_q, unpadding_k, unpadding_v;
+  DenseTensor softmax_out, softmax_lse, seed_offset;
+  DenseTensor q_trans, k_trans, v_trans, qktv_out;
   if (!use_pre_cache) {
     unpadding_q.Resize({{token_num, q_num_head, dim_head}});
     unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
@@ -324,7 +336,7 @@ void BlockMultiheadAttentionXPUKernel(
                                       &unpadding_v);
 
     VLOG(3) << "rope end";
-    VLOG(3) << "causual: " << causual;
+    VLOG(3) << "causal: " << causal;
     if (!use_pre_cache) {
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
@@ -333,12 +345,12 @@ void BlockMultiheadAttentionXPUKernel(
                                       cu_seqlens_q,
                                       cu_seqlens_k,
                                       paddle::none /*fixed_seed_offset*/,
-                                      causual ? paddle::none : mask,
+                                      causal ? paddle::none : mask,
                                       max_enc_len_this_time_data,
                                       max_enc_len_this_time_data,
                                       1.0f / sqrt(static_cast<float>(dim_head)),
                                       0.0,
-                                      causual,
+                                      causal,
                                       false,
                                       true /* is_test*/,
                                       "" /*rng_name*/,

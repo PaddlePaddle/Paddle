@@ -163,7 +163,9 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
         yield config, ["fusion_squared_mat_sub"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["squared_mat_sub_fuse_pass"])
+        self.run_and_statistics(
+            quant=False, passes=["squared_mat_sub_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

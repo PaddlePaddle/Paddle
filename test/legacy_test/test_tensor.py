@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import numbers
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -97,12 +97,12 @@ class TestTensor(unittest.TestCase):
         cpu_tensor_array_2 = np.array(cpu_tensor)
         self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             cuda_tensor = var.get_tensor()
             tensor_array = np.random.randint(
                 -127, high=128, size=[100, 200], dtype=np.int8
             )
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             cuda_tensor.set(tensor_array, place)
             cuda_tensor_array_2 = np.array(cuda_tensor)
             self.assertAlmostEqual(
@@ -122,13 +122,13 @@ class TestTensor(unittest.TestCase):
         cpu_tensor_array_2 = np.array(cpu_tensor)
         self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             cuda_tensor = var.get_tensor()
             tensor_array = (
                 np.random.uniform(-1, 1, (100, 200))
                 + 1j * np.random.uniform(-1, 1, (100, 200))
             ).astype(np.complex64)
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             cuda_tensor.set(tensor_array, place)
             cuda_tensor_array_2 = np.array(cuda_tensor)
             self.assertAlmostEqual(
@@ -148,13 +148,13 @@ class TestTensor(unittest.TestCase):
         cpu_tensor_array_2 = np.array(cpu_tensor)
         self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             cuda_tensor = var.get_tensor()
             tensor_array = (
                 np.random.uniform(-1, 1, (100, 200))
                 + 1j * np.random.uniform(-1, 1, (100, 200))
             ).astype(np.complex128)
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             cuda_tensor.set(tensor_array, place)
             cuda_tensor_array_2 = np.array(cuda_tensor)
             self.assertAlmostEqual(
@@ -208,8 +208,8 @@ class TestTensor(unittest.TestCase):
         tensor_array = np.array(tensor)
         self.assertEqual((0, 1), tensor_array.shape)
 
-        if core.is_compiled_with_cuda():
-            gpu_place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            gpu_place = get_device_place()
             tensor._alloc_float(gpu_place)
             tensor_array = np.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
@@ -266,8 +266,8 @@ class TestTensor(unittest.TestCase):
             place = core.CPUPlace()
             self.run_slice_tensor(place, dtype)
 
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 self.run_slice_tensor(place, dtype)
 
     def test_print_tensor(self):
@@ -285,8 +285,8 @@ class TestTensor(unittest.TestCase):
         print(tensor)
         self.assertTrue(isinstance(str(tensor), str))
 
-        if core.is_compiled_with_cuda():
-            tensor.set(tensor_array, core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            tensor.set(tensor_array, get_device_place())
             print(tensor)
             self.assertTrue(isinstance(str(tensor), str))
 
@@ -306,7 +306,7 @@ class TestTensor(unittest.TestCase):
         )
 
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.assertTrue(
                 isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
             )
@@ -319,6 +319,11 @@ class TestTensor(unittest.TestCase):
                 isinstance(
                     tensor._mutable_data(places[0], dtype), numbers.Integral
                 )
+            )
+        elif is_custom_device():
+            place = get_device_place()
+            self.assertTrue(
+                isinstance(tensor._mutable_data(place, dtype), numbers.Integral)
             )
 
     def test_tensor_set_fp16(self):
@@ -335,12 +340,17 @@ class TestTensor(unittest.TestCase):
         np.testing.assert_array_equal(np.array(tensor), array)
 
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.float16)
             np.testing.assert_array_equal(np.array(tensor), array)
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.float16)
+            np.testing.assert_array_equal(np.array(tensor), array)
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.float16)
             np.testing.assert_array_equal(np.array(tensor), array)
@@ -359,12 +369,17 @@ class TestTensor(unittest.TestCase):
         np.testing.assert_array_equal(np.array(tensor), array)
 
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.int16)
             np.testing.assert_array_equal(np.array(tensor), array)
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.int16)
+            np.testing.assert_array_equal(np.array(tensor), array)
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.int16)
             np.testing.assert_array_equal(np.array(tensor), array)
@@ -379,12 +394,17 @@ class TestTensor(unittest.TestCase):
         np.testing.assert_array_equal(np.array(tensor), list_array)
 
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             tensor.set(list_array, place)
             self.assertEqual([2, 200, 300], tensor.shape())
             np.testing.assert_array_equal(np.array(tensor), list_array)
 
             place = core.CUDAPinnedPlace()
+            tensor.set(list_array, place)
+            self.assertEqual([2, 200, 300], tensor.shape())
+            np.testing.assert_array_equal(np.array(tensor), list_array)
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(list_array, place)
             self.assertEqual([2, 200, 300], tensor.shape())
             np.testing.assert_array_equal(np.array(tensor), list_array)
@@ -424,7 +444,7 @@ class TestTensor(unittest.TestCase):
         )
 
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex128)
             tensor._set_complex128_element(0, 42.1 + 42.1j)
@@ -433,6 +453,14 @@ class TestTensor(unittest.TestCase):
             )
 
             place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.complex128)
+            tensor._set_complex128_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                tensor._get_complex128_element(0), 42.1 + 42.1j
+            )
+        elif is_custom_device():
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex128)
             tensor._set_complex128_element(0, 42.1 + 42.1j)
@@ -460,7 +488,7 @@ class TestTensor(unittest.TestCase):
         )
 
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             tensor.set(array, place)
             self.assertEqual(tensor_dtype, paddle.complex64)
             tensor._set_complex64_element(0, 42.1 + 42.1j)
@@ -477,6 +505,133 @@ class TestTensor(unittest.TestCase):
                 np.complex64(tensor._get_complex64_element(0)),
                 np.complex64(42.1 + 42.1j),
             )
+        elif is_custom_device():
+            place = get_device_place()
+            tensor.set(array, place)
+            self.assertEqual(tensor_dtype, paddle.complex64)
+            tensor._set_complex64_element(0, 42.1 + 42.1j)
+            np.testing.assert_allclose(
+                np.complex64(tensor._get_complex64_element(0)),
+                np.complex64(42.1 + 42.1j),
+            )
+
+
+class TestTensorDataSetter(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_same_shape_same_dtype(self):
+        x = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
+        y = paddle.rand_like(x)
+        x.requires_grad = True
+
+        loss = x.sum()
+        loss.backward(retain_graph=True)
+
+        x_grad_expected = paddle.ones_like(x)
+
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+
+        x.data = y
+
+        self.assertEqual(x.data_ptr(), y.data_ptr())
+        np.testing.assert_allclose(x.numpy(), y.numpy())
+        self.assertEqual(
+            x.requires_grad,
+            True,
+            "x's requires_grad should be True after data setting.",
+        )
+
+        loss.backward()
+        x_grad_expected = paddle.ones_like(x) * 2
+
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+
+    def test_new_shape_same_dtype_same_place(self):
+        x: paddle.Tensor = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
+        y = paddle.rand([3, 4, 5], dtype="float32")
+        x.requires_grad = True
+
+        loss = x.sum()
+        loss.backward()
+
+        x_grad_expected = paddle.ones_like(x)
+
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+
+        x.data = y
+
+        self.assertEqual(x.data_ptr(), y.data_ptr())
+        np.testing.assert_allclose(x.numpy(), y.numpy())
+        self.assertEqual(
+            x.requires_grad,
+            True,
+            "x's requires_grad should be True after data setting.",
+        )
+        with self.assertRaises((ValueError, RuntimeError)):
+            loss = x.sum()
+            loss.backward()
+
+        x.clear_gradient()
+        z = x.sum()
+        z.backward()
+        x_grad_expected = paddle.ones_like(x)
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+
+    def test_same_shape_new_dtype_same_place(self):
+        x = paddle.tensor([[1, 2], [3, 4]], dtype="float32")
+        x_grad_expected = paddle.ones_like(x)
+        y = x.to(paddle.float16)
+        x.requires_grad = True
+
+        loss = x.sum()
+
+        x.data = y
+
+        loss.backward()
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+
+        x.clear_gradient(False)
+        assert x.grad is None
+        z = x.sum()
+        z.backward()
+        x_grad_expected = paddle.ones_like(x)
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.dtype == x.grad.dtype
+
+    def test_same_shape_same_dtype_new_place(self):
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        x = paddle.tensor([[1, 2], [3, 4]], dtype="float32").cuda()
+        y = x.cpu()
+        x_grad_expected = paddle.ones_like(x)
+        x.requires_grad = True
+
+        loss = x.sum()
+        x.data = y.data
+
+        self.assertEqual(x.data_ptr(), y.data_ptr())
+        np.testing.assert_allclose(x.numpy(), y.numpy())
+        self.assertEqual(
+            x.requires_grad,
+            True,
+            "x's requires_grad should be True after data setting.",
+        )
+        loss.backward()
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.dtype == x_grad_expected.dtype
+        assert x.grad.place == x_grad_expected.place
+
+        x.clear_gradient(False)
+        assert x.grad is None
+        loss = x.sum()
+        loss.backward()
+        x_grad_expected = paddle.ones_like(x)
+        np.testing.assert_equal(x.grad.numpy(), x_grad_expected.numpy())
+        assert x.grad.place == x.place
 
 
 if __name__ == '__main__':

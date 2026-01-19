@@ -498,8 +498,8 @@ class TestDygraphTripleGradMatmulcase2(TestCase):
         self.input_numpy_ddy_conj = None
         self.input_numpy_dout_conj = None
         self.places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.places.append("gpu")
+        if (paddle.is_compiled_with_cuda() or is_custom_device()):
+            self.places.append(get_device())
 
     def actual(self):
         x = paddle.to_tensor(
@@ -812,8 +812,8 @@ class TestDygraphTripleGradMatmulcase4(TestCase):
         self.input_numpy_ddx_conj = None
         self.input_numpy_dout_conj = None
         self.places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.places.append("gpu")
+        if (paddle.is_compiled_with_cuda() or is_custom_device()):
+            self.places.append(get_device())
 
     def actual(self):
         x = paddle.to_tensor(
@@ -1113,8 +1113,8 @@ class TestDygraphTripleGradMatmulcase6(TestCase):
         self.input_numpy_ddy_conj = None
         self.input_numpy_dout_conj = None
         self.places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.places.append("gpu")
+        if (paddle.is_compiled_with_cuda() or is_custom_device()):
+            self.places.append(get_device())
 
     def actual(self):
         x = paddle.to_tensor(

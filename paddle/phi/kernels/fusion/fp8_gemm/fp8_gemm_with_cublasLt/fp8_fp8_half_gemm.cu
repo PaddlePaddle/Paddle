@@ -30,7 +30,7 @@ void fp8_fp8_half_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
-    const paddle::optional<DenseTensor>& bias,
+    const optional<DenseTensor>& bias,
     const bool trans_x,
     const bool trans_y,
     const float scale,  // only support per-tensor quantization
@@ -39,7 +39,7 @@ void fp8_fp8_half_gemm(
     DenseTensor* out) {
 #if CUDA_VERSION >= 12010
   VLOG(3) << "fp8_fp8_half_gemm_fused of cublasLt start run: ";
-  static_assert(std::is_same<Context, phi::GPUContext>::value,
+  static_assert(std::is_same<Context, GPUContext>::value,
                 "fp8_fp8_gemm must be in GPU");
   if (out->dtype() == phi::DataType::BFLOAT16) {
     cublaslt_fp8_fp8_bf16_gemm<Context>(

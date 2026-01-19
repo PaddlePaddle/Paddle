@@ -60,10 +60,10 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 #ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-       (arch == 89) || (arch == 90)),
+       (arch == 89) || (arch == 90) || (arch == 100)),
       true,
       common::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90, 100."));
 #endif
   if (algo == "llm.int8") {
     dev_ctx.template Alloc<float>(scale);
@@ -126,7 +126,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int8_t>(&x_int_tmp);
     int8_t* x_int_tmp_data = x_int_tmp.data<int8_t>();
     int8_t* quanted_x_data = quanted_x.data<int8_t>();
-    for (int i = 0; i < out->numel(); ++i) {
+    for (int64_t i = 0; i < out->numel(); ++i) {
       x_int_tmp_data[i] = quanted_x_data[i];
     }
     std::vector<int> axis = {1, 0};

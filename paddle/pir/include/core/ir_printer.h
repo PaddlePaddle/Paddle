@@ -32,9 +32,9 @@ class BasicIrPrinter {
  public:
   explicit BasicIrPrinter(std::ostream& os) : os(os), id_(GenerateId()) {}
 
-  virtual void PrintType(Type type);
+  PADDLE_API virtual void PrintType(Type type);
 
-  virtual void PrintAttribute(Attribute attr);
+  PADDLE_API virtual void PrintAttribute(Attribute attr);
   uint64_t id() const { return id_; }
 
  public:

@@ -19,6 +19,7 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     get_device_place,
+    is_custom_device,
     skip_check_grad_ci,
 )
 
@@ -91,7 +92,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[2, 3], dtype='float16'
                 )
@@ -385,22 +386,23 @@ def create_test_fp16_class(
     parent, check_grad=True, atol=1e-3, max_relative_error=0.05
 ):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPReluFp16Case(parent):
         def init_dtype(self):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place, atol=atol, check_pir=True
                     )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and check_grad:
                 # Use the default max_relative_error, not use max_relative_error
                 self.check_grad_with_place(
@@ -416,8 +418,8 @@ def create_test_bf16_class(
     parent, check_grad=True, atol=1e-3, max_relative_error=0.05
 ):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestPReluBF16Op(parent):
@@ -432,11 +434,11 @@ def create_test_bf16_class(
             self.np_dtype = np.float32
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, atol=atol, check_pir=True)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if check_grad:
                 # Use the default max_relative_error, not use max_relative_error
                 self.check_grad_with_place(

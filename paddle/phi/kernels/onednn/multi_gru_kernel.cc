@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <initializer_list>
-#include <iostream>
-#include <memory>
-
-#include "dnnl.hpp"  // NOLINT
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 
 using common::vectorize;
-using phi::funcs::OneDNNGetDataType;
-using phi::funcs::OneDNNMemDesc;
+using funcs::OneDNNGetDataType;
+using funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
@@ -120,9 +114,9 @@ class MultiGRUHandler {
     const std::string unique_name = dev_ctx.GetOutputsName("Hidden")[0];
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+    memory_key_ = funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx,
-        phi::funcs::CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
+        funcs::CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 
@@ -255,7 +249,7 @@ class MultiGRUHandler {
       dev_ctx_.SetBlob(key, memory_p);
     }
 
-    auto* x_data = phi::funcs::to_void_cast(x_->data<T>());
+    auto* x_data = funcs::to_void_cast(x_->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N_ * Ti_ * ICs[0]);
@@ -604,7 +598,7 @@ class MultiGRUHandler {
   void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer UNUSED) {
     auto* data = mem->get_data_handle();
     auto tmp = dev_ctx_.Alloc<Tout>(hidden_);
-    auto* hidden_data = phi::funcs::to_void_cast(tmp);
+    auto* hidden_data = funcs::to_void_cast(tmp);
 
     if (isNTC(gru_pds_[{layers_ - 1, L2R}]->dst_desc())) {
       reorderNTCtoPP(data, hidden_data, layers_ - 1);
@@ -675,13 +669,13 @@ class MultiGRUHandler {
   // on Ti size, thus we need another key to cache them
   std::string memory_key_;
 
-  const phi::DenseTensor* x_;
-  const std::vector<const phi::DenseTensor*> weights_x_;
-  const std::vector<const phi::DenseTensor*> weights_h_;
-  const std::vector<const phi::DenseTensor*> biases_;
-  phi::DenseTensor* hidden_;
+  const DenseTensor* x_;
+  const std::vector<const DenseTensor*> weights_x_;
+  const std::vector<const DenseTensor*> weights_h_;
+  const std::vector<const DenseTensor*> biases_;
+  DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
-  const phi::Vector<size_t>& x_lod_;
+  const std::vector<size_t>& x_lod_;
 };
 
 template <typename T, typename Context, typename Tout = T>
@@ -737,8 +731,8 @@ void MultiGRUONEDNNKernel(
     const DenseTensor& x,
     const std::vector<const DenseTensor*>& weight_x,
     const std::vector<const DenseTensor*>& weight_h,
-    const paddle::optional<std::vector<const DenseTensor*>>& bias,
-    const paddle::optional<std::vector<const DenseTensor*>>& scale_weights,
+    const optional<std::vector<const DenseTensor*>>& bias,
+    const optional<std::vector<const DenseTensor*>>& scale_weights,
     const std::string& activation,
     const std::string& gate_activation,
     int layers,

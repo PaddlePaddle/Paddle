@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/cvm_grad_kernel.h"
 #pragma once
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -70,7 +71,7 @@ void CVMGradCUDAKernel(const Context& dev_ctx,
   auto* dx = x_grad;
   T* dx_data = dev_ctx.template Alloc<T>(dx);
 
-  const phi::DenseTensor* cvm = &cvm_in;
+  const DenseTensor* cvm = &cvm_in;
   const T* cvm_data = cvm->data<T>();
 
   const auto* dOut = &out_grad;

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import check_out_dtype
+from op_test import (
+    check_out_dtype,
+    get_device,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -208,9 +213,11 @@ class TestFractionalMaxPool3DAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7, 7], dtype="float32"
@@ -275,9 +282,11 @@ class TestFractionalMaxPool3DAPI(unittest.TestCase):
 
     def test_static_graph_return_mask(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7, 7], dtype="float32"
@@ -367,10 +376,12 @@ class TestFractionalMaxPool3DAPI(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )
@@ -450,9 +461,11 @@ class TestFractionalMaxPool3DClassAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7, 7], dtype="float32"
@@ -498,10 +511,12 @@ class TestFractionalMaxPool3DClassAPI(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )
@@ -557,10 +572,12 @@ class TestOutDtype(unittest.TestCase):
 class TestFractionalMaxPool3DAPIDtype(unittest.TestCase):
     def test_dtypes(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )
@@ -593,10 +610,12 @@ class TestFractionalMaxPool3DAPIDtype(unittest.TestCase):
 class TestFractionalMaxPool3DAPIRandomU(unittest.TestCase):
     def test_none_random_u(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )
@@ -614,10 +633,12 @@ class TestFractionalMaxPool3DAPIRandomU(unittest.TestCase):
 
     def test_error_random_u(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )
@@ -655,10 +676,12 @@ class TestFractionalMaxPool3DAPIRandomU(unittest.TestCase):
 class TestFractionalMaxPool3DAPIErrorOutputSize(unittest.TestCase):
     def test_error_output_size(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )
@@ -689,10 +712,12 @@ class TestFractionalMaxPool3DAPI_ZeroSize(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
             place, device = (
-                (paddle.CUDAPlace(0), 'gpu')
+                (get_device_place(), get_device())
                 if use_cuda
                 else (paddle.CPUPlace(), 'cpu')
             )

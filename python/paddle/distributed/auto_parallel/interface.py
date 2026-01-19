@@ -100,6 +100,19 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     else:
         tensor_shape = serial_tensor.shape
     if shard_spec is not None:
+        valid_dims = (
+            process_mesh.get_dim_names()
+            if hasattr(process_mesh, "get_dim_names")
+            else process_mesh.dim_names
+        )
+        for i, dim in enumerate(shard_spec):
+            if dim is not None and (
+                not isinstance(dim, str) or dim not in valid_dims
+            ):
+                raise ValueError(
+                    f"Invalid shard_spec at index {i}: '{dim}' "
+                    f"is not a valid dimension name in process_mesh {valid_dims}."
+                )
         assert verify_shard_spec(shard_spec, tensor_shape, process_mesh), (
             f"For tensor {serial_tensor.name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {process_mesh}."
         )

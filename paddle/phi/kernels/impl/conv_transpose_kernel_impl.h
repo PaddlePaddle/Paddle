@@ -39,11 +39,10 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
                             const std::string& data_format,
                             DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;
   std::vector<int> paddings_ = paddings;
@@ -55,7 +54,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
   const int batch_size = static_cast<int>(x.dims()[0]);
 
   DDim in_data_dims;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     in_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   } else {
     in_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
@@ -76,7 +75,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
   // col_shape_vec: {o_c/g, k_h, k_w, h, w} or {o_c/g, k_d, k_h, k_w, d, h, w}
   size_t data_dim = filter_shape_vec.size() - 2;
   std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     col_shape_vec[0] = out_dims[1] / groups;
     for (size_t j = 0; j < data_dim; ++j) {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
@@ -112,7 +111,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
   // x matrix size: (i_c, h * w) or (i_c, d * h * w) for channel_first
   // x matrix size: (h * w, i_c) or (d * h * w, i_c) for channel_last
   DDim x_matrix_shape;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     x_matrix_shape = {x_dims[1], col_matrix_shape[1]};
   } else {
     x_matrix_shape = {col_matrix_shape[1], x_dims[x_dims.size() - 1]};
@@ -120,7 +119,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
 
   // filter size: (i_c, o_c/g * k_h * k_w) or (i_c, o_c/g * k_d * k_h * k_w)
   DDim filter_matrix_shape;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     filter_matrix_shape = {x_dims[1], col_matrix_shape[0]};
   } else {
     filter_matrix_shape = {x_dims[x_dims.size() - 1], col_matrix_shape[0]};
@@ -134,16 +133,16 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   set_zero(dev_ctx, out, static_cast<T>(0));
 
-  int in_step = (data_layout != DataLayout::kNHWC
+  int in_step = (data_layout != DataLayout::NHWC
                      ? static_cast<int>(x_dims[1]) / groups
                      : static_cast<int>(x_dims[x_dims.size() - 1]) / groups);
 
   int out_step =
-      (data_layout != DataLayout::kNHWC
+      (data_layout != DataLayout::NHWC
            ? static_cast<int>(out_dims[1]) / groups
            : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
-  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
-  phi::funcs::Col2VolFunctor<Context, T> col2vol;
+  funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
+  funcs::Col2VolFunctor<Context, T> col2vol;
   funcs::ConcatFunctor<Context, T> concat_functor;
 
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
@@ -162,14 +161,14 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
     for (int g = 0; g < groups; g++) {
       int64_t start = g * in_step;
       int64_t end = (g + 1) * in_step;
-      int axes = (data_layout != DataLayout::kNHWC ? 0 : 1);
+      int axes = (data_layout != DataLayout::NHWC ? 0 : 1);
       DenseTensor filter_slice = filter_.Slice(g * in_step, (g + 1) * in_step);
       DenseTensor in_slice, out_slice;
 
       // col_matrix = filter_slice * x_slice
       // of shape (o_c/g * k_h * k_w, h * w)
       // or (o_c/g * k_d * k_h * k_w, d * h * w)
-      if (data_layout != DataLayout::kNHWC) {
+      if (data_layout != DataLayout::NHWC) {
         in_slice = x_batch.Slice(g * in_step, (g + 1) * in_step);
         out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
         blas.MatMul(filter_slice,
@@ -223,11 +222,11 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
                 &out_slice,
                 data_layout);
       }
-      if (data_layout == DataLayout::kNHWC) {
+      if (data_layout == DataLayout::NHWC) {
         out_batch_vec.push_back(out_slice);
       }
     }
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       concat_functor(
           dev_ctx, out_batch_vec, static_cast<int>(D - 2), &out_batch);
     }

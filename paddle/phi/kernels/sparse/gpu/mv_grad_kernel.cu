@@ -86,17 +86,13 @@ void MvCooGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCoo} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
 
-    auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+    auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
     sparse_blas.SPMV(true, static_cast<T>(1), x, dout, static_cast<T>(0), dvec);
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        " vec.grad of 'sparse.mv' use cusparseSpMV, "
-        "which is supported from CUDA 11.0"));
 #endif
   }
 }
@@ -113,8 +109,8 @@ void MvCsrGradKernel(const Context &dev_ctx,
     // InferMeta of SparseCsrTensor 'dx', CreateLikeInferMeta
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
 
-    int row_number = dx->dims()[0];
-    int col_number = dx->dims()[1];
+    int64_t row_number = dx->dims()[0];
+    int64_t col_number = dx->dims()[1];
     auto config = phi::backends::gpu::GetGpuLaunchConfig2D(
         dev_ctx, col_number, row_number);
     PD_VISIT_BASE_INTEGRAL_TYPES(dx->crows().dtype(), "MvCsrGradKernel", ([&] {
@@ -134,17 +130,13 @@ void MvCsrGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCsr} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
 
-    auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+    auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
     sparse_blas.SPMV(true, static_cast<T>(1), x, dout, static_cast<T>(0), dvec);
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        " vec.grad of 'sparse.mv' use cusparseSpMV, "
-        "which is supported from CUDA 11.0"));
 #endif
   }
 }

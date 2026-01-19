@@ -77,18 +77,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                             static_cast<AccT>(d_var_data));
 
       if (flags & kHasScale) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#else
-        CudaAtomicAddWithWarp(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#endif
+        CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
       }
       if (flags & kHasBias) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#else
-        CudaAtomicAddWithWarp(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#endif
+        CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
       }
     }
   }
@@ -181,7 +173,10 @@ __global__ void GetScaleBiasGradientCUDAKernel(int64_t N,
                                                const AccT* db,
                                                T* d_scale,
                                                T* d_bias) {
-  for (int64_t c = blockIdx.x * blockDim.x + threadIdx.x; c < C;
+  for (int64_t c =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       c < C;
        c += gridDim.x * blockDim.x) {
     if (c < C) {
       const int G = group;
@@ -303,43 +298,35 @@ void GroupNormGradKernel(const Context& dev_ctx,
     if (d_scale) {
       // If batch dim is 0, we should set d_scale to zero, or else NAN
       if (x.dims().size() > 0 && x.dims()[0] == 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              0,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), 0, d_scale);
 
       } else {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              NAN,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), NAN, d_scale);
       }
     }
     if (d_bias) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+      Full<T, Context>(dev_ctx, d_bias->dims(), 0, d_bias);
     }
     return;
   }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
   const auto& x_dims = x.dims();
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
-      (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
-                                        : x_dims[x_dims.size() - 2]);
+      (data_layout == DataLayout::NCHW ? x_dims[x_dims.size() - 1]
+                                       : x_dims[x_dims.size() - 2]);
 
   if (d_x) {
     dev_ctx.template Alloc<T>(d_x);
   }
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+  funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   DenseTensor ds, db;
   ds.Resize({x_dims[0], C});
   AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds);
@@ -370,7 +357,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
   int64_t imsize = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= x_dims[i];
     }
@@ -390,7 +377,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
   dim3 threads(block_size, 1, 1);
   int flags =
       (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     const int max_num_threads = 1024;
     int max_block_size =
         std::min(imsize, static_cast<int64_t>(max_num_threads));

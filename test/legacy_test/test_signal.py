@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 import sys
 import unittest
@@ -20,14 +19,15 @@ import numpy as np
 import scipy.signal
 from numpy import fft
 from numpy.lib.stride_tricks import as_strided
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
 paddle.set_default_dtype('float64')
 
 DEVICES = [paddle.CPUPlace()]
-if paddle.is_compiled_with_cuda():
-    DEVICES.append(paddle.CUDAPlace(0))
+if paddle.is_compiled_with_cuda() or is_custom_device():
+    DEVICES.append(get_device_place())
 TEST_CASE_NAME = 'test_case'
 
 # Constrain STFT block sizes to 256 KB

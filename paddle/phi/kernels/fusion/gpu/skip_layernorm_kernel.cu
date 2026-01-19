@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/skip_layernorm_kernel.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -41,8 +42,10 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   for (size_t i = 0; i < x.dims().size(); i++) {
     num *= x.dims()[i];
   }
-  int hidden = x.dims()[2];
-  phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
+  int64_t hidden = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int
+
+  funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
   if (std::is_same<T, phi::float16>::value) {
     const half *X_new = reinterpret_cast<const half *>(X_d);
@@ -50,7 +53,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
     const half *scale_new = reinterpret_cast<const half *>(scale_d);
     const half *bias_new = reinterpret_cast<const half *>(bias_d);
     half *output_new = reinterpret_cast<half *>(output_d);
-    phi::funcs::SkipLayerNormFunctor<half> skip_layer_norm_func;
+    funcs::SkipLayerNormFunctor<half> skip_layer_norm_func;
     skip_layer_norm_func(num,
                          hidden,
                          X_new,
@@ -61,7 +64,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
                          epsilon,
                          dev_ctx.stream());
   } else {
-    phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
+    funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
     skip_layer_norm_func(num,
                          hidden,
                          X_d,
@@ -77,7 +80,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(skip_layernorm,
                    GPU,
                    ALL_LAYOUT,

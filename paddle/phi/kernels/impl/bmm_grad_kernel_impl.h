@@ -29,9 +29,9 @@ void MatMul(const Context& dev_ctx,
             bool trans_b,
             DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
   blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
 }
@@ -56,14 +56,12 @@ void BmmGradKernel(const Context& dev_ctx,
                    DenseTensor* y_grad) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, y_grad);
+    Full<T, Context>(dev_ctx, y.dims(), 0, y_grad);
     return;
   }
   if (y_grad && y_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(y_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x.dims(), 0, x_grad);
     return;
   }
   DenseTensor x_help = x;
@@ -72,7 +70,7 @@ void BmmGradKernel(const Context& dev_ctx,
   ReshapeXYOutIntoMatrixSequence(
       &x_help, &y_help, &out_grad_help, false, false);
 
-  phi::DDim dx_dims;
+  DDim dx_dims;
   if (x_grad) {
     dx_dims = x_grad->dims();
     if (dx_dims != x_help.dims()) {
@@ -80,7 +78,7 @@ void BmmGradKernel(const Context& dev_ctx,
     }
   }
 
-  phi::DDim dy_dims;
+  DDim dy_dims;
   if (y_grad) {
     dy_dims = y_grad->dims();
     if (dy_dims != y_help.dims()) {

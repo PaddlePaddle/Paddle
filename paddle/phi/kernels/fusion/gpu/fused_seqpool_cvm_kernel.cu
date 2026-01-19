@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_seqpool_cvm_kernel.h"
 #include <string>
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -100,7 +101,7 @@ __global__ void FusedCVMKernelNoCVM(const size_t N,
 
 template <typename T>
 void FusedSeqpoolCVM(
-    const phi::GPUContext &dev_ctx,  // const paddle::phi::Place &place,
+    const GPUContext &dev_ctx,  // const paddle::phi::Place &place,
     const std::vector<const T *> &input_data,
     const std::vector<T *> &output_data,
     const std::vector<T *> &seqpool_output_data,
@@ -230,7 +231,7 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
                                std::vector<DenseTensor *> out) {
   // from InferShape
   const size_t num_inputs = x.size();
-  std::vector<phi::DDim> outs_dims;
+  std::vector<DDim> outs_dims;
   outs_dims.resize(num_inputs);
   int batch_size_tmp = -1;
   for (size_t i = 0; i < num_inputs; ++i) {
@@ -275,7 +276,7 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
   std::vector<const size_t *> lods_data(slot_size);
   std::vector<T *> output_data(slot_size);
 
-  std::vector<phi::DenseTensor> seqpool_outputs(slot_size);
+  std::vector<DenseTensor> seqpool_outputs(slot_size);
   std::vector<T *> seqpool_output_data(slot_size);
 
   auto padding_value = pad_value;

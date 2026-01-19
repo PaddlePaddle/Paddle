@@ -26,6 +26,7 @@ from paddle.device import (
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -146,7 +147,11 @@ def _conv_nd(
     use_cudnn: bool = True,
     name: str | None = None,
 ) -> Tensor:
-    # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get(
+        "FLAGS_use_accuracy_compatible_kernel", False
+    )  # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
@@ -177,23 +182,36 @@ def _conv_nd(
             return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
-        pre_bias = _C_ops.depthwise_conv2d(
-            x,
-            weight,
-            stride,
-            padding,
-            padding_algorithm,
-            groups,
-            dilation,
-            data_format,
-        )
-        if bias is not None:
-            new_shape = [1] * len(x.shape)
-            new_shape[channel_dim] = -1
-            bias = bias.reshape(new_shape)
-            return _C_ops.add(pre_bias, bias)
+        if use_accuracy_compatible and is_compiled_with_cuda():
+            return _C_ops.depthwise_conv2d_bias(
+                x,
+                weight,
+                bias,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                data_format,
+            )
         else:
-            return pre_bias
+            pre_bias = _C_ops.depthwise_conv2d(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                data_format,
+            )
+            if bias is not None:
+                new_shape = [1] * len(x.shape)
+                new_shape[channel_dim] = -1
+                bias = bias.reshape(new_shape)
+                return _C_ops.add(pre_bias, bias)
+            else:
+                return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
@@ -213,6 +231,19 @@ def _conv_nd(
             return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
+
+    if in_dynamic_or_pir_mode() and op_type == "depthwise_conv3d":
+        return _C_ops.depthwise_conv3d_bias(
+            x,
+            weight,
+            bias,
+            stride,
+            padding,
+            padding_algorithm,
+            groups,
+            dilation,
+            data_format,
+        )
 
     if in_dynamic_mode():
         attrs = (
@@ -291,6 +322,7 @@ def _conv_nd(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv1d(
     x: Tensor,
     weight: Tensor,
@@ -347,20 +379,27 @@ def conv1d(
 
             L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, K], where M is
             the number of output channels, g is the number of groups, K is the kernel's size.
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain one integers, (stride_size). Default: 1.
-        padding (int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
+        padding (int|str|tuple|list, optional): The padding size.
+            Padding could be in one of the following forms.
+
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
             4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
+
             The default value is 0.
         dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain one integer, (dilation_size). Default: 1.
@@ -545,6 +584,7 @@ def conv1d(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv2d(
     x: Tensor,
     weight: Tensor,
@@ -607,9 +647,13 @@ def conv2d(
             H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
@@ -648,7 +692,7 @@ def conv2d(
         A Tensor representing the conv2d result, whose data type is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -659,7 +703,7 @@ def conv2d(
             >>> y_var = F.conv2d(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6])
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -1175,7 +1219,7 @@ def conv2d_transpose(
         transposed convolution result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1186,7 +1230,7 @@ def conv2d_transpose(
             >>> y_var = F.conv2d_transpose(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 10, 10]
+            paddle.Size([2, 6, 10, 10])
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1272,7 +1316,15 @@ def conv2d_transpose(
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
-    if num_channels == groups and num_channels != 1 and num_filters == 1:
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    if (
+        not use_accuracy_compatible
+        and num_channels == groups
+        and num_channels != 1
+        and num_filters == 1
+    ):
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
@@ -1355,6 +1407,7 @@ def conv2d_transpose(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv3d(
     x: Tensor,
     weight: Tensor,
@@ -1411,9 +1464,13 @@ def conv3d(
             H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\
             W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
@@ -1455,7 +1512,7 @@ def conv3d(
         convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1466,7 +1523,7 @@ def conv3d(
             >>> y_var = F.conv3d(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6, 6])
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1512,6 +1569,17 @@ def conv3d(
     stride = convert_to_list(stride, 3, 'stride')
     dilation = convert_to_list(dilation, 3, 'dilation')
     op_type = "conv3d"
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    if (
+        use_accuracy_compatible
+        and is_compiled_with_cuda()
+        and num_channels == groups
+        and num_channels != 1
+        and num_filters % num_channels == 0
+    ):
+        op_type = 'depthwise_conv3d'
 
     return _conv_nd(
         x,
@@ -1658,7 +1726,7 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1669,7 +1737,7 @@ def conv3d_transpose(
             >>> y_var = F.conv3d_transpose(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 10, 10, 10]
+            paddle.Size([2, 6, 10, 10, 10])
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/affine_channel_kernel.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -36,12 +36,11 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
   auto* y = out;
   dev_ctx.template Alloc<T>(y);
 
-  const phi::DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int64_t N = dims[0];
-  int64_t C =
-      layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int64_t C = layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
   int64_t HxW = x->numel() / N / C;
 
   auto* scale_d = scale->data<T>();
@@ -51,7 +50,7 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
   auto* y_d = y->data<T>();
   std::vector<int64_t> x_shape;
   std::vector<int64_t> b_shape;
-  if (layout == phi::DataLayout::kNCHW) {
+  if (layout == DataLayout::NCHW) {
     x_shape.push_back(N);
     x_shape.push_back(C);
     x_shape.push_back(HxW);

@@ -50,7 +50,9 @@ class RandomDataset(paddle.io.Dataset):
 
 
 class MLP(nn.Layer):
-    def __init__(self, mesh, shard_weight=False, param_prefix=""):
+    def __init__(
+        self, mesh, shard_weight=False, param_prefix="", final_out_features=None
+    ):
         super().__init__()
         self._mesh = mesh
         self.shard_weight = shard_weight
@@ -58,7 +60,10 @@ class MLP(nn.Layer):
         weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
 
         self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, weight_attr_0)
-        self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, weight_attr_1)
+        out_features = (
+            final_out_features if final_out_features is not None else IMAGE_SIZE
+        )
+        self.linear_1 = nn.Linear(IMAGE_SIZE, out_features, weight_attr_1)
         if shard_weight:
             self.linear_0.weight = dist.shard_tensor(
                 self.linear_0.weight,
@@ -94,7 +99,7 @@ class DemoNetPP(nn.Layer):
         self._mesh0 = mesh0
         self._mesh1 = mesh1
         self.mlp0 = MLP(mesh0, False, "block0")
-        self.mlp1 = MLP(mesh1, False, "block1")
+        self.mlp1 = MLP(mesh1, False, "block1", final_out_features=CLASS_NUM)
 
     def forward(self, x):
         # stage0
@@ -155,18 +160,14 @@ class TestStaticReshard(unittest.TestCase):
                 'builtin.parameter',
                 'builtin.parameter',
                 'pd_op.data',
-                'pd_op.matmul',
-                'pd_op.add',
+                'pd_op.linear_v2',
                 'pd_op.relu',
-                'pd_op.matmul',
-                'pd_op.add',
+                'pd_op.linear_v2',
                 'pd_op.send_v2',
                 'pd_op.recv_v2',
-                'pd_op.add_grad',
-                'pd_op.matmul_grad',
+                'pd_op.linear_v2_grad',
                 'pd_op.relu_grad',
-                'pd_op.add_grad',
-                'pd_op.matmul_grad',
+                'pd_op.linear_v2_grad',
                 'pd_op.sgd_',
                 'pd_op.sgd_',
                 'pd_op.sgd_',
@@ -183,11 +184,9 @@ class TestStaticReshard(unittest.TestCase):
                 'builtin.parameter',
                 'pd_op.data',
                 'pd_op.recv_v2',
-                'pd_op.matmul',
-                'pd_op.add',
+                'pd_op.linear_v2',
                 'pd_op.relu',
-                'pd_op.matmul',
-                'pd_op.add',
+                'pd_op.linear_v2',
                 'pd_op.subtract',
                 'pd_op.square',
                 'pd_op.full_int_array',
@@ -198,11 +197,9 @@ class TestStaticReshard(unittest.TestCase):
                 'pd_op.mean_grad',
                 'pd_op.square_grad',
                 'pd_op.subtract_grad',
-                'pd_op.add_grad',
-                'pd_op.matmul_grad',
+                'pd_op.linear_v2_grad',
                 'pd_op.relu_grad',
-                'pd_op.add_grad',
-                'pd_op.matmul_grad',
+                'pd_op.linear_v2_grad',
                 'pd_op.send_v2',
                 'pd_op.sgd_',
                 'pd_op.sgd_',

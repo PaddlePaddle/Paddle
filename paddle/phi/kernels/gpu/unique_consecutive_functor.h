@@ -50,7 +50,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
                                                  DenseTensor* counts) {
   // 0. Preparation
   DenseTensor in_hat;
-  phi::Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
+  Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
   auto in_data_hat = dev_ctx.template Alloc<InT>(&in_hat);
 
   DenseTensor sorted_indices;
@@ -64,7 +64,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
   auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
-  phi::Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
   int num_out;
   auto out_data = dev_ctx.template Alloc<InT>(out);
   num_out =
@@ -370,11 +370,11 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& dev_ctx,
   DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   dev_ctx.template Alloc<InT>(&in_trans);
-  phi::funcs::TransCompute<Context, InT>(in.dims().size(),  // num of dims
-                                         dev_ctx,           // device
-                                         in,                // original Tensor
-                                         &in_trans,  // Tensor after reshape
-                                         permute);   // index of axis
+  funcs::TransCompute<Context, InT>(in.dims().size(),  // num of dims
+                                    dev_ctx,           // device
+                                    in,                // original Tensor
+                                    &in_trans,         // Tensor after reshape
+                                    permute);          // index of axis
 
   // Reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
@@ -419,10 +419,10 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& dev_ctx,
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(common::make_ddim(out_trans_dims_vec));
   dev_ctx.template Alloc<InT>(out);
-  std::vector<DenseTensor> out_trans_unbind = phi::funcs::Unbind(out_trans);
-  phi::funcs::ConcatFunctor<Context, InT> concat_functor;
+  std::vector<DenseTensor> out_trans_unbind = funcs::Unbind(out_trans);
+  funcs::ConcatFunctor<Context, InT> concat_functor;
   concat_functor(dev_ctx, out_trans_unbind, 0, &out_trans);
-  phi::funcs::TransCompute<Context, InT>(
+  funcs::TransCompute<Context, InT>(
       out_trans.dims().size(), dev_ctx, out_trans, out, permute);
 }
 

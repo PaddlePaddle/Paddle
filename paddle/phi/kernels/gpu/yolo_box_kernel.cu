@@ -117,10 +117,8 @@ void YoloBoxKernel(const Context& dev_ctx,
                    DenseTensor* boxes,
                    DenseTensor* scores) {
   if (x.numel() == 0 || img_size.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(boxes->dims())), 0, boxes);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(scores->dims())), 0, scores);
+    Full<T, Context>(dev_ctx, boxes->dims(), 0, boxes);
+    Full<T, Context>(dev_ctx, scores->dims(), 0, scores);
     return;
   }
 
@@ -142,7 +140,7 @@ void YoloBoxKernel(const Context& dev_ctx,
   tmp_anchors.Resize(make_dim(anchors.size()));
   int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
-  const auto cplace = phi::CPUPlace();
+  const auto cplace = CPUPlace();
   memory_utils::Copy(
       gplace, anchors_data, cplace, anchors.data(), bytes, dev_ctx.stream());
 
@@ -152,7 +150,7 @@ void YoloBoxKernel(const Context& dev_ctx,
   T* boxes_data = dev_ctx.template Alloc<T>(boxes);
   scores->Resize({n, box_num, class_num});
   T* scores_data = dev_ctx.template Alloc<T>(scores);
-  phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
+  funcs::SetConstant<phi::GPUContext, T> set_zero;
   set_zero(dev_ctx, boxes, static_cast<T>(0));
   set_zero(dev_ctx, scores, static_cast<T>(0));
   backends::gpu::GpuLaunchConfig config =

@@ -104,7 +104,7 @@ void AnchorGeneratorOpKernel(const Context& dev_ctx,
     }
   }
 
-  phi::DenseTensor var_t;
+  DenseTensor var_t;
   var_t.Resize(common::make_ddim({1, static_cast<int>(variances.size())}));
   dev_ctx.template Alloc<T>(&var_t);
   auto var_et = phi::EigenTensor<T, 2>::From(var_t);

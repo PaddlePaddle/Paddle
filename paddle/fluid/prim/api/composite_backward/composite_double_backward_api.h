@@ -850,6 +850,33 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
 }
 
 template <typename T>
+void linear_v2_double_grad(const Tensor& input,
+                           const Tensor& weight,
+                           const Tensor& bias,
+                           const Tensor& grad_out,
+                           const paddle::optional<Tensor>& grad_input_grad,
+                           const paddle::optional<Tensor>& grad_weight_grad,
+                           const paddle::optional<Tensor>& grad_bias_grad,
+                           Tensor* input_grad,
+                           Tensor* weight_grad,
+                           Tensor* bias_grad,
+                           Tensor* grad_out_grad) {
+  matmul_double_grad<T>(input,
+                        weight,
+                        grad_out,
+                        grad_input_grad,
+                        grad_weight_grad,
+                        false,
+                        false,
+                        input_grad,
+                        weight_grad,
+                        grad_out_grad);
+  if (bias_grad) {
+    add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+  }
+}
+
+template <typename T>
 void subtract_double_grad(const Tensor& y,
                           const Tensor& grad_out,
                           const paddle::optional<Tensor>& grad_x_grad,
@@ -980,15 +1007,16 @@ void log_double_grad(const Tensor& x,
                      const Tensor& grad_x_grad,
                      Tensor* x_grad,
                      Tensor* grad_out_grad) {
-  // dx = -dout/x^2 * ddx
+  // For complex: dx = -dout * ddx / conj(x)^2, ddout = ddx / conj(x)
+  // For real: conj(x) == x, so formulas reduce to real ones
+  auto conj_x = conj<T>(x);
   if (x_grad) {
-    auto x_grad_tmp = -grad_out / (x * x) * grad_x_grad;
+    auto x_grad_tmp = -(grad_out * grad_x_grad) / (conj_x * conj_x);
     set_output<T>(x_grad_tmp, x_grad);
   }
 
-  // ddout = ddx / x
   if (grad_out_grad) {
-    auto grad_out_grad_tmp = grad_x_grad / x;
+    auto grad_out_grad_tmp = grad_x_grad / conj_x;
     set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }
@@ -1246,6 +1274,86 @@ void index_add_double_grad(const Tensor& index,
                                          out_grad.place());
       set_output<T>(grad_out_grad_tmp, grad_out_grad);
     }
+  }
+}
+
+template <typename T>
+void index_elementwise_put_with_tensor_double_grad(
+    const Tensor& grad_out,
+    const Tensor& value,
+    const std::vector<Tensor>& index,
+    const paddle::optional<Tensor>& grad_x_grad,
+    const paddle::optional<Tensor>& grad_value_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& slice_offset,
+    Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_x_grad_maybe_zero;
+    Tensor grad_value_grad_maybe_zero;
+
+    if (grad_x_grad) {
+      grad_x_grad_maybe_zero = grad_x_grad.get();
+    } else {
+      grad_x_grad_maybe_zero = full<T>(common::vectorize(grad_out.dims()),
+                                       0,
+                                       grad_out.dtype(),
+                                       grad_out.place());
+    }
+
+    if (grad_value_grad) {
+      grad_value_grad_maybe_zero = grad_value_grad.get();
+    } else {
+      grad_value_grad_maybe_zero = full<T>(
+          common::vectorize(value.dims()), 0, value.dtype(), value.place());
+    }
+
+    Tensor grad_out_grad_tmp =
+        index_elementwise_put_with_tensor<T>(grad_x_grad_maybe_zero,
+                                             index,
+                                             grad_value_grad_maybe_zero,
+                                             input_dims,
+                                             input_strides,
+                                             index_dims,
+                                             index_strides,
+                                             slice_offset);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void index_elementwise_put_double_grad(
+    const std::vector<Tensor>& index,
+    const Tensor& grad_x_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& slice_offset,
+    Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp = index_elementwise_put<T>(grad_x_grad,
+                                                        index,
+                                                        0,
+                                                        input_dims,
+                                                        input_strides,
+                                                        index_dims,
+                                                        index_strides,
+                                                        slice_offset);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void view_shape_double_grad(const Tensor& grad_input_grad,
+                            const std::vector<int64_t> dims,
+                            Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp;
+    grad_out_grad_tmp = reshape<T>(grad_input_grad, dims);
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
   }
 }
 

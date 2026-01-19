@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -95,8 +95,8 @@ class TestDygraphGNN(unittest.TestCase):
             adam.minimize(loss)
             exe = base.Executor(
                 base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (core.is_compiled_with_cuda() or is_custom_device())
+                else get_device_place()
             )
             exe.run(startup)
             static_loss = exe.run(

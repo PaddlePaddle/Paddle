@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -362,7 +363,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         int64_t out_row_size =
             out_dim[0] == 0 ? 0 : out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
-        phi::DenseTensor input_partial, output_partial;
+        DenseTensor input_partial, output_partial;
 
         VLOG(3) << "[AllToAll] "
                 << "sendbuff: " << in_tensor.data()
@@ -406,8 +407,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
-    std::vector<phi::DenseTensor>* out_tensors,
-    const std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<DenseTensor>* out_tensors,
+    const std::vector<DenseTensor>& in_tensors,
     bool sync_op,
     bool use_calc_stream) {
   CheckTensorContiguous(in_tensors);
@@ -487,11 +488,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
                     0,
                     common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
-  phi::GPUPlace place(opts.device_id);
+  GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
-  phi::DenseTensor barrier_tensor{allocator.get(), meta};
+  DenseTensor barrier_tensor{allocator.get(), meta};
 
   VLOG(3) << "[Barrier] "
           << "barrier opt: " << opts.device_id;
@@ -664,7 +665,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
         int64_t numel = in_tensor.numel() / size_;
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
-          phi::DenseTensor partial_tensor;
+          DenseTensor partial_tensor;
           GroupStart();
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
@@ -692,7 +693,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
   CheckTensorContiguous(in_tensor);
   CheckTensorContiguous(*out_tensor);
 
-  std::vector<phi::DenseTensor> partial_tensors;
+  std::vector<DenseTensor> partial_tensors;
   if (rank_ == opts.root_rank) {
     partial_tensors.reserve(size_);
     size_t offset = 0;
@@ -708,7 +709,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
-    std::vector<phi::DenseTensor>* gather_tensors_ptr,
+    std::vector<DenseTensor>* gather_tensors_ptr,
     const phi::DenseTensor& in_tensor,
     const GatherOptions& opts,
     bool sync_op,
@@ -773,7 +774,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     bool use_calc_stream) {
   CheckTensorContiguous(*tensor);
   // numel > 0 indicates the tensor need to be sliced
-  phi::DenseTensor partial_tensor;
+  DenseTensor partial_tensor;
   if (numel > 0) {
     partial_tensor = GetPartialTensor(*tensor, offset, numel);
     tensor = &partial_tensor;
@@ -922,18 +923,18 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(
     // gather global ranks in current group
     size_t gpu_global_rank_size = sizeof(int);
     auto gpu_global_rank = phi::memory_utils::Alloc(
-        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         gpu_global_rank_size);
 
-    phi::memory_utils::Copy(phi::GPUPlace(),
+    phi::memory_utils::Copy(GPUPlace(),
                             gpu_global_rank->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             &global_rank_,
                             gpu_global_rank_size);
 
     size_t gpu_global_ranks_size = num_ranks * sizeof(int);
     auto gpu_global_ranks = phi::memory_utils::Alloc(
-        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         gpu_global_ranks_size);
 
     NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank->ptr(),
@@ -944,9 +945,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(
                                            comm_ctx->stream()));
 
     std::vector<int> global_ranks(num_ranks);
-    phi::memory_utils::Copy(phi::CPUPlace(),
+    phi::memory_utils::Copy(CPUPlace(),
                             global_ranks.data(),
-                            phi::GPUPlace(),
+                            GPUPlace(),
                             gpu_global_ranks->ptr(),
                             gpu_global_ranks_size);
 
@@ -1031,7 +1032,7 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place,
 
 void ProcessGroupNCCL::EagerConnect() {
   const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
-  const auto& place = phi::GPUPlace(deviceId);
+  const auto& place = GPUPlace(deviceId);
   const auto key = GetKeyFromPlace(place);
 
   platform::CUDADeviceGuard cuda_guard(place);
@@ -1048,7 +1049,7 @@ void ProcessGroupNCCL::EagerConnect() {
 void ProcessGroupNCCL::EagerConnectRingExchange(
     std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr) {
   std::vector<std::pair<int, int>> peers;
-  const auto& place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  const auto& place = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
 
   for (int rank = 0; rank < size_; rank++) {
     auto peer_rank = rank + 1 >= size_ ? 0 : rank + 1;
@@ -1091,7 +1092,7 @@ void ProcessGroupNCCL::EagerConnectRingExchange() {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t)> fn,
-    const std::vector<phi::DenseTensor>& tensors,
+    const std::vector<DenseTensor>& tensors,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
@@ -1170,7 +1171,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     } else {
       for (size_t i = 0; i < tensors.size(); ++i) {
         coalescing_tensors_.emplace_back(
-            std::make_shared<phi::DenseTensor>(tensors[i]));
+            std::make_shared<DenseTensor>(tensors[i]));
       }
       coalescing_place_keys_.push_back(key);
     }
@@ -1202,7 +1203,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  const std::vector<phi::DenseTensor> tensors = {tensor};
+  const std::vector<DenseTensor> tensors = {tensor};
   return Collective(fn, tensors, comm_type, sync_op, use_calc_stream);
 }
 
@@ -1303,8 +1304,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
       task->UpdateWaitChain(*comm_ctx);
       allocation_stream_pairs_.emplace_back(tensor.Holder(), nccl_stream);
     } else {
-      coalescing_tensors_.emplace_back(
-          std::make_shared<phi::DenseTensor>(tensor));
+      coalescing_tensors_.emplace_back(std::make_shared<DenseTensor>(tensor));
       coalescing_place_keys_.push_back(key);
     }
   }
@@ -1357,6 +1357,19 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
                     nullptr,
                     common::errors::Unavailable("NCCLCommContext is nullptr"));
   return comm_context;
+}
+
+void ProcessGroupNCCL::EraseTensorHolders() {
+  for (const auto& allocation_stream : allocation_stream_pairs_) {
+    auto holder_ptr = allocation_stream.first.lock();
+    if (holder_ptr) {
+      memory::EraseStream(holder_ptr, allocation_stream.second);
+    }
+  }
+  VLOG(5) << "After task wait/synchronize, total "
+          << allocation_stream_pairs_.size()
+          << " tensor(s) allocation stream have been removed.";
+  allocation_stream_pairs_.clear();
 }
 
 void ProcessGroupNCCL::StartCoalescing() {

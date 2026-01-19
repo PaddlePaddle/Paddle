@@ -68,8 +68,8 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                     common::errors::PreconditionNotMet(
                         "The Input dim size should be between 2 and 5"));
   int N, C, H, W, D;
-  const phi::DataLayout data_layout = phi::DataLayout::kNHWC;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  const DataLayout data_layout = DataLayout::NHWC;
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output
   auto *d_x = x_grad;
@@ -96,17 +96,17 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   if ((N * H * W * D) == 1) {
     if (act_type == "relu") {
-      auto x_v = phi::EigenVector<T>::Flatten(x);
-      auto y_v = phi::EigenVector<T>::Flatten(y);
-      auto dx_v = phi::EigenVector<T>::Flatten(*d_x);
-      auto dy_v = phi::EigenVector<T>::Flatten(*d_y);
+      auto x_v = EigenVector<T>::Flatten(x);
+      auto y_v = EigenVector<T>::Flatten(y);
+      auto dx_v = EigenVector<T>::Flatten(*d_x);
+      auto dy_v = EigenVector<T>::Flatten(*d_y);
       auto &dev = *dev_ctx.eigen_device();
-      phi::funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
+      funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("Unsupported activation type"));
     }
-    phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
+    funcs::SetConstant<GPUContext, BatchNormParamType> functor;
     functor(dev_ctx, d_scale, static_cast<BatchNormParamType>(0));
     functor(dev_ctx, d_bias, static_cast<BatchNormParamType>(0));
     return;
@@ -145,7 +145,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   size_t workspace_size = 0;
   void *workspace_ptr = nullptr;
-  phi::DenseTensor workspace_tensor;
+  DenseTensor workspace_tensor;
   auto reserve_space_size = reserve_space.memory_size();
   cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ACTIVATION;
   phi::backends::gpu::ScopedActivationDescriptor scope_act_desc;

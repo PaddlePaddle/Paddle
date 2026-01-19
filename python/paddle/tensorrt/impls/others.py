@@ -169,10 +169,10 @@ def multiclass_nms3_converter(network, paddle_op, inputs):
     )
 
 
-@converter_registry.register("pd_op.set_value", trt_version="8.x")
-@converter_registry.register("pd_op.set_value_", trt_version="8.x")
-@converter_registry.register("pd_op.set_value_with_tensor", trt_version="8.x")
-@converter_registry.register("pd_op.set_value_with_tensor_", trt_version="8.x")
+@converter_registry.register("pd_op.set_value")
+@converter_registry.register("pd_op.set_value_")
+@converter_registry.register("pd_op.set_value_with_tensor")
+@converter_registry.register("pd_op.set_value_with_tensor_")
 def set_value_converter(network, paddle_op, inputs):
     x = inputs[0]
     if (
@@ -320,8 +320,8 @@ def set_value_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.share_data", trt_version="8.x")
-@converter_registry.register("pd_op.share_data_", trt_version="8.x")
+@converter_registry.register("pd_op.share_data")
+@converter_registry.register("pd_op.share_data_")
 def share_data_converter(network, paddle_op, inputs):
     x = inputs[0]
     identity_layer = network.add_identity(x)
@@ -329,7 +329,7 @@ def share_data_converter(network, paddle_op, inputs):
     return identity_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.temporal_shift", trt_version="8.x")
+@converter_registry.register("pd_op.temporal_shift")
 def temporal_shift_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     # Add a small bias to shift_ratio to mitigate floating point precision errors
@@ -485,7 +485,7 @@ def temporal_shift_converter(network, paddle_op, inputs):
     return output_tensor
 
 
-@converter_registry.register("pd_op.anchor_generator", trt_version="8.x")
+@converter_registry.register("pd_op.anchor_generator")
 def anchor_generator_converter(network, paddle_op, inputs):
     inputs = inputs[0]
     input_dims = inputs.shape
@@ -546,7 +546,7 @@ def anchor_generator_converter(network, paddle_op, inputs):
     return (out0, out1)
 
 
-@converter_registry.register("pd_op.affine_channel", trt_version="8.x")
+@converter_registry.register("pd_op.affine_channel")
 def affine_channel_converter(network, paddle_op, inputs):
     x, scale, bias = inputs
     data_layout = paddle_op.attrs().get("data_layout")
@@ -602,7 +602,7 @@ def affine_channel_converter(network, paddle_op, inputs):
     return out_tensor
 
 
-@converter_registry.register("pd_op.shuffle_channel", trt_version="8.x")
+@converter_registry.register("pd_op.shuffle_channel")
 def shuffle_channel_converter(network, paddle_op, inputs):
     input = inputs[0]
     group = paddle_op.attrs().get("group")
@@ -658,7 +658,7 @@ def shuffle_channel_converter(network, paddle_op, inputs):
     return output_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.full_batch_size_like", trt_version="8.x")
+@converter_registry.register("pd_op.full_batch_size_like")
 def full_batch_size_like_converter(network, paddle_op, inputs):
     input = inputs[0]
     input_dim_idx = paddle_op.attrs().get("input_dim_idx")

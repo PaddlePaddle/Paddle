@@ -53,7 +53,7 @@ class ScopedRNNBase {
               const std::vector<int>& sequence_length,
               size_t* workspace_size,
               size_t* reserve_size,
-              phi::DenseTensor* dropout_state) {
+              DenseTensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
     miopenDataType_t miopen_type = phi::backends::gpu::CudnnDataType<T>::type;
 
@@ -117,8 +117,7 @@ class ScopedRNNBase {
         common::errors::InvalidArgument(
             "The miopen lstm and setting weight size should be same."));
     // ------------------- miopen weight descriptors ---------------------
-    phi::backends::gpu::DataLayout layout =
-        phi::backends::gpu::DataLayout::kNCHW;
+    DataLayout layout = DataLayout::NCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);

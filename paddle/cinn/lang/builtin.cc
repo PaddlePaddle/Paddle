@@ -204,8 +204,8 @@ Expr max_value(const Type& type) {
   FOR_CASE(float)
   FOR_CASE(double)
 #undef FOR_CASE
-
-  CINN_NOT_IMPLEMENTED
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "Unsupported type for max_value: %s", type));
   return Expr();
 }
 

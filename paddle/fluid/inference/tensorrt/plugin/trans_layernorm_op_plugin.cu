@@ -35,7 +35,6 @@ inline int getSMVersion() {
   return prop.major * 10 + prop.minor;
 }
 
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
 #define FINAL_MASK 0xffffffff
 
 template <int UNROLL_FACTOR>
@@ -104,8 +103,6 @@ __global__ void GeneralResidualLayerNormOpt2(half2 *normed_output,
                                    rows,                                     \
                                    half_n,                                   \
                                    eps);
-
-#endif
 
 int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
   if (!with_fp16_) {
@@ -366,7 +363,7 @@ int TransLayerNormPluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
 
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  phi::GPUPlace place(platform::GetCurrentDeviceId());
+  GPUPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
 

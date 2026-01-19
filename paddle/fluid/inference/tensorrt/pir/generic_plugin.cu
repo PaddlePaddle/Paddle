@@ -493,7 +493,7 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
                             op_name_.c_str()));
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  phi::GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
+  GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
 
   std::vector<phi::DataType> precision_types{phi::DataType::FLOAT32,
@@ -573,7 +573,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* const* outputs,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
-  phi::GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
+  GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
@@ -704,8 +704,14 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       phi_kernel_contexts_[data_type]->EmplaceBackAttr(
           attrs_map_[t].dyn_cast<::pir::FloatAttribute>().data());
     } else if (attr_type_name == "pir::DoubleAttribute") {
-      phi_kernel_contexts_[data_type]->EmplaceBackAttr(
-          attrs_map_[t].dyn_cast<::pir::DoubleAttribute>().data());
+      if (attrs_map_[t].type_id() == ::pir::FloatAttribute::type_id()) {
+        const auto val = attrs_map_[t].dyn_cast<::pir::FloatAttribute>().data();
+        phi_kernel_contexts_[data_type]->EmplaceBackAttr(
+            static_cast<double>(val));
+      } else {
+        phi_kernel_contexts_[data_type]->EmplaceBackAttr(
+            attrs_map_[t].dyn_cast<::pir::DoubleAttribute>().data());
+      }
     } else if (attr_type_name == "pir::BoolAttribute") {
       phi_kernel_contexts_[data_type]->EmplaceBackAttr(
           attrs_map_[t].dyn_cast<::pir::BoolAttribute>().data());

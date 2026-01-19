@@ -404,6 +404,31 @@ class TestUniqueConsecutive_ZeroSize(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
 
+class TestFunctionalUniqueConsecutive(unittest.TestCase):
+    def test_functional_unique_consecutive(self):
+        with base.dygraph.guard():
+            x_np = np.random.randint(20, size=[20]).astype("int32")
+            x = paddle.tensor(x_np)
+            out_expect = paddle.unique_consecutive(x)
+            out_res = paddle.functional.unique_consecutive(x)
+            np.testing.assert_equal(out_expect.numpy(), out_res.numpy())
+
+            out_expect = paddle.unique_consecutive(
+                x, return_inverse=True, return_counts=True
+            )
+            out_res = paddle.functional.unique_consecutive(
+                x, return_inverse=True, return_counts=True
+            )
+            for expect, res in zip(out_expect, out_res):
+                np.testing.assert_equal(expect.numpy(), res.numpy())
+
+            x_np = np.random.randint(20, size=[20, 10]).astype("int32")
+            x = paddle.tensor(x_np)
+            out_expect = paddle.unique_consecutive(x, axis=1)
+            out_res = paddle.functional.unique_consecutive(x, axis=1)
+            np.testing.assert_equal(out_expect.numpy(), out_res.numpy())
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

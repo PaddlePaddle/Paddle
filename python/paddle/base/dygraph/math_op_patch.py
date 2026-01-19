@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -28,6 +29,10 @@ from .. import core
 from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
+    from typing import Any
+
+    from numpy.typing import NDArray
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 
@@ -99,6 +104,20 @@ _supported_dtype_conversions = {
 }
 
 
+def _rebuild_tensor(
+    data: NDArray[Any],
+    dtype: DTypeLike,
+    device: PlaceLike,
+    requires_grad,
+) -> Tensor:
+    return paddle.tensor(
+        data,
+        dtype,
+        device,
+        requires_grad,
+    )
+
+
 class TensorSize(int):
     as_shape: list[int]
 
@@ -161,6 +180,9 @@ def monkey_patch_math_tensor():
             return astype(tensor, 'uint8')
         elif self.is_complex():
             real = astype(self.real(), 'int8')
+            logging.warning(
+                "Casting complex values to real discards the imaginary part"
+            )
             return astype(real, 'uint8')
         else:
             return astype(self, 'uint8')
@@ -207,17 +229,17 @@ def monkey_patch_math_tensor():
         return var.abs()
 
     def _complex_(var: Tensor) -> complex:
-        numel = np.prod(var.shape)
+        numel = np.prod(var.shape, dtype="int64")
         assert numel == 1, (
             "only one element variable can be converted to complex."
         )
         assert var._is_initialized(), "variable's tensor is not initialized"
         if not var.is_complex():
             var = var.astype('complex64')
-        return complex(np.array(var))
+        return complex(var.item())
 
     def _float_(var: Tensor) -> float:
-        numel = np.prod(var.shape)
+        numel = np.prod(var.shape, dtype="int64")
         assert numel == 1, (
             "only one element variable can be converted to float."
         )
@@ -227,21 +249,10 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return float(np.array(var))
-
-    def _long_(var: Tensor) -> int:
-        numel = np.prod(var.shape)
-        assert numel == 1, "only one element variable can be converted to long."
-        assert var._is_initialized(), "variable's tensor is not initialized"
-        if (
-            var.dtype == core.VarDesc.VarType.BF16
-            or var.dtype == core.DataType.BFLOAT16
-        ):
-            var = var.astype('float32')
-        return int(np.array(var))
+        return float(var.item())
 
     def _int_(var: Tensor) -> int:
-        numel = np.prod(var.shape)
+        numel = np.prod(var.shape, dtype="int64")
         assert numel == 1, "only one element variable can be converted to int."
         assert var._is_initialized(), "variable's tensor is not initialized"
         if (
@@ -249,7 +260,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return int(np.array(var))
+        return int(var.item())
 
     def _len_(var: Tensor) -> int:
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
@@ -261,7 +272,7 @@ def monkey_patch_math_tensor():
             return var.shape[0]
 
     def _index_(var: Tensor) -> int:
-        numel = np.prod(var.shape)
+        numel = np.prod(var.shape, dtype="int64")
         assert numel == 1, (
             "only one element variable can be converted to python index."
         )
@@ -271,7 +282,7 @@ def monkey_patch_math_tensor():
             or var.dtype == core.DataType.BFLOAT16
         ):
             var = var.astype('float32')
-        return int(np.array(var))
+        return int(var.item())
 
     @property
     def _ndim(var: Tensor) -> int:
@@ -307,13 +318,13 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor with its last two dimensions swapped.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.randn([2, 3, 4])
                 >>> x_transposed = x.mT
                 >>> x_transposed.shape
-                [2, 4, 3]
+                paddle.Size([2, 4, 3])
         """
         if len(var.shape) < 2:
             raise ValueError(
@@ -400,13 +411,13 @@ def monkey_patch_math_tensor():
             Tensor: A new uninitialized Tensor with the specified shape.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
                 >>> y = x.new_empty(3, 3)  # type: ignore
                 >>> y.shape
-                [3, 3]
+                paddle.Size([3, 3])
         """
 
         if dtype is None:
@@ -497,15 +508,15 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with zeros.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
-            >>> import paddle
-            >>> x = paddle.ones([2, 2])
-            >>> y = x.new_zeros(3, 3)  # type: ignore
-            >>> y.numpy()
-            array([[0., 0., 0.],
-                   [0., 0., 0.],
-                   [0., 0., 0.]], dtype=float32)
+                >>> import paddle
+                >>> x = paddle.ones([2, 2])
+                >>> y = x.new_zeros(3, 3)  # type: ignore[misc, arg-type]
+                >>> y.numpy()
+                array([[0., 0., 0.],
+                       [0., 0., 0.],
+                       [0., 0., 0.]], dtype=float32)
         """
 
         if dtype is None:
@@ -556,6 +567,20 @@ def monkey_patch_math_tensor():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            requires_grad (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(requires_grad, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(requires_grad)}"
+            )
+        self.stop_gradient = not requires_grad
+        return self
+
     @property
     def itemsize(self: Tensor) -> int:
         """
@@ -571,12 +596,23 @@ def monkey_patch_math_tensor():
         """
         return self.element_size()
 
+    def _reduce_ex_(self: Tensor, proto):
+        data_numpy = self.numpy()
+        place = str(self.place)[6:-1]  # Place(gpu:1) -> gpu:1
+        dtype = str(self.dtype)[7:]  # paddle.int32 -> int32
+        requires_grad = self.requires_grad
+        return _rebuild_tensor, (
+            data_numpy,
+            dtype,
+            place,
+            requires_grad,
+        )
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
         ('__complex__', _complex_),
         ('__float__', _float_),
-        ('__long__', _long_),
         ('__int__', _int_),
         ('__len__', _len_),
         ('__index__', _index_),
@@ -595,9 +631,11 @@ def monkey_patch_math_tensor():
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         # for logical compare
         ('__array_ufunc__', None),
         ('itemsize', itemsize),
+        ('__reduce_ex__', _reduce_ex_),
     ]
 
     dtype_conversion_methods = _create_dtype_conversion_methods()

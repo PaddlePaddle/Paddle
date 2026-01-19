@@ -137,10 +137,15 @@ std::vector<int64_t> DenseTensorIteratorBase::invert_perm(
 }
 
 void DenseTensorIteratorBase::allocate_or_resize_outputs() {
-  for (auto i = 0; i < num_outputs_; i++) {
+  for (size_t i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-    if (!op.tensor().initialized() || op.will_resize || !valid_stride) {
+    bool reduce_pass = false;
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      reduce_pass = true;
+    }
+    if (!reduce_pass &&
+        (!op.tensor().initialized() || op.will_resize || !valid_stride)) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
       bool inverted = true;
@@ -199,7 +204,7 @@ void DenseTensorIterator::set_output_raw_strided(int64_t output_idx,
     }
     op.current_dtype = op.target_dtype;
   } else if (op.will_resize) {
-    PADDLE_THROW(common::errors::Fatal("Opreator Reize not Implemented!"));
+    PADDLE_THROW(common::errors::Fatal("Operator Resize not Implemented!"));
   }
 }
 
@@ -227,6 +232,7 @@ void DenseTensorIteratorBase::coalesce_dimensions() {
       stride[dim0] = stride[dim1];
     }
   };
+
   int prev_dim = 0;
   for (auto dim = 1; dim < ndim(); dim++) {
     if (can_coalesce(prev_dim, dim)) {
@@ -257,8 +263,8 @@ int64_t DenseTensorIteratorBase::numel() const {
   return numel;
 }
 
-const void* DenseTensorIteratorBase::data_ptr(int64_t arg) const {
-  return static_cast<void*>(operands_[arg].tensor().data());
+void* DenseTensorIteratorBase::data_ptr(int64_t arg) const {
+  return static_cast<void*>(operands_[arg].data);
 }
 
 static inline std::vector<int64_t> infer_size_dimvector(
@@ -283,6 +289,9 @@ void DenseTensorIteratorBase::populate_operands(
   for (size_t idx = 0; idx < config.tensors_.size(); idx++) {
     auto& tensor = config.tensors_[idx];
     operands_.emplace_back(std::move(const_cast<DenseTensor*>(tensor)));
+    if (idx < static_cast<size_t>(config.num_outputs_)) {
+      operands_[idx].is_output = true;
+    }
   }
   num_outputs_ = config.num_outputs_;
 }
@@ -312,7 +321,7 @@ bool DenseTensorIteratorBase::fast_set_up(
   }
   switch (setup_type) {
     case FastSetupType::CONTIGUOUS: {
-      for (auto i = 0; i < num_outputs_; i++) {
+      for (size_t i = 0; i < num_outputs_; i++) {
         set_output_raw_strided(i, shape_, {});
       }
       break;
@@ -335,6 +344,26 @@ bool DenseTensorIteratorBase::fast_set_up(
     }
   }
   return true;
+}
+
+int DenseTensorIteratorBase::num_reduce_dims() const {
+  int count = 0;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] == 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int64_t DenseTensorIteratorBase::num_output_elements() const {
+  int64_t elem = 1;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] != 0 || shape_[dim] == 0) {
+      elem *= shape_[dim];
+    }
+  }
+  return elem;
 }
 
 void DenseTensorIteratorBase::compute_shape(
@@ -369,11 +398,29 @@ void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-    if (op.tensor().initialized() && !op.will_resize && valid_stride) {
-      std::vector<int64_t> original_shape =
-          config.static_shape_ ? shape_
-                               : common::vectorize<int64_t>(op.tensor().dims());
-      auto original_stride = common::vectorize<int64_t>(op.tensor().strides());
+    bool reduce_pass = false;
+    bool out_pass = false;
+    if (is_alloc_out_ && op.is_output) out_pass = true;
+    std::vector<int64_t> tmp_shape =
+        common::vectorize<int64_t>(op.tensor().dims());
+    std::vector<int64_t> tmp_stride =
+        common::vectorize<int64_t>(op.tensor().strides());
+
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      tmp_stride = std::vector<int64_t>(shape_.size(), 0);
+      tmp_shape = std::vector<int64_t>(shape_.size(), 1);
+      reduce_pass = true;
+    }
+    if (out_pass || reduce_pass ||
+        op.tensor().initialized() && !op.will_resize && valid_stride) {
+      std::vector<int64_t> original_shape;
+      original_shape = config.static_shape_
+                           ? shape_
+                           : common::vectorize<int64_t>(op.tensor().dims());
+      if (op.is_output && reduce_pass) original_shape = tmp_shape;
+      std::vector<int64_t> original_stride;
+      original_stride = common::vectorize<int64_t>(op.tensor().strides());
+      if (op.is_output && reduce_pass) original_stride = tmp_stride;
       auto element_size_in_bytes = phi::SizeOf(op.tensor().dtype());
       auto offset = ndim() - original_shape.size();
       if (offset > 0)
@@ -393,6 +440,8 @@ void DenseTensorIteratorBase::compute_strides(
 }
 
 void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
+  is_reduction_ = config.is_reduction_;
+  is_alloc_out_ = config.is_alloc_out_;
   populate_operands(config);
   compute_shape(config);
   if (!fast_set_up(config)) {
@@ -401,5 +450,177 @@ void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
     allocate_or_resize_outputs();
     coalesce_dimensions();
   }
+
+  for (auto& op : operands_) {
+    op.data = const_cast<void*>(op.tensor().data());
+  }
+  int64_t ndim_offsets = (ndim() ? ndim() : 1);
+  view_offsets_ = std::vector<int64_t>(ndim_offsets, 0);
+}
+
+DimIter::DimIter(std::vector<int64_t> shape, int64_t start, int64_t end)
+    : shape(shape),
+      start(start),
+      end(end),
+      values(shape.size()),
+      offset(start) {
+  std::fill(values.begin(), values.end(), 0);
+  if (start == 0) {
+    return;
+  }
+
+  int64_t linear_offset = start;
+  auto ndim = values.size();
+  for (size_t dim = 0; dim < ndim; dim++) {
+    int64_t size = shape[dim];
+    if (size > 0) {
+      values[dim] = linear_offset % size;
+      linear_offset /= size;
+    }
+  }
+}
+
+bool DimIter::iter_to_end() const { return offset >= end; }
+
+void DimIter::iter_to_next(const std::array<int64_t, 2>& step) {
+  offset += step[0] * step[1];
+  auto ndim = values.size();
+  int64_t overflow = step[0];
+  size_t i = 0;
+  if (step[1] != 1) {
+    i = 1;
+    overflow = step[1];
+  }
+  for (; i < ndim && overflow > 0; i++) {
+    auto size = shape[i];
+    auto prev = values[i];
+    auto value = prev + overflow;
+    if (value >= size) {
+      overflow = 1;
+      value -= size;
+    } else {
+      overflow = 0;
+    }
+    values[i] = static_cast<int64_t>(value);
+  }
+}
+
+std::array<int64_t, 2> DimIter::iter_for_step() const {
+  int64_t step0 = std::min(shape[0] - values[0], end - offset);
+  int64_t step1 = 1;
+  if (step0 == shape[0] && !shape.empty() && shape.size() > 1) {
+    step1 = std::min(shape[1] - values[1], (end - offset) / shape[0]);
+  }
+  return {step0, step1};
+}
+
+void DenseTensorIteratorBase::narrow(int dim, int64_t start, int64_t size) {
+  shape_[dim] = size;
+  view_offsets_[dim] += start;
+  for (auto& op : operands_) {
+    op.data = (static_cast<char*>(op.data)) + op.stride_bytes[dim] * start;
+  }
+  if (size == 1 && !is_reduction_) {
+    coalesce_dimensions();
+  }
+}
+
+bool DenseTensorIteratorBase::is_dim_reduced(int dim) const {
+  for (auto& op : operands_) {
+    if (op.is_output && op.stride_bytes[dim] == 0 && shape_[dim] > 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::unique_ptr<DenseTensorIterator> DenseTensorIteratorBase::split(int dim) {
+  auto split_iter = std::make_unique<DenseTensorIterator>(*this);
+  bool has_overlap = is_dim_reduced(dim);
+  int64_t split_size = shape_[dim] / 2;
+  int64_t remaining_size = shape_[dim] - split_size;
+
+  split_iter->narrow(dim, 0, split_size);
+  split_iter->final_output_ = !has_overlap;
+
+  narrow(dim, split_size, remaining_size);
+  accumulate_ |= has_overlap;
+
+  return split_iter;
+}
+
+int DenseTensorIteratorBase::get_dim_to_split() const {
+  int64_t max_extent = -1;
+  int dim_to_split = -1;
+
+  for (int dim = ndim() - 1; dim >= 0; --dim) {
+    const int64_t size = shape_[dim];
+    if (size == 0) {
+      continue;
+    }
+    for (auto& op : operands_) {
+      const int64_t extent = (size - 1) * std::abs(op.stride_bytes[dim]);
+      if (extent > max_extent) {
+        max_extent = extent;
+        dim_to_split = dim;
+      }
+    }
+  }
+  return dim_to_split;
+}
+
+bool DenseTensorIteratorBase::can_use_32bit_indexing() const {
+  constexpr int64_t max_32bit_value = std::numeric_limits<int32_t>::max();
+
+  if (numel() > max_32bit_value) {
+    return false;
+  }
+
+  for (auto& op : operands_) {
+    int64_t max_offset = 1;
+    for (int dim = 0; dim < ndim(); ++dim) {
+      max_offset += (shape_[dim] - 1) * op.stride_bytes[dim];
+    }
+
+    if (max_offset > max_32bit_value) {
+      return false;
+    }
+  }
+  return true;
+}
+
+Tensor32BitSplitter DenseTensorIteratorBase::with_32bit_indexing() const {
+  return Tensor32BitSplitter(*this);
+}
+
+Tensor32BitSplitter::iterator::iterator(const DenseTensorIteratorBase& iter) {
+  iterator_stack_.emplace_back(std::make_unique<DenseTensorIterator>(iter));
+  iterator_stack_.emplace_back(nullptr);
+  ++(*this);
+}
+
+Tensor32BitSplitter::iterator& Tensor32BitSplitter::iterator::operator++() {
+  iterator_stack_.pop_back();
+
+  while (!iterator_stack_.empty() &&
+         !iterator_stack_.back()->can_use_32bit_indexing()) {
+    auto& current_iter = *iterator_stack_.back();
+    int split_dim = current_iter.get_dim_to_split();
+    iterator_stack_.emplace_back(current_iter.split(split_dim));
+  }
+
+  return *this;
+}
+
+DenseTensorIterator& Tensor32BitSplitter::iterator::operator*() const {
+  return *iterator_stack_.back();
+}
+
+Tensor32BitSplitter::iterator Tensor32BitSplitter::begin() const {
+  return Tensor32BitSplitter::iterator(source_iterator_);
+}
+
+Tensor32BitSplitter::iterator Tensor32BitSplitter::end() const {
+  return Tensor32BitSplitter::iterator();
 }
 }  // namespace phi

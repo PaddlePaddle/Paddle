@@ -194,6 +194,9 @@ from paddle.base.dygraph.tensor_patch_methods import (
 )
 from paddle.tensor.linalg import _POrder  # noqa: F401
 from paddle.tensor.stat import _Interpolation  # noqa: F401
+
+# Special types already defined in tensor.prototype.pyi
+from paddle import Tensor
 """
 
 

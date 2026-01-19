@@ -32,8 +32,8 @@ void MultinomialInputChecker(const Context& dev_ctx,
   const int64_t num_distributions = dim_size > 1 ? in_dims[dim_size - 2] : 1;
   auto int_num_samples = num_samples.to<int>();
 
-  phi::DenseTensor cpu_tensor;
-  phi::Copy<Context>(dev_ctx, x, phi::CPUPlace(), false, &cpu_tensor);
+  DenseTensor cpu_tensor;
+  phi::Copy<Context>(dev_ctx, x, CPUPlace(), false, &cpu_tensor);
   T* cpu_in_data = cpu_tensor.data<T>();
   for (int64_t i = 0; i < num_distributions; ++i) {
     int zero_num = 0;

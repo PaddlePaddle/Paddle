@@ -55,7 +55,11 @@ struct ProjectCompileHelper {
       const Directory<File>& directory, const std::string& relative_dir_path) {
     std::string dir_path = this->workspace_dir + "/" + relative_dir_path;
     std::string cmd = std::string() + "mkdir -p " + dir_path;
-    ADT_CHECK(WEXITSTATUS(std::system(cmd.c_str())) == 0);
+    int ret = std::system(cmd.c_str());
+    ADT_CHECK(ret != -1 && WIFEXITED(ret) && WEXITSTATUS(ret) == 0)
+        << adt::errors::RuntimeError{std::string() +
+                                     "mkdir failed. dir_path: " + dir_path +
+                                     ", system return: " + std::to_string(ret)};
     using Ok = adt::Result<adt::Ok>;
     for (const auto& [dentry, file] : directory.dentry2file->storage) {
       ADT_RETURN_IF_ERR(file.Match(

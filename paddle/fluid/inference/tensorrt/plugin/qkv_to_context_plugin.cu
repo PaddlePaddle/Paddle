@@ -33,9 +33,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
@@ -199,7 +196,7 @@ void QkvToContextPluginDynamic::configurePlugin(
     int device_id = 0;
     cudaGetDevice(&device_id);
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(GPUPlace(device_id)));
     const phi::GPUContext &dev_ctx = *device_ctx;
     auto stream = dev_ctx.stream();
     tensor_.Resize({batch, seq_len, seq_len, head_number_});
@@ -207,12 +204,12 @@ void QkvToContextPluginDynamic::configurePlugin(
       tensor_.Resize({batch, seq_len, seq_len, 1});
       int blocks = batch * 1 * seq_len;
       mask_half_ = reinterpret_cast<half *>(
-          tensor_.mutable_data<int16_t>(phi::GPUPlace(device_id)));
+          tensor_.mutable_data<int16_t>(GPUPlace(device_id)));
       reset_qk_bias<<<blocks, 1024, 0, stream>>>(
           mask_half_, real_seq_len, seq_len);
     } else if (in[0].desc.type == nvinfer1::DataType::kFLOAT) {
       fake_qk_bias_ = reinterpret_cast<float *>(
-          tensor_.mutable_data<int32_t>(phi::GPUPlace(device_id)));
+          tensor_.mutable_data<int32_t>(GPUPlace(device_id)));
       int64_t size = sizeof(int32_t) * batch * seq_len * seq_len * head_number_;
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -249,14 +246,9 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -344,7 +336,7 @@ int QkvToContextPluginDynamic::enqueue(
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
     auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<float>(phi::GPUPlace(device_id));
+        multihead_temp_tensor.mutable_data<float>(GPUPlace(device_id));
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
 
@@ -355,7 +347,7 @@ int QkvToContextPluginDynamic::enqueue(
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias =
-          temp_qk_bias_tensor.mutable_data<float>(phi::GPUPlace(device_id));
+          temp_qk_bias_tensor.mutable_data<float>(GPUPlace(device_id));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -369,7 +361,7 @@ int QkvToContextPluginDynamic::enqueue(
     if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias = reinterpret_cast<float *>(
-          temp_qk_bias_tensor.mutable_data<float>(phi::GPUPlace(device_id)));
+          temp_qk_bias_tensor.mutable_data<float>(GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast_batch_head_number<<<grid, block, 0, stream>>>(
@@ -390,7 +382,7 @@ int QkvToContextPluginDynamic::enqueue(
         batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(GPUPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
     phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
@@ -413,7 +405,6 @@ int QkvToContextPluginDynamic::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     int real_seq_len = seq_len;
     int need_padding = false;
@@ -427,7 +418,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            phi::GPUPlace(device_id));
+            GPUPlace(device_id));
 
     half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
     half *tptr = qkptr + scratch_size;
@@ -439,7 +430,7 @@ int QkvToContextPluginDynamic::enqueue(
     if (ProductDim(input_desc[1].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias = reinterpret_cast<half *>(
-          temp_qk_bias_tensor.mutable_data<int16_t>(phi::GPUPlace(device_id)));
+          temp_qk_bias_tensor.mutable_data<int16_t>(GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -453,7 +444,7 @@ int QkvToContextPluginDynamic::enqueue(
     if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias = reinterpret_cast<half *>(
-          temp_qk_bias_tensor.mutable_data<int16_t>(phi::GPUPlace(device_id)));
+          temp_qk_bias_tensor.mutable_data<int16_t>(GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast_batch_head_number<<<grid, block, 0, stream>>>(
@@ -490,7 +481,7 @@ int QkvToContextPluginDynamic::enqueue(
     }
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(GPUPlace(device_id)));
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
@@ -529,21 +520,12 @@ int QkvToContextPluginDynamic::enqueue(
       transpose<half><<<grid, block, 0, stream>>>(
           tptr, output, batch, seq_len, head_number_, head_size_);
     }
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "The Ernie(Bert) TensorRT Plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recompile it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
   } else {
     PADDLE_THROW(common::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

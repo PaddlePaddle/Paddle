@@ -47,8 +47,8 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       const IndexT& dst_idx = d_index[i];
       auto src_slice = src.Slice(src_idx, src_idx + 1);
       auto dst_slice = dst->Slice(dst_idx, dst_idx + 1);
-      auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_src = EigenVector<T>::Flatten(src_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst += (eigen_src / static_cast<T>(dst_count[src_idx]));
     }
   } else if (reduce_op == "MIN" || reduce_op == "MAX") {
@@ -58,13 +58,13 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       auto input_slice = input.Slice(forward_src_idx, forward_src_idx + 1);
       auto output_slice =
           output->Slice(forward_dst_idx, forward_dst_idx + 1);  // NOLINT
-      auto eigen_input = phi::EigenVector<T>::Flatten(input_slice);
-      auto eigen_output = phi::EigenVector<T>::Flatten(output_slice);
+      auto eigen_input = EigenVector<T>::Flatten(input_slice);
+      auto eigen_output = EigenVector<T>::Flatten(output_slice);
 
       auto src_slice = src.Slice(forward_dst_idx, forward_dst_idx + 1);
       auto dst_slice = dst->Slice(forward_src_idx, forward_src_idx + 1);
-      auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_src = EigenVector<T>::Flatten(src_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst += eigen_src * (eigen_output == eigen_input);
     }
   }
@@ -81,7 +81,10 @@ void GraphSendRecvGradOpKernelLaunchHelper(
     DenseTensor* x_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
-  const int& index_size = dst_index.dims()[0];  // NOLINT
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = dst_index.dims()[0];
+  // NOLINT
 
   dev_ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();
@@ -132,8 +135,7 @@ void SendURecvGradKernel(const Context& dev_ctx,
 
   if (out_grad.numel() == 0 || x.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
 

@@ -20,12 +20,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+#include "paddle/phi/kernels/index_put_grad_kernel.h"
 #include "paddle/phi/kernels/index_put_kernel.h"
 #include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
 
@@ -75,7 +77,35 @@ inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
   return false;
 }
 
-template <typename T, typename Context>
+template <typename T, int64_t num_indices>
+__device__ __forceinline__ void index_put_impl(char* out_data,
+                                               const char* in_data,
+                                               const char* const* index_ptrs,
+                                               const int64_t* offsets,
+                                               const int64_t* sizes,
+                                               const int64_t* strides,
+                                               bool accumulate) {
+  int64_t offset = 0;
+#pragma unroll
+  for (int64_t i = 0; i < num_indices; i++) {
+    int64_t index =
+        *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]);
+    if (index < 0) {
+      index += sizes[i];
+    }
+    offset += index * strides[i];
+  }
+
+  if (accumulate) {
+    *reinterpret_cast<T*>(out_data + offset) +=
+        *reinterpret_cast<const T*>(in_data);
+  } else {
+    *reinterpret_cast<T*>(out_data + offset) =
+        *reinterpret_cast<const T*>(in_data);
+  }
+}
+
+template <typename T, typename Context, typename OffsetT = uint32_t>
 void LaunchIndexPutKernel_V2(const Context& dev_ctx,
                              const DenseTensor& x,
                              const std::vector<const DenseTensor*>& indices,
@@ -104,7 +134,7 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   out->set_meta(meta);
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (!is_initialized) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+    if (!x.meta().is_contiguous()) {
       StridedTensorCopy<T>(x,
                            common::vectorize<int64_t>(out->dims()),
                            common::vectorize<int64_t>(out->strides()),
@@ -117,15 +147,22 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
 
   funcs::AdvancedIndex ad =
       funcs::AdvancedIndex<T, Context>(dev_ctx, *out, indices);
+  if (ad.empty_index) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   if (!CheckIsDimsMatchBool(ad.src.dims(), value.dims())) {
     DenseTensor x_;
     DenseTensor value_;
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
     }
-    if (!value.meta().is_contiguous() || value.offset() != 0) {
+    if (!value.meta().is_contiguous()) {
       value_ = Tensor2Contiguous<Context>(dev_ctx, value);
     } else {
       value_ = value;
@@ -155,11 +192,24 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
     index_ptrs[i] = reinterpret_cast<const char*>(iter.data_ptr(i + 2));
   }
 
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
+  bool is_big_tensor = false;
+  int64_t max_stride = 0;
+  for (int i = 0; i < 2 + num_indices; i++) {
+    for (int j = 0; j < iter.ndim(); j++) {
+      max_stride += iter.operands_[i].stride_bytes.data()[j] * iter.shape()[j];
+    }
+  }
+
+  if (!funcs::IsInUint32Range(max_stride * sizeof(T))) {
+    is_big_tensor = true;
+  }
 
   const int64_t N = iter.numel();
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
@@ -170,30 +220,44 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
 
   const char* in_ptr = reinterpret_cast<const char*>(val_data);
   char* out_ptr = reinterpret_cast<char*>(out_data);
-  funcs::index_put_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
-      N, accumulate, [=] __device__(int idx, bool accumulate) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
 
-        int64_t offset = 0;
-#pragma unroll
-        for (int64_t i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
-          }
-          offset += index * strides[i];
-        }
-        if (accumulate) {
-          *reinterpret_cast<T*>(out_data + offset) +=
-              *reinterpret_cast<const T*>(in_data);
-        } else {
-          *reinterpret_cast<T*>(out_data + offset) =
-              *reinterpret_cast<const T*>(in_data);
-        }
+#define Launch_Index_Put                                                     \
+  funcs::index_put_kernel<nt, vt, T><<<grid, block, 0, stream>>>(            \
+      N, accumulate, [=] __device__(int64_t idx, bool accumulate) {          \
+        const auto offsets = offset_calc.get(idx);                           \
+        char* const out_data = out_ptr + offsets[0];                         \
+        const char* const in_data = in_ptr + offsets[1];                     \
+                                                                             \
+        int64_t offset = 0;                                                  \
+        for (int64_t i = 0; i < num_indices; i++) {                          \
+          int64_t index =                                                    \
+              *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]); \
+          if (index < 0) {                                                   \
+            index += sizes[i];                                               \
+          }                                                                  \
+          offset += index * strides[i];                                      \
+        }                                                                    \
+        if (accumulate) {                                                    \
+          *reinterpret_cast<T*>(out_data + offset) +=                        \
+              *reinterpret_cast<const T*>(in_data);                          \
+        } else {                                                             \
+          *reinterpret_cast<T*>(out_data + offset) =                         \
+              *reinterpret_cast<const T*>(in_data);                          \
+        }                                                                    \
       });
+
+  if (is_big_tensor) {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+    Launch_Index_Put;
+  } else {
+    funcs::OffsetCalculator offset_calc =
+        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+    Launch_Index_Put;
+  }
+
+  // funcs::OffsetCalculator offset_calc =
+  // funcs::make_offset_calculator<3>(iter);
 }
 
 template <typename T, typename Context>
@@ -216,15 +280,17 @@ void IndexPutKernel_V2(const Context& dev_ctx,
                       common::errors::InvalidArgument(
                           "Indices in Index_put must be contiguous."));
   }
-
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||
-      value.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
     }
-    if (!value.meta().is_contiguous() || value.offset() != 0) {
+    if (!value.meta().is_contiguous()) {
       value_ = Tensor2Contiguous<Context>(dev_ctx, value);
     } else {
       value_ = value;
@@ -244,8 +310,92 @@ void IndexPutKernel_V2(const Context& dev_ctx,
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
   }
-  LaunchIndexPutKernel_V2<T, Context>(
-      dev_ctx, x_, indices, value_, accumulate, out);
+  if (out && !funcs::IsInUint32Range(out->numel(), value_.numel())) {
+    LaunchIndexPutKernel_V2<T, Context, uint64_t>(
+        dev_ctx, x_, indices, value_, accumulate, out);
+  } else {
+    LaunchIndexPutKernel_V2<T, Context>(
+        dev_ctx, x_, indices, value_, accumulate, out);
+  }
+}
+
+template <typename T, typename Context>
+void IndexPutGradKernel_V2(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const std::vector<const DenseTensor*>& indices,
+                           const DenseTensor& value,
+                           const DenseTensor& out_grad,
+                           bool accumulate,
+                           DenseTensor* x_grad,
+                           DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    // Fill value_grad with 0.
+    if (value_grad) {
+      phi::Full<T, Context>(dev_ctx, value_grad->dims(), 0, value_grad);
+    }
+    return;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      value.dtype(),
+      common::errors::InvalidArgument(
+          "The data type of tensor value must be same to the data type "
+          "of tensor x."));
+
+  DenseTensor out_grad_;
+  if (!FLAGS_use_stride_compute_kernel || value_grad) {
+    if (!out_grad.meta().is_contiguous()) {
+      out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad);
+    } else {
+      out_grad_ = out_grad;
+    }
+    if (x_grad) {
+      auto x_grad_meta = x.meta();
+      x_grad_meta.dims = x_grad->dims();
+      x_grad_meta.strides = x_grad_meta.calc_strides(x_grad->dims());
+      x_grad->set_meta(x_grad_meta);
+    }
+
+    if (value_grad) {
+      auto value_grad_meta = value.meta();
+      value_grad_meta.dims = value_grad->dims();
+      value_grad_meta.strides =
+          value_grad_meta.calc_strides(value_grad->dims());
+      value_grad->set_meta(value_grad_meta);
+    }
+
+    phi::IndexPutGradKernel<T, Context>(
+        dev_ctx, x, indices, value, out_grad_, accumulate, x_grad, value_grad);
+    return;
+  }
+
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
+  if (x_grad) {
+    if (accumulate) {
+      auto meta = out_grad.meta();
+      x_grad->set_meta(meta);
+      x_grad->ResetHolder(out_grad.Holder());
+      x_grad->ShareInplaceVersionCounterWith(out_grad);
+    } else {
+      DenseTensor value_zero;
+      phi::Full<T, Context>(dev_ctx, value.dims(), 0, &value_zero);
+      if (funcs::IsInUint32Range(x_grad->numel(), value.numel())) {
+        LaunchIndexPutKernel_V2<T, Context>(
+            dev_ctx, out_grad, indices, value_zero, false, x_grad);
+      } else {
+        LaunchIndexPutKernel_V2<T, Context, uint64_t>(
+            dev_ctx, out_grad, indices, value_zero, false, x_grad);
+      }
+    }
+  }
 }
 
 }  // namespace phi
@@ -254,6 +404,23 @@ PD_REGISTER_KERNEL(index_put,
                    GPU,
                    STRIDED,
                    phi::IndexPutKernel_V2,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(index_put_grad,
+                   GPU,
+                   STRIDED,
+                   phi::IndexPutGradKernel_V2,
                    float,
                    double,
                    int,

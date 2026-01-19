@@ -42,7 +42,7 @@ void TransposeKernel(const Context& dev_ctx,
   int rank = static_cast<int>(formatted_axis.size());
   switch (rank) {
     case 0:
-      phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
     case 1:
       funcs::Transpose<Context, T, 1> trans1;
@@ -87,6 +87,9 @@ PD_REGISTER_KERNEL(transpose,
                    int32_t,
                    int64_t,
                    uint8_t,
+                   uint16_t,
+                   uint32_t,
+                   uint64_t,
                    int8_t,
                    int16_t,
                    phi::float16,

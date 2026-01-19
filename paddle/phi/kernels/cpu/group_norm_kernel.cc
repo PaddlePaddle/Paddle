@@ -45,22 +45,20 @@ void GroupNormKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(y);
     // mean, var are intermediate in ops yaml config.
     if (mean) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+      Full<T, Context>(dev_ctx, mean->dims(), 0, mean);
     }
     if (var) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+      Full<T, Context>(dev_ctx, var->dims(), 0, var);
     }
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
   const auto x_dims = x.dims();
   const int C = static_cast<int>(
-      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
 
   dev_ctx.template Alloc<T>(y);
@@ -78,7 +76,7 @@ void GroupNormKernel(const Context& dev_ctx,
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
   int imsize = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= static_cast<int>(x_dims[i]);
     }
@@ -103,7 +101,7 @@ void GroupNormKernel(const Context& dev_ctx,
       auto* tmp_y = iter_y_data;
       auto* y_src_data = iter_y_data;
 
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         for (int cid = 0; cid < number; cid++) {
           int imid = 0;
           for (imid = 0; imid < imsize - (imsize % M);
@@ -186,7 +184,7 @@ void GroupNormKernel(const Context& dev_ctx,
       mean_data[bid * groups + gid] = x_mean;
       var_data[bid * groups + gid] = x_var;
 
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout == DataLayout::NCHW) {
         for (int cid = 0; cid < number; cid++) {
           for (int imid = 0; imid < imsize; imid++, tmp_x++, iter_y_data++) {
             T val = (tmp_x[0] - x_mean) * var_inv;
@@ -210,7 +208,7 @@ void GroupNormKernel(const Context& dev_ctx,
         iter_y_data = tmp_y + group_size;
       }
     }
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == DataLayout::NHWC) {
       iter_x_data = x_data + (bid + 1) * C * imsize;
       iter_y_data = y_data + (bid + 1) * C * imsize;
     }

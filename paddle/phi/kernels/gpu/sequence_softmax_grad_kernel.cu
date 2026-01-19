@@ -13,16 +13,8 @@
 // limitations under the License.
 
 #include <algorithm>
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/impl/sequence_softmax_kernel_impl.h"
 
@@ -43,12 +35,12 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
   __shared__ T shared_data;
 
-  for (int i = blockIdx.x; i < src_height; i += gridDim.x) {
+  for (size_t i = blockIdx.x; i < src_height; i += gridDim.x) {
     size_t start = ref_lod[i];
     size_t span = ref_lod[i + 1] - start;
 
     T result = 0;
-    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       size_t idx = start + tid;
       T s_g_d = softmax_grad_data[idx];
       T s_d = softmax_data[idx];
@@ -60,7 +52,7 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
     }
     __syncthreads();
 
-    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+    for (size_t tid = threadIdx.x; tid < span; tid += blockDim.x) {
       size_t idx = start + tid;
       T s_g_d = softmax_grad_data[idx];
       T s_d = softmax_data[idx];

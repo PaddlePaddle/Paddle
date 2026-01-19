@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -100,7 +100,7 @@ class TestRandintLikeAPI(unittest.TestCase):
 
     def test_static_api_with_fp16(self):
         paddle.enable_static()
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -186,7 +186,7 @@ class TestRandintLikeAPI(unittest.TestCase):
                     ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True
                 )
         # x dtype ["float16"]
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             x_inputs = paddle.to_tensor(self.x_float16)
             # self.dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
             for dtype in self.dtype:
@@ -255,7 +255,7 @@ class TestRandintLikeAPI(unittest.TestCase):
 
             # x dtype is float16
             # low is 5 and high is 5, low must less then high
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 self.assertRaises(
                     ValueError, paddle.randint_like, x_float16, low=5, high=5
                 )

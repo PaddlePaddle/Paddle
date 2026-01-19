@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
 
 from test_case_base import (
@@ -900,33 +901,33 @@ class TestAssertException(TestCaseBase):
             self.try_assert, paddle.to_tensor(10), paddle.to_tensor(-1)
         )
 
-    @strict_mode_guard(False)
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_assert_true(self):
         @check_no_breakgraph
-        def try_assert_except(x):
+        def try_assert_except(x, y):
             x += 1
             try:
                 x += 2
-                assert x > -10000
+                assert y > -10000
                 x += 3
             except:
                 x += 4
 
-        self.assert_results(try_assert_except, paddle.to_tensor(10))
+        self.assert_results(try_assert_except, paddle.to_tensor(10), 10)
 
-    @strict_mode_guard(False)
+    @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_assert_false(self):
         @check_no_breakgraph
-        def try_assert_except(x):
+        def try_assert_except(x, y):
             try:
                 x += 5
-                assert x < -10000
+                assert y < -10000
             except AssertionError:
                 x += 6
 
             return x
 
-        self.assert_results(try_assert_except, paddle.to_tensor(10))
+        self.assert_results(try_assert_except, paddle.to_tensor(10), 10)
 
 
 class TestGuard(TestCaseBase):
@@ -961,9 +962,13 @@ class TestBuiltinFunctionRaiseExceptionGuard(TestCaseBase):
             0,
         )
         self.assert_results(foo_mod, 10)
+        if sys.version_info >= (3, 14):
+            zero_mod_msg = "division by zero"
+        else:
+            zero_mod_msg = "integer (.)*modulo by zero"
         self.assert_exceptions(
             ZeroDivisionError,
-            "integer (.)*modulo by zero",
+            zero_mod_msg,
             foo_mod,
             0,
         )

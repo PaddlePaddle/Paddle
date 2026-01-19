@@ -38,12 +38,11 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                          const std::string& padding_algorithm,
                          DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
@@ -107,10 +106,10 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
   DenseTensor transformed_input(input->type());
   DenseTensor transformed_output(output->type());
-  GPUDNNDataLayout layout;
+  DataLayout layout;
 
   if (data_format == str_NDHWC) {
-    layout = GPUDNNDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
     std::vector<int> axis{0, 4, 1, 2, 3};
 
     // input
@@ -139,7 +138,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
-    layout = GPUDNNDataLayout::kNCHW;
+    layout = DataLayout::NCHW;
 
     std::vector<int> axis{0, 3, 1, 2};
 
@@ -268,11 +267,9 @@ void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {  // for pooling_type == "avg"
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -306,11 +303,9 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || (!adaptive && pooling_type == "avg")) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }

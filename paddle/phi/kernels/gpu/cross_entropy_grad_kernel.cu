@@ -13,15 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_grad_kernel.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -29,6 +20,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
@@ -99,7 +91,9 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
                                                const int64_t n,
                                                const int64_t d,
                                                const int64_t remain) {
-  int64_t ids = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t ids =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (ids < n * d) {
     int64_t idx_n = ids / d;
     int64_t idx_remain = ids % remain;
@@ -120,7 +114,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
                                                      const int64_t dim,
                                                      const int64_t d,
                                                      const int ignore_index) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t idx_n = idx / (d * dim);
   int64_t idx_dim = (idx / d) % dim;
   int64_t idx_d = idx % d;
@@ -151,7 +147,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
                                           DenseTensor* logits_grad) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
-      phi::AllocationType::GPU,
+      AllocationType::GPU,
       common::errors::Unavailable("softmax_with_cross_entropy operator's "
                                   "CUDA kernel only runs on GPU device."));
   const T* loss_grad_data = loss_grad.data<T>();
@@ -160,18 +156,18 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   T* logit_grad_data = nullptr;
   bool copy_flag = (logit_grad != &softmax && (!use_softmax || soft_label));
   if (copy_flag) {
-    phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
+    Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
     logit_grad_data = logit_grad->data<T>();
   } else {
     logit_grad_data = dev_ctx.template Alloc<T>(logit_grad);
   }
 
   const int rank = logit_grad->dims().size();
-  const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  const int axis_v = funcs::CanonicalAxis(axis, rank);
+  int64_t axis_dim = logit_grad->dims()[axis_v];
 
-  const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
-  const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
+  const int64_t n = funcs::SizeToAxis(axis_v, logit_grad->dims());
+  const int64_t d = funcs::SizeFromAxis(axis_v, logit_grad->dims());
   const int64_t remain = d / axis_dim;
 
   int block = 512;

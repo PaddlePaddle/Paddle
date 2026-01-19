@@ -15,6 +15,7 @@
 - exp
 - scale
 - matmul
+- linear_v2
 - expand
 - sum
 - abs
@@ -44,6 +45,7 @@
 - put_along_axis
 - sin
 - cos
+- conj
 - where
 - split
 - reshape
@@ -58,3 +60,5 @@
 - take_along_axis
 - variance
 - masked_fill
+- index_elementwise_put_with_tensor
+- index_elementwise_put

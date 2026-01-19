@@ -18,6 +18,8 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
+#include "glog/logging.h"
+
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -94,7 +96,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
   total_alloc_size_ = 0;
   total_free_times_ = 0;
   total_free_size_ = 0;
-  VLOG(4) << "chunk_size_:" << chunk_size_;
+  VLOG(7) << "chunk_size_:" << chunk_size_;
 }
 
 void AutoGrowthBestFitAllocator::DumpInfo() const {
@@ -255,7 +257,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     }
     blocks.emplace_back(p + remaining_size, size, false, is_small, chunk);
     block_it = --(blocks.end());
-    VLOG(2) << "Not found and reallocate " << realloc_size << "("
+    VLOG(5) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
     if (FLAGS_dump_chunk_info) {
       std::cout << "MemDbg memory after growth chunk, realloc_size = "

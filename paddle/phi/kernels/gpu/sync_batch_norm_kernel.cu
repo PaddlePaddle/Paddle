@@ -48,7 +48,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout layout = StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_statistics);
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -61,7 +61,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
                         "The Input dim size should be less than 6."));
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
-  int x_numel = x.numel();
+  int64_t x_numel = x.numel();
 
   const T* x_d = x.template data<T>();
   const auto* s_d = scale.template data<BatchNormParamType<T>>();
@@ -85,18 +85,18 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    phi::DenseTensor stats_tensor;
+    DenseTensor stats_tensor;
     stats_tensor.Resize({static_cast<int64_t>(bytes)});
     dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
     auto* stats_data = stats_tensor.data<BatchNormParamType<T>>();
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(stats_data);
     const int threads = 512;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == phi::DataLayout::kNCHW) {
-      KeLocalStats<T, threads, phi::DataLayout::kNCHW>
+    if (layout == DataLayout::NCHW) {
+      KeLocalStats<T, threads, DataLayout::NCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, phi::DataLayout::kNHWC>
+      KeLocalStats<T, threads, DataLayout::NHWC>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
@@ -119,8 +119,9 @@ void SyncBatchNormKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
+    DenseTensor tmp_reserve_space;
     if (reserve_space == nullptr) {
-      reserve_space = new DenseTensor();
+      reserve_space = &tmp_reserve_space;
     }
     reserve_space->Resize({reserve_space_size});
     dev_ctx.template Alloc<T>(reserve_space);
@@ -143,31 +144,31 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     var_data = stats + C;
   }
 
-  int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-  if (layout == phi::DataLayout::kNCHW) {
-    KeNormAffine<T, phi::DataLayout::kNCHW>
-        <<<grid2, block, 0, stream>>>(x_d,
-                                      s_d,
-                                      b_d,
-                                      mean_data,
-                                      var_data,
-                                      epsilon,
-                                      C,
-                                      H * W * D,
-                                      x_numel,
-                                      y_d);
+  int grid2 =
+      (std::min(x_numel, static_cast<int64_t>(max_threads)) + block - 1) /
+      block;
+  if (layout == DataLayout::NCHW) {
+    KeNormAffine<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(x_d,
+                                                                   s_d,
+                                                                   b_d,
+                                                                   mean_data,
+                                                                   var_data,
+                                                                   epsilon,
+                                                                   C,
+                                                                   H * W * D,
+                                                                   x_numel,
+                                                                   y_d);
   } else {
-    KeNormAffine<T, phi::DataLayout::kNHWC>
-        <<<grid2, block, 0, stream>>>(x_d,
-                                      s_d,
-                                      b_d,
-                                      mean_data,
-                                      var_data,
-                                      epsilon,
-                                      C,
-                                      H * W * D,
-                                      x_numel,
-                                      y_d);
+    KeNormAffine<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(x_d,
+                                                                   s_d,
+                                                                   b_d,
+                                                                   mean_data,
+                                                                   var_data,
+                                                                   epsilon,
+                                                                   C,
+                                                                   H * W * D,
+                                                                   x_numel,
+                                                                   y_d);
   }
 }
 

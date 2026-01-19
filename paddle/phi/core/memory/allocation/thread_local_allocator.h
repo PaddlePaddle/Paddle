@@ -66,10 +66,10 @@ class ThreadLocalCUDAAllocatorPool {
     return pool;
   }
 
-  std::shared_ptr<ThreadLocalAllocatorImpl> Get(int gpu_id);
+  PADDLE_API std::shared_ptr<ThreadLocalAllocatorImpl> Get(int gpu_id);
 
  private:
-  ThreadLocalCUDAAllocatorPool();
+  PADDLE_API ThreadLocalCUDAAllocatorPool();
   std::vector<int> devices_;
   std::vector<std::unique_ptr<std::once_flag>> init_flags_;
   std::vector<std::shared_ptr<ThreadLocalAllocatorImpl>> allocators_;
@@ -77,8 +77,7 @@ class ThreadLocalCUDAAllocatorPool {
 
 class ThreadLocalCUDAAllocator : public Allocator {
  public:
-  explicit ThreadLocalCUDAAllocator(const phi::GPUPlace& p)
-      : gpu_id_(p.device) {}
+  explicit ThreadLocalCUDAAllocator(const GPUPlace& p) : gpu_id_(p.device) {}
 
   bool IsAllocThreadSafe() const override { return true; }
 

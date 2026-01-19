@@ -737,10 +737,100 @@ PHI_DEFINE_EXPORTED_int32(
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
+/**
+ * Debug related FLAG
+ * Name: dump_grad_node_forward_stack_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump grad node forward call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
+                           "",
+                           "Dump grad node forward call stack to the dir path");
+/**
+ * Debug related FLAG
+ * Name: dump_api_python_stack_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump api forward python call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_api_python_stack_path,
+    "",
+    "Dump api forward python call stack to the dir path");
+/**
+ * Debug related FLAG
+ * Name: dump_api_and_gradnode_python_stack_dir
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump api and gradnode forward python call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_api_and_gradnode_python_stack_dir,
+    "",
+    "Dump api and gradnode forward python call stack to the dir path");
 
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_output_path
+ * Since Version: 3.3
+ * Value Range: string, default=""
+ * Example:
+ * Note: Export all API output tensors to the specified file.
+ * If tensor_md5_checksum_output_path is "", this flag will not take effect.
+ */
+PHI_DEFINE_EXPORTED_string(
+    tensor_md5_checksum_output_path,
+    "",
+    "Export all API output tensors to the specified file.");
+
+/**
+ * Debug related FLAG
+ * Name: enable_unique_name
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True,the Tensor, C++ API and GradNode will has unique name,such as
+ * 'matmul2_out_float32_2x10' or 'matmul2_out_float32_2x10@Grad'
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_unique_name,
+    false,
+    "Enable unique name in Eager mode for Tensor, C++ API and GradNode.");
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_precision
+ * Since Version: 3.3
+ * Value Range: int32, default=3
+ * Example:
+ * Note: The precision of the tensor data used for computing the MD5 checksum
+ * (the number of decimal places after the decimal point).
+ *
+ */
+PHI_DEFINE_EXPORTED_int32(tensor_md5_checksum_precision,
+                          3,
+                          "The precision of tensor md5 checksum.");
+/**
+ * Debug related FLAG
+ * Name: tensor_md5_checksum_use_binary_input
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: The data format used for calculating the md5 checksum. If true, the md5
+ * checksum will be calculated based on the binary format of the stored data.
+ *
+ */
+PHI_DEFINE_EXPORTED_bool(
+    tensor_md5_checksum_use_binary_format,
+    false,
+    "Whether to use binary format when computing tensor md5 checksum.");
 
 /**
  * Debug related FLAG
@@ -1082,7 +1172,7 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_deny_cinn_ops
+ * Name: FLAGS_enable_cinn_compile_cache
  * Since Version: 3.0 Beta
  * Value Range: bool, default=true
  * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
@@ -1094,7 +1184,7 @@ PHI_DEFINE_EXPORTED_bool(
     "It controls whether to enable cinn compilation cache.");
 /*
  * CINN related FLAG
- * Name: FLAGS_deny_cinn_ops
+ * Name: FLAGS_cinn_compile_thread_num
  * Since Version: 3.0 Beta
  * Value Range: bool, default=-1
  * Example: FLAGS_cinn_compile_thread_num=8
@@ -1537,11 +1627,11 @@ PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
  * CUDNNv8 related FLAG
  * Name: enable_cudnn_frontend
  * Since Version: 2.5.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
  */
-PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, true, "");
 
 /**
  * CUDNNv8 related FLAG
@@ -1760,6 +1850,23 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
+// Whether to enable CINN kernel cache
+// When enabled, generated files will be saved under:
+// FLAGS_cinn_kernel_cache_save_path/virtual_device_id/HostFuncName__fushionHashKey
+// Files:
+// - cinn_cuda_kernel.fatbin (CUDA kernels)
+// - cinn_cache.so (host modules)
+// This cache can accelerate subsequent CINN compilations
+PHI_DEFINE_EXPORTED_bool(enable_cinn_kernel_cache,
+                         false,
+                         "Whether enable cinn kernel cache.");
+
+// Specify the directory path of generated cinn kernel cache
+PHI_DEFINE_EXPORTED_string(
+    cinn_kernel_cache_save_path,
+    "/tmp/cinn/",
+    "Specify the directory path of generated cinn kernel cache.");
+
 PHI_DEFINE_EXPORTED_bool(
     comp_skip_default_ops,
     true,
@@ -1893,9 +2000,19 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Specify path for loading libmklml_intel.so.");  // NOLINT
 
+PHI_DEFINE_EXPORTED_string(hml_dir,
+                           "",
+                           "Specify path for loading libhml_rt.so.");  // NOLINT
+
 PHI_DEFINE_EXPORTED_string(lapack_dir,
                            "",
                            "Specify path for loading liblapack.so.");  // NOLINT
+
+#ifdef PADDLE_WITH_MAGMA
+PHI_DEFINE_EXPORTED_string(magma_dir,
+                           "",
+                           "Specify path for loading libmagma.so.");  // NOLINT
+#endif
 
 /**
  * Apply check infer symbolic pass FLAG
@@ -2211,7 +2328,7 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
  * Note: Whether use Stride_Compute_Kernel.
  */
 PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
-                         false,
+                         true,
                          "Whether use Stride_Compute_Kernel.");
 
 /**
@@ -2225,3 +2342,116 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
                           0,
                           "Whether use prealloc for deepep communication.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_force_stride_compute_contig_out
+ * Since Version: 3.2.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether force Stride_Compute_Kernel output contiguous.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    force_stride_compute_contig_out,
+    false,
+    "Whether force Stride_Compute_Kernel output contiguous.");
+
+/**
+ * Torch Compatible related FLAG
+ * Name: FLAGS_use_accuracy_compatible_kernel
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use torch compatible version kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
+                         false,
+                         "Whether use torch compatible version kernel.");
+/**
+ * Legacy gemm related FLAG
+ * Name: FLAGS_use_legacy_gemm
+ * Since Version: 3.2.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use legacy gemm kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
+                         false,
+                         "Whether use legacy gemm dispatch logics.");
+
+/**
+ * Legacy gemm related FLAG
+ * Name: FLAGS_use_legacy_linear
+ * Since Version: 3.3.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use legacy linear kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_legacy_linear,
+                         false,
+                         "Whether use legacy linear dispatch logics.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_enable_compact_mem
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether start compact memory.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_compact_mem,
+                         false,
+                         "whether start compact memory or not.");
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_max_reserved_threshold_in_gb
+ * Since Version: 3.3
+ * Value Range: int64, default=70
+ * Example:
+ * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
+ * threshold may trigger defragmentation.
+ */
+PHI_DEFINE_EXPORTED_int64(
+    max_reserved_threshold_in_gb,
+    70,
+    "Threshold (GB) used in compact memory. Only reserved_mem greater than "
+    "threshold may trigger defragmentation.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_cur_allocated_threshold_in_gb
+ * Since Version: 3.3
+ * Value Range: int64, default=70
+ * Example:
+ * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
+ * threshold may trigger defragmentation.
+ */
+PHI_DEFINE_EXPORTED_int64(
+    cur_allocated_threshold_in_gb,
+    55,
+    "Threshold (GB) used in compact memory. Only reserved_mem greater than "
+    "threshold may trigger defragmentation.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_try_allocate
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether start compact memory.
+ */
+PHI_DEFINE_EXPORTED_bool(try_allocate,
+                         false,
+                         "whether use try allocate in memory compact.");
+
+/**
+ * Allocator Compact related FLAG
+ * Name: FLAGS_record_alloc_event
+ * Since Version: 3.3
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether record allocate event.
+ */
+PHI_DEFINE_EXPORTED_bool(record_alloc_event,
+                         false,
+                         "whether record allocate event.");

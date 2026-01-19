@@ -268,7 +268,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   nan_counts_ptr = nan_counts.data<int64_t>();
   nan_indices.Resize(common::make_ddim({pre_dim}));
   dev_ctx.template Alloc<int64_t>(&nan_indices);
-  phi::funcs::SetConstant<phi::GPUContext, int64_t> set_const;
+  funcs::SetConstant<phi::GPUContext, int64_t> set_const;
   set_const(dev_ctx, &nan_indices, numel);
   nan_indices_ptr = nan_indices.data<int64_t>();
 
@@ -279,7 +279,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   KernelNanCounts<T><<<grid_size, block_size, 0, stream>>>(
       x_data, numel, pre_dim, stride, nan_counts_ptr, nan_indices_ptr);
   auto nan_stat_mem_cpu =
-      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
+      phi::memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 2);
   int64_t* nan_stat_cpu_ptr =
       reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
   int64_t sum =
@@ -287,7 +287,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   nan_stat_cpu_ptr[0] = sum;
   auto min_nan_ptr = thrust::min_element(
       exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      nan_stat_cpu_ptr + 1,
                      dev_ctx.GetPlace(),
                      min_nan_ptr,
@@ -295,10 +295,10 @@ void ProcessMedianKernel(const Context& dev_ctx,
                      stream);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
   if (nan_stat_cpu_ptr[0] == numel) {
-    phi::funcs::SetConstant<Context, T> set_nan;
+    funcs::SetConstant<Context, T> set_nan;
     set_nan(dev_ctx, out, nan_val);
 
-    phi::funcs::SetConstant<Context, int64_t> set_negatvie;
+    funcs::SetConstant<Context, int64_t> set_negatvie;
     set_negatvie(dev_ctx, median_index, static_cast<int64_t>(0));
     return;
   }
@@ -397,13 +397,8 @@ void MedianKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   DenseTensor* median_index) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx,
-        phi::IntArray(common::vectorize(median_index->dims())),
-        0,
-        median_index);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, median_index->dims(), 0, median_index);
     return;
   }
   DenseTensor tmp_x;

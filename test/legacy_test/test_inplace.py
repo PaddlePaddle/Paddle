@@ -16,7 +16,7 @@ import functools
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 
@@ -95,6 +95,93 @@ class TestInplace(unittest.TestCase):
             var_b[1:2] = 3  # var_b is modified inplace after using it
 
             loss.backward()
+
+
+class TestInplaceCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.shape = [10, 20, 1]
+        self.dtype = "float32"
+        self.x_np = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
+        self.set_inplace_api()
+
+    def numpy_api_processing(self, var):
+        return np.abs(var)
+
+    def set_inplace_api(self):
+        self.inplace_api = paddle.abs_
+
+    def test_inplace_compatibility_dygraph(self):
+        paddle.disable_static()
+        ref_out = self.numpy_api_processing(self.x_np)
+        x = paddle.to_tensor(self.x_np)
+        # arg alias
+        out1 = self.inplace_api(x=x)
+        out2 = self.inplace_api(input=x)
+        np.testing.assert_allclose(out1.numpy(), ref_out, rtol=1e-05)
+        np.testing.assert_allclose(out2.numpy(), ref_out, rtol=1e-05)
+        # inplace behavior
+        np.testing.assert_allclose(x.numpy(), ref_out, rtol=1e-05)
+        self.assertTrue(id(x) == id(out1))
+        self.assertTrue(id(x) == id(out2))
+        # prohibited out arg
+        y = paddle.empty([])
+        with self.assertRaises(ValueError):
+            self.inplace_api(x, out=y)
+
+    def test_inplace_compatibility_static(self):
+        paddle.enable_static()
+        ref_out = self.numpy_api_processing(self.x_np)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            out1 = self.inplace_api(x=x)
+            out2 = self.inplace_api(input=x)
+            fetch_list = [x, out1, out2]
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.x_np},
+                fetch_list=fetch_list,
+            )
+            np.testing.assert_allclose(fetches[0], ref_out, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], ref_out, rtol=1e-05)
+            np.testing.assert_allclose(fetches[2], ref_out, rtol=1e-05)
+
+
+class TestStaticInplace(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.shape = [10, 20, 1]
+        self.dtype = "float32"
+        self.x_np = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
+
+    def numpy_api_processing(self, var):
+        return np.abs(var)
+
+    def inplace_api_processing(self, var):
+        return paddle.abs_(var)
+
+    def test_inplace_static(self):
+        paddle.enable_static()
+        ref_out = self.numpy_api_processing(self.x_np)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            out = self.inplace_api_processing(x)
+            fetch_list = [out, x]
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.x_np},
+                fetch_list=fetch_list,
+            )
+            # test inplace output value
+            np.testing.assert_allclose(fetches[0], ref_out, rtol=1e-05)
+            # test inplace behavior
+            np.testing.assert_allclose(fetches[1], fetches[0], rtol=1e-05)
 
 
 class TestDygraphInplace(unittest.TestCase):
@@ -2281,8 +2368,8 @@ class TestDygraphInplaceSet(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_float16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
@@ -2311,8 +2398,8 @@ class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
@@ -2449,8 +2536,8 @@ class TestDygraphInplaceResize(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_float16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
@@ -2477,8 +2564,8 @@ class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):

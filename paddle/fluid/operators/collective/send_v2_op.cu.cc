@@ -49,14 +49,14 @@ void send_shape_info(const phi::DenseTensor& x,
   int shape_size = dims.size();
 
   // step1: send the shape size
-  phi::DenseTensor cpu_shape_size_tensor(shape_dtype);
+  DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
   cpu_shape_size_tensor.mutable_data(phi::CPUPlace(), shape_dtype);
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
   if (group) {
-    std::vector<phi::DenseTensor> shape_size_tensor;
+    std::vector<DenseTensor> shape_size_tensor;
     shape_size_tensor.template emplace_back(cpu_shape_size_tensor);
     auto shape_size_task = group->Send(shape_size_tensor, peer);
   } else {
@@ -71,7 +71,7 @@ void send_shape_info(const phi::DenseTensor& x,
   VLOG(3) << "send the shape size: " << shape_size << " to peer";
 
   // step2: send the shape
-  phi::DenseTensor cpu_shape_tensor(shape_dtype);
+  DenseTensor cpu_shape_tensor(shape_dtype);
   cpu_shape_tensor.Resize({shape_size});
   cpu_shape_tensor.mutable_data(phi::CPUPlace(), shape_dtype);
   auto* cpu_shape_data = cpu_shape_tensor.data<int>();
@@ -80,7 +80,7 @@ void send_shape_info(const phi::DenseTensor& x,
   }
 
   if (group) {
-    std::vector<phi::DenseTensor> shape_tensor;
+    std::vector<DenseTensor> shape_tensor;
     shape_tensor.template emplace_back(cpu_shape_tensor);
     auto shape_task = group->Send(shape_tensor, peer);
   } else {
@@ -119,7 +119,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      auto x = ctx.Input<phi::DenseTensor>("X");
+      auto x = ctx.Input<DenseTensor>("X");
 
       if (dynamic_shape) {
         // dynamic shape for switch send/recv
@@ -133,7 +133,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
                         pg);
       }
 
-      std::vector<phi::DenseTensor> in_tensor;
+      std::vector<DenseTensor> in_tensor;
       in_tensor.push_back(*x);
       auto task = pg->Send(in_tensor, peer);
       return;
@@ -168,8 +168,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    auto x = ctx.Input<phi::DenseTensor>("X");
-    int numel = x->numel();
+    auto x = ctx.Input<DenseTensor>("X");
+    int64_t numel = x->numel();
 
     if (dynamic_shape) {
       VLOG(3) << "send_v2 will use dynamic shape with recv_v2";

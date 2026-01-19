@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/gru_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/gru_kernel_impl.h"
 
@@ -38,11 +39,10 @@ void GRUKernel(const Context &dev_ctx,
   auto input_dims = input.dims();
   auto hidden_dims = hidden->dims();
 
-  phi::DenseTensor *batch_gate;
-  phi::DenseTensor *batch_reset_hidden_prev;
-  phi::DenseTensor *batch_hidden;
-  phi::DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp,
-      batch_hidden_tmp;
+  DenseTensor *batch_gate;
+  DenseTensor *batch_reset_hidden_prev;
+  DenseTensor *batch_hidden;
+  DenseTensor batch_gate_tmp, batch_reset_hidden_prev_tmp, batch_hidden_tmp;
   if (is_test) {
     batch_gate = &batch_gate_tmp;
     batch_gate->Resize(input_dims);
@@ -61,20 +61,20 @@ void GRUKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(batch_reset_hidden_prev);
   dev_ctx.template Alloc<T>(batch_hidden);
 
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   to_batch(dev_ctx, input, batch_gate, true, is_reverse);
 
   if (bias) {
-    phi::funcs::RowwiseAdd<Context, T> add_bias;
+    funcs::RowwiseAdd<Context, T> add_bias;
     add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
   }
 
   int frame_size = hidden_dims[1];
-  phi::funcs::GRUMetaValue<T> gru_value;
+  funcs::GRUMetaValue<T> gru_value;
   gru_value.gate_weight = const_cast<T *>(weight_data);
   gru_value.state_weight =
       const_cast<T *>(weight_data + 2 * frame_size * frame_size);
-  phi::DenseTensor ordered_h0;
+  DenseTensor ordered_h0;
 
   phi::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -89,31 +89,31 @@ void GRUKernel(const Context &dev_ctx,
   }
   auto batch_starts = batch_gate->lod()[0];
   size_t num_batch = batch_starts.size() - 1;
-  auto active_node = phi::funcs::detail::GetActivationType(activation);
-  auto active_gate = phi::funcs::detail::GetActivationType(gate_activation);
+  auto active_node = funcs::detail::GetActivationType(activation);
+  auto active_gate = funcs::detail::GetActivationType(gate_activation);
   for (size_t n = 0; n < num_batch; n++) {
     int bstart = static_cast<int>(batch_starts[n]);
     int bend = static_cast<int>(batch_starts[n + 1]);
     int cur_batch_size = bend - bstart;
 
-    phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
-    phi::DenseTensor reset_hidden_prev_t =
+    DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+    DenseTensor reset_hidden_prev_t =
         batch_reset_hidden_prev->Slice(bstart, bend);
-    phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
+    DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
     gru_value.output_value = hidden_t.data<T>();
     gru_value.gate_value = gate_t.data<T>();
     gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
-    phi::funcs::GRUUnitFunctor<Context, T>::compute(dev_ctx,  // NOLINT
-                                                    gru_value,
-                                                    frame_size,
-                                                    cur_batch_size,
-                                                    active_node,
-                                                    active_gate,
-                                                    origin_mode);
+    funcs::GRUUnitFunctor<Context, T>::compute(dev_ctx,  // NOLINT
+                                               gru_value,
+                                               frame_size,
+                                               cur_batch_size,
+                                               active_node,
+                                               active_gate,
+                                               origin_mode);
     gru_value.prev_out_value = gru_value.output_value;
   }
 
-  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+  funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batch_hidden->set_lod(batch_gate->lod());
   to_seq(dev_ctx, *batch_hidden, hidden);
 }

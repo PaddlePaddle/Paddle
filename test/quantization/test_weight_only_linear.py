@@ -14,8 +14,6 @@
 
 import copy
 import math
-import os
-import re
 import struct
 import unittest
 
@@ -32,18 +30,6 @@ np.random.seed(123)
 paddle.seed(123)
 
 
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
-
 def convert_uint16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
@@ -56,8 +42,8 @@ def convert_uint16_to_float(in_list):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase(unittest.TestCase):
     def config(self):
@@ -182,8 +168,8 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase1(WeightOnlyLinearTestCase):
     def config(self):
@@ -193,8 +179,8 @@ class WeightOnlyLinearTestCase1(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase2(WeightOnlyLinearTestCase):
     def config(self):
@@ -206,9 +192,8 @@ class WeightOnlyLinearTestCase2(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase3(WeightOnlyLinearTestCase):
     def config(self):
@@ -219,10 +204,9 @@ class WeightOnlyLinearTestCase3(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase4(WeightOnlyLinearTestCase):
     def config(self):
@@ -232,8 +216,8 @@ class WeightOnlyLinearTestCase4(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase5(WeightOnlyLinearTestCase):
     def config(self):
@@ -245,10 +229,9 @@ class WeightOnlyLinearTestCase5(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase6(WeightOnlyLinearTestCase):
     def config(self):
@@ -258,8 +241,8 @@ class WeightOnlyLinearTestCase6(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase7(WeightOnlyLinearTestCase):
     def config(self):
@@ -271,8 +254,8 @@ class WeightOnlyLinearTestCase7(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase8(WeightOnlyLinearTestCase):
     def config(self):
@@ -286,9 +269,8 @@ class WeightOnlyLinearTestCase8(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase9(WeightOnlyLinearTestCase):
     def config(self):
@@ -301,9 +283,8 @@ class WeightOnlyLinearTestCase9(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase10(WeightOnlyLinearTestCase):
     def config(self):
@@ -316,8 +297,8 @@ class WeightOnlyLinearTestCase10(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase11(WeightOnlyLinearTestCase):
     def config(self):
@@ -329,8 +310,8 @@ class WeightOnlyLinearTestCase11(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase12(WeightOnlyLinearTestCase):
     def config(self):
@@ -344,10 +325,9 @@ class WeightOnlyLinearTestCase12(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase13(WeightOnlyLinearTestCase):
     def config(self):
@@ -361,10 +341,9 @@ class WeightOnlyLinearTestCase13(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase14(WeightOnlyLinearTestCase):
     def config(self):
@@ -378,10 +357,9 @@ class WeightOnlyLinearTestCase14(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase15(WeightOnlyLinearTestCase):
     def config(self):
@@ -396,10 +374,9 @@ class WeightOnlyLinearTestCase15(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase16(WeightOnlyLinearTestCase):
     def config(self):
@@ -414,9 +391,8 @@ class WeightOnlyLinearTestCase16(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul groupwise mode need CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul groupwise mode need CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase17(WeightOnlyLinearTestCase):
     def config(self):
@@ -431,9 +407,8 @@ class WeightOnlyLinearTestCase17(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul groupwise mode need CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul groupwise mode need CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase18(WeightOnlyLinearTestCase):
     def config(self):
@@ -448,10 +423,9 @@ class WeightOnlyLinearTestCase18(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase19(WeightOnlyLinearTestCase):
     def config(self):
@@ -466,10 +440,9 @@ class WeightOnlyLinearTestCase19(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase20(WeightOnlyLinearTestCase):
     def config(self):
@@ -484,10 +457,9 @@ class WeightOnlyLinearTestCase20(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+    "quantized_matmul requires CUDA_ARCH >= 8 or core is not support bfloat16",
 )
 class WeightOnlyLinearTestCase21(WeightOnlyLinearTestCase):
     def config(self):
@@ -501,8 +473,8 @@ class WeightOnlyLinearTestCase21(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase22(WeightOnlyLinearTestCase):
     def config(self):
@@ -514,8 +486,8 @@ class WeightOnlyLinearTestCase22(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase23(WeightOnlyLinearTestCase):
     def config(self):
@@ -529,9 +501,8 @@ class WeightOnlyLinearTestCase23(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase24(WeightOnlyLinearTestCase):
     def config(self):
@@ -544,9 +515,8 @@ class WeightOnlyLinearTestCase24(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase25(WeightOnlyLinearTestCase):
     def config(self):
@@ -558,9 +528,8 @@ class WeightOnlyLinearTestCase25(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase26(WeightOnlyLinearTestCase):
     def config(self):
@@ -572,9 +541,8 @@ class WeightOnlyLinearTestCase26(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase27(WeightOnlyLinearTestCase):
     def config(self):
@@ -586,9 +554,8 @@ class WeightOnlyLinearTestCase27(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase28(WeightOnlyLinearTestCase):
     def config(self):
@@ -601,9 +568,8 @@ class WeightOnlyLinearTestCase28(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCase29(WeightOnlyLinearTestCase):
     def config(self):
@@ -616,9 +582,8 @@ class WeightOnlyLinearTestCase29(WeightOnlyLinearTestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     def config(self):
@@ -727,8 +692,8 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    not core.is_compiled_with_cuda(),
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyQuantizeCPUGPUTestCase(unittest.TestCase):
     def config(self):
@@ -789,9 +754,8 @@ class WeightOnlyQuantizeCPUGPUTestCase(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
     def test_weightonly_linear_backward(
@@ -927,9 +891,8 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+    "quantized_matmul requires CUDA_ARCH >= 8",
 )
 class WeightOnlyLinear_stream_k_TestCase(unittest.TestCase):
     def test_weightonly_linear_backward_int4(self):

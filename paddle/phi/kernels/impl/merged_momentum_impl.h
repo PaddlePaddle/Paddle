@@ -255,7 +255,7 @@ void MergedMomentumInnerCompute(
           kMultiPrecision ? master_params_out[j + start]->data<MT>()       \
                           : nullptr);                                      \
     }                                                                      \
-    phi::funcs::ForRange<Context> for_range(dev_ctx, max_size);            \
+    funcs::ForRange<Context> for_range(dev_ctx, max_size);                 \
     for_range(kernel_params);                                              \
     VLOG(10) << "Launch MergedMomentum kernel " << i << " "                \
              << kernel_params.param_num;                                   \
@@ -284,7 +284,7 @@ void MergedMomentumInnerCompute(
           multi_precision ? master_params_opt.get()[idx]->data<MT>() : nullptr;
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
-      if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+      if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
         phi::CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],
@@ -297,8 +297,9 @@ void MergedMomentumInnerCompute(
                 params_out[idx],
                 velocities_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
-      } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
-        phi::funcs::ForRange<Context> for_range(
+      } else if (dev_ctx.GetPlace().GetType() == AllocationType::GPU ||
+                 dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM) {
+        funcs::ForRange<Context> for_range(
             static_cast<const Context &>(dev_ctx), params[idx]->numel());
         const auto grad_type = grads[idx]->dtype();
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type)   \

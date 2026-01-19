@@ -30,7 +30,7 @@ struct BroadCastInfo {
   int64_t l_len, r_len, out_len, reduce_size;
 };
 
-inline bool UseBroadCast(const phi::DDim& l_dims, const phi::DDim& r_dims) {
+inline bool UseBroadCast(const DDim& l_dims, const DDim& r_dims) {
   if (l_dims.size() != r_dims.size()) {
     return true;
   }
@@ -42,8 +42,7 @@ inline bool UseBroadCast(const phi::DDim& l_dims, const phi::DDim& r_dims) {
   return false;
 }
 
-inline BroadCastInfo CalcBCastInfo(const phi::DDim& l_dims,
-                                   const phi::DDim& r_dims) {
+inline BroadCastInfo CalcBCastInfo(const DDim& l_dims, const DDim& r_dims) {
   BroadCastInfo binfo;
   binfo.use_bcast = UseBroadCast(l_dims, r_dims);
   binfo.l_len = 1;
@@ -88,8 +87,8 @@ inline BroadCastInfo CalcBCastInfo(const phi::DDim& l_dims,
 }
 
 template <typename ShapeT = int64_t>
-inline std::vector<ShapeT> InferBroadcastShape(const phi::DDim& x_dims,
-                                               const phi::DDim& e_dims,
+inline std::vector<ShapeT> InferBroadcastShape(const DDim& x_dims,
+                                               const DDim& e_dims,
                                                const std::string& type = "x") {
   auto x_dims1 = common::vectorize<ShapeT>(x_dims);
   auto e_dims1 = common::vectorize<ShapeT>(e_dims);
@@ -101,13 +100,13 @@ inline std::vector<ShapeT> InferBroadcastShape(const phi::DDim& x_dims,
   std::vector<ShapeT> e_dims_array(max_dim);
   std::vector<ShapeT> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
-  phi::funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
-                                     common::make_ddim(e_dims2),
-                                     x_dims_array.data(),
-                                     e_dims_array.data(),
-                                     out_dims_array.data(),
-                                     max_dim,
-                                     axis);
+  funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
+                                common::make_ddim(e_dims2),
+                                x_dims_array.data(),
+                                e_dims_array.data(),
+                                out_dims_array.data(),
+                                max_dim,
+                                axis);
   if (type == "x") {
     out_dims_array.insert(out_dims_array.begin(), x_dims[0]);
   } else {
@@ -116,8 +115,8 @@ inline std::vector<ShapeT> InferBroadcastShape(const phi::DDim& x_dims,
   return out_dims_array;
 }
 
-inline bool ReduceGrad(const phi::DDim& out_grad_dims,
-                       const phi::DDim& x_dims,
+inline bool ReduceGrad(const DDim& out_grad_dims,
+                       const DDim& x_dims,
                        std::vector<int64_t>& axis) {  // NOLINT
   // We must ensure the ndim of out_grad and x are the same.
   bool reduce = false;

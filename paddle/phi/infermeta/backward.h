@@ -183,6 +183,14 @@ PADDLE_API void CudnnLSTMGradInferMeta(
     MetaTensor* init_c_grad,
     std::vector<MetaTensor*> weight_list_grad);
 
+PADDLE_API void LinearV2GradInferMeta(const MetaTensor& input,
+                                      const MetaTensor& weight,
+                                      const MetaTensor& bias,
+                                      const MetaTensor& out_grad,
+                                      MetaTensor* input_grad,
+                                      MetaTensor* weight_grad,
+                                      MetaTensor* bias_grad);
+
 PADDLE_API void LSTMGradInferMeta(const MetaTensor& input,
                                   const MetaTensor& h0,
                                   const MetaTensor& c0,
@@ -622,12 +630,22 @@ PADDLE_API void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                            const MetaTensor& x_grad_grad,
                                            MetaTensor* out_grad_grad);
 
-PADDLE_API void RmsNormGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& norm_weight,
-                                     const MetaTensor& norm_bias,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* norm_weight_grad,
-                                     MetaTensor* norm_bias_grad);
+PADDLE_API void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
+                                               const MetaTensor& norm_weight,
+                                               const MetaTensor& norm_bias,
+                                               MetaTensor* x_grad,
+                                               MetaTensor* norm_weight_grad,
+                                               MetaTensor* norm_bias_grad);
+
+PADDLE_API void RMSNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale,
+    const MetaTensor& invvar,
+    const MetaTensor& y_grad,
+    const std::vector<int64_t>& normalized_shape,
+    double epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* scale_grad);
 
 PADDLE_API void RnnGradInferMeta(
     const MetaTensor& x,
@@ -706,6 +724,9 @@ PADDLE_API void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                                   int diag_step,
                                                   float diag_val,
                                                   MetaTensor* x_grad);
+
+PADDLE_API void RandomGradInferMeta(const MetaTensor& out_grad,
+                                    MetaTensor* x_grad);
 
 PADDLE_API void UnStackGradInferMeta(
     const std::vector<const MetaTensor*>& out_grad,
@@ -839,4 +860,22 @@ PADDLE_API void IndexElementwiseGetGradInferMeta(
     const bool accumulate,
     const bool is_combined,
     MetaTensor* x_grad);
+
+PADDLE_API void FastLayerNormGradInfermeta(const MetaTensor& x,
+                                           const MetaTensor& scale,
+                                           const MetaTensor& mean,
+                                           const MetaTensor& invvar,
+                                           const MetaTensor& y_grad,
+                                           float epsilon,
+                                           MetaTensor* x_grad,
+                                           MetaTensor* scale_grad,
+                                           MetaTensor* bias_grad);
+
+PADDLE_API void FastRMSNormGradInfermeta(const MetaTensor& x,
+                                         const MetaTensor& scale,
+                                         const MetaTensor& invvar,
+                                         const MetaTensor& y_grad,
+                                         float epsilon,
+                                         MetaTensor* x_grad,
+                                         MetaTensor* scale_grad);
 }  // namespace phi

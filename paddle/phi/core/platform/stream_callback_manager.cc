@@ -24,12 +24,7 @@ static void StreamCallbackFunc(gpuStream_t stream,
                                void *user_data)
 #endif
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10000
     static void CUDART_CB StreamCallbackFunc(void *user_data)
-#else
-    static void CUDART_CB
-    StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void *user_data)
-#endif
 #endif
 {
   std::unique_ptr<std::function<void()>> func(
@@ -58,13 +53,8 @@ void StreamCallbackManager<Stream>::AddCallback(
       hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
 #endif
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10000
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaLaunchHostFunc(stream_, StreamCallbackFunc, func));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
-#endif
 #endif
 }
 

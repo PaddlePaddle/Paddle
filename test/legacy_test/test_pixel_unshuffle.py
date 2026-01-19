@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -146,8 +151,8 @@ class TestPixelUnshuffleOp_ZeroSize(TestPixelUnshuffleOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestPixelUnshuffleBP16Op(OpTest):
@@ -177,7 +182,7 @@ class TestPixelUnshuffleBP16Op(OpTest):
             "data_format": self.format,
         }
 
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
@@ -214,9 +219,11 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
         '''test_static_graph_functional'''
 
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
             x_1 = paddle.static.data(
@@ -244,9 +251,11 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
         '''test_static_graph_layer'''
 
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
             x_1 = paddle.static.data(
@@ -289,9 +298,11 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
         npresult = pixel_unshuffle_np(x, down_factor, data_format)
 
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
 
             paddle.disable_static(place=place)
 

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <set>
@@ -26,7 +27,7 @@ namespace egr {
 
 class ActivationOffloaderWithPlace;
 
-class ReloadFunctor {
+class PADDLE_API ReloadFunctor {
  public:
   explicit ReloadFunctor(std::weak_ptr<phi::DenseTensor> tensor,
                          ActivationOffloaderWithPlace *offloader);
@@ -79,13 +80,14 @@ class ActivationOffloader {
  public:
   void SetSkipTensors(const std::vector<paddle::Tensor> &tensors);
 
-  paddle::optional<ReloadFunctor> Add(const paddle::Tensor &activation);
+  PADDLE_API paddle::optional<ReloadFunctor> Add(
+      const paddle::Tensor &activation);
 
   size_t Offload(phi::Place place, size_t size);
 
   size_t CachedSize() const;
 
-  static ActivationOffloader *Instance();
+  PADDLE_API static ActivationOffloader *Instance();
 
  private:
   ActivationOffloaderWithPlace *GetOrCreateOffloader(phi::Place place);

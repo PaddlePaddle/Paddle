@@ -113,7 +113,7 @@ def async_save(
         sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
         **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             import paddle
@@ -430,7 +430,11 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        if self.is_dense() and self.place.is_custom_place():
+        if (
+            self.is_dense()
+            and self.place.is_custom_place()
+            and core.is_compiled_with_custom_device('npu')
+        ):
             data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
         else:
             data = np.array(self.cpu())
@@ -479,7 +483,7 @@ def _pickle_save(obj, f, protocol):
         for k in dispatch_table_layer:
             pickle.dispatch_table.pop(k)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         add_dispatch_table()
         pickle_bytes = pickle.dumps(obj)
@@ -813,7 +817,7 @@ def save(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             >>> # example 1: dynamic graph
@@ -824,11 +828,8 @@ def save(
             >>> # save state_dict of emb
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-            >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=100, warmup_steps=100, verbose=True)
-            >>> adam = paddle.optimizer.Adam(
-            ...     learning_rate=scheduler,
-            ...     parameters=emb.parameters())
+            >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True)
+            >>> adam = paddle.optimizer.Adam(learning_rate=scheduler, parameters=emb.parameters())
             >>> opt_state_dict = adam.state_dict()
 
             >>> # save state_dict of optimizer
@@ -836,7 +837,7 @@ def save(
             >>> # save weight of emb
             >>> paddle.save(emb.weight, "emb.weight.pdtensor")
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-2
 
             >>> # example 2: Save multiple state_dict at the same time
@@ -869,7 +870,7 @@ def save(
             >>> prog = paddle.static.default_main_program()
             >>> for var in prog.list_vars():
             ...     if list(var.shape) == [224, 10]:
-            ...         tensor = var.get_value()
+            ...         tensor = paddle.static.global_scope().find_var(var.name).get_tensor()
             ...         break
 
             >>> # save/load tensor
@@ -880,7 +881,7 @@ def save(
             >>> path_state_dict = 'temp/model.pdparams'
             >>> paddle.save(prog.state_dict("param"), path_tensor)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-4
 
             >>> # example 4: save program
@@ -888,14 +889,13 @@ def save(
 
             >>> paddle.enable_static()
 
-            >>> data = paddle.static.data(
-            ...     name='x_static_save', shape=(None, 224), dtype='float32')
+            >>> data = paddle.static.data(name='x_static_save', shape=(None, 224), dtype='float32')
             >>> y_static = z = paddle.static.nn.fc(data, 10)
             >>> main_program = paddle.static.default_main_program()
             >>> path = "example/main_program.pdmodel"
             >>> paddle.save(main_program, path)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-5
 
             >>> # example 5: save object to memory
@@ -942,7 +942,7 @@ def save(
     if config.use_binary_format:
         _save_binary_var(obj, path)
     else:
-        # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+        # `protocol` needs to be used, `pickle_protocol` is a deprecated arg.
         if config.pickle_protocol is not None:
             protocol = config.pickle_protocol
             warnings.warn(
@@ -1037,7 +1037,7 @@ def _legacy_save(obj, path, protocol=2):
 
     saved_obj = _unpack_saved_dict(saved_obj, protocol)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    # When value of dict is larger than 4GB, there is a bug on macOS Python 3
     if (
         _is_file_path(path)
         and sys.platform == 'darwin'
@@ -1071,17 +1071,17 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         ``path`` needs to be a complete file name, such as ``model.pdparams`` or
         ``model.pdopt`` ;
         2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model``
-        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
+        or ``paddle.Model().save(training=False)`` , ``path`` needs to be a file prefix,
         such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
         3. loading from paddle 1.x APIs ``paddle.base.io.save_inference_model`` or
-        ``paddle.base.io.save_params/save_persistables`` , ``path`` need to be a
+        ``paddle.base.io.save_params/save_persistables`` , ``path`` needs to be a
         directory, such as ``model`` and model is a directory.
 
     Note:
         If you load ``state_dict`` from the saved result of static graph mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
-        the structured variable name in dynamic mode will cannot be restored.
+        the structured variable name in dynamic mode cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using
         ``Layer.set_state_dict`` later.
 
@@ -1105,7 +1105,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         Object(Object): a target object can be used in paddle
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             >>> # example 1: dynamic graph
@@ -1117,10 +1117,14 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=100, warmup_steps=100, verbose=True)
+            ...     d_model=100,
+            ...     warmup_steps=100,
+            ...     verbose=True,
+            ... )
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
-            ...     parameters=emb.parameters())
+            ...     parameters=emb.parameters(),
+            ... )
             >>> opt_state_dict = adam.state_dict()
 
             >>> # save state_dict of optimizer
@@ -1135,7 +1139,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> # load weight of emb
             >>> load_weight = paddle.load("emb.weight.pdtensor")
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-2
 
             >>> # example 2: Load multiple state_dict at the same time
@@ -1150,7 +1154,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> paddle.save(obj, path)
             >>> obj_load = paddle.load(path)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-3
 
             >>> # example 3: static graph
@@ -1169,7 +1173,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> prog = paddle.static.default_main_program()
             >>> for var in prog.list_vars():
             ...     if list(var.shape) == [224, 10]:
-            ...         tensor = var.get_value()
+            ...         tensor = paddle.static.global_scope().find_var(var.name).get_tensor()
             ...         break
 
             >>> # save/load tensor
@@ -1182,7 +1186,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             >>> paddle.save(prog.state_dict("param"), path_tensor)
             >>> load_state_dict = paddle.load(path_tensor)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-4
 
             >>> # example 4: load program
@@ -1190,15 +1194,14 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
 
             >>> paddle.enable_static()
 
-            >>> data = paddle.static.data(
-            ...     name='x_static_save', shape=(None, 224), dtype='float32')
+            >>> data = paddle.static.data(name='x_static_save', shape=(None, 224), dtype='float32')
             >>> y_static = z = paddle.static.nn.fc(data, 10)
             >>> main_program = paddle.static.default_main_program()
             >>> path = "example/main_program.pdmodel"
             >>> paddle.save(main_program, path)
             >>> load_main = paddle.load(path)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-5
 
             >>> # example 5: save object to memory
@@ -1239,7 +1242,11 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                             safetensors.__version__ > "0.6.2"
                             and paddle.__version__ >= "3.2.0"
                         ):
-                            load_result = load_file(path, device='cuda')
+                            # NOTE(Ruibiao): load_file may cause segmentation fault in some case.
+                            f = safetensors.safe_open(path, framework="paddle")
+                            load_result = {}
+                            for k in f.keys():
+                                load_result[k] = f.get_tensor(k).cuda()
                         else:
                             load_result = load_file(
                                 path, device=_current_expected_place()
@@ -1251,7 +1258,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 return load_result
 
             with _open_file_buffer(path, 'rb') as f:
-                # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+                # When value of dict is larger than 4GB, there is a bug on macOS Python 3
                 if (
                     _is_file_path(path)
                     and sys.platform == 'darwin'

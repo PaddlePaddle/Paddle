@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -69,18 +69,18 @@ class TestReshape(unittest.TestCase):
         )
 
         # check gpu kernel
-        if paddle.device.is_compiled_with_cuda():
-            dense_x = paddle.to_tensor(np_x, place=paddle.CUDAPlace(0))
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            dense_x = paddle.to_tensor(np_x, place=get_device_place())
             dense_x.stop_gradient = False
             dense_out = paddle.reshape(dense_x, new_shape)
 
             if format == "coo":
                 sp_x = paddle.to_tensor(
-                    np_x, place=paddle.CUDAPlace(0)
+                    np_x, place=get_device_place()
                 ).to_sparse_coo(len(x_shape))
             else:
                 sp_x = paddle.to_tensor(
-                    np_x, place=paddle.CUDAPlace(0)
+                    np_x, place=get_device_place()
                 ).to_sparse_csr()
             sp_x.stop_gradient = False
             sp_out = paddle.sparse.reshape(sp_x, new_shape)

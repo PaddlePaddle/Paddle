@@ -17,7 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -349,8 +355,8 @@ class TestTileFP16OP(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTileBF16OP(OpTest):
@@ -372,7 +378,7 @@ class TestTileBF16OP(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_cinn=self.check_cinn,
@@ -386,7 +392,7 @@ class TestTileBF16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -615,17 +621,41 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 class Testfp16TileOp(unittest.TestCase):
     def testfp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         input_x = (np.random.random([1, 2, 3])).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
             repeat_times = [2, 2]
             out = paddle.tile(x, repeat_times=repeat_times)
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(feed={'x': input_x}, fetch_list=[out])
+
+
+# Test alias for 'input' and 'dims'
+class TestTileAlias(unittest.TestCase):
+    def test_alias(self):
+        with base.dygraph.guard():
+            x_np = np.random.random((2, 3)).astype("float32")
+            x = paddle.to_tensor(x_np)
+            repeat_times = [2, 3]
+
+            # 1. Standard call (Benchmark)
+            out_ref = paddle.tile(x, repeat_times=repeat_times)
+
+            # 2. Test alias: input -> x
+            out_input = paddle.tile(input=x, repeat_times=repeat_times)
+            np.testing.assert_array_equal(out_ref.numpy(), out_input.numpy())
+
+            # 3. Test alias: dims -> repeat_times
+            out_dims = paddle.tile(x=x, dims=repeat_times)
+            np.testing.assert_array_equal(out_ref.numpy(), out_dims.numpy())
+
+            # 4. Test both aliases: input -> x, dims -> repeat_times
+            out_both = paddle.tile(input=x, dims=repeat_times)
+            np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
 
 
 if __name__ == "__main__":

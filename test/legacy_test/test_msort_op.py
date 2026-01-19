@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -65,8 +65,8 @@ class TestMsortOnCPU(unittest.TestCase):
 
 class TestMsortOnGPU(TestMsortOnCPU):
     def init_place(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -74,8 +74,8 @@ class TestMsortOnGPU(TestMsortOnCPU):
 class TestMsortDygraph(unittest.TestCase):
     def setUp(self):
         self.input_data = np.random.rand(10, 10)
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 

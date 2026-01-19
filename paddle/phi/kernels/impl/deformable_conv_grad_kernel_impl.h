@@ -176,26 +176,12 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    if (dx)
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    if (dx) Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     if (offset_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(offset_grad->dims())),
-          0,
-          offset_grad);
+      Full<T, Context>(dev_ctx, offset_grad->dims(), 0, offset_grad);
     if (filter_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(filter_grad->dims())),
-          0,
-          filter_grad);
-    if (mask_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(mask_grad->dims())),
-                            0,
-                            mask_grad);
+      Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
+    if (mask_grad) Full<T, Context>(dev_ctx, mask_grad->dims(), 0, mask_grad);
     return;
   }
 
@@ -238,18 +224,15 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   DenseTensor col_buffer_3d;
   col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::SetConstant<Context, T> set_zero;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   int64_t input_dim = x.numel() / x.dims()[0];
   int64_t input_offset_dim = offset.numel() / offset.dims()[0];
   int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   if (filter_grad) {
-    Full<T>(dev_ctx,
-            {filter_grad_shape.Get(), filter_grad_shape.size()},
-            0,
-            filter_grad);
+    Full<T>(dev_ctx, filter_grad_shape, 0, filter_grad);
   }
 
   if (dx) {

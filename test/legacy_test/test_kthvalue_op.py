@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -152,7 +158,7 @@ class TestKthvalueOpKernels(unittest.TestCase):
         def test_gpu_kernel():
             shape = (2, 30, 250)
             k = 244
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             inputs = np.random.random(shape)
             tensor = paddle.to_tensor(inputs)
             for axis in self.axes:
@@ -164,7 +170,7 @@ class TestKthvalueOpKernels(unittest.TestCase):
                 )
 
         test_cpu_kernel()
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             test_gpu_kernel()
 
 
@@ -183,7 +189,7 @@ class TestKthvalueOpWithNaN(unittest.TestCase):
             self.assertEqual(inds[0, 2].numpy(), nan_position)
 
         def test_nan_in_gpu_kernel():
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             nan_position = 100
             self.x[0, nan_position, 2] = float('nan')
             v, inds = self.x.kthvalue(k=200, axis=1)
@@ -191,7 +197,7 @@ class TestKthvalueOpWithNaN(unittest.TestCase):
             self.assertEqual(inds[0, 2].numpy(), nan_position)
 
         test_nan_in_cpu_kernel()
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             test_nan_in_gpu_kernel()
 
 
@@ -285,8 +291,8 @@ class TestKthvalueWithKeepdimFP16Op(TestKthvalueFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestKthvalueBF16Op(OpTest):
@@ -307,12 +313,12 @@ class TestKthvalueBF16Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, {'X'}, 'Out', check_pir=True)
 
 

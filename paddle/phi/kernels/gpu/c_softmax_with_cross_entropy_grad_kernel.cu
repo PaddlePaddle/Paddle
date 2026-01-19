@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/c_softmax_with_cross_entropy_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -113,23 +114,23 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
                                         int rank,
                                         int nranks,
                                         DenseTensor* logits_grad) {
-  const phi::DenseTensor* labels = &label_in;
-  const phi::DenseTensor* loss_grad = &loss_grad_in;
-  const phi::DenseTensor* softmax = &softmax_in;
-  phi::DenseTensor* logit_grad = logits_grad;
+  const DenseTensor* labels = &label_in;
+  const DenseTensor* loss_grad = &loss_grad_in;
+  const DenseTensor* softmax = &softmax_in;
+  DenseTensor* logit_grad = logits_grad;
 
   if (logit_grad != softmax) {
-    phi::Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
+    Copy(dev_ctx, *softmax, dev_ctx.GetPlace(), false, logit_grad);
   }
   const auto softmax_dims = softmax->dims();
   const int axis = softmax_dims.size() - 1;
-  const int64_t N = phi::funcs::SizeToAxis<int64_t>(axis, softmax_dims);
-  const int64_t D = phi::funcs::SizeFromAxis<int64_t>(axis, softmax_dims);
+  const int64_t N = funcs::SizeToAxis<int64_t>(axis, softmax_dims);
+  const int64_t D = funcs::SizeFromAxis<int64_t>(axis, softmax_dims);
 
   const auto label_dims = labels->dims();
   const int64_t C = label_dims[axis];
 
-  phi::DenseTensor logit_grad_2d;
+  DenseTensor logit_grad_2d;
   logit_grad_2d.ShareDataWith(*logit_grad).Resize({N, D});
 
   int64_t blocks = NumBlocks(N * D);
@@ -141,7 +142,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
 
   if (label_type == phi::DataType::INT32) {
     if (C > 1) {
-      phi::DenseTensor is_ignore;
+      DenseTensor is_ignore;
       is_ignore.Resize({N, 1});
       dev_ctx.template Alloc<int32_t>(&is_ignore);
 
@@ -179,7 +180,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
     }
   } else if (label_type == phi::DataType::INT64) {
     if (C > 1) {
-      phi::DenseTensor is_ignore;
+      DenseTensor is_ignore;
       is_ignore.Resize({N, 1});
       dev_ctx.template Alloc<int32_t>(&is_ignore);
 

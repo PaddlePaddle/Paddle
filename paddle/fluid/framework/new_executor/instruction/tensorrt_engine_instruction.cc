@@ -227,14 +227,14 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
     std::vector<std::string> param_names = refit_param_names_;
     std::sort(param_names.begin(), param_names.end());
 
-    std::vector<phi::DenseTensor *> tensor_out;
+    std::vector<DenseTensor *> tensor_out;
     for (size_t i = 0; i < len; ++i) {
       auto *tensor_temp = new phi::DenseTensor();
       tensor_temp->Resize({1});
       phi::DataType type_data = phi::DataType::FLOAT32;
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
-      dev_ctx = pool.Get(phi::CPUPlace());
+      dev_ctx = pool.Get(CPUPlace());
       dev_ctx->Alloc(tensor_temp, type_data);
       tensor_out.push_back(tensor_temp);
     }
@@ -406,13 +406,12 @@ void TensorRTEngineInstruction::InputsCheck() {
   }
 }
 
-void TensorRTEngineInstruction::BindInputTensor(
-    const std::string &input_name,
-    const phi::DenseTensor &input_tensor,
-    const Scope &scope,
-    std::vector<void *> &buffers,
-    std::vector<int> &shape_v,
-    int *runtime_batch) {
+void TensorRTEngineInstruction::BindInputTensor(const std::string &input_name,
+                                                const DenseTensor &input_tensor,
+                                                const Scope &scope,
+                                                std::vector<void *> &buffers,
+                                                std::vector<int> &shape_v,
+                                                int *runtime_batch) {
   auto dev_place = dev_ctx_->GetPlace();
   const int num_bindings = trt_engine_->GetNbBindings();
   int binding_offset = 0;
@@ -435,9 +434,9 @@ void TensorRTEngineInstruction::BindInputTensor(
 
   // check the input_tensor
   if (!(input_tensor.place().GetType() == phi::AllocationType::GPU)) {
-    phi::DenseTensor out;
+    DenseTensor out;
     phi::Copy(*dev_ctx_, input_tensor, dev_place, false, &out);
-    const_cast<phi::DenseTensor &>(input_tensor).ShareDataWith(out);
+    const_cast<DenseTensor &>(input_tensor).ShareDataWith(out);
   }
   auto input_shape = common::vectorize<int64_t>(input_tensor.dims());
 
@@ -481,29 +480,40 @@ void TensorRTEngineInstruction::BindInputTensor(
                         "index=%d >= total inputs and outputs=%d",
                         bind_index,
                         num_bindings));
+  bool support_int64 = false;
+#if IS_TRT_VERSION_GE(10000)
+  support_int64 = true;
+#endif
 #if IS_TRT_VERSION_GE(8500)
   if (trt_engine_->engine()->isShapeInferenceIO(input_name.c_str()) &&
       trt_engine_->engine()->getTensorIOMode(input_name.c_str()) ==
           nvinfer1::TensorIOMode::kINPUT) {
     shape_v.resize(input_tensor.numel());
     if (input_tensor.dtype() == phi::DataType::INT32) {
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               input_tensor.place(),
                               input_tensor.data<int32_t>(),
                               input_tensor.numel() * sizeof(int),
                               nullptr);
-    } else if (input_tensor.dtype() == phi::DataType::INT64) {
+    } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
+      phi::memory_utils::Copy(CPUPlace(),
+                              shape_v.data(),
+                              input_tensor.place(),
+                              input_tensor.data<int64_t>(),
+                              input_tensor.numel() * sizeof(int64_t),
+                              nullptr);
+    } else if (input_tensor.dtype() == phi::DataType::INT64 && !support_int64) {
       std::string x_t = input_name + "_cast_to_INT32";
       if (scope.FindVar(x_t) == nullptr) {
         const_cast<framework::Scope *>(&scope)->Var(x_t);
       }
-      auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+      auto int32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
       *int32_tensor = phi::Cast<int64_t>(
           reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
           input_tensor,
           phi::DataType::INT32);
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               int32_tensor->place(),
                               int32_tensor->data<int32_t>(),
@@ -550,18 +560,21 @@ void TensorRTEngineInstruction::BindInputTensor(
     if (scope.FindVar(x_t) == nullptr) {
       const_cast<framework::Scope *>(&scope)->Var(x_t);
     }
-    auto fp32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+    auto fp32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
     *fp32_tensor =
         phi::Cast<double>(reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
                           input_tensor,
                           phi::DataType::FLOAT32);
     buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
-  } else if (input_tensor.dtype() == phi::DataType::INT64) {
+  } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
+    buffers[bind_index] = static_cast<void *>(
+        const_cast<int64_t *>(input_tensor.data<int64_t>()));
+  } else if (input_tensor.dtype() == phi::DataType::INT64 && !support_int64) {
     std::string x_t = input_name + "_cast_to_INT32";
     if (scope.FindVar(x_t) == nullptr) {
       const_cast<framework::Scope *>(&scope)->Var(x_t);
     }
-    auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+    auto int32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
     *int32_tensor =
         phi::Cast<int64_t>(reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
                            input_tensor,
@@ -584,12 +597,11 @@ void TensorRTEngineInstruction::BindInputTensor(
   }
 }
 
-void TensorRTEngineInstruction::BindOutputTensor(
-    std::string output_name,
-    phi::DenseTensor *output_tensor,
-    int output_index,
-    std::vector<void *> &buffers,
-    int *runtime_batch) {
+void TensorRTEngineInstruction::BindOutputTensor(std::string output_name,
+                                                 DenseTensor *output_tensor,
+                                                 int output_index,
+                                                 std::vector<void *> &buffers,
+                                                 int *runtime_batch) {
   int binding_offset = 0;
   const int num_bindings = trt_engine_->GetNbBindings();
   [[maybe_unused]] nvinfer1::IExecutionContext *trt_context = nullptr;
@@ -605,6 +617,18 @@ void TensorRTEngineInstruction::BindOutputTensor(
       break;
     }
   }
+  // output_name and getIOTensorName may be different, use output_index
+  if (bind_index < 0) {
+    for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+      const char *name = trt_engine_->engine()->getIOTensorName(i);
+      nvinfer1::TensorIOMode mode =
+          trt_engine_->engine()->getTensorIOMode(name);
+      if (mode == nvinfer1::TensorIOMode::kOUTPUT) {
+        bind_index = i + output_index + binding_offset;
+        break;
+      }
+    }
+  }
   PADDLE_ENFORCE_GE(
       bind_index,
       0,
@@ -616,7 +640,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
       binding_offset;
 #endif
   std::vector<int> ddim;
-  phi::DenseTensor *fluid_t = nullptr;
+  DenseTensor *fluid_t = nullptr;
 #if IS_TRT_VERSION_GE(8500)
   auto x_name = trt_engine_->engine()->getIOTensorName(bind_index);
   auto dims = trt_context->getTensorShape(x_name);
@@ -643,7 +667,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
     if (scope.FindVar(tmp_output) == nullptr) {
       const_cast<framework::Scope *>(&scope)->Var(tmp_output);
     }
-    fluid_t = scope.FindVar(tmp_output)->GetMutable<phi::DenseTensor>();
+    fluid_t = scope.FindVar(tmp_output)->GetMutable<DenseTensor>();
   } else {
     fluid_t = output_tensor;
   }
@@ -701,8 +725,8 @@ void TensorRTEngineInstruction::RunTrt() {
 
   for (const auto &index_name_pair : input_names_) {
     size_t i = index_name_pair.first;
-    if (in_variable_array[i]->IsType<phi::DenseTensor>()) {
-      auto input_tensor = in_variable_array[i]->Get<phi::DenseTensor>();
+    if (in_variable_array[i]->IsType<DenseTensor>()) {
+      auto input_tensor = in_variable_array[i]->Get<DenseTensor>();
       // Bind input tensor to TRT.
       BindInputTensor(index_name_pair.second,
                       input_tensor,
@@ -731,9 +755,9 @@ void TensorRTEngineInstruction::RunTrt() {
   out_variable_array = out_var->GetMutable<VariableRefArray>();
   for (const auto &index_name_pair : output_names_) {
     size_t i = index_name_pair.first;
-    if (out_variable_array->at(i)->IsType<phi::DenseTensor>()) {
-      auto output_tensor = const_cast<phi::DenseTensor *>(
-          &(out_variable_array->at(i)->Get<phi::DenseTensor>()));
+    if (out_variable_array->at(i)->IsType<DenseTensor>()) {
+      auto output_tensor = const_cast<DenseTensor *>(
+          &(out_variable_array->at(i)->Get<DenseTensor>()));
       // Bind input tensor to TRT.
       BindOutputTensor(
           index_name_pair.second, output_tensor, i, buffers, &runtime_batch);
@@ -750,6 +774,19 @@ void TensorRTEngineInstruction::RunTrt() {
   trt_engine_->Execute(runtime_batch, &buffers, stream);
 
   VLOG(4) << "End running trt engine and deal with output";
+  bool support_int64 = false;
+  int output_offset = 0;
+#if IS_TRT_VERSION_GE(10000)
+  for (int i = 0; i < trt_engine_->engine()->getNbIOTensors(); ++i) {
+    const char *name = trt_engine_->engine()->getIOTensorName(i);
+    nvinfer1::TensorIOMode mode = trt_engine_->engine()->getTensorIOMode(name);
+    if (mode == nvinfer1::TensorIOMode::kOUTPUT) {
+      output_offset = i;
+      break;
+    }
+  }
+  support_int64 = true;
+#endif
   for (const auto &index_name_pair : output_names_) {
     size_t i = index_name_pair.first;
     auto type = outputs_dtype_[i];
@@ -767,7 +804,12 @@ void TensorRTEngineInstruction::RunTrt() {
         break;
       }
     }
-
+#if IS_TRT_VERSION_GE(10000)
+    // output_name and getIOTensorName may be different
+    if (bind_index < 0) {
+      bind_index = index_name_pair.first + output_offset + binding_offset;
+    }
+#endif
     auto trt_output_name = trt_engine_->engine()->getIOTensorName(bind_index);
     auto trt_dims = trt_engine_->context()->getTensorShape(trt_output_name);
     // find the tmp tensor(Allocated extra memory space for unknown dim) and
@@ -776,9 +818,9 @@ void TensorRTEngineInstruction::RunTrt() {
     std::string tmp_output = output_name + "_tmp";
     if (scope.FindVar(tmp_output) != nullptr) {
       auto *output_tensor_tmp =
-          scope.FindVar(tmp_output)->GetMutable<phi::DenseTensor>();
-      auto *output_tensor = const_cast<phi::DenseTensor *>(
-          &(out_variable_array->at(i)->Get<phi::DenseTensor>()));
+          scope.FindVar(tmp_output)->GetMutable<DenseTensor>();
+      auto *output_tensor = const_cast<DenseTensor *>(
+          &(out_variable_array->at(i)->Get<DenseTensor>()));
       std::vector<int> ddim;
       for (int i = 0; i < trt_dims.nbDims; i++) {
         ddim.push_back(trt_dims.d[i]);
@@ -794,13 +836,23 @@ void TensorRTEngineInstruction::RunTrt() {
                                 sizeof(float) * output_tensor->numel(),
                                 nullptr);
       } else if (type == phi::DataType::INT64 || type == phi::DataType::INT32) {
-        auto *mutable_output = output_tensor->data<int32_t>();
-        phi::memory_utils::Copy(phi::GPUPlace(),
-                                mutable_output,
-                                phi::GPUPlace(),
-                                output_tensor_tmp->data<int32_t>(),
-                                sizeof(int32_t) * output_tensor->numel(),
-                                nullptr);
+        if (type == phi::DataType::INT64 && support_int64) {
+          auto *mutable_output = output_tensor->data<int64_t>();
+          phi::memory_utils::Copy(phi::GPUPlace(),
+                                  mutable_output,
+                                  phi::GPUPlace(),
+                                  output_tensor_tmp->data<int64_t>(),
+                                  sizeof(int64_t) * output_tensor->numel(),
+                                  nullptr);
+        } else {
+          auto *mutable_output = output_tensor->data<int32_t>();
+          phi::memory_utils::Copy(phi::GPUPlace(),
+                                  mutable_output,
+                                  phi::GPUPlace(),
+                                  output_tensor_tmp->data<int32_t>(),
+                                  sizeof(int32_t) * output_tensor->numel(),
+                                  nullptr);
+        }
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported data type: %d when deal with output", type));
@@ -809,16 +861,15 @@ void TensorRTEngineInstruction::RunTrt() {
 #endif
 
     // Type transformation for INT64 and FLOAT64
-    if (type == phi::DataType::INT64) {
+    if (type == phi::DataType::INT64 && !support_int64) {
       auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
-      auto *fluid_t =
-          const_cast<phi::DenseTensor *>(&(fluid_v->Get<phi::DenseTensor>()));
+      auto *fluid_t = const_cast<DenseTensor *>(&(fluid_v->Get<DenseTensor>()));
       std::string y_t = y + "_cast_to_INT64";
       if (scope.FindVar(y_t) == nullptr) {
         const_cast<framework::Scope *>(&scope)->Var(y_t);
       }
-      auto int32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
+      auto int32_tensor = scope.FindVar(y_t)->GetMutable<DenseTensor>();
       int32_tensor->Resize(fluid_t->dims());
       dev_ctx_->Alloc<int32_t>(int32_tensor);
       phi::Copy(*dev_ctx_, *fluid_t, dev_place, false, int32_tensor);
@@ -829,13 +880,12 @@ void TensorRTEngineInstruction::RunTrt() {
     } else if (type == phi::DataType::FLOAT64) {
       auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
-      auto *fluid_t =
-          const_cast<phi::DenseTensor *>(&(fluid_v->Get<phi::DenseTensor>()));
+      auto *fluid_t = const_cast<DenseTensor *>(&(fluid_v->Get<DenseTensor>()));
       std::string y_t = y + "_cast_to_FP64";
       if (scope.FindVar(y_t) == nullptr) {
         const_cast<framework::Scope *>(&scope)->Var(y_t);
       }
-      auto fp32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
+      auto fp32_tensor = scope.FindVar(y_t)->GetMutable<DenseTensor>();
       fp32_tensor->Resize(fluid_t->dims());
       dev_ctx_->Alloc<float>(fp32_tensor);
       phi::Copy(*dev_ctx_, *fluid_t, dev_place, false, fp32_tensor);

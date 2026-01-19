@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
-PHI_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
@@ -42,8 +42,8 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
                                  const DenseTensor& scale1,
                                  const DenseTensor& bias1,
                                  const DenseTensor& x2,
-                                 const paddle::optional<DenseTensor>& scale2,
-                                 const paddle::optional<DenseTensor>& bias2,
+                                 const optional<DenseTensor>& scale2,
+                                 const optional<DenseTensor>& bias2,
                                  bool fuse_dual,
                                  bool exhaustive_search,
                                  DenseTensor* out) {

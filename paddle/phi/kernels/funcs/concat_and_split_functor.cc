@@ -23,9 +23,9 @@ namespace phi::funcs {
 template <typename T>
 struct ConcatFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
-                  const std::vector<phi::DenseTensor>& input,
+                  const std::vector<DenseTensor>& input,
                   int axis,
-                  phi::DenseTensor* output) {
+                  DenseTensor* output) {
     // TODO(zcd): Add input data validity checking
     size_t num = input.size();
 
@@ -75,10 +75,10 @@ template <typename T>
 struct SplitFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
-                  const phi::DenseTensor& input,
-                  const std::vector<const phi::DenseTensor*>& ref_inputs,
+                  const DenseTensor& input,
+                  const std::vector<const DenseTensor*>& ref_inputs,
                   int axis,
-                  std::vector<phi::DenseTensor*>* outputs) {
+                  std::vector<DenseTensor*>* outputs) {
     // NOTE(zhiqiu): split a tensor of shape [0,3,4] at axis=1, result in 3
     // tensors of shape [0,1,4]
     if (input.numel() == 0) {

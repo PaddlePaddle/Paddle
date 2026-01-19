@@ -20,14 +20,13 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/memcpy_kernel.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/onednn/onednn_helper.h"
-#endif
+
 namespace phi {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
@@ -121,7 +120,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_DNNL
 template <typename Context>
-void TransferLayoutMKLDNN(const Context& dev_ctx,
+void TransferLayoutOneDNN(const Context& dev_ctx,
                           const DenseTensor& x,
                           DataLayout src_layout,
                           DataLayout dst_layout,
@@ -152,10 +151,10 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   }
 
   if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
-    // Case1 - transform from Non-MKLDNN OPKernel to OneDNN OPKernel
+    // Case1 - transform from Non-OneDNN OPKernel to OneDNN OPKernel
     // Just set layout/format. No real transform occur
     out->ShareDataWith(x);
-    // For NHWC data we need reshape of tensors as MKL-DNN
+    // For NHWC data we need reshape of tensors as OneDNN
     // is expecting NHWC dims description order
     if (src_layout == DataLayout::NHWC) {
       VLOG(4) << "NHWC";
@@ -167,7 +166,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
-    // Case2 - transform from OneDNN OPKernel to Non-MKLDNN OPKernel
+    // Case2 - transform from OneDNN OPKernel to Non-OneDNN OPKernel
     // Do transform via OneDNN lib
     funcs::TransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
@@ -205,7 +204,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
   }
 
 #ifdef PADDLE_WITH_DNNL
-  TransferLayoutMKLDNN<Context>(dev_ctx,
+  TransferLayoutOneDNN<Context>(dev_ctx,
                                 x,
                                 static_cast<DataLayout>(src_layout),
                                 static_cast<DataLayout>(dst_layout),

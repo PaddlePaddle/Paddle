@@ -354,19 +354,12 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
-    spmd_rule : TileGradInferSpmd
+    spmd_rule : TileGradInferSpmdDynamic
   kernel :
     func : tile_grad
   no_need_buffer : x
   composite : tile_grad(x, out_grad, repeat_times, x_grad)
   backward : tile_double_grad
-
-- backward_op : view_shape_grad
-  forward : view_shape (Tensor input, int64_t[] dims = {}) -> Tensor(out)
-  args : (Tensor input, Tensor out_grad, int64_t[] dims = {})
-  output : Tensor(input_grad)
-  invoke: view_shape(out_grad, input.shape())
-  no_need_buffer: input
 
 - backward_op: fused_gemm_epilogue_grad
   forward : fused_gemm_epilogue(Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation) -> Tensor(out), Tensor(reserve_space)

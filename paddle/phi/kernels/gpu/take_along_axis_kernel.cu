@@ -35,7 +35,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   }
   if (x.numel() == 0) {
     phi::Full<T, Context>(
-        dev_ctx, common::vectorize(out->dims()), static_cast<T>(0), out);
+        dev_ctx, vectorize(out->dims()), static_cast<T>(0), out);
     return;
   }
 
@@ -48,11 +48,9 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
 
   const auto& index_type = index.dtype();
   if (index_type == DataType::INT32) {
-    phi::funcs::gpu_gather_kernel<T, int32_t>(
-        x, axis, index, *out, true, dev_ctx);
+    funcs::gpu_gather_kernel<T, int32_t>(x, axis, index, *out, true, dev_ctx);
   } else if (index_type == DataType::INT64) {
-    phi::funcs::gpu_gather_kernel<T, int64_t>(
-        x, axis, index, *out, true, dev_ctx);
+    funcs::gpu_gather_kernel<T, int64_t>(x, axis, index, *out, true, dev_ctx);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The data type of input index is expected "

@@ -110,12 +110,12 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.XPUPlace(0))
 
-        res = exe.run(
+        (res,) = exe.run(
             paddle.static.default_main_program(),
             feed={"x": np_x, "mask": np_mask},
             fetch_list=[out],
         )
-        self.assertEqual(np.allclose(res, np_out), True)
+        np.testing.assert_allclose(res, np_out)
 
     def test_simulator_skip_run_mode(self):
         os.environ['XPUSIM_SKIP_RUN'] = '1'
@@ -130,6 +130,43 @@ class TestMaskedSelectAPI(unittest.TestCase):
         np.testing.assert_equal(out.numpy().size, np_x.size)
         paddle.enable_static()
         del os.environ['XPUSIM_SKIP_RUN']
+
+
+class TestMaskedSelectGradAPI(unittest.TestCase):
+    def test_getitem_bool_mask_int64_grad(self):
+        paddle.disable_static(paddle.XPUPlace(0))
+        x_np = np.array([1, 2], dtype=np.int64)
+        mask_np = np.array([True, True], dtype=np.bool_)
+        dout_np = np.array([3, 4], dtype=np.int64)
+
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(mask_np)
+        out = x[mask]
+        out_grad = paddle.to_tensor(dout_np)
+        out_grad.stop_gradient = True
+        (x_grad,) = paddle.grad(
+            outputs=[out], inputs=[x], grad_outputs=[out_grad]
+        )
+        np.testing.assert_array_equal(x_grad.numpy(), dout_np)
+        paddle.enable_static()
+
+    def test_getitem_bool_mask_int64_grad_empty_out(self):
+        paddle.disable_static(paddle.XPUPlace(0))
+        x_np = np.array([1, 2], dtype=np.int64)
+        mask_np = np.array([False, False], dtype=np.bool_)
+
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(mask_np)
+        out = x[mask]
+        out_grad = paddle.empty([0], dtype="int64")
+        out_grad.stop_gradient = True
+        (x_grad,) = paddle.grad(
+            outputs=[out], inputs=[x], grad_outputs=[out_grad]
+        )
+        np.testing.assert_array_equal(x_grad.numpy(), np.zeros_like(x_np))
+        paddle.enable_static()
 
 
 class TestMaskedSelectError(unittest.TestCase):

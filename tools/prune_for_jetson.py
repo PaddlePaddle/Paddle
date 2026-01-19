@@ -77,7 +77,6 @@ def prune_phi_kernels():
             print("continue:", op_file)
             continue
 
-        op_name = os.path.split(op_file)[1]
         all_matches = []
         with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())

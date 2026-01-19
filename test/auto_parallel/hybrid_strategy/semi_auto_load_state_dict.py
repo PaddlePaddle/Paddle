@@ -165,7 +165,7 @@ class TestLoadShardedStateDict:
     def __init__(self):
         self._ckpt_path = os.getenv("ckpt_path_2")
 
-    def test_load_state_dict_with_one_device(self):
+    def test_load_state_dict_with_one_device(self, comm_method):
         # Construct a 4x4 integer tensor as expected result:
         # [[ 0,  1,  2,  3],
         #  [ 4,  5,  6,  7],
@@ -177,10 +177,12 @@ class TestLoadShardedStateDict:
         )
         t = paddle.zeros_like(expect_tensor)
         sharded_weight = make_replicated_sharded_weight("t", t)
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_four_devices(self):
+    def test_load_state_dict_with_four_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (4x4) is distributed as:
@@ -260,11 +262,13 @@ class TestLoadShardedStateDict:
                 flattened_range=slice(1, 4),
             )
 
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_two_devices(self):
+    def test_load_state_dict_with_two_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global 4x4 tensor is distributed as:
@@ -305,11 +309,13 @@ class TestLoadShardedStateDict:
                 global_offset=(2, 0),
                 is_flattened=False,
             )
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_eight_devices(self):
+    def test_load_state_dict_with_eight_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global 4x4 tensor is distributed as:
@@ -467,7 +473,9 @@ class TestLoadShardedStateDict:
                 flattened_range=slice(3, 8),
             )
 
-        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        load_state_dict(
+            {"t": sharded_weight}, self._ckpt_path, comm_method=comm_method
+        )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
@@ -478,16 +486,17 @@ class TestLoadShardedStateDict:
 
     def run_test_case(self):
         device_num = int(os.getenv("device_num"))
-        if device_num == 1:
-            self.test_load_state_dict_with_one_device()
-        elif device_num == 2:
-            self.test_load_state_dict_with_two_devices()
-        elif device_num == 4:
-            self.test_load_state_dict_with_four_devices()
-        elif device_num == 8:
-            self.test_load_state_dict_with_eight_devices()
-        else:
-            raise ValueError("device_num should be 1, 2, 4 or 8")
+        for comm_method in ["broadcast", "send_recv", "grouped_send_recv"]:
+            if device_num == 1:
+                self.test_load_state_dict_with_one_device(comm_method)
+            elif device_num == 2:
+                self.test_load_state_dict_with_two_devices(comm_method)
+            elif device_num == 4:
+                self.test_load_state_dict_with_four_devices(comm_method)
+            elif device_num == 8:
+                self.test_load_state_dict_with_eight_devices(comm_method)
+            else:
+                raise ValueError("device_num should be 1, 2, 4 or 8")
 
 
 class TestLoadShardedStateDictWithAOA:
@@ -502,7 +511,7 @@ class TestLoadShardedStateDictWithAOA:
             ]
         }
 
-    def test_load_state_dict_with_four_devices(self):
+    def test_load_state_dict_with_four_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (2x8) is distributed as:
@@ -571,12 +580,15 @@ class TestLoadShardedStateDictWithAOA:
             )
 
         load_state_dict(
-            {"T": sharded_weight}, self._ckpt_path, aoa_config=self.aoa_config
+            {"T": sharded_weight},
+            self._ckpt_path,
+            aoa_config=self.aoa_config,
+            comm_method=comm_method,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_two_devices(self):
+    def test_load_state_dict_with_two_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global 4x4 tensor is distributed as:
@@ -612,12 +624,15 @@ class TestLoadShardedStateDictWithAOA:
                 is_flattened=False,
             )
         load_state_dict(
-            {"T": sharded_weight}, self._ckpt_path, aoa_config=self.aoa_config
+            {"T": sharded_weight},
+            self._ckpt_path,
+            aoa_config=self.aoa_config,
+            comm_method=comm_method,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
-    def test_load_state_dict_with_eight_devices(self):
+    def test_load_state_dict_with_eight_devices(self, comm_method):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (2x8) is distributed as:
@@ -752,7 +767,300 @@ class TestLoadShardedStateDictWithAOA:
             )
 
         load_state_dict(
-            {"T": sharded_weight}, self._ckpt_path, aoa_config=self.aoa_config
+            {"T": sharded_weight},
+            self._ckpt_path,
+            aoa_config=self.aoa_config,
+            comm_method=comm_method,
+        )
+        paddle.distributed.barrier()
+        self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
+
+    def check_tensor_eq(self, a, b, verbose=True):
+        np1 = a.astype("float32").numpy()
+        np2 = b.astype("float32").numpy()
+        np.testing.assert_equal(np1, np2, verbose=verbose)
+
+    def run_test_case(self):
+        device_num = int(os.getenv("device_num"))
+        for comm_method in ["broadcast", "send_recv", "grouped_send_recv"]:
+            if device_num == 1:
+                pass
+            elif device_num == 2:
+                self.test_load_state_dict_with_two_devices(comm_method)
+            elif device_num == 4:
+                self.test_load_state_dict_with_four_devices(comm_method)
+            elif device_num == 8:
+                self.test_load_state_dict_with_eight_devices(comm_method)
+            else:
+                raise ValueError("device_num should be 2, 4 or 8")
+
+
+class TestLoadShardedStateDictMultiCommGroup:
+    def __init__(self):
+        self._ckpt_path = os.getenv("ckpt_path_2")
+        self.set_comm_method()
+        self.set_offload()
+
+    def set_comm_method(self):
+        self.comm_method = "multi_group_broadcast"
+
+    def set_offload(self):
+        self.offload = False
+
+    def test_load_state_dict_with_four_devices(self, worker_groups):
+        if dist.get_rank() == 0:
+            # On rank 0:
+            # The global tensor (4x4) is distributed as:
+            # [[ 0,  1,  2,  3],
+            #  [ 4,  5,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 0~5 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([0, 1, 2, 3, 4, 5], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(3, 4),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 6),
+            )
+        elif dist.get_rank() == 1:
+            # On rank 1:
+            # The global tensor (4x4) is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  6,  7],
+            #  [ 8,  9, 10, 11],
+            #  [ *,  *,  *,  *]]
+            # Numbers 6~11 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor(
+                [6, 7, 8, 9, 10, 11], dtype='int32'
+            )
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(3, 4),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(6, 12),
+            )
+        elif dist.get_rank() == 2:
+            # On rank 2:
+            # The global tensor (4x4) is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [12,  *,  *,  *]]
+            # Number 12 is local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([12], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(1, 4),
+                global_shape=(4, 4),
+                global_offset=(3, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 1),
+            )
+        elif dist.get_rank() == 3:
+            # On rank 3:
+            # The global tensor (4x4) is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *, 13, 14, 15]]
+            # Numbers 13~15 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([13, 14, 15], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(1, 4),
+                global_shape=(4, 4),
+                global_offset=(3, 0),
+                is_flattened=True,
+                flattened_range=slice(1, 4),
+            )
+
+        load_state_dict(
+            state_dict={"t": sharded_weight},
+            path=self._ckpt_path,
+            worker_groups=worker_groups,
+            comm_method=self.comm_method,
+            offload=self.offload,
+        )
+        paddle.distributed.barrier()
+        self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
+
+    def test_load_state_dict_with_eight_devices(self, worker_groups):
+        if dist.get_rank() == 0:
+            # On rank 0:
+            # The global 4x4 tensor is distributed as:
+            # [[ 0,  1,  2,  3],
+            #  [ 4,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 0~4 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([0, 1, 2, 3, 4], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(2, 4),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 5),
+            )
+        elif dist.get_rank() == 1:
+            # On rank 1:
+            # The global 4x4 tensor is distributed as:
+            # [[ *,  *,  *,  3],
+            #  [ 4,  5,  6,  7],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 3~7 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([3, 4, 5, 6, 7], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(3, 4),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(3, 8),
+            )
+        elif dist.get_rank() == 2:
+            # On rank 2:
+            # The global 4x4 tensor is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ 8,  9, 10, 11],
+            #  [12,  *,  *,  *]]
+            # Numbers 8~12 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([8, 9, 10, 11, 12], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(2, 4),
+                global_shape=(4, 4),
+                global_offset=(2, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 5),
+            )
+        elif dist.get_rank() == 3:
+            # On rank 3:
+            # The global 4x4 tensor is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *, 11],
+            #  [12, 13, 14, 15]]
+            # Numbers 11~15 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor(
+                [11, 12, 13, 14, 15], dtype='int32'
+            )
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(2, 4),
+                global_shape=(4, 4),
+                global_offset=(2, 0),
+                is_flattened=True,
+                flattened_range=slice(3, 8),
+            )
+        elif dist.get_rank() == 4:
+            # On rank 0:
+            # The global 4x4 tensor is distributed as:
+            # [[ 0,  1,  2,  3],
+            #  [ 4,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 0~4 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([0, 1, 2, 3, 4], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(2, 4),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 5),
+            )
+        elif dist.get_rank() == 5:
+            # On rank 1:
+            # The global 4x4 tensor is distributed as:
+            # [[ *,  *,  *,  3],
+            #  [ 4,  5,  6,  7],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 3~7 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([3, 4, 5, 6, 7], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(3, 4),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(3, 8),
+            )
+        elif dist.get_rank() == 6:
+            # On rank 2:
+            # The global 4x4 tensor is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ 8,  9, 10, 11],
+            #  [12,  *,  *,  *]]
+            # Numbers 8~12 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor([8, 9, 10, 11, 12], dtype='int32')
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(2, 4),
+                global_shape=(4, 4),
+                global_offset=(2, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 5),
+            )
+        elif dist.get_rank() == 7:
+            # On rank 3:
+            # The global 4x4 tensor is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *, 11],
+            #  [12, 13, 14, 15]]
+            # Numbers 11~15 are local, '*' means not present on this rank.
+            expect_tensor = paddle.to_tensor(
+                [11, 12, 13, 14, 15], dtype='int32'
+            )
+            t = paddle.zeros_like(expect_tensor)
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=t,
+                local_shape=(2, 4),
+                global_shape=(4, 4),
+                global_offset=(2, 0),
+                is_flattened=True,
+                flattened_range=slice(3, 8),
+            )
+
+        load_state_dict(
+            state_dict={"t": sharded_weight},
+            path=self._ckpt_path,
+            worker_groups=worker_groups,
+            comm_method=self.comm_method,
+            offload=self.offload,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -767,16 +1075,183 @@ class TestLoadShardedStateDictWithAOA:
         if device_num == 1:
             pass
         elif device_num == 2:
-            self.test_load_state_dict_with_two_devices()
+            pass
         elif device_num == 4:
-            self.test_load_state_dict_with_four_devices()
+            dist.init_parallel_env()
+            group_ranks = [[0, 1], [1, 2], [2, 3], [0, 1, 2, 3]]
+            worker_groups = []
+            for ranks in group_ranks:
+                group = dist.new_group(ranks)
+                worker_groups.append(group)
+            self.test_load_state_dict_with_four_devices(worker_groups)
+            for group in worker_groups:
+                dist.destroy_process_group(group)
         elif device_num == 8:
-            self.test_load_state_dict_with_eight_devices()
+            dist.init_parallel_env()
+            group_ranks = [
+                [0, 1],
+                [1, 2],
+                [2, 3],
+                [3, 4],
+                [4, 5],
+                [5, 6],
+                [6, 7],
+                [0, 1, 2, 3],
+                [4, 5, 6, 7],
+                [0, 1, 2, 3, 4, 5, 6, 7],
+            ]
+            worker_groups = []
+            for ranks in group_ranks:
+                group = dist.new_group(ranks)
+                worker_groups.append(group)
+            self.test_load_state_dict_with_eight_devices(worker_groups)
+            for group in worker_groups:
+                dist.destroy_process_group(group)
         else:
-            raise ValueError("device_num should be 2, 4 or 8")
+            raise ValueError("device_num should be 1, 2, 4 or 8")
+
+
+class TestLoadShardedStateDictWithReplica(TestLoadShardedStateDict):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+
+class TestLoadShardedStateDictWithAOAWithReplica(
+    TestLoadShardedStateDictWithAOA
+):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+
+class TestLoadShardedStateDictMultiCommGroupWithReplica(
+    TestLoadShardedStateDictMultiCommGroup
+):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+
+
+class TestLoadShardedStateDict3DCommGroup(
+    TestLoadShardedStateDictMultiCommGroup
+):
+    def set_comm_method(self):
+        self.comm_method = "parallel_broadcast"
+
+    def run_test_case(self):
+        device_num = int(os.getenv("device_num"))
+        if device_num == 1:
+            pass
+        elif device_num == 2:
+            pass
+        elif device_num == 4:
+            dist.init_parallel_env()
+            group_ranks = [[0, 1], [2, 3], [0, 2], [1, 3]]
+            total_groups = []
+            for ranks in group_ranks:
+                group = dist.new_group(ranks)
+                total_groups.append(group)
+
+            group_index_map = [
+                [0, 2],  # cur_rank == 0
+                [0, 3],  # cur_rank == 1
+                [1, 2],  # cur_rank == 2
+                [1, 3],  # cur_rank == 3
+            ]
+
+            cur_rank = paddle.distributed.get_rank()
+            if not (0 <= cur_rank < len(group_index_map)):
+                raise RuntimeError(
+                    f"cur_rank must be between 0 and {len(group_index_map) - 1}, but got {cur_rank}."
+                )
+
+            worker_group_indices = group_index_map[cur_rank]
+            worker_groups = [
+                total_groups[index] for index in worker_group_indices
+            ] + [None]
+            self.test_load_state_dict_with_four_devices(worker_groups)
+            for group in total_groups:
+                dist.destroy_process_group(group)
+        elif device_num == 8:
+            dist.init_parallel_env()
+            group_ranks = [
+                # Type   Index
+                [0, 1],  # h      0
+                [2, 3],  # h      1
+                [4, 5],  # h      2
+                [6, 7],  # h      3
+                [0, 2],  # v      4
+                [1, 3],  # v      5
+                [4, 6],  # v      6
+                [5, 7],  # v      7
+                [0, 4],  # p      8
+                [1, 5],  # p      9
+                [2, 6],  # p      10
+                [3, 7],  # p      11
+            ]
+            total_groups = []
+            for ranks in group_ranks:
+                group = dist.new_group(ranks)
+                total_groups.append(group)
+
+            group_index_map = [
+                [0, 4, 8],  # cur_rank == 0
+                [0, 5, 9],  # cur_rank == 1
+                [1, 4, 10],  # cur_rank == 2
+                [1, 5, 11],  # cur_rank == 3
+                [2, 6, 8],  # cur_rank == 4
+                [2, 7, 9],  # cur_rank == 5
+                [3, 6, 10],  # cur_rank == 6
+                [3, 7, 11],  # cur_rank == 7
+            ]
+
+            cur_rank = paddle.distributed.get_rank()
+            if not (0 <= cur_rank < len(group_index_map)):
+                raise RuntimeError(
+                    f"cur_rank must be between 0 and {len(group_index_map) - 1}, "
+                    f"but got {cur_rank}."
+                )
+
+            worker_group_indices = group_index_map[cur_rank]
+
+            worker_groups = [
+                total_groups[index] for index in worker_group_indices
+            ]
+            self.test_load_state_dict_with_eight_devices(worker_groups)
+            for group in worker_groups:
+                dist.destroy_process_group(group)
+        else:
+            raise ValueError("device_num should be 1, 2, 4 or 8")
+
+
+class TestLoadShardedStateDict3DCommGroupWithReplica(
+    TestLoadShardedStateDict3DCommGroup
+):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+        self.set_comm_method()
+
+    def set_comm_method(self):
+        self.comm_method = "parallel_broadcast"
+
+
+class TestLoadShardedStateDict3DCommGroupOffload(
+    TestLoadShardedStateDict3DCommGroup
+):
+    def set_offload(self):
+        self.offload = True
 
 
 if __name__ == '__main__':
     TestLoadStateDict().run_test_case()
     TestLoadShardedStateDict().run_test_case()
-    # TestLoadShardedStateDictWithAOA().run_test_case()
+    TestLoadShardedStateDictWithAOA().run_test_case()
+    TestLoadShardedStateDictMultiCommGroup().run_test_case()
+    TestLoadShardedStateDictWithReplica().run_test_case()
+    TestLoadShardedStateDictWithAOAWithReplica().run_test_case()
+    TestLoadShardedStateDictMultiCommGroupWithReplica().run_test_case()
+    TestLoadShardedStateDict3DCommGroup().run_test_case()
+    TestLoadShardedStateDict3DCommGroupWithReplica().run_test_case()
+    TestLoadShardedStateDict3DCommGroupOffload().run_test_case()

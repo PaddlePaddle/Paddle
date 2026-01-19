@@ -117,15 +117,26 @@ def unified(
             mode |= TransformOptions.ToStaticMode.SOT
         if for_ast:
             mode |= TransformOptions.ToStaticMode.AST
-        options = TransformOptions(
-            skip_transform_mode=mode,
-        )
+        options = TransformOptions().with_skip_transform_mode(mode)
         options.attach(fn)
         return fn
 
     if fn is None:
         return lambda fn: _mark_as_unified(fn, for_sot=for_sot, for_ast=for_ast)
     return _mark_as_unified(fn, for_sot=for_sot, for_ast=for_ast)
+
+
+def capture_control_flow(
+    fn: Callable[_InputT, _RetT] | None = None,
+) -> Callable[_InputT, _RetT]:
+    def _mark_as_need_capture_control_flow(fn):
+        options = TransformOptions().with_need_capture_control_flow(True)
+        options.attach(fn)
+        return fn
+
+    if fn is None:
+        return _mark_as_need_capture_control_flow
+    return _mark_as_need_capture_control_flow(fn)
 
 
 def force_dynamic(

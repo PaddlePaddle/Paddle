@@ -20,13 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& dev_ctx,
-                    const IntArray& shape,
-                    float mean,
-                    float std,
-                    int seed,
-                    DataType dtype,
-                    DenseTensor* out) {
+PADDLE_API void GaussianKernel(const Context& dev_ctx,
+                               const IntArray& shape,
+                               float mean,
+                               float std,
+                               int seed,
+                               DataType dtype,
+                               DenseTensor* out) {
   out->Resize(common::make_ddim(shape.GetData()));
   int64_t size = out->numel();
   T* data = dev_ctx.template Alloc<T>(out);

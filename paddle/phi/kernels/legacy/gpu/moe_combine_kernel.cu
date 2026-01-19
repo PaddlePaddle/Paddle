@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/phi/kernels/legacy/gpu/moe_combine_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -27,7 +28,10 @@ __global__ void combine_moe_kernel(const T* x,
                                    const int64_t seqlen,
                                    const int64_t hidden_size,
                                    const int64_t n) {
-  for (int64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < n;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < n;
        i += blockDim.x * gridDim.x) {
     int64_t row_i = i / hidden_size;
     int64_t slice_i = i - row_i * hidden_size;
@@ -105,8 +109,7 @@ void MoeCombineKernel(const Context& dev_ctx,
                       DenseTensor* y) {
   dev_ctx.template Alloc<T>(y);  // T cannot support phi::dtype::float8 very
                                  // well, maybe replaced with x.dtype();
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
   auto combine_weights_shape = combine_weights.dims();
   auto x_shape = x.dims();
   moe_combine_fwd<T, Context>(dev_ctx,

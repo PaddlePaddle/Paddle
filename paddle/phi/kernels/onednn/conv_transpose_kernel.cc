@@ -32,7 +32,7 @@ struct DeconvolutionCache {
   dnnl::memory dst_mem;
 };
 
-inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
+inline dnnl::memory::dims GetWeightsTz(const DenseTensor* filter,
                                        const int groups) {
   auto weights_tz = common::vectorize(filter->dims());
   int g = std::max(groups, 1);
@@ -207,7 +207,7 @@ class ConvTransposeOneDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
-      const phi::DenseTensor* x) {
+      const DenseTensor* x) {
     const T* input_data = x->data<T>();
     return funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
         AcquireMemoryWithReorder(x->mem_desc(),
@@ -218,7 +218,7 @@ class ConvTransposeOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
       const OneDNNContext& dev_ctx,
       const std::string& key,
-      const phi::DenseTensor* filter,
+      const DenseTensor* filter,
       const int& groups) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = GetWeightsTz(filter, groups);
@@ -289,7 +289,7 @@ class ConvTransposeOneDNNHandlerT
                                  dnnl::memory::format_tag::x);
           auto scale_data_mem = dnnl::memory(scale_md, this->engine_);
           scale_data_mem.set_data_handle(
-              phi::funcs::to_void_cast(scale_data.data()));
+              funcs::to_void_cast(scale_data.data()));
           reorder_args.insert(
               {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_data_mem});
         }
@@ -324,7 +324,7 @@ class ConvTransposeOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
       const OneDNNContext& dev_ctx,
       const std::string& key,
-      const phi::DenseTensor* bias) {
+      const DenseTensor* bias) {
     const K* bias_data = bias->data<K>();
     auto user_bias_md = funcs::OneDNNMemDesc(common::vectorize(bias->dims()),
                                              funcs::OneDNNGetDataType<K>(),
@@ -343,18 +343,18 @@ template <typename T>
 void PrepareSrcMem(const std::shared_ptr<dnnl::deconvolution_forward>& fc_p
                        UNUSED,
                    const std::shared_ptr<dnnl::memory>& src_mem,
-                   const phi::DenseTensor* x,
+                   const DenseTensor* x,
                    const dnnl::engine& engine) {
   auto x_md = x->mem_desc().reshape(src_mem->get_desc().get_dims());
   if (x_md != src_mem->get_desc()) {
-    dnnl::memory x_mem(x_md, engine, phi::funcs::to_void_cast<T>(x->data<T>()));
+    dnnl::memory x_mem(x_md, engine, funcs::to_void_cast<T>(x->data<T>()));
     auto reorder_p = dnnl::reorder(x_mem, *src_mem);
 
     auto& astream = OneDNNContext::tls().get_stream();
     reorder_p.execute(astream, x_mem, *src_mem);
     astream.wait();
   } else {
-    src_mem->set_data_handle(phi::funcs::to_void_cast<T>(x->data<T>()));
+    src_mem->set_data_handle(funcs::to_void_cast<T>(x->data<T>()));
   }
 }
 
@@ -381,7 +381,7 @@ void Execute(const OneDNNContext& dev_ctx,
   // fix issue https://github.com/PaddlePaddle/PaddleOCR/issues/15621
   // https://github.com/PaddlePaddle/PaddleOCR/issues/15393
   std::string cache_key = funcs::CreateKey(dev_ctx,
-                                           phi::funcs::ThreadIDasStr(),
+                                           funcs::ThreadIDasStr(),
                                            dev_ctx.GetInputsName("Input")[0],
                                            dev_ctx.GetInputsName("Filter")[0],
                                            common::vectorize(x->dims()),
@@ -608,14 +608,14 @@ KernelKey ConvTransposeGetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+      (expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+      (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = common::StringToDataLayout(data_format);
+    auto dl = StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
+    if (dl != DataLayout::ANY) {
       return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }

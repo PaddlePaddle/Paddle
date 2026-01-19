@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_transpose_wlch_split_quant_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -21,7 +22,7 @@
 namespace phi {
 namespace fusion {
 
-using FastDivMod = phi::funcs::FastDivMod<int64_t>;
+using FastDivMod = funcs::FastDivMod<int64_t>;
 
 template <bool Pow2Scales>
 __device__ void BlockColumnScale(const __nv_bfloat16 x[8][4],
@@ -100,8 +101,8 @@ __global__ void __launch_bounds__(512)
       reinterpret_cast<__nv_fp8_e4m3**>(meta + num_experts);
   float** scale_ptrs = reinterpret_cast<float**>(meta + num_experts * 2);
 
-  const size_t block_off_x = blockIdx.x * size_t(128);
-  const size_t block_off_y = blockIdx.y * 128;
+  const size_t block_off_x = static_cast<size_t>(blockIdx.x) * 128;
+  const size_t block_off_y = static_cast<size_t>(blockIdx.y) * 128;
 
   // 1. Load 128x128 block from input.
   for (uint32_t i = 0; i < 8; i++) {
@@ -113,7 +114,7 @@ __global__ void __launch_bounds__(512)
       idx_y = PermuteHighIdx(
           block_off_x + threadIdx.y + i * 16, W_divmod, L, C_divmod);
     }
-    size_t idx_x = block_off_y + threadIdx.x * VecSize;
+    size_t idx_x = block_off_y + static_cast<size_t>(threadIdx.x) * VecSize;
     size_t idx = idx_y * H + idx_x;
     for (uint32_t j = 0; j < 4; j += VecSize) {
       if (idx_x + j * 32 < H) {
@@ -156,8 +157,9 @@ __global__ void __launch_bounds__(512)
       off = (off / 64) * 64 + (off % 2) * 32 + (off % 64) / 2;
     }
     float scale_out = 1.0f / col_scale[off];
-    size_t idx_y = blockIdx.x - expert_off / 128;
-    size_t idx_x = block_off_y + threadIdx.y * 32 + threadIdx.x;
+    size_t idx_y = static_cast<size_t>(blockIdx.x) - expert_off / 128;
+    size_t idx_x = block_off_y + static_cast<size_t>(threadIdx.y) * 32 +
+                   static_cast<size_t>(threadIdx.x);
     size_t idx = idx_y * H + idx_x;
     if (idx_x < H) {
       scale_ptrs[expert_idx][idx] = scale_out;
@@ -181,8 +183,8 @@ __global__ void __launch_bounds__(512)
   const size_t cur_tokens = tokens_per_expert[expert_idx];
   __nv_fp8_e4m3* out = out_ptrs[expert_idx];
   for (uint32_t i = 0; i < 8; i++) {
-    size_t idx_y = block_off_y + threadIdx.y + i * 16;
-    size_t idx_x = block_off_x + threadIdx.x * 4;
+    size_t idx_y = block_off_y + static_cast<size_t>(threadIdx.y) + i * 16;
+    size_t idx_x = block_off_x + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = idx_y * cur_tokens + (idx_x - expert_off);
     if (idx_y < H) {
       // Note: out is always 4x vectorizable.

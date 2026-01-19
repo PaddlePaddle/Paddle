@@ -21,7 +21,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_device_place, get_devices
+from op_test import get_device_place, get_devices, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -602,7 +602,7 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_minmax_with_index(self):
         # min/max_with_index is a GPU only op
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         # 1) x is 0D
         x = paddle.to_tensor(1)

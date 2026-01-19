@@ -17,7 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -85,8 +91,8 @@ class TestSignComplex128Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSignBF16Op(OpTest):
@@ -101,7 +107,7 @@ class TestSignBF16Op(OpTest):
 
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -182,7 +188,7 @@ class TestSignAPI(unittest.TestCase):
                 self.assertEqual((res3 == np_out3).all(), True)
                 self.assertEqual((res4 == np_out4).all(), True)
                 self.assertEqual((res5 == np_out5).all(), True)
-                if core.is_compiled_with_cuda():
+                if core.is_compiled_with_cuda() or is_custom_device():
                     input6 = paddle.static.data(
                         name='input6', shape=[-1, 4], dtype="float16"
                     )

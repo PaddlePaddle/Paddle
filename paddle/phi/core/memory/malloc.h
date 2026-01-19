@@ -41,6 +41,9 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 PADDLE_API extern uint64_t Release(const phi::Place& place);
 
+// Compact memory of free blocks held by the VmmAllocator.
+PADDLE_API extern size_t Compact(const GPUPlace& place);
+
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
     const phi::Place& place, size_t size, const phi::Stream& stream);
 
@@ -51,17 +54,19 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place,
 PADDLE_API extern bool InSameStream(
     const std::shared_ptr<Allocation>& allocation, const phi::Stream& stream);
 
-extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
+PADDLE_API extern void* GetBasePtr(
+    const std::shared_ptr<Allocation>& allocation);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
+PADDLE_API extern uint64_t Release(const GPUPlace& place, gpuStream_t stream);
 
 PADDLE_API bool RecordStream(std::shared_ptr<Allocation> allocation,
                              gpuStream_t stream);
 
 void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
+PADDLE_API gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -85,13 +90,11 @@ template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
   ThrustAllocator(phi::Place place, StreamType stream) {
-    VLOG(2) << "construct allocator";
     place_ = place;
     stream_ = stream;
   }
-  ~ThrustAllocator() { VLOG(2) << "destroy allocator"; }
+  ~ThrustAllocator() {}
   char* allocate(std::ptrdiff_t num_bytes) {
-    VLOG(2) << "allocate " << num_bytes << " bytes";
     auto storage = memory::AllocShared(
         place_,
         num_bytes,
@@ -101,7 +104,6 @@ struct ThrustAllocator {
     return ptr;
   }
   void deallocate(char* ptr, size_t) {
-    VLOG(2) << "deallocate ";
     allocation_map_type::iterator iter = busy_allocation_.find(ptr);
     PADDLE_ENFORCE_NE(iter,
                       busy_allocation_.end(),

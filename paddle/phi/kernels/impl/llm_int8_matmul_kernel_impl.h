@@ -225,7 +225,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
                                    const int32_t cols,
                                    float* row_ranges,
                                    int32_t* outlier_idx) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   using InVec = phi::AlignedVector<T, VecSize>;
   using ComputeVec = phi::AlignedVector<ComputeType, VecSize>;
 
@@ -280,7 +280,10 @@ __global__ void QuantActKernel(const T* x,
   InVec in_vec;
   OutVec out_vec;
 
-  for (int linear_index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  for (int64_t linear_index = (static_cast<int64_t>(blockIdx.x) *
+                                   static_cast<int64_t>(blockDim.x) +
+                               static_cast<int64_t>(threadIdx.x)) *
+                              VecSize;
        linear_index < elem_cnt;
        linear_index += gridDim.x * blockDim.x * VecSize) {
     int row_idx = linear_index / cols;
@@ -339,7 +342,9 @@ __global__ void SplitKernel(const T* x,
 
   __syncthreads();
 
-  for (int linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linear_idx =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
        linear_idx < elem_cnt;
        linear_idx += blockDim.x * gridDim.x) {
     int32_t row_idx = linear_idx / kfp_num;  // n
@@ -395,7 +400,10 @@ __global__ void DequantActivationMergeKernel(const T* x,
   FpVec out_vec;
   FpVec x_vec;
 
-  for (int linear_idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  for (int64_t linear_idx = (static_cast<int64_t>(blockIdx.x) *
+                                 static_cast<int64_t>(blockDim.x) +
+                             static_cast<int64_t>(threadIdx.x)) *
+                            VecSize;
        linear_idx < elem_cnt;
        linear_idx += gridDim.x * blockDim.x * VecSize) {
     phi::Load(x_fp + linear_idx, &x_fp_vec);
@@ -420,7 +428,7 @@ __global__ void DequantMergeKernel(const int32_t* x,
                                    T* y,
                                    int m,
                                    int n) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   using FpVec = phi::AlignedVector<T, VecSize>;
   using IntVec = phi::AlignedVector<int32_t, VecSize>;
 
@@ -559,19 +567,19 @@ void LaunchDequantMergeKernel(const int32_t* x,
 
 template <typename T>
 void LLMGemm(const phi::GPUContext& dev_ctx,
-             const phi::DenseTensor* weight,
-             const phi::DenseTensor* input,
-             const phi::DenseTensor* weight_scale,
+             const DenseTensor* weight,
+             const DenseTensor* input,
+             const DenseTensor* weight_scale,
              const float threshold,
-             phi::DenseTensor* output,
-             phi::DenseTensor* workspace,
+             DenseTensor* output,
+             DenseTensor* workspace,
              std::string name,
              int m,
              int k,
              int n) {
   // absmax, quant, outlier
   int64_t num_outlier_idx = (k + 31) / 32;
-  phi::DenseTensor row_ranges, outlier_idx, quant_input;
+  DenseTensor row_ranges, outlier_idx, quant_input;
   row_ranges.Resize({m});
   outlier_idx.Resize({num_outlier_idx});
   quant_input.Resize({m, k});
@@ -592,7 +600,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
                                 quant_input.data<int8_t>(),
                                 dev_ctx.stream());
   int32_t kfp_num = 0;
-  phi::DenseTensor kfp_num_tensor;
+  DenseTensor kfp_num_tensor;
   kfp_num_tensor.Resize({1});
   dev_ctx.Alloc<int32_t>(&kfp_num_tensor);
 
@@ -605,11 +613,11 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
              sizeof(int32_t),
              cudaMemcpyDeviceToHost);
 
-  phi::DenseTensor sub_out;
+  DenseTensor sub_out;
   sub_out.Resize({m, n});
   dev_ctx.Alloc<T>(&sub_out);
   if (kfp_num != 0) {
-    phi::DenseTensor sub_input, sub_weight;
+    DenseTensor sub_input, sub_weight;
     sub_input.Resize({m, kfp_num});
     sub_weight.Resize({n, kfp_num});
 
@@ -644,7 +652,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.GEMM(transA,
               transB,
               m,
@@ -662,7 +670,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
         sub_out.data<T>(), 0, sub_out.numel() * sizeof(T), dev_ctx.stream()));
   }
 
-  phi::DenseTensor int_out;
+  DenseTensor int_out;
   int_out.Resize({m, n});
   dev_ctx.Alloc<int32_t>(&int_out);
 

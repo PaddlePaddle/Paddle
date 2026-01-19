@@ -32,23 +32,27 @@ void UnStackKernel(const Context &dev_ctx,
   auto dx = outs;
   if (axis < 0) axis += dy->dims().size();
 
-  int n = dy->dims()[axis];
+  int64_t n = dy->dims()[axis];
+
   std::vector<T *> dx_datas(n);  // NOLINT
-  for (int i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     dx_datas[i] = dev_ctx.template Alloc<T>(dx[i]);
   }
   auto dy_data = dy->data<T>();
   if (dy->numel() == 0) {
-    for (int i = 0; i < n; i++) {
+    for (int64_t i = 0; i < n; i++) {
       dev_ctx.template Alloc<T>((outs)[i]);
       (outs)[i]->Resize((outs)[i]->dims());
     }
     return;
   }
-  int pre = 1;
+  int64_t pre = 1;
   for (int i = 0; i < axis; ++i) pre *= dy->dims()[i];
-  int total_num = dy->numel();
-  int post = total_num / (n * pre);
+  int64_t total_num = dy->numel();
+  int64_t post = total_num / (n * pre);
+
+  // TODO(large-tensor): StackGradFunctorForRange not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(total_num, "total_num");
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   thrust::device_vector<T *> device_dx_vec(dx_datas);
@@ -56,7 +60,7 @@ void UnStackKernel(const Context &dev_ctx,
 #else
   auto dx_data_arr = dx_datas.data();
 #endif
-  phi::funcs::StackGradFunctorForRange(
+  funcs::StackGradFunctorForRange(
       dev_ctx, dx_data_arr, dy_data, total_num, n, post);
 #if defined(__NVCC__) || defined(__HIPCC__)
   // Wait() must be called because device_dx_vec may be destructed before

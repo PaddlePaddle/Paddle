@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -59,8 +59,8 @@ class TestTriuIndicesOpCase2(TestTriuIndicesOp):
 
 class TestTriuIndicesAPICaseStatic(unittest.TestCase):
     def test_static(self):
-        if base.core.is_compiled_with_cuda():
-            place = paddle.base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = paddle.CPUPlace()
         with paddle.static.program_guard(
@@ -75,8 +75,8 @@ class TestTriuIndicesAPICaseStatic(unittest.TestCase):
 
 class TestTriuIndicesAPICaseDygraph(unittest.TestCase):
     def test_dygraph(self):
-        if base.core.is_compiled_with_cuda():
-            place = paddle.base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = paddle.CPUPlace()
         with base.dygraph.base.guard(place=place):

@@ -49,8 +49,10 @@ __global__ void GPURoiPoolBackward(const IndexType nthreads,
                                    int* box_batch_id_data,
                                    T* input_grad) {
   IndexType index =
-      static_cast<IndexType>(blockIdx.x) * blockDim.x + threadIdx.x;
-  IndexType offset = static_cast<IndexType>(blockDim.x) * gridDim.x;
+      static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x) +
+      static_cast<IndexType>(threadIdx.x);
+  IndexType offset =
+      static_cast<IndexType>(blockDim.x) * static_cast<IndexType>(gridDim.x);
   for (IndexType i = index; i < nthreads; i += offset) {
     IndexType pw = i % pooled_width;
     IndexType ph = (i / pooled_width) % pooled_height;
@@ -91,8 +93,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
   int64_t rois_num = boxes.dims()[0];
 
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
 
@@ -104,9 +105,12 @@ void RoiPoolGradKernel(const Context& dev_ctx,
 
     auto gplace = dev_ctx.GetPlace();
     if (boxes_num) {
-      int boxes_batch_size = boxes_num->numel();
+      int64_t boxes_batch_size = boxes_num->numel();
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+
       std::vector<int> boxes_num_list(boxes_batch_size);
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          boxes_num_list.data(),
                          gplace,
                          boxes_num->data<int>(),
@@ -136,13 +140,13 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     memory_utils::Copy(gplace,
                        roi_id_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        box_batch_id_data,
                        bytes,
                        dev_ctx.stream());
 
     dev_ctx.template Alloc<T>(dx);
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
     int64_t output_grad_size = out_grad.numel();

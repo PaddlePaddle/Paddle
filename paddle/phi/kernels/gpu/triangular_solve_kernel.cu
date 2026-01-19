@@ -47,7 +47,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
   // Tensor broadcast to 'out' and temp 'x_bst'
   IntArray x_bst_dims(x_bst_dims_vec);
-  DenseTensor x_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims);
+  DenseTensor x_bst = Empty<T, Context>(dev_ctx, x_bst_dims);
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
@@ -71,7 +71,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
     batch_size *= x_bst_dims_vec[i];
   }
 
-  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   if (batch_size <= 8 && M >= 64) {
     for (int64_t i = 0; i < batch_size; i++) {
       blas.TRSM(CblasLeft,
@@ -113,7 +113,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
           phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       memory_utils::Copy(dev_ctx.GetPlace(),
                          gpu_a_ptrs_data->ptr(),
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          static_cast<void*>(cpu_a_ptrs.data()),
                          cpu_a_ptrs.size() * sizeof(T*),
                          dev_ctx.stream());
@@ -137,7 +137,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
         }
         memory_utils::Copy(dev_ctx.GetPlace(),
                            gpu_b_ptrs_data->ptr(),
-                           phi::CPUPlace(),
+                           CPUPlace(),
                            static_cast<void*>(cpu_b_ptrs_for_chunk.data()),
                            cpu_b_ptrs_for_chunk.size() * sizeof(T*),
                            dev_ctx.stream());
@@ -170,7 +170,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
       memory_utils::Copy(dev_ctx.GetPlace(),
                          tmp_gpu_ptrs_data->ptr(),
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          static_cast<void*>(cpu_ptrs.data()),
                          cpu_ptrs.size() * sizeof(T*),
                          dev_ctx.stream());

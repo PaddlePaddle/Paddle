@@ -57,6 +57,7 @@ from .creation import (  # noqa: F401
     range,
     resize_,
     set_,
+    split_with_sizes,
     to_tensor,
     tril,
     tril_,
@@ -136,10 +137,10 @@ from .logic import (  # noqa: F401
     greater_equal_,
     greater_than,
     greater_than_,
+    gt,
     is_empty,
     is_tensor,
     isclose,
-    less,
     less_,
     less_equal,
     less_equal_,
@@ -460,6 +461,7 @@ from .random import (  # noqa: F401
     randint_like,
     randn,
     randn_like,
+    random_,
     randperm,
     standard_normal,
     uniform,
@@ -505,8 +507,16 @@ take_along_dim = take_along_axis
 swapdims = transpose
 swapaxes = transpose
 clamp = clip
+eq = equal
+ne = not_equal
+lt = less_than
+less = less_than
+le = less_equal
+ge = greater_equal
+greater = gt
 sub = subtract
 sub_ = subtract_
+clamp_ = clip_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -808,6 +818,7 @@ tensor_method_func = [
     'broadcast_tensors',
     'eig',
     'uniform_',
+    'random_',
     'multi_dot',
     'solve',
     'cholesky_solve',
@@ -930,7 +941,16 @@ tensor_method_func = [
     'resize_',
     'argwhere',
     'softmax',
+    'eq',
+    'ne',
+    'lt',
+    'le',
+    'ge',
+    'gt',
+    'greater',
     'clamp',
+    'clamp_',
+    'split_with_sizes',
 ]
 
 

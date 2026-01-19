@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <random>
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -52,7 +53,7 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
                                DenseTensor* out) {
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
-  int axis_dim = x.dims()[axis];
+  int64_t axis_dim = x.dims()[axis];
 
   PADDLE_ENFORCE_GT(temperature,
                     0,
@@ -69,9 +70,12 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
+    funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
+
+  // TODO(large-tensor): SoftmaxFunctor not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "axis_dim");
 
   const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
@@ -87,8 +91,7 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
-  phi::funcs::SoftmaxFunctor<Context, T>()(
-      dev_ctx, axis_dim, &x_noise_2d, &out_2d);
+  funcs::SoftmaxFunctor<Context, T>()(dev_ctx, axis_dim, &x_noise_2d, &out_2d);
 
   if (hard) {
     OneHotGenerator<Context, T>::Transform(dev_ctx, x, out, axis);

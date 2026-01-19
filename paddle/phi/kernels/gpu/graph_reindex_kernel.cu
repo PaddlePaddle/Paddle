@@ -19,19 +19,11 @@
 #include <thrust/reduce.h>
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
-
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 
 namespace phi {
@@ -279,7 +271,8 @@ __global__ void GetDstEdgeCUDAKernel(const int64_t num_rows,
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
-  int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
+  int64_t out_row = static_cast<int64_t>(blockIdx.x) * TILE_SIZE +
+                    static_cast<int64_t>(threadIdx.y);
   const int64_t last_row =
       min(static_cast<int64_t>(blockIdx.x + 1) * TILE_SIZE, num_rows);
 
@@ -350,12 +343,14 @@ void GraphReindexKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
-  const int bs = x.dims()[0];
+  int64_t bs = x.dims()[0];
+
   PADDLE_ENFORCE_NE(
       0,
       bs,
       errors::InvalidArgument("The first of dims should not be equal to 0."));
-  const int num_edges = neighbors.dims()[0];
+  int64_t num_edges = neighbors.dims()[0];
+
   reindex_src->Resize({num_edges});
 
   T* reindex_src_data = dev_ctx.template Alloc<T>(reindex_src);
@@ -391,8 +386,9 @@ void GraphReindexKernel(const Context& dev_ctx,
 
   // Get reindex dst edge.
   // Add support for multi-type edges reindex.
-  int num_ac_count = count.dims()[0];
-  int num_edge_types = num_ac_count / bs;
+  int64_t num_ac_count = count.dims()[0];
+  int64_t num_edge_types = num_ac_count / bs;
+  // TODO(large-tensor): downstream functors may still use int
   thrust::device_vector<int> unique_dst_reindex(bs);
   thrust::sequence(unique_dst_reindex.begin(), unique_dst_reindex.end());
   reindex_dst->Resize({num_edges});
@@ -404,6 +400,8 @@ void GraphReindexKernel(const Context& dev_ctx,
                          count_data,
                          num_edge_types,
                          bs);
+  // TODO(large-tensor): Resize not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(unique_nodes.size(), "unique_nodes.size()");
   out_nodes->Resize({static_cast<int>(unique_nodes.size())});
   T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes);
   thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes_data);

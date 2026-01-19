@@ -1,3 +1,4 @@
+collect_srcs(api_srcs SRCS c10/core/Device.cpp)
 collect_srcs(api_srcs SRCS ATen/cuda/EmptyTensor.cpp)
 collect_srcs(api_srcs SRCS ATen/core/TensorMethods.cpp)
 collect_srcs(api_srcs SRCS ATen/AccumulateType.cpp)

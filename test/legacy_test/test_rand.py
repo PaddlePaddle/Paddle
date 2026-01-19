@@ -35,12 +35,12 @@ class TestTensorCreation(unittest.TestCase):
 
         self.requires_grads = [True, False]
         self.dtypes = [None, paddle.float32]
-        self.pin_memorys = [False]
+        self.pin_memories = [False]
         if (
             paddle.device.is_compiled_with_cuda()
             and not paddle.device.is_compiled_with_rocm()
         ):
-            self.pin_memorys.append(True)
+            self.pin_memories.append(True)
 
     @unittest.skipIf(paddle.device.is_compiled_with_xpu(), "skip xpu")
     def test_rand(self):
@@ -52,7 +52,7 @@ class TestTensorCreation(unittest.TestCase):
             paddle.float64,
         ]
         for device, requires_grad, dtype, pin_memory in product(
-            self.devices, self.requires_grads, types, self.pin_memorys
+            self.devices, self.requires_grads, types, self.pin_memories
         ):
             if (
                 device

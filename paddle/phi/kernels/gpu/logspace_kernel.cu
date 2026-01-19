@@ -31,7 +31,9 @@ __global__ void LogspaceKernelInner(
   MPType mt_stop = static_cast<MPType>(stop);
   MPType mt_base = static_cast<MPType>(base);
 
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
@@ -66,21 +68,21 @@ void LogspaceKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  auto start_t = phi::funcs::TransDataType(dev_ctx, start, dtype);
-  auto stop_t = phi::funcs::TransDataType(dev_ctx, stop, dtype);
-  auto base_t = phi::funcs::TransDataType(dev_ctx, base, dtype);
+  auto start_t = funcs::TransDataType(dev_ctx, start, dtype);
+  auto stop_t = funcs::TransDataType(dev_ctx, stop, dtype);
+  auto base_t = funcs::TransDataType(dev_ctx, base, dtype);
 
   DenseTensor n_start;
   DenseTensor n_stop;
   DenseTensor n_num;
   DenseTensor n_base;
-  phi::Copy(dev_ctx, start_t, phi::CPUPlace(), false, &n_start);
+  Copy(dev_ctx, start_t, CPUPlace(), false, &n_start);
   T start_data = n_start.data<T>()[0];
-  phi::Copy(dev_ctx, stop_t, phi::CPUPlace(), false, &n_stop);
+  Copy(dev_ctx, stop_t, CPUPlace(), false, &n_stop);
   T stop_data = n_stop.data<T>()[0];
-  phi::Copy(dev_ctx, number, phi::CPUPlace(), false, &n_num);
+  Copy(dev_ctx, number, CPUPlace(), false, &n_num);
   int64_t num = static_cast<int64_t>(n_num.data<int32_t>()[0]);
-  phi::Copy(dev_ctx, base_t, phi::CPUPlace(), false, &n_base);
+  Copy(dev_ctx, base_t, CPUPlace(), false, &n_base);
   T base_data = n_base.data<T>()[0];
 
   MPType mt_start_data = static_cast<MPType>(start_data);

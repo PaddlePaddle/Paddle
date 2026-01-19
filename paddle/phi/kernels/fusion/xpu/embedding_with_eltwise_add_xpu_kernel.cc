@@ -62,7 +62,7 @@ template <typename TT, typename TID, typename Context>
 void MultiEmbeddingKernel(const Context& dev_ctx,
                           const std::vector<const DenseTensor*>& ids,
                           const std::vector<const DenseTensor*>& tables,
-                          const paddle::optional<DenseTensor>& mask,
+                          const optional<DenseTensor>& mask,
                           int64_t padding_idx,
                           DenseTensor* out,
                           DenseTensor* seq_lod,
@@ -107,7 +107,10 @@ void MultiEmbeddingKernel(const Context& dev_ctx,
   std::vector<xpu::VectorParam<TID>> arg_ids;
   auto* mask_tensor = mask.get_ptr();
   if (mask_tensor != nullptr) {
-    int batch_size = mask_tensor->dims()[0];
+    int64_t batch_size = mask_tensor->dims()[0];
+    // NOTE(large-tensor): XPU FillSeqLod API not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+
     auto pad_seq_len = mask_tensor->dims()[1];
     max_seq_len->Resize({1});
     dev_ctx.template HostAlloc<int>(max_seq_len)[0] = pad_seq_len;
@@ -177,7 +180,7 @@ void EmbeddingWithEltwiseAddXpuKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& ids,
     const std::vector<const DenseTensor*>& tables,
-    const paddle::optional<DenseTensor>& mask,
+    const optional<DenseTensor>& mask,
     int64_t padding_idx,
     DenseTensor* out,
     DenseTensor* seq_lod,

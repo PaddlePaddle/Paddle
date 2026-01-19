@@ -142,7 +142,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& dev_ctx,
   }
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
-  int blocks = DivUp<int64_t>(DivUp<int64_t>(numel, vec_size), threads);
+  int64_t blocks = DivUp<int64_t>(DivUp<int64_t>(numel, vec_size), threads);
   int limit_blocks = dev_ctx.GetCUDAMaxGridDimSize()[0];
   if (blocks > limit_blocks) {
     blocks = limit_blocks;
@@ -153,7 +153,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& dev_ctx,
   config.block_per_grid.x = blocks;
   config.compute_capability = capability;
 
-  VLOG(3) << "Get 1-D launch config: numel=" << numel
+  VLOG(7) << "Get 1-D launch config: numel=" << numel
           << ", vec_size=" << vec_size << ", block_size=" << threads
           << ", grid_size=" << blocks << ", limit_blocks=" << limit_blocks
           << ", limit_threads=" << limit_threads;

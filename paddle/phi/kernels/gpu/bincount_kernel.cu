@@ -99,10 +99,9 @@ void BincountCUDAInner(const Context& dev_ctx,
   int64_t input_numel = static_cast<int64_t>(input->numel());
 
   if (input_data == nullptr) {
-    phi::DDim out_dim{minlength};
+    DDim out_dim{minlength};
     output->Resize(out_dim);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<int64_t, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -117,8 +116,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   input_min_max_t.Resize({2});
   auto* input_min_max_data = dev_ctx.template Alloc<InputT>(&input_min_max_t);
 
-  phi::Copy(
-      dev_ctx, input_min_max_cpu, dev_ctx.GetPlace(), true, &input_min_max_t);
+  Copy(dev_ctx, input_min_max_cpu, dev_ctx.GetPlace(), true, &input_min_max_t);
 
   int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t num_blocks = std::min(GET_BLOCKS(input_numel), max_grid_x);
@@ -126,8 +124,7 @@ void BincountCUDAInner(const Context& dev_ctx,
       <<<num_blocks, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
           input_data, input_numel, input_min_max_data, input_min_max_data + 1);
 
-  phi::Copy(
-      dev_ctx, input_min_max_t, phi::CPUPlace(), true, &input_min_max_cpu);
+  Copy(dev_ctx, input_min_max_t, CPUPlace(), true, &input_min_max_cpu);
 
   InputT input_min = input_min_max_cpu.data<InputT>()[0];
 
@@ -141,7 +138,7 @@ void BincountCUDAInner(const Context& dev_ctx,
       static_cast<int64_t>(input_min_max_cpu.data<InputT>()[1]) + 1L;
 
   output_size = std::max(output_size, minlength);
-  phi::DDim out_dim{output_size};
+  DDim out_dim{output_size};
   output->Resize(out_dim);
 
   bool has_weights = weights.is_initialized();
@@ -151,7 +148,7 @@ void BincountCUDAInner(const Context& dev_ctx,
 
   if (!has_weights) {
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(
+    funcs::SetConstant<Context, int64_t>()(
         dev_ctx, output, static_cast<int64_t>(0));
 
     KernelBincount<T, InputT, int64_t>
@@ -160,7 +157,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   } else {
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
-      phi::funcs::SetConstant<Context, float>()(
+      funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
 
       KernelBincount<T, InputT, float>
@@ -168,7 +165,7 @@ void BincountCUDAInner(const Context& dev_ctx,
               input_data, input_numel, has_weights, weights_data, output_data);
     } else {
       double* output_data = dev_ctx.template Alloc<double>(output);
-      phi::funcs::SetConstant<Context, double>()(
+      funcs::SetConstant<Context, double>()(
           dev_ctx, output, static_cast<double>(0));
       KernelBincount<T, InputT, double>
           <<<num_blocks, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(

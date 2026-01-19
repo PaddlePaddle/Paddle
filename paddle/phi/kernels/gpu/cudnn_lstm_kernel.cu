@@ -38,7 +38,7 @@ void LSTMInference(const bool &has_seq_length,
                    T *out_data,
                    T *last_h_data,
                    T *last_c_data,
-                   phi::DenseTensor *workspace_data,
+                   DenseTensor *workspace_data,
                    const size_t &workspace_size) {
 #if CUDNN_VERSION >= 90000
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -200,14 +200,22 @@ void CudnnLSTMKernel(
 
   auto handle = dev_ctx.cudnn_handle();
 
-  int seq_length = x.dims()[0];
-  int batch_size = x.dims()[1];
-  int input_size = x.dims()[2];
+  int64_t seq_length = x.dims()[0];
+  int64_t batch_size = x.dims()[1];
+  int64_t input_size = x.dims()[2];
+  // TODO(large-tensor): cudnn rnn dims not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(seq_length, "seq_length");
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(input_size, "input_size");
+  int seq_length_int = static_cast<int>(seq_length);
+  int batch_size_int = static_cast<int>(batch_size);
+  int input_size_int = static_cast<int>(input_size);
+
   bool state_initialized = state_out->initialized() ? true : false;
 
   size_t workspace_size;
   size_t reserve_size;
-  phi::DenseTensor weight_whole;
+  DenseTensor weight_whole;
   T *w_data = nullptr;
   int weight_numel;
   bool w_initialized = false;
@@ -220,8 +228,8 @@ void CudnnLSTMKernel(
   }
   if (!w_initialized) {
     auto running_weight_list = *weight_list.get_ptr();
-    bool continuous = is_continuous<T, std::vector<const phi::DenseTensor *>>(
-        running_weight_list);
+    bool continuous =
+        is_continuous<T, std::vector<const DenseTensor *>>(running_weight_list);
     weight_numel = size_sum(running_weight_list);
 
     if (!continuous) {
@@ -238,7 +246,7 @@ void CudnnLSTMKernel(
         for (size_t i = 0; i < running_weight_list.size(); ++i) {
           size_t len = running_weight_list[i]->numel();
           auto dim = running_weight_list[i]->dims();
-          const_cast<phi::DenseTensor *>(running_weight_list[i])
+          const_cast<DenseTensor *>(running_weight_list[i])
               ->ShareDataWith(
                   weight_whole.Slice(static_cast<int64_t>(offset),
                                      static_cast<int64_t>(offset + len)))
@@ -253,9 +261,9 @@ void CudnnLSTMKernel(
     w_data = const_cast<T *>(running_w->data<T>());
   }
 
-  ScopedRNNBase rnn(seq_length,
-                    batch_size,
-                    input_size,
+  ScopedRNNBase rnn(seq_length_int,
+                    batch_size_int,
+                    input_size_int,
                     hidden_size,
                     num_layers,
                     dropout_prob,
@@ -270,7 +278,7 @@ void CudnnLSTMKernel(
                 &reserve_size,
                 state_out);
 
-  phi::DenseTensor workspace_data_;
+  DenseTensor workspace_data_;
   workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
   dev_ctx.template Alloc<uint8_t>(&workspace_data_);
 

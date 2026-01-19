@@ -47,11 +47,11 @@ struct RangeInitFunctor {
 
 template <typename T>
 static void SortDescending(const phi::GPUContext &dev_ctx,
-                           const phi::DenseTensor &value,
-                           phi::DenseTensor *value_out,
-                           phi::DenseTensor *index_out) {
+                           const DenseTensor &value,
+                           DenseTensor *value_out,
+                           DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
-  phi::DenseTensor index_in_t;
+  DenseTensor index_in_t;
   index_in_t.Resize({num});
   int *idx_in = dev_ctx.Alloc<int>(&index_in_t);
   ForRange<phi::GPUContext> for_range(dev_ctx, num);
@@ -290,12 +290,14 @@ static __global__ void NMSKernel(const int n_boxes,
 
 template <typename T>
 static void NMS(const phi::GPUContext &dev_ctx,
-                const phi::DenseTensor &proposals,
-                const phi::DenseTensor &sorted_indices,
+                const DenseTensor &proposals,
+                const DenseTensor &sorted_indices,
                 const T nms_threshold,
-                phi::DenseTensor *keep_out,
+                DenseTensor *keep_out,
                 bool pixel_offset = true) {
-  int boxes_num = proposals.dims()[0];
+  // TODO(large-tensor): downstream functors may still use int
+  int64_t boxes_num = proposals.dims()[0];
+
   const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
   dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
               DIVUP(boxes_num, kThreadsPerBlock));
@@ -316,7 +318,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           mask_host.data(),
                           place,
                           mask_dev,
@@ -342,7 +344,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
   int *keep = dev_ctx.Alloc<int>(keep_out);
   phi::memory_utils::Copy(place,
                           keep,
-                          phi::CPUPlace(),
+                          CPUPlace(),
                           keep_vec.data(),
                           sizeof(int) * num_to_keep,
                           dev_ctx.stream());

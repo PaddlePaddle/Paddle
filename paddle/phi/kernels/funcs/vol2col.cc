@@ -29,11 +29,11 @@ template <class T>
 class Vol2ColFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context UNUSED,
-                  const phi::DenseTensor& vol,
+                  const DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  phi::DenseTensor* col,
+                  DenseTensor* col,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol.dims().size(),
                       4,
@@ -48,13 +48,13 @@ class Vol2ColFunctor<phi::CPUContext, T> {
                           col->dims().size()));
 
     int input_channels = static_cast<int>(
-        data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
+        data_layout != DataLayout::NHWC ? vol.dims()[0] : vol.dims()[3]);
     int64_t input_depth =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[1] : vol.dims()[0]);
+        (data_layout != DataLayout::NHWC ? vol.dims()[1] : vol.dims()[0]);
     int64_t input_height =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
+        (data_layout != DataLayout::NHWC ? vol.dims()[2] : vol.dims()[1]);
     int64_t input_width =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
+        (data_layout != DataLayout::NHWC ? vol.dims()[3] : vol.dims()[2]);
     int filter_depth = static_cast<int>(col->dims()[1]);
     int filter_height = static_cast<int>(col->dims()[2]);
     int filter_width = static_cast<int>(col->dims()[3]);
@@ -124,7 +124,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
             int64_t col_idx =
                 ((c * output_depth + d) * output_height + h) * output_width + w;
             int64_t vol_idx = 0;
-            if (data_layout != DataLayout::kNHWC) {
+            if (data_layout != DataLayout::NHWC) {
               vol_idx = ((c_in * input_depth + d_pad) * input_height + h_pad) *
                             input_width +
                         w_pad;
@@ -155,11 +155,11 @@ template <class T>
 class Col2VolFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context UNUSED,
-                  const phi::DenseTensor& col,
+                  const DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  phi::DenseTensor* vol,
+                  DenseTensor* vol,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol->dims().size(),
                       4,
@@ -174,13 +174,13 @@ class Col2VolFunctor<phi::CPUContext, T> {
                           col.dims().size()));
 
     int input_channels = static_cast<int>(
-        data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
+        data_layout != DataLayout::NHWC ? vol->dims()[0] : vol->dims()[3]);
     int input_depth = static_cast<int>(
-        data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
+        data_layout != DataLayout::NHWC ? vol->dims()[1] : vol->dims()[0]);
     int input_height = static_cast<int>(
-        data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
+        data_layout != DataLayout::NHWC ? vol->dims()[2] : vol->dims()[1]);
     int input_width = static_cast<int>(
-        data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
+        data_layout != DataLayout::NHWC ? vol->dims()[3] : vol->dims()[2]);
     int filter_depth = static_cast<int>(col.dims()[1]);
     int filter_height = static_cast<int>(col.dims()[2]);
     int filter_width = static_cast<int>(col.dims()[3]);
@@ -249,7 +249,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
             if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
                 w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {
               int vol_idx = 0;
-              if (data_layout != DataLayout::kNHWC) {
+              if (data_layout != DataLayout::NHWC) {
                 vol_idx = ((cIm * input_depth + d_pad) * input_height + h_pad) *
                               input_width +
                           w_pad;

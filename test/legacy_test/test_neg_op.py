@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -42,7 +42,7 @@ class TestNegOp(unittest.TestCase):
             )
             result = paddle.neg(input)
 
-            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+            place = get_device_place() if use_gpu else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             st_result = exe.run(feed={"input": self.input}, fetch_list=[result])
@@ -58,10 +58,10 @@ class TestNegOp(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not paddle.base.core.is_compiled_with_cuda():
+        if not (paddle.base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
         self.run_static(use_gpu=True)

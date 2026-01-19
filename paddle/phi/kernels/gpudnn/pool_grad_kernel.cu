@@ -42,7 +42,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
                              const std::string& padding_algorithm,
                              DenseTensor* dx) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
@@ -123,11 +123,11 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(input_grad);
   DenseTensor transformed_input_grad(input_grad->type());
-  GPUDNNDataLayout layout;
+  DataLayout layout;
   const std::string str_NCHW = "NCHW", str_NHWC = "NHWC";
   const std::string str_NCDHW = "NCDHW", str_NDHWC = "NDHWC";
   if (data_format == str_NDHWC) {
-    layout = GPUDNNDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
     std::vector<int> axis{0, 4, 1, 2, 3};
 
     // input
@@ -170,7 +170,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
-    layout = GPUDNNDataLayout::kNCHW;
+    layout = DataLayout::NCHW;
 
     std::vector<int> axis{0, 3, 1, 2};
 

@@ -38,19 +38,19 @@ static inline void TransCompute2DTo5D(const Context& dev_ctx,
 
   switch (rank) {
     case 2:
-      phi::funcs::Transpose<Context, T, 2> trans2;
+      funcs::Transpose<Context, T, 2> trans2;
       trans2(dev_ctx, in, out, perm);
       break;
     case 3:
-      phi::funcs::Transpose<Context, T, 3> trans3;
+      funcs::Transpose<Context, T, 3> trans3;
       trans3(dev_ctx, in, out, perm);
       break;
     case 4:
-      phi::funcs::Transpose<Context, T, 4> trans4;
+      funcs::Transpose<Context, T, 4> trans4;
       trans4(dev_ctx, in, out, perm);
       break;
     case 5:
-      phi::funcs::Transpose<Context, T, 5> trans5;
+      funcs::Transpose<Context, T, 5> trans5;
       trans5(dev_ctx, in, out, perm);
       break;
     default:
@@ -73,8 +73,8 @@ static inline void CalcMatrixSigmaAndNormWeight(const Context& dev_ctx,
   auto u_t = EigenTensor<T, 2>::From(*u);
   auto v_t = EigenTensor<T, 2>::From(*v);
 
-  const int h = weight->dims()[0];
-  const int w = weight->dims()[1];
+  const int64_t h = weight->dims()[0];
+  const int64_t w = weight->dims()[1];
 
   for (int i = 0; i < power_iters; i++) {
     // V = W^T * U / ||W^T * U||_2
@@ -112,8 +112,8 @@ void SpectralNormKernel(const Context& dev_ctx,
                         int power_iters,
                         float eps,
                         DenseTensor* out) {
-  const int h = u.dims()[0];
-  const int w = v.dims()[0];
+  const int64_t h = u.dims()[0];
+  const int64_t w = v.dims()[0];
 
   DenseTensor weight_mat;
   auto dims = weight.dims();
@@ -136,7 +136,7 @@ void SpectralNormKernel(const Context& dev_ctx,
     for (int i = 0; i < rank; i++) {
       real_dims.push_back(i);
     }
-    phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
+    Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
   }
   weight_mat = weight_mat.Resize({h, w});
 
@@ -144,8 +144,8 @@ void SpectralNormKernel(const Context& dev_ctx,
   sigma.Resize(weight_mat.dims());
   dev_ctx.template Alloc<T>(&sigma);
   DenseTensor uu, vv;
-  phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
-  phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
+  Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
+  Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
   CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
                                            &weight_mat,
                                            &(uu.Resize({h, 1})),
@@ -174,7 +174,7 @@ void SpectralNormKernel(const Context& dev_ctx,
         perm,
         out);
   } else {
-    phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), true, out);
+    Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), true, out);
   }
 }
 

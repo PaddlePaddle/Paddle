@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include "paddle/phi/kernels/l1_norm_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/l1_norm_kernel.h"
@@ -22,11 +22,10 @@ void L1NormKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto x_tmp = phi::EigenVector<T>::Flatten(x);
+  auto x_tmp = EigenVector<T>::Flatten(x);
   auto out_tmp = phi::EigenScalar<T>::From(*out);
   auto& dev = *dev_ctx.eigen_device();
-  phi::funcs::EigenL1Norm<std::decay_t<decltype(dev)>, T>::Eval(
-      dev, out_tmp, x_tmp);
+  funcs::EigenL1Norm<std::decay_t<decltype(dev)>, T>::Eval(dev, out_tmp, x_tmp);
 }
 // dX = dout * sign(X)
 template <typename T, typename Context>
@@ -39,12 +38,12 @@ void L1NormGradKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "Input(GRAD@Out) of L1NormGradOp should be a scalar."));
   dev_ctx.template Alloc<T>(x_grad);
-  auto x_eigen = phi::EigenVector<T>::Flatten(x);
-  auto d_out_eigen = phi::EigenVector<T>::Flatten(out_grad);
-  auto dx_eigen = phi::EigenVector<T>::Flatten(*x_grad);
+  auto x_eigen = EigenVector<T>::Flatten(x);
+  auto d_out_eigen = EigenVector<T>::Flatten(out_grad);
+  auto dx_eigen = EigenVector<T>::Flatten(*x_grad);
   auto& dev = *dev_ctx.eigen_device();
   Eigen::DSizes<Eigen::DenseIndex, 1> x_dsize(x.numel());
-  phi::funcs::EigenL1NormGrad<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenL1NormGrad<std::decay_t<decltype(dev)>, T>::Eval(
       dev, dx_eigen, d_out_eigen, x_eigen, x_dsize);
 }
 }  // namespace phi

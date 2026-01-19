@@ -15,14 +15,7 @@
 #include <algorithm>
 #include <type_traits>
 
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
+#include "paddle/phi/kernels/funcs/cub.h"
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_fp16.h>
 #endif
@@ -381,21 +374,20 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FusedFCElementwiseLayerNormKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& w,
-    const DenseTensor& y,
-    const paddle::optional<DenseTensor>& bias0,
-    const paddle::optional<DenseTensor>& scale,
-    const paddle::optional<DenseTensor>& bias1,
-    const int x_num_col_dims,
-    const std::string& activation_type,
-    const float epsilon,
-    const int begin_norm_axis,
-    DenseTensor* out,
-    DenseTensor* mean,
-    DenseTensor* variance) {
+void FusedFCElementwiseLayerNormKernel(const Context& dev_ctx,
+                                       const DenseTensor& x,
+                                       const DenseTensor& w,
+                                       const DenseTensor& y,
+                                       const optional<DenseTensor>& bias0,
+                                       const optional<DenseTensor>& scale,
+                                       const optional<DenseTensor>& bias1,
+                                       const int x_num_col_dims,
+                                       const std::string& activation_type,
+                                       const float epsilon,
+                                       const int begin_norm_axis,
+                                       DenseTensor* out,
+                                       DenseTensor* mean,
+                                       DenseTensor* variance) {
   PADDLE_ENFORCE_GE(
       x_num_col_dims,
       1,
@@ -426,7 +418,7 @@ void FusedFCElementwiseLayerNormKernel(
 
   auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.GEMM(CblasNoTrans,
             CblasNoTrans,
             M,

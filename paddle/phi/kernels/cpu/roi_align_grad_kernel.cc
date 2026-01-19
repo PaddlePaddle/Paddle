@@ -82,7 +82,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         int sampling_ratio,
                         bool aligned,
                         DenseTensor* dx) {
-  const auto& in_dims = common::vectorize<int>(x.dims());
+  const auto& in_dims = vectorize<int>(x.dims());
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];
@@ -92,8 +92,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     return;
   }
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
   DenseTensor roi_batch_id_list = Empty<int>(dev_ctx, {rois_num});
@@ -132,7 +131,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<T>(dx);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
   int output_grad_size = static_cast<int>(out_grad.numel());

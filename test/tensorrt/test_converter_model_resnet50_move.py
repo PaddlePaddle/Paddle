@@ -33,6 +33,10 @@ from paddle.tensorrt.util import (
     predict_program,
 )
 
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of tensorrt graph capturing
+# and converting.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 def standardize(array):
     mean_val = np.mean(array)
@@ -140,8 +144,8 @@ class TestConverterResNet50Move(unittest.TestCase):
         predictor = paddle_infer.create_predictor(config)
 
         paddle.disable_static()
-        for i, input_instrance in enumerate(trt_config.inputs):
-            min_data, _, max_data = input_instrance.generate_input_data()
+        for i, input_instance in enumerate(trt_config.inputs):
+            min_data, _, max_data = input_instance.generate_input_data()
             model_inputs = paddle.to_tensor(min_data)
             output_converted = predictor.run([model_inputs])
 

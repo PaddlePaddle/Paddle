@@ -134,11 +134,11 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
       *var_val += (tmp * tmp);
     }
     if (std::is_same<OutType, int8_t>::value) {
-      dest_vec_out_type[ii] = phi::funcs::quant_helper(dest_vec[ii],
-                                                       quant_next_in_scale,
-                                                       quant_round_type,
-                                                       quant_max_bound,
-                                                       quant_min_bound);
+      dest_vec_out_type[ii] = funcs::quant_helper(dest_vec[ii],
+                                                  quant_next_in_scale,
+                                                  quant_round_type,
+                                                  quant_max_bound,
+                                                  quant_min_bound);
     }
   }
 
@@ -228,7 +228,9 @@ __global__ void FusedResidualDropoutGrad(const T *dout,
                                          const T factor,
                                          const int64_t size,
                                          T *dx) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;
@@ -278,8 +280,12 @@ __global__ void FusedResidualDropoutBias(
     const float *dequant_out_scale_data = nullptr,
     const float quant_next_in_scale = 1.0,
     const float residual_alpha = 1.0) {
-  int64_t col_id = blockDim.x * blockIdx.x + threadIdx.x;
-  int64_t row_id = blockIdx.y * gridDim.z + blockIdx.z;
+  int64_t col_id =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
+  int64_t row_id =
+      static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(gridDim.z) +
+      static_cast<int64_t>(blockIdx.z);
   if (row_id >= rows) {
     return;
   }
@@ -295,7 +301,7 @@ __global__ void FusedResidualDropoutBias(
   } else {
     factor = static_cast<T>(1);
   }
-  phi::funcs::ReluFunctor<T> relu;
+  funcs::ReluFunctor<T> relu;
   for (int64_t r = row_id; r < rows; r += gridDim.y * gridDim.z) {
     for (int64_t i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
@@ -304,7 +310,7 @@ __global__ void FusedResidualDropoutBias(
                                         VecSize,
                                         false,
                                         false,
-                                        phi::funcs::ReluFunctor<T>,
+                                        funcs::ReluFunctor<T>,
                                         InType,
                                         OutType,
                                         HasDropout>(r,
@@ -349,7 +355,7 @@ void LaunchResidualDropoutBias(const uint64_t rows,
                                const T *bias,
                                MaskType *mask_data,
                                OutType *dst,
-                               const phi::GPUContext &dev_ctx,
+                               const GPUContext &dev_ctx,
                                const float quant_last_in_scale = 1.0,
                                const float *dequant_out_scale_data = nullptr,
                                const float quant_next_in_scale = 1.0,
@@ -451,7 +457,7 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
                                    const uint32_t cols,
                                    T *dx,
                                    T *dbias,
-                                   const phi::GPUContext &dev_ctx) {
+                                   const GPUContext &dev_ctx) {
   const T zero = static_cast<T>(0.0f);
   auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero

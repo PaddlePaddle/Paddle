@@ -16,7 +16,13 @@ import platform
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -98,35 +104,29 @@ def linear_interp_np(
         out_w = actual_shape[0]
     batch_size, channel, in_w = input.shape
 
-    ratio_w = 0.0
-    if out_w > 1:
+    def compute_ratio(in_size, out_size, scale, align_corners):
         if align_corners:
-            ratio_w = (in_w - 1.0) / (out_w - 1.0)
-        else:
-            if scale_w > 0:
-                ratio_w = 1.0 / scale_w
-            else:
-                ratio_w = 1.0 * in_w / out_w
+            if out_size <= 1:
+                return 0.0
+            return (in_size - 1.0) / (out_size - 1.0)
+        return 1.0 / scale if scale > 0 else in_size / out_size
 
+    ratio_w = compute_ratio(in_w, out_w, scale_w, align_corners)
     out = np.zeros((batch_size, channel, out_w))
 
     for j in range(out_w):
         if align_mode == 0 and not align_corners:
-            w = int(ratio_w * (j + 0.5) - 0.5)
+            src_w = ratio_w * (j + 0.5) - 0.5
         else:
-            w = int(ratio_w * j)
-        w = max(0, w)
-        wid = 1 if w < in_w - 1 else 0
-
-        if align_mode == 0 and not align_corners:
-            idx_src_w = max(ratio_w * (j + 0.5) - 0.5, 0)
-            w1lambda = idx_src_w - w
-        else:
-            w1lambda = ratio_w * j - w
+            src_w = ratio_w * j
+        in_img_idx = int(min(max(0, src_w), in_w - 1))
+        wid = 1 if in_img_idx < in_w - 1 else 0
+        w1lambda = src_w - in_img_idx
         w2lambda = 1.0 - w1lambda
 
         out[:, :, j] = (
-            w2lambda * input[:, :, w] + w1lambda * input[:, :, w + wid]
+            w2lambda * input[:, :, in_img_idx]
+            + w1lambda * input[:, :, in_img_idx + wid]
         )
 
     if data_layout == "NHWC":
@@ -380,8 +380,8 @@ class TestLinearInterpOpFP16(TestLinearInterpOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLinearInterpOpBF16(OpTest):
@@ -440,11 +440,11 @@ class TestLinearInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -567,7 +567,8 @@ class TestLinearInterpOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

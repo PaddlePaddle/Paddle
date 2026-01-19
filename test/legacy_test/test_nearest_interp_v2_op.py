@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -496,8 +501,8 @@ class TestNearestNeighborInterpCase6FP16(TestNearestInterpOpFP16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestInterpOpBF16(OpTest):
@@ -630,8 +635,8 @@ class TestNearestNeighborInterpCase1BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestNeighborInterpCase2BF16(TestNearestInterpOpBF16):
@@ -640,8 +645,8 @@ class TestNearestNeighborInterpCase2BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestNeighborInterpCase3BF16(TestNearestInterpOpBF16):
@@ -650,8 +655,8 @@ class TestNearestNeighborInterpCase3BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestNeighborInterpCase4BF16(TestNearestInterpOpBF16):
@@ -660,8 +665,8 @@ class TestNearestNeighborInterpCase4BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestNeighborInterpCase5BF16(TestNearestInterpOpBF16):
@@ -670,8 +675,8 @@ class TestNearestNeighborInterpCase5BF16(TestNearestInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestNearestNeighborInterpCase6BF16(TestNearestInterpOpBF16):
@@ -978,8 +983,8 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -1003,8 +1008,8 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -1026,7 +1031,8 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNearestInterp3DOpForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1067,7 +1073,8 @@ class TestNearestInterp3DOpForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNearestInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

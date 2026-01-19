@@ -23,15 +23,7 @@
 #include <set>
 #include <vector>
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
+#include "paddle/phi/kernels/funcs/cub.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -296,9 +288,7 @@ struct ReduceConfig {
 #endif  // PADDLE_WITH_XPU_KP
 
   // If should_reduce_again, we need malloc temp space for temp data
-  void SetOutputData(Ty* y_data,
-                     const KPDevice& dev_ctx,
-                     phi::DenseTensor* tmp) {
+  void SetOutputData(Ty* y_data, const KPDevice& dev_ctx, DenseTensor* tmp) {
     if (should_reduce_again) {
       tmp->Resize(common::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y)}));
@@ -993,7 +983,7 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer,
                             reducer.initial(),
                             stream);
-  phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+  DenseTensor tmp = Empty<uint8_t, phi::GPUContext>(
       dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
   auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
@@ -1085,8 +1075,8 @@ template <typename Tx,
           typename TransformOp,
           bool IsMean = false>
 void ReduceKernel(const KPDevice& dev_ctx,
-                  const phi::DenseTensor& x,
-                  phi::DenseTensor* y,
+                  const DenseTensor& x,
+                  DenseTensor* y,
                   const TransformOp& transform,
                   const std::vector<int>& origin_reduce_dims) {
   if (x.numel() == 0) {
@@ -1119,8 +1109,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
   // temp_output should be stored temp_data in output_data space or stored in
   // y_data;
 
-  phi::DDim tmp_ddim;
-  phi::DenseTensor tmp;
+  DDim tmp_ddim;
+  DenseTensor tmp;
 
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
@@ -1307,8 +1297,8 @@ template <typename Tx,
           typename TransformOp,
           bool IsMean = false>
 void TensorReduceImpl(const phi::GPUContext& dev_ctx,
-                      const phi::DenseTensor& x,
-                      phi::DenseTensor* y,
+                      const DenseTensor& x,
+                      DenseTensor* y,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
                       gpuStream_t stream) {
@@ -1324,9 +1314,9 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
 #endif
 
 template <typename Context, typename T, size_t D, size_t R_D, typename Functor>
-void ReduceFunctor(const Context& context,
-                   const phi::DenseTensor& input,
-                   phi::DenseTensor* output,
+void ReduceFunctor(const Context& dev_ctx,
+                   const DenseTensor& input,
+                   DenseTensor* output,
                    const std::vector<int64_t>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
@@ -1349,7 +1339,7 @@ void ReduceFunctor(const Context& context,
                       dims_vector.end());
     out_dims = common::make_ddim(dims_vector);
   }
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   Functor functor;
 
   if (D == 1) {
@@ -1402,8 +1392,8 @@ inline void GetShuffledDim(const DDim& src_dims,
 
 template <typename Context, typename OutT>
 void GetShuffledInput(const Context& dev_ctx,
-                      const phi::DenseTensor& input,
-                      phi::DenseTensor* shuffled_input,
+                      const DenseTensor& input,
+                      DenseTensor* shuffled_input,
                       const std::vector<int64_t>& dims) {
   DDim shuffled_dims(input.dims());
   std::vector<int> perm_axis(input.dims().size());
@@ -1412,18 +1402,18 @@ void GetShuffledInput(const Context& dev_ctx,
   shuffled_input->Resize(shuffled_dims);
   dev_ctx.template Alloc<OutT>(shuffled_input);
 
-  phi::funcs::TransposeNormal<Context, OutT> trans;
+  funcs::TransposeNormal<Context, OutT> trans;
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 
 template <typename Context, typename OutT, typename Functor>
 void HandleLargeDim(const Context& dev_ctx,
-                    const phi::DenseTensor& input,
-                    phi::DenseTensor* output,
+                    const DenseTensor& input,
+                    DenseTensor* output,
                     const std::vector<int64_t>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
-  phi::DenseTensor shuffled_input;
+  DenseTensor shuffled_input;
   GetShuffledInput<Context, OutT>(dev_ctx, input, &shuffled_input, dims);
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
@@ -1455,8 +1445,8 @@ void HandleLargeDim(const Context& dev_ctx,
 
 template <typename Context, typename T, typename OutT, typename Functor>
 void ReduceKernelImpl(const Context& dev_ctx,
-                      const phi::DenseTensor& input,
-                      phi::DenseTensor* output,
+                      const DenseTensor& input,
+                      DenseTensor* output,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {

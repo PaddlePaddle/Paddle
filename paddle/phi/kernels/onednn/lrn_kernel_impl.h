@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 class LRNOneDNNHandler
-    : public phi::funcs::
+    : public funcs::
           OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
  public:
   LRNOneDNNHandler(int n,
@@ -30,9 +30,9 @@ class LRNOneDNNHandler
                    bool is_test,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place,
-                   const phi::DenseTensor* input)
+                   const DenseTensor* input)
 
-      : phi::funcs::
+      : funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 onednn_engine, cpu_place) {
     // MKL-DNN implements LRN in a caffe way:
@@ -64,10 +64,10 @@ class LRNOneDNNHandler
                    bool is_test,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place,
-                   const phi::DenseTensor* in_x,
-                   const phi::DenseTensor* out_grad,
-                   phi::DenseTensor* in_x_grad)
-      : phi::funcs::
+                   const DenseTensor* in_x,
+                   const DenseTensor* out_grad,
+                   DenseTensor* in_x_grad)
+      : funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 onednn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
@@ -101,8 +101,8 @@ class LRNOneDNNHandler
         k);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(
-      phi::DenseTensor* workspace, const Context& dev_ctx) {
+  std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(DenseTensor* workspace,
+                                                       const Context& dev_ctx) {
     T* ptr = dev_ctx.template HostAlloc<T>(
         workspace, this->fwd_pd_->workspace_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->workspace_desc(),
@@ -110,11 +110,11 @@ class LRNOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardWorkspaceMemory(
-      const phi::DenseTensor* workspace) {
+      const DenseTensor* workspace) {
     const T* workspace_data = workspace->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_desc(),
-        phi::funcs::to_void_cast<T>(workspace_data));
+        funcs::to_void_cast<T>(workspace_data));
   }
 };
 
@@ -150,7 +150,7 @@ void LRNMKLDNNOpKernel(const Context& dev_ctx,
   auto lrn_p = handler.AcquireForwardPrimitive();
 
   auto workspace_memory = handler.AcquireWorkspaceMemory(mid, dev_ctx);
-  mid->set_layout(phi::DataLayout::ONEDNN);
+  mid->set_layout(DataLayout::ONEDNN);
 
   auto& astream = OneDNNContext::tls().get_stream();
   if (!workspace_memory->get_desc().is_zero()) {

@@ -149,7 +149,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
                        dev_ctx.stream());
@@ -159,7 +159,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = phi::funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
@@ -212,7 +212,7 @@ template <typename T, typename Context>
 void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   // shape [*, M, M], check whether it contains 0 in '*'.
@@ -266,7 +266,9 @@ __global__ void GetSlogDetV2FromLU(const T* lu_data,
                                    int64_t batch_size,
                                    T* sign_data,
                                    T* logdet_data) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < batch_size) {
     int offset_lu = idx * n * n;
     int offset_ipiv = idx * n;
@@ -295,7 +297,7 @@ struct SlogDeterminantV2Functor {
       dev_ctx.template Alloc<T>(sign);
       if (sign->numel() > 0) {
         FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(sign->dims()),
+                               vectorize(sign->dims()),
                                static_cast<T>(1),
                                sign->dtype(),
                                sign);
@@ -303,7 +305,7 @@ struct SlogDeterminantV2Functor {
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
         FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(logdet->dims()),
+                               vectorize(logdet->dims()),
                                static_cast<phi::dtype::complex<T>>(0),
                                logdet->dtype(),
                                logdet);
@@ -339,7 +341,7 @@ struct SlogDeterminantV2Functor {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(T*),
                        dev_ctx.stream());
@@ -348,7 +350,7 @@ struct SlogDeterminantV2Functor {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
@@ -446,7 +448,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
       if (sign->numel() > 0) {
         FullKernel<phi::dtype::complex<T>, Context>(
             dev_ctx,
-            common::vectorize(sign->dims()),
+            vectorize(sign->dims()),
             static_cast<phi::dtype::complex<T>>(1),
             sign->dtype(),
             sign);
@@ -454,7 +456,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
         FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(logdet->dims()),
+                               vectorize(logdet->dims()),
                                static_cast<phi::dtype::complex<T>>(0),
                                logdet->dtype(),
                                logdet);
@@ -495,7 +497,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
                        dev_ctx.stream());
@@ -505,7 +507,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = phi::funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
@@ -564,7 +566,7 @@ void SlogDeterminantV2Kernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              DenseTensor* sign,
                              DenseTensor* logdet) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
   int64_t batch_count = detail::GetBatchCount(x.dims());
 

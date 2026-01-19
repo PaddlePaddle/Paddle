@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-PD_DEFINE_bool(enable_mkldnn, true, "Enable ONEDNN");
+PD_DEFINE_bool(enable_onednn, true, "Enable ONEDNN");
 
 namespace paddle {
 namespace inference {
@@ -33,7 +33,7 @@ void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->EnableNewExecutor();
   cfg->SetOptimizationLevel(3);
 
-  if (FLAGS_enable_mkldnn) cfg->EnableONEDNN();
+  if (FLAGS_enable_onednn) cfg->EnableONEDNN();
 }
 
 template <typename T>

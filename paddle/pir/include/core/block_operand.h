@@ -30,7 +30,7 @@ class BlockOperandImpl;
 /// \brief OpOperand class represents the op_operand of operation. This class
 /// only provides interfaces, for specific implementation, see Impl class.
 ///
-class IR_API BlockOperand {
+class BlockOperand {
  public:
   BlockOperand() = default;
 
@@ -38,7 +38,7 @@ class IR_API BlockOperand {
 
   BlockOperand(detail::BlockOperandImpl *impl) : impl_(impl) {}  // NOLINT
 
-  BlockOperand &operator=(const BlockOperand &rhs);
+  PADDLE_API BlockOperand &operator=(const BlockOperand &rhs);
 
   bool operator==(const BlockOperand &other) const {
     return impl_ == other.impl_;
@@ -50,15 +50,15 @@ class IR_API BlockOperand {
 
   bool operator!() const { return impl_ == nullptr; }
 
-  operator bool() const;
+  PADDLE_API operator bool() const;
 
-  BlockOperand next_use() const;
+  PADDLE_API BlockOperand next_use() const;
 
-  Block *source() const;
+  PADDLE_API Block *source() const;
 
-  void set_source(Block *source);
+  PADDLE_API void set_source(Block *source);
 
-  Operation *owner() const;
+  PADDLE_API Operation *owner() const;
 
   void RemoveFromUdChain();
 

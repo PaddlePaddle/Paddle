@@ -125,7 +125,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
         yield config, ['fused_elementwise_add'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             passes=[
                 'elementwise_act_onednn_fuse_pass',

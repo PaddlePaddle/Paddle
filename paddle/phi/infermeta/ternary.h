@@ -53,6 +53,7 @@ PADDLE_API void BaddbmmInferMeta(const MetaTensor& input,
                                  const MetaTensor& y,
                                  float beta,
                                  float alpha,
+                                 DataType out_dtype,
                                  MetaTensor* out);
 
 PADDLE_API void AffineChannelInferMeta(const MetaTensor& x,
@@ -179,6 +180,14 @@ PADDLE_API void FlashAttnV3InferMeta(const MetaTensor& q,
                                      MetaTensor* out,
                                      MetaTensor* softmax_lse);
 
+PADDLE_API void FastLayerNormInfermeta(const MetaTensor& x,
+                                       const MetaTensor& scale,
+                                       const MetaTensor& bias,
+                                       float epsilon,
+                                       MetaTensor* y,
+                                       MetaTensor* mean,
+                                       MetaTensor* invvar);
+
 PADDLE_API void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
                                            const MetaTensor& k,
                                            const MetaTensor& v,
@@ -265,6 +274,12 @@ PADDLE_API void LerpInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               const MetaTensor& weight,
                               MetaTensor* out);
+
+PADDLE_API void LinearV2InferMeta(const MetaTensor& input,
+                                  const MetaTensor& weight,
+                                  const MetaTensor& bias,
+                                  MetaTensor* out,
+                                  MetaConfig config = MetaConfig());
 
 PADDLE_API void LinspaceRawInferMeta(const MetaTensor& start,
                                      const MetaTensor& stop,

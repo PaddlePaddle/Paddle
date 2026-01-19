@@ -149,6 +149,11 @@ def set_flags(flags: dict[str, bool | str | float]) -> None:
     for key, value in flags.items():
         if _global_flags().is_public(key):
             _global_flags()[key] = value
+            prefix = "FLAGS_"
+            if key.startswith(prefix):
+                _global_flags().update_linked_vars(
+                    key[len(prefix) :], str(value)
+                )
         else:
             raise ValueError(
                 f"Flag {key} cannot set its value through this function."
@@ -2491,7 +2496,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT support lod")
+            raise NotImplementedError("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()
@@ -3645,7 +3650,7 @@ class Operator:
                 and name == "compilation_key"
             ):
                 key = self.desc.attr(name)
-                v = core.get_serialize_comile_key(key)
+                v = core.get_serialize_compile_key(key)
                 prog = Program()
                 prog = prog.parse_from_string(v)
                 s = prog._to_readable_code()
@@ -7764,7 +7769,13 @@ class EagerParamBase(core.eager.Tensor):
     """
 
     @dygraph_only
-    def __init__(self, shape, dtype, **kwargs):
+    def __init__(self, *args, **kwargs):
+        if (len(args) > 0 and isinstance(args[0], list)) or 'shape' in kwargs:
+            self.__init_by_shape__(*args, **kwargs)
+        else:
+            self.__init_by_tensor__(*args, **kwargs)
+
+    def __init_by_shape__(self, shape, dtype, **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
@@ -7810,6 +7821,46 @@ class EagerParamBase(core.eager.Tensor):
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None
+
+    def __init_by_tensor__(
+        self,
+        data: paddle.Tensor | None = None,
+        requires_grad: bool = True,
+        **kwargs,
+    ):
+        if data is None:
+            data = paddle.to_tensor([])
+        shape = data.shape
+        dtype = data.dtype
+
+        for each in shape:
+            if each < 0:
+                raise ValueError(
+                    f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
+                )
+
+        dtype = convert_to_proto_type(dtype)
+        name = kwargs.get("name", unique_name.generate("_eager_param_base"))
+
+        super().__init__(
+            dtype,
+            list(shape) if shape else [],
+            name,
+            core.VarDesc.VarType.DENSE_TENSOR,
+            True,
+        )
+        self.retain_grads()
+        self._is_param = True
+        self.stop_gradient = not requires_grad
+        self.optimize_attr = kwargs.get("optimize_attr", {"learning_rate": 1.0})
+        self.regularizer = kwargs.get("regularizer", None)
+        self.do_model_average = kwargs.get("do_model_average", None)
+        self.need_clip = kwargs.get("need_clip", True)
+        self.is_distributed = kwargs.get("is_distributed", False)
+        # hook functions for lazy initialization
+        self._init_func = None
+        self._init_op_creator = None
+        self._set_impl(data)
 
     @classmethod
     def from_tensor(cls, tensor, **kwargs):
@@ -8252,39 +8303,6 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
         switch_device(pre_device)
 
 
-def _switch_cuda_graph_mode(cuda_graph_attr):
-    global _current_cuda_graph_mode
-    pre_mode = _current_cuda_graph_mode
-    _current_cuda_graph_mode = cuda_graph_attr
-    return pre_mode
-
-
-@signature_safe_contextmanager
-def _cuda_graph_guard(cuda_graph_attr=None):
-    """
-
-    Note:
-        The API only supports static graph mode.
-
-    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static graph mode.
-
-    Args:
-        cuda_graph_attr(str|None): The cuda graph attr with the format of:
-                                   cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
-    """
-    assert not in_dygraph_mode(), (
-        "cuda_graph_guard only works under static graph mode"
-    )
-    assert core.is_compiled_with_cuda(), (
-        "cuda_graph_guard context can be only used when Paddle is compiled with cuda"
-    )
-    pre_mode = _switch_cuda_graph_mode(cuda_graph_attr)
-    try:
-        yield
-    finally:
-        _switch_cuda_graph_mode(pre_mode)
-
-
 def _get_paddle_place(place):
     """
     Convert given place to standard paddle Place object
@@ -8366,9 +8384,12 @@ def _get_paddle_place(place):
     place_info_list = place.split(":", 1)
     device_type = place_info_list[0]
     if device_type in core.get_all_custom_device_type():
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.CustomPlace(device_type, device_id)
+        if len(place_info_list) == 1:
+            return core.CustomPlace(device_type, 0)
+        else:
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
         f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."
@@ -8603,3 +8624,30 @@ def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
             pir.set_comp_op_name(original_comp_op_name)
+
+
+@signature_safe_contextmanager
+def backward_vlog_guard(level: int) -> Generator[None, None, None]:
+    assert isinstance(level, int), "vlog level is not an int"
+    paddle.base.core.eager._start_capture_backward_vlog_subgraph(level)
+    try:
+        yield
+    finally:
+        paddle.base.core.eager._stop_capture_backward_vlog_subgraph()
+
+
+@signature_safe_contextmanager
+def vlog_guard(module_levels: int | dict) -> Generator[None, None, None]:
+    if not isinstance(module_levels, (int, dict)):
+        raise TypeError(
+            f"The input of vlog_guard must be int or dict but got {type(module_levels).__name__}"
+        )
+    paddle.base.core.set_vlog_level(module_levels)
+    try:
+        yield
+    finally:
+        # Reset the verbose log level to 0
+        if isinstance(module_levels, int):
+            paddle.base.core.set_vlog_level(0)
+        elif isinstance(module_levels, dict):
+            paddle.base.core.set_vlog_level(dict.fromkeys(module_levels, 0))

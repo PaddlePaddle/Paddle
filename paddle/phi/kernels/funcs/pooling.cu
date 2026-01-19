@@ -22,6 +22,7 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
@@ -29,6 +30,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/random.cuh"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 namespace funcs {
@@ -91,6 +94,20 @@ struct FastDivModForPoolingWithMoreStaff {
         stride_w(stride_width),
         stride_h(stride_height) {}
 };
+
+static __device__ inline int p_start(int size,
+                                     int pad,
+                                     int kernel,
+                                     int stride) {
+  return (size + pad < kernel) ? 0 : (size + pad - kernel) / stride + 1;
+}
+
+static __device__ inline int p_end(int size,
+                                   int pad,
+                                   int pooled_size,
+                                   int stride) {
+  return std::min((size + pad) / stride + 1, pooled_size);
+}
 
 template <typename FastDivModForPooling, typename IndexT>
 __device__ void OffsetPreparationFor4Dimension(IndexT index,
@@ -474,6 +491,56 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
   }
 }
 
+template <typename T, typename IndexT>
+__global__ void KernelMaxPool2DGradCompatible(
+    const T* input_data,
+    const T* output_data,
+    const T* output_grad,
+    const IndexT batch_size,
+    const IndexT channels,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT ksize_height,
+    const IndexT ksize_width,
+    const IndexT stride_height,
+    const IndexT stride_width,
+    const IndexT padding_height,
+    const IndexT padding_width,
+    T* input_grad,
+    FastDivModForPooling<IndexT> divmods,
+    bool channel_last = false) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  CUDA_KERNEL_LOOP(index, input_height * input_width) {
+    IndexT h = index / input_width;
+    IndexT w = index - h * input_width;
+    IndexT phstart = p_start(h, padding_height, ksize_height, stride_height);
+    IndexT phend = p_end(h, padding_height, output_height, stride_height);
+    IndexT pwstart = p_start(w, padding_width, ksize_width, stride_width);
+    IndexT pwend = p_end(w, padding_width, output_width, stride_width);
+    T input_data_value = input_data[h * input_width + w];
+    for (IndexT n = blockIdx.y; n < batch_size; n += gridDim.y) {
+      for (IndexT c = blockIdx.z; c < channels; c += gridDim.z) {
+        MPType gradient = static_cast<MPType>(0.0f);
+        IndexT offset = (n * channels + c) * output_height * output_width;
+        for (int ph = phstart; ph < phend; ++ph) {
+          for (int pw = pwstart; pw < pwend; ++pw) {
+            T output_data_value = output_data[ph * output_width + pw + offset];
+            if (output_data_value == input_data_value) {
+              gradient += static_cast<MPType>(
+                  output_grad[ph * output_width + pw + offset]);
+            }
+          }
+        }
+        input_grad[(n * channels + c) * input_height * input_width + index] =
+            static_cast<MPType>(gradient);
+      }
+    }
+  }
+}
+
 template <typename PoolProcess, typename T>
 void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     const T* input,
@@ -506,9 +573,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
       FastDivModForPooling<int>(input_channels, output_width, output_height);
   if (adaptive) {
     int64_t max_threads = 512;
-    int64_t thread_num =
-        std::min(phi::funcs::details::GetLastPow2(output_height * output_width),
-                 max_threads);
+    int64_t thread_num = std::min(
+        funcs::details::GetLastPow2(output_height * output_width), max_threads);
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
     auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
@@ -622,9 +688,9 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         batch_size * output_channels * output_height * output_width;
     if (adaptive) {
       int64_t max_threads = 512;
-      int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
-          max_threads);
+      int64_t thread_num =
+          std::min(funcs::details::GetLastPow2(output_height * output_width),
+                   max_threads);
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
@@ -879,6 +945,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                   const std::vector<int64_t>& paddings,
                   const std::string data_format,
                   DenseTensor* input_grad) {
+    static const int kBlockThreads = 1024;
+
     bool channel_last = (data_format == "NHWC");
 
     const int64_t batch_size = input.dims()[0];
@@ -913,55 +981,112 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
 
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
-    int64_t blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
+    dim3 threads(kBlockThreads, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
-      KernelMaxPool2DGrad<T, int>
-          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
-                                                   input_data,
-                                                   output_data,
-                                                   output_grad_data,
-                                                   input_channels,
-                                                   input_height,
-                                                   input_width,
-                                                   output_height,
-                                                   output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   input_grad_data,
-                                                   pool_divmods,
-                                                   channel_last);
+      if (FLAGS_use_accuracy_compatible_kernel) {
+        int64_t blocks =
+            (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
+        dim3 grid(blocks, batch_size, input_channels);
+        // NOTE: input.numel() <= std::numeric_limits<int>::max() &&
+        // output.numel() <= std::numeric_limits<int>::max()
+        KernelMaxPool2DGradCompatible<T, int>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,
+                                                     output_data,
+                                                     output_grad_data,
+                                                     batch_size,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     input_grad_data,
+                                                     pool_divmods,
+                                                     channel_last);
+      } else {
+        int64_t blocks = (nthreads + kBlockThreads - 1) / kBlockThreads;
+        dim3 grid(blocks, 1);
+        // NOTE: input.numel() <= std::numeric_limits<int>::max() &&
+        // output.numel() <= std::numeric_limits<int>::max()
+        KernelMaxPool2DGrad<T, int>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     output_data,
+                                                     output_grad_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     input_grad_data,
+                                                     pool_divmods,
+                                                     channel_last);
+      }
+
     } else {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
-      KernelMaxPool2DGrad<T, int64_t>
-          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
-                                                   input_data,
-                                                   output_data,
-                                                   output_grad_data,
-                                                   input_channels,
-                                                   input_height,
-                                                   input_width,
-                                                   output_height,
-                                                   output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   input_grad_data,
-                                                   pool_divmods,
-                                                   channel_last);
+      if (FLAGS_use_accuracy_compatible_kernel) {
+        int64_t blocks =
+            (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
+        dim3 grid(blocks, batch_size, input_channels);
+        KernelMaxPool2DGradCompatible<T, int64_t>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,
+                                                     output_data,
+                                                     output_grad_data,
+                                                     batch_size,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     input_grad_data,
+                                                     pool_divmods,
+                                                     channel_last);
+      } else {
+        int64_t blocks = (nthreads + kBlockThreads - 1) / kBlockThreads;
+        dim3 grid(blocks, 1);
+        KernelMaxPool2DGrad<T, int64_t>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     output_data,
+                                                     output_grad_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     input_grad_data,
+                                                     pool_divmods,
+                                                     channel_last);
+      }
     }
   }
 };
@@ -2086,9 +2211,9 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                        output_height * output_width;
     if (adaptive && output_height > 1 && output_width > 1) {
       int64_t max_threads = 512;
-      int64_t thread_num = std::min(
-          phi::funcs::details::GetLastPow2(output_height * output_width),
-          max_threads);
+      int64_t thread_num =
+          std::min(funcs::details::GetLastPow2(output_height * output_width),
+                   max_threads);
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
@@ -2702,7 +2827,7 @@ __global__ void FractionalKernelMaxPool2d(
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
 #endif
-    phi::funcs::uniform_distribution<float> dist;
+    funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
     u = (&rand.x)[0];
   } else {
@@ -3059,7 +3184,7 @@ __global__ void FractionalKernelMaxPool3d(
     hiprandStatePhilox4_32_10_t state;
     hiprand_init(seed, thread_idx, offset, &state);
 #endif
-    phi::funcs::uniform_distribution<float> dist;
+    funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
     u = (&rand.x)[0];
   } else {

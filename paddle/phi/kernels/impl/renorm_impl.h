@@ -18,15 +18,10 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #endif
 
 namespace phi {
@@ -40,7 +35,7 @@ void RenormFunc(const phi::CPUContext& dev_ctx UNUSED,
                 int dim,
                 float max_norm,
                 int64_t dimension_each,
-                const phi::DDim& input_dims,
+                const DDim& input_dims,
                 int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1;
@@ -92,7 +87,7 @@ void RenormGradFunc(const phi::CPUContext& dev_ctx UNUSED,
                     int dim,
                     float max_norm,
                     int64_t dimension_each,
-                    const phi::DDim& input_dims,
+                    const DDim& input_dims,
                     int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1;
@@ -178,7 +173,9 @@ __global__ void RenormKernelFunc3(int64_t size,
                                   T* dim_value,
                                   float p,
                                   float max_norm) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (i < size) {
     T temp = pow(dim_value[i], (T)(1.0 / p));
     dim_value[i] = 1.0;
@@ -193,7 +190,9 @@ __global__ void RenormKernelFunc4(const T* x_data,
                                   T* dim_value,
                                   int64_t dimension_each,
                                   int64_t dim_divisor) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < size) {
     if (dim_value[dim_index] < 1.0)
@@ -208,7 +207,9 @@ __global__ void RenormElementwisePow(const T* x_data,
                                      T* pow_value,
                                      int64_t size,
                                      float p) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (i < size) {
     pow_value[i] = pow(abs(x_data[i]), (T)p);
   }
@@ -223,7 +224,9 @@ __global__ void RenormGradKernelFunc1(const T* x_data,
                                       int64_t dimension_each,
                                       float p,
                                       int64_t dim_divisor) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < size) {
     pow_value[i] = pow(abs(x_data[i]), (T)p);
@@ -243,7 +246,9 @@ __global__ void RenormGradKernelFunc2(const T* x_data,
                                       float p,
                                       float max_norm,
                                       int64_t dim_divisor) {
-  int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t i =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < dimension_each) {
     dim_power_sum[i] = 0;
@@ -273,7 +278,7 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
                 int dim,
                 float max_norm,
                 int64_t dimension_each,
-                const phi::DDim& input_dims,
+                const DDim& input_dims,
                 int64_t numel) {
   auto dim_size = input_dims.size();
   DenseTensor pow_value, dim_value;
@@ -286,17 +291,19 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
   T* dim_value_data = dev_ctx.template Alloc<T>(&dim_value);
   auto stream = dev_ctx.stream();
   int block = std::min(numel, static_cast<int64_t>(256));
-  int grid = (numel + block - 1) / block;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t grid = std::min((numel + block - 1) / block, max_grid_dimx);
   RenormElementwisePow<T>
       <<<grid, block, 0, stream>>>(x_data, pow_value_data, numel, p);
   int block2 = std::min(dimension_each, static_cast<int64_t>(256));
-  int grid2 = (dimension_each + block2 - 1) / block2;
+  int64_t grid2 =
+      std::min((dimension_each + block2 - 1) / block2, max_grid_dimx);
   std::vector<int> reduce_axis = {0, 2};
   phi::SumKernel<T>(
       dev_ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
 
-  RenormKernelFunc3<T>
-      <<<grid2, block2, 0, stream>>>(numel, dim_value_data, p, max_norm);
+  RenormKernelFunc3<T><<<grid2, block2, 0, stream>>>(
+      dimension_each, dim_value_data, p, max_norm);
   RenormKernelFunc4<T><<<grid, block, 0, stream>>>(
       x_data, out_data, numel, dim_value_data, dimension_each, dim_divisor);
 }
@@ -310,7 +317,7 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
                     int dim,
                     float max_norm,
                     int64_t dimension_each,
-                    const phi::DDim& input_dims,
+                    const DDim& input_dims,
                     int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1, pre_mul = 1;
@@ -322,14 +329,16 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
   dim_value.Resize(common::make_ddim({dimension_each}));
   dim_power_sum.Resize(common::make_ddim({dimension_each}));
   weight_derivative.Resize(common::make_ddim({dimension_each}));
-  auto stream = dev_ctx.stream();
-  int block = std::min(numel, static_cast<int64_t>(256));
-  int grid = (numel + block - 1) / block;
   T* pow_value_data = dev_ctx.template Alloc<T>(&pow_value);
   T* mul_value_data = dev_ctx.template Alloc<T>(&mul_value);
   T* dim_value_data = dev_ctx.template Alloc<T>(&dim_value);
   T* dim_power_sum_data = dev_ctx.template Alloc<T>(&dim_power_sum);
   T* weight_derivative_data = dev_ctx.template Alloc<T>(&weight_derivative);
+  auto stream = dev_ctx.stream();
+  int block = std::min(numel, static_cast<int64_t>(256));
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t grid_tmp = (numel + block - 1) / block;
+  int64_t grid = std::min(grid_tmp, max_grid_dimx);
   RenormGradKernelFunc1<T><<<grid, block, 0, stream>>>(x_data,
                                                        dout_data,
                                                        pow_value_data,

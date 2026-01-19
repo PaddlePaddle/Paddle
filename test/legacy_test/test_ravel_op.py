@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -46,7 +51,7 @@ class TestRavelOp(OpTest):
     def test_check_output(self):
         if str(self.dtype) in {"float16", "uint16"}:
             self.check_output_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 no_check_set=["XShape"],
                 check_prim=True,
                 check_pir=True,
@@ -63,7 +68,7 @@ class TestRavelOp(OpTest):
     def test_check_grad(self):
         if str(self.dtype) in {"float16", "uint16"}:
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 ["X"],
                 "Out",
                 check_prim=True,
@@ -103,7 +108,7 @@ class TestRavelFP32Op(TestRavelOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestRavelFP16Op(TestRavelOp):
@@ -112,8 +117,8 @@ class TestRavelFP16Op(TestRavelOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRavelBF16Op(TestRavelOp):
@@ -147,7 +152,7 @@ class TestRavelFP32Op_ZeroDim(TestRavelOp_ZeroDim):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestRavelFP16Op_ZeroDim(TestRavelOp_ZeroDim):

@@ -22,6 +22,10 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
+#include "unsupported/Eigen/CXX11/Tensor"
+#endif
+
 namespace paddle::framework::ir {
 
 using EigenVectorArrayMap = Eigen::Map<Eigen::Array<double, Eigen::Dynamic, 1>>;
@@ -388,7 +392,7 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
   return present;
 }
 
-std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataByName(
+std::pair<bool, DenseTensor> CPUQuantizePass::GetScaleDataByName(
     const std::string& name) const {
   if (var_quant_scales_->empty()) {
     auto& scales = Get<VarQuantScale>("quant_var_scales");
@@ -397,18 +401,17 @@ std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataByName(
   return var_quant_scales_->at(name);
 }
 
-std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataForNode(
+std::pair<bool, DenseTensor> CPUQuantizePass::GetScaleDataForNode(
     const Node* node) const {
   return GetScaleDataByName(node->Name());
 }
 
-phi::DenseTensor CPUQuantizePass::GetScaleTensorByName(
+DenseTensor CPUQuantizePass::GetScaleTensorByName(
     const std::string& name) const {
   return GetScaleDataByName(name).second;
 }
 
-phi::DenseTensor CPUQuantizePass::GetScaleTensorForNode(
-    const Node* node) const {
+DenseTensor CPUQuantizePass::GetScaleTensorForNode(const Node* node) const {
   return GetScaleDataForNode(node).second;
 }
 
@@ -1187,9 +1190,9 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       auto* w_scale_node = g->CreateVarNode(&scale_var_desc);
 
       auto* w_scale_tensor_dst =
-          scope->Var(w_scale_node->Name())->GetMutable<phi::DenseTensor>();
+          scope->Var(w_scale_node->Name())->GetMutable<DenseTensor>();
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
-      auto* dst_data = w_scale_tensor_dst->mutable_data<float>(phi::CPUPlace());
+      auto* dst_data = w_scale_tensor_dst->mutable_data<float>(CPUPlace());
       EigenVectorArrayMapFloat eigen_tensor_dst{dst_data,
                                                 w_scale_tensor_dst->numel()};
       eigen_tensor_dst =

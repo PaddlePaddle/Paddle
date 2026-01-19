@@ -228,7 +228,7 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
       .LinksTo({matmul_qk_out_var});
   scale->LinksFrom({matmul_qk_out_var}).LinksTo({scale_out_var});
   softmax_qk->LinksFrom({scale_out_var}).LinksTo({softmax_qk_out_var});
-  // V  path
+  // V path
   mul2->LinksFrom({input1, mul2_w_var}).LinksTo({mul2_out_var});
   elementwise2->LinksFrom({mul2_out_var, elementwise2_w})
       .LinksTo({elementwise2_out});
@@ -282,7 +282,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
                           Node* scale_out) {
     // get Device context
     auto* dev_ctx = static_cast<phi::CPUContext*>(
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
@@ -296,17 +296,15 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     multihead_op_desc.SetInput("Input_qk", {input0->Name()});
     multihead_op_desc.SetInput("Input_v", {input1->Name()});
 
-    auto* wq_tensor =
-        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wk_tensor =
-        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<DenseTensor>();
+    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<DenseTensor>();
     auto* bq_tensor =
-        scope->FindVar(elementwise0_w->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(elementwise0_w->Name())->GetMutable<DenseTensor>();
     auto* bk_tensor =
-        scope->FindVar(elementwise1_w->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(elementwise1_w->Name())->GetMutable<DenseTensor>();
 
-    int hidden_out = wq_tensor->dims()[1];
-    int head_size = hidden_out / head_number;
+    int64_t hidden_out = wq_tensor->dims()[1];
+    int64_t head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of multi-head matmul do not fit the requirement of "
                  "qk attention plugin, Stop fusing.";
@@ -331,7 +329,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     combined_w_qk_desc->SetShape(
         {wq_tensor->dims()[0], 2, wq_tensor->dims()[1]});
     combined_w_qk_desc->SetPersistable(true);
-    phi::DenseTensor tmp_combined_w_qk_tensor;
+    DenseTensor tmp_combined_w_qk_tensor;
     tmp_combined_w_qk_tensor.Resize(combined_w_qk_dims);
     float* tmp_combined_w_qk_data =
         dev_ctx->template HostAlloc<float>(&tmp_combined_w_qk_tensor);
@@ -363,7 +361,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     combined_bias_desc->SetShape({2, bq_tensor->dims()[0]});
     combined_bias_desc->SetPersistable(true);
 
-    phi::DenseTensor tmp_combined_bias_tensor;
+    DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     float* tmp_combined_bias_data =
         dev_ctx->template HostAlloc<float>(&tmp_combined_bias_tensor);

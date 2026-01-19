@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -29,6 +30,31 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context, typename GradFunc>
+void MixedPrecisionAddGradImpl(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const DenseTensor& out_grad,
+                               int axis,
+                               DenseTensor* x_grad,
+                               DenseTensor* y_grad,
+                               GradFunc grad_func) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, y_grad);
+  auto* out = &out_grad;
+  if (x_grad != nullptr && y_grad == nullptr &&
+      x_grad->dims() == out_grad.dims()) {
+    VLOG(4) << "Mixed precision: only x_grad needed, no reduce";
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  } else if (x_grad == nullptr && y_grad != nullptr &&
+             y_grad->dims() == out_grad.dims()) {
+    VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
+    phi::CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
+  } else {
+    grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
+  }
+}
+
+template <typename T, typename Context, typename GradFunc>
 void AddGradImpl(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
@@ -37,19 +63,20 @@ void AddGradImpl(const Context& dev_ctx,
                  DenseTensor* x_grad,
                  DenseTensor* y_grad,
                  GradFunc grad_func) {
-  phi::funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  funcs::ElementwiseGradPreProcess(out_grad, y_grad);
   auto* out = &out_grad;
   // Special case when y_grad is not needed and x_grad doesn't reduce
   if (x_grad != nullptr && y_grad == nullptr &&
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
                "reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
                "reduce";
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
@@ -85,7 +112,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
                    "to broadcast\n";
-        phi::Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
+        Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
       }
     } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
       if (ddx_tensor->dims() != out_shape) {
@@ -100,7 +127,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
                    "to broadcast\n";
-        phi::Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
+        Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
       }
     } else {
       auto ddx_dims = ddx_tensor->dims();
@@ -245,11 +272,11 @@ struct DivDoubleDDOut_Only_DDY {
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
-                                  const phi::DenseTensor& ddx,
-                                  const phi::DenseTensor& ddy,
-                                  const phi::DenseTensor& y,
-                                  const phi::DenseTensor& out,
-                                  phi::DenseTensor* ddout,
+                                  const DenseTensor& ddx,
+                                  const DenseTensor& ddy,
+                                  const DenseTensor& y,
+                                  const DenseTensor& out,
+                                  DenseTensor* ddout,
                                   DDout_OP dout_op) {
   auto out_numel = out.numel();
   auto* ddx_data = ddx.data<T>();
@@ -257,18 +284,18 @@ void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* y_data = y.data<T>();
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
-  for (int i = 0; i < out_numel; i++) {
+  for (int64_t i = 0; i < out_numel; i++) {
     ddout_data[i] = dout_op(ddx_data[i], ddy_data[i], y_data[i], out_data[i]);
   }
 }
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
-                               const phi::DenseTensor& ddx,
-                               const phi::DenseTensor& ddy,
-                               const phi::DenseTensor& y,
-                               const phi::DenseTensor& out,
-                               phi::DenseTensor* ddout,
+                               const DenseTensor& ddx,
+                               const DenseTensor& ddy,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               DenseTensor* ddout,
                                const int* x_dims_array,
                                const int* y_dims_array,
                                const int* out_dims_array,
@@ -281,14 +308,14 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
   std::vector<int> index_array(max_dim, 0);
-  for (int i = 0; i < out_numel; i++) {
-    int x_index = phi::funcs::GetElementwiseIndex(
-        x_dims_array, max_dim, index_array.data());
-    int y_index = phi::funcs::GetElementwiseIndex(
-        y_dims_array, max_dim, index_array.data());
+  for (int64_t i = 0; i < out_numel; i++) {
+    int x_index =
+        funcs::GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
+    int y_index =
+        funcs::GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
     ddout_data[i] = dout_op(
         ddx_data[x_index], ddy_data[y_index], y_data[y_index], out_data[i]);
-    phi::funcs::UpdateElementwiseIndexArray(
+    funcs::UpdateElementwiseIndexArray(
         out_dims_array, max_dim, index_array.data());
   }
 }
@@ -379,9 +406,9 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
                                                       const T* y_data,
                                                       const T* out_data,
                                                       T* ddout_data,
-                                                      int numel,
+                                                      int64_t numel,
                                                       DDout_OP dout_op) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (tid >= numel) return;
   ddout_data[tid] =
       dout_op(ddx_data[tid], ddy_data[tid], y_data[tid], out_data[tid]);
@@ -389,11 +416,11 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
-                                  const phi::DenseTensor& ddx,
-                                  const phi::DenseTensor& ddy,
-                                  const phi::DenseTensor& y,
-                                  const phi::DenseTensor& out,
-                                  phi::DenseTensor* ddout,
+                                  const DenseTensor& ddx,
+                                  const DenseTensor& ddy,
+                                  const DenseTensor& y,
+                                  const DenseTensor& out,
+                                  DenseTensor* ddout,
                                   DDout_OP dout_op) {
   auto out_numel = out.numel();
   auto* ddx_data = ddx.data<T>();
@@ -416,16 +443,16 @@ __global__ void ComputeDDoutWithBroadcastGPUKernel(
     const T* y_data,
     const T* out_data,
     T* ddout_data,
-    int numel,
+    int64_t numel,
     const CudaIntArray x_dims_array,
     const CudaIntArray y_dims_array,
     const CudaIntArray out_dims_array,
     const int max_dim,
     DDout_OP dout_op) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (tid >= numel) return;
-  int x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
-      out_index = tid, dim_index;
+  int64_t x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
+          out_index = tid, dim_index;
   for (int64_t i = max_dim - 1; i >= 0; i--) {
     if (out_index == 0) break;
     dim_index = out_index % out_dims_array[i];
@@ -445,11 +472,11 @@ __global__ void ComputeDDoutWithBroadcastGPUKernel(
 
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
-                               const phi::DenseTensor& ddx,
-                               const phi::DenseTensor& ddy,
-                               const phi::DenseTensor& y,
-                               const phi::DenseTensor& out,
-                               phi::DenseTensor* ddout,
+                               const DenseTensor& ddx,
+                               const DenseTensor& ddy,
+                               const DenseTensor& y,
+                               const DenseTensor& out,
+                               DenseTensor* ddout,
                                const int* x_dims_array,
                                const int* y_dims_array,
                                const int* out_dims_array,
@@ -488,17 +515,14 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
 #endif
 
-template <typename DeviceContext,
-          typename T,
-          typename DDout_OP,
-          typename Tout = T>
-void DivDoubleDDoutCompute(const DeviceContext& dev_ctx,
-                           const phi::DenseTensor& ddx,
-                           const phi::DenseTensor& ddy,
-                           const phi::DenseTensor& y,
-                           const phi::DenseTensor& out,
+template <typename Context, typename T, typename DDout_OP, typename Tout = T>
+void DivDoubleDDoutCompute(const Context& dev_ctx,
+                           const DenseTensor& ddx,
+                           const DenseTensor& ddy,
+                           const DenseTensor& y,
+                           const DenseTensor& out,
                            int axis,
-                           phi::DenseTensor* ddout,
+                           DenseTensor* ddout,
                            DDout_OP dout_op) {
   auto x_dims = ddx.dims();
   auto y_dims = ddy.dims();
@@ -511,13 +535,13 @@ void DivDoubleDDoutCompute(const DeviceContext& dev_ctx,
     std::vector<int> x_dims_array(max_dim, 0);
     std::vector<int> y_dims_array(max_dim, 0);
     std::vector<int> out_dims_array(max_dim, 0);
-    phi::funcs::GetBroadcastDimsArrays(x_dims,
-                                       y_dims,
-                                       x_dims_array.data(),
-                                       y_dims_array.data(),
-                                       out_dims_array.data(),
-                                       max_dim,
-                                       axis);
+    funcs::GetBroadcastDimsArrays(x_dims,
+                                  y_dims,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
     ComputeDDoutWithBroadcast<T, DDout_OP, T>(dev_ctx,
                                               ddx,
                                               ddy,
@@ -587,10 +611,10 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
           dev_ctx, *dx_tensor, y, &tmp, axis);
       if (ddx_tensor && !ddy_tensor) {
         // dy = -dX * ddX / Y
-        phi::funcs::ElemwiseGradCompute<Context,
-                                        T,
-                                        DivGradDX<T>,
-                                        DivDoubleDY_Only_DDX<T>>(
+        funcs::ElemwiseGradCompute<Context,
+                                   T,
+                                   DivGradDX<T>,
+                                   DivDoubleDY_Only_DDX<T>>(
             dev_ctx,
             *ddx_tensor,  // ddx
             y,
@@ -603,10 +627,10 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
             DivDoubleDY_Only_DDX<T>());
       } else if (!ddx_tensor && ddy_tensor) {
         // dY = Out * dX * ddY / Y
-        phi::funcs::ElemwiseGradCompute<Context,
-                                        T,
-                                        DivGradDX<T>,
-                                        DivDoubleDY_Only_DDY<T>>(
+        funcs::ElemwiseGradCompute<Context,
+                                   T,
+                                   DivGradDX<T>,
+                                   DivDoubleDY_Only_DDY<T>>(
             dev_ctx,
             *dx_tensor,
             *ddy_tensor,  // ddy
@@ -625,18 +649,17 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
         // output tensor will not be activated, DivGradDx function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
-        phi::funcs::
-            ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
-                dev_ctx,
-                *ddx_tensor,  // ddx
-                *ddy_tensor,  // ddy
-                out,          // out
-                tmp,          // dX / Y
-                axis,
-                nullptr,
-                dy,
-                DivGradDX<T>(),
-                DivDoubleDY<T>());
+        funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
+            dev_ctx,
+            *ddx_tensor,  // ddx
+            *ddy_tensor,  // ddy
+            out,          // out
+            tmp,          // dX / Y
+            axis,
+            nullptr,
+            dy,
+            DivGradDX<T>(),
+            DivDoubleDY<T>());
       }
     }
   }
@@ -669,7 +692,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseDivideFunctor<T>>(
           dev_ctx, tmp, y, ddout, axis);
       auto& place = *dev_ctx.eigen_device();
-      auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
+      auto ddout_result = EigenVector<T>::Flatten(*ddout);
       ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
 #else
       DivDoubleDDoutCompute<Context, T, DivDoubleDDOut_Only_DDY<T>, T>(
@@ -725,7 +748,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, *dx_tensor, *ddy_tensor, dout, axis);
       auto& place = *dev_ctx.eigen_device();
-      auto dout_result = phi::EigenVector<T>::Flatten(*dout);
+      auto dout_result = EigenVector<T>::Flatten(*dout);
       dout_result.device(place) = static_cast<T>(-1) * dout_result;
     }
   }
@@ -748,19 +771,13 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
       if (x_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(x_grad->dims())),
-                              0,
-                              x_grad);
+        Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
       }
     }
     if (y_grad) {
       dev_ctx.template Alloc<T>(y_grad);
       if (y_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(y_grad->dims())),
-                              0,
-                              y_grad);
+        Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
       }
     }
     return;
@@ -814,19 +831,13 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
       if (x_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(x_grad->dims())),
-                              0,
-                              x_grad);
+        Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
       }
     }
     if (y_grad) {
       dev_ctx.template Alloc<T>(y_grad);
       if (y_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(y_grad->dims())),
-                              0,
-                              y_grad);
+        Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
       }
     }
     return;
@@ -975,7 +986,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
       without_ddx = (ddout->numel() > ddx.get_ptr()->numel());
     }
     if (without_ddx) {
-      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+      funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
           dev_ctx,
           ddx_safe,
           ddy_safe,
@@ -1003,8 +1014,8 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddy_safe, x, &ddout_tmp, axis);
 
-      auto ddout_t = phi::EigenVector<T>::Flatten(*ddout);
-      auto ddout_tmp_t = phi::EigenVector<T>::Flatten(ddout_tmp);
+      auto ddout_t = EigenVector<T>::Flatten(*ddout);
+      auto ddout_tmp_t = EigenVector<T>::Flatten(ddout_tmp);
       ddout_t.device(place) = ddout_t + ddout_tmp_t;
     } else {
       // use dx to save memory, other than alloc tmp tensor
@@ -1021,7 +1032,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
         // output tensor will not be activated, DivGradDx function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
-        phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
             dev_ctx,
             ddx_safe,
             ddy_safe,
@@ -1039,8 +1050,8 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, ddx_safe, y, ddout, axis);
 
-        auto ddout_t = phi::EigenVector<T>::Flatten(*ddout);
-        auto ddout_tmp_t = phi::EigenVector<T>::Flatten(*ddout_tmp);
+        auto ddout_t = EigenVector<T>::Flatten(*ddout);
+        auto ddout_tmp_t = EigenVector<T>::Flatten(*ddout_tmp);
         ddout_t.device(place) = ddout_t + ddout_tmp_t;
 
         funcs::DefaultElementwiseOperator<Context,
@@ -1060,7 +1071,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, x, ddy_safe, &tmp_a, axis);
 
-        auto ddout_t1 = phi::EigenVector<T>::Flatten(tmp_a);
+        auto ddout_t1 = EigenVector<T>::Flatten(tmp_a);
 
         funcs::DefaultElementwiseOperator<Context,
                                           T,
@@ -1068,7 +1079,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, ddx_safe, y, ddout, axis);
 
-        auto ddout_t2 = phi::EigenVector<T>::Flatten(*ddout);
+        auto ddout_t2 = EigenVector<T>::Flatten(*ddout);
         ddout_t2.device(place) = ddout_t2 + ddout_t1;
 
         // NOTE: in the following ElemwiseGradCompute, for the
@@ -1076,7 +1087,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
         // output tensor will not be activated, DivGradDx function will not
         // be called and can be ignored, the first branch has little effect
         // on running speed.
-        phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
             dev_ctx,
             ddx_safe,
             ddy_safe,
@@ -1099,7 +1110,7 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, x, ddy_safe, &tmp_a, axis);
 
-        auto ddout_t1 = phi::EigenVector<T>::Flatten(tmp_a);
+        auto ddout_t1 = EigenVector<T>::Flatten(tmp_a);
 
         funcs::DefaultElementwiseOperator<Context,
                                           T,
@@ -1107,13 +1118,13 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, ddx_safe, y, ddout, axis);
 
-        auto ddout_t2 = phi::EigenVector<T>::Flatten(*ddout);
+        auto ddout_t2 = EigenVector<T>::Flatten(*ddout);
         ddout_t2.device(place) = ddout_t2 + ddout_t1;
       }
     }
   } else {
     VLOG(3) << "Calculating here with dx: " << dx << ", dy: " << dy;
-    phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+    funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
         dev_ctx,
         ddx_safe,
         ddy_safe,
@@ -1218,8 +1229,8 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddy_safe, d_dx.get(), &d_dout_tmp, axis);
 
-      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
-      auto d_dout_tmp_t = phi::EigenVector<T>::Flatten(d_dout_tmp);
+      auto d_dout_t = EigenVector<T>::Flatten(*d_dout);
+      auto d_dout_tmp_t = EigenVector<T>::Flatten(d_dout_tmp);
       d_dout_t.device(place) = d_dout_t + d_dout_tmp_t;
     } else if (d_dy && !d_dx) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1227,7 +1238,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::MultiplyFunctor<T>,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, d_dy.get(), ddx_safe, d_dout, axis);
-      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
+      auto d_dout_t = EigenVector<T>::Flatten(*d_dout);
       d_dout_t.device(place) = d_dout_t;
     } else if (!d_dy && d_dx) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1236,7 +1247,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, ddy_safe, d_dx.get(), d_dout, axis);
 
-      auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
+      auto d_dout_t = EigenVector<T>::Flatten(*d_dout);
       d_dout_t.device(place) = d_dout_t;
     } else {
       FullLikeKernel<T, Context>(
@@ -1263,8 +1274,8 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, y, *(d_ddout.get_ptr()), &d_ddx_tmp, axis);
 
-      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
-      auto d_ddx_tmp_t = phi::EigenVector<T>::Flatten(d_ddx_tmp);
+      auto d_ddx_t = EigenVector<T>::Flatten(*d_ddx);
+      auto d_ddx_tmp_t = EigenVector<T>::Flatten(d_ddx_tmp);
       d_ddx_t.device(place) = d_ddx_t + d_ddx_tmp_t;
     } else if (d_dy && !d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1273,7 +1284,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, d_dy.get(), d_ddx, axis);
 
-      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
+      auto d_ddx_t = EigenVector<T>::Flatten(*d_ddx);
       d_ddx_t.device(place) = d_ddx_t;
     } else if (!d_dy && d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1282,7 +1293,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, y, *(d_ddout.get_ptr()), d_ddx, axis);
 
-      auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
+      auto d_ddx_t = EigenVector<T>::Flatten(*d_ddx);
       d_ddx_t.device(place) = d_ddx_t;
     } else {
       FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), d_ddx);
@@ -1309,8 +1320,8 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, x, *(d_ddout.get_ptr()), &d_ddy_tmp, axis);
 
-      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
-      auto d_ddy_tmp_t = phi::EigenVector<T>::Flatten(d_ddy_tmp);
+      auto d_ddy_t = EigenVector<T>::Flatten(*d_ddy);
+      auto d_ddy_tmp_t = EigenVector<T>::Flatten(d_ddy_tmp);
       d_ddy_t.device(place) = d_ddy_t + d_ddy_tmp_t;
     } else if (d_dx && !d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1319,7 +1330,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, dout, d_dx.get(), d_ddy, axis);
 
-      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
+      auto d_ddy_t = EigenVector<T>::Flatten(*d_ddy);
       d_ddy_t.device(place) = d_ddy_t;
     } else if (!d_dx && d_ddout) {
       funcs::DefaultElementwiseOperator<Context,
@@ -1328,7 +1339,7 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                                         funcs::InverseMultiplyFunctor<T>>(
           dev_ctx, x, *(d_ddout.get_ptr()), d_ddy, axis);
 
-      auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
+      auto d_ddy_t = EigenVector<T>::Flatten(*d_ddy);
       d_ddy_t.device(place) = d_ddy_t;
     } else {
       FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), d_ddy);
@@ -1401,7 +1412,7 @@ void HeavisideGradKernel(const Context& dev_ctx,
                          DenseTensor* dx,
                          DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
-  phi::funcs::
+  funcs::
       ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
           dev_ctx,
           x,
@@ -1527,22 +1538,16 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               DenseTensor* dy) {
   if (dout.numel() == 0) {
     if (dx) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(x.dims())),
-                            static_cast<T>(0),
-                            dx);
+      Full<T, Context>(dev_ctx, x.dims(), static_cast<T>(0), dx);
     }
     if (dy) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(y.dims())),
-                            static_cast<T>(0),
-                            dy);
+      Full<T, Context>(dev_ctx, y.dims(), static_cast<T>(0), dy);
     }
     return;
   }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
-  phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
+  funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }
 
@@ -1564,7 +1569,12 @@ struct RemainderGradDx {
 template <typename T, typename Enable = void>
 struct RemainderGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return -dout * (std::floor(static_cast<double>(x / y)));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    auto x_ = static_cast<MPType>(x);
+    auto y_ = static_cast<MPType>(y);
+    auto dout_ = static_cast<MPType>(dout);
+    return static_cast<T>(
+        -dout_ * static_cast<MPType>(std::floor(static_cast<double>(x_ / y_))));
   }
 };
 template <typename T>
@@ -1575,7 +1585,8 @@ struct RemainderGradDy<
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
-    return static_cast<T>(-static_cast<MPType>(dout) * (std::floor((x_ / y_))));
+    auto dout_ = static_cast<MPType>(dout);
+    return static_cast<T>(-dout_ * static_cast<MPType>(std::floor((x_ / y_))));
   }
 };
 template <typename T>
@@ -1591,9 +1602,9 @@ struct RemainderGradDy<
       const auto quot = x / y;
       const auto rem = x % y;
       auto ret = rem ? quot - 1 : quot;
-      return -dout * ret;
+      return static_cast<T>(-dout * static_cast<T>(ret));
     }
-    return -dout * (x / y);
+    return static_cast<T>(-dout * static_cast<T>(x / y));
   }
 };
 /*

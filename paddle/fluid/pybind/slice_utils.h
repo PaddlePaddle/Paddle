@@ -229,8 +229,8 @@ template <typename T>
 inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!(x->place().GetType() == phi::AllocationType::CPU)) {
-    phi::DenseTensor cpu_x;
-    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
+    DenseTensor cpu_x;
+    framework::TensorCopy(*x, CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     const phi::DeviceContext* dev_ctx = pool.Get(x->place());
@@ -245,11 +245,7 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {
-#if PY_VERSION_HEX < 0x03000000
-  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
-#else
   return PyLong_Check(obj) && !PyBool_Check(obj);
-#endif
 }
 
 static bool IsNumpyType(PyObject* obj) {
@@ -465,7 +461,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
 
       if (IsNumpyArray(slice_item)) {
         paddle::Tensor index_tensor_tmp(
-            std::make_shared<phi::DenseTensor>(),
+            std::make_shared<DenseTensor>(),
             egr::Controller::Instance().GenerateUniqueName());
 
         py::object index_obj_tmp =
@@ -740,7 +736,7 @@ static std::vector<paddle::Tensor> PrepareIndices(
     const paddle::Tensor& bool_2_idx,
     const paddle::Tensor& bool_index) {
   std::vector<paddle::Tensor> indices;
-  for (int j = 0; j < bool_2_idx.shape()[1]; ++j) {
+  for (int64_t j = 0; j < bool_2_idx.shape()[1]; ++j) {
     paddle::Tensor sliced_tensor =
         slice_ad_func(bool_2_idx, {1}, {j}, {j + 1}, {1}, {});
     paddle::Tensor sliced_tensor_c = sliced_tensor.contiguous();
@@ -802,7 +798,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
-  if (FLAGS_use_stride_kernel) {
+  if (FLAGS_use_stride_kernel && self_tensor.is_contiguous()) {
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -925,7 +921,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
     value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
   } else if (py::isinstance<py::array>(value_obj)) {
     paddle::Tensor value_tensor_tmp(
-        std::make_shared<phi::DenseTensor>(),
+        std::make_shared<DenseTensor>(),
         egr::Controller::Instance().GenerateUniqueName());
     py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     py::object value = value_obj_tmp;
@@ -1302,7 +1298,8 @@ static void ApplyGetitem(const int index_size,
       }
     }
 
-    if (FLAGS_use_stride_kernel && !has_empty_index) {
+    if (FLAGS_use_stride_kernel && !has_empty_index &&
+        self_tensor->is_contiguous()) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *self_tensor, *transed_tensor, *transed_index)) {

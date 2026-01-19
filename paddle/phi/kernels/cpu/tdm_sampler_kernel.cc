@@ -32,18 +32,19 @@ template <typename T,
           typename TreeT = int,
           typename OutT = int>
 void TDMSamplerInner(const Context &dev_ctx,
-                     const phi::DenseTensor &input_tensor,
-                     const phi::DenseTensor &travel_dense_tensor,
-                     const phi::DenseTensor &layer_dense_tensor,
+                     const DenseTensor &input_tensor,
+                     const DenseTensor &travel_dense_tensor,
+                     const DenseTensor &layer_dense_tensor,
                      bool output_positive,
                      std::vector<int> neg_samples_num_list,
                      std::vector<int> layer_offset,
                      int seed,
-                     phi::DenseTensor *out,
-                     phi::DenseTensor *label,
-                     phi::DenseTensor *mask) {
+                     DenseTensor *out,
+                     DenseTensor *label,
+                     DenseTensor *mask) {
   // get dimension
-  int input_ids_num = input_tensor.numel();
+  int64_t input_ids_num = input_tensor.numel();
+
   VLOG(3) << "TDM: input ids nums: " << input_ids_num;
   auto layer_nums = neg_samples_num_list.size();
   VLOG(3) << "TDM: tree layer nums: " << layer_nums;
@@ -55,7 +56,7 @@ void TDMSamplerInner(const Context &dev_ctx,
   }
   VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
-  auto travel_dim = common::vectorize<int>(travel_dense_tensor.dims());
+  auto travel_dim = vectorize<int>(travel_dense_tensor.dims());
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data
@@ -81,14 +82,14 @@ void TDMSamplerInner(const Context &dev_ctx,
   }
   VLOG(3) << "TDM: get sampler ";
 
-  for (int i = 0; i < input_ids_num; ++i) {
+  for (int64_t i = 0; i < input_ids_num; ++i) {
     // find leaf node travel path
     T input_id = input_data[i];
     PADDLE_ENFORCE_LT(
         -1,
         input_id,
         common::errors::InvalidArgument(
-            "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+            "Variable value (input) of OP(tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             travel_dim[0],
@@ -97,14 +98,17 @@ void TDMSamplerInner(const Context &dev_ctx,
         input_id,
         travel_dim[0],
         common::errors::InvalidArgument(
-            "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+            "Variable value (input) of OP(tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             travel_dim[0],
             input_id));
 
     VLOG(3) << "TDM: input id: " << input_id;
-    int start_offset = static_cast<int>(input_id * layer_nums);
+    // TODO(large-tensor): array index not support int64
+    int64_t start_offset_val = input_id * layer_nums;
+    PADDLE_ENFORCE_LE_INT_MAX(start_offset_val, "input_id * layer_nums");
+    int start_offset = static_cast<int>(start_offset_val);
     VLOG(3) << "TDM: Start offset(input_id * layer_nums): " << start_offset;
     // nce sample, layer by layer
     int offset = 0;
@@ -120,7 +124,7 @@ void TDMSamplerInner(const Context &dev_ctx,
           sample_num,
           node_nums - 1,
           common::errors::InvalidArgument(
-              "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "Neg sample nums id of OP(tdm_sampler) at layer %ld "
               "expected <= %ld - 1 (positive included), but got %ld. Please "
               "check neg_samples_num_list.",
               layer_idx,
@@ -157,7 +161,7 @@ void TDMSamplerInner(const Context &dev_ctx,
           positive_node_id,
           node_id_max,
           common::errors::InvalidArgument(
-              "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "Positive node id of OP(tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
               layer_idx,
@@ -168,7 +172,7 @@ void TDMSamplerInner(const Context &dev_ctx,
           node_id_min,
           positive_node_id,
           common::errors::InvalidArgument(
-              "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "Positive node id of OP(tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
               layer_idx,
@@ -188,11 +192,11 @@ void TDMSamplerInner(const Context &dev_ctx,
                 << mask_vec[i * sample_res_length + offset];
         offset += 1;
       }
-      std::vector<int> sample_res_vec{};
+      std::vector<int64_t> sample_res_vec{};
       // Sampling at layer, until samples enough
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
-        int sample_res = 0;
+        int64_t sample_res = 0;
         do {
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==
@@ -218,7 +222,7 @@ void TDMSamplerInner(const Context &dev_ctx,
             layer_data[layer_offset[layer_idx] + sample_res],
             node_id_max,
             common::errors::InvalidArgument(
-                "Negative node id of OP(fluid.layers.tdm_sampler) at layer "
+                "Negative node id of OP(tdm_sampler) at layer "
                 "%ld, "
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",

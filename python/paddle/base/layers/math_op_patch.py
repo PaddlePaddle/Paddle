@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import inspect
 import warnings
+from typing import TYPE_CHECKING
 
 from .. import core
 from ..dygraph.base import in_to_static_mode
@@ -23,6 +26,9 @@ from ..framework import (
     default_main_program,
     static_only,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -598,6 +604,20 @@ def monkey_patch_variable():
             )
         self.stop_gradient = not value
 
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            requires_grad (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(requires_grad, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(requires_grad)}"
+            )
+        self.stop_gradient = not requires_grad
+        return self
+
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
 
@@ -849,6 +869,7 @@ def monkey_patch_variable():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

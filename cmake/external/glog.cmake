@@ -38,6 +38,19 @@ endif()
 
 include_directories(${GLOG_INCLUDE_DIR})
 
+# For CMake >= 4.0.0, set policy compatibility for glog's CMake.
+set(GLOG_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "glog: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(GLOG_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+# patch
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/glog/indent.patch log_indent)
+set(GLOG_PATCH_COMMAND git checkout -- . && git apply --check ${log_indent} &&
+                       git apply ${log_indent})
 ExternalProject_Add(
   extern_glog
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -45,6 +58,8 @@ ExternalProject_Add(
   DEPENDS gflags
   PREFIX ${GLOG_PREFIX_DIR}
   UPDATE_COMMAND ""
+  PATCH_COMMAND
+  COMMAND ${GLOG_PATCH_COMMAND}
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}
@@ -53,6 +68,7 @@ ExternalProject_Add(
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
              -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
              -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+             ${GLOG_POLICY_ARGS}
              -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
              -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON

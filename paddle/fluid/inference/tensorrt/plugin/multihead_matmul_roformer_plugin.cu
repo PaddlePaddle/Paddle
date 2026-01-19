@@ -31,9 +31,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
-#if IS_TRT_VERSION_GE(6000)
-
 int MultiheadMatmulRoformerPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs MultiheadMatmulRoformerPlugin::getOutputDimensions(
@@ -87,14 +84,9 @@ bool MultiheadMatmulRoformerPlugin::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -198,10 +190,10 @@ int MultiheadMatmulRoformerPlugin::enqueue(
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. RoformerQkvToContext-->fp32";
     auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<float>(phi::GPUPlace(device_id));
+        multihead_temp_tensor.mutable_data<float>(GPUPlace(device_id));
     auto *temp_roformer_data =
         temp_roformer_tensor.mutable_data<float>(  // NOLINT
-            phi::GPUPlace(device_id));
+            GPUPlace(device_id));
     auto *tmp_roformer_ptr = reinterpret_cast<float *>(temp_roformer_data);
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
@@ -213,7 +205,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias =
-          temp_qk_bias_tensor.mutable_data<float>(phi::GPUPlace(device_id));
+          temp_qk_bias_tensor.mutable_data<float>(GPUPlace(device_id));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -250,7 +242,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                                                  head_size_);  // k
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(GPUPlace(device_id)));
 
     const phi::GPUContext &dev_ctx = *device_ctx;
     phi::funcs::MultiheadGPUComputeFunctor<float> multihead_compute_func;
@@ -273,15 +265,14 @@ int MultiheadMatmulRoformerPlugin::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            phi::GPUPlace(device_id));
+            GPUPlace(device_id));
 
     auto *temp_roformer_data =
         temp_roformer_tensor.mutable_data<int16_t>(  // NOLINT
-            phi::GPUPlace(device_id));
+            GPUPlace(device_id));
     half *tmp_roformer_ptr = reinterpret_cast<half *>(temp_roformer_data);
     half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
     half *tptr = qkptr + scratch_size;
@@ -293,7 +284,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
       auto *temp_qk_bias = reinterpret_cast<half *>(
-          temp_qk_bias_tensor.mutable_data<int16_t>(phi::GPUPlace(device_id)));
+          temp_qk_bias_tensor.mutable_data<int16_t>(GPUPlace(device_id)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -313,7 +304,7 @@ int MultiheadMatmulRoformerPlugin::enqueue(
                cudaMemcpyDeviceToDevice);
 
     auto *device_ctx = static_cast<phi::GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
+        phi::DeviceContextPool::Instance().Get(GPUPlace(device_id)));
 
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
@@ -356,21 +347,12 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     half *output = static_cast<half *>(outputs[0]);
     transpose<half><<<grid, block, 0, stream>>>(
         tptr, output, batch, seq_len, head_number_, head_size_);
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "The Ernie(Bert) TensorRT Plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recompile it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
   } else {
     PADDLE_THROW(common::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
-#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

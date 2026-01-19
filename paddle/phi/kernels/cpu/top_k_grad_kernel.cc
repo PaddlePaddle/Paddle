@@ -72,7 +72,7 @@ void TopkGradKernel(const Context& dev_ctx,
 
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 
@@ -105,8 +105,8 @@ void TopkGradKernel(const Context& dev_ctx,
       trans.emplace_back(i);
     }
     trans.emplace_back(axis);
-    phi::DDim trans_dims(out_dims);
-    phi::DDim trans_in_dims(in_dims);
+    DDim trans_dims(out_dims);
+    DDim trans_in_dims(in_dims);
     for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = out_dims[trans[i]];
       trans_in_dims[i] = in_dims[trans[i]];

@@ -17,6 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
+
+# NOTE(Pan Zhaowu): using legacy linear to fulfill the promise of add_grad op.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 from paddle import base, nn
 from paddle.base.framework import in_pir_mode
 

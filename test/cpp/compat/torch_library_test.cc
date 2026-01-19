@@ -626,3 +626,60 @@ TEST(test_torch_library, TestLibraryPrintInfo) {
   torch::Library lib("example_library_test_print_info");
   lib.print_info();
 }
+
+TEST(test_torch_library, TestIValueNone) {
+  torch::IValue ival = torch::IValue();
+  ASSERT_TRUE(ival.is_none());
+  ASSERT_EQ(ival.to_repr(), "None");
+  ASSERT_EQ(ival.type_string(), "None");
+}
+
+TEST(test_torch_library, TestIValueBool) {
+  torch::IValue ival = true;
+  ASSERT_TRUE(ival.is_bool());
+  ASSERT_EQ(ival.to_repr(), "true");
+  ASSERT_EQ(ival.type_string(), "Bool");
+}
+
+TEST(test_torch_library, TestIValueInt) {
+  torch::IValue ival = 42;
+  ASSERT_TRUE(ival.is_int());
+  ASSERT_EQ(ival.to_repr(), "42");
+  ASSERT_EQ(ival.type_string(), "Int");
+}
+
+TEST(test_torch_library, TestIValueDouble) {
+  torch::IValue ival = 3.14;
+  ASSERT_TRUE(ival.is_double());
+  ASSERT_TRUE(ival.to_repr().find("3.14") != std::string::npos);
+  ASSERT_EQ(ival.type_string(), "Double");
+}
+
+TEST(test_torch_library, TestIValueString) {
+  torch::IValue ival = std::string("hello");
+  ASSERT_TRUE(ival.is_string());
+  ASSERT_EQ(ival.to_repr(), "\"hello\"");
+  ASSERT_EQ(ival.type_string(), "String");
+}
+
+TEST(test_torch_library, TestIValueTensor) {
+  at::Tensor tensor = at::ones({2, 2}, at::kFloat);
+  torch::IValue ival = tensor;
+  ASSERT_TRUE(ival.is_tensor());
+  ASSERT_EQ(ival.type_string(), "Tensor");
+}
+
+TEST(test_torch_library, TestIValueList) {
+  std::vector<torch::IValue> vec = {1, 2, 3};
+  torch::IValue ival = torch::IValue(vec);
+  ASSERT_TRUE(ival.is_list());
+  ASSERT_EQ(ival.to_repr(), "[1, 2, 3]");
+  ASSERT_EQ(ival.type_string(), "List");
+}
+
+TEST(test_torch_library, TestIValueTuple) {
+  torch::IValue ival = torch::IValue(std::make_tuple(1, true, "three"));
+  ASSERT_TRUE(ival.is_tuple());
+  ASSERT_EQ(ival.to_repr(), "(1, true, \"three\")");
+  ASSERT_EQ(ival.type_string(), "Tuple");
+}

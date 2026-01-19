@@ -27,15 +27,14 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis2,
                     DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   T* out_data = dev_ctx.template Alloc<T>(out);
-  std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> yshape = common::vectorize<int64_t>(out->dims());
+  std::vector<int64_t> xshape = vectorize<int64_t>(x.dims());
+  std::vector<int64_t> yshape = vectorize<int64_t>(out->dims());
 
   int r = xpu::diagonal(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x.data<T>()),

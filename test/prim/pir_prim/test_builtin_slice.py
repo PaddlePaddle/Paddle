@@ -51,9 +51,9 @@ class TestBuildOp(unittest.TestCase):
             x3 = paddle.static.data('x3', self.c_shape, self.dtype)
             x4 = paddle.static.data('x4', self.c_shape, self.dtype)
             y = meshgrid_net(x1, x2, x3, x4)
-            res1 = paddle.tanh(y[0])
-            res2 = paddle.sin(y[1])
-            res3 = paddle.cos(y[2])
+            paddle.tanh(y[0])
+            paddle.sin(y[1])
+            paddle.cos(y[2])
         return main_program
 
     def test_build_op(self):

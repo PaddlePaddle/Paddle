@@ -35,21 +35,21 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
                           SparseCooTensor* out) {
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.values();
-  DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x_values);
+  DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x_indices);
+  DenseTensor out_values = EmptyLike<T>(dev_ctx, x_values);
 
   const int64_t nnz = x.nnz();
   const int64_t sparse_dim = x.indices().dims()[0];
   std::vector<IntT> sparse_offsets(sparse_dim);
 
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
   DenseTensorMeta sparse_offset_meta(
       phi::CppTypeToDataType<IntT>::Type(), {sparse_dim}, DataLayout::NCHW);
   DenseTensor d_sparse_offsets =
-      phi::Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
-  DenseTensor indices = phi::Empty(
+      Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
+  DenseTensor indices = Empty(
       dev_ctx, DenseTensorMeta(x_indices.dtype(), {nnz}, x_indices.layout()));
   IntT* indices_ptr = indices.data<IntT>();
 
@@ -61,10 +61,10 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 
   // 1. flatten indices
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz, 1);
-  phi::funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
-                                             config.thread_per_block,
-                                             0,
-                                             dev_ctx.stream()>>>(
+  funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
+                                        config.thread_per_block,
+                                        0,
+                                        dev_ctx.stream()>>>(
       x.indices().data<IntT>(),
       d_sparse_offsets.data<IntT>(),
       indices.numel(),
@@ -75,10 +75,10 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   const T* x_values_ptr = x_values.data<T>();
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
-  DenseTensor values_indices = phi::Empty(
-      dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
+  DenseTensor values_indices =
+      Empty(dev_ctx, DenseTensorMeta(DataType::INT32, {nnz}, DataLayout::NCHW));
   int* values_indices_ptr = values_indices.data<int>();
-  DenseTensor public_indices = phi::EmptyLike<int>(dev_ctx, values_indices);
+  DenseTensor public_indices = EmptyLike<int>(dev_ctx, values_indices);
 
   // values_indices = [0,1,2,,,nnz-1]
   phi::IndexKernel<int, kps::IdentityFunctor<int>>(
@@ -107,7 +107,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
                             indices_ptr + nnz,
                             public_indices.data<int>());
 
-  phi::funcs::sparse::DistanceKernel<<<1, 1, 0, dev_ctx.stream()>>>(
+  funcs::sparse::DistanceKernel<<<1, 1, 0, dev_ctx.stream()>>>(
       indices_ptr, new_end.first, out_indices.data<IntT>());
 
   IntT out_nnz = 0;
@@ -130,7 +130,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   if (stride % VecSize == 0) {
     config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, nnz * stride / VecSize, 1);
-    phi::funcs::sparse::ScatterKernel<T, VecSize>
+    funcs::sparse::ScatterKernel<T, VecSize>
         <<<config.block_per_grid,
            config.thread_per_block,
            0,
@@ -143,7 +143,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
                                out_values.data<T>());
   } else {
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride, 1);
-    phi::funcs::sparse::ScatterKernel<T, 1>
+    funcs::sparse::ScatterKernel<T, 1>
         <<<config.block_per_grid,
            config.thread_per_block,
            0,
@@ -163,10 +163,10 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   }
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
-  phi::funcs::sparse::IndexToCoordinateKernel<<<config.block_per_grid,
-                                                config.thread_per_block,
-                                                0,
-                                                dev_ctx.stream()>>>(
+  funcs::sparse::IndexToCoordinateKernel<<<config.block_per_grid,
+                                           config.thread_per_block,
+                                           0,
+                                           dev_ctx.stream()>>>(
       indices_ptr, const_dims, out_nnz, sparse_dim, out_indices.data<IntT>());
 
   out->SetMember(out_indices, out_values, x.dims(), true);

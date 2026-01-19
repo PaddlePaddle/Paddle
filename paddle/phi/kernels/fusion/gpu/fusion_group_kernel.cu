@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fusion_group_kernel.h"
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/device_code.h"
@@ -23,7 +24,7 @@ namespace phi {
 namespace fusion {
 
 template <typename DeviceContext>
-static void MutableMultiTypeData(std::vector<phi::DenseTensor*>* var,
+static void MutableMultiTypeData(std::vector<DenseTensor*>* var,
                                  const std::vector<int>& data_type,
                                  const DeviceContext& dev_ctx) {
   for (size_t i = 0; i < var->size(); i++) {

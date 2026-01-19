@@ -66,6 +66,7 @@
 #define GRID_NUM_Y gridDim.y
 #define GRID_NUM_Z gridDim.z
 
+#define VecSizeVL 8  // VecSize for fp16 or bf16
 #define VecSizeL 4
 #define VecSizeM 2
 #define VecSizeS 1

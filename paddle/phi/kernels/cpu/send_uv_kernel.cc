@@ -58,7 +58,10 @@ void GraphSendUVOpKernelLaunchHelper(const Context& dev_ctx,
                                      const DenseTensor& dst_index,
                                      const std::string& message_op,
                                      DenseTensor* out) {
-  const int& index_size = src_index.dims()[0];  // NOLINT
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = src_index.dims()[0];
+  // NOLINT
   PADDLE_ENFORCE_GT(
       index_size,
       0,
@@ -109,8 +112,7 @@ void SendUVKernel(const Context& dev_ctx,
 
   if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 

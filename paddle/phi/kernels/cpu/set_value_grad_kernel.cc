@@ -127,7 +127,7 @@ void SetValueGradImpl(const Context& dev_ctx,
   }
 
   auto& place = *dev_ctx.eigen_device();
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
 
   if (x_grad) {
     // Set gradient of `Input`
@@ -281,7 +281,7 @@ void SetValueGradKernel(const Context& dev_ctx,
   if (ellipsis_flag) {
     if (x_grad) {
       FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(x_grad->dims()),
+                             vectorize(x_grad->dims()),
                              Scalar(0),
                              x_grad->dtype(),
                              x_grad);
@@ -297,7 +297,7 @@ void SetValueGradKernel(const Context& dev_ctx,
           Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
         }
       } else {
-        auto reduce_dim = phi::funcs::GetReduceDims(out_grad, *value_grad);
+        auto reduce_dim = funcs::GetReduceDims(out_grad, *value_grad);
         SumKernel<T, Context>(
             dev_ctx, out_grad, reduce_dim, out_grad.dtype(), false, value_grad);
       }

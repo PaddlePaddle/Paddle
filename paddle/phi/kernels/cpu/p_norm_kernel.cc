@@ -24,12 +24,8 @@
 
 namespace phi {
 
-inline void GetDims(const phi::DDim& dim,
-                    int axis,
-                    int* pre,
-                    int* n,
-                    int* post,
-                    bool asvector) {
+inline void GetDims(
+    const DDim& dim, int axis, int* pre, int* n, int* post, bool asvector) {
   *pre = 1;
   *post = 1;
   *n = static_cast<int>(dim[axis]);
@@ -64,7 +60,7 @@ void PNormKernel(const Context& dev_ctx,
 
   if (x.numel() == 0) {
     if (out->numel() > 0) {
-      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      std::vector<int64_t> vec_dims = vectorize(out->dims());
       phi::Full<T, Context>(
           dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
     }
@@ -73,11 +69,11 @@ void PNormKernel(const Context& dev_ctx,
 
   auto* place = dev_ctx.eigen_device();
 
-  Eigen::DSizes<int, 3> shape(pre, n, post);
-  Eigen::DSizes<int, 2> norm_shape(pre, post);
+  Eigen::DSizes<int64_t, 3> shape(pre, n, post);
+  Eigen::DSizes<int64_t, 2> norm_shape(pre, post);
 
-  auto x_e = phi::EigenVector<T>::Flatten(*in_x);
-  auto norm_e = phi::EigenVector<T>::Flatten(*out);
+  auto x_e = EigenVector<T>::Flatten(*in_x);
+  auto norm_e = EigenVector<T>::Flatten(*out);
 
   auto xr = x_e.reshape(shape);
   auto norm = norm_e.reshape(norm_shape);

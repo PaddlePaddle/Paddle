@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -198,14 +198,14 @@ class TestPoissonNLLLossErrCase(TestPoissonNLLLossBasicCase):
 
 class TestPoissonNLLLossFloat16Case(TestPoissonNLLLossBasicCase):
     def test_api(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.test_static_case(dtype="float16")
             self.test_dynamic_case(dtype="float16")
 
 
 class TestPoissonNLLLossBfloat16Case(TestPoissonNLLLossBasicCase):
     def test_api(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.test_static_case(dtype="uint16")
             self.test_dynamic_case(dtype="uint16")
 

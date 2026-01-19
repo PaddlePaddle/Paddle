@@ -24,33 +24,8 @@
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
+COMMON_DECLARE_bool(force_stride_compute_contig_out);
 namespace phi {
-
-template <typename T, typename Context, typename Functor>
-void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
-                                         const DenseTensor &x,
-                                         const DenseTensor &y,
-                                         Functor func,
-                                         int axis,
-                                         DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x, &y};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  BinaryStrideBroadcastKernel<T, Context>(
-      dev_ctx, inputs, &outputs, func, axis);
-}
-
-template <typename T, typename Context, typename Functor>
-void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
-                                        const DenseTensor &x,
-                                        Functor func,
-                                        DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
-}
-
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name)                        \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(const Context &dev_ctx,                             \
@@ -64,14 +39,17 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0 || y.numel() == 0) {                                   \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -87,11 +65,16 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
       phi::name##Kernel<T, Context>(dev_ctx, x_, y_, out);                    \
       return;                                                                 \
     }                                                                         \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
       PADDLE_THROW(                                                           \
           common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
+    }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
     }                                                                         \
     LaunchBinaryElementwiseStrideKernel<T, Context>(                          \
         dev_ctx, x_, y_, funcs::name##Functor<T>(), -1, out);                 \
@@ -114,14 +97,17 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0 || y.numel() == 0) {                                   \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -144,6 +130,11 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
                                 "Kernel using DenseTensorIterator "           \
                                 "be called, something wrong has happened!")); \
     }                                                                         \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+    }                                                                         \
     if (is_arithmetic) {                                                      \
       LaunchBinaryElementwiseStrideKernel<T, Context>(                        \
           dev_ctx,                                                            \
@@ -158,8 +149,11 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
   }
 
+#if defined(__NVCC__)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(LeftShift)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(RightShift)
+#endif
+
 #undef DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP
 
 template <typename T, typename Context>
@@ -172,8 +166,12 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -193,6 +191,11 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
         common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
                               "Kernel using DenseTensorIterator "
                               "be called, something wrong has happened!"));
+  }
+  if (FLAGS_force_stride_compute_contig_out) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
   }
   LaunchUnaryElementwiseStrideKernel<T, Context>(
       dev_ctx, x_, funcs::BitwiseNotFunctor<T>(), out);
@@ -231,6 +234,7 @@ PD_REGISTER_KERNEL(bitwise_xor,
                    int,
                    int64_t) {}
 
+#if defined(__NVCC__)
 PD_REGISTER_KERNEL(bitwise_left_shift,
                    GPU,
                    STRIDED,
@@ -250,6 +254,7 @@ PD_REGISTER_KERNEL(bitwise_right_shift,
                    int16_t,
                    int,
                    int64_t) {}
+#endif
 
 PD_REGISTER_KERNEL(bitwise_not,
                    GPU,

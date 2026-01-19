@@ -31,7 +31,7 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
                                   const int rulebook_len,
                                   const int channels,
                                   T* out_features_ptr) {
-  phi::funcs::MaxPool<T> max_pool_functor;
+  funcs::MaxPool<T> max_pool_functor;
   CUDA_KERNEL_LOOP_TYPE(i, n * channels, int64_t) {
     int real_i = i / channels;
     int channel_i = i - real_i * channels;
@@ -60,20 +60,20 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const std::vector<int>& real_kernel_sizes =
-      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
+      funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
   DDim out_dims = {1, 1, 1, 1, 1};
-  phi::funcs::sparse::GetOutShape(
+  funcs::sparse::GetOutShape(
       x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = real_kernel_sizes[3];
 
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
-  DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
+  DenseTensor counter_per_kernel = Empty(dev_ctx, std::move(counter_meta));
+  DenseTensor offsets_per_kernel = Empty(dev_ctx, std::move(counter_meta));
   DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
-  DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor out_index = Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_value = Empty(dev_ctx, std::move(index_meta));
 
   // 1. product rulebook
   int rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,

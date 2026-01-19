@@ -296,7 +296,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -376,7 +376,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
+        funcs::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT grad =
         row_idx >= 0
             ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
@@ -445,7 +445,7 @@ void MomentumDenseImpl(const Context& dev_ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
             &grad,
@@ -457,7 +457,8 @@ void MomentumDenseImpl(const Context& dev_ctx,
             regularization_coeff,
             param_out,
             velocity_out);
-  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  } else if (dev_ctx.GetPlace().GetType() == AllocationType::GPU ||
+             dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM) {
     funcs::ForRange<Context> for_range(dev_ctx, param.numel());
     const auto grad_type = grad.dtype();
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)     \
@@ -565,9 +566,9 @@ void MomentumSparseImpl(const Context& dev_ctx,
     return;
   }
 
-  phi::SelectedRows tmp_merged_grad;
-  phi::SelectedRows* merged_grad = &tmp_merged_grad;
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  SelectedRows tmp_merged_grad;
+  SelectedRows* merged_grad = &tmp_merged_grad;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();

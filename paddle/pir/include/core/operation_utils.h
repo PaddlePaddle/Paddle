@@ -36,7 +36,7 @@ using PropertyMap = std::unordered_map<std::string, Property>;
 
 // This represents an operation arguments in an combined form, suitable for use
 // with the builder APIs.
-struct IR_API OperationArgument {
+struct OperationArgument {
   std::vector<Value> inputs;
   AttributeMap attributes;
   std::vector<Type> output_types;
@@ -45,7 +45,7 @@ struct IR_API OperationArgument {
   std::vector<std::unique_ptr<Region>> regions;
 
  public:
-  OperationArgument(IrContext* ir_context, const std::string& name);
+  PADDLE_API OperationArgument(IrContext* ir_context, const std::string& name);
   explicit OperationArgument(OpInfo info) : info(info) {}
   OperationArgument(const std::vector<Value>& inputs,
                     const AttributeMap& attributes,
@@ -115,7 +115,7 @@ struct IR_API OperationArgument {
   /// Take a region that should be attached to the Operation.  The body of the
   /// region will be transferred when the Operation is created.  If the
   /// region is nullptr, a new empty region will be attached to the Operation.
-  void AddRegion(std::unique_ptr<Region>&& region);
+  PADDLE_API void AddRegion(std::unique_ptr<Region>&& region);
 
   // This interface is equivalent to calling AddRegion(nullptr) 'size' times.
   void AddRegions(size_t size);

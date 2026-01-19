@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -268,7 +268,7 @@ class TestUnpoolOpException(unittest.TestCase):
             r"The indices should have \[N, C, H, W\] format",
             indices_rank_error,
         )
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.assertRaisesRegex(
                 ValueError,
                 r"index should less than output",
@@ -296,8 +296,8 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -337,8 +337,8 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -377,8 +377,8 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -419,8 +419,8 @@ class TestUnpoolOpAPI_dy4(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -474,8 +474,8 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
         unpool_out = F.max_unpool2d(
             output, indices, kernel_size=2, stride=None, output_size=(5, 5)
         )
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         exe = paddle.static.Executor(place)
@@ -588,6 +588,61 @@ class TestZOutputSizeTensor3(unittest.TestCase):
             pool_out, indices, kernel_size=2, padding=0, output_size=output_size
         )
         np.testing.assert_array_equal(unpool_out.shape, [1, 3, 7, 7])
+
+
+class TestUnpool2DOpAPI_Compatibility(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.input_data = np.array(
+            [
+                [
+                    [
+                        [1, 2, 3, 4],
+                        [5, 6, 7, 8],
+                        [9, 10, 11, 12],
+                        [13, 14, 15, 16],
+                    ]
+                ]
+            ]
+        ).astype("float32")
+        self.input_x = paddle.to_tensor(self.input_data)
+        self.Pool2d = paddle.nn.MaxPool2D(
+            kernel_size=2, stride=2, return_mask=True
+        )
+        self.output, self.indices = self.Pool2d(self.input_x)
+        self.expected_output_unpool = unpool2dmax_forward_naive(
+            self.output.numpy(),
+            self.indices.numpy(),
+            [2, 2],
+            [2, 2],
+            [0, 0],
+            [4, 4],
+        ).astype("float64")
+
+    def test_MaxPool2D_API(self):
+        # test class alias paddle.nn.MaxUnpool2d
+        max_unpool_2d = paddle.nn.MaxUnpool2d(
+            kernel_size=2, stride=2, output_size=(1, 1, 4, 4)
+        )
+        output_unpool = max_unpool_2d(x=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test func alias
+        output_unpool = max_unpool_2d(input=self.output, indices=self.indices)
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
+
+        # test output_size argument
+        max_unpool_2d = paddle.nn.MaxUnpool2d(kernel_size=2, stride=2)
+        output_unpool = max_unpool_2d(
+            input=self.output, indices=self.indices, output_size=(1, 1, 4, 4)
+        )
+        np.testing.assert_allclose(
+            output_unpool.numpy(), self.expected_output_unpool, rtol=1e-05
+        )
 
 
 if __name__ == '__main__':

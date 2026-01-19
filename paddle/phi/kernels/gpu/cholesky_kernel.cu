@@ -123,7 +123,7 @@ FUNC_WITH_TYPES(POTRF_INSTANCE);
         workspace_device_size,                                            \
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  \
     auto workspace_host =                                                 \
-        phi::memory_utils::Alloc(phi::CPUPlace(), workspace_host_size);   \
+        phi::memory_utils::Alloc(CPUPlace(), workspace_host_size);        \
     PADDLE_ENFORCE_GPU_SUCCESS(                                           \
         dynload::cusolverDnXpotrf(handle,                                 \
                                   params,                                 \
@@ -172,11 +172,19 @@ void CholeskyKernel(const Context& dev_ctx,
   }
 
   auto& dims = x.dims();
-  int batch_count = 1;
+  int64_t batch_count64 = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
-    batch_count *= dims[i];
+    batch_count64 *= dims[i];
   }
-  int m = dims[dims.size() - 1];
+  // TODO(large-tensor): cusolver batch_count not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(batch_count64, "batch_count");
+  int batch_count = static_cast<int>(batch_count64);
+
+  int64_t m = dims[dims.size() - 1];
+  // TODO(large-tensor): cusolver n not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(m, "m");
+  int m_int = static_cast<int>(m);
+
   int64_t tensor_size = batch_count * static_cast<int64_t>(m) * m;
 
   const auto* x_data = x.data<T>();
@@ -188,7 +196,7 @@ void CholeskyKernel(const Context& dev_ctx,
   // portf is inplace, thus copy the triangular part of the input matrices to
   // the output and set the other triangular part to 0 firstly
 
-  phi::funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, tensor_size);
   // Pre-processing
   if (upper) {
     MatrixBandPartFunctor<T> matrix_band_part_functor(
@@ -216,9 +224,9 @@ void CholeskyKernel(const Context& dev_ctx,
                                               output_ptrs.end());
     PotrfBatched(dev_ctx,
                  uplo,
-                 m,
+                 m_int,
                  thrust::raw_pointer_cast(dev_output_ptrs.data()),
-                 m,
+                 m_int,
                  info_ptr,
                  batch_count);
     // TODO(guosheng): There seems to a bug in cusolver potrfBatched and need
@@ -235,9 +243,9 @@ void CholeskyKernel(const Context& dev_ctx,
     for (int i = 0; i < batch_count; i++) {
       int64_t offset = static_cast<int64_t>(i) * m * m;
 #if CUDA_VERSION >= 11040
-      Potrf64(dev_ctx, uplo, m, out_data + offset, m, info_ptr + i);
+      Potrf64(dev_ctx, uplo, m_int, out_data + offset, m_int, info_ptr + i);
 #else
-    Potrf(dev_ctx, uplo, m, out_data + offset, m, info_ptr + i);
+    Potrf(dev_ctx, uplo, m_int, out_data + offset, m_int, info_ptr + i);
 #endif
     }
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)

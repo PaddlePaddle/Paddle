@@ -23,12 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_function.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -115,7 +112,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       bool should_rotate =
           ctx->IsRunONEDNNKernel() &&
           (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           phi::DataLayout::kNHWC) &&
+           phi::DataLayout::NHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
@@ -161,7 +158,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -174,9 +171,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
           phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-              phi::DataLayout::kNHWC) {
+              phi::DataLayout::NHWC) {
         return phi::KernelKey(tensor.place(),
-                              phi::DataLayout::kNHWC,
+                              phi::DataLayout::NHWC,
                               expected_kernel_type.dtype());
       }
 #endif
@@ -307,7 +304,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -348,7 +345,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -396,7 +393,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -444,7 +441,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -460,9 +457,8 @@ template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto &dout =
-        *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<DenseTensor>(framework::GradVarName("X"));
+    auto &dout = *context.Input<DenseTensor>(framework::GradVarName("Out"));
     phi::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };

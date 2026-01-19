@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 from paddle.base import core
 
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, input_size, output_size):

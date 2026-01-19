@@ -25,11 +25,11 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
                                const DenseTensor& q,
                                const DenseTensor& k,
                                const DenseTensor& v,
-                               const paddle::optional<DenseTensor>& q_max,
-                               const paddle::optional<DenseTensor>& k_max,
-                               const paddle::optional<DenseTensor>& v_max,
-                               const paddle::optional<DenseTensor>& qk_max,
-                               const paddle::optional<DenseTensor>& qkv_max,
+                               const optional<DenseTensor>& q_max,
+                               const optional<DenseTensor>& k_max,
+                               const optional<DenseTensor>& v_max,
+                               const optional<DenseTensor>& qk_max,
+                               const optional<DenseTensor>& qkv_max,
                                float alpha,
                                int head_num,
                                int head_dim,
@@ -61,14 +61,18 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
   auto* qkv_data =
       reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_QKV>(qkv));
   float* tmp_mask = nullptr;
-  int batch = q.dims()[0];
-  int max_seq_len = q.dims()[1];
-  int qkv_shape = 0;  // B x L x H x D
+  int64_t batch = q.dims()[0];
+  int64_t max_seq_len = q.dims()[1];
+
+  // TODO(large-tensor): XPU qkv_attention API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len * batch, "max_seq_len*batch");
+
+  int64_t qkv_shape = 0;  // B x L x H x D
   int hidden_dim = head_num * head_dim;
   // no mask input, construct a fake LOD to compute via vsl
   std::vector<int> lod;
-  for (int i = 0; i < batch + 1; i++) {
-    lod.emplace_back(i * max_seq_len);
+  for (int64_t i = 0; i < batch + 1; i++) {
+    lod.emplace_back(static_cast<int>(i * max_seq_len));
   }
   xpu::VectorParam<int> query_lod = {
       lod.data(), static_cast<int>(lod.size()), nullptr};
@@ -88,7 +92,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
   if (apply_flash_attention) {
     if (std::is_same<T_GEMM, int8_t>::value) {
       if (std::is_same<T_X, float>::value) {
-        phi::DenseTensor x_fp16, out_fp16;
+        DenseTensor x_fp16, out_fp16;
         out_fp16.set_type(phi::DataType::FLOAT16);
         out_fp16.Resize(qkv->dims());
         x_fp16.set_type(phi::DataType::FLOAT16);
@@ -278,11 +282,11 @@ void QKVAttentionXPUKernel(const Context& dev_ctx,
                            const DenseTensor& q,
                            const DenseTensor& k,
                            const DenseTensor& v,
-                           const paddle::optional<DenseTensor>& q_max,
-                           const paddle::optional<DenseTensor>& k_max,
-                           const paddle::optional<DenseTensor>& v_max,
-                           const paddle::optional<DenseTensor>& qk_max,
-                           const paddle::optional<DenseTensor>& qkv_max,
+                           const optional<DenseTensor>& q_max,
+                           const optional<DenseTensor>& k_max,
+                           const optional<DenseTensor>& v_max,
+                           const optional<DenseTensor>& qk_max,
+                           const optional<DenseTensor>& qkv_max,
                            float alpha,
                            int head_num,
                            int head_dim,

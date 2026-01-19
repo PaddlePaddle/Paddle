@@ -21,16 +21,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
@@ -42,7 +37,9 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx >= output_grad_numel) {
     return;
   }
@@ -145,7 +142,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   }
 
   if (index_type == DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 
@@ -162,7 +159,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      size,
                      delta);
   } else {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();
 

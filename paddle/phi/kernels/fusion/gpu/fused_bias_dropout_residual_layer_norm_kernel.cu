@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_dropout_residual_layer_norm_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -22,25 +23,24 @@
 namespace phi {
 namespace fusion {
 template <typename T, typename Context>
-void FusedBiasDropoutResidualLnKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& residual,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& ln_scale,
-    const paddle::optional<DenseTensor>& ln_bias,
-    const float dropout_rate,
-    const bool is_test,
-    const bool dropout_fix_seed,
-    const int dropout_seed,
-    const std::string& dropout_implementation,
-    const float ln_epsilon,
-    DenseTensor* y,
-    DenseTensor* bias_dropout_residual_out,
-    DenseTensor* dropout_mask_out,
-    DenseTensor* ln_mean,
-    DenseTensor* ln_variance) {
-  using U = phi::funcs::LayerNormParamType<T>;
+void FusedBiasDropoutResidualLnKernel(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      const DenseTensor& residual,
+                                      const optional<DenseTensor>& bias,
+                                      const optional<DenseTensor>& ln_scale,
+                                      const optional<DenseTensor>& ln_bias,
+                                      const float dropout_rate,
+                                      const bool is_test,
+                                      const bool dropout_fix_seed,
+                                      const int dropout_seed,
+                                      const std::string& dropout_implementation,
+                                      const float ln_epsilon,
+                                      DenseTensor* y,
+                                      DenseTensor* bias_dropout_residual_out,
+                                      DenseTensor* dropout_mask_out,
+                                      DenseTensor* ln_mean,
+                                      DenseTensor* ln_variance) {
+  using U = funcs::LayerNormParamType<T>;
   auto* x_data = x.data<T>();
   auto* bias_data = (bias.get_ptr() == nullptr) ? nullptr : bias->data<T>();
   auto* residual_data = residual.data<T>();

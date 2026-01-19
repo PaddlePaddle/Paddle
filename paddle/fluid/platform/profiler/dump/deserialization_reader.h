@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-class DeserializationReader {
+class PADDLE_API DeserializationReader {
  public:
   explicit DeserializationReader(const std::string& filename);
   explicit DeserializationReader(const char* filename);

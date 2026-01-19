@@ -140,7 +140,7 @@ void NCEGradKernel(const Context &dev_ctx,
   }
 
   //    T b = 1. / num_total_classes * num_neg_samples;
-  phi::DenseTensor sample_grad;  // tmp tensor
+  DenseTensor sample_grad;  // tmp tensor
   sample_grad.Resize(sample_labels->dims());
   T *sample_grad_data = dev_ctx.template Alloc<T>(&sample_grad);
 

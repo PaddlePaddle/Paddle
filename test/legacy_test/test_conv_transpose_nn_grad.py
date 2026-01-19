@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -106,8 +106,8 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
     def test_grad(self):
         places = []
 
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             with paddle.pir_utils.OldIrGuard():
                 self.func(p)

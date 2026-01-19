@@ -19,16 +19,21 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
+PADDLE_API void MaxRawKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& dims,
+                             bool keep_dim,
+                             bool reduce_all,
+                             DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
+#ifdef PADDLE_WITH_XPU_KP
   phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+#else
+  phi::Reduce<T, kps::MaxOps>(
+      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
+#endif
 }
 
 }  // namespace phi

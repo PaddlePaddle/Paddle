@@ -33,7 +33,9 @@ class TestCurrentStream(unittest.TestCase):
             s2 = xpu.current_stream(paddle.XPUPlace(0))
             self.assertTrue(isinstance(s2, xpu.Stream))
             self.assertEqual(s1, s2)
-            self.assertRaises(ValueError, xpu.current_stream, "xpu:0")
+
+            s3 = xpu.current_stream('xpu:0')
+            self.assertTrue(isinstance(s3, xpu.Stream))
 
 
 class TestSynchronize(unittest.TestCase):
@@ -42,8 +44,10 @@ class TestSynchronize(unittest.TestCase):
             self.assertIsNone(xpu.synchronize())
             self.assertIsNone(xpu.synchronize(0))
             self.assertIsNone(xpu.synchronize(paddle.XPUPlace(0)))
+            self.assertIsNone(xpu.synchronize("xpu:0"))
+            self.assertIsNone(xpu.synchronize("xpu"))
 
-            self.assertRaises(ValueError, xpu.synchronize, "xpu:0")
+            self.assertRaises(ValueError, xpu.synchronize, "gpu")
 
 
 class TestXPUStream(unittest.TestCase):
@@ -83,6 +87,43 @@ class TestXPUStream(unittest.TestCase):
             self.assertTrue(e1.query())
 
 
+class TestXPUStream_paddle_device(unittest.TestCase):
+    def test_xpu_stream(self):
+        if paddle.is_compiled_with_xpu():
+            s = paddle.device.Stream()
+            self.assertIsNotNone(s)
+
+    def test_xpu_stream_synchronize(self):
+        if paddle.is_compiled_with_xpu():
+            s = paddle.device.Stream()
+            e1 = paddle.device.Event()
+            e2 = paddle.device.Event()
+
+            e1.record(s)
+            e1.query()
+            tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
+            tensor2 = paddle.matmul(tensor1, tensor1)
+            s.synchronize()
+            e2.record(s)
+            e2.synchronize()
+
+            self.assertTrue(e2.query())
+
+    def test_xpu_stream_wait_event_and_record_event(self):
+        if paddle.is_compiled_with_xpu():
+            s1 = paddle.device.Stream(0)
+            tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
+            tensor2 = paddle.matmul(tensor1, tensor1)
+            e1 = paddle.device.Event()
+            s1.record_event(e1)
+
+            s2 = paddle.device.Stream(0)
+            s2.wait_event(e1)
+            s2.synchronize()
+
+            self.assertTrue(e1.query())
+
+
 class TestXPUEvent(unittest.TestCase):
     def test_xpu_event(self):
         if paddle.is_compiled_with_xpu():
@@ -94,6 +135,28 @@ class TestXPUEvent(unittest.TestCase):
         if paddle.is_compiled_with_xpu():
             e = paddle.device.xpu.Event()
             s = paddle.device.xpu.current_stream()
+            event_query_1 = e.query()
+            tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
+            tensor2 = paddle.matmul(tensor1, tensor1)
+            s.record_event(e)
+            e.synchronize()
+            event_query_2 = e.query()
+
+            self.assertTrue(event_query_1)
+            self.assertTrue(event_query_2)
+
+
+class TestXPUEvent_paddle_device(unittest.TestCase):
+    def test_xpu_event(self):
+        if paddle.is_compiled_with_xpu():
+            e = paddle.device.Event()
+            self.assertIsNotNone(e)
+            s = paddle.device.current_stream()
+
+    def test_xpu_event_methods(self):
+        if paddle.is_compiled_with_xpu():
+            e = paddle.device.Event()
+            s = paddle.device.current_stream()
             event_query_1 = e.query()
             tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
             tensor2 = paddle.matmul(tensor1, tensor1)

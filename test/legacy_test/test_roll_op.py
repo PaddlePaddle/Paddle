@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import static_guard
 
 import paddle
@@ -141,8 +146,8 @@ class TestRollBoolOpCase3(TestRollBollOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OP(TestRollOp):
@@ -151,7 +156,7 @@ class TestRollBF16OP(TestRollOp):
         self.x_shape = (10, 4, 5)
         self.shifts = [101, -1]
         self.axis = [0, -2]
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -165,8 +170,8 @@ class TestRollBF16OP(TestRollOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OpCase2(TestRollOp):
@@ -175,7 +180,7 @@ class TestRollBF16OpCase2(TestRollOp):
         self.x_shape = (10, 5, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -194,8 +199,8 @@ class TestRollBF16OpCase2(TestRollOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestRollBF16OpCase3(TestRollOp):
@@ -204,7 +209,7 @@ class TestRollBF16OpCase3(TestRollOp):
         self.x_shape = (11, 11)
         self.shifts = [1, 1]
         self.axis = [-1, 1]
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -342,7 +347,7 @@ class TestRollAPI(unittest.TestCase):
             [out_np] = exe.run(fetch_list=[out])
             np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 exe = base.Executor(base.CPUPlace())
                 [out_np] = exe.run(fetch_list=[out])
                 np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
@@ -682,7 +687,7 @@ class TestRollAPI_Compatibility(unittest.TestCase):
             [out_np] = exe.run(fetch_list=[out])
             np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 exe = base.Executor(base.CPUPlace())
                 [out_np] = exe.run(fetch_list=[out])
                 np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)

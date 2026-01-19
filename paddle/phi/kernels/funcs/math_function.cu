@@ -152,6 +152,9 @@ template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
 template struct SetConstant<phi::GPUContext, double>;
 template struct SetConstant<phi::GPUContext, uint8_t>;
+template struct SetConstant<phi::GPUContext, uint16_t>;
+template struct SetConstant<phi::GPUContext, uint32_t>;
+template struct SetConstant<phi::GPUContext, uint64_t>;
 template struct SetConstant<phi::GPUContext, int8_t>;
 template struct SetConstant<phi::GPUContext, int>;
 template struct SetConstant<phi::GPUContext, int16_t>;
@@ -166,6 +169,9 @@ template struct SetConstant<phi::GPUPinnedContext, bfloat16>;
 template struct SetConstant<phi::GPUPinnedContext, float>;
 template struct SetConstant<phi::GPUPinnedContext, double>;
 template struct SetConstant<phi::GPUPinnedContext, uint8_t>;
+template struct SetConstant<phi::GPUPinnedContext, uint16_t>;
+template struct SetConstant<phi::GPUPinnedContext, uint32_t>;
+template struct SetConstant<phi::GPUPinnedContext, uint64_t>;
 template struct SetConstant<phi::GPUPinnedContext, int8_t>;
 template struct SetConstant<phi::GPUPinnedContext, int>;
 template struct SetConstant<phi::GPUPinnedContext, int16_t>;
@@ -177,7 +183,10 @@ template struct SetConstant<phi::GPUPinnedContext, phi::complex128>;
 
 #define DEFINE_GPU_TRANS(RANK)                                      \
   template struct Transpose<phi::GPUContext, bool, RANK>;           \
-  template struct Transpose<phi::GPUContext, unsigned char, RANK>;  \
+  template struct Transpose<phi::GPUContext, uint8_t, RANK>;        \
+  template struct Transpose<phi::GPUContext, uint16_t, RANK>;       \
+  template struct Transpose<phi::GPUContext, uint32_t, RANK>;       \
+  template struct Transpose<phi::GPUContext, uint64_t, RANK>;       \
   template struct Transpose<phi::GPUContext, float, RANK>;          \
   template struct Transpose<phi::GPUContext, double, RANK>;         \
   template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>;  \
@@ -200,7 +209,10 @@ DEFINE_GPU_TRANS(6);
 
 template <typename T>
 __global__ void FillConstantKernel(const int N, T* a, const T val) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < N;
        i += blockDim.x * gridDim.x) {
     a[i] = val;
   }
@@ -232,8 +244,8 @@ __global__ void TransposeNormalKernel(const T* in_ptr,
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const DenseTensor& in,
+    DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
   auto in_stride = common::stride(in.dims());
@@ -243,7 +255,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
 
   // copy in_stride, out_stride, axis to gpu device
   const phi::Place& cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
   auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -286,7 +298,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::Place& cuda_place = dev_ctx.GetPlace();
-    phi::CPUPlace cpu_place = phi::CPUPlace();
+    CPUPlace cpu_place = CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
     auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -338,13 +350,16 @@ DEFINE_GPU_TRANS_NORMAL(int64_t);
 DEFINE_GPU_TRANS_NORMAL(bool);
 DEFINE_GPU_TRANS_NORMAL(int16_t);
 DEFINE_GPU_TRANS_NORMAL(uint8_t);
+DEFINE_GPU_TRANS_NORMAL(uint16_t);
+DEFINE_GPU_TRANS_NORMAL(uint32_t);
+DEFINE_GPU_TRANS_NORMAL(uint64_t);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
 DEFINE_GPU_TRANS_NORMAL(phi::complex64);
 DEFINE_GPU_TRANS_NORMAL(phi::complex128);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const phi::DeviceContext& dev_ctx,
-                       phi::DenseTensor* tensor,
+                       DenseTensor* tensor,
                        float value)
       : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
 
@@ -357,25 +372,25 @@ struct TensorSetConstantGPU {
   }
 
   const phi::DeviceContext& dev_ctx_;
-  phi::DenseTensor* tensor_;
+  DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& dev_ctx,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<GPUPlace>(const phi::DeviceContext& dev_ctx,
+                                       DenseTensor* tensor,
+                                       float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(dev_ctx, tensor, value));
 }
 
 template <typename T>
 __global__ void RowwiseAddKernel(
-    const T* a, const T* b, T* c, int width, int num) {
+    const T* a, const T* b, T* c, int64_t width, int64_t num) {
   T tmp = 1.0 / width;
-  CUDA_KERNEL_LOOP(i, num) {
-    int h = i * tmp;
-    int w = i - h * width;
+  CUDA_KERNEL_LOOP_TYPE(i, num, int64_t) {
+    int64_t h = i * tmp;
+    int64_t w = i - h * width;
     c[i] = a[i] + b[w];
   }
 }
@@ -383,9 +398,9 @@ __global__ void RowwiseAddKernel(
 template <typename T>
 struct RowwiseAdd<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& input,
-                  const phi::DenseTensor& vector,
-                  phi::DenseTensor* output) {
+                  const DenseTensor& input,
+                  const DenseTensor& vector,
+                  DenseTensor* output) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
@@ -410,13 +425,14 @@ struct RowwiseAdd<phi::GPUContext, T> {
             in_dims_cstr,
             out_dims_cstr));
     int blocks = 512;
-    int grids = (input.numel() + blocks - 1) / blocks;
-    RowwiseAddKernel<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-        input.data<T>(),
-        vector.data<T>(),
-        output->data<T>(),
-        static_cast<int>(in_dims[1]),
-        static_cast<int>(input.numel()));
+    int64_t max_grids = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int grids = std::min((input.numel() + blocks - 1) / blocks, max_grids);
+    RowwiseAddKernel<T>
+        <<<grids, blocks, 0, dev_ctx.stream()>>>(input.data<T>(),
+                                                 vector.data<T>(),
+                                                 output->data<T>(),
+                                                 in_dims[1],
+                                                 input.numel());
   }
 };
 

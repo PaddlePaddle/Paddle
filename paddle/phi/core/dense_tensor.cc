@@ -300,7 +300,8 @@ const DeviceT& DenseTensor::storage_properties() const {
 
 template const NPUStorageProperties& DenseTensor::storage_properties() const;
 #ifdef PADDLE_WITH_DNNL
-template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+template PADDLE_API const OneDNNStorageProperties&
+DenseTensor::storage_properties() const;
 #endif
 #ifdef PADDLE_WITH_XPU
 template const XPUStorageProperties& DenseTensor::storage_properties() const;

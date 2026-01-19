@@ -16,40 +16,36 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifdef PADDLE_WITH_XPU_XRE5
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
-#endif
 namespace phi {
-#ifdef PADDLE_WITH_XPU_XRE5
 template <typename T, typename Context>
-void FlashAttnGradKernelBase(
-    const Context& dev_ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const api::VectorParam<int>& lod_seqlen_q,
-    const api::VectorParam<int>& lod_seqlen_k,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const paddle::optional<DenseTensor>& startend_row_indices,
-    const DenseTensor& dout,
-    const int64_t batch_size,
-    const Scalar& max_seqlen_q_,
-    const Scalar& max_seqlen_k_,
-    const int64_t num_heads,
-    const int64_t num_heads_k,
-    const int64_t head_size,
-    const int64_t head_size_v,
-    float scale,
-    float dropout,
-    bool causal,
-    DenseTensor* dq,
-    DenseTensor* dk,
-    DenseTensor* dv) {
+void FlashAttnGradKernelBase(const Context& dev_ctx,
+                             const DenseTensor& q,
+                             const DenseTensor& k,
+                             const DenseTensor& v,
+                             const api::VectorParam<int>& lod_seqlen_q,
+                             const api::VectorParam<int>& lod_seqlen_k,
+                             const DenseTensor& out,
+                             const DenseTensor& softmax_lse,
+                             const DenseTensor& seed_offset,
+                             const optional<DenseTensor>& attn_mask,
+                             const optional<DenseTensor>& startend_row_indices,
+                             const DenseTensor& dout,
+                             const int64_t batch_size,
+                             const Scalar& max_seqlen_q_,
+                             const Scalar& max_seqlen_k_,
+                             const int64_t num_heads,
+                             const int64_t num_heads_k,
+                             const int64_t head_size,
+                             const int64_t head_size_v,
+                             float scale,
+                             float dropout,
+                             bool causal,
+                             DenseTensor* dq,
+                             DenseTensor* dk,
+                             DenseTensor* dv) {
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -153,10 +149,10 @@ void FlashAttnGradKernelBase(
   int fa_tgemm = get_flash_attn_tgemm<XPUType>();
   auto flash_attention_grad_kernel =
       baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, tfloat32, int>;
-  if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT) {
+  if (fa_tgemm == XPU_FA_DTYPE::FA_FLOAT) {
     flash_attention_grad_kernel =
         baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, float, int>;
-  } else if (fa_tgemm == XPU_FA_TGEMM::FA_FLOAT16) {
+  } else if (fa_tgemm == XPU_FA_DTYPE::FA_FLOAT16) {
     flash_attention_grad_kernel =
         baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, XPUTypeFP16, int>;
   }
@@ -237,7 +233,6 @@ void FlashAttnGradKernelBase(
     xpu_stream_destroy(flashmask_stream);
   }
 }
-#endif
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
@@ -249,7 +244,7 @@ void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
                                  const DenseTensor& out,
                                  const DenseTensor& softmax_lse,
                                  const DenseTensor& seed_offset,
-                                 const paddle::optional<DenseTensor>& attn_mask,
+                                 const optional<DenseTensor>& attn_mask,
                                  const DenseTensor& dout,
                                  const Scalar& max_seqlen_q,
                                  const Scalar& max_seqlen_k,
@@ -259,7 +254,6 @@ void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
-#ifdef PADDLE_WITH_XPU_XRE5
   dev_ctx.template Alloc<T>(dq);
   dev_ctx.template Alloc<T>(dk);
   dev_ctx.template Alloc<T>(dv);
@@ -303,10 +297,6 @@ void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
                              dq,
                              dk,
                              dv);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnGradKernel"));
-#endif
 }
 
 template <typename T, typename Context>
@@ -317,14 +307,13 @@ void FlashAttnGradKernel(const Context& dev_ctx,
                          const DenseTensor& out,
                          const DenseTensor& softmax_lse,
                          const DenseTensor& seed_offset,
-                         const paddle::optional<DenseTensor>& attn_mask,
+                         const optional<DenseTensor>& attn_mask,
                          const DenseTensor& dout,
                          float dropout,
                          bool causal,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-#ifdef PADDLE_WITH_XPU_XRE5
   dev_ctx.template Alloc<T>(dq);
   dev_ctx.template Alloc<T>(dk);
   dev_ctx.template Alloc<T>(dv);
@@ -384,10 +373,6 @@ void FlashAttnGradKernel(const Context& dev_ctx,
                              dq,
                              dk,
                              dv);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnGradKernel"));
-#endif
 }
 
 template <typename T, typename Context>
@@ -405,7 +390,6 @@ void FlashMaskGradKernel(const Context& dev_ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-#ifdef PADDLE_WITH_XPU_XRE5
   dev_ctx.template Alloc<T>(dq);
   dev_ctx.template Alloc<T>(dk);
   dev_ctx.template Alloc<T>(dv);
@@ -464,10 +448,6 @@ void FlashMaskGradKernel(const Context& dev_ctx,
                              dq,
                              dk,
                              dv);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "re-compile using -DWITH_XPU_XRE5=ON to use FlashMaskGradKernel"));
-#endif
 }
 }  // namespace phi
 

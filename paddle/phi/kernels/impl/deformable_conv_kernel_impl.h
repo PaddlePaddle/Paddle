@@ -39,8 +39,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 
@@ -96,7 +95,7 @@ void DeformableConvKernel(const Context& dev_ctx,
   const T* mask_ptr = mask ? mask->data<T>() : nullptr;
   T* col_buffer_ptr = col_buffer.data<T>();
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   bool using_int32_index =
       (x.numel() <= std::numeric_limits<int>::max()) &&

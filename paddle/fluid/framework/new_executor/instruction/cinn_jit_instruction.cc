@@ -63,12 +63,12 @@ class CinnJitInstruction::FnPtrImpl {
           const auto& tensor = [&]() -> phi::DenseTensor {
             phi::DenseTensor new_tensor =
                 *(kernel_tensor_args[binding_info.arg_idx]);
-            if (new_tensor.place() == phi::CPUPlace()) {
+            if (new_tensor.place() == CPUPlace()) {
               return new_tensor;
             }
             framework::TensorCopySync(
                 *(kernel_tensor_args[binding_info.arg_idx]),
-                phi::CPUPlace(),
+                CPUPlace(),
                 &new_tensor);
             return new_tensor;
           }();
@@ -98,6 +98,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void Run(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
            void* stream,
            bool is_gpu) {
@@ -166,6 +167,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
                   const std::vector<phi::DDim>& ir_dim,
@@ -175,8 +177,11 @@ class CinnJitInstruction::FnPtrImpl {
     // Define an array of Pointers to hold the output tensor shape
     std::vector<int64_t*> output_tensor_shapes(output_tensor_size);
     for (int i = 0; i < output_tensor_size; ++i) {
+      // For 0-size tensors, if the shape buffer is not explicitly initialized,
+      // it may contain garbage values from memory, resulting in incorrect
+      // shapes.
       output_tensor_shapes[i] = reinterpret_cast<int64_t*>(
-          malloc(kernel_tensor_args[input_tensor_size + i]->dims().size() *
+          calloc(kernel_tensor_args[input_tensor_size + i]->dims().size(),
                  sizeof(int64_t*)));
     }
 

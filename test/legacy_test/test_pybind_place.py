@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -34,8 +35,8 @@ class TestPybindPlace(unittest.TestCase):
         self.assertEqual(pybind_place, pybind_place_2)
 
     def test_cuda_place(self):
-        if paddle.device.is_compiled_with_cuda():
-            pybind_place = paddle.CUDAPlace(0)
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            pybind_place = get_device_place()
             self.assertEqual(pybind_place, pybind_place)
             tensor_place = paddle.randn([2, 2]).place
             self.assertEqual(pybind_place, tensor_place)
@@ -46,7 +47,7 @@ class TestPybindPlace(unittest.TestCase):
             self.assertEqual(tensor_place_2, tensor_place)
             self.assertEqual(tensor_place, tensor_place_2)
 
-            pybind_place_2 = paddle.CUDAPlace(0)
+            pybind_place_2 = get_device_place()
             self.assertEqual(pybind_place, pybind_place_2)
         else:
             self.skipTest("Skip as paddle is not compiled with cuda")

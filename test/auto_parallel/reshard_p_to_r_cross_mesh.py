@@ -70,7 +70,6 @@ class TestReshardPToRCrossMesh:
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
             with paddle.base.program_guard(main_program):
-                mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
                 input = paddle.static.data(
                     name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
                 )

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fused_seqpool_cvm_grad_kernel.h"
 #include <string>
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -113,7 +114,7 @@ __global__ void FusedSeqpoolCVMGradKernelNoCVM(const size_t N,
 }
 
 template <typename T>
-void FusedSeqpoolCVMGrad(const phi::GPUContext &dev_ctx,
+void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
                          const std::vector<const T *> &out_grads_data,
                          const std::vector<T *> &in_grads_data,
                          const std::vector<const T *> &cvm_data,

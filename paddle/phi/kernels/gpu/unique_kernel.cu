@@ -25,17 +25,11 @@
 
 #include <iostream>
 #include <vector>
-
-#ifdef PADDLE_WITH_CUDA
-#include "cub/cub.cuh"
-#else
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
 #include "paddle/phi/kernels/index_select_kernel.h"
 
@@ -124,7 +118,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
   auto equal = thrust::equal_to<InT>();
   auto not_equal = thrust::not_equal_to<InT>();
   DenseTensor in_hat;
-  phi::Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
+  Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
   auto* in_data_hat = dev_ctx.template Alloc<InT>(&in_hat);
   DenseTensor tmp;
   if (!indices) {
@@ -151,7 +145,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
   range.Resize(common::make_ddim({num_input + 1}));
   auto* range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(exec_policy, range_data_ptr, range_data_ptr + num_input + 1);
-  phi::Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
   int num_out;
   auto out_data = dev_ctx.template Alloc<InT>(out);
   num_out =
@@ -446,12 +440,11 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
     in_trans_dims = common::make_ddim(in_trans_dims_vec);
     in_trans.Resize(in_trans_dims);
     dev_ctx.template Alloc<InT>(&in_trans);
-    phi::funcs::TransCompute<Context, InT>(
-        in.dims().size(),  // num of dims
-        dev_ctx,           // device
-        in,                // original DenseTensor
-        &in_trans,         // DenseTensor after reshape
-        permute);          // index of axis
+    funcs::TransCompute<Context, InT>(in.dims().size(),  // num of dims
+                                      dev_ctx,           // device
+                                      in,                // original DenseTensor
+                                      &in_trans,  // DenseTensor after reshape
+                                      permute);   // index of axis
   } else {
     in_trans.ShareDataWith(in);
   }
@@ -514,7 +507,7 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
     std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
     out->Resize(common::make_ddim(out_trans_dims_vec));
     dev_ctx.template Alloc<InT>(out);
-    phi::funcs::TransCompute<Context, InT>(
+    funcs::TransCompute<Context, InT>(
         out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   } else {
     out->Resize(common::make_ddim(out_trans_dims_vec));

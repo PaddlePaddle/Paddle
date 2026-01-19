@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from simple_nets import (
     batchnorm_fc_with_inputs,
     simple_fc_net_with_inputs,
@@ -66,8 +66,8 @@ class TestCondInputOutput(unittest.TestCase):
             # out is one tensor
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -108,8 +108,8 @@ class TestCondInputOutput(unittest.TestCase):
             # out is one tensor
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -148,8 +148,8 @@ class TestCondInputOutput(unittest.TestCase):
             # out is a tensor
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -184,8 +184,8 @@ class TestCondInputOutput(unittest.TestCase):
             grad_list = append_backward(out)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 
@@ -266,8 +266,8 @@ class TestCondInputOutput(unittest.TestCase):
             # out is a tuple containing 2 tensors
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -312,8 +312,8 @@ class TestCondInputOutput(unittest.TestCase):
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
             )
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -357,8 +357,8 @@ class TestCondInputOutput(unittest.TestCase):
             out2 = paddle.static.nn.cond(pred, None, false_func)
             out3 = paddle.static.nn.cond(pred, true_func, None)
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -448,8 +448,8 @@ class TestCondInputOutput(unittest.TestCase):
             grad_list = append_backward(out)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -520,8 +520,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
             grad_list = append_backward(mean)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -601,8 +601,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
             grad_list = append_backward(mean)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -657,8 +657,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
             grad_list = append_backward(out)
 
         place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -703,7 +703,7 @@ class TestCondBackward(unittest.TestCase):
                 i = paddle.static.data(name="i", shape=[1], dtype='int32')
                 loss = cond_func(i, img, label)
                 grad_list = append_backward(loss)
-            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            place = get_device_place() if use_cuda else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -796,7 +796,7 @@ class TestCondBackward(unittest.TestCase):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 optimizer.minimize(loss)
 
-            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            place = get_device_place() if use_cuda else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -826,8 +826,12 @@ class TestCondBackward(unittest.TestCase):
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
             )
 
-        self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
-        self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
+        self.backward_value_helper(
+            cond_func, (core.is_compiled_with_cuda() or is_custom_device())
+        )
+        self.add_optimizer_helper(
+            cond_func, (core.is_compiled_with_cuda() or is_custom_device())
+        )
 
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
@@ -853,20 +857,20 @@ class TestCondBackward(unittest.TestCase):
 
         self.backward_value_helper(
             cond_func_simple_net_at_true,
-            core.is_compiled_with_cuda(),
+            (core.is_compiled_with_cuda() or is_custom_device()),
         )
 
         self.backward_value_helper(
             cond_func_simple_net_at_false,
-            core.is_compiled_with_cuda(),
+            (core.is_compiled_with_cuda() or is_custom_device()),
         )
         self.add_optimizer_helper(
             cond_func_simple_net_at_true,
-            core.is_compiled_with_cuda(),
+            (core.is_compiled_with_cuda() or is_custom_device()),
         )
         self.add_optimizer_helper(
             cond_func_simple_net_at_false,
-            core.is_compiled_with_cuda(),
+            (core.is_compiled_with_cuda() or is_custom_device()),
         )
 
     def test_nested_cond_backward(self):
@@ -892,8 +896,12 @@ class TestCondBackward(unittest.TestCase):
                 lambda: branch(i, img, label, False),
             )
 
-        self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
-        self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
+        self.backward_value_helper(
+            cond_func, (core.is_compiled_with_cuda() or is_custom_device())
+        )
+        self.add_optimizer_helper(
+            cond_func, (core.is_compiled_with_cuda() or is_custom_device())
+        )
 
 
 class TestCondWithError(unittest.TestCase):

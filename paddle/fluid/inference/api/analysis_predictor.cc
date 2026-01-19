@@ -3567,7 +3567,7 @@ USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creator)
-USE_TRT_CONVERTER(custom_plugin_creater)  // typos: disable-line
+USE_TRT_CONVERTER(custom_plugin_creator)
 USE_TRT_CONVERTER(custom_generic_plugin_creator)
 USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
@@ -3601,14 +3601,12 @@ USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(index_select);
 USE_TRT_CONVERTER(temporal_shift)
 #endif
-#if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
+#if PADDLE_WITH_CUSPARSELT
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
 #endif
-#if IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(quantize_linear)
 USE_TRT_CONVERTER(dequantize_linear)
-#endif
 #endif
 
 namespace paddle_infer {

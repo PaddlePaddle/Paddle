@@ -20,6 +20,8 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 
+#include "glog/logging.h"
+
 COMMON_DECLARE_double(eager_delete_tensor_gb);
 COMMON_DECLARE_double(memory_fraction_of_eager_deletion);
 COMMON_DECLARE_bool(fast_eager_deletion_mode);
@@ -37,7 +39,7 @@ GarbageCollector::GarbageCollector(const phi::Place &place,
   }
 }
 
-CPUGarbageCollector::CPUGarbageCollector(const phi::CPUPlace &place,
+CPUGarbageCollector::CPUGarbageCollector(const CPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 

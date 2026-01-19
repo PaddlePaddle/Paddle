@@ -27,10 +27,10 @@ namespace phi {
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& in_scale,
+                            const optional<DenseTensor>& in_scale,
                             const DenseTensor& zero_point,
-                            const paddle::optional<DenseTensor>& in_accum,
-                            const paddle::optional<DenseTensor>& in_state,
+                            const optional<DenseTensor>& in_accum,
+                            const optional<DenseTensor>& in_state,
                             int quant_axis,
                             int bit_length,
                             int qmin,
@@ -56,7 +56,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
     // int broadcast_mul(Context* xpu_ctx, const T* x, const T* y, T* z, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape);
     auto x_dims = x.dims();
-    std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape = vectorize<int64_t>(x_dims);
     int r = xpu::broadcast_mul(
         dev_ctx.x_context(), x_data, scale_data, out_data, xshape, {1});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
@@ -98,8 +98,8 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
   } else if (quant_axis == 1) {
     // 准备将0和1两个维度对调
     auto x_dims = x.dims();
-    std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
-    std::vector<int64_t> xshape_back = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape = vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape_back = vectorize<int64_t>(x_dims);
     xshape_back[0] = xshape[1];
     xshape_back[1] = xshape[0];
     std::vector<int64_t> trans_axes = {1, 0};
@@ -145,7 +145,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void QuantizeLinearInferKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const paddle::optional<DenseTensor>& scale,
+                               const optional<DenseTensor>& scale,
                                const DenseTensor& zero_point,
                                int quant_axis,
                                int bit_length,
@@ -186,8 +186,8 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   } else if (quant_axis == 1) {
     // 准备将0和1两个维度对调
     auto x_dims = x.dims();
-    std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
-    std::vector<int64_t> xshape_back = common::vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape = vectorize<int64_t>(x_dims);
+    std::vector<int64_t> xshape_back = vectorize<int64_t>(x_dims);
     xshape_back[0] = xshape[1];
     xshape_back[1] = xshape[0];
     std::vector<int64_t> trans_axes = {1, 0};
@@ -235,10 +235,10 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void QuantizeLinearKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& scale,
                           const DenseTensor& zero_point,
-                          const paddle::optional<DenseTensor>& in_accum,
-                          const paddle::optional<DenseTensor>& in_state,
+                          const optional<DenseTensor>& in_accum,
+                          const optional<DenseTensor>& in_state,
                           int quant_axis,
                           int bit_length,
                           int qmin,
@@ -280,8 +280,7 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                          int round_type,
                                          bool only_observer,
                                          DenseTensor* out) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearInferKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -307,8 +306,7 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                       int round_type,
                                       bool only_observer,
                                       DenseTensor* out) {
-  paddle::optional<phi::DenseTensor> scale =
-      paddle::make_optional<phi::DenseTensor>(in_scale);
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   DeQuantizeLinearKernel<T, Context>(dev_ctx,
                                      x,
                                      scale,

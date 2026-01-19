@@ -22,6 +22,9 @@ class TestDeviceCount(unittest.TestCase):
         s = paddle.device.xpu.device_count()
         self.assertIsNotNone(s)
 
+        s = paddle.device.device_count()
+        self.assertIsNotNone(s)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -493,32 +493,34 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   bool need_comma = false;
   for (auto& in_def : kernel.args_def().input_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << in_def.backend << ", " << in_def.layout << ", "
-       << in_def.dtype << "\"";
+    os << "\n\tbackend: " << in_def.backend << ", "
+       << " layout: " << in_def.layout << ", "
+       << " dtype: " << in_def.dtype;
     need_comma = true;
   }
-  os << "],";
+  os << "\n],";
 
   // output
-  os << "\"output\":[";
+  os << "\n\"output\":[";
   need_comma = false;
   for (auto& out_def : kernel.args_def().output_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << out_def.backend << ", " << out_def.layout << ", "
-       << out_def.dtype << "\"";
+    os << "\n\tbackend: " << out_def.backend << ", "
+       << " layout: " << out_def.layout << ", "
+       << " dtype: " << out_def.dtype;
     need_comma = true;
   }
-  os << "],";
+  os << "\n],";
 
   // attr
-  os << "\"attribute\":[";
+  os << "\n\"attribute\":[";
   need_comma = false;
   for (auto& arg_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << arg_def.type_index << "\"";
+    os << "\n\t\"" << arg_def.type_index << "\"";
     need_comma = true;
   }
-  os << "]}";
+  os << "\n]}";
 
   return os;
 }

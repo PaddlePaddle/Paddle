@@ -18,6 +18,7 @@
  *     https://github.com/NVIDIA/apex
  *     with minor changes. */
 
+#include "paddle/phi/kernels/legacy/gpu/moe_ops_partial_nosoftmaxtopk_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -146,7 +147,7 @@ void apply_moe_dispatch_fwd(
                                       use_pad,
                                       sorter);
 
-  DenseTensor ws_ptr_tensor = phi::Empty<int8_t, Context>(dev_ctx, {bytes});
+  DenseTensor ws_ptr_tensor = Empty<int8_t, Context>(dev_ctx, {bytes});
   int8_t *ws_ptr = ws_ptr_tensor.data<int8_t>();
 
   phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
@@ -438,8 +439,7 @@ void apply_moe_dispatch_fwd(
     y->Resize({expert_offset_host.back(), x.dims()[1]});
     dev_ctx.template Alloc<T>(y);
   }
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
   copy_unpermuted_to_permuted_kernelLauncher(
       x.data<T>(),
       y->data<T>(),              // out
@@ -525,31 +525,14 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
   dev_ctx.template Alloc<int64_t>(expert_offset);
   dev_ctx.template Alloc<int64_t>(expert_nums_local);
   dev_ctx.template Alloc<float>(combine_weights_out);
-  phi::Full<int32_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(scatter_index->dims())),
-      0,
-      scatter_index);
-  phi::Full<int32_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(scatter_index_rev->dims())),
-      0,
-      scatter_index_rev);
-  phi::Full<int64_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(expert_offset->dims())),
-      0,
-      expert_offset);
-  phi::Full<int64_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(expert_nums_local->dims())),
-      0,
-      expert_nums_local);
-  phi::Full<float, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(combine_weights_out->dims())),
-      0,
-      combine_weights_out);
+  Full<int32_t, Context>(dev_ctx, scatter_index->dims(), 0, scatter_index);
+  Full<int32_t, Context>(
+      dev_ctx, scatter_index_rev->dims(), 0, scatter_index_rev);
+  Full<int64_t, Context>(dev_ctx, expert_offset->dims(), 0, expert_offset);
+  Full<int64_t, Context>(
+      dev_ctx, expert_nums_local->dims(), 0, expert_nums_local);
+  Full<float, Context>(
+      dev_ctx, combine_weights_out->dims(), 0, combine_weights_out);
   phi::Copy(
       dev_ctx, combine_weights, dev_ctx.GetPlace(), false, combine_weights_out);
   const auto &x_shape = x.dims();
@@ -588,9 +571,9 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
       *scatter_index_rev = phi::Slice<int32_t, Context>(
           dev_ctx, *scatter_index_rev, {0}, {0}, {expert_offset_host.back()});
     } else {
-      *y = phi::Empty<T, Context>(dev_ctx, {1, x_shape[1]});
+      *y = Empty<T, Context>(dev_ctx, {1, x_shape[1]});
       *scatter_index_rev =
-          phi::Empty<int32_t, Context>(dev_ctx, {});  // special treatment
+          Empty<int32_t, Context>(dev_ctx, {});  // special treatment
     }
   }
 }

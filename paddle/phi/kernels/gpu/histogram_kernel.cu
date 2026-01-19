@@ -94,8 +94,8 @@ __global__ void KernelMinMax(const T* input,
   }
   if (max_ptr && min_ptr) {
     __syncthreads();
-    T block_min_value = phi::funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
-    T block_max_value = phi::funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
+    T block_min_value = funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
+    T block_max_value = funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
 
     if (threadIdx.x == 0) {
       min_ptr[blockIdx.x] = block_min_value;
@@ -149,8 +149,7 @@ void HistogramKernel(const Context& dev_ctx,
   const int64_t input_numel = input.numel();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   if (input_numel == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -170,13 +169,13 @@ void HistogramKernel(const Context& dev_ctx,
         <<<block_num, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
             input_data, input_numel, block_num, min_block_ptr, max_block_ptr);
     // copy min max value from GPU to CPU
-    phi::memory_utils::Copy(phi::CPUPlace(),
+    phi::memory_utils::Copy(CPUPlace(),
                             &output_min,
                             min_max.place(),
                             min_block_ptr,
                             sizeof(T),
                             dev_ctx.stream());
-    phi::memory_utils::Copy(phi::CPUPlace(),
+    phi::memory_utils::Copy(CPUPlace(),
                             &output_max,
                             min_max.place(),
                             max_block_ptr,
@@ -223,7 +222,7 @@ void HistogramKernel(const Context& dev_ctx,
 
   if (!density && weight_data == nullptr) {
     int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0);
+    funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0);
     KernelHistogram<T, IndexType, int64_t>
         <<<block_num, PADDLE_CUDA_NUM_THREADS, nbins * sizeof(float), stream>>>(
             input_data,
@@ -235,7 +234,7 @@ void HistogramKernel(const Context& dev_ctx,
             out_data);
   } else {
     float* out_data = dev_ctx.template Alloc<float>(output);
-    phi::funcs::SetConstant<Context, float>()(
+    funcs::SetConstant<Context, float>()(
         dev_ctx, output, static_cast<float>(0));
     KernelHistogram<T, IndexType, float>
         <<<block_num, PADDLE_CUDA_NUM_THREADS, nbins * sizeof(float), stream>>>(
@@ -250,7 +249,7 @@ void HistogramKernel(const Context& dev_ctx,
       DenseTensor sum = phi::Sum<float, Context>(
           dev_ctx, *output, phi::IntArray({0}), phi::DataType::FLOAT32, false);
       float sum_cpu;
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               &sum_cpu,
                               sum.place(),
                               sum.data<float>(),
@@ -261,8 +260,8 @@ void HistogramKernel(const Context& dev_ctx,
       std::vector<const DenseTensor*> ins = {output};
       std::vector<DenseTensor*> outs = {output};
       float scale = gap / sum_cpu;
-      auto functor = phi::funcs::ScaleFunctor<float>(scale);
-      phi::funcs::ElementwiseKernel<float>(dev_ctx, ins, &outs, functor);
+      auto functor = funcs::ScaleFunctor<float>(scale);
+      funcs::ElementwiseKernel<float>(dev_ctx, ins, &outs, functor);
     }
   }
 }

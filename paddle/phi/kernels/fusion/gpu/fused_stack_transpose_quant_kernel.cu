@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/gpu/fused_stack_transpose_quant_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,7 +24,7 @@
 namespace phi {
 namespace fusion {
 
-using FastDivMod = phi::funcs::FastDivMod<int64_t>;
+using FastDivMod = funcs::FastDivMod<int64_t>;
 
 template <typename ArrayT>
 __device__ void BlockLoad(ArrayT input_array,
@@ -35,8 +36,8 @@ __device__ void BlockLoad(ArrayT input_array,
       reinterpret_cast<const __nv_bfloat16*>(input_array.data[blockIdx.z]);
 
   for (size_t i = 0; i < 8; i++) {
-    size_t idx_m = block_y * 128 + threadIdx.y + i * 16;
-    size_t idx_k = block_x * 128 + threadIdx.x * 4;
+    size_t idx_m = block_y * 128 + static_cast<size_t>(threadIdx.y) + i * 16;
+    size_t idx_k = block_x * 128 + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = idx_m * K + idx_k;
 
     using LoadT = phi::kps::details::VectorType<__nv_bfloat16, 4>;
@@ -98,7 +99,7 @@ __global__ void __launch_bounds__(512)
                              size_t K,
                              FastDivMod K_div_128) {
   size_t block_y = K_div_128.Div(blockIdx.x);
-  size_t block_x = blockIdx.x - block_y * (K / 128);
+  size_t block_x = static_cast<size_t>(blockIdx.x) - block_y * (K / 128);
 
   // Load 128x128 elements from X
   __nv_bfloat16 x[8][4];
@@ -119,8 +120,8 @@ __global__ void __launch_bounds__(512)
   // Scale X and store to out
   for (uint32_t i = 0; i < 8; i++) {
     size_t idx_n = blockIdx.z;
-    size_t idx_m = block_y * 128 + threadIdx.y + i * 16;
-    size_t idx_k = block_x * 128 + threadIdx.x * 4;
+    size_t idx_m = block_y * 128 + static_cast<size_t>(threadIdx.y) + i * 16;
+    size_t idx_k = block_x * 128 + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = (idx_n * M + idx_m) * K + idx_k;
 
     using StoreT = phi::kps::details::VectorType<OutT, 4>;
@@ -143,7 +144,7 @@ __global__ void __launch_bounds__(512)
                                       size_t K,
                                       FastDivMod K_div_128) {
   size_t block_y = K_div_128.Div(blockIdx.x);
-  size_t block_x = blockIdx.x - block_y * (K / 128);
+  size_t block_x = static_cast<size_t>(blockIdx.x) - block_y * (K / 128);
 
   // Load 128x128 elements from X
   __nv_bfloat16 x[8][4];
@@ -176,8 +177,8 @@ __global__ void __launch_bounds__(512)
   // Store X back to out
   for (uint32_t i = 0; i < 8; i++) {
     size_t idx_n = blockIdx.z;
-    size_t idx_k = block_x * 128 + threadIdx.y + i * 16;
-    size_t idx_m = block_y * 128 + threadIdx.x * 4;
+    size_t idx_k = block_x * 128 + static_cast<size_t>(threadIdx.y) + i * 16;
+    size_t idx_m = block_y * 128 + static_cast<size_t>(threadIdx.x) * 4;
     size_t idx = (idx_n * K + idx_k) * M + idx_m;
 
     using StoreT = phi::kps::details::VectorType<OutT, 4>;

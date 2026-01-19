@@ -102,13 +102,13 @@ void AnchorGeneratorOpCUDAKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(anchors);
   dev_ctx.template Alloc<T>(vars);
 
-  phi::DenseTensor ar;
+  DenseTensor ar;
   phi::TensorFromVector(aspect_ratios, dev_ctx, &ar);
 
-  phi::DenseTensor as;
+  DenseTensor as;
   phi::TensorFromVector(anchor_sizes, dev_ctx, &as);
 
-  phi::DenseTensor sd;
+  DenseTensor sd;
   phi::TensorFromVector(stride, dev_ctx, &sd);
 
   GenAnchors<T><<<grid, block, 0, stream>>>(anchors->data<T>(),
@@ -122,7 +122,7 @@ void AnchorGeneratorOpCUDAKernel(const Context& dev_ctx,
                                             width,
                                             offset);
 
-  phi::DenseTensor v;
+  DenseTensor v;
   phi::TensorFromVector(variances, dev_ctx, &v);
   grid = (box_num * 4 + block - 1) / block;
   SetVariance<T><<<grid, block, 0, stream>>>(

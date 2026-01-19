@@ -28,7 +28,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-constexpr int MAX_DIMS = phi::DDim::kMaxRank;
+constexpr int MAX_DIMS = DDim::kMaxRank;
 
 template <int N>
 struct alignas(N) OpaqueType {
@@ -37,7 +37,7 @@ struct alignas(N) OpaqueType {
 
 template <typename IndexT>
 std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
-    const std::vector<const DenseTensor*> index) {
+    const std::vector<const DenseTensor*>& index) {
   std::array<char*, DDim::kMaxRank> index_ptrs{};
 
   PADDLE_ENFORCE_LE(index.size(),

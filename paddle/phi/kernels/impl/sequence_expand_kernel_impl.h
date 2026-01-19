@@ -23,22 +23,22 @@
 
 namespace phi {
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct SequenceExpandFunctor {
-  void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& x,
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor* out);
+                  DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct SequenceExpandGradFunctor {
-  void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& dout,
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor* dx);
+                  DenseTensor* dx);
 };
 
 template <typename T, typename Context>
@@ -126,7 +126,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
       y_lod.empty(),
       false,
       common::errors::InvalidArgument(
-          "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
+          "Input(Y) DenseTensor of SequenceExpandOp does not contain "
           "LoD information."));
 
   if (ref_level == -1) ref_level = y_lod.size() - 1;
@@ -134,7 +134,7 @@ void SequenceExpandKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   if (y_lod[ref_level].size() <= 1) {
-    phi::Copy(dev_ctx, *x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, *x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -184,14 +184,14 @@ void SequenceExpandGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(g_x);
   g_x->set_lod(x->lod());
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, g_x, static_cast<T>(0));
 
   auto& y_lod = y->lod();
   if (ref_level == -1) ref_level = y_lod.size() - 1;
   // just copy the gradient
   if (y_lod[ref_level].size() <= 1) {
-    phi::Copy(dev_ctx, *g_out, dev_ctx.GetPlace(), false, g_x);
+    Copy(dev_ctx, *g_out, dev_ctx.GetPlace(), false, g_x);
     return;
   }
 

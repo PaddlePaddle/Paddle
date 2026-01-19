@@ -12,28 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/fused_token_prune_kernel.h"
 #include <limits>
 
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"
 
 namespace phi {
 
-using SegmentOffsetIter = phi::funcs::SegmentOffsetIter;
+using SegmentOffsetIter = funcs::SegmentOffsetIter;
 
 template <typename T>
 struct AttnMaskFunctor {
@@ -43,8 +36,10 @@ struct AttnMaskFunctor {
 };
 
 __global__ void FillIndex(int64_t* indices, int num_raws, int num_cols) {
-  int num_threads = num_raws * num_cols;
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t num_threads = static_cast<int64_t>(num_raws) * num_cols;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
@@ -61,8 +56,10 @@ __global__ void TakeAlongAxis(const T* src,
                               int src_num_cols,
                               int dst_num_cols,
                               int num_elements) {
-  int num_threads = num_raws * dst_num_cols;
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t num_threads = static_cast<int64_t>(num_raws) * dst_num_cols;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
@@ -78,7 +75,9 @@ __global__ void TakeAlongAxis(const T* src,
 template <typename T>
 __global__ void MaximumFirst(T* mat, int num_raws, int num_cols, T max_value) {
   int num_threads = num_raws;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
 
   for (; tid < num_threads; tid += stride) {
@@ -108,50 +107,46 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   int slimmed_x_len = new_mask_dims[2];
 
   // Outputs
-  phi::DenseTensor* out_slimmed_x = slimmed_x;
-  phi::DenseTensor* slimmed_indices = cls_inds;
+  DenseTensor* out_slimmed_x = slimmed_x;
+  DenseTensor* slimmed_indices = cls_inds;
   auto* out_slimmed_x_data = dev_ctx.template Alloc<T>(out_slimmed_x);
   auto* slimmed_indices_data = dev_ctx.template Alloc<int64_t>(slimmed_indices);
 
   // Intermediate variable
-  phi::DenseTensor attn_tmp;
+  DenseTensor attn_tmp;
   attn_tmp.Resize(attn_dims);
   auto* attn_tmp_data = dev_ctx.template Alloc<T>(&attn_tmp);
-  phi::DenseTensor attn_accu;
+  DenseTensor attn_accu;
   attn_accu.Resize({bsz, max_seq_len});
   auto* attn_accu_data = dev_ctx.template Alloc<T>(&attn_accu);
-  phi::DenseTensor attn_accu_indices;
+  DenseTensor attn_accu_indices;
   attn_accu_indices.Resize({bsz, max_seq_len});
   auto* attn_accu_indices_data =
       dev_ctx.template Alloc<int64_t>(&attn_accu_indices);
-  phi::DenseTensor sort_attn_accu;
+  DenseTensor sort_attn_accu;
   sort_attn_accu.Resize({bsz, max_seq_len});
   auto* sort_attn_accu_data = dev_ctx.template Alloc<T>(&sort_attn_accu);
-  phi::DenseTensor sort_attn_accu_indices;
+  DenseTensor sort_attn_accu_indices;
   sort_attn_accu_indices.Resize({bsz, max_seq_len});
   auto* sort_attn_accu_indices_data =
       dev_ctx.template Alloc<int64_t>(&sort_attn_accu_indices);
 
-  phi::DenseTensor temp_storage;
+  DenseTensor temp_storage;
 
   // 1. Filter attn by mask
-  std::vector<const phi::DenseTensor*> ins;
-  std::vector<phi::DenseTensor*> outs;
+  std::vector<const DenseTensor*> ins;
+  std::vector<DenseTensor*> outs;
   ins.emplace_back(&attn);
   ins.emplace_back(&mask);
   outs.emplace_back(&attn_tmp);
-  phi::funcs::LaunchElementwiseCudaKernel<T>(
+  funcs::LaunchElementwiseCudaKernel<T>(
       dev_ctx, ins, &outs, AttnMaskFunctor<T>());
 
   // 2. Reduce sum
   const std::vector<int64_t> reduce_dims{1, 2};
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(dev_ctx,
-                                                        attn_tmp,
-                                                        false,
-                                                        reduce_dims,
-                                                        false,
-                                                        attn_accu.dtype(),
-                                                        &attn_accu);
+  phi::Reduce<T, kps::SumOps>(
+      dev_ctx, attn_tmp, false, reduce_dims, attn_accu.dtype(), &attn_accu);
+
   // 3. Prepare token indices
   phi::backends::gpu::GpuLaunchConfig config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * max_seq_len);
@@ -215,12 +210,11 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
       sizeof(T) * 8,
       dev_ctx.stream()));
   // 5. Slice
-  auto slimmed_indices_tmp =
-      phi::funcs::Slice<int64_t>(dev_ctx,
-                                 sort_attn_accu_indices,
-                                 {1} /*axes*/,
-                                 {0} /*starts*/,
-                                 {slimmed_x_len} /*ends*/);
+  auto slimmed_indices_tmp = funcs::Slice<int64_t>(dev_ctx,
+                                                   sort_attn_accu_indices,
+                                                   {1} /*axes*/,
+                                                   {0} /*starts*/,
+                                                   {slimmed_x_len} /*ends*/);
   if (keep_order) {
     // 6. reorder
     num_items = bsz * slimmed_x_len;
@@ -257,11 +251,11 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
         sizeof(int64_t) * 8,
         dev_ctx.stream()));
   } else {
-    phi::Copy(dev_ctx,
-              slimmed_indices_tmp,
-              dev_ctx.GetPlace(),
-              false,
-              slimmed_indices);
+    Copy(dev_ctx,
+         slimmed_indices_tmp,
+         dev_ctx.GetPlace(),
+         false,
+         slimmed_indices);
   }
   // 7. Get slimmed X by indices
   config =

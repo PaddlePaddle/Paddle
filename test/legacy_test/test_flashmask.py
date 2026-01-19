@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-import re
 import unittest
 
 import numpy as np
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -25,27 +23,14 @@ from paddle.nn.functional.flash_attention import (
     flashmask_attention,
 )
 
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
-
 is_sm8x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
 is_sm90 = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 9
     and paddle.device.cuda.get_device_capability()[1] == 0
 )
@@ -55,7 +40,7 @@ is_sm_supported = is_sm8x or is_sm90
 
 def is_flashattn_supported():
     if (
-        not core.is_compiled_with_cuda()
+        not (core.is_compiled_with_cuda() or is_custom_device())
         or get_cuda_version() < 11040
         or not is_sm_supported
     ):
@@ -198,7 +183,7 @@ def gen_global_slide_window_mask(bz, num_head, seqlen, has_end, causal):
 )
 class TestFlashMaskAttentionAPI(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -266,6 +251,8 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
 
         startend_row_indices = self.get_flashmask()
         mask = self.get_densemask()
+        # Note(xhy): ci no supports test on sm90 and blockmask only supports sm >= sm90
+        blockmask = None
         out = flashmask_attention(
             q,
             k,
@@ -273,6 +260,7 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
             startend_row_indices=startend_row_indices,
             dropout=self.dropout,
             causal=self.causal,
+            block_mask=blockmask,
         )
         out_ = attention_naive_with_mask(q_, k_, v_, mask)
         out.backward(ograd)
@@ -294,7 +282,7 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
 
 class TestFlashMaskAttentionFP16API1(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -306,7 +294,7 @@ class TestFlashMaskAttentionFP16API1(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionBF16API1(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 128)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
@@ -318,7 +306,7 @@ class TestFlashMaskAttentionBF16API1(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionFP16API2(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -330,7 +318,7 @@ class TestFlashMaskAttentionFP16API2(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionBF16API2(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
@@ -342,7 +330,7 @@ class TestFlashMaskAttentionBF16API2(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionFP16API3(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048, 16, 96)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -354,7 +342,7 @@ class TestFlashMaskAttentionFP16API3(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionBF16API3(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048, 16, 96)
         self.dtype = 'bfloat16'
         self.dropout = 0.0
@@ -366,7 +354,7 @@ class TestFlashMaskAttentionBF16API3(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionFP16API4(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048 * 4, 16, 96)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -378,7 +366,7 @@ class TestFlashMaskAttentionFP16API4(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionFP16API5(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048 * 4, 16, 96)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -390,7 +378,7 @@ class TestFlashMaskAttentionFP16API5(TestFlashMaskAttentionAPI):
 
 class TestFlashMaskAttentionFP16API6(TestFlashMaskAttentionAPI):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 2048, 16, 96)
         self.dtype = 'float16'
         self.dropout = 0.0

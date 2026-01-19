@@ -19,43 +19,38 @@
 namespace phi {
 namespace distributed {
 
-inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                         int64_t offset,
-                                         int64_t numel) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(tensor);
-  tensor_flattened.Resize({tensor.numel()});
-  return tensor_flattened.Slice(offset, offset + numel);
-}
+DenseTensor GetPartialTensor(const DenseTensor& tensor,
+                             int64_t offset,
+                             int64_t numel);
 
 inline void* GetPointerByOffset(void* raw_pointer,
                                 size_t offset,
-                                phi::DataType type) {
-  if (type == phi::DataType::FLOAT32) {
+                                DataType type) {
+  if (type == DataType::FLOAT32) {
     return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::FLOAT64) {
+  } else if (type == DataType::FLOAT64) {
     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::FLOAT16) {
+  } else if (type == DataType::FLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::INT32) {
+  } else if (type == DataType::INT32) {
     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::INT64) {
+  } else if (type == DataType::INT64) {
     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::INT8) {
+  } else if (type == DataType::INT8) {
     return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::UINT8) {
+  } else if (type == DataType::UINT8) {
     return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::BOOL) {
+  } else if (type == DataType::BOOL) {
     return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
                                    offset);
-  } else if (type == phi::DataType::BFLOAT16) {
+  } else if (type == DataType::BFLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
                                    offset);
   } else {
@@ -65,7 +60,7 @@ inline void* GetPointerByOffset(void* raw_pointer,
   return nullptr;
 }
 
-inline void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
+inline void CheckSizeOnEachRank(const DDim& tensor_dim,
                                 const std::vector<int64_t>& size_on_each_rank,
                                 int world_size) {
   int length_size_on_each_rank = size_on_each_rank.size();

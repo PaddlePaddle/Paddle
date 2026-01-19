@@ -137,9 +137,9 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
   if (max_ptr && min_ptr && mean_ptr) {
     __syncthreads();
 
-    T block_max_value = phi::funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
-    T block_min_value = phi::funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
-    T block_mean_value = phi::funcs::BlockReduceSum<T>(mean_value, FINAL_MASK);
+    T block_max_value = funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
+    T block_min_value = funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
+    T block_mean_value = funcs::BlockReduceSum<T>(mean_value, FINAL_MASK);
 
     if (threadIdx.x == 0) {
       max_ptr[offset] = block_max_value;
@@ -158,7 +158,9 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                          MT* tensor_block_max_ptr,
                                          MT* tensor_block_min_ptr,
                                          MT* tensor_block_mean_ptr) {
-  int64_t i = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t i =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
 
   int64_t num_nan = 0;
   int64_t num_inf = 0;
@@ -244,25 +246,25 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
         min_value = tmp_min_value < min_value ? tmp_min_value : min_value;
         mean_value += tmp_mean_value;
       }
-      phi::funcs::SaveStatsAndValues<MT>(num_nan,
+      funcs::SaveStatsAndValues<MT>(num_nan,
+                                    num_inf,
+                                    num_zero,
+                                    max_value,
+                                    min_value,
+                                    mean_value,
+                                    stats_ptr,
+                                    values_ptr);
+    }
+
+    funcs::PrintForDifferentLevel<T, MT>(debug_info,
+                                         numel,
+                                         num_nan,
                                          num_inf,
                                          num_zero,
                                          max_value,
                                          min_value,
                                          mean_value,
-                                         stats_ptr,
-                                         values_ptr);
-    }
-
-    phi::funcs::PrintForDifferentLevel<T, MT>(debug_info,
-                                              numel,
-                                              num_nan,
-                                              num_inf,
-                                              num_zero,
-                                              max_value,
-                                              min_value,
-                                              mean_value,
-                                              check_nan_inf_level);
+                                         check_nan_inf_level);
   }
 }
 
@@ -272,7 +274,7 @@ inline std::string GetHintString(const std::string& op_type,
                                  const phi::Place& place,
                                  int dev_id = -1) {
   std::string op_var =
-      phi::funcs::GetCpuHintString<T>(op_type, var_name, place, dev_id);
+      funcs::GetCpuHintString<T>(op_type, var_name, place, dev_id);
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
@@ -347,10 +349,9 @@ static void PrintStack(const phi::GPUContext& dev_ctx,
                        const std::string& op_type,
                        const std::string& var_name,
                        int dev_id) {
-  auto cpu_stats =
-      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 3);
+  auto cpu_stats = phi::memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 3);
   int64_t* cpu_stats_ptr = reinterpret_cast<int64_t*>(cpu_stats->ptr());
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           cpu_stats_ptr,
                           stats.place(),
                           stats.data(),
@@ -360,10 +361,10 @@ static void PrintStack(const phi::GPUContext& dev_ctx,
   if (cpu_stats_ptr[0] > 0 || cpu_stats_ptr[1] > 0) {
     const std::string debug_info =
         GetHintString<T>(op_type, var_name, stats.place(), dev_id);
-    phi::funcs::PrintAndThrowError(debug_info.c_str(),
-                                   cpu_stats_ptr[0],
-                                   cpu_stats_ptr[1],
-                                   cpu_stats_ptr[2]);
+    funcs::PrintAndThrowError(debug_info.c_str(),
+                              cpu_stats_ptr[0],
+                              cpu_stats_ptr[1],
+                              cpu_stats_ptr[2]);
   }
 }
 
@@ -377,13 +378,13 @@ static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
                              const std::string& output_dir,
                              const int check_nan_inf_level) {
   // Copy stats and values from GPU to CPU.
-  phi::DenseTensor cpu_stats;
+  DenseTensor cpu_stats;
   cpu_stats.Resize({static_cast<int64_t>(3)});
-  phi::Copy(dev_ctx, stats, phi::CPUPlace(), false, &cpu_stats);
+  Copy(dev_ctx, stats, CPUPlace(), false, &cpu_stats);
 
-  phi::DenseTensor cpu_values;
+  DenseTensor cpu_values;
   cpu_values.Resize({static_cast<int64_t>(3)});
-  phi::Copy(dev_ctx, values, phi::CPUPlace(), false, &cpu_values);
+  Copy(dev_ctx, values, CPUPlace(), false, &cpu_values);
   dev_ctx.Wait();
 
   int dev_id = tensor.place().device;
@@ -392,17 +393,17 @@ static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
   std::string log_name = "gpu." + std::to_string(dev_id);
   int64_t* cpu_stats_ptr = cpu_stats.data<int64_t>();
   float* cpu_values_ptr = cpu_values.data<float>();
-  phi::funcs::WriteToFileForDifferentLevel<T, MT>(debug_info.c_str(),
-                                                  tensor.numel(),
-                                                  cpu_stats_ptr[0],
-                                                  cpu_stats_ptr[1],
-                                                  cpu_stats_ptr[2],
-                                                  cpu_values_ptr[0],
-                                                  cpu_values_ptr[1],
-                                                  cpu_values_ptr[2],
-                                                  check_nan_inf_level,
-                                                  log_name,
-                                                  output_dir);
+  funcs::WriteToFileForDifferentLevel<T, MT>(debug_info.c_str(),
+                                             tensor.numel(),
+                                             cpu_stats_ptr[0],
+                                             cpu_stats_ptr[1],
+                                             cpu_stats_ptr[2],
+                                             cpu_values_ptr[0],
+                                             cpu_values_ptr[1],
+                                             cpu_values_ptr[2],
+                                             check_nan_inf_level,
+                                             log_name,
+                                             output_dir);
 }
 
 template <typename T, typename Context>
@@ -436,14 +437,14 @@ void CheckNumericsKernel(const Context& dev_ctx,
 
   int64_t numel_max_min = blocks;
 
-  phi::DenseTensor block_num_nan_inf_zero;
+  DenseTensor block_num_nan_inf_zero;
   block_num_nan_inf_zero.Resize({static_cast<int64_t>(3 * numel_max_min)});
   int64_t* block_num_nan_ptr =
       dev_ctx.template Alloc<int64_t>(&block_num_nan_inf_zero);
   int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
   int64_t* block_num_zero_ptr = block_num_inf_ptr + numel_max_min;
 
-  phi::DenseTensor tensor_block_max_min;
+  DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
   MT* tensor_block_max_ptr = dev_ctx.template Alloc<MT>(&tensor_block_max_min);
   MT* tensor_block_min_ptr = tensor_block_max_ptr + numel_max_min;

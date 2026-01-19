@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -63,7 +63,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
             )
             y = paddle.nn.functional.l1_loss(input, label, name='aaa')
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = paddle.static.Executor(place)
             static_result = exe.run(
                 feed={"input": self.input_np, "label": self.label_np},
@@ -87,10 +87,10 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -157,7 +157,7 @@ class TestClassL1Loss(unittest.TestCase):
             l1_loss = paddle.nn.loss.L1Loss(name='aaa')
             result3 = l1_loss(input, label)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = paddle.static.Executor(place)
             static_result = exe.run(
                 feed={"input": self.input_np, "label": self.label_np},
@@ -182,10 +182,10 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -230,9 +230,9 @@ class TestClassL1Loss_ZeroSize(unittest.TestCase):
         paddle.enable_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 

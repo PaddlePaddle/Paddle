@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -117,9 +117,11 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -150,11 +152,16 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
                     x=x, output_size=[None, 3]
                 )
 
+                # test @param_one_alias(["x", "input"])
+                out_6 = paddle.nn.functional.adaptive_avg_pool2d(
+                    input=x, output_size=[3, 3]
+                )
+
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
+            [res_1, res_2, res_3, res_4, res_5, res_6] = exe.run(
                 main_program,
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5],
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
             )
 
             np.testing.assert_allclose(
@@ -172,12 +179,17 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 res_5, self.res_5_np, rtol=1e-5, atol=1e-8
             )
+            np.testing.assert_allclose(
+                res_6, self.res_1_np, rtol=1e-5, atol=1e-8
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -196,6 +208,9 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             )
             out_6 = paddle.nn.functional.interpolate(
                 x=x, mode="area", size=[2, 5]
+            )
+            out_7 = paddle.nn.functional.adaptive_avg_pool2d(
+                input=x, output_size=[3, 3]
             )
 
             np.testing.assert_allclose(
@@ -216,12 +231,17 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 out_6.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
             )
+            np.testing.assert_allclose(
+                out_7.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
+            )
 
     def test_grad(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False
@@ -265,9 +285,11 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
@@ -299,12 +321,21 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
                     output_size=[None, 3]
                 )
                 out_5 = adaptive_avg_pool(x=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(
+                    output_size=[3, 3]
+                )
+                out_6 = adaptive_avg_pool(input=x)
+                adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(
+                    output_size=[1, 3]
+                )
+                adaptive_avg_pool.output_size = [3, 3]
+                out_7 = adaptive_avg_pool(input=x)
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
+            [res_1, res_2, res_3, res_4, res_5, res_6, res_7] = exe.run(
                 main_program,
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5],
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
             )
 
             np.testing.assert_allclose(
@@ -322,12 +353,20 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 res_5, self.res_5_np, rtol=1e-5, atol=1e-8
             )
+            np.testing.assert_allclose(
+                res_6, self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_7, self.res_1_np, rtol=1e-5, atol=1e-8
+            )
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -350,6 +389,13 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             )
             out_5 = adaptive_avg_pool(x=x)
 
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=[3, 3])
+            out_6 = adaptive_avg_pool(input=x)
+
+            adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=[1, 3])
+            adaptive_avg_pool.output_size = [3, 3]
+            out_7 = adaptive_avg_pool(input=x)
+
             np.testing.assert_allclose(
                 out_1.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
@@ -364,6 +410,12 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(
                 out_5.numpy(), self.res_5_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_6.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                out_7.numpy(), self.res_1_np, rtol=1e-5, atol=1e-8
             )
 
 
@@ -454,9 +506,11 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -484,9 +538,11 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -500,9 +556,11 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
 
     def test_grad(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False
@@ -521,9 +579,11 @@ class TestInterpolateAPI_ZeroSize(unittest.TestCase):
 
     def test_functional_interpolate(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False

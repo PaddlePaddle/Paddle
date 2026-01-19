@@ -16,19 +16,12 @@
 
 // CUDA and HIP use same api
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include <algorithm>
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace kps = phi::kps;
@@ -156,7 +149,7 @@ __global__ void CumsumOneBlock(const InT *in,
                                int64_t numel,
                                int64_t main_offset,
                                Functor func) {
-  int64_t stride = BLOCK_NUM_X * VecSize;
+  int64_t stride = static_cast<int64_t>(BLOCK_NUM_X) * VecSize;
   int64_t offset = 0;
   OutT pre_cumsum = static_cast<OutT>(0);
   for (; offset < main_offset; offset += stride) {
@@ -164,7 +157,7 @@ __global__ void CumsumOneBlock(const InT *in,
         in + offset, out + offset, &pre_cumsum, stride, func);
   }
 
-  int num = numel - offset;
+  int64_t num = numel - offset;
   if (num > 0) {
     CumsumImpl<InT, OutT, Functor, VecSize, true>(
         in + offset, out + offset, &pre_cumsum, num, func);
@@ -189,7 +182,7 @@ struct SelectCaller {
                                     int64_t thread_fix,
                                     int64_t num) {
     int64_t in_data[VecSize];
-    OutT store_data[VecSize * phi::DDim::kMaxRank];
+    OutT store_data[VecSize * DDim::kMaxRank];
     // set index
     kps::InitWithDataIndex<int64_t, VecSize, 1>(&in_data[0], data_offset);
     // Get store data according to mask_idt
@@ -216,7 +209,7 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 1> {
                                     int thread_fix,
                                     int num) {
     InT in_data[VecSize];
-    OutT store_data[VecSize * phi::DDim::kMaxRank];
+    OutT store_data[VecSize * DDim::kMaxRank];
     kps::ReadData<InT, VecSize, 1, IsBoundary>(&in_data[0], in, num);
     // Get store data according to mask_idt
     kps::OperatorTernary<MT, InT, OutT, Functor>(
@@ -242,7 +235,7 @@ struct SelectCaller<OutT, MT, InT, Functor, VecSize, IsBoundary, 2> {
                                     int thread_fix,
                                     int num) {
     InT in_data[VecSize];
-    OutT store_data[VecSize * phi::DDim::kMaxRank];
+    OutT store_data[VecSize * DDim::kMaxRank];
     kps::details::ReadData<InT>(&in_data[0], in + thread_fix, store_num);
     kps::OperatorTernary<MT, InT, OutT, Functor>(
         store_data, mask_data, &in_data[0], func, VecSize);
@@ -397,7 +390,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int t_size = sizeof(CT);
 
   const phi::Place &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
 
   // 1.1 get stored data num of per block
   int kVecSize = 4;
@@ -447,9 +440,9 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int64_t size_count_block = need_grids + 1;
   std::vector<int64_t> dims_vec = {size_count_block * 2};
   IntArray dims_array(dims_vec);
-  DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor count_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
-  // 1.3 launch CountKernl
+  // 1.3 launch CountKernel
   switch (kVecSize) {
     CALL_GET_BLOCK_COUNT_KERNEL(4)
     CALL_GET_BLOCK_COUNT_KERNEL(2)
@@ -461,7 +454,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   }
 
   // 2.1 alloc cumsum data for CoutBlock prefix
-  DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor cumsum_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *cumsum_data = cumsum_mem.data<CT>();
   // 2.2 get prefix of count_data for real out_index
   CT total_true_num = static_cast<CT>(0);  // init
@@ -538,7 +531,7 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   const int t_size = sizeof(CT);
 
   const phi::Place &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
 
   // 1.1 get stored data num of per block
   const int kVecSize = 4;
@@ -546,13 +539,13 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   int block = 64;
   auto stream = dev_ctx.x_context()->xpu_stream;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 8);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, static_cast<int64_t>(8));
 #else
   const int block = 256;
   const int num_per_block = kVecSize * block;
-  const int need_grids = (numel + num_per_block - 1) / num_per_block;
-  const int grid = std::min(need_grids, 256);
+  const int64_t need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, static_cast<int64_t>(256));
   auto stream = dev_ctx.stream();
 #endif
   const int64_t main_offset = Floor(numel, num_per_block);
@@ -560,13 +553,13 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   const int size_count_block = need_grids + 1;
   std::vector<int> dims_vec = {size_count_block * 2};
   IntArray dims_array(dims_vec);
-  DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor count_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
-  // 1.3 launch CountKernl
+  // 1.3 launch CountKernel
   GetBlockCountKernel<MT, CT, kVecSize>
       <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
   // 2.1 alloc cumsum data for CoutBlock prefix
-  DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor cumsum_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *cumsum_data = cumsum_mem.data<CT>();
   // 2.2 get prefix of count_data for real out_index
   // CT total_true_num = static_cast<CT>(0);  // init

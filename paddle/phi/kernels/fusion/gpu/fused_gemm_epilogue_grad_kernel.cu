@@ -23,18 +23,17 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FusedGemmEpilogueGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const paddle::optional<DenseTensor>& reserve_space,
-    const DenseTensor& out_grad,
-    const bool trans_x,
-    const bool trans_y,
-    const std::string& activation_grad,
-    DenseTensor* x_grad,
-    DenseTensor* y_grad,
-    DenseTensor* bias_grad) {
+void FusedGemmEpilogueGradKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const optional<DenseTensor>& reserve_space,
+                                 const DenseTensor& out_grad,
+                                 const bool trans_x,
+                                 const bool trans_y,
+                                 const std::string& activation_grad,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad,
+                                 DenseTensor* bias_grad) {
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     dev_ctx.template Alloc<T>(y_grad);
@@ -73,20 +72,20 @@ void FusedGemmEpilogueGradKernel(
           << ", activation_grad=" << activation_grad
           << ", reserve_space=" << reserve_space.get_ptr();
 
-  phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
-                                                  &out_grad,
-                                                  &x,
-                                                  &y,
-                                                  reserve_space.get_ptr(),
-                                                  M,
-                                                  N,
-                                                  K,
-                                                  trans_x,
-                                                  trans_y,
-                                                  activation_grad,
-                                                  x_grad,
-                                                  y_grad,
-                                                  bias_grad);
+  funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
+                                             &out_grad,
+                                             &x,
+                                             &y,
+                                             reserve_space.get_ptr(),
+                                             M,
+                                             N,
+                                             K,
+                                             trans_x,
+                                             trans_y,
+                                             activation_grad,
+                                             x_grad,
+                                             y_grad,
+                                             bias_grad);
 #endif
 }
 

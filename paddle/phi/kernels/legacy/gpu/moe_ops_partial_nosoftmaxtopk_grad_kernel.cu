@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/legacy/gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.h"
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -113,11 +114,8 @@ void MoeGateDispatchPartialNoSoftMaxTopkGradKernel(
     DenseTensor* combine_weights_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   dev_ctx.template Alloc<float>(combine_weights_grad);
-  phi::Full<float, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(combine_weights_grad->dims())),
-      0,
-      combine_weights_grad);
+  Full<float, Context>(
+      dev_ctx, combine_weights_grad->dims(), 0, combine_weights_grad);
   DenseTensor t_scatter_index;
   phi::Transpose<int, Context>(
       dev_ctx, scatter_index, {1, 0}, &t_scatter_index);

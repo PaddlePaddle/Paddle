@@ -42,8 +42,8 @@ void CPUIndexElementwisePutGradKernel(
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
@@ -54,8 +54,8 @@ void CPUIndexElementwisePutGradKernel(
   std::vector<int64_t> value_dims;
   std::vector<int64_t> value_strides;
   if (value_grad) {
-    value_dims = common::vectorize<int64_t>(value_grad->dims());
-    value_strides = common::vectorize<int64_t>(value_grad->strides());
+    value_dims = vectorize<int64_t>(value_grad->dims());
+    value_strides = vectorize<int64_t>(value_grad->strides());
   }
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
@@ -73,8 +73,11 @@ void CPUIndexElementwisePutGradKernel(
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_EQ(true,
+                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
+                    common::errors::PreconditionNotMet(
+                        "the value of N should be in [0, "
+                        "std::numeric_limits<int32_t>::max()]"));
   using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
@@ -163,7 +166,7 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
   if (x_grad && !value_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                  out_grad,
                                                  indices,
@@ -176,7 +179,7 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
                                                  value_grad);
   } else if (value_grad) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
@@ -228,9 +231,8 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
                                                    slice_offset,
                                                    x_grad,
                                                    &tmp_value_grad);
-      std::vector<int64_t> after_dims =
-          common::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims = vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
       funcs::CalCompressedDimsWith1AndWithout1(
@@ -261,7 +263,7 @@ void LaunchIndexElementwisePutGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                  out_grad,
@@ -302,7 +304,7 @@ void IndexElementwisePutGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     return;
   }
@@ -344,11 +346,11 @@ void IndexElementwisePutWithTensorGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
+                             vectorize(value_grad->dims()),
                              0.0f,
                              value_grad->dtype(),
                              value_grad);

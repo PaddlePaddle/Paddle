@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/phi/backends/custom/custom_context.h"
 
 #include "paddle/common/exception.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/stream.h"
@@ -66,7 +67,7 @@ struct CustomContext::Impl {
         reinterpret_cast<Eigen::GpuDevice*>(DeviceManager::InitEigenDevice(
             place_, stream_->raw_stream(), allocator_));
 
-    stream_.reset(new phi::stream::Stream());
+    stream_.reset(new stream::Stream());
     stream_->Init(place_);
   }
 
@@ -82,7 +83,7 @@ struct CustomContext::Impl {
     max_threads_per_block_ = DeviceManager::GetMaxThreadsPerBlock(place_);
     max_grid_dim_size_ = DeviceManager::GetMaxGridDimSize(place_);
 
-    stream_.reset(new phi::stream::Stream());
+    stream_.reset(new stream::Stream());
     stream_->Init(place_);
   }
 
@@ -94,15 +95,13 @@ struct CustomContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
-  phi::stream::stream_t stream() const {
-    return reinterpret_cast<phi::stream::stream_t>(stream_->raw_stream());
+  stream::stream_t stream() const {
+    return reinterpret_cast<stream::stream_t>(stream_->raw_stream());
   }
 
-  std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
+  std::shared_ptr<stream::Stream> GetStream() const { return stream_; }
 
-  void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
-    stream_ = stream;
-  }
+  void SetStream(std::shared_ptr<stream::Stream> stream) { stream_ = stream; }
 
   void SetEigenDevice(Eigen::GpuDevice* device) { eigen_device_ = device; }
 
@@ -132,18 +131,18 @@ struct CustomContext::Impl {
 
   void Wait() const { stream_->Wait(); }
 
-  void WaitEvent(phi::event::event_t ev) const {
+  void WaitEvent(event::event_t ev) const {
     event::Event event_(place_, ev);
     stream_->WaitEvent(&event_);
   }
 
-  void RecordEvent(phi::event::event_t ev,
+  void RecordEvent(event::event_t ev,
                    const std::function<void()>& callback) const {
     event::Event event_(place_, ev);
     stream_->RecordEvent(&event_, callback);
   }
 
-  void RecordEvent(phi::event::event_t ev) const {
+  void RecordEvent(event::event_t ev) const {
     event::Event event_(place_, ev);
     stream_->RecordEvent(&event_);
   }
@@ -156,7 +155,7 @@ struct CustomContext::Impl {
     std::call_once(flag_blas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_, reinterpret_cast<void**>(&blas_handle_), stream());
         } else {
           blas_handle_ = blas_handle_creator_();
@@ -165,20 +164,20 @@ struct CustomContext::Impl {
 
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tensor_core_handle_),
               stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
       }
 
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
-          phi::DeviceManager ::InitBlasHandle(
+          DeviceManager ::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
               stream());
@@ -186,7 +185,7 @@ struct CustomContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
       }
     });
@@ -230,7 +229,7 @@ struct CustomContext::Impl {
     std::call_once(flag_blaslt_, [&]() {
       if (!blaslt_handle_) {
         if (!blaslt_handle_creator_)
-          phi::DeviceManager::InitBlasLtHandle(
+          DeviceManager::InitBlasLtHandle(
               place_, reinterpret_cast<void**>(&blaslt_handle_));
         else
           blaslt_handle_ = blaslt_handle_creator_();
@@ -251,7 +250,7 @@ struct CustomContext::Impl {
     std::call_once(flag_cublas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_, reinterpret_cast<void**>(&blas_handle_), stream());
         } else {
           blas_handle_ = blas_handle_creator_();
@@ -259,19 +258,19 @@ struct CustomContext::Impl {
       }
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tensor_core_handle_),
               stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
       }
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
               stream());
@@ -279,12 +278,12 @@ struct CustomContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
       }
     });
 
-    if (blas_tf32_tensor_core_handle_ && allow_tf32_blas_) {
+    if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
       callback(blas_tf32_tensor_core_handle_);
     } else {
@@ -298,7 +297,7 @@ struct CustomContext::Impl {
     std::call_once(flag_tensorcore_cublas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_, reinterpret_cast<void**>(&blas_handle_), stream());
         } else {
           blas_handle_ = blas_handle_creator_();
@@ -306,19 +305,19 @@ struct CustomContext::Impl {
       }
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tensor_core_handle_),
               stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
       }
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
               stream());
@@ -326,7 +325,7 @@ struct CustomContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
       }
     });
@@ -360,7 +359,7 @@ struct CustomContext::Impl {
 
   Place place_;
 
-  std::shared_ptr<phi::stream::Stream> stream_;
+  std::shared_ptr<stream::Stream> stream_;
 
   Allocator* allocator_{nullptr};
 
@@ -396,8 +395,6 @@ struct CustomContext::Impl {
     BLAS_TENSOR_OP_MATH = 1,
     BLAS_TF32_TENSOR_OP_MATH = 2
   };
-
-  bool allow_tf32_blas_ = true;
 
   std::once_flag flag_sparse_;
   std::once_flag flag_blas_;
@@ -440,13 +437,13 @@ void CustomContext::PartialInitWithAllocator() {
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
-phi::stream::stream_t CustomContext::stream() const { return impl_->stream(); }
+stream::stream_t CustomContext::stream() const { return impl_->stream(); }
 
-std::shared_ptr<phi::stream::Stream> CustomContext::GetStream() const {
+std::shared_ptr<stream::Stream> CustomContext::GetStream() const {
   return impl_->GetStream();
 }
 
-void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+void CustomContext::SetStream(std::shared_ptr<stream::Stream> stream) {
 #if !defined(_WIN32)
   this->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                          .GetAllocator(impl_->GetPlace(), stream->raw_stream())
@@ -458,12 +455,12 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
 
 void CustomContext::Wait() const { return impl_->Wait(); }
 
-void CustomContext::RecordEvent(phi::event::event_t ev,
+void CustomContext::RecordEvent(event::event_t ev,
                                 const std::function<void()>& callback) const {
   impl_->RecordEvent(ev, callback);
 }
 
-void CustomContext::RecordEvent(phi::event::event_t ev) const {
+void CustomContext::RecordEvent(event::event_t ev) const {
   impl_->RecordEvent(ev);
 }
 

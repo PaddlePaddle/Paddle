@@ -52,7 +52,7 @@ void FullKernel(const Context& dev_ctx,
     // This function has no input, so the inputs.size() == 0. Use kUnary, but
     // the data will not be loaded in the kernel because the number of
     // parameters in the operator is 0
-    phi::funcs::ElementwiseKernel<T>(
+    funcs::ElementwiseKernel<T>(
         dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
   }
 }
@@ -108,18 +108,20 @@ void FullLikeKernel(const Context& dev_ctx,
             static_cast<float>(value)));
 
     if (numel > 0) {
-      phi::funcs::ElementwiseKernel<T>(
+      funcs::ElementwiseKernel<T>(
           dev_ctx, inputs, &outputs, FullFunctor<T>(value));
     }
   } else {
     if (numel > 0) {
-      phi::funcs::ElementwiseKernel<T>(
+      funcs::ElementwiseKernel<T>(
           dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
     }
   }
 }
 #ifdef _WIN32
 INSTANTIATE_FULL_KERNEL(float, GPUContext)
+INSTANTIATE_FULL_KERNEL(int, GPUContext)
+INSTANTIATE_FULL_KERNEL(int64_t, GPUContext)
 #endif
 }  // namespace phi
 

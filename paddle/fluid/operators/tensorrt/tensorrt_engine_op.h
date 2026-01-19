@@ -96,10 +96,8 @@ static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
       return phi::DataType::FLOAT16;
     case nvinfer1::DataType::kINT8:
       return phi::DataType::INT8;
-#if IS_TRT_VERSION_GE(7000)
     case nvinfer1::DataType::kBOOL:
       return phi::DataType::BOOL;
-#endif
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
@@ -284,8 +282,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto idx = name.find("_cast_auto_mixed.tmp_");
         name = name.substr(0, idx);
 
-        auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(
-            scope, name_real);
+        auto &t =
+            inference::analysis::GetFromScope<DenseTensor>(scope, name_real);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
         auto t_shape = common::vectorize<int32_t>(t.dims());
@@ -450,7 +448,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
-        auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+        auto &t = inference::analysis::GetFromScope<DenseTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
         auto t_shape = common::vectorize(t.dims());
         runtime_batch = t_shape[0];
@@ -532,7 +530,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     for (auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
-      auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<DenseTensor>(scope, x);
       calib_data.emplace(x, t.data());
     }
     temp_calibrator->setBatch(calib_data);
@@ -583,8 +581,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
 
       // convert input and copy to TRT engine's buffer
-      auto &t =
-          inference::analysis::GetFromScope<phi::DenseTensor>(scope, x_real);
+      auto &t = inference::analysis::GetFromScope<DenseTensor>(scope, x_real);
       PADDLE_ENFORCE_GT(
           t.numel(),
           0,
@@ -599,7 +596,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       // check the input_tensor
       if (!(t.place().GetType() == phi::AllocationType::GPU)) {
-        phi::DenseTensor out;
+        DenseTensor out;
         phi::Copy(dev_ctx, t, dev_place, false, &out);
         t.ShareDataWith(out);
       }
@@ -669,7 +666,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
 #if IS_TRT_VERSION_GE(8500)
         if (engine->engine()->isShapeInferenceIO(x.c_str()) &&
             engine->engine()->getTensorIOMode(x.c_str()) ==
@@ -687,8 +683,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             if (scope.FindVar(x_t) == nullptr) {
               const_cast<framework::Scope *>(&scope)->Var(x_t);
             }
-            auto int32_tensor =
-                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+            auto int32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
             *int32_tensor = phi::Cast<int64_t>(
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
@@ -724,8 +719,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             if (scope.FindVar(x_t) == nullptr) {
               const_cast<framework::Scope *>(&scope)->Var(x_t);
             }
-            auto int32_tensor =
-                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+            auto int32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
             *int32_tensor = phi::Cast<int64_t>(
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
@@ -739,7 +733,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
-#endif
 #endif
       }
       runtime_batch = t_shape[0];
@@ -767,7 +760,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (scope.FindVar(x_t) == nullptr) {
           const_cast<framework::Scope *>(&scope)->Var(x_t);
         }
-        auto fp32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+        auto fp32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
         *fp32_tensor = phi::Cast<double>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             t,
@@ -778,7 +771,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (scope.FindVar(x_t) == nullptr) {
           const_cast<framework::Scope *>(&scope)->Var(x_t);
         }
-        auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+        auto int32_tensor = scope.FindVar(x_t)->GetMutable<DenseTensor>();
         *int32_tensor = phi::Cast<int64_t>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             t,
@@ -860,7 +853,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           fluid_v,
           common::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
-      auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+      auto *fluid_t = fluid_v->GetMutable<DenseTensor>();
       fluid_t->Resize(common::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
@@ -922,12 +915,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (type == framework::proto::VarType::INT64) {
         auto y = Outputs("Ys")[i];
         auto *fluid_v = scope.FindVar(y);
-        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        auto *fluid_t = fluid_v->GetMutable<DenseTensor>();
         std::string y_t = y + "_cast_to_INT64";
         if (scope.FindVar(y_t) == nullptr) {
           const_cast<framework::Scope *>(&scope)->Var(y_t);
         }
-        auto int32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
+        auto int32_tensor = scope.FindVar(y_t)->GetMutable<DenseTensor>();
         int32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<int32_t>(int32_tensor);
         phi::Copy(dev_ctx, *fluid_t, dev_place, false, int32_tensor);
@@ -938,12 +931,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else if (type == framework::proto::VarType::FP64) {
         auto y = Outputs("Ys")[i];
         auto *fluid_v = scope.FindVar(y);
-        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        auto *fluid_t = fluid_v->GetMutable<DenseTensor>();
         std::string y_t = y + "_cast_to_FP64";
         if (scope.FindVar(y_t) == nullptr) {
           const_cast<framework::Scope *>(&scope)->Var(y_t);
         }
-        auto fp32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
+        auto fp32_tensor = scope.FindVar(y_t)->GetMutable<DenseTensor>();
         fp32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<float>(fp32_tensor);
         phi::Copy(dev_ctx, *fluid_t, dev_place, false, fp32_tensor);

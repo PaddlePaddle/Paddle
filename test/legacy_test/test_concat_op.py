@@ -20,14 +20,15 @@ from decorator_helper import prog_scope
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
+    is_custom_device,
     skip_check_grad_ci,
 )
 
 import paddle
 import paddle.distributed as dist
 from paddle import base
-from paddle.base import core
 from paddle.pir_utils import IrGuard
 
 
@@ -59,14 +60,14 @@ class TestConcatOp(OpTest):
 
     def test_check_output(self):
         if self.dtype == np.uint16:
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
         else:
             self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.uint16:
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['x0'],
@@ -388,7 +389,7 @@ def create_test_AxisTensor(parent):
 
         def test_check_output(self):
             if self.dtype == np.uint16:
-                place = core.CUDAPlace(0)
+                place = get_device_place()
                 self.check_output_with_place(
                     place, check_pir=True, check_symbol_infer=False
                 )
@@ -402,7 +403,7 @@ def create_test_AxisTensor(parent):
             ):
                 return
             if self.dtype == np.uint16:
-                place = core.CUDAPlace(0)
+                place = get_device_place()
                 self.check_grad_with_place(place, ['x0'], 'Out', check_pir=True)
                 self.check_grad_with_place(place, ['x1'], 'Out', check_pir=True)
                 self.check_grad_with_place(place, ['x2'], 'Out', check_pir=True)
@@ -459,7 +460,7 @@ def create_test_fp16(parent):
             ):
                 return
             if self.dtype == np.uint16:
-                place = core.CUDAPlace(0)
+                place = get_device_place()
                 self.check_grad_with_place(
                     place,
                     ['x0'],
@@ -528,7 +529,8 @@ create_test_fp16(TestConcatOp6)
 # ----------------Concat Bf16----------------
 def create_test_bf16(parent):
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestConcatBf16(parent):
         def setUp(self):
@@ -562,7 +564,7 @@ def create_test_bf16(parent):
             ):
                 return
             if self.dtype == np.uint16:
-                place = core.CUDAPlace(0)
+                place = get_device_place()
                 self.check_grad_with_place(
                     place,
                     ['x0'],
@@ -815,8 +817,8 @@ class TestConcatAPIWithDenseTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
+            get_device_place()
+            if (base.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 

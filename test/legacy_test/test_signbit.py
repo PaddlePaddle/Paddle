@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_places, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -50,7 +50,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_dtype(self):
         def run(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes
@@ -67,7 +67,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_float(self):
         def run(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes
@@ -93,7 +93,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_Tensor_dtype(self):
         def run(place):
             paddle.disable_static(place)
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes

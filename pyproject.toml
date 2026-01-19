@@ -10,6 +10,8 @@ target-version = "py39"
 [tool.ruff.format]
 # Prevent change to double quotes by some users use ruff format
 quote-style = "preserve"
+docstring-code-format = true
+docstring-code-line-length = 120
 
 [tool.ruff.lint]
 select = [
@@ -135,8 +137,6 @@ ignore = [
     "F841",
     # It not met the "Explicit is better than implicit" rule
     "UP015",
-    # It will cause the performance regression on python3.10
-    "UP038",
     # collections.namedtuple can be quickly created a inlined class
     "PYI024",
     # `__all__.append` is a common pattern in Paddle
@@ -197,3 +197,6 @@ module = [
     "xlsxwriter"
 ]
 ignore_missing_imports = true
+
+[tool.ty.environment]
+root = ["./python"]

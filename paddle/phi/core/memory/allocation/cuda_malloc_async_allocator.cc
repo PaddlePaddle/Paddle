@@ -21,6 +21,8 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 
+#include "glog/logging.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -138,7 +140,7 @@ size_t CUDAMallocAsyncAllocation::Free() {
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    const phi::GPUPlace& place,
+    const GPUPlace& place,
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),

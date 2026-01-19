@@ -22,10 +22,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/phi/core/platform/denormal.h"
-#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
-#endif
+#include "paddle/phi/core/platform/denormal.h"
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
@@ -216,7 +214,7 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id) {
   }
 }
 
-phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
+DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           common::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
@@ -224,7 +222,7 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       common::errors::NotFound("No variable [%s] in current scope.", name));
-  auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
+  auto *tensor = const_cast<DenseTensor *>(&var->Get<DenseTensor>());
   return tensor;
 }
 
@@ -278,16 +276,16 @@ void NaiveExecutor::MakeReusePlan(
         int idx = static_cast<int>(it - cluster_names.begin());
         auto *var = scope_->FindVar(name);
         auto *reuse_var = scope_->FindVar(reuse_name);
-        if (var && reuse_var && var->IsType<phi::DenseTensor>() &&
-            reuse_var->IsType<phi::DenseTensor>()) {
-          auto *tensor = var->GetMutable<phi::DenseTensor>();
-          auto *reuse_tensor = reuse_var->GetMutable<phi::DenseTensor>();
+        if (var && reuse_var && var->IsType<DenseTensor>() &&
+            reuse_var->IsType<DenseTensor>()) {
+          auto *tensor = var->GetMutable<DenseTensor>();
+          auto *reuse_tensor = reuse_var->GetMutable<DenseTensor>();
           cluster_buffer_[idx] = reuse_tensor;
           if (reuse_cache_.count(op.get())) {
             reuse_cache_[op.get()].emplace(tensor, idx);
           } else {
             reuse_cache_[op.get()] =
-                std::unordered_map<phi::DenseTensor *, int>{{tensor, idx}};
+                std::unordered_map<DenseTensor *, int>{{tensor, idx}};
           }
         }
       }
@@ -297,8 +295,8 @@ void NaiveExecutor::MakeReusePlan(
 
 NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_DNNL
-  // Clear mkl-dnn cache,
-  // this is needed to have mkl-dnn unit tests working
+  // Clear one-dnn cache,
+  // this is needed to have one-dnn unit tests working
   platform::ClearONEDNNCache(place_, this);
 #endif
 }

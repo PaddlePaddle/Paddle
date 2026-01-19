@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include <thread>
+#include "glog/logging.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"

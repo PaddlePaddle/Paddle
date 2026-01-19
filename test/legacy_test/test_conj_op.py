@@ -21,7 +21,13 @@ import paddle
 
 sys.path.append("..")
 from numpy.random import random as rand
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle.base.dygraph as dg
 from paddle import static
@@ -156,15 +162,15 @@ class TestComplexConjOp(unittest.TestCase):
 
 class Testfp16ConjOp(unittest.TestCase):
     def testfp16(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             input_x = (
                 np.random.random((12, 14)) + 1j * np.random.random((12, 14))
             ).astype('float16')
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=[12, 14], dtype='float16')
                 out = paddle.conj(x)
-                if paddle.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda() or is_custom_device():
+                    place = get_device_place()
                     exe = paddle.static.Executor(place)
                     exe.run(paddle.static.default_startup_program())
                     out = exe.run(feed={'x': input_x}, fetch_list=[out])
@@ -176,8 +182,8 @@ class TestConjFP16OP(TestConjOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestConjBF16(OpTest):
@@ -200,14 +206,67 @@ class TestConjBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
+
+
+class TestConjAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.random([2, 20, 2, 3]) + 1j * np.random.random(
+            [2, 20, 2, 3]
+        )
+        self.out = np.conj(self.x)
+        self.dtype = np.complex128
+        self.place = get_device_place()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.conj(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.conj(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.conj(input=x)
+        paddle_dygraph_out.append(out3)
+        ref_out = np.conj(self.x)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = static.data(name="x", shape=[2, 20, 2, 3], dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.conj(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.conj(x=x)
+            # Key words args for torch
+            out3 = paddle.conj(input=x)
+            # Tensor method args
+            out4 = x.conj()
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={"x": self.x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.conj(self.x)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
 
 
 if __name__ == "__main__":

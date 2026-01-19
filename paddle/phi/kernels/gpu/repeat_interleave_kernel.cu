@@ -37,7 +37,8 @@ __global__ void index_select_cuda_kernel(const T* input,
                                          int64_t stride,
                                          int64_t size,
                                          int64_t delta) {
-  const int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
   }
@@ -90,14 +91,14 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -122,11 +123,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
   auto* in_data = x.data<T>();
   if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
 
     const int64_t* index_data = index.data<int64_t>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -154,11 +155,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
            0,
            stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
   } else {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
 
     const int* index_data = index.data<int>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -198,14 +199,15 @@ __global__ void RepeatInterleaveVecKernel(const T* __restrict__ input,
                                           const int repeats) {
   using VecType = kps::details::VectorType<T, VecSize>;
 
-  const int64_t tid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  const int64_t tid =
+      (static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
   if (tid >= numel) return;
 
   VecType* vec_output = reinterpret_cast<VecType*>(output);
   const VecType* vec_input = reinterpret_cast<const VecType*>(input);
 
 #pragma unroll
-  for (int v = 0; v < VecSize && tid + v < numel; v++) {
+  for (int64_t v = 0; v < VecSize && tid + v < numel; v++) {
     const int64_t idx = tid + v;
     const int64_t inner_idx = idx % inner_size;
     const int64_t temp = idx / inner_size;

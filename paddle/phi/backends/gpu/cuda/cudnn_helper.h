@@ -40,14 +40,6 @@ namespace gpu {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= CUDNN_VERSION_COMPUTE(major, minor, patch))
 
-enum class DataLayout {  // Not use
-  kNHWC,
-  kNCHW,
-  kNCDHW,
-  kNDHWC,  // add, liyamei
-  kNCHW_VECT_C,
-};
-
 enum class PoolingMode {
   kMaximum,
   kMaximumDeterministic,
@@ -195,13 +187,13 @@ class CudnnDataType<double> {
 inline cudnnTensorFormat_t GetCudnnTensorFormat(
     const DataLayout& order) {  // Not use
   switch (order) {
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       return CUDNN_TENSOR_NHWC;
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       return CUDNN_TENSOR_NCHW;
-    case DataLayout::kNCDHW:
+    case DataLayout::NCDHW:
       return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
-    case DataLayout::kNDHWC:
+    case DataLayout::NDHWC:
       return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -295,7 +287,6 @@ class ScopedTensorDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
-#if CUDNN_VERSION >= 7201
 class ScopedRNNTensorDescriptor {
  public:
   ScopedRNNTensorDescriptor() {
@@ -358,7 +349,6 @@ class ScopedRNNTensorDescriptor {
   cudnnRNNDataDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
 };
-#endif
 
 class ScopedDropoutDescriptor {
  public:
@@ -372,10 +362,10 @@ class ScopedDropoutDescriptor {
   }
 
   inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
-                                             const phi::Place& place UNUSED,
+                                             const Place& place UNUSED,
                                              bool initialized,
                                              float dropout_prob_,
-                                             phi::DenseTensor* dropout_state_,
+                                             DenseTensor* dropout_state_,
                                              int seed,
                                              size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
@@ -623,11 +613,9 @@ class ScopedActivationDescriptor {
     ActivationMode activation_mode = StringToActivationMode(act);
     cudnnActivationMode_t mode;
     switch (activation_mode) {
-#if CUDNN_VERSION >= 7100
       case ActivationMode::kNone:
         mode = CUDNN_ACTIVATION_IDENTITY;
         break;
-#endif
       case ActivationMode::kRelu6:
         relu_ceiling = 6.0;
         mode = CUDNN_ACTIVATION_CLIPPED_RELU;
@@ -660,7 +648,6 @@ class ScopedActivationDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
 
-#if CUDNN_VERSION >= 7001
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
@@ -683,7 +670,6 @@ class ScopedCTCLossDescriptor {
   cudnnCTCLossDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
 };
-#endif
 
 }  // namespace gpu
 }  // namespace backends

@@ -181,8 +181,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   if (x.numel() == 0 || boxes.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
 
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(dx->dims()), 0.0, dx->dtype(), dx);
+    phi::FullKernel<T>(dev_ctx, vectorize(dx->dims()), 0.0, dx->dtype(), dx);
     return;
   }
 
@@ -205,7 +204,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   box_batch_id_list.Resize({rois_num});
   int* box_batch_size = dev_ctx.template HostAlloc<int>(&box_batch_id_list);
 
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();
@@ -259,7 +258,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       gplace, roi_id_data, cplace, box_batch_size, bytes, dev_ctx.stream());
   dev_ctx.template Alloc<T>(dx);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, dx, static_cast<T>(0));
 
   int64_t output_grad_size = out_grad.numel();

@@ -93,12 +93,10 @@ void Atan2GradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     dev_ctx.template Alloc<T>(y_grad);
     if (x_grad && x_grad->numel() != 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (y_grad && y_grad->numel() != 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     return;
   }
@@ -110,7 +108,7 @@ void Atan2GradKernel(const Context& dev_ctx,
       y_grad ? dev_ctx.template Alloc<T>(y_grad, size_t(y.numel() * sizeof(T)))
              : nullptr;
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::Atan2GradFunctor<T> functor(
       x_data, y_data, out_grad_data, x_grad_data, y_grad_data, numel);
   for_range(functor);

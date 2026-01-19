@@ -32,6 +32,7 @@
 
 namespace paddle {
 namespace memory {
+class AllocatorVisitor;
 namespace allocation {
 
 // Allocator Facade is the interface exposed to other modules.
@@ -70,6 +71,23 @@ class AllocatorFacade {
   PADDLE_API AllocationPtr Alloc(const phi::Place& place, size_t size);
   // Release unused memory pool.
   uint64_t Release(const phi::Place& place);
+  // Compact memory of free blocks held by the VmmAllocator.
+  size_t Compact(const phi::Place& place);
+
+  /**
+   * @brief Accepts an AllocatorVisitor and iterates over all nested Allocator
+   * instances associated with a specific memory location (Place), executing the
+   * visitor's corresponding Visit method for each one.
+   *
+   * This method facilitates the traversal of the Allocator hierarchy for the
+   * given memory Place, allowing the visitor to collect statistics or perform
+   * operations on all constituent allocators.
+   *
+   * @param place The memory location
+   * @param visitor A pointer to the AllocatorVisitor whose Visit methods will
+   * be executed against the nested allocators found at the specified Place.
+   */
+  void Accept(const phi::Place& place, AllocatorVisitor* visitor);
 
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size,
@@ -87,24 +105,30 @@ class AllocatorFacade {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
-  uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
+  uint64_t Release(const GPUPlace& place, gpuStream_t stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
   PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
-  void SetDefaultStream(const phi::GPUPlace& place, gpuStream_t stream);
+  void SetDefaultStream(const GPUPlace& place, gpuStream_t stream);
 #elif defined(PADDLE_WITH_XPU)
   PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, XPUStream stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
   void SetDefaultStream(const phi::XPUPlace& place, XPUStream stream);
+  void EraseStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   void PrepareMemoryPoolForCUDAGraph(int64_t id);
   void RemoveMemoryPoolOfCUDAGraph(int64_t id);
+#endif
+#if defined(PADDLE_WITH_XPU)
+  void RemoveMemoryPoolOfXPUGraph(int64_t id);
+  void PrepareMemoryPoolForXPUGraph(int64_t id);
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -124,7 +148,8 @@ class AllocatorFacade {
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   std::unordered_map<int64_t, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_map_;
   std::unordered_map<int64_t, int64_t> cuda_graph_ref_cnt_;

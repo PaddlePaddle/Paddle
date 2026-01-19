@@ -1557,7 +1557,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         }
 
         if self.has_distributed_lookup_table:
-            attrs['checkpint_block_id'] = checkpoint_block_id
+            attrs['checkpoint_block_id'] = checkpoint_block_id
         if self.config.enable_dc_asgd:
             attrs['dc_asgd'] = True
 

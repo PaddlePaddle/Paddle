@@ -40,9 +40,9 @@ __global__ void CrossEntropyKernel(T* Y,
                    D,
                    ignore_index,
                    lbl);
-    Y[i] = ignore_index == lbl ? static_cast<T>(0)
-                               : -phi::funcs::TolerableValue<T>()(
-                                     phi::funcs::real_log(X[i * D + lbl]));
+    Y[i] = ignore_index == lbl
+               ? static_cast<T>(0)
+               : -funcs::TolerableValue<T>()(funcs::real_log(X[i * D + lbl]));
   }
 }
 
@@ -51,14 +51,13 @@ __global__ void SoftCrossEntropyKernel(T* Y,
                                        const T* X,
                                        const T* label,
                                        const int class_num) {
-  int tid = threadIdx.x;
+  int64_t tid = threadIdx.x;
   T val(0);
 
-  int idx = blockIdx.x * class_num + tid;
-  int end = blockIdx.x * class_num + class_num;
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * class_num + tid;
+  int64_t end = static_cast<int64_t>(blockIdx.x) * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
-    val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
-           label[idx];
+    val += funcs::TolerableValue<T>()(funcs::real_log(X[idx])) * label[idx];
   }
 
   val = phi::backends::gpu::reduceSum(val, tid, blockDim.x);
@@ -113,33 +112,48 @@ struct HardLabelCrossEntropyCUDAFunctorImpl {
 template <typename DeviceContext, typename T>
 void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    phi::DenseTensor* out,
-    const phi::DenseTensor* prob,
-    const phi::DenseTensor* labels,
+    DenseTensor* out,
+    const DenseTensor* prob,
+    const DenseTensor* labels,
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {
   T* loss_data = dev_ctx.template Alloc<T>(out);
   const T* prob_data = prob->data<T>();
 
-  int batch_size = prob->dims()[0];
-  int class_num = prob->dims()[1];
+  int64_t batch_size = prob->dims()[0];
+
+  int64_t class_num = prob->dims()[1];
+  // TODO(large-tensor): CUDA grid dims not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(class_num, "class_num");
+  int batch_size_int = static_cast<int>(batch_size);
+  int class_num_int = static_cast<int>(class_num);
+
   constexpr int kMaxBlockDim = 512;
+
+  // big tensor currently not supported
+  PADDLE_ENFORCE_LE(out->numel(),
+                    (1LL << 31) - 1,
+                    ::common::errors::PreconditionNotMet(
+                        "out's numel too large "
+                        "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+                        out->numel()));
 
   if (softLabel) {
     const T* label_data = labels->data<T>();
-    int block = class_num > kMaxBlockDim
+    int block = class_num_int > kMaxBlockDim
                     ? kMaxBlockDim
-                    : pow(2, static_cast<int>(std::log2(class_num)));
+                    : pow(2, static_cast<int>(std::log2(class_num_int)));
 
-    SoftCrossEntropyKernel<T><<<batch_size, block, 0, dev_ctx.stream()>>>(
-        loss_data, prob_data, label_data, class_num);
+    SoftCrossEntropyKernel<T><<<batch_size_int, block, 0, dev_ctx.stream()>>>(
+        loss_data, prob_data, label_data, class_num_int);
   } else {
     HardLabelCrossEntropyCUDAFunctorImpl<T> functor(loss_data,
                                                     prob_data,
                                                     labels->data(),
-                                                    batch_size,
-                                                    class_num,
+                                                    batch_size_int,
+                                                    class_num_int,
                                                     ignore_index,
                                                     kMaxBlockDim,
                                                     dev_ctx.stream());

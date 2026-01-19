@@ -67,7 +67,9 @@ __global__ void ScatterCUDAKernel(const T* params,
                                   size_t slice_size) {
   int64_t num = index_size * slice_size;
   int64_t block_size = blockDim.x;
-  int64_t i = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  int64_t i = (static_cast<int64_t>(blockIdx.x) * block_size +
+               static_cast<int64_t>(threadIdx.x)) *
+              VecSize;
   for (; i < num; i += gridDim.x * block_size * VecSize) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i % slice_size;  // offset inside the slice
@@ -193,7 +195,7 @@ void GPUScatterAssign(const phi::GPUContext& dev_ctx,
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
 
   auto src_dims = src.dims();
-  phi::DDim output_dims = output->dims();
+  DDim output_dims = output->dims();
 
   // slice size
   size_t slice_size = 1;
@@ -354,11 +356,11 @@ void GPUScatterNdAdd(const phi::GPUContext& dev_ctx,
   }
 }
 
-inline int64_t ensure_nonempty_size(const phi::DenseTensor& t, int64_t dim) {
+inline int64_t ensure_nonempty_size(const DenseTensor& t, int64_t dim) {
   return t.dims().size() == 0 ? 1 : t.dims()[dim];
 }
 
-inline int64_t ensure_nonempty_stride(const phi::DenseTensor& t, int64_t dim) {
+inline int64_t ensure_nonempty_stride(const DenseTensor& t, int64_t dim) {
   if (t.dims().size() == 0) {
     return 1;
   }
@@ -374,7 +376,7 @@ inline IdxVec ensure_nonempty_vec(IdxVec vec) {
   return vec;
 }
 
-inline phi::DDim ensure_nonempty_ddim(phi::DDim dim) {
+inline DDim ensure_nonempty_ddim(DDim dim) {
   if (dim.size() == 0) {
     return phi::make_ddim({1});
   }
@@ -384,14 +386,14 @@ inline phi::DDim ensure_nonempty_ddim(phi::DDim dim) {
 inline DenseTensor as_strided(const DenseTensor& src,
                               const std::vector<int64_t>& shape,
                               const std::vector<int64_t>& strides) {
-  phi::DenseTensor out;
+  DenseTensor out;
   out.ShareDataWith(src);
   out.Resize(phi::make_ddim(shape));
   out.set_strides(phi::make_ddim(strides));
   return out;
 }
 
-inline DenseTensor restride_dim(const phi::DenseTensor& src,
+inline DenseTensor restride_dim(const DenseTensor& src,
                                 int dim,
                                 const std::vector<int64_t>& replacement_shape) {
   auto strides = ensure_nonempty_vec(common::vectorize(src.strides()));
@@ -402,7 +404,8 @@ inline DenseTensor restride_dim(const phi::DenseTensor& src,
 template <int nt, int vt, typename func_t>
 __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
   constexpr int nv = nt * vt;
-  int idx = nv * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      nv * static_cast<int64_t>(blockIdx.x) + static_cast<int64_t>(threadIdx.x);
 
 #pragma unroll
   for (int i = 0; i < vt; ++i) {

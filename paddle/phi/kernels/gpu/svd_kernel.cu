@@ -105,7 +105,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -186,7 +186,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -269,7 +269,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -352,7 +352,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -382,13 +382,22 @@ void SvdKernel(const Context& dev_ctx,
     return;
   }
   auto& dims = X.dims();
-  int batch_count = 1;
+  int64_t batch_count64 = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
-    batch_count *= dims[i];
+    batch_count64 *= dims[i];
   }
+  // TODO(large-tensor): cusolver batch_count not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(batch_count64, "batch_count");
+  int batch_count = static_cast<int>(batch_count64);
+
   int rank = dims.size();
-  int m = dims[rank - 2];
-  int n = dims[rank - 1];
+  int64_t m = dims[rank - 2];
+  int64_t n = dims[rank - 1];
+  // TODO(large-tensor): cusolver m/n not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(m, "m");
+  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+  int m_int = static_cast<int>(m);
+  int n_int = static_cast<int>(n);
 
   auto* u_data = dev_ctx.template Alloc<T>(U);
   auto* vh_data = dev_ctx.template Alloc<T>(VH);
@@ -404,9 +413,9 @@ void SvdKernel(const Context& dev_ctx,
 
   GesvdjBatched<T>(dev_ctx,
                    batch_count,
-                   n,
-                   m,
-                   std::min(m, n),
+                   n_int,
+                   m_int,
+                   std::min(m_int, n_int),
                    dev_ctx.template Alloc<T>(&x_tmp),
                    vh_data,
                    u_data,

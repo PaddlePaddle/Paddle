@@ -510,7 +510,7 @@ T *SafeGetTensorPtr(const DenseTensor *t) {{
 }}
 
 template <typename T>
-T *SafeGetTensorPtr(const paddle::optional<DenseTensor> &t) {{
+T *SafeGetTensorPtr(const optional<DenseTensor> &t) {{
   return t ? SafeGetTensorPtr<T>(t.get()) : nullptr;
 }}
 
@@ -521,7 +521,7 @@ T *SafeAllocTensor(const Context &ctx, DenseTensor *t) {{
   return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr));
 }}
 
-inline int64_t DimStride(const phi::DDim &dims, int n) {{
+inline int64_t DimStride(const DDim &dims, int n) {{
   int rank = dims.size();
   if (n < 0) {{
     n += rank;

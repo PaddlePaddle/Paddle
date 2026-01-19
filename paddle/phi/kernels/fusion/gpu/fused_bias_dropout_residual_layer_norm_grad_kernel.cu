@@ -14,19 +14,17 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #else
 #include <cuda_fp16.h>
-#include <cub/cub.cuh>
 #endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_dropout_residual_layer_norm_grad_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
 namespace phi {
@@ -36,9 +34,9 @@ void FusedBiasDropoutResidualLnGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& residual,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& ln_scale,
-    const paddle::optional<DenseTensor>& ln_bias,
+    const optional<DenseTensor>& bias,
+    const optional<DenseTensor>& ln_scale,
+    const optional<DenseTensor>& ln_bias,
     const DenseTensor& ln_mean,
     const DenseTensor& ln_variance,
     const DenseTensor& bias_dropout_residual_out,

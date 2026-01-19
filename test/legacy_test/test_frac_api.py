@@ -54,12 +54,11 @@ class TestFracAPI(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_api_eager(self):
-        paddle.disable_static(self.place)
-        x_tensor = paddle.to_tensor(self.x_np)
-        out = paddle.frac(x_tensor)
-        out_ref = ref_frac(self.x_np)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
-        paddle.enable_static()
+        with paddle.base.dygraph.guard(self.place):
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = paddle.frac(x_tensor)
+            out_ref = ref_frac(self.x_np)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
 
 class TestFracInt32(TestFracAPI):
@@ -120,6 +119,42 @@ class TestFracAPI_ZeroSize(unittest.TestCase):
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         out.sum().backward()
         np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
+class TestFracAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.shape = [5, 6]
+        self.dtype = "float32"
+        np.random.seed(2025)
+        self.x_np = np.random.rand(*self.shape).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_frac_input_arg(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_ref = ref_frac(self.x_np)
+        out = paddle.frac(input=x)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_frac_output_arg(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_ref = ref_frac(self.x_np)
+        out = paddle.empty([])
+        paddle.frac(x, out=out)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_frac_tensor_output_arg(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_ref = ref_frac(self.x_np)
+        out1 = paddle.empty([])
+        out2 = paddle.frac(x, out=out1)
+        np.testing.assert_allclose(out1.numpy(), out_ref, rtol=1e-05)
+        np.testing.assert_allclose(out2.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

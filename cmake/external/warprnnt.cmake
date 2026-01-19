@@ -25,10 +25,16 @@ set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/warprnnt)
 set(WARPRNNT_PATCH_COMMAND "")
 set(WARPRNNT_CCBIN_OPTION "")
 if(WIN32)
-  set(WARPCTC_PATCH_CUDA_COMMAND
-      ${CMAKE_COMMAND} -E copy_if_different
-      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch
-      "<SOURCE_DIR>/")
+  if(CUDA_VERSION VERSION_GREATER_EQUAL 13)
+    set(WARPCTC_PATCH_CUDA_COMMAND
+        git checkout -- . && git checkout ${WARPRNNT_TAG} && git apply
+        ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda130.patch)
+  else()
+    set(WARPCTC_PATCH_CUDA_COMMAND
+        ${CMAKE_COMMAND} -E copy_if_different
+        ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch
+        "<SOURCE_DIR>/")
+  endif()
 else()
   set(WARPCTC_PATCH_CUDA_COMMAND
       git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
@@ -97,6 +103,16 @@ else()
   set(WARPRNNT_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
   set(WARPRNNT_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
+
+# For CMake >= 4.0.0, force policy compatibility for third-party warprnnt's CMake.
+set(WARPRNNT_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "warprnnt: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(WARPRNNT_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
 ExternalProject_Add(
   extern_warprnnt
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -125,6 +141,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              ${EXTERNAL_OPTIONAL_ARGS}
+             ${WARPRNNT_POLICY_ARGS}
              ${WARPCTC_CCBIN_OPTION}
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

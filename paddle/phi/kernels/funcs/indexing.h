@@ -72,28 +72,33 @@ static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
 }
 
 template <typename T, typename Context>
-std::vector<phi::DenseTensor*> ExpandTensors(
-    const Context& dev_ctx, const std::vector<phi::DenseTensor*>& indices) {
-  std::vector<phi::DenseTensor*> result;
+std::vector<DenseTensor*> ExpandTensors(
+    const Context& dev_ctx,
+    const std::vector<std::unique_ptr<DenseTensor>>& indices) {
+  std::vector<DenseTensor*> result;
   for (auto& index : indices) {
     if (index->dtype() == paddle::DataType::BOOL) {
-      phi::DenseTensor bool_2_idx(phi::DataType::INT64);
+      DenseTensor bool_2_idx(phi::DataType::INT64);
       NonZeroKernel<bool, Context>(dev_ctx, *index, &bool_2_idx);
+      if (bool_2_idx.numel() == 0) {
+        std::vector<DenseTensor*> empty_result;
+        return empty_result;
+      }
       for (int j = 0; j < index->dims().size(); j++) {
         SliceKernel<int64_t, Context>(
-            dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {1}, index);
-        result.emplace_back(index);
+            dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {1}, index.get());
+        result.emplace_back(index.get());
       }
     } else {
-      result.emplace_back(index);
+      result.emplace_back(index.get());
     }
   }
   return result;
 }
 
 template <typename T, typename Context>
-std::vector<phi::DenseTensor*> ExpandOutplace(
-    const Context& dev_ctx, const std::vector<phi::DenseTensor*>& to_expand) {
+std::vector<DenseTensor*> ExpandOutplace(
+    const Context& dev_ctx, const std::vector<DenseTensor*>& to_expand) {
   bool first = true;
   common::DDim sizes;
   for (size_t i = 0; i < to_expand.size(); i++) {
@@ -107,7 +112,7 @@ std::vector<phi::DenseTensor*> ExpandOutplace(
     }
   }
 
-  std::vector<phi::DenseTensor*> result(to_expand.size());
+  std::vector<DenseTensor*> result(to_expand.size());
   for (size_t i = 0; i < to_expand.size(); i++) {
     if (!to_expand[i]->initialized()) {
       continue;
@@ -115,7 +120,7 @@ std::vector<phi::DenseTensor*> ExpandOutplace(
       result[i] = to_expand[i];
     } else {
       if (to_expand[i]->dtype() == phi::DataType::INT32) {
-        phi::DenseTensor tmp_idx(phi::DataType::INT64);
+        DenseTensor tmp_idx(phi::DataType::INT64);
         ExpandKernel<int32_t, Context>(
             dev_ctx,
             *(to_expand[i]),
@@ -124,7 +129,7 @@ std::vector<phi::DenseTensor*> ExpandOutplace(
         *(to_expand[i]) = tmp_idx;
         result[i] = to_expand[i];
       } else if (to_expand[i]->dtype() == phi::DataType::INT64) {
-        phi::DenseTensor tmp_idx(phi::DataType::INT64);
+        DenseTensor tmp_idx(phi::DataType::INT64);
         ExpandKernel<int64_t, Context>(
             dev_ctx,
             *(to_expand[i]),
@@ -144,27 +149,28 @@ std::vector<phi::DenseTensor*> ExpandOutplace(
 template <typename T, typename Context>
 struct AdvancedIndex {
   AdvancedIndex(const Context& dev_ctx,
-                const phi::DenseTensor& self,
-                const std::vector<const phi::DenseTensor*>& orig);
-  ~AdvancedIndex();
-  phi::DenseTensor src;
-  std::vector<phi::DenseTensor*> tmp_indices;
-  std::vector<phi::DenseTensor*> indices;
+                const DenseTensor& self,
+                const std::vector<const DenseTensor*>& orig);
+  ~AdvancedIndex() = default;
+  DenseTensor src;
+  std::vector<std::unique_ptr<DenseTensor>> tmp_indices;
+  std::vector<const DenseTensor*> indices;
   std::vector<int64_t> indexed_sizes;
   std::vector<int64_t> indexed_strides;
   int64_t dims_before;
   int64_t dims_after;
   bool bool_case;
+  bool empty_index = false;
 };
 
-inline static phi::DenseTensor RestrideSrc(
-    phi::DenseTensor* src,
-    const int64_t& dims_before,
-    const int64_t& dims_indexed,
-    const std::vector<int64_t>& replacement_shape) {
-  std::vector<int64_t> shape_vec = (common::vectorize<int64_t>(src->dims()));
+inline static void RestrideSrc(const DenseTensor& self,
+                               const int64_t& dims_before,
+                               const int64_t& dims_indexed,
+                               const std::vector<int64_t>& replacement_shape,
+                               DenseTensor* view_src) {
+  std::vector<int64_t> shape_vec = (common::vectorize<int64_t>(self.dims()));
   std::vector<int64_t> strides_vec =
-      (common::vectorize<int64_t>(src->strides()));
+      (common::vectorize<int64_t>(self.strides()));
   std::vector<int64_t>* shape = &shape_vec;
   std::vector<int64_t>* strides = &strides_vec;
   int64_t end = dims_before + dims_indexed;
@@ -174,15 +180,16 @@ inline static phi::DenseTensor RestrideSrc(
                 replacement_shape.begin(),
                 replacement_shape.end());
   strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
-  auto meta = src->meta();
+  auto meta = self.meta();
   meta.dims = common::make_ddim(*shape);
   meta.strides = common::make_ddim(*strides);
-  meta.offset = src->offset();
-  src->set_meta(meta);
-  return *src;
+  meta.offset = self.offset();
+  view_src->set_meta(meta);
+  view_src->ResetHolder(self.Holder());
+  view_src->ShareInplaceVersionCounterWith(self);
 }
 
-inline static void ReshapeIndexer(phi::DenseTensor* index,
+inline static void ReshapeIndexer(DenseTensor* index,
                                   const int64_t& dims_before,
                                   const int64_t& dims_after) {
   auto orig_shape = common::vectorize<int64_t>(index->dims());
@@ -194,30 +201,27 @@ inline static void ReshapeIndexer(phi::DenseTensor* index,
 }
 
 template <typename T, typename Context>
-inline AdvancedIndex<T, Context>::~AdvancedIndex() {
-  for (phi::DenseTensor* ptr : tmp_indices) {
-    delete ptr;
-  }
-}
-
-template <typename T, typename Context>
 inline AdvancedIndex<T, Context>::AdvancedIndex(
     const Context& dev_ctx,
-    const phi::DenseTensor& self,
-    const std::vector<const phi::DenseTensor*>& orig) {
+    const DenseTensor& self,
+    const std::vector<const DenseTensor*>& orig) {
   for (int i = 0; i < orig.size(); i++) {
-    phi::DenseTensor* tmp = new phi::DenseTensor();
-    *tmp = *(const_cast<phi::DenseTensor*>(orig[i]));
-    this->tmp_indices.push_back(tmp);
+    tmp_indices.emplace_back(std::make_unique<DenseTensor>());
+    *(tmp_indices.back()) = *(const_cast<DenseTensor*>(orig[i]));
   }
 
   auto indices = ExpandTensors<T, Context>(dev_ctx, this->tmp_indices);
+  if (indices.empty()) {
+    empty_index = true;
+    return;
+  }
+
   indices = ExpandOutplace<T, Context>(dev_ctx, indices);
   while (indices.size() < static_cast<size_t>(self.dims().size())) {
     indices.emplace_back();
   }
 
-  std::vector<phi::DenseTensor*> indices_int64;
+  std::vector<DenseTensor*> indices_int64;
   for (auto& indice : indices) {
     if (indice && indice->dtype() == paddle::DataType::INT32) {
       *indice = phi::Cast<int, Context>(dev_ctx, *indice, phi::DataType::INT64);
@@ -225,13 +229,12 @@ inline AdvancedIndex<T, Context>::AdvancedIndex(
     indices_int64.push_back(indice);
   }
 
-  phi::DenseTensor src = self;
-  std::vector<phi::DenseTensor*> indices_list = indices_int64;
+  std::vector<DenseTensor*> indices_list = indices_int64;
 
-  uint32_t element_size_bytes = phi::SizeOf(src.dtype());
+  uint32_t element_size_bytes = phi::SizeOf(self.dtype());
   int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
-  std::vector<int64_t> shape_vec = common::vectorize<int64_t>(src.dims());
-  std::vector<int64_t> stride_vec = common::vectorize<int64_t>(src.strides());
+  std::vector<int64_t> shape_vec = common::vectorize<int64_t>(self.dims());
+  std::vector<int64_t> stride_vec = common::vectorize<int64_t>(self.strides());
   std::vector<int64_t> replacement_shape;
   std::vector<int64_t> idx_shape_vec = {};
   std::vector<int64_t> idx_stride_vec = {};
@@ -253,7 +256,7 @@ inline AdvancedIndex<T, Context>::AdvancedIndex(
 
   this->dims_before = dims_before;
   this->dims_after = dims_after;
-  this->src = RestrideSrc(&src, dims_before, dims_indexed, replacement_shape);
+  RestrideSrc(self, dims_before, dims_indexed, replacement_shape, &(this->src));
 
   for (auto& index : indices_list) {
     if (index) {

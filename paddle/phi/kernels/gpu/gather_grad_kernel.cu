@@ -31,8 +31,7 @@ void GatherGradKernel(const Context& dev_ctx,
   // x [4, 2], index [2, 0], out [2, 0], x_grad [4, 2]
   if (out_grad.numel() == 0 || (x_grad && x_grad->numel() == 0)) {
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     return;
   }
@@ -44,17 +43,17 @@ void GatherGradKernel(const Context& dev_ctx,
 
   if (axis_v != 0) {
     if (index_type == DataType::INT32) {
-      phi::funcs::GatherV2GradCUDAFunction<T, int32_t>(
+      funcs::GatherV2GradCUDAFunction<T, int32_t>(
           &out_grad, &index, axis_v, x_grad, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::GatherV2GradCUDAFunction<T, int64_t>(
+      funcs::GatherV2GradCUDAFunction<T, int64_t>(
           &out_grad, &index, axis_v, x_grad, dev_ctx);
     }
     return;
   }
 
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
+  funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) {
     return;
   }
@@ -63,10 +62,10 @@ void GatherGradKernel(const Context& dev_ctx,
     if (index_type == DataType::INT32) {
       DenseTensor index_int64 =
           phi::Cast<int32_t, Context>(dev_ctx, index, DataType::INT64);
-      phi::funcs::GPUScatterAdd<T, int64_t>(
+      funcs::GPUScatterAdd<T, int64_t>(
           dev_ctx, out_grad, index_int64, x_grad, axis_v);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::GPUScatterAdd<T, int64_t>(
+      funcs::GPUScatterAdd<T, int64_t>(
           dev_ctx, out_grad, index, x_grad, axis_v);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -75,10 +74,9 @@ void GatherGradKernel(const Context& dev_ctx,
     }
   } else {
     if (index_type == DataType::INT32) {
-      phi::funcs::GPUScatterAssign<T, int>(
-          dev_ctx, out_grad, index, x_grad, false);
+      funcs::GPUScatterAssign<T, int>(dev_ctx, out_grad, index, x_grad, false);
     } else if (index_type == DataType::INT64) {
-      phi::funcs::GPUScatterAssign<T, int64_t>(
+      funcs::GPUScatterAssign<T, int64_t>(
           dev_ctx, out_grad, index, x_grad, false);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(

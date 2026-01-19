@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/sequence_expand_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/sequence_expand_kernel_impl.h"
-
 namespace phi {
 
 template <typename T>
 struct SequenceExpandFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context UNUSED,
-                  const phi::DenseTensor& x,
+                  const DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor* out) {
+                  DenseTensor* out) {
     int out_offset = 0;
     int x_item_length = x.numel() / x.dims()[0];
     auto out_data = out->data<T>();

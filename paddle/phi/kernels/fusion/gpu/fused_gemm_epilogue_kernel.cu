@@ -23,11 +23,10 @@ namespace fusion {
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
     defined(PADDLE_WITH_HIP)
 template <typename T>
-phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
-    const phi::GPUContext& dev_ctx,
-    const std::string& activation,
-    phi::DenseTensor* reserve_space) {
-  using FusedType = phi::funcs::MatmulFusedType;
+funcs::MatmulFusedType GetFwdFusedEpilogueType(const GPUContext& dev_ctx,
+                                               const std::string& activation,
+                                               DenseTensor* reserve_space) {
+  using FusedType = funcs::MatmulFusedType;
 
   FusedType fused_type = FusedType::kMatmulBias;
   if (activation != "none") {
@@ -78,13 +77,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11060
-  PADDLE_THROW(common::errors::Unimplemented(
-      "The fused_gemm_epilogue operator only support CUDA 11.6 "
-      "or higher version."));
-#endif
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
-    defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   // (M * K) * (K * N)
@@ -104,19 +97,18 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
           << ", activation=" << activation << ", fused_type=" << fused_type
           << ", reserve_space=" << reserve_space;
 
-  phi::funcs::LinearWithCublasLt<T>::Run(
-      dev_ctx,
-      &x,
-      &y,
-      out,
-      static_cast<const void*>(bias.data<T>()),
-      reserve_data,
-      M,
-      N,
-      K,
-      trans_x,
-      trans_y,
-      fused_type);
+  funcs::LinearWithCublasLt<T>::Run(dev_ctx,
+                                    &x,
+                                    &y,
+                                    out,
+                                    static_cast<const void*>(bias.data<T>()),
+                                    reserve_data,
+                                    M,
+                                    N,
+                                    K,
+                                    trans_x,
+                                    trans_y,
+                                    fused_type);
 #endif
 }
 

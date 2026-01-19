@@ -99,13 +99,13 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     }
     // refactor W and Bias
     auto* w_tensor =
-        scope->FindVar(matmul0_in_y->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(matmul0_in_y->Name())->GetMutable<DenseTensor>();
     auto w_dims =
         common::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
     w_tensor->Resize(w_dims);
 
-    auto* b_tensor = scope->FindVar(elementwise0_in_y->Name())
-                         ->GetMutable<phi::DenseTensor>();
+    auto* b_tensor =
+        scope->FindVar(elementwise0_in_y->Name())->GetMutable<DenseTensor>();
     auto bias_dims = common::make_ddim({3, b_tensor->dims()[0] / 3});
     b_tensor->Resize(bias_dims);
 

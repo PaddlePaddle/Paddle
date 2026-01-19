@@ -59,7 +59,7 @@ void HSigmoidLossGradKernel(const Context& dev_ctx,
   // Build a map of id -> row_index to speed up finding the index of one id
   w_grad->set_height(w.dims()[0]);
   auto* w_grad_value = w_grad->mutable_value();
-  phi::DDim temp_dim(w.dims());
+  DDim temp_dim(w.dims());
   temp_dim[0] = static_cast<int>(real_rows.size());
   w_grad_value->Resize(temp_dim);
   phi::HSigmoidLossGradKernelImpl<T>(dev_ctx,

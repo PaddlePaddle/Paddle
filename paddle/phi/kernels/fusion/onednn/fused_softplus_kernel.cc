@@ -22,17 +22,21 @@ namespace phi::fusion {
 template <typename T, typename Context>
 void FusedSoftplusKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         float beta,
-                         float threshold UNUSED,
+                         double beta,
+                         double threshold UNUSED,
                          const std::string& fuse_activation,
-                         const float fuse_alpha,
-                         const float fuse_beta,
+                         const double fuse_alpha,
+                         const double fuse_beta,
                          DenseTensor* out) {
+  float beta_f = static_cast<float>(beta);
+  float fuse_alpha_f = static_cast<float>(fuse_alpha);
+  float fuse_beta_f = static_cast<float>(fuse_beta);
+
   funcs::SoftplusOneDNNHandler<T> handler(
-      dev_ctx, &x, beta, fuse_activation, fuse_alpha, fuse_beta);
+      dev_ctx, &x, beta_f, fuse_activation, fuse_alpha_f, fuse_beta_f);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
-  auto beta_memory_p = handler.AcquireBetaMemory(&beta);
+  auto beta_memory_p = handler.AcquireBetaMemory(&beta_f);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
   if (x.IsSharedBufferWith(*out)) {
     dst_memory_p = src_memory_p;

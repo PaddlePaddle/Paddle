@@ -24,7 +24,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         '__deepcopy__',
         '__index__',
         '__len__',
-        '__long__',
         '__nonzero__',
         '__dict__',
         'apply_',
@@ -81,6 +80,8 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         '__dlpack__',
         "__dlpack_device__",
         "__tvm_ffi_env_stream__",
+        "__c_dlpack_exchange_api__",
+        "__dlpack_c_exchange_api__",
     ]
 )
 STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(

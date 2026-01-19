@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/dot_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/kernels/full_kernel.h"
@@ -29,23 +29,47 @@ void DotKernel(const Context& dev_ctx,
                DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
     // x[2, 1], y[2, 0], out[2]
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   if (out->numel() <= 0) {
     return;
   }
+  auto x_data = x.data<T>();
+  auto y_data = y.data<T>();
   dev_ctx.template Alloc<T>(out);
+  auto out_data = out->data<T>();
   if (out->dims().size() == 0) {
+#ifdef PADDLE_WITH_CUDA
+    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>) {
+      auto eigen_out = phi::EigenScalar<T>::From(*out);
+      auto eigen_x = EigenVector<T>::Flatten(x);
+      auto eigen_y = EigenVector<T>::Flatten(y);
+
+      auto& dev = *dev_ctx.eigen_device();
+      eigen_out.device(dev) = (eigen_x * eigen_y).sum();
+    } else {
+      const int n = static_cast<int>(x.numel());
+      int incx = static_cast<int>(x.strides()[0]);
+      int incy = static_cast<int>(x.strides()[0]);
+      if (n == 1) {
+        incx = 1;
+        incy = 1;
+      }
+
+      auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+      blas.CUDOT(n, x_data, incx, y_data, incy, out_data);
+    }
+#else
     auto eigen_out = phi::EigenScalar<T>::From(*out);
-    auto eigen_x = phi::EigenVector<T>::Flatten(x);
-    auto eigen_y = phi::EigenVector<T>::Flatten(y);
+    auto eigen_x = EigenVector<T>::Flatten(x);
+    auto eigen_y = EigenVector<T>::Flatten(y);
 
     auto& dev = *dev_ctx.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum();
+#endif
   } else {
-    auto eigen_out = phi::EigenVector<T>::From(*out);
+    auto eigen_out = EigenVector<T>::From(*out);
     auto eigen_x = phi::EigenMatrix<T>::From(x);
     auto eigen_y = phi::EigenMatrix<T>::From(y);
 
@@ -53,11 +77,10 @@ void DotKernel(const Context& dev_ctx,
     eigen_out.device(dev) = (eigen_x * eigen_y).sum(Eigen::DSizes<int, 1>(1));
   }
 }
-
 }  // namespace phi
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(dot,
                    GPU,

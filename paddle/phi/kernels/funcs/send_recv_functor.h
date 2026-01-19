@@ -50,28 +50,28 @@ void send_shape_info(const Context& dev_ctx,
   int shape_size = dims.size();
 
   // step1: send the shape size
-  phi::DenseTensor cpu_shape_size_tensor(shape_dtype);
+  DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
   dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
   // copy the shape size tensor to gpu/xpu and send
-  phi::DenseTensor* shape_size_tensor = new phi::DenseTensor(shape_dtype);
-  shape_size_tensor->Resize({1});
-  dev_ctx.Alloc(shape_size_tensor, shape_dtype);
-  const auto& cpu_place = phi::CPUPlace();
+  DenseTensor shape_size_tensor;
+  shape_size_tensor.Resize({1});
+  dev_ctx.Alloc(&shape_size_tensor, shape_dtype);
+  const auto& cpu_place = CPUPlace();
   memory_utils::Copy(dev_ctx.GetPlace(),
-                     shape_size_tensor->data(),
+                     shape_size_tensor.data(),
                      cpu_place,
                      cpu_shape_size_tensor.data(),
                      cpu_shape_size_tensor.numel() * sizeof(int),
                      stream);
 
-  comm_ctx->Send(*shape_size_tensor, shape_size_tensor->numel(), peer, stream);
+  comm_ctx->Send(shape_size_tensor, shape_size_tensor.numel(), peer, stream);
 
   // step2: send the shape
-  phi::DenseTensor cpu_shape_tensor(shape_dtype);
+  DenseTensor cpu_shape_tensor(shape_dtype);
   cpu_shape_tensor.Resize({shape_size});
   dev_ctx.HostAlloc(&cpu_shape_tensor, shape_dtype);
   auto* cpu_shape_data = cpu_shape_tensor.data<int>();
@@ -80,16 +80,17 @@ void send_shape_info(const Context& dev_ctx,
   }
 
   // copy the shape tensor to gpu and send
-  phi::DenseTensor* shape_tensor = new phi::DenseTensor(shape_dtype);
-  shape_tensor->Resize({shape_size});
-  dev_ctx.Alloc(shape_tensor, shape_dtype);
+  DenseTensor shape_tensor;
+  shape_tensor.Resize({shape_size});
+  dev_ctx.Alloc(&shape_tensor, shape_dtype);
   memory_utils::Copy(dev_ctx.GetPlace(),
-                     shape_tensor->data(),
+                     shape_tensor.data(),
                      cpu_place,
                      cpu_shape_tensor.data(),
                      cpu_shape_tensor.numel() * sizeof(int),
                      stream);
-  comm_ctx->Send(*shape_tensor, shape_tensor->numel(), peer, stream);
+  comm_ctx->Send(shape_tensor, shape_tensor.numel(), peer, stream);
+  dev_ctx.Wait();
 }
 #endif
 
@@ -98,7 +99,7 @@ void send_shape_info(const Context& dev_ctx,
     defined(PADDLE_WITH_XPU_BKCL)
 template <typename Context, typename CommContext, typename StreamType>
 DDim recv_shape_info(const Context& dev_ctx,
-                     phi::DenseTensor* out,
+                     DenseTensor* out,
                      CommContext* comm_ctx,
                      int peer) {
   StreamType stream = dev_ctx.stream();
@@ -118,47 +119,48 @@ DDim recv_shape_info(const Context& dev_ctx,
 #endif
   paddle::DataType shape_dtype = paddle::DataType::INT32;
 
-  // phi::DenseTensor shape_size_tensortensor(shape_dtype);
-  phi::DenseTensor* shape_size_tensortensor = new phi::DenseTensor(shape_dtype);
-  shape_size_tensortensor->Resize({1});
-  dev_ctx.Alloc(shape_size_tensortensor, shape_dtype);
+  // DenseTensor shape_size_tensortensor(shape_dtype);
+  DenseTensor shape_size_tensortensor(shape_dtype);
+  shape_size_tensortensor.Resize({1});
+  dev_ctx.Alloc(&shape_size_tensortensor, shape_dtype);
   comm_ctx->Recv(
-      shape_size_tensortensor, shape_size_tensortensor->numel(), peer, stream);
+      &shape_size_tensortensor, shape_size_tensortensor.numel(), peer, stream);
 
   // copy the shape size tensor to cpu
-  phi::DenseTensor* cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
-  cpu_shape_size_tensor->Resize({1});
-  dev_ctx.HostAlloc(cpu_shape_size_tensor, shape_dtype);
+  DenseTensor cpu_shape_size_tensor(shape_dtype);
+  cpu_shape_size_tensor.Resize({1});
+  dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);
 
-  memory_utils::Copy(phi::CPUPlace(),
-                     cpu_shape_size_tensor->data(),
+  memory_utils::Copy(CPUPlace(),
+                     cpu_shape_size_tensor.data(),
                      dev_ctx.GetPlace(),
-                     shape_size_tensortensor->data(),
-                     shape_size_tensortensor->numel() * sizeof(int),
+                     shape_size_tensortensor.data(),
+                     shape_size_tensortensor.numel() * sizeof(int),
                      stream);
 
-  auto* cpu_data = cpu_shape_size_tensor->data<int>();
+  auto* cpu_data = cpu_shape_size_tensor.data<int>();
   int shape_size = cpu_data[0];
 
   // step2: send the shape
-  // phi::DenseTensor shape_tensor(shape_dtype);
-  phi::DenseTensor* shape_tensor = new phi::DenseTensor(shape_dtype);
-  shape_tensor->Resize({shape_size});
-  dev_ctx.Alloc(shape_tensor, shape_dtype);
-  comm_ctx->Recv(shape_tensor, shape_tensor->numel(), peer, stream);
+  // DenseTensor shape_tensor(shape_dtype);
+  DenseTensor shape_tensor(shape_dtype);
+  shape_tensor.Resize({shape_size});
+  dev_ctx.Alloc(&shape_tensor, shape_dtype);
+  comm_ctx->Recv(&shape_tensor, shape_tensor.numel(), peer, stream);
 
   // copy the shape tensor to cpu
-  phi::DenseTensor* cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
-  cpu_shape_tensor->Resize({shape_size});
-  dev_ctx.HostAlloc(cpu_shape_tensor, shape_dtype);
+  DenseTensor cpu_shape_tensor(shape_dtype);
+  cpu_shape_tensor.Resize({shape_size});
+  dev_ctx.HostAlloc(&cpu_shape_tensor, shape_dtype);
 
-  memory_utils::Copy(phi::CPUPlace(),
-                     cpu_shape_tensor->data(),
+  memory_utils::Copy(CPUPlace(),
+                     cpu_shape_tensor.data(),
                      dev_ctx.GetPlace(),
-                     shape_tensor->data(),
-                     shape_tensor->numel() * sizeof(int),
+                     shape_tensor.data(),
+                     shape_tensor.numel() * sizeof(int),
                      stream);
-  auto* cpu_shape_data = cpu_shape_tensor->data<int>();
+  dev_ctx.Wait();
+  auto* cpu_shape_data = cpu_shape_tensor.data<int>();
   std::vector<int> all_shape;
   for (int i = 0; i < shape_size; ++i) {
     all_shape.emplace_back(cpu_shape_data[i]);

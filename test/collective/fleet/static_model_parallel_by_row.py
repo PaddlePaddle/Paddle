@@ -64,7 +64,7 @@ def create_model(data, rank):
             bias_attr=bias_attr,
         )
 
-    predict = paddle.sum(result)
+    predict = paddle.add_n(list(result.reshape([-1])))
     return predict
 
 

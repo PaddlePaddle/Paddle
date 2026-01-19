@@ -19,7 +19,7 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest, get_device_place
+from op_test import OpTest, get_device, get_device_place, is_custom_device
 
 import paddle
 import paddle.inference as paddle_infer
@@ -42,8 +42,8 @@ class TestBincountOpAPI(unittest.TestCase):
             )
             output = paddle.bincount(inputs, weights=weights)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
@@ -137,6 +137,14 @@ class TestBincountOpError(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             self.run_network(net_func)
+
+    def test_input_type_errors_static(self):
+        """Test input tensor should only contain non-negative ints in static graph."""
+        paddle.enable_static()
+        with self.assertRaises(TypeError):
+            x = paddle.static.data(name='x', dtype='float32', shape=[5])
+            paddle.bincount(x)
+        paddle.disable_static()
 
     def test_weights_shape_error(self):
         """Test weights tensor should have the same shape as input tensor."""
@@ -298,6 +306,8 @@ class TestTensorMinlength(unittest.TestCase):
 
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
+            elif is_custom_device():
+                config.enable_custom_device(get_device(), 0)
             else:
                 config.disable_gpu()
 

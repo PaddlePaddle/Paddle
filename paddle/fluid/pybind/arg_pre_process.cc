@@ -30,6 +30,20 @@
 namespace paddle {
 namespace pybind {
 constexpr char kStopGradientAttrName[] = "stop_gradient";  // NOLINT
+static void CheckDataType(const std::string& op_name,
+                          const std::string var_name,
+                          const phi::DataType& var_dtype,
+                          const std::vector<phi::DataType>& expect_dtype) {
+  for (auto& t : expect_dtype) {
+    if (var_dtype == t) return;
+  }
+  PADDLE_THROW(common::errors::InvalidType(
+      "The dtype of %s of %s must be one of %s, but received %s.",
+      var_name,
+      op_name,
+      phi::DataTypeToString(expect_dtype),
+      phi::DataTypeToString(var_dtype)));
+}
 void ExpandAsPreProcess(paddle::Tensor* x,
                         paddle::optional<paddle::Tensor>* y,
                         std::vector<int64_t>* target_shape) {
@@ -136,6 +150,160 @@ void LogsumexpPreProcess(pir::Value* x,
   }
   return;
 }
+void SumPreProcess(Value* x, Value* axis) {
+  paddle::dialect::SetStopGradient(axis);
+}
+
+void BinCountPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* weights,
+                        Scalar* minlength) {
+  CheckDataType("bincount",
+                "x",
+                x->dtype(),
+                {phi::DataType::INT32, phi::DataType::INT64});
+}
+
+void BinCountPreProcess(Value* x,
+                        paddle::optional<Value>* weights,
+                        Value* minlength) {
+  CheckDataType("bincount",
+                "x",
+                pir::GetValueDtype(*x),
+                {phi::DataType::INT32, phi::DataType::INT64});
+}
+
+void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
+  /*
+  if in_pir_mode():
+     check_variable_and_dtype(
+         x,
+         "input",
+         ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+         'isclose',
+     )
+     check_variable_and_dtype(
+         y,
+         "input",
+         ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+         'isclose',
+     )
+     if isinstance(rtol, paddle.pir.Value):
+         check_variable_and_dtype(
+             rtol,
+             "input",
+             ['float64'],
+             'isclose',
+         )
+     else:
+         check_type(rtol, 'rtol', float, 'isclose')
+     if isinstance(atol, paddle.pir.Value):
+         check_variable_and_dtype(
+             atol,
+             "input",
+             ['float64'],
+             'isclose',
+         )
+     else:
+         check_type(atol, 'atol', float, 'isclose')
+
+  */
+  // 'float16', 'float32', 'float64', 'complex64', 'complex128'
+  CheckDataType("is_close",
+                "x",
+                pir::GetValueDtype(*x),
+                {phi::DataType::FLOAT16,
+                 phi::DataType::FLOAT32,
+                 phi::DataType::FLOAT64,
+                 phi::DataType::COMPLEX64,
+                 phi::DataType::COMPLEX128});
+  CheckDataType("is_close",
+                "y",
+                pir::GetValueDtype(*y),
+                {phi::DataType::FLOAT16,
+                 phi::DataType::FLOAT32,
+                 phi::DataType::FLOAT64,
+                 phi::DataType::COMPLEX64,
+                 phi::DataType::COMPLEX128});
+  // 'float64'
+  CheckDataType(
+      "is_close", "rtol", pir::GetValueDtype(*rtol), {phi::DataType::FLOAT64});
+  CheckDataType(
+      "is_close", "atol", pir::GetValueDtype(*atol), {phi::DataType::FLOAT64});
+}
+
+void AllClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
+  CheckDataType("allclose",
+                "x",
+                pir::GetValueDtype(*x),
+                {phi::DataType::BOOL,
+                 phi::DataType::INT32,
+                 phi::DataType::INT64,
+                 phi::DataType::FLOAT16,
+                 phi::DataType::FLOAT32,
+                 phi::DataType::FLOAT64});
+  CheckDataType("allclose",
+                "y",
+                pir::GetValueDtype(*y),
+                {phi::DataType::BOOL,
+                 phi::DataType::INT32,
+                 phi::DataType::INT64,
+                 phi::DataType::FLOAT16,
+                 phi::DataType::FLOAT32,
+                 phi::DataType::FLOAT64});
+  CheckDataType(
+      "allclose", "rtol", pir::GetValueDtype(*rtol), {phi::DataType::FLOAT64});
+  CheckDataType(
+      "allclose", "atol", pir::GetValueDtype(*atol), {phi::DataType::FLOAT64});
+}
+
+void GridSamplePreProcess(Tensor* x,
+                          Tensor* grid,
+                          std::string* mode,
+                          std::string* padding_mode,
+                          bool* align_corners) {
+  // mode should be in ['bilinear', 'nearest']
+  // padding_mode should be in ['zeros', 'reflection', 'border']
+  if (mode->compare("bilinear") != 0 && mode->compare("nearest") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The mode of grid sample function should be in ['bilinear', "
+        "'nearest'], but got: %s",
+        *mode));
+  }
+  if (padding_mode->compare("zeros") != 0 &&
+      padding_mode->compare("reflection") != 0 &&
+      padding_mode->compare("border") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The padding mode of grid sample function should be in "
+        "['zeros', 'reflection', 'border'], but got: %s",
+        *padding_mode));
+  }
+  return;
+}
+
+void GridSamplePreProcess(pir::Value* x,
+                          pir::Value* grid,
+                          std::string* mode,
+                          std::string* padding_mode,
+                          bool* align_corners) {
+  // mode should be in ['bilinear', 'nearest']
+  // padding_mode should be in ['zeros', 'reflection', 'border']
+  if (mode->compare("bilinear") != 0 && mode->compare("nearest") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The mode of grid sample function should be in ['bilinear', "
+        "'nearest'], but got: %s",
+        *mode));
+  }
+  if (padding_mode->compare("zeros") != 0 &&
+      padding_mode->compare("reflection") != 0 &&
+      padding_mode->compare("border") != 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The padding mode of grid sample function should be in "
+        "['zeros', 'reflection', 'border'], but got: %s",
+        *padding_mode));
+  }
+  return;
+}
+
 }  // namespace pybind
 
 }  // namespace paddle

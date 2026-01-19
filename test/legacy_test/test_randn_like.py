@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -129,7 +129,7 @@ class TestRandnLikeAPI(unittest.TestCase):
 
     def test_static_api_with_fp16(self):
         with static_guard():
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):
@@ -439,7 +439,7 @@ class TestRandnLikeAPI(unittest.TestCase):
                 ((out.numpy() >= -25) & (out.numpy() <= 25)).all(), True
             )
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_inputs = paddle.to_tensor(self.x_float16)
                 for dtype in self.dtype:
                     out = paddle.randn_like(x_inputs, dtype=dtype)
