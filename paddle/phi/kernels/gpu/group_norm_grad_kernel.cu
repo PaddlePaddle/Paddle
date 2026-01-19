@@ -77,18 +77,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                             static_cast<AccT>(d_var_data));
 
       if (flags & kHasScale) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#else
-        CudaAtomicAddWithWarp(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#endif
+        CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
       }
       if (flags & kHasBias) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#else
-        CudaAtomicAddWithWarp(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#endif
+        CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
       }
     }
   }
