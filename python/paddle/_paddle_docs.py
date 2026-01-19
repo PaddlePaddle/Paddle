@@ -4363,7 +4363,7 @@ add_doc_and_signature(
             >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]], dtype=paddle.int8)
             >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)  # logic shift
             Tensor(shape=[2, 4], dtype=int8, place=Place(gpu:0), stop_gradient=True,
-                [[123, 59 , 27 , 11 ],
+                   [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
     """,
     """
