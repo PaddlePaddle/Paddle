@@ -58,7 +58,7 @@ template <typename X_T,
           bool has_scale,
           bool do_gather,
           int max_num_experts = 64>
-__global__ __launch_bounds__(256) void permute_generic_kernel(
+__global__ __launch_bounds__(512) void permute_generic_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
     const probs_T *__restrict__ probs_topk,
@@ -99,96 +99,45 @@ __global__ __launch_bounds__(256) void permute_generic_kernel(
     local_expert_end_offsets = expert_base_offset_end[expert_id];
     // expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
 
-    // From the block with a smaller idx to the block with a larger idx
-    const int mid = gridDim.x / 2;
-    if (blockIdx.x < mid) {
-      for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
-           row++) {
-        if (row >= total_zipped_tokens_num) break;
-        const int internal_row = row - block_row_base;
+    for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+         row++) {
+      if (row >= total_zipped_tokens_num) break;
+      const int internal_row = row - block_row_base;
 #pragma unroll
-        for (int k = 0; k < topk; k++) {
-          expert_infos_t proposed = {routemap_topk[row * topk + k],
-                                     probs_topk[row * topk + k]};
-          if (proposed.expert_row_idx == -1) continue;
-          if (threadIdx.x == proposed.expert_row_idx) {
-            shared_expert_infos[internal_row][expert_id] = {
-                local_cumsum + local_expert_offsets, proposed.expert_probs};
-            local_cumsum += 1;
-          }
+      for (int k = 0; k < topk; k++) {
+        expert_infos_t proposed = {routemap_topk[row * topk + k],
+                                   probs_topk[row * topk + k]};
+        if (proposed.expert_row_idx == -1) continue;
+        if (threadIdx.x == proposed.expert_row_idx) {
+          shared_expert_infos[internal_row][expert_id] = {
+              local_cumsum + local_expert_offsets, proposed.expert_probs};
+          local_cumsum += 1;
         }
       }
-      // Inter-block communication
-      const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-      const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
-      if (blockIdx.x != 0) {
-        // signal receive from previous block, using light-weight
-        // atomicAdd(check) this will not change any data, only do fetch in
-        // low-cost
-        while ((cumsum_offset = atomicAdd(
-                    &global_expertwise_block_cumsum[anticipate_signal_idx],
-                    0)) == CUMSUM_INVALID_TAG) {
-        }
+    }
+    // Inter-block communication
+    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
+    if (blockIdx.x != 0) {
+      // signal receive from previous block, using light-weight
+      // atomicAdd(check) this will not change any data, only do fetch in
+      // low-cost
+      while ((cumsum_offset = atomicAdd(
+                  &global_expertwise_block_cumsum[anticipate_signal_idx], 0)) ==
+             CUMSUM_INVALID_TAG) {
       }
-      // signal send for next block, with current cumsum
-      const int proposed_offset = cumsum_offset + local_cumsum;
-      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+    }
+    // signal send for next block, with current cumsum
+    const int proposed_offset = cumsum_offset + local_cumsum;
+    global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
 // Intra-block communication;
 #pragma unroll
-      for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-        shared_expert_infos[i][expert_id].expert_row_idx =
-            (shared_expert_infos[i][expert_id].expert_row_idx == -1)
-                ? -1
-                : shared_expert_infos[i][expert_id].expert_row_idx +
-                      cumsum_offset;
-      }
-    } else {  // From the block with a larger idx to the block with a smaller
-              // idx
-      int local_suffixsum = 0;
-      for (int row = block_row_base + CUMSUM_BLOCK_SIZE - 1;
-           row >= block_row_base;
-           --row) {
-        if (row >= total_zipped_tokens_num) continue;
-        const int internal_row = row - block_row_base;
-#pragma unroll
-        for (int k = 0; k < topk; k++) {
-          expert_infos_t proposed = {routemap_topk[row * topk + k],
-                                     probs_topk[row * topk + k]};
-          if (proposed.expert_row_idx == -1) continue;
-          if (threadIdx.x == proposed.expert_row_idx) {
-            shared_expert_infos[internal_row][expert_id] = {
-                local_suffixsum, proposed.expert_probs};
-            local_suffixsum += 1;
-          }
-        }
-      }
-      // Inter-block communication
-      const int anticipate_signal_idx =
-          (blockIdx.x + 1) * num_experts + threadIdx.x;
-      const int push_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-      int suffixsum_offset = 0;
-      if (blockIdx.x != gridDim.x - 1) {
-        // signal receive from previous block, using light-weight
-        // atomicAdd(check) this will not change any data, only do fetch in
-        // low-cost
-        while ((suffixsum_offset = atomicAdd(
-                    &global_expertwise_block_cumsum[anticipate_signal_idx],
-                    0)) == CUMSUM_INVALID_TAG) {
-        }
-      }
-      // signal send for next block, with current cumsum
-      const int proposed_offset = suffixsum_offset + local_suffixsum;
-      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
-// Intra-block communication;
-#pragma unroll
-      for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-        shared_expert_infos[i][expert_id].expert_row_idx =
-            (shared_expert_infos[i][expert_id].expert_row_idx == -1)
-                ? -1
-                : local_expert_end_offsets -
-                      (shared_expert_infos[i][expert_id].expert_row_idx +
-                       suffixsum_offset);
-      }
+    for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
+      shared_expert_infos[i][expert_id].expert_row_idx =
+          (shared_expert_infos[i][expert_id].expert_row_idx == -1)
+              ? -1
+              : shared_expert_infos[i][expert_id].expert_row_idx +
+                    cumsum_offset;
     }
   }
 
@@ -334,7 +283,6 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     const int expert_id = threadIdx.x;
     local_expert_offsets = expert_base_offset[expert_id];
     local_expert_end_offsets = expert_base_offset_end[expert_id];
-    // expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
 
     // From the block with a smaller idx to the block with a larger idx
     const int mid = gridDim.x / 2;
@@ -504,36 +452,40 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
 }
 
 template <typename T, typename Context>
-void dispatch_tokens_unzip_stable(const Context &dev_ctx,
-                                  const DenseTensor &X,
-                                  const DenseTensor &expert_routemap_topk,
-                                  const DenseTensor &expert_prob_topk,
-                                  const paddle::optional<DenseTensor> &XScale,
-                                  const DenseTensor &expert_offsets,
-                                  const DenseTensor &expert_offset_end,
-                                  DenseTensor *X_unzipped,
-                                  DenseTensor *zipped_expertwise_rowmap,
-                                  DenseTensor *token_prob_unzipped,
-                                  DenseTensor *XScale_unzipped,
-                                  DenseTensor *global_expertwise_block_cumsum,
-                                  const int total_zipped_tokens_num,
-                                  const int token_length,
-                                  const int topk,  // deprecated
-                                  const int num_experts,
-                                  const int scale_length,
-                                  const bool do_gather,
-                                  const bool using_ue8m0_scale) {
+void dispatch_permute_kernel(const Context &dev_ctx,
+                             const DenseTensor &X,
+                             const DenseTensor &expert_routemap_topk,
+                             const DenseTensor &expert_prob_topk,
+                             const paddle::optional<DenseTensor> &XScale,
+                             const DenseTensor &expert_offsets,
+                             const DenseTensor &expert_offset_end,
+                             DenseTensor *X_unzipped,
+                             DenseTensor *zipped_expertwise_rowmap,
+                             DenseTensor *token_prob_unzipped,
+                             DenseTensor *XScale_unzipped,
+                             DenseTensor *global_expertwise_block_cumsum,
+                             const int total_zipped_tokens_num,
+                             const int token_length,
+                             const int topk,  // deprecated
+                             const int num_experts,
+                             const int scale_length,
+                             const bool do_gather,
+                             const bool using_ue8m0_scale) {
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
-  block.x = 256;
+  static int capability = dev_ctx.GetComputeCapability();
+  if (capability >= 100) {
+    block.x = 256;
+  } else {
+  }
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
 #define MAX_NUM_EXPERTS_FOR_OPT_KERNEL 32
 
 #define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)   \
-  if (num_experts <= MAX_NUM_EXPERTS_FOR_OPT_KERNEL &&                         \
+  if (capability >= 100 && num_experts <= MAX_NUM_EXPERTS_FOR_OPT_KERNEL &&    \
       is_aligned_in_bytes(token_length * sizeof(TOKEN_T)) &&                   \
       is_aligned_in_bytes(sizeof(INT_T) * topk * CUMSUM_BLOCK_SIZE)) {         \
     DISPATCH_OPT_KERNEL(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER) \
@@ -551,6 +503,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                    HAS_SCALE,                       \
                                    DO_GATHER,                       \
                                    MAX_NUM_EXPERTS_FOR_OPT_KERNEL>; \
+  block.x = 256;                                                    \
   const int smem =                                                  \
       2 * token_length * sizeof(TOKEN_T) +                          \
       (sizeof(INT_T) + sizeof(PROB_T)) * topk * CUMSUM_BLOCK_SIZE;  \
@@ -574,6 +527,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
 
 #define DISPATCH_GENERIC_KERNEL(                                  \
     TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)        \
+  block.x = 512;                                                  \
   auto kernel = permute_generic_kernel<TOKEN_T,                   \
                                        INT_T,                     \
                                        PROB_T,                    \
@@ -879,25 +833,25 @@ void MoePermuteKernel(const Context &dev_ctx,
                       global_expertwise_block_cumsum.numel() * sizeof(int),
                       dev_ctx.stream()));
 
-  dispatch_tokens_unzip_stable<T, Context>(dev_ctx,
-                                           X,
-                                           expert_routemap_topk,
-                                           expert_prob_topk,
-                                           XScale,
-                                           expert_offset_tensor,
-                                           expert_offset_end_tensor,
-                                           X_unzipped,
-                                           zipped_expertwise_rowmap,
-                                           token_prob_unzipped,
-                                           XScale_unzipped,
-                                           &global_expertwise_block_cumsum,
-                                           static_cast<int>(rows),
-                                           static_cast<int>(cols),
-                                           static_cast<int>(topk),
-                                           num_experts,
-                                           static_cast<int>(quanted_cols),
-                                           do_gather,
-                                           using_ue8m0_scale);
+  dispatch_permute_kernel<T, Context>(dev_ctx,
+                                      X,
+                                      expert_routemap_topk,
+                                      expert_prob_topk,
+                                      XScale,
+                                      expert_offset_tensor,
+                                      expert_offset_end_tensor,
+                                      X_unzipped,
+                                      zipped_expertwise_rowmap,
+                                      token_prob_unzipped,
+                                      XScale_unzipped,
+                                      &global_expertwise_block_cumsum,
+                                      static_cast<int>(rows),
+                                      static_cast<int>(cols),
+                                      static_cast<int>(topk),
+                                      num_experts,
+                                      static_cast<int>(quanted_cols),
+                                      do_gather,
+                                      using_ue8m0_scale);
 }
 #undef CUMSUM_BLOCK_SIZE
 #undef CUMSUM_INVALID_TAG
