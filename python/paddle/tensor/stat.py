@@ -234,7 +234,7 @@ def var(
     else:
         actual_correction = float(correction)
 
-    if x.is_cuda:
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
         return _C_ops.var(
             x,
             axis if axis is not None else [],
@@ -390,8 +390,8 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             1.6329932
 
     """
-    x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
-    if x is not None and hasattr(x, 'is_cuda') and x.is_cuda:
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
         axis = (
             args[1]
             if len(args) > 1
