@@ -89,7 +89,9 @@ repos:
         # Exclude third-party libraries
         exclude: |
           (?x)^(
-            paddle/utils/flat_hash_map\.h
+            paddle/utils/flat_hash_map\.h|
+            paddle/utils/variant\.h|
+            paddle/utils/array_ref\.h
           )$
   - repo: local
     hooks:
