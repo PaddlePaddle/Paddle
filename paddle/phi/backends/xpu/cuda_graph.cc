@@ -194,7 +194,6 @@ void CUDAGraph::EndSegmentCapture() {
       cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
-#endif
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
@@ -305,3 +304,4 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi
+#endif

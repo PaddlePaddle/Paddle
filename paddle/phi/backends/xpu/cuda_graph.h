@@ -94,8 +94,7 @@ class gpuKernelParams {
   void **kernelParams;
 };
 
-using CUDAGraphExecuterSetter_t =
-    std::function<void(cudaGraphExec_t)>;  // 改用XPU图执行类型
+using CUDAGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 
 class CUDAGraphNodeLauncher {
  public:
