@@ -26,19 +26,19 @@ class TestDevice(unittest.TestCase):
         self.assertIsNone(d.index)
 
         d = Device("cuda")
-        self.assertEqual(str(d), "cuda:0")
+        self.assertEqual(str(d), "cuda")
         self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 0)
+        self.assertEqual(d.index, None)
 
         d = Device("gpu")
-        self.assertEqual(str(d), "gpu:0")
+        self.assertEqual(str(d), "gpu")
         self.assertEqual(d.type, "gpu")
-        self.assertEqual(d.index, 0)
+        self.assertEqual(d.index, None)
 
         d = Device("xpu")
-        self.assertEqual(str(d), "xpu:0")
+        self.assertEqual(str(d), "xpu")
         self.assertEqual(d.type, "xpu")
-        self.assertEqual(d.index, 0)
+        self.assertEqual(d.index, None)
 
     def test_str_with_index(self):
         d = Device("cuda", 1)
