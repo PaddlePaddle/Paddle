@@ -180,8 +180,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         DenseTensor* dx) {
   if (x.numel() == 0 || boxes.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
-
-    phi::FullKernel<T>(dev_ctx, vectorize(dx->dims()), 0.0, dx->dtype(), dx);
+    Full<T>(dev_ctx, dx->dims(), 0.0, dx);
     return;
   }
 
