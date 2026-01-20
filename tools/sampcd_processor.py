@@ -50,7 +50,7 @@ XDOCTEST_CONFIG = {
     "global_exec": r"\n".join(
         [
             "import paddle",
-            "paddle.device.set_device('cpu')",
+            # "paddle.device.set_device('cpu')",
             "paddle.set_default_dtype('float32')",
             "paddle.disable_static()",
         ]
