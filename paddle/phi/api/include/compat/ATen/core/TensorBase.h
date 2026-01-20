@@ -20,6 +20,8 @@
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
+#include <c10/core/Storage.h>
+#include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
 #include <utils/scalar_type_conversion.h>
@@ -27,6 +29,7 @@
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -228,6 +231,35 @@ class PADDLE_API TensorBase {
   }
 
   void reset() { tensor_.reset(); }
+
+  int64_t storage_offset() const {
+    // Paddle DenseTensor stores offset in meta_.offset (in bytes)
+    // We need to convert to element offset
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+    if (dense_tensor) {
+      size_t byte_offset = dense_tensor->meta().offset;
+      size_t element_size = SizeOf(tensor_.dtype());
+      return element_size > 0 ? static_cast<int64_t>(byte_offset / element_size)
+                              : 0;
+    }
+    return 0;
+  }
+
+  c10::SymInt sym_storage_offset() const {
+    return c10::SymInt(storage_offset());
+  }
+
+  bool has_storage() const { return tensor_.defined(); }
+
+  const Storage storage() const {
+    return Storage(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder());
+  }
+
+  bool is_alias_of(const at::TensorBase& other) const {
+    return this->storage().allocation() == other.storage().allocation();
+  }
 
   // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
   // type and
