@@ -324,8 +324,8 @@ class TEST_API ResultPattern {
   // {"float64", phi::DataType::FLOAT64}};
   Attribute DataTypeAttr(const std::string& value) const;
 
-  // {"cpu", phi::CPUPlace{}},
-  // {"gpu", phi::GPUPlace{}},
+  // {"cpu", CPUPlace{}},
+  // {"gpu", GPUPlace{}},
   // {"gpu_pinned", phi::GPUPinnedPlace{}},
   // {"xpu", phi::XPUPlace{}},
   // {"ipu", phi::IPUPlace{}},

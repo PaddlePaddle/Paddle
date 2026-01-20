@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-
+#ifdef PADDLE_WITH_DNNL
 #include <algorithm>
 #include <memory>
 #include <set>
@@ -1844,7 +1844,7 @@ template <typename T>
 class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusOneDNNHandler(const OneDNNContext& dev_ctx,
-                        const phi::DenseTensor* x,
+                        const DenseTensor* x,
                         const float beta,
                         const std::string& fuse_activation = "",
                         const float fuse_alpha = 0.0f,
@@ -1893,7 +1893,7 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
 
 static void SetOutMemDescWithUnsqueeze2FuseSupport(
     const std::vector<int> fused_unsqueeze2_axes,
-    phi::DenseTensor* out,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   const std::vector<int64_t>& op_tz = out_md.get_dims();
   std::vector<int64_t> unsqueezed_op_tz(
@@ -1916,7 +1916,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
 
 static void SetOutMemDescWithReshape2FuseSupport(
     const std::vector<int> fused_reshape2_shape_,
-    phi::DenseTensor* out,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
                                             fused_reshape2_shape_.end());
@@ -1943,3 +1943,4 @@ static void SetOutMemDescWithReshape2FuseSupport(
 
 }  // namespace funcs
 }  // namespace phi
+#endif

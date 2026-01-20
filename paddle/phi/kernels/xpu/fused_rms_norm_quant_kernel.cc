@@ -43,10 +43,10 @@ namespace phi {
 template <typename T, typename Context>
 void RmsNormQuantKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& bias,
-                        const paddle::optional<DenseTensor>& residual,
+                        const optional<DenseTensor>& bias,
+                        const optional<DenseTensor>& residual,
                         const DenseTensor& norm_weight,
-                        const paddle::optional<DenseTensor>& norm_bias,
+                        const optional<DenseTensor>& norm_bias,
                         const float epsilon,
                         const int begin_norm_axis,
                         const float quant_scale,
@@ -60,11 +60,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
     if (out) dev_ctx.template Alloc<T>(out);
     if (residual_out) dev_ctx.template Alloc<T>(residual_out);
     if (inv_var) {
-      phi::Full<float, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(inv_var->dims())),
-          0.f,
-          inv_var);
+      Full<float, Context>(dev_ctx, inv_var->dims(), 0.f, inv_var);
     }
     return;
   }

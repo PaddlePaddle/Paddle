@@ -26,9 +26,9 @@ template <typename T, typename Context>
 void InterpolateKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
@@ -43,7 +43,7 @@ void InterpolateKernel(
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -133,7 +133,7 @@ void InterpolateKernel(
   dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   bool nearest = "nearest" == interp_method;
@@ -166,9 +166,9 @@ template <typename T, typename Context>
 void BilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -198,9 +198,9 @@ template <typename T, typename Context>
 void NearestInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,

@@ -798,6 +798,14 @@ class TestLoadShardedStateDictWithAOA:
 class TestLoadShardedStateDictMultiCommGroup:
     def __init__(self):
         self._ckpt_path = os.getenv("ckpt_path_2")
+        self.set_comm_method()
+        self.set_offload()
+
+    def set_comm_method(self):
+        self.comm_method = "multi_group_broadcast"
+
+    def set_offload(self):
+        self.offload = False
 
     def test_load_state_dict_with_four_devices(self, worker_groups):
         if dist.get_rank() == 0:
@@ -883,7 +891,8 @@ class TestLoadShardedStateDictMultiCommGroup:
             state_dict={"t": sharded_weight},
             path=self._ckpt_path,
             worker_groups=worker_groups,
-            comm_method="multi_group_broadcast",
+            comm_method=self.comm_method,
+            offload=self.offload,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -1050,7 +1059,8 @@ class TestLoadShardedStateDictMultiCommGroup:
             state_dict={"t": sharded_weight},
             path=self._ckpt_path,
             worker_groups=worker_groups,
-            comm_method="multi_group_broadcast",
+            comm_method=self.comm_method,
+            offload=self.offload,
         )
         paddle.distributed.barrier()
         self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
@@ -1123,6 +1133,117 @@ class TestLoadShardedStateDictMultiCommGroupWithReplica(
         self._ckpt_path = os.getenv("ckpt_path_3")
 
 
+class TestLoadShardedStateDict3DCommGroup(
+    TestLoadShardedStateDictMultiCommGroup
+):
+    def set_comm_method(self):
+        self.comm_method = "parallel_broadcast"
+
+    def run_test_case(self):
+        device_num = int(os.getenv("device_num"))
+        if device_num == 1:
+            pass
+        elif device_num == 2:
+            pass
+        elif device_num == 4:
+            dist.init_parallel_env()
+            group_ranks = [[0, 1], [2, 3], [0, 2], [1, 3]]
+            total_groups = []
+            for ranks in group_ranks:
+                group = dist.new_group(ranks)
+                total_groups.append(group)
+
+            group_index_map = [
+                [0, 2],  # cur_rank == 0
+                [0, 3],  # cur_rank == 1
+                [1, 2],  # cur_rank == 2
+                [1, 3],  # cur_rank == 3
+            ]
+
+            cur_rank = paddle.distributed.get_rank()
+            if not (0 <= cur_rank < len(group_index_map)):
+                raise RuntimeError(
+                    f"cur_rank must be between 0 and {len(group_index_map) - 1}, but got {cur_rank}."
+                )
+
+            worker_group_indices = group_index_map[cur_rank]
+            worker_groups = [
+                total_groups[index] for index in worker_group_indices
+            ] + [None]
+            self.test_load_state_dict_with_four_devices(worker_groups)
+            for group in total_groups:
+                dist.destroy_process_group(group)
+        elif device_num == 8:
+            dist.init_parallel_env()
+            group_ranks = [
+                # Type   Index
+                [0, 1],  # h      0
+                [2, 3],  # h      1
+                [4, 5],  # h      2
+                [6, 7],  # h      3
+                [0, 2],  # v      4
+                [1, 3],  # v      5
+                [4, 6],  # v      6
+                [5, 7],  # v      7
+                [0, 4],  # p      8
+                [1, 5],  # p      9
+                [2, 6],  # p      10
+                [3, 7],  # p      11
+            ]
+            total_groups = []
+            for ranks in group_ranks:
+                group = dist.new_group(ranks)
+                total_groups.append(group)
+
+            group_index_map = [
+                [0, 4, 8],  # cur_rank == 0
+                [0, 5, 9],  # cur_rank == 1
+                [1, 4, 10],  # cur_rank == 2
+                [1, 5, 11],  # cur_rank == 3
+                [2, 6, 8],  # cur_rank == 4
+                [2, 7, 9],  # cur_rank == 5
+                [3, 6, 10],  # cur_rank == 6
+                [3, 7, 11],  # cur_rank == 7
+            ]
+
+            cur_rank = paddle.distributed.get_rank()
+            if not (0 <= cur_rank < len(group_index_map)):
+                raise RuntimeError(
+                    f"cur_rank must be between 0 and {len(group_index_map) - 1}, "
+                    f"but got {cur_rank}."
+                )
+
+            worker_group_indices = group_index_map[cur_rank]
+
+            worker_groups = [
+                total_groups[index] for index in worker_group_indices
+            ]
+            self.test_load_state_dict_with_eight_devices(worker_groups)
+            for group in worker_groups:
+                dist.destroy_process_group(group)
+        else:
+            raise ValueError("device_num should be 1, 2, 4 or 8")
+
+
+class TestLoadShardedStateDict3DCommGroupWithReplica(
+    TestLoadShardedStateDict3DCommGroup
+):
+    def __init__(self):
+        super().__init__()
+        self._ckpt_path = os.getenv("ckpt_path_3")
+        self.set_comm_method()
+
+    def set_comm_method(self):
+        self.comm_method = "parallel_broadcast"
+
+
+class TestLoadShardedStateDict3DCommGroupOffload(
+    TestLoadShardedStateDict3DCommGroup
+):
+    def set_offload(self):
+        self.offload = True
+
+
 if __name__ == '__main__':
     TestLoadStateDict().run_test_case()
     TestLoadShardedStateDict().run_test_case()
@@ -1131,3 +1252,6 @@ if __name__ == '__main__':
     TestLoadShardedStateDictWithReplica().run_test_case()
     TestLoadShardedStateDictWithAOAWithReplica().run_test_case()
     TestLoadShardedStateDictMultiCommGroupWithReplica().run_test_case()
+    TestLoadShardedStateDict3DCommGroup().run_test_case()
+    TestLoadShardedStateDict3DCommGroupWithReplica().run_test_case()
+    TestLoadShardedStateDict3DCommGroupOffload().run_test_case()

@@ -54,7 +54,7 @@ YieldInstruction::YieldInstruction(size_t id,
                                "_input_" + std::to_string(i) + "_";
         Variable *fake_var = value_exe_info_->GetScope()->Var(new_name);
         if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
-          fake_var->GetMutable<phi::DenseTensor>();
+          fake_var->GetMutable<DenseTensor>();
           input_vars_.push_back(fake_var);
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
@@ -121,16 +121,15 @@ void YieldInstruction::Run() {
   for (size_t i = 0; i < input_vars_.size(); ++i) {
     if (input_vars_[i] == nullptr) {
       output_vars_[i] = nullptr;
-    } else if (input_vars_[i]->IsType<phi::DenseTensor>()) {
+    } else if (input_vars_[i]->IsType<DenseTensor>()) {
       if (input_vars_[i]->IsInitialized() &&
-          !input_vars_[i]->Get<phi::DenseTensor>().initialized()) {
+          !input_vars_[i]->Get<DenseTensor>().initialized()) {
         // 对应 input 为 NULL VALUE 的情况，fake tensor
-        FullFakeTensor<paddle::dialect::AllocatedDenseTensorType,
-                       phi::DenseTensor>(
+        FullFakeTensor<paddle::dialect::AllocatedDenseTensorType, DenseTensor>(
             value_exe_info_->GetValueByVar(output_vars_[i]), output_vars_[i]);
       } else {
-        output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-            input_vars_[i]->Get<phi::DenseTensor>());
+        output_vars_[i]->GetMutable<DenseTensor>()->ShareDataWith(
+            input_vars_[i]->Get<DenseTensor>());
       }
     } else if (input_vars_[i]->IsType<phi::TensorArray>()) {
       const auto &inner_array = input_vars_[i]->Get<phi::TensorArray>();

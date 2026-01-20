@@ -108,7 +108,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
     bool sync_op,
     bool use_calc_stream) {
   // numel > 0 indicates the tensor need to be sliced
-  phi::DenseTensor partial_tensor;
+  DenseTensor partial_tensor;
   if (numel > 0) {
     partial_tensor = GetPartialTensor(*tensor, offset, numel);
     tensor = &partial_tensor;
@@ -246,7 +246,7 @@ void ProcessGroupBKCL::SyncCalcStream(const Place& place) {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
     std::function<void(phi::distributed::BKCLCommContext*, XPUStream)> fn,
-    const std::vector<phi::DenseTensor>& tensors,
+    const std::vector<DenseTensor>& tensors,
     CommType op_type,
     bool sync_op,
     bool use_calc_stream) {
@@ -309,7 +309,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
     CommType op_type,
     bool sync_op,
     bool use_calc_stream) {
-  const std::vector<phi::DenseTensor> tensors = {tensor};
+  const std::vector<DenseTensor> tensors = {tensor};
   return Collective(fn, tensors, op_type, sync_op, use_calc_stream);
 }
 
@@ -499,67 +499,67 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
           phi::XPUPlace place = in_tensor.place();
 #if defined(PADDLE_WITH_FLAGCX)
           auto allocator_cpu = std::unique_ptr<phi::Allocator>(
-              new paddle::experimental::DefaultAllocator(phi::CPUPlace()));
+              new paddle::experimental::DefaultAllocator(CPUPlace()));
 #endif
           auto allocator = std::unique_ptr<phi::Allocator>(
               new paddle::experimental::DefaultAllocator(place));
           phi::DenseTensorMeta meta(phi::DataType::INT64, phi::DDim{nranks});
 #if defined(PADDLE_WITH_FLAGCX)
-          phi::DenseTensor in_size_tensor = {allocator_cpu.get(), meta};
-          phi::DenseTensor in_offset_tensor = {allocator_cpu.get(), meta};
-          phi::DenseTensor out_size_tensor = {allocator_cpu.get(), meta};
-          phi::DenseTensor out_offset_tensor = {allocator_cpu.get(), meta};
+          DenseTensor in_size_tensor = {allocator_cpu.get(), meta};
+          DenseTensor in_offset_tensor = {allocator_cpu.get(), meta};
+          DenseTensor out_size_tensor = {allocator_cpu.get(), meta};
+          DenseTensor out_offset_tensor = {allocator_cpu.get(), meta};
 #else
-          phi::DenseTensor in_size_tensor = {allocator.get(), meta};
-          phi::DenseTensor in_offset_tensor = {allocator.get(), meta};
-          phi::DenseTensor out_size_tensor = {allocator.get(), meta};
-          phi::DenseTensor out_offset_tensor = {allocator.get(), meta};
+          DenseTensor in_size_tensor = {allocator.get(), meta};
+          DenseTensor in_offset_tensor = {allocator.get(), meta};
+          DenseTensor out_size_tensor = {allocator.get(), meta};
+          DenseTensor out_offset_tensor = {allocator.get(), meta};
 #endif
 
 #if defined(PADDLE_WITH_FLAGCX)
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        in_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_numel_vec.data(),
                        in_size_tensor.numel() * sizeof(int64_t));
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        in_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_offset_vec.data(),
                        in_offset_tensor.numel() * sizeof(int64_t));
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        out_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_numel_vec.data(),
                        out_size_tensor.numel() * sizeof(int64_t));
-          memory::Copy(phi::CPUPlace(),
+          memory::Copy(CPUPlace(),
                        out_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_offset_vec.data(),
                        out_offset_tensor.numel() * sizeof(int64_t));
 #else
 
           memory::Copy(place,
                        in_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_numel_vec.data(),
                        in_size_tensor.numel() * sizeof(int64_t));
 
           memory::Copy(place,
                        in_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        in_offset_vec.data(),
                        in_offset_tensor.numel() * sizeof(int64_t));
 
           memory::Copy(place,
                        out_size_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_numel_vec.data(),
                        out_size_tensor.numel() * sizeof(int64_t));
 
           memory::Copy(place,
                        out_offset_tensor.data(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        out_offset_vec.data(),
                        out_offset_tensor.numel() * sizeof(int64_t));
 #endif
@@ -580,8 +580,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
-    std::vector<phi::DenseTensor>* out_tensors,
-    const std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<DenseTensor>* out_tensors,
+    const std::vector<DenseTensor>& in_tensors,
     bool sync_op,
     bool use_calc_stream) {
   CheckTensorContiguous(in_tensors);
@@ -679,7 +679,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
         phi::XPUPlace place = in_tensors[0].place();
 #if defined(PADDLE_WITH_FLAGCX)
         auto allocator_cpu = std::unique_ptr<phi::Allocator>(
-            new paddle::experimental::DefaultAllocator(phi::CPUPlace()));
+            new paddle::experimental::DefaultAllocator(CPUPlace()));
 #endif
         auto allocator = std::unique_ptr<phi::Allocator>(
             new paddle::experimental::DefaultAllocator(place));
@@ -691,20 +691,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
         phi::DenseTensorMeta split_meta(phi::DataType::INT64,
                                         phi::DDim{nranks});
 
-        phi::DenseTensor concated_in_tensor = {allocator.get(),
-                                               concated_in_tensor_meta};
-        phi::DenseTensor concated_out_tensor = {allocator.get(),
-                                                concated_out_tensor_meta};
+        DenseTensor concated_in_tensor = {allocator.get(),
+                                          concated_in_tensor_meta};
+        DenseTensor concated_out_tensor = {allocator.get(),
+                                           concated_out_tensor_meta};
 #if defined(PADDLE_WITH_FLAGCX)
-        phi::DenseTensor in_size_tensor = {allocator_cpu.get(), split_meta};
-        phi::DenseTensor in_offset_tensor = {allocator_cpu.get(), split_meta};
-        phi::DenseTensor out_size_tensor = {allocator_cpu.get(), split_meta};
-        phi::DenseTensor out_offset_tensor = {allocator_cpu.get(), split_meta};
+        DenseTensor in_size_tensor = {allocator_cpu.get(), split_meta};
+        DenseTensor in_offset_tensor = {allocator_cpu.get(), split_meta};
+        DenseTensor out_size_tensor = {allocator_cpu.get(), split_meta};
+        DenseTensor out_offset_tensor = {allocator_cpu.get(), split_meta};
 #else
-        phi::DenseTensor in_size_tensor = {allocator.get(), split_meta};
-        phi::DenseTensor in_offset_tensor = {allocator.get(), split_meta};
-        phi::DenseTensor out_size_tensor = {allocator.get(), split_meta};
-        phi::DenseTensor out_offset_tensor = {allocator.get(), split_meta};
+        DenseTensor in_size_tensor = {allocator.get(), split_meta};
+        DenseTensor in_offset_tensor = {allocator.get(), split_meta};
+        DenseTensor out_size_tensor = {allocator.get(), split_meta};
+        DenseTensor out_offset_tensor = {allocator.get(), split_meta};
 #endif
 
         if (in_numel_sum > 0) {
@@ -713,51 +713,51 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
                               &concated_in_tensor);
         }
 #if defined(PADDLE_WITH_FLAGCX)
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      in_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_numel_vec.data(),
                      in_size_tensor.numel() * sizeof(int64_t));
 
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      in_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_offset_vec.data(),
                      in_offset_tensor.numel() * sizeof(int64_t));
 
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      out_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_numel_vec.data(),
                      out_size_tensor.numel() * sizeof(int64_t));
 
-        memory::Copy(phi::CPUPlace(),
+        memory::Copy(CPUPlace(),
                      out_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_offset_vec.data(),
                      out_offset_tensor.numel() * sizeof(int64_t));
 #else
         memory::Copy(place,
                      in_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_numel_vec.data(),
                      in_size_tensor.numel() * sizeof(int64_t));
 
         memory::Copy(place,
                      in_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      in_offset_vec.data(),
                      in_offset_tensor.numel() * sizeof(int64_t));
 
         memory::Copy(place,
                      out_size_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_numel_vec.data(),
                      out_size_tensor.numel() * sizeof(int64_t));
 
         memory::Copy(place,
                      out_offset_tensor.data(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      out_offset_vec.data(),
                      out_offset_tensor.numel() * sizeof(int64_t));
 #endif
@@ -965,7 +965,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
-  phi::DenseTensor barrier_tensor{allocator.get(), meta};
+  DenseTensor barrier_tensor{allocator.get(), meta};
 
   auto task = AllReduce(&barrier_tensor,
                         barrier_tensor,

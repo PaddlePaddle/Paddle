@@ -18,6 +18,9 @@ import numpy as np
 
 import paddle
 
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of array equal in test_ast_prim_cinn
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 class TestBase(unittest.TestCase):
     def setUp(self):

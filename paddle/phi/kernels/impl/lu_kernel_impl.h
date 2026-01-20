@@ -478,7 +478,7 @@ void Unpack_Pivot(const Context& dev_ctx,
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
-  phi::CPUPlace cpu;
+  CPUPlace cpu;
   Copy(dev_ctx, Pivot, cpu, false, &Pivot_cpu);
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;

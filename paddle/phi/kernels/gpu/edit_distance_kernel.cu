@@ -104,16 +104,8 @@ void EditDistanceKernel(const Context& dev_ctx,
   if (use_length) {
     DenseTensor hyp_length_cpu;
     DenseTensor ref_length_cpu;
-    Copy(dev_ctx,
-         *(hypslength.get_ptr()),
-         phi::CPUPlace(),
-         false,
-         &hyp_length_cpu);
-    Copy(dev_ctx,
-         *(refslength.get_ptr()),
-         phi::CPUPlace(),
-         false,
-         &ref_length_cpu);
+    Copy(dev_ctx, *(hypslength.get_ptr()), CPUPlace(), false, &hyp_length_cpu);
+    Copy(dev_ctx, *(refslength.get_ptr()), CPUPlace(), false, &ref_length_cpu);
 
     for (auto i = 0; i < batch_size; i++) {
       hyp_lod[i + 1] = hyp_lod[i] + hyp_length_cpu.data<int64_t>()[i];

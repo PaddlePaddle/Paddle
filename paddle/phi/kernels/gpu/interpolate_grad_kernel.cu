@@ -1208,7 +1208,7 @@ static void Interpolate1DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1243,7 +1243,7 @@ static void Interpolate1DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+    Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
 
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
@@ -1317,7 +1317,7 @@ static void Interpolate2DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1376,7 +1376,7 @@ static void Interpolate2DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+    Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
@@ -1591,7 +1591,7 @@ static void InterpolateAA2DCUDABwd(
     dev_ctx.template Alloc<T>(input_grad);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1655,7 +1655,7 @@ static void InterpolateAA2DCUDABwd(
     }
     if (out_size) {
       DenseTensor sizes;
-      Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+      Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
       auto size_data = sizes.data<int>();
       out_h = size_data[0];
       out_w = size_data[1];
@@ -1812,7 +1812,7 @@ static void Interpolate3DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1889,7 +1889,7 @@ static void Interpolate3DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+    Copy(dev_ctx, *out_size, CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];

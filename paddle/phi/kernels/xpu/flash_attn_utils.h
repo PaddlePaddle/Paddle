@@ -71,16 +71,15 @@ inline XPU_FA_DTYPE get_flash_attn_taccum<float>() {
   return XPU_FA_DTYPE::FA_FLOAT;
 }
 
-static void GenerateRNGState(
-    const XPUContext& dev_ctx,
-    const paddle::optional<DenseTensor>& fixed_seed_offset,
-    int64_t* seed_offset_data,
-    const std::string& rng_name,
-    const int64_t batch_size,
-    const int64_t num_heads) {
+static void GenerateRNGState(const XPUContext& dev_ctx,
+                             const optional<DenseTensor>& fixed_seed_offset,
+                             int64_t* seed_offset_data,
+                             const std::string& rng_name,
+                             const int64_t batch_size,
+                             const int64_t num_heads) {
   if (fixed_seed_offset.get_ptr()) {
     if ((fixed_seed_offset->place()).GetType() == AllocationType::XPU) {
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          seed_offset_data,
                          fixed_seed_offset->place(),
                          fixed_seed_offset->data<int64_t>(),
