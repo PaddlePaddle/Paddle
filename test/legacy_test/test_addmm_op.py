@@ -650,7 +650,7 @@ class TestAddMMAPI(unittest.TestCase):
         paddle_output_original = paddle.tensor.addmm(
             input=input.clone(), x=x, y=y, beta=data_beta, alpha=data_alpha
         )
-        paddle_output_alias = input.addmm(
+        paddle_output_alias = paddle.tensor.addmm(
             input=input.clone(),
             mat1=x,
             mat2=y,
