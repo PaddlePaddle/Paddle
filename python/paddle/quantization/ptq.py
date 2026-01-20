@@ -83,7 +83,7 @@ class PTQ(Quantization):
                     )
                     (2): ObserveWrapper(
                       (_observer): AbsmaxObserverLayer()
-                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
                     )
                     (3): QuantedConv2D(
                       (weight_quanter): AbsmaxObserverLayer()
@@ -95,7 +95,7 @@ class PTQ(Quantization):
                     )
                     (5): ObserveWrapper(
                       (_observer): AbsmaxObserverLayer()
-                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
                     )
                   )
                   (fc): Sequential(

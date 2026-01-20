@@ -629,6 +629,8 @@ class MaxPool1D(Layer):
             4. A list[int] or tuple(int) whose length is 2, It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or(0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation size is a tuple or list,
+            it must contain an integer. Default: 1.
         return_mask(bool, optional): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode(bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default False.
@@ -663,11 +665,16 @@ class MaxPool1D(Layer):
             >>> print(indices.shape)
             paddle.Size([1, 3, 16])
 
+            >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> pool_out = MaxPool1D(data)
+            >>> print(pool_out.shape)
+            paddle.Size([1, 3, 15])
     """
 
     kernel_size: Size1
     stride: Size1 | None
     padding: _PaddingSizeMode | Size1 | Size2
+    dilation: Size1
     return_mask: bool
     ceil_mode: bool
     name: str | None
@@ -677,6 +684,7 @@ class MaxPool1D(Layer):
         kernel_size: Size1,
         stride: Size1 | None = None,
         padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        dilation: Size1 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         name: str | None = None,
@@ -685,6 +693,7 @@ class MaxPool1D(Layer):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.ceil_mode = ceil_mode
         self.return_mask = return_mask
         self.name = name
@@ -695,6 +704,7 @@ class MaxPool1D(Layer):
             self.kernel_size,
             self.stride,
             self.padding,
+            self.dilation,
             self.return_mask,
             self.ceil_mode,
             self.name,
@@ -702,7 +712,7 @@ class MaxPool1D(Layer):
         return out
 
     def extra_repr(self) -> str:
-        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -726,7 +736,7 @@ class MaxPool2D(Layer):
         ..  math::
 
             Output(N_i, C_j, h, w) = \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1}
-                Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
+                Input(N_i, C_j, stride[0] \times h + m * dilation[0], stride[1] \times w + n * dilation[1])
 
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -743,6 +753,9 @@ class MaxPool2D(Layer):
             4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple or list, it must
+            contain two integers, (dilation_Height, dilation_Width). Otherwise, the dilation size
+            will be a square of an int. Default 1.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -780,11 +793,18 @@ class MaxPool2D(Layer):
             paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
             paddle.Size([1, 3, 16, 16])
+
+            >>> # for dilation (dilated max pooling)
+            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> output = MaxPool2D(input)
+            >>> print(output.shape)
+            paddle.Size([1, 3, 15, 15])
     """
 
     kernel_size: Size2
     stride: Size2 | None
     padding: _PaddingSizeMode | Size2 | Size4
+    dilation: Size2
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout2D
@@ -795,6 +815,7 @@ class MaxPool2D(Layer):
         kernel_size: Size2,
         stride: Size2 | None = None,
         padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        dilation: Size2 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout2D = 'NCHW',
@@ -804,6 +825,7 @@ class MaxPool2D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
@@ -815,6 +837,7 @@ class MaxPool2D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -822,7 +845,7 @@ class MaxPool2D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -850,6 +873,11 @@ class MaxPool3D(Layer):
             4. A list[int] or tuple(int) whose length is \6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple or list, it must
+            contain three integers, (dilation_Depth, dilation_Height, dilation_Width). Otherwise, the dilation size
+            will be a cube of an int. Default 1.
+            Note: dilation is only supported on CPU currently. When dilation is not 1,
+            return_mask must be True.
         ceil_mode(bool, optional): ${ceil_mode_comment}
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`,
@@ -888,11 +916,18 @@ class MaxPool3D(Layer):
             paddle.Size([1, 2, 1, 16, 16])
             >>> print(max_indices.shape)
             paddle.Size([1, 2, 1, 16, 16])
+
+            >>> # for dilation (dilated max pooling)
+            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> output = MaxPool3D(input)
+            >>> print(output.shape)
+            paddle.Size([1, 2, 1, 15, 15])
     """
 
     kernel_size: Size3
     stride: Size3 | None
     padding: _PaddingSizeMode | Size3 | Size6
+    dilation: Size3
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout3D
@@ -903,6 +938,7 @@ class MaxPool3D(Layer):
         kernel_size: Size3,
         stride: Size3 | None = None,
         padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        dilation: Size3 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout3D = 'NCDHW',
@@ -912,6 +948,7 @@ class MaxPool3D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
@@ -923,6 +960,7 @@ class MaxPool3D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -930,7 +968,7 @@ class MaxPool3D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
