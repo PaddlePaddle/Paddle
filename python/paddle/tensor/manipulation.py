@@ -1228,7 +1228,7 @@ def fill_diagonal_(
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
 
             >>> # Use 'fill_value' alias (PyTorch compatible)
-            >>> x.fill_diagonal_(fill_value=0.0)
+            >>> x.fill_diagonal_(fill_value=0.0) # type: ignore
             >>> print(x.tolist())
             [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
     """
