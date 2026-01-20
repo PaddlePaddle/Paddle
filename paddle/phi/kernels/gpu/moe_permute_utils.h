@@ -64,10 +64,6 @@ struct alignas(16) VectorType<__nv_bfloat16, 8> {
 };
 
 template <>
-struct alignas(4) VectorType<phi::bfloat16, 2> {
-  phi::bfloat16 data[2];
-};
-template <>
 struct alignas(16) VectorType<__nv_fp8_e4m3, 16> {
   __nv_fp8_e4m3 data[16];
 };
@@ -139,11 +135,11 @@ __device__ __forceinline__ void unrolled_memset(T* ptr,
   }
 }
 
-template <typename T>
+template <typename T, int VecSizeInBytes = 16>
 __device__ __forceinline__ void vectorized_memset(T* ptr,
                                                   const T value,
                                                   const int num_elements) {
-  constexpr int vector_size_in_bytes = 16;
+  constexpr int vector_size_in_bytes = VecSizeInBytes;
   const int elements_per_vector = vector_size_in_bytes / sizeof(T);
 
   int num_vectors = num_elements / elements_per_vector;

@@ -22,8 +22,6 @@
 #include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 #include "paddle/utils/optional.h"
 
-using barrier = cuda::barrier<cuda::thread_scope_block>;
-
 namespace cg = cooperative_groups;
 
 namespace phi {
@@ -97,7 +95,6 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
     const int expert_id = threadIdx.x;
     local_expert_offsets = expert_base_offset[expert_id];
     local_expert_end_offsets = expert_base_offset_end[expert_id];
-    // expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
 
     for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
          row++) {
@@ -144,7 +141,7 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
   const int block_row_end =
-      std::min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
+      min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   for (int row = block_row_base; row < block_row_end; row++) {
     // OOB check
     if (row >= total_zipped_tokens_num) return;
@@ -208,7 +205,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
   int local_expert_end_offsets;
   const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
   const int block_row_end =
-      std::min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
+      min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
   __shared__ expert_infos_t
       shared_expert_infos[CUMSUM_BLOCK_SIZE][max_num_experts];
