@@ -31,7 +31,7 @@ limitations under the License. */
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
 
-// check if the tensor is null, tensor is std::optional<Tensor>
+// check if the tensor is null, tensor is std::optional<paddle::Tensor>
 #define HANDLE_NULL_TENSOR(tensor) \
   {                                \
     if (!tensor) {                 \
@@ -97,7 +97,7 @@ static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   return result;
 }
 
-std::optional<Tensor> GetTensorFromPyObject(PyObject* obj) {
+std::optional<paddle::Tensor> GetTensorFromPyObject(PyObject* obj) {
   if (!paddle::pybind::PyCheckTensor(obj)) {
     // TODO(zrr1999): PyCheckTensor only check if the object is a p_tensor_type.
     return std::nullopt;
