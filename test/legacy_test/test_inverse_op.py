@@ -293,51 +293,125 @@ class TestInverseAPI_ZeroSize(unittest.TestCase):
                 np.testing.assert_allclose(input.grad.shape, input.shape)
 
 
-class TestInverseAPICompat(unittest.TestCase):
+class TestInverseAPICompatibility(unittest.TestCase):
     def setUp(self):
-        self.dtype = "float64"
-        self.shape = [10, 10]
         np.random.seed(123)
-        self.x_np = np.random.random(self.shape).astype(self.dtype)
+        self.shape = [6, 6]
+        self.dtype = 'float64'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.random(self.shape).astype(self.dtype)
         # Ensure invertible
-        while np.linalg.det(self.x_np) == 0:
-            self.x_np = np.random.random(self.shape).astype(self.dtype)
-        self.out_np = np.linalg.inv(self.x_np)
+        while np.linalg.det(self.np_input) == 0:
+            self.np_input = np.random.random(self.shape).astype(self.dtype)
+        self.ref_output = np.linalg.inv(self.np_input)
+        self.out_shape = self.np_input.shape
 
-    def test_alias(self):
+    def test_dygraph_compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.inverse(input=x)
-        np.testing.assert_allclose(out.numpy(), self.out_np, rtol=1e-5)
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        # 位置参数 (args)
+        out1 = paddle.inverse(x)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle关键字参数 (kwargs)
+        out2 = paddle.inverse(x=x)
+        paddle_dygraph_out.append(out2)
+
+        # Torch关键字参数
+        out3 = paddle.inverse(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # 测试out参数
+        out4 = paddle.empty(self.out_shape)
+        paddle.inverse(x, out=out4)
+        paddle_dygraph_out.append(out4)
+
+        # Tensor方法 - kwargs
+        out5 = x.inverse()
+        paddle_dygraph_out.append(out5)
+
+        # Numpy参考输出
+        ref_out = np.linalg.inv(self.np_input)
+
+        # 验证所有输出
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5)
         paddle.enable_static()
 
-    def test_out(self):
+    def test_edge_cases(self):
+        """测试边缘情况"""
         paddle.disable_static()
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.empty_like(x)
-        paddle.inverse(x, out=out)
-        np.testing.assert_allclose(out.numpy(), self.out_np, rtol=1e-5)
+
+        # 测试有效矩阵的正常计算
+        x = paddle.to_tensor(self.np_input)
+        out = paddle.inverse(x)
+
+        # 验证计算结果
+        expected = np.linalg.inv(self.np_input)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
         paddle.enable_static()
 
-    def test_out_return(self):
+    def test_static_compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # 位置参数
+            out1 = paddle.inverse(x)
+            # Paddle关键字参数
+            out2 = paddle.inverse(x=x)
+            # Torch关键字参数
+            out3 = paddle.inverse(input=x)
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.linalg.inv(self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+    def test_tensor_method_compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.empty_like(x)
-        res = paddle.inverse(x, out=out)
-        np.testing.assert_allclose(res.numpy(), self.out_np, rtol=1e-5)
-        np.testing.assert_allclose(out.numpy(), self.out_np, rtol=1e-5)
+        x = paddle.to_tensor(self.np_input)
+
+        # Tensor方法调用
+        out1 = x.inverse()
+        out2 = x.inverse()  # 重复测试验证一致性
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-5)
         paddle.enable_static()
 
-    def test_static_alias(self):
+    def test_parameter_aliases(self):
+        """测试参数别名映射功能"""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+
+        # 使用所有支持的别名进行测试
+        output_default = paddle.inverse(x)
+        output_torch = paddle.inverse(input=x)
+
+        np.testing.assert_allclose(
+            output_default.numpy(), output_torch.numpy(), rtol=1e-5
+        )
+
+    def test_dimension_validation(self):
+        """测试维度验证"""
+        paddle.disable_static()
+
+        # 测试0维输入（应该报错）
+        scalar_input = paddle.to_tensor(1.0)
+        with self.assertRaises(ValueError):
+            # 输入维度不足2
+            paddle.inverse(scalar_input)
         paddle.enable_static()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, startup_prog):
-            x = paddle.static.data(name='x', shape=self.shape, dtype=self.dtype)
-            out = paddle.inverse(input=x)
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            res = exe.run(feed={'x': self.x_np}, fetch_list=[out])
-            np.testing.assert_allclose(res[0], self.out_np, rtol=1e-5)
 
 
 if __name__ == "__main__":

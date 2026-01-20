@@ -3859,7 +3859,7 @@ def baddbmm(
 
 add_doc_and_signature(
     "inverse",
-    """
+    r"""
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
     (2-D Tensor) or batches of square matrices.
@@ -3889,7 +3889,7 @@ add_doc_and_signature(
             [[0.50000000, 0.        ],
              [0.        , 0.50000000]])
 
-    """,
+""",
     """
 def inverse(
     x: Tensor,
