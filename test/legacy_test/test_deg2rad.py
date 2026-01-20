@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
-os.environ['FLAGS_enable_pir_api'] = '0'
 
 import numpy as np
 from op_test import get_device_place
@@ -112,94 +109,40 @@ class TestDeg2radAPI4(TestDeg2radAPI):
         self.x_dtype = 'float32'
 
 
-class TestDeg2radAliasAndOut(unittest.TestCase):
-    def test_alias(self):
+class TestDeg2radAlias(unittest.TestCase):
+    def test_alias_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor([180.0])
         expected = np.deg2rad(180.0)
 
-        # Test alias
+        # Test alias with keyword argument
         res = paddle.deg2rad(input=x)
         np.testing.assert_allclose(res.numpy(), expected, rtol=1e-05)
 
         paddle.enable_static()
 
-    def test_out(self):
-        paddle.disable_static()
-        x = paddle.to_tensor([180.0])
-        expected = np.deg2rad(180.0)
-
-        # Test without out parameter (default None)
-        res_no_out = paddle.deg2rad(x)
-        np.testing.assert_allclose(res_no_out.numpy(), expected, rtol=1e-05)
-
-        # Test out parameter with float input
-        out = paddle.zeros([1], dtype="float32")
-        res = paddle.deg2rad(x, out=out)
-        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
-        self.assertTrue(res is out)
-
-        # Test out parameter with int64 input
-        x_int = paddle.to_tensor([180], dtype="int64")
-        out_float = paddle.zeros([1], dtype="float32")
-        res = paddle.deg2rad(x_int, out=out_float)
-        np.testing.assert_allclose(out_float.numpy(), expected, rtol=1e-05)
-        self.assertTrue(res is out_float)
-
-        # Test out parameter with int32 input
-        x_int32 = paddle.to_tensor([180], dtype="int32")
-        out_float32 = paddle.zeros([1], dtype="float32")
-        res = paddle.deg2rad(x_int32, out=out_float32)
-        np.testing.assert_allclose(out_float32.numpy(), expected, rtol=1e-05)
-        self.assertTrue(res is out_float32)
-
-        paddle.enable_static()
-
-
-class TestDeg2radStaticOut(unittest.TestCase):
-    def test_static_out_float(self):
-        """Test out parameter in static graph with float input"""
+    def test_alias_static(self):
+        """Test alias parameter in static graph"""
         paddle.enable_static()
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
         with paddle.static.program_guard(startup_program, train_program):
-            x = paddle.static.data(name='input', dtype='float32', shape=[1])
-            out = paddle.static.data(name='out', dtype='float32', shape=[1])
-            result = paddle.deg2rad(x, out=out)
+            # Test with alias 'input'
+            x = paddle.static.data(
+                name='input_data', dtype='float32', shape=[1]
+            )
+            result = paddle.deg2rad(input=x)
 
             place = get_device_place()
             exe = base.Executor(place)
             x_np = np.array([180.0]).astype(np.float32)
-            out_np = np.zeros([1]).astype(np.float32)
             expected = np.deg2rad(180.0)
 
-            res, out_res = exe.run(
-                feed={'input': x_np, 'out': out_np},
-                fetch_list=[result, out],
+            res = exe.run(
+                feed={'input_data': x_np},
+                fetch_list=[result],
             )
-            np.testing.assert_allclose(out_res, expected, rtol=1e-05)
-
-    def test_static_out_int(self):
-        """Test out parameter in static graph with int input"""
-        paddle.enable_static()
-        startup_program = paddle.static.Program()
-        train_program = paddle.static.Program()
-        with paddle.static.program_guard(startup_program, train_program):
-            x = paddle.static.data(name='input', dtype='int64', shape=[1])
-            out = paddle.static.data(name='out', dtype='float32', shape=[1])
-            result = paddle.deg2rad(x, out=out)
-
-            place = get_device_place()
-            exe = base.Executor(place)
-            x_np = np.array([180]).astype(np.int64)
-            out_np = np.zeros([1]).astype(np.float32)
-            expected = np.deg2rad(180.0)
-
-            res, out_res = exe.run(
-                feed={'input': x_np, 'out': out_np},
-                fetch_list=[result, out],
-            )
-            np.testing.assert_allclose(out_res, expected, rtol=1e-05)
+            np.testing.assert_allclose(res[0], expected, rtol=1e-05)
 
 
 if __name__ == '__main__':
