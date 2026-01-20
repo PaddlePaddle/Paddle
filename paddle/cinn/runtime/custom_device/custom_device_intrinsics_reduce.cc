@@ -11,14 +11,39 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifndef CINN_WITH_CUSTOM_DEVICE
+#error "STOP!!! custom_device_intrinsics_reduce is BEING COMPILED! 停下！我正在被编译！"
+#endif
+
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/float16.h"
+#include "paddle/phi/backends/device_manager.h" // <--- 【新增】用于获取设备名
+
 #define CINN_CUSTOM_DEVICE_FP16
 
 using cinn::common::float16;
+using cinn::runtime::custom_device::CustomBackendAPI;
 
-CINN_REGISTER_HELPER(custom_device_intrinsics_reduce) {
-  auto target = cinn::common::DefaultCustomDeviceTarget();
+namespace cinn {
+namespace runtime {
+namespace custom_device {
+void ForceRegisterCustomDeviceIntrinsicsReduce() {
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  std::string custom_device_name = "unknown_custom_device"; // 默认兜底
+  int device_id = 0;
+  if (!dev_types.empty()) {
+      custom_device_name = dev_types[0];
+      device_id = phi::DeviceManager::GetDevice(custom_device_name);
+  }
+  VLOG(0) << "Force Registering Custom Device Intrinsics Reduce  for Target Name: " << custom_device_name;
+
+  cinn::common::Target target(
+      cinn::common::Target::OS::Linux,
+      cinn::common::CustomDeviceArch{custom_device_name, device_id},
+      cinn::common::Target::Bit::k64,
+      {cinn::common::Target::Feature::JIT},
+      {});
 
 #define EXPAND_REDUCE_INT32_REGISTER_MARCO(MARCO, ...) \
   MARCO(sum_int32, int, ##__VA_ARGS__)                 \
@@ -176,5 +201,8 @@ CINN_REGISTER_HELPER(custom_device_intrinsics_reduce) {
 #undef EXPAND_REDUCE_FP16_REGISTER_MACRO
 #endif
 
-  return true;
 }
+
+}  // namespace custom_device
+}  // namespace runtime
+}  // namespace cinn

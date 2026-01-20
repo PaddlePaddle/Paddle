@@ -18,6 +18,6 @@
 
 // CINN_USE_REGISTER(cinn_custom_device_host_api)
 // CINN_USE_REGISTER(custom_device_intrinsics)
-CINN_USE_REGISTER(custom_device_intrinsics_reduce)
-CINN_USE_REGISTER(custom_device_intrinsics_float16)
+// CINN_USE_REGISTER(custom_device_intrinsics_reduce)
+// CINN_USE_REGISTER(custom_device_intrinsics_float16)
 

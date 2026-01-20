@@ -10,7 +10,9 @@ gather_srcs(
   backend_api.cc
   custom_device/custom_device_backend_api.cc
   custom_device/custom_device_util.cc
-  custom_device/custom_device_intrinsics.cc)
+  custom_device/custom_device_intrinsics.cc
+  custom_device/custom_device_intrinsics_reduce.cc
+  custom_device/custom_device_intrinsics_float16.cc)
 
 cinn_cc_library(
   cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc

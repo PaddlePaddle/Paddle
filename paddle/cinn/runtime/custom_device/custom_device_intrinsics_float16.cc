@@ -11,19 +11,42 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifndef CINN_WITH_CUSTOM_DEVICE
+#error "STOP!!! custom_device_intrinsics_float16 is BEING COMPILED! 停下！我正在被编译！"
+#endif
 
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
 #include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
+#include "paddle/phi/backends/device_manager.h" // <--- 【新增】用于获取设备名
 
 using cinn::common::float16;
+using cinn::runtime::custom_device::CustomBackendAPI;
 using cinn_buffer_ptr_t = cinn_buffer_t *;
 using cinn_int_ptr_t = int *;
 
-CINN_REGISTER_HELPER(custom_device_intrinsics_float16) {
-  auto target = cinn::common::DefaultCustomDeviceTarget();
+namespace cinn {
+namespace runtime {
+namespace custom_device {
+void ForceRegisterCustomDeviceIntrinsicsFloat16() {
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  std::string custom_device_name = "unknown_custom_device"; // 默认兜底
+  int device_id = 0;
+  if (!dev_types.empty()) {
+      custom_device_name = dev_types[0];
+      device_id = phi::DeviceManager::GetDevice(custom_device_name);
+  }
+  VLOG(0) << "Registering CINN Custom Device Intrinsics Float16 for Target Name: " << custom_device_name;
+
+  cinn::common::Target target(
+      cinn::common::Target::OS::Linux,
+      cinn::common::CustomDeviceArch{custom_device_name, device_id},
+      cinn::common::Target::Bit::k64,
+      {cinn::common::Target::Feature::JIT},
+      {});
   using cinn::backends::FunctionProto;
 
 // float16
@@ -126,5 +149,9 @@ CINN_REGISTER_HELPER(custom_device_intrinsics_float16) {
 
 #undef REGISTER_CINN_NVGPU_INDEX_ADD
 
-  return true;
 }
+
+}  // namespace custom_device
+}  // namespace runtime
+}  // namespace cinn
+

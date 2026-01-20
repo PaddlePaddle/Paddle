@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #ifndef CINN_WITH_CUSTOM_DEVICE
-#error "STOP!!! I AM BEING COMPILED! 停下！我正在被编译！"
+#error "STOP!!! custom_device_intrinsics is BEING COMPILED! 停下！我正在被编译！"
 #endif
 
 // 1. 头文件
@@ -32,8 +32,8 @@ using cinn_buffer_ptr_t = cinn_buffer_t *;
 using cinn_int_ptr_t = int *;
 
 // 手动注册函数
-void ForceRegisterCinnCustomDeviceIntrinsics() {
-  VLOG(0) << "Force Registering Custom Device Intrinsics & Host API...";
+void ForceRegisterCinnCustomDeviceHostAPI() {
+  VLOG(0) << "Registering CINN Custom Device Host API...";
 
   // =======================================================
   // Part 1: Host API 注册 (保持不变)
@@ -68,11 +68,11 @@ void ForceRegisterCinnCustomDeviceIntrinsics() {
       .template AddInputType(cinn::common::type_of<int64_t>())
       .template AddInputType(cinn::common::type_of<int64_t **>())
       .End();
-
+  }
   // =======================================================
   // Part 2: Intrinsics 注册 (【核心修改】)
   // =======================================================
-  
+  void ForceRegisterCinnCustomDeviceIntrinsics() {
   // 1. 动态获取真实的 Custom Device 名字 (例如 "metax_gpu")
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   std::string custom_device_name = "unknown_custom_device"; // 默认兜底
@@ -82,7 +82,7 @@ void ForceRegisterCinnCustomDeviceIntrinsics() {
       device_id = phi::DeviceManager::GetDevice(custom_device_name);
   }
   
-  VLOG(0) << "Registering CINN Intrinsics for Target Name: " << custom_device_name;
+  VLOG(0) << "Registering CINN Custom Device Intrinsics for Target Name: " << custom_device_name;
 
   // 2. 使用真实名字构造 Target
   // 这样 CINN 就会把这些算子标记为 "metax_gpu" 设备
