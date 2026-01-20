@@ -37,13 +37,12 @@ class ComputePropagateScalesOnednnPass : public FusePassBase {
 
  private:
   PADDLE_API void GetTensorFromVector(const std::vector<float>& data_v,
-                                      phi::DenseTensor* tensor) const;
+                                      DenseTensor* tensor) const;
 
   PADDLE_API void GetQuantInfo(ir::Graph* graph,
                                StringPairMap* var_quant_scales) const;
 
-  PADDLE_API std::vector<float> GetScales(phi::DenseTensor* tensor,
-                                          int axis) const;
+  PADDLE_API std::vector<float> GetScales(DenseTensor* tensor, int axis) const;
 
   PADDLE_API void ComputeVarScales(ir::Graph* graph,
                                    Scope* scope,
@@ -55,7 +54,7 @@ class ComputePropagateScalesOnednnPass : public FusePassBase {
   PADDLE_API void ComputeSingleGruWeightScales(Scope* scope,
                                                const std::string& wx_var_name,
                                                const std::string& wh_var_name,
-                                               phi::DenseTensor* tensor) const;
+                                               DenseTensor* tensor) const;
 
   PADDLE_API void ComputeGruWeightScales(ir::Graph* graph,
                                          Scope* scope,
@@ -66,7 +65,7 @@ class ComputePropagateScalesOnednnPass : public FusePassBase {
   PADDLE_API void ComputeSingleLstmWeightScales(Scope* scope,
                                                 const std::string& wx_var_name,
                                                 const std::string& wh_var_name,
-                                                phi::DenseTensor* tensor) const;
+                                                DenseTensor* tensor) const;
 
   PADDLE_API void ComputeLstmWeightScales(
       ir::Graph* graph,

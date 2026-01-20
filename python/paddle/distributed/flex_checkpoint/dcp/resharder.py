@@ -904,6 +904,7 @@ class ThreeDCommGroupStateResharder:
             if not self.using_2d_comm_group:
                 if read_item.src_rank == self.cur_rank:
                     buffer = tensor_list[cnt]
+                    cnt += 1
                 else:
                     buffer = paddle.empty(
                         read_item.slice_shape, dtype=read_item.dtype
@@ -915,7 +916,6 @@ class ThreeDCommGroupStateResharder:
             else:
                 buffer = tensor_list[cnt]
 
-            cnt += 1
             received_sharded_weight = ShardedWeight(
                 key=read_item.tensor_name,
                 local_tensor=buffer,
