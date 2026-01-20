@@ -769,8 +769,8 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
 template <typename T, typename Context>
 void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
                                        const DenseTensor& V,
-                                       const paddle::optional<DenseTensor>& gL,
-                                       const paddle::optional<DenseTensor>& gV,
+                                       const optional<DenseTensor>& gL,
+                                       const optional<DenseTensor>& gV,
                                        T* x_grad_data,
                                        int batch_count,
                                        int order,
@@ -857,8 +857,8 @@ template <typename T, typename Context>
 void EigGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_w,
                    const DenseTensor& out_v,
-                   const paddle::optional<DenseTensor>& dout_w,
-                   const paddle::optional<DenseTensor>& dout_v,
+                   const optional<DenseTensor>& dout_w,
+                   const optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
   auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
   if (dx->numel() == 0) {

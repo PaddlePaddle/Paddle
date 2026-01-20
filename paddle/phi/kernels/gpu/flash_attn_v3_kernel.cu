@@ -43,39 +43,35 @@ void FlashAttnV3BaseKernel(
     const DenseTensor &q,
     const DenseTensor &k,
     const DenseTensor &v,
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &k_new_,  // (b, s_k_new, h_k, d) or (total_k_new, h_k, d) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &v_new_,  // (b, s_k_new, h_k, dv) or (total_k_new, h_k, dv) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
-        &q_v_,  // (b, s_q, h, dv) or (total_q_new, h, dv) if there is
-                // cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &q_v_,  // (b, s_q, h, dv) or (total_q_new, h,
+                                        // dv) if there is cu_seqlens_q
+    const optional<DenseTensor>
         &out_,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &cu_seqlens_q_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
-    const paddle::optional<DenseTensor>
-        &page_table_,  // (b_k, max_num_pages_per_seq)
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &page_table_,  // (b_k, max_num_pages_per_seq)
+    const optional<DenseTensor>
         &kv_batch_idx_,  // b. indices to index into the KV cache
-    const paddle::optional<DenseTensor> &leftpad_k_,  // b
-    const paddle::optional<DenseTensor>
-        &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor>
-        &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor> &q_descale_,  // (b, h_k), not (b, h)
-    const paddle::optional<DenseTensor> &k_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &v_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
+    const optional<DenseTensor> &leftpad_k_,   // b
+    const optional<DenseTensor> &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &q_descale_,   // (b, h_k), not (b, h)
+    const optional<DenseTensor> &k_descale_,   // (b, h_k)
+    const optional<DenseTensor> &v_descale_,   // (b, h_k)
+    const optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -147,7 +143,7 @@ void FlashAttnV3BaseKernel(
 
   DenseTensor page_table;
   // const bool paged_KV = page_table_.has_value();
-  // umiswing: this is stupid but idk how to use paddle::optional
+  // umiswing: this is stupid but idk how to use optional
   const bool paged_KV = page_table_.is_initialized();
   if (paged_KV) {
     page_table = page_table_.get();
@@ -167,7 +163,7 @@ void FlashAttnV3BaseKernel(
   DenseTensor cu_seqlens_q;
   // bool const is_varlen_q = cu_seqlens_q_.has_value();
   // TODO(umiswing): this is stupid, must fix it (after understand
-  // paddle::optional)
+  // optional)
   const bool is_varlen_q = cu_seqlens_q_.is_initialized();
   if (is_varlen_q) {
     cu_seqlens_q = cu_seqlens_q_.get();
@@ -960,10 +956,10 @@ void FlashAttnV3Kernel(const Context &dev_ctx,
                        const DenseTensor &q,
                        const DenseTensor &k,
                        const DenseTensor &v,
-                       const paddle::optional<DenseTensor> &q_v_,
-                       const paddle::optional<DenseTensor> &q_descale_,
-                       const paddle::optional<DenseTensor> &k_descale_,
-                       const paddle::optional<DenseTensor> &v_descale_,
+                       const optional<DenseTensor> &q_v_,
+                       const optional<DenseTensor> &q_descale_,
+                       const optional<DenseTensor> &k_descale_,
+                       const optional<DenseTensor> &v_descale_,
                        const float softmax_scale,
                        bool is_causal,
                        int window_size_left,
@@ -1079,12 +1075,12 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const DenseTensor &v,
                              const DenseTensor &cu_seqlens_q,
                              const DenseTensor &cu_seqlens_k,
-                             const paddle::optional<DenseTensor> &seqused_q,
-                             const paddle::optional<DenseTensor> &seqused_k,
-                             const paddle::optional<DenseTensor> &qv,
-                             const paddle::optional<DenseTensor> &q_descale,
-                             const paddle::optional<DenseTensor> &k_descale,
-                             const paddle::optional<DenseTensor> &v_descale,
+                             const optional<DenseTensor> &seqused_q,
+                             const optional<DenseTensor> &seqused_k,
+                             const optional<DenseTensor> &qv,
+                             const optional<DenseTensor> &q_descale,
+                             const optional<DenseTensor> &k_descale,
+                             const optional<DenseTensor> &v_descale,
                              const Scalar &max_seqlen_q,
                              const Scalar &max_seqlen_k,
                              const float softmax_scale,
@@ -1205,43 +1201,37 @@ void FlashMaskV2BaseKernel(
     const DenseTensor &q,
     const DenseTensor &k,
     const DenseTensor &v,
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &k_new_,  // (b, s_k_new, h_k, d) or (total_k_new, h_k, d) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &v_new_,  // (b, s_k_new, h_k, dv) or (total_k_new, h_k, dv) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
-        &q_v_,  // (b, s_q, h, dv) or (total_q_new, h, dv) if there is
-                // cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &q_v_,  // (b, s_q, h, dv) or (total_q_new, h,
+                                        // dv) if there is cu_seqlens_q
+    const optional<DenseTensor>
         &out_,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &cu_seqlens_q_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
-    const paddle::optional<DenseTensor>
-        &page_table_,  // (b_k, max_num_pages_per_seq)
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &page_table_,  // (b_k, max_num_pages_per_seq)
+    const optional<DenseTensor>
         &kv_batch_idx_,  // b. indices to index into the KV cache
-    const paddle::optional<DenseTensor> &leftpad_k_,  // b
-    const paddle::optional<DenseTensor>
-        &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor>
-        &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor> &q_descale_,  // (b, h_k), not (b, h)
-    const paddle::optional<DenseTensor> &k_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &v_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
-    const paddle::optional<DenseTensor>
-        &startend_row_indices_,  // （b,h,s_1,[1,2,4])
-    const paddle::optional<DenseTensor>
-        &block_mask_,  // （(b,h,s// 128,s // 128)
+    const optional<DenseTensor> &leftpad_k_,   // b
+    const optional<DenseTensor> &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &q_descale_,   // (b, h_k), not (b, h)
+    const optional<DenseTensor> &k_descale_,   // (b, h_k)
+    const optional<DenseTensor> &v_descale_,   // (b, h_k)
+    const optional<DenseTensor> &scheduler_metadata_,    // (b + 1)
+    const optional<DenseTensor> &startend_row_indices_,  // （b,h,s_1,[1,2,4])
+    const optional<DenseTensor> &block_mask_,  // （(b,h,s// 128,s // 128)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -1313,7 +1303,7 @@ void FlashMaskV2BaseKernel(
 
   DenseTensor page_table;
   // const bool paged_KV = page_table_.has_value();
-  // umiswing: this is stupid but idk how to use paddle::optional
+  // umiswing: this is stupid but idk how to use optional
   const bool paged_KV = page_table_.is_initialized();
   if (paged_KV) {
     page_table = page_table_.get();
@@ -1333,7 +1323,7 @@ void FlashMaskV2BaseKernel(
   DenseTensor cu_seqlens_q;
   // bool const is_varlen_q = cu_seqlens_q_.has_value();
   // TODO(umiswing): this is stupid, must fix it (after understand
-  // paddle::optional)
+  // optional)
   const bool is_varlen_q = cu_seqlens_q_.is_initialized();
   if (is_varlen_q) {
     cu_seqlens_q = cu_seqlens_q_.get();
@@ -2302,7 +2292,7 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        const DenseTensor &k,
                        const DenseTensor &v,
                        const DenseTensor &startend_row_indices,
-                       const paddle::optional<DenseTensor> &block_mask,
+                       const optional<DenseTensor> &block_mask,
                        const float softmax_scale,
                        bool is_causal,
                        DenseTensor *out,

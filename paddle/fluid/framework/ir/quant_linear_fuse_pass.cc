@@ -20,7 +20,7 @@
 
 namespace paddle::framework {
 template <typename T1, typename T2>
-void ConvertTensorType(phi::DenseTensor* tensor) {
+void ConvertTensorType(DenseTensor* tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   DenseTensor tmp_tensor;
@@ -191,7 +191,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
       return;
     }
     // Get input scale from tensor
-    const phi::DenseTensor& input_scale_tensor =
+    const DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
@@ -222,7 +222,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
     ConvertTensorType<float, int8_t>(weight_tensor);
 
     // Get scale_weights
-    const phi::DenseTensor& weight_scale_tensor =
+    const DenseTensor& weight_scale_tensor =
         scope->FindVar(weight_dequantize_linear_op_scale->Name())
             ->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(weight_scale_tensor.place()),
