@@ -19,58 +19,57 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ResNetUnitGradXPUKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x_in,
-    const DenseTensor &filter_x_in,
-    const DenseTensor &conv_x_in,
-    const DenseTensor &scale_x_in,
-    const DenseTensor &bias_x_in,
-    const DenseTensor &saved_mean_x_in,
-    const DenseTensor &saved_invstd_x_in,
-    const paddle::optional<DenseTensor> &z_in,
-    const paddle::optional<DenseTensor> &filter_z_in,
-    const paddle::optional<DenseTensor> &conv_z_in,
-    const paddle::optional<DenseTensor> &scale_z_in,
-    const paddle::optional<DenseTensor> &bias_z_in,
-    const paddle::optional<DenseTensor> &saved_mean_z_in,
-    const paddle::optional<DenseTensor> &saved_invstd_z_in,
-    const DenseTensor &out,
-    const DenseTensor &bit_mask,
-    const DenseTensor &out_grad,
-    int stride,
-    int stride_z,
-    int padding,
-    int dilation,
-    int group,
-    float momentum_in,
-    float epsilon,
-    const std::string &data_format,
-    bool fuse_add,
-    bool has_shortcut,
-    bool use_global_stats,
-    bool is_test,
-    bool use_addto,
-    const std::string &act_type,
-    DenseTensor *x_grad,
-    DenseTensor *filter_x_grad,
-    DenseTensor *scale_x_grad,
-    DenseTensor *bias_x_grad,
-    DenseTensor *z_grad,
-    DenseTensor *filter_z_grad,
-    DenseTensor *scale_z_grad,
-    DenseTensor *bias_z_grad) {
+void ResNetUnitGradXPUKernel(const Context &dev_ctx,
+                             const DenseTensor &x_in,
+                             const DenseTensor &filter_x_in,
+                             const DenseTensor &conv_x_in,
+                             const DenseTensor &scale_x_in,
+                             const DenseTensor &bias_x_in,
+                             const DenseTensor &saved_mean_x_in,
+                             const DenseTensor &saved_invstd_x_in,
+                             const optional<DenseTensor> &z_in,
+                             const optional<DenseTensor> &filter_z_in,
+                             const optional<DenseTensor> &conv_z_in,
+                             const optional<DenseTensor> &scale_z_in,
+                             const optional<DenseTensor> &bias_z_in,
+                             const optional<DenseTensor> &saved_mean_z_in,
+                             const optional<DenseTensor> &saved_invstd_z_in,
+                             const DenseTensor &out,
+                             const DenseTensor &bit_mask,
+                             const DenseTensor &out_grad,
+                             int stride,
+                             int stride_z,
+                             int padding,
+                             int dilation,
+                             int group,
+                             float momentum_in,
+                             float epsilon,
+                             const std::string &data_format,
+                             bool fuse_add,
+                             bool has_shortcut,
+                             bool use_global_stats,
+                             bool is_test,
+                             bool use_addto,
+                             const std::string &act_type,
+                             DenseTensor *x_grad,
+                             DenseTensor *filter_x_grad,
+                             DenseTensor *scale_x_grad,
+                             DenseTensor *bias_x_grad,
+                             DenseTensor *z_grad,
+                             DenseTensor *filter_z_grad,
+                             DenseTensor *scale_z_grad,
+                             DenseTensor *bias_z_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   bool is_nchw = (data_format == "NCHW");
-  const phi::DenseTensor *y_grad = &out_grad;
-  const phi::DenseTensor *x = &x_in;
-  const phi::DenseTensor *filter_x = &filter_x_in;
-  const phi::DenseTensor *scale_x = &scale_x_in;
-  const phi::DenseTensor *saved_mean_x = &saved_mean_x_in;
-  const phi::DenseTensor *saved_invstd_x = &saved_invstd_x_in;
-  const phi::DenseTensor *conv_out_x = &conv_x_in;
-  const phi::DenseTensor *output = &out;
+  const DenseTensor *y_grad = &out_grad;
+  const DenseTensor *x = &x_in;
+  const DenseTensor *filter_x = &filter_x_in;
+  const DenseTensor *scale_x = &scale_x_in;
+  const DenseTensor *saved_mean_x = &saved_mean_x_in;
+  const DenseTensor *saved_invstd_x = &saved_invstd_x_in;
+  const DenseTensor *conv_out_x = &conv_x_in;
+  const DenseTensor *output = &out;
 
   float eps = epsilon;
 
@@ -121,12 +120,12 @@ void ResNetUnitGradXPUKernel(
     //          ScaleBiasAddRelu
     //                  |
     //                  Y
-    const phi::DenseTensor *z = z_in.get_ptr();
-    const phi::DenseTensor *filter_z = filter_z_in.get_ptr();
-    const phi::DenseTensor *scale_z = scale_z_in.get_ptr();
-    const phi::DenseTensor *saved_mean_z = saved_mean_z_in.get_ptr();
-    const phi::DenseTensor *saved_invstd_z = saved_invstd_z_in.get_ptr();
-    const phi::DenseTensor *conv_out_z = conv_z_in.get_ptr();
+    const DenseTensor *z = z_in.get_ptr();
+    const DenseTensor *filter_z = filter_z_in.get_ptr();
+    const DenseTensor *scale_z = scale_z_in.get_ptr();
+    const DenseTensor *saved_mean_z = saved_mean_z_in.get_ptr();
+    const DenseTensor *saved_invstd_z = saved_invstd_z_in.get_ptr();
+    const DenseTensor *conv_out_z = conv_z_in.get_ptr();
 
     x_list.push_back(reinterpret_cast<const XPUType *>(z->data<T>()));
     w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));

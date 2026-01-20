@@ -1070,10 +1070,10 @@ class OpcodeExecutorBase:
             getattr, graph=self._graph, tracker=DanglingTracker()
         )(obj, method_name_var)
 
-        if isinstance(
-            method, MethodVariable
-        ) and not paddle.base.libpaddle.has_custom_getattro(
-            method.bound_instance.get_py_type()
+        if (
+            isinstance(method, MethodVariable)
+            and not paddle.base.libpaddle.has_custom_getattro(obj.get_py_type())
+            and hasattr(obj.get_py_type(), method_name)
         ):
             # bound method or the class override the __getattr__
             # push the unbound method and the self
@@ -1099,7 +1099,9 @@ class OpcodeExecutorBase:
         level = self.stack.pop().get_py_value()
         globals_dict = self.vframe.globals.get_value()
         for key, val in globals_dict.items():
-            if isinstance(val, VariableBase):
+            if isinstance(val, VariableBase) and not isinstance(
+                val, NullVariable
+            ):
                 globals_dict[key] = val.get_py_value()
         try:
             value = __import__(

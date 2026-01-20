@@ -28,7 +28,7 @@ class LayerNormOneDNNHandler
                          const float& epsilon,
                          const dnnl::normalization_flags& flags,
                          const bool& is_test,
-                         const phi::DenseTensor* x,
+                         const DenseTensor* x,
                          const dnnl::engine engine,
                          Place cpu_place)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
@@ -41,8 +41,7 @@ class LayerNormOneDNNHandler
   }
 
   std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
-  AcquireScaleShiftMemory(const phi::DenseTensor* scale,
-                          const phi::DenseTensor* shift) {
+  AcquireScaleShiftMemory(const DenseTensor* scale, const DenseTensor* shift) {
     auto scale_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
         funcs::to_void_cast<float>(scale->data<float>()));
@@ -54,7 +53,7 @@ class LayerNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(const OneDNNContext& dev_ctx,
-                                                  phi::DenseTensor* mean) {
+                                                  DenseTensor* mean) {
     float* mean_data = dev_ctx.template Alloc<float>(
         mean, this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
@@ -62,7 +61,7 @@ class LayerNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      const OneDNNContext& dev_ctx, phi::DenseTensor* variance) {
+      const OneDNNContext& dev_ctx, DenseTensor* variance) {
     float* variance_data = dev_ctx.template Alloc<float>(
         variance, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
@@ -110,7 +109,7 @@ void LayerNormKernel(const Context& dev_ctx,
 
   auto layer_norm_p = handler.AcquireForwardPrimitive();
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
                                                 {DNNL_ARG_DST, *dst_memory}};
 

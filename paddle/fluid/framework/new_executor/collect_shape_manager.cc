@@ -46,16 +46,15 @@ void CollectShapeManager::CollectShapeInfo(
     }
     auto var_name = value_exe_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
-    if (!var || !var->IsType<phi::DenseTensor>()) {
+    if (!var || !var->IsType<DenseTensor>()) {
       VLOG(3) << "input var is null : " << (var == nullptr);
-      VLOG(3) << "input var is dense_tensor : "
-              << (var->IsType<phi::DenseTensor>());
+      VLOG(3) << "input var is dense_tensor : " << (var->IsType<DenseTensor>());
       VLOG(3) << "input is null or not dense_tensor, jump it, and input id:"
               << input.first.impl();
       continue;
     }
 
-    auto tensor = var->Get<phi::DenseTensor>();
+    auto tensor = var->Get<DenseTensor>();
     if (!tensor.has_allocation() && !instr->NoNeedBuffer().count(input.first)) {
       VLOG(3) << "input tensor is has_allocation: "
               << (tensor.has_allocation());
@@ -109,15 +108,15 @@ void CollectShapeManager::CollectShapeInfo(
       if (phi::is_cpu_place(tensor.place())) {
         auto &int32_tensor = tensor;
         if (tensor.dtype() == phi::DataType::INT64) {
-          auto *cpu_ctx = pool.Get(phi::CPUPlace());
+          auto *cpu_ctx = pool.Get(CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
               tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(phi::CPUPlace(),
+        paddle::memory::Copy(CPUPlace(),
                              int32_host.data(),
-                             phi::CPUPlace(),
+                             CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (phi::is_gpu_place(tensor.place())) {
@@ -130,7 +129,7 @@ void CollectShapeManager::CollectShapeInfo(
               tensor,
               DataType::INT32);
         }
-        paddle::memory::Copy(phi::CPUPlace(),
+        paddle::memory::Copy(CPUPlace(),
                              int32_host.data(),
                              int32_tensor.place(),
                              int32_tensor.data<int>(),

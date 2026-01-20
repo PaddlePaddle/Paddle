@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context, typename T, typename InputT>
 void BincountInner(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const paddle::optional<DenseTensor>& weights,
+                   const optional<DenseTensor>& weights,
                    int64_t minlength,
                    DenseTensor* out) {
   const DenseTensor* input = &x;
@@ -37,8 +37,7 @@ void BincountInner(const Context& dev_ctx,
     DDim out_dim{minlength};
     output->Resize(out_dim);
     // Since minlength may >0 , so fill with 0.
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<int64_t, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -89,7 +88,7 @@ void BincountInner(const Context& dev_ctx,
 template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& weights,
+                    const optional<DenseTensor>& weights,
                     const Scalar& minlength,
                     DenseTensor* out) {
   int64_t int_minlength = minlength.to<int64_t>();

@@ -1257,11 +1257,10 @@ class Executor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy
-            >>> import os
 
             >>> # Executor is only used in static graph mode
             >>> paddle.enable_static()
@@ -1281,21 +1280,13 @@ class Executor:
             ...     hidden = paddle.static.nn.fc(data, 10)
             ...     loss = paddle.mean(hidden)
             ...     paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-            ...
             >>> # Run the startup program once and only once.
             >>> # Not need to optimize/compile the startup program.
             >>> exe.run(startup_program)
 
-            >>> # Run the main program directly without compile.
+            >>> # Run the main program.
             >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
-
-            >>> # Or, compiled the program and run. See `CompiledProgram`
-            >>> # for more details.
-            >>> compiled_prog = paddle.static.CompiledProgram(
-            ...     train_program)
-            >>> loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
-
+            >>> (loss_data,) = exe.run(train_program, feed={"X": x}, fetch_list=[loss])
     """
 
     place: _Place
@@ -2416,15 +2407,6 @@ class Executor:
         fetch_info=None,
         print_period=100,
     ):
-        is_heter = 0
-        use_ps_gpu = 0
-        if program._fleet_opt is not None:
-            if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
-                is_heter = 1
-            if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
-                is_heter = 1
-            if program._fleet_opt.get("use_ps_gpu", False):
-                use_ps_gpu = True
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -2433,8 +2415,6 @@ class Executor:
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
-        if is_heter:
-            ret = self.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -2449,8 +2429,6 @@ class Executor:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
-            if is_heter:
-                trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
@@ -2467,9 +2445,7 @@ class Executor:
             trainer._set_program(program.program)
 
         if thread <= 0:
-            if use_ps_gpu:
-                trainer._set_thread(len(program._fleet_opt["worker_places"]))
-            elif dataset.thread_num <= 0:
+            if dataset.thread_num <= 0:
                 raise RuntimeError(
                     "You should set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset"
@@ -2599,9 +2575,6 @@ class Executor:
         if program._pipeline_opt is None:
             if program._heter_pipeline_opt is None:
                 self._dump_debug_info(program=program, trainer=trainer)
-        # warning if dataset not set psgpu in psgpu mode
-        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
-            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
 
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
@@ -2747,9 +2720,6 @@ class Executor:
         # NOTE: only for debug, very slow
         # self._dump_debug_info(program=program, trainer=trainer)
 
-        # warning if dataset not set psgpu in psgpu mode
-        if dataset.use_ps_gpu is False and trainer.proto_desc.use_ps_gpu:
-            logging.warning("dataset should call set_use_ps_gpu in PsGpu mode")
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_desc = trainer._desc()  # slow, cache
@@ -2919,7 +2889,7 @@ class Executor:
 
         The document of infer_from_dataset is almost the same as train_from_dataset,
         except that in distributed training, push gradients will be disabled in infer_from_dataset.
-        infer_from_dataset() can be used for evaluation in multi-threadvery easily.
+        infer_from_dataset() can be used for evaluation in multi-thread very easily.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
@@ -2945,6 +2915,7 @@ class Executor:
 
             .. code-block:: python
 
+                >>> # doctest: +SKIP("This does not supported in PIR mode")
                 >>> import paddle
 
                 >>> paddle.enable_static()

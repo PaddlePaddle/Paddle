@@ -57,7 +57,7 @@ void GraphSendRecvCpuLoop(const int& input_size,
     for (int i = 0; i < input_size; ++i) {
       if (*(dst_count + i) == 0) continue;
       auto dst_slice = dst->Slice(i, i + 1);
-      auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
+      auto eigen_dst = EigenVector<T>::Flatten(dst_slice);
       eigen_dst = eigen_dst / static_cast<T>(*(dst_count + i));
     }
   } else if (reduce_op == "MIN" || reduce_op == "MAX") {
@@ -101,7 +101,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& dev_ctx,
     }
   } else {
     // Set out dim following out_size.
-    std::vector<int64_t> dims_ = common::vectorize(src_dims);
+    std::vector<int64_t> dims_ = vectorize(src_dims);
     if (!dims_.empty()) {
       dims_[0] = out_size;
     }
@@ -170,13 +170,8 @@ void SendURecvKernel(const Context& dev_ctx,
           out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
       dst_count->Resize({input_size});
     }
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<int32_t, Context>(
-        dev_ctx,
-        phi::IntArray(common::vectorize(dst_count->dims())),
-        0,
-        dst_count);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<int32_t, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 

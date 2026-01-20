@@ -27,12 +27,12 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void MatMulGrad(const phi::GPUContext& dev_ctx,
-                const phi::DenseTensor& d_out,
-                const phi::DenseTensor& a,
-                const phi::DenseTensor& b,
-                phi::DenseTensor* d_a,
-                phi::DenseTensor* d_b) {
+void MatMulGrad(const GPUContext& dev_ctx,
+                const DenseTensor& d_out,
+                const DenseTensor& a,
+                const DenseTensor& b,
+                DenseTensor* d_a,
+                DenseTensor* d_b) {
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto a_2d = phi::FoldInitDims(a);
   auto b_2d = phi::FoldInitDims(b);
@@ -45,35 +45,35 @@ void MatMulGrad(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FFNGrad(const phi::GPUContext& dev_ctx,
-             const phi::DenseTensor& d_out,
-             const phi::DenseTensor& x,
-             const phi::DenseTensor& dropout1_mask,
-             const phi::DenseTensor& dropout2_mask,
-             const phi::DenseTensor& linear1_out,
-             const phi::DenseTensor* ln1_out,
-             const phi::DenseTensor& dropout1_out,
-             const phi::DenseTensor* dropout2_out,
-             const phi::DenseTensor& linear1_weight,
-             const phi::DenseTensor* linear1_bias,
-             const phi::DenseTensor& linear2_weight,
-             const phi::DenseTensor* ln1_gamma,
-             const phi::DenseTensor* ln1_beta,
-             const phi::DenseTensor* ln1_mean,
-             const phi::DenseTensor* ln1_variance,
-             const phi::DenseTensor* ln2_gamma,
-             const phi::DenseTensor* ln2_beta,
-             const phi::DenseTensor* ln2_mean,
-             const phi::DenseTensor* ln2_variance,
-             phi::DenseTensor* d_x,
-             phi::DenseTensor* d_linear1_weight,
-             phi::DenseTensor* d_linear1_bias,
-             phi::DenseTensor* d_linear2_weight,
-             phi::DenseTensor* d_linear2_bias,
-             phi::DenseTensor* d_ln1_gamma,
-             phi::DenseTensor* d_ln1_beta,
-             phi::DenseTensor* d_ln2_gamma,
-             phi::DenseTensor* d_ln2_beta,
+void FFNGrad(const GPUContext& dev_ctx,
+             const DenseTensor& d_out,
+             const DenseTensor& x,
+             const DenseTensor& dropout1_mask,
+             const DenseTensor& dropout2_mask,
+             const DenseTensor& linear1_out,
+             const DenseTensor* ln1_out,
+             const DenseTensor& dropout1_out,
+             const DenseTensor* dropout2_out,
+             const DenseTensor& linear1_weight,
+             const DenseTensor* linear1_bias,
+             const DenseTensor& linear2_weight,
+             const DenseTensor* ln1_gamma,
+             const DenseTensor* ln1_beta,
+             const DenseTensor* ln1_mean,
+             const DenseTensor* ln1_variance,
+             const DenseTensor* ln2_gamma,
+             const DenseTensor* ln2_beta,
+             const DenseTensor* ln2_mean,
+             const DenseTensor* ln2_variance,
+             DenseTensor* d_x,
+             DenseTensor* d_linear1_weight,
+             DenseTensor* d_linear1_bias,
+             DenseTensor* d_linear2_weight,
+             DenseTensor* d_linear2_bias,
+             DenseTensor* d_ln1_gamma,
+             DenseTensor* d_ln1_beta,
+             DenseTensor* d_ln2_gamma,
+             DenseTensor* d_ln2_beta,
              const int bsz_seq,
              const int d_model,
              const int dim_feedforward,
@@ -113,7 +113,7 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
       d_ln2_gamma == nullptr ? nullptr : d_ln2_gamma->data<U>();
   U* d_ln2_beta_ptr = d_ln2_beta == nullptr ? nullptr : d_ln2_beta->data<U>();
 
-  phi::DenseTensor d_linear2_out, d_dropout2_out, d_residual;
+  DenseTensor d_linear2_out, d_dropout2_out, d_residual;
   d_linear2_out.Resize({bsz_seq, d_model});
   dev_ctx.template Alloc<T>(&d_linear2_out, d_linear2_out.numel() * sizeof(T));
   d_dropout2_out.Resize({bsz_seq, d_model});
@@ -151,7 +151,7 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
         d_residual_ptr);
   }
 
-  phi::DenseTensor d_dropout1_out;
+  DenseTensor d_dropout1_out;
   d_dropout1_out.Resize({bsz_seq, dim_feedforward});
   dev_ctx.template Alloc<T>(&d_dropout1_out,
                             d_dropout1_out.numel() * sizeof(T));
@@ -162,7 +162,7 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
                          &d_dropout1_out,
                          d_linear2_weight);
 
-  phi::DenseTensor d_linear1_out;
+  DenseTensor d_linear1_out;
   d_linear1_out.Resize({bsz_seq, dim_feedforward});
   dev_ctx.template Alloc<T>(&d_linear1_out, d_linear1_out.numel() * sizeof(T));
   fused_act_dropout_helper.DropoutActBiasGrad(dev_ctx,
@@ -175,7 +175,7 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
                                               act_method);
 
   if (pre_layer_norm) {
-    phi::DenseTensor d_ln1_out;
+    DenseTensor d_ln1_out;
     d_ln1_out.Resize({bsz_seq, d_model});
     dev_ctx.template Alloc<T>(&d_ln1_out, d_ln1_out.numel() * sizeof(T));
     MatMulGrad<T, Context>(dev_ctx,
@@ -204,59 +204,58 @@ void FFNGrad(const phi::GPUContext& dev_ctx,
 
   if (add_residual) {
     // gradient accumulation
-    std::vector<const phi::DenseTensor*> ins = {&d_residual, d_x};
-    std::vector<phi::DenseTensor*> outs = {d_x};
+    std::vector<const DenseTensor*> ins = {&d_residual, d_x};
+    std::vector<DenseTensor*> outs = {d_x};
     funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 }
 
 template <typename T, typename Context>
-void FusedFeedForwardGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& out_grad,
-    const DenseTensor& x,
-    const DenseTensor& linear1_weight,
-    const paddle::optional<DenseTensor>& linear1_bias,
-    const DenseTensor& linear2_weight,
-    const DenseTensor& dropout1_mask,
-    const DenseTensor& dropout2_mask,
-    const DenseTensor& linear1_out,
-    const DenseTensor& dropout1_out,
-    const paddle::optional<DenseTensor>& dropout2_out,
-    const paddle::optional<DenseTensor>& ln1_scale,
-    const paddle::optional<DenseTensor>& ln1_bias,
-    const paddle::optional<DenseTensor>& ln1_out,
-    const paddle::optional<DenseTensor>& ln1_mean,
-    const paddle::optional<DenseTensor>& ln1_variance,
-    const paddle::optional<DenseTensor>& ln2_scale,
-    const paddle::optional<DenseTensor>& ln2_bias,
-    const paddle::optional<DenseTensor>& ln2_mean,
-    const paddle::optional<DenseTensor>& ln2_variance,
-    const paddle::optional<DenseTensor>& linear2_bias,
-    bool pre_layer_norm,
-    float ln1_epsilon,
-    float ln2_epsilon,
-    const std::string& act_method,
-    float dropout1_prob,
-    float dropout2_prob,
-    const std::string& dropout1_implementation,
-    const std::string& dropout2_implementation,
-    bool is_test,
-    bool dropout1_fix_seed,
-    bool dropout2_fix_seed,
-    int dropout1_seed_val,
-    int dropout2_seed_val,
-    bool add_residual,
-    int ring_id,
-    DenseTensor* x_grad,
-    DenseTensor* linear1_weight_grad,
-    DenseTensor* linear1_bias_grad,
-    DenseTensor* linear2_weight_grad,
-    DenseTensor* linear2_bias_grad,
-    DenseTensor* ln1_scale_grad,
-    DenseTensor* ln1_bias_grad,
-    DenseTensor* ln2_scale_grad,
-    DenseTensor* ln2_bias_grad) {
+void FusedFeedForwardGradKernel(const Context& dev_ctx,
+                                const DenseTensor& out_grad,
+                                const DenseTensor& x,
+                                const DenseTensor& linear1_weight,
+                                const optional<DenseTensor>& linear1_bias,
+                                const DenseTensor& linear2_weight,
+                                const DenseTensor& dropout1_mask,
+                                const DenseTensor& dropout2_mask,
+                                const DenseTensor& linear1_out,
+                                const DenseTensor& dropout1_out,
+                                const optional<DenseTensor>& dropout2_out,
+                                const optional<DenseTensor>& ln1_scale,
+                                const optional<DenseTensor>& ln1_bias,
+                                const optional<DenseTensor>& ln1_out,
+                                const optional<DenseTensor>& ln1_mean,
+                                const optional<DenseTensor>& ln1_variance,
+                                const optional<DenseTensor>& ln2_scale,
+                                const optional<DenseTensor>& ln2_bias,
+                                const optional<DenseTensor>& ln2_mean,
+                                const optional<DenseTensor>& ln2_variance,
+                                const optional<DenseTensor>& linear2_bias,
+                                bool pre_layer_norm,
+                                float ln1_epsilon,
+                                float ln2_epsilon,
+                                const std::string& act_method,
+                                float dropout1_prob,
+                                float dropout2_prob,
+                                const std::string& dropout1_implementation,
+                                const std::string& dropout2_implementation,
+                                bool is_test,
+                                bool dropout1_fix_seed,
+                                bool dropout2_fix_seed,
+                                int dropout1_seed_val,
+                                int dropout2_seed_val,
+                                bool add_residual,
+                                int ring_id,
+                                DenseTensor* x_grad,
+                                DenseTensor* linear1_weight_grad,
+                                DenseTensor* linear1_bias_grad,
+                                DenseTensor* linear2_weight_grad,
+                                DenseTensor* linear2_bias_grad,
+                                DenseTensor* ln1_scale_grad,
+                                DenseTensor* ln1_bias_grad,
+                                DenseTensor* ln2_scale_grad,
+                                DenseTensor* ln2_bias_grad) {
   using U = funcs::LayerNormParamType<T>;
 
   auto* ln1_out_ptr = pre_layer_norm ? ln1_out.get_ptr() : nullptr;

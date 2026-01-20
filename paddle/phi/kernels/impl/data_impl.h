@@ -65,7 +65,7 @@ void ShadowFeedKernel(const Context& dev_ctx,
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
-    phi::Copy<Context>(dev_ctx, x, target_place, true, out);
+    Copy<Context>(dev_ctx, x, target_place, true, out);
   }
 }
 
@@ -93,7 +93,7 @@ void PrintKernel(const Context& dev_ctx,
                  const std::string& print_phase,
                  bool is_forward,
                  DenseTensor* out) {
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, out);
+  Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, out);
   out->set_lod(x.lod());
 
   if ((is_forward && print_phase == kBackward) ||

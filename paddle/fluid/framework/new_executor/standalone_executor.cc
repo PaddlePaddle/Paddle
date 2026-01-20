@@ -216,7 +216,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     is_interpretercore_build_result_shared_ = true;
   }
 
-  std::vector<std::vector<phi::DenseTensor>> splited_feeds;
+  std::vector<std::vector<DenseTensor>> splited_feeds;
   if (FLAGS_enable_pir_in_executor) {
     SplitFeedTensors(feed_names, plan_.MicroBatchNum(), scope_, &splited_feeds);
   }

@@ -483,7 +483,7 @@ void LarsMomentumKernel(
     const std::vector<const DenseTensor*>& velocity,
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& grad,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const optional<std::vector<const DenseTensor*>>& master_param,
     const std::vector<float>& weight_decay_arr,
     float mu,
     float lars_coeff,
@@ -496,10 +496,10 @@ void LarsMomentumKernel(
   using MT = MultiPrecisionType<T>;
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
-  // phi::DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
+  // DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
   // phi::GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
-  phi::DenseTensor tmp_buffer_t;
+  DenseTensor tmp_buffer_t;
   tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});
   MT* p_buffer = dev_ctx.template Alloc<MT>(&tmp_buffer_t);
   MT* g_buffer = p_buffer + LARS_BLOCK_SIZE;

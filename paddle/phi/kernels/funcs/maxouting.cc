@@ -21,8 +21,8 @@ namespace phi::funcs {
 // All tensors are in NCHW or NHWC format, and the groups must be greater than 1
 template <typename DeviceContext, typename T>
 void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
-                                                 const phi::DenseTensor& input,
-                                                 phi::DenseTensor* output,
+                                                 const DenseTensor& input,
+                                                 DenseTensor* output,
                                                  const int groups,
                                                  const int axis) {
   const int batch_size = static_cast<int>(input.dims()[0]);
@@ -66,10 +66,10 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const DeviceContext& dev_ctx,
-    const phi::DenseTensor& input,
-    phi::DenseTensor* input_grad,
-    const phi::DenseTensor& output,
-    const phi::DenseTensor& output_grad,
+    const DenseTensor& input,
+    DenseTensor* input_grad,
+    const DenseTensor& output,
+    const DenseTensor& output_grad,
     const int groups,
     const int axis) {
   const int batch_size = static_cast<int>(input.dims()[0]);

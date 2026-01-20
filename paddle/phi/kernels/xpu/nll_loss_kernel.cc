@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void NllLossRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& label,
-                      const paddle::optional<DenseTensor>& weight,
+                      const optional<DenseTensor>& weight,
                       int64_t ignore_index,
                       const std::string& reduction,
                       DenseTensor* out,
@@ -49,7 +49,7 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto total_weight_data = dev_ctx.template Alloc<XPUType>(total_weight);
 
   auto x_dims = x.dims();
-  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x_dims);
+  std::vector<int64_t> x_shape = vectorize<int64_t>(x_dims);
 
   int64_t reduction_id = 0;
   if (reduction == "none") {

@@ -26,9 +26,9 @@ namespace phi {
 template <typename Context, typename T>
 struct LRNFunctor {
   void operator()(const Context& dev_ctx,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* out,
-                  phi::DenseTensor* mid,
+                  const DenseTensor& input,
+                  DenseTensor* out,
+                  DenseTensor* mid,
                   int64_t N,
                   int64_t C,
                   int64_t H,
@@ -57,8 +57,7 @@ void LRNKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
 
   const std::string data_layout_str = data_format;
-  const phi::DataLayout data_layout =
-      common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   // NCHW
   int64_t N = x_dims[0];
   int64_t C = (data_layout != DataLayout::NHWC ? x_dims[1] : x_dims[3]);
@@ -68,7 +67,7 @@ void LRNKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   // MidOut save the intermediate result for backward
-  phi::DenseTensor* mid = mid_out;
+  DenseTensor* mid = mid_out;
   dev_ctx.template Alloc<T>(mid);
 
   PADDLE_ENFORCE_GE(
@@ -97,11 +96,11 @@ void LRNKernel(const Context& dev_ctx,
 template <typename Context, typename T>
 struct LRNGradFunctor {
   void operator()(const Context& dev_ctx,
-                  const phi::DenseTensor& x,
-                  const phi::DenseTensor& out,
-                  const phi::DenseTensor& mid,
-                  phi::DenseTensor* x_g,
-                  const phi::DenseTensor& out_g,
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& mid,
+                  DenseTensor* x_g,
+                  const DenseTensor& out_g,
                   int64_t N,
                   int64_t C,
                   int64_t H,
@@ -143,11 +142,10 @@ void LRNGradKernel(const Context& dev_ctx,
                    T beta,
                    const std::string& data_format,
                    DenseTensor* x_grad) {
-  const phi::DenseTensor& out_g = out_grad;
-  const phi::DenseTensor& mid = mid_out;
+  const DenseTensor& out_g = out_grad;
+  const DenseTensor& mid = mid_out;
   const std::string data_layout_str = data_format;
-  const phi::DataLayout data_layout =
-      common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   auto x_g = x_grad;
   dev_ctx.template Alloc<T>(x_g);

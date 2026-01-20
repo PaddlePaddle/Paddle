@@ -127,10 +127,10 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
 
 DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
 
-DistTensor::DistTensor(phi::DataType dtype)
+DistTensor::DistTensor(DataType dtype)
     : value_(std::make_shared<DenseTensor>(dtype)) {}
 
-DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+DistTensor::DistTensor(const std::shared_ptr<DenseTensor>& global_value,
                        const TensorDistAttr& dist_attr)
     : global_dims_(global_value->dims()), dist_attr_(dist_attr) {
   process_mesh_ = dist_attr_.process_mesh();
@@ -160,11 +160,11 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   } else {
     value_ = std::make_shared<DenseTensor>(
         std::make_shared<phi::Allocation>(nullptr, 0, global_value->place()),
-        phi::DenseTensorMeta(global_value->meta()));
+        DenseTensorMeta(global_value->meta()));
   }
 }
 
-DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+DistTensor::DistTensor(const std::shared_ptr<DenseTensor>& local_value,
                        const DDim& global_dims,
                        const ProcessMesh& process_mesh,
                        const Placements& placements)
@@ -177,11 +177,11 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
   } else {
     value_ = std::make_shared<DenseTensor>(
         std::make_shared<phi::Allocation>(nullptr, 0, local_value->place()),
-        phi::DenseTensorMeta(local_value->dtype(), phi::make_ddim({0})));
+        DenseTensorMeta(local_value->dtype(), phi::make_ddim({0})));
   }
 }
 
-DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
+DistTensor::DistTensor(const std::shared_ptr<DenseTensor>& local_value,
                        const DDim& global_dims,
                        const TensorDistAttr& dist_attr)
     : global_dims_(global_dims), dist_attr_(dist_attr) {
@@ -192,11 +192,11 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& local_value,
   } else {
     value_ = std::make_shared<DenseTensor>(
         std::make_shared<phi::Allocation>(nullptr, 0, local_value->place()),
-        phi::DenseTensorMeta(local_value->dtype(), global_dims_));
+        DenseTensorMeta(local_value->dtype(), global_dims_));
   }
 }
 
-DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+DistTensor::DistTensor(const std::shared_ptr<DenseTensor>& global_value,
                        const ProcessMesh& process_mesh,
                        const Placements& placements)
     : global_dims_(global_value->dims()) {
@@ -242,7 +242,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   } else {
     value_ = std::make_shared<DenseTensor>(
         std::make_shared<phi::Allocation>(nullptr, 0, global_value->place()),
-        phi::DenseTensorMeta(global_value->meta()));
+        DenseTensorMeta(global_value->meta()));
   }
 }
 

@@ -33,8 +33,8 @@ using Sampler = phi::math::Sampler;
 template <typename Context, typename T>
 static void inline PrepareSamples(const Context &dev_ctx,
                                   Sampler *sampler,
-                                  phi::DenseTensor *sample_labels,
-                                  const phi::DenseTensor &label_in,
+                                  DenseTensor *sample_labels,
+                                  const DenseTensor &label_in,
                                   const std::vector<int> &custom_neg_classes) {
   auto label = &label_in;
   const int64_t *label_data = label->data<int64_t>();
@@ -69,11 +69,11 @@ void NCEKernel(const Context &dev_ctx,
                const DenseTensor &input_in,
                const DenseTensor &label_in,
                const DenseTensor &weight_in,
-               const paddle::optional<DenseTensor> &bias_in,
-               const paddle::optional<DenseTensor> &sample_weight_in,
-               const paddle::optional<DenseTensor> &custom_dist_probs,
-               const paddle::optional<DenseTensor> &custom_dist_alias,
-               const paddle::optional<DenseTensor> &custom_dist_alias_probs,
+               const optional<DenseTensor> &bias_in,
+               const optional<DenseTensor> &sample_weight_in,
+               const optional<DenseTensor> &custom_dist_probs,
+               const optional<DenseTensor> &custom_dist_alias,
+               const optional<DenseTensor> &custom_dist_alias_probs,
                int num_total_classes,
                const std::vector<int> &custom_neg_classes,
                int num_neg_samples,
@@ -154,9 +154,9 @@ void NCEKernel(const Context &dev_ctx,
 
   std::vector<int64_t> sample_out_dims;
   auto label = &label_in;
-  phi::DenseTensor *sample_labels;
-  phi::DenseTensor *sample_out;
-  phi::DenseTensor sample_labels_tmp, sample_out_tmp;
+  DenseTensor *sample_labels;
+  DenseTensor *sample_out;
+  DenseTensor sample_labels_tmp, sample_out_tmp;
   if (is_test) {
     // set dims of output(SampleOut)
     int64_t num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;

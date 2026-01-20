@@ -64,7 +64,7 @@ class Tree2ColUtil {
   static std::vector<TreeNode> construct_patch(
       size_t root, int max_depth, const std::vector<std::vector<int>> &tr);
 
-  static void construct_tree(const phi::DenseTensor &EdgeSet,
+  static void construct_tree(const DenseTensor &EdgeSet,
                              std::vector<std::vector<int>> *tr,
                              size_t *node_count);
 };
@@ -73,18 +73,18 @@ template <typename DeviceContext, typename T>
 class Tree2ColFunctor {
  public:
   void operator()(const DeviceContext &dev_ctx,
-                  const phi::DenseTensor &EdgeSet,
-                  const phi::DenseTensor &node_features,
-                  phi::DenseTensor *patch,
+                  const DenseTensor &EdgeSet,
+                  const DenseTensor &node_features,
+                  DenseTensor *patch,
                   int max_depth);
 };
 template <typename DeviceContext, typename T>
 class Col2TreeFunctor {
  public:
   void operator()(const DeviceContext &dev_ctx,
-                  const phi::DenseTensor &EdgeSet,
-                  const phi::DenseTensor &out_grad,
-                  phi::DenseTensor *in_grad,
+                  const DenseTensor &EdgeSet,
+                  const DenseTensor &out_grad,
+                  DenseTensor *in_grad,
                   int max_depth);
 };
 }  // namespace math

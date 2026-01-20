@@ -12,14 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <initializer_list>
-#include <iostream>
-#include <memory>
-
-#include "dnnl.hpp"  // NOLINT
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 
@@ -675,13 +669,13 @@ class MultiGRUHandler {
   // on Ti size, thus we need another key to cache them
   std::string memory_key_;
 
-  const phi::DenseTensor* x_;
-  const std::vector<const phi::DenseTensor*> weights_x_;
-  const std::vector<const phi::DenseTensor*> weights_h_;
-  const std::vector<const phi::DenseTensor*> biases_;
-  phi::DenseTensor* hidden_;
+  const DenseTensor* x_;
+  const std::vector<const DenseTensor*> weights_x_;
+  const std::vector<const DenseTensor*> weights_h_;
+  const std::vector<const DenseTensor*> biases_;
+  DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
-  const phi::Vector<size_t>& x_lod_;
+  const std::vector<size_t>& x_lod_;
 };
 
 template <typename T, typename Context, typename Tout = T>
@@ -737,8 +731,8 @@ void MultiGRUONEDNNKernel(
     const DenseTensor& x,
     const std::vector<const DenseTensor*>& weight_x,
     const std::vector<const DenseTensor*>& weight_h,
-    const paddle::optional<std::vector<const DenseTensor*>>& bias,
-    const paddle::optional<std::vector<const DenseTensor*>>& scale_weights,
+    const optional<std::vector<const DenseTensor*>>& bias,
+    const optional<std::vector<const DenseTensor*>>& scale_weights,
     const std::string& activation,
     const std::string& gate_activation,
     int layers,

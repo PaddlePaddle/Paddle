@@ -239,7 +239,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     funcs::SetConstant<Context, T2> set_zero;
     set_zero(dev_ctx, indices, static_cast<T2>(0.0));
     out->Resize(raw_dims);
@@ -283,7 +283,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
             x_data, values_data, indices_data, num_rows, row_size, init, op);
   } else {
     int64_t row_size = x.dims()[axis];
-    auto sizes = common::vectorize(x.dims());
+    auto sizes = vectorize(x.dims());
 
     const int64_t num_orows =
         std::accumulate(sizes.begin(),

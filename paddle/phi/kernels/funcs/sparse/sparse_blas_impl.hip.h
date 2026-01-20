@@ -61,7 +61,7 @@ inline rocsparse_spmm_alg GetSpMMAlgorithm(const TensorType& x) {
 
 /************* SPARSE MATRIX DESCRIPTOR (COO/CSR) ************/
 template <typename T, typename IntT>
-inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
+inline void CreateCsrDescriptor(const SparseCsrTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 rocsparse_spmat_descr* descriptor) {
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -112,7 +112,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
 }
 
 template <typename T, typename IntT>
-inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
+inline void CreateCooDescriptor(const SparseCooTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 rocsparse_spmat_descr* descriptor) {
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -163,7 +163,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 template <typename T>
 class RocSparseSpMatDescriptor {
  public:
-  explicit RocSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
+  explicit RocSparseSpMatDescriptor(const SparseCsrTensor& x,
                                     const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
@@ -172,7 +172,7 @@ class RocSparseSpMatDescriptor {
         }));
     VLOG(6) << "Create csr rocsparse_spmat_descr " << &descriptor_;
   }
-  explicit RocSparseSpMatDescriptor(const phi::SparseCooTensor& x,
+  explicit RocSparseSpMatDescriptor(const SparseCooTensor& x,
                                     const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
@@ -200,7 +200,7 @@ class RocSparseSpMatDescriptor {
 template <typename T>
 class RocSparseDnMatDescriptor {
  public:
-  explicit RocSparseDnMatDescriptor(const phi::DenseTensor& x,
+  explicit RocSparseDnMatDescriptor(const DenseTensor& x,
                                     const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -265,9 +265,9 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        bool transb,
                                        T alpha,
                                        const TensorType& mat_a,
-                                       const phi::DenseTensor& mat_b,
+                                       const DenseTensor& mat_b,
                                        T beta,
-                                       phi::DenseTensor* mat_out) const {
+                                       DenseTensor* mat_out) const {
   auto a_descriptor = RocSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = RocSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
   auto out_descriptor = RocSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);
@@ -341,8 +341,8 @@ template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                         bool transb,
                                         T alpha,
-                                        const phi::DenseTensor& mat_a,
-                                        const phi::DenseTensor& mat_b,
+                                        const DenseTensor& mat_a,
+                                        const DenseTensor& mat_b,
                                         T beta,
                                         TensorType* mat_out) const {
   auto a_descriptor = RocSparseDnMatDescriptor<T>(mat_a, dev_ctx_);

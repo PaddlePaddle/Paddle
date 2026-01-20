@@ -497,18 +497,16 @@ void BindProgram(py::module *m) {
              pir::IrMapping &mapper,
              Block *block) { return self->CopyToBlock(mapper, block); },
           return_value_policy::reference)
-      .def(
-          "list_vars",
-          [](std::shared_ptr<Program> self) {
-            std::vector<pir::Value> vars;
-            for (auto op : self->block()->ops()) {
-              for (auto var : op->results()) {
-                vars.push_back(var);
-              }
-            }
-            return vars;
-          },
-          return_value_policy::reference)
+      .def("list_vars",
+           [](std::shared_ptr<Program> self) {
+             py::list vars;
+             for (auto op : self->block()->ops()) {
+               for (auto var : op->results()) {
+                 vars.append(var);
+               }
+             }
+             return vars;
+           })
       .def("_list_named_vars",
            [](std::shared_ptr<Program> self) {
              return name_analysis::GetAllNamedValues(*self);
@@ -605,54 +603,52 @@ void BindProgram(py::module *m) {
              return name_analysis::GetAllParameterValues(self);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
-      .def(
-          "_state_dict",
-          [](std::shared_ptr<Program> self,
-             const std::string &mode = "all",
-             const framework::Scope &scope = framework::Scope()) {
-            std::unordered_map<std::string, phi::DenseTensor> state_dict_all;
-            std::unordered_map<std::string, phi::DenseTensor> state_dict_param;
-            std::unordered_map<std::string, phi::DenseTensor> state_dict_opt;
-            for (auto op : self->block()->ops()) {
-              for (auto var : op->results()) {
-                auto is_persistable =
-                    var.attribute<BoolAttribute>(kAttrIsPersistable);
-                if (is_persistable && is_persistable.data()) {
-                  if (var.defining_op()->isa<::pir::ParameterOp>()) {
-                    std::string var_name =
-                        name_analysis::GetValueFirstName(var);
-                    auto tensor =
-                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
-                    state_dict_param[var_name] = *tensor;
-                    state_dict_all[var_name] = *tensor;
-                  } else if (var.defining_op()
-                                 ->isa<paddle::dialect::DataOp>()) {
-                    std::string var_name =
-                        name_analysis::GetValueFirstName(var);
-                    auto tensor =
-                        scope.FindVar(var_name)->GetMutable<phi::DenseTensor>();
-                    state_dict_opt[var_name] = *tensor;
-                    state_dict_all[var_name] = *tensor;
-                  }
-                }
-              }
-            }
-            if (mode == "all") {
-              return state_dict_all;
-            } else if (mode == "param") {
-              return state_dict_param;
-            } else if (mode == "opt") {
-              return state_dict_opt;
-            } else {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "The mode is not supported."));
-            }
-          })
+      .def("_state_dict",
+           [](std::shared_ptr<Program> self,
+              const std::string &mode = "all",
+              const framework::Scope &scope = framework::Scope()) {
+             std::unordered_map<std::string, DenseTensor> state_dict_all;
+             std::unordered_map<std::string, DenseTensor> state_dict_param;
+             std::unordered_map<std::string, DenseTensor> state_dict_opt;
+             for (auto op : self->block()->ops()) {
+               for (auto var : op->results()) {
+                 auto is_persistable =
+                     var.attribute<BoolAttribute>(kAttrIsPersistable);
+                 if (is_persistable && is_persistable.data()) {
+                   if (var.defining_op()->isa<pir::ParameterOp>()) {
+                     std::string var_name =
+                         name_analysis::GetValueFirstName(var);
+                     auto tensor =
+                         scope.FindVar(var_name)->GetMutable<DenseTensor>();
+                     state_dict_param[var_name] = *tensor;
+                     state_dict_all[var_name] = *tensor;
+                   } else if (var.defining_op()
+                                  ->isa<paddle::dialect::DataOp>()) {
+                     std::string var_name =
+                         name_analysis::GetValueFirstName(var);
+                     auto tensor =
+                         scope.FindVar(var_name)->GetMutable<DenseTensor>();
+                     state_dict_opt[var_name] = *tensor;
+                     state_dict_all[var_name] = *tensor;
+                   }
+                 }
+               }
+             }
+             if (mode == "all") {
+               return state_dict_all;
+             } else if (mode == "param") {
+               return state_dict_param;
+             } else if (mode == "opt") {
+               return state_dict_opt;
+             } else {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "The mode is not supported."));
+             }
+           })
       .def(
           "set_state_dict",
           [](std::shared_ptr<Program> self,
-             const std::unordered_map<std::string, phi::DenseTensor>
-                 &state_dict,
+             const std::unordered_map<std::string, DenseTensor> &state_dict,
              const framework::Scope &scope = framework::Scope(),
              bool copy_tensor = false) {
             for (auto item : state_dict) {
@@ -662,11 +658,11 @@ void BindProgram(py::module *m) {
                     "The variable %s is not found.", item.first));
               } else {
                 if (copy_tensor) {
-                  auto *mutable_tensor = var->GetMutable<phi::DenseTensor>();
+                  auto *mutable_tensor = var->GetMutable<DenseTensor>();
                   paddle::framework::TensorCopy(
                       item.second, item.second.place(), mutable_tensor);
                 } else {
-                  *var->GetMutable<phi::DenseTensor>() = item.second;
+                  *var->GetMutable<DenseTensor>() = item.second;
                 }
               }
             }
@@ -1738,7 +1734,7 @@ std::string GetAttrsMapJson(pir::Operation *op) {
         "Operation pointer cannot be nullptr."));
   }
   auto attributes = op->attributes();
-  ::pir::ProgramWriter writer(1, false);
+  pir::ProgramWriter writer(1, false);
   auto attrs_map_info = writer.GetAttributesMapJson(op->attributes()).dump();
   return attrs_map_info;
 }
@@ -1794,7 +1790,7 @@ pir::AttributeMap ConvertAttrsToAttributeMap(py::dict attrs) {
 
 std::string GetAttrsMapJson(py::dict attrs) {
   pir::AttributeMap attrs_map = ConvertAttrsToAttributeMap(attrs);
-  ::pir::ProgramWriter writer(1, false);
+  pir::ProgramWriter writer(1, false);
   return writer.GetAttributesMapJson(attrs_map).dump();
 }
 
@@ -1803,7 +1799,7 @@ std::string GetTypeJson(pir::Operation *op, bool is_input) {
     PADDLE_THROW(
         common::errors::InvalidArgument("Operation pointer cannot be nullptr"));
   }
-  ::pir::ProgramWriter writer(1, false);
+  pir::ProgramWriter writer(1, false);
   std::stringstream type_info_ss;
   if (is_input) {
     for (auto operand : op->operands_source()) {
@@ -2108,54 +2104,53 @@ using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
+static auto GetNoNeedBufferValue(const pir::Block *whole_block,
                                  std::pair<size_t, size_t> range) {
   // filter no need buffer values.
-  std::unordered_set<::pir::Value> need_buffer_values;
-  std::unordered_set<::pir::Value> no_need_buffer_values;
-  range_block_do(
-      whole_block, range, [&need_buffer_values](::pir::Operation *op) {
-        // NOTE(SigureMo): We should process the CombineOp in it's users.
-        if (op->isa<pir::CombineOp>()) {
-          return;
-        }
-        if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
-          // not a OpYamlInfoInterface, can't have no_need_buffer.
-          for (const auto &operand : op->operands_source()) {
-            need_buffer_values.insert(operand);
-          }
-        } else {
-          auto opinfo =
-              op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-          int counter = 0;
-          for (const auto &op_input_info : std::get<0>(opinfo)) {
-            auto value = op->operand_source(counter);
-            if (!op_input_info.no_need_buffer) {
-              need_buffer_values.insert(value);
-              if (!IsFakeValue(value) && value.defining_op() &&
-                  value.defining_op()->isa<pir::CombineOp>()) {
-                for (const auto &combine_value :
-                     value.defining_op()->operands_source()) {
-                  need_buffer_values.insert(combine_value);
-                }
-              }
+  std::unordered_set<pir::Value> need_buffer_values;
+  std::unordered_set<pir::Value> no_need_buffer_values;
+  range_block_do(whole_block, range, [&need_buffer_values](pir::Operation *op) {
+    // NOTE(SigureMo): We should process the CombineOp in it's users.
+    if (op->isa<pir::CombineOp>()) {
+      return;
+    }
+    if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
+      // not a OpYamlInfoInterface, can't have no_need_buffer.
+      for (const auto &operand : op->operands_source()) {
+        need_buffer_values.insert(operand);
+      }
+    } else {
+      auto opinfo =
+          op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+      int counter = 0;
+      for (const auto &op_input_info : std::get<0>(opinfo)) {
+        auto value = op->operand_source(counter);
+        if (!op_input_info.no_need_buffer) {
+          need_buffer_values.insert(value);
+          if (!IsFakeValue(value) && value.defining_op() &&
+              value.defining_op()->isa<pir::CombineOp>()) {
+            for (const auto &combine_value :
+                 value.defining_op()->operands_source()) {
+              need_buffer_values.insert(combine_value);
             }
-            counter += 1;
+          }
+        }
+        counter += 1;
+      }
+    }
+  });
+  range_block_do(
+      whole_block,
+      range,
+      [&need_buffer_values, &no_need_buffer_values](const pir::Operation *op) {
+        for (const auto &operand : op->operands_source()) {
+          if (need_buffer_values.count(operand) == 0) {
+            no_need_buffer_values.insert(operand);
           }
         }
       });
-  range_block_do(whole_block,
-                 range,
-                 [&need_buffer_values,
-                  &no_need_buffer_values](const ::pir::Operation *op) {
-                   for (const auto &operand : op->operands_source()) {
-                     if (need_buffer_values.count(operand) == 0) {
-                       no_need_buffer_values.insert(operand);
-                     }
-                   }
-                 });
-  return std::vector<::pir::Value>(no_need_buffer_values.begin(),
-                                   no_need_buffer_values.end());
+  return std::vector<pir::Value>(no_need_buffer_values.begin(),
+                                 no_need_buffer_values.end());
 }
 
 using ValueMap = std::pair<std::vector<pir::Value>, std::vector<pir::Value>>;
@@ -2568,7 +2563,7 @@ static void inline CreateVariableIfNotExist(
                                   "Please set argument [executor] not None "
                                   "or run startup program first"));
       var = scope->Var(para_name);
-      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      auto *tensor_temp = var->GetMutable<DenseTensor>();
       tensor_temp->Resize(
           common::make_ddim(phi::vectorize(GetValueDims(value))));
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
@@ -2974,9 +2969,9 @@ void BindPassManager(pybind11::module *m) {
                } else if (py::isinstance<framework::Scope>(attr.second)) {
                  pass->SetNotOwned(attr.first,
                                    attr.second.cast<framework::Scope *>());
-               } else if (py::isinstance<phi::GPUPlace>(attr.second)) {
+               } else if (py::isinstance<GPUPlace>(attr.second)) {
                  pass->Set(attr.first,
-                           new phi::Place(attr.second.cast<phi::GPUPlace>()));
+                           new phi::Place(attr.second.cast<GPUPlace>()));
                } else {
                  PADDLE_THROW(common::errors::InvalidArgument(
                      "The pass attr is not supported this type."));

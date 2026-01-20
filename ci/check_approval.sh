@@ -95,8 +95,8 @@ CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools
 CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
-    echo_line="You must have one RD (tianshuo78520a, swgu98) approval for the old CI scripts.\n"
-    check_approval 1 tianshuo78520a swgu98
+    echo_line="You must have one RD (swgu98, ooooo-create) approval for the old CI scripts.\n"
+    check_approval 1 swgu98 ooooo-create
 fi
 
 HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
@@ -317,8 +317,8 @@ fi
 
 CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH |grep "^+" |grep -P '[\p{Han}]')
 if [ "${CHINESE_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
-	echo_line="Not recommended to use Chinese. You must have one RD (tianshuo78520a or swgu98 or zhangbo9674 or risemeup1) approval."
-    check_approval 1 tianshuo78520a swgu98 zhangbo9674 risemeup1
+	echo_line="Not recommended to use Chinese. You must have one RD (swgu98 or zhangbo9674 or risemeup1) approval."
+    check_approval 1 swgu98 zhangbo9674 risemeup1
 fi
 
 ALL_ADDED_LINES=$(git diff -U0 upstream/$BRANCH |grep "^+" || true)
@@ -526,7 +526,7 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${PR_ID}" != "" ]; then
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
         CHECK_OP=${CHECK_WHOLE//+/'\n+'}
-        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), QingshuChen(Recommend for kunlun), ZzSean) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
+        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), QingshuChen(Recommend for kunlun)) approval for the usage of other values. The detailed information is in the link: https://github.com/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
         check_approval 1 Xreki QingshuChen
     fi
 fi
@@ -563,12 +563,6 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     fi
 fi
 
-SKIP_CI=`git log --pretty=oneline|grep $COMMIT_ID |grep -w "test=document_fix" || true`
-if [[ ${SKIP_CI} ]];then
-    echo_line="You must have one RD (tianshuo78520a (Recommend), zhangbo9674 ) or PM (Ligoml) approval you add test=document_fix method in commit skips CI"
-    check_approval 1 tianshuo78520a zhangbo9674 Ligoml
-fi
-
 MALLOC_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'malloc(' | grep -v '//')
 FREE_ADDED=$(git diff upstream/$BRANCH -- '*.c' '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep 'free(' | grep -v '//')
 
@@ -576,12 +570,12 @@ NEW_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^
 DELETE_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'delete' | grep -v '//')
 
 if [ -n "$MALLOC_ADDED" ] && [ -z "$FREE_ADDED" ]; then
-  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (zhangbo9674 or sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED"
+  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED"
   check_approval 1 sneaxiy
 fi
 
 if [ -n "$NEW_ADDED" ] && [ -z "$DELETE_ADDED" ]; then
-  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (zhangbo9674 or sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED"
+  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED"
   check_approval 1 sneaxiy
 fi
 

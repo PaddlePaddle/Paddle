@@ -19,6 +19,9 @@ import numpy as np
 import paddle
 from paddle import nn
 
+# NOTE(Pan Zhaowu): Using legacy linear to fulfill the hard-coded op_count in test_nan_inf.py,
+# which summon this script individually, with horrible design.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 # os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 

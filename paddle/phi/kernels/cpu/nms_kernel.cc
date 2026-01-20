@@ -90,7 +90,7 @@ void NMSKernel(const Context& dev_ctx,
   int64_t num_keep_boxes =
       NMS<T>(boxes.data<T>(), output_tmp_data, threshold, num_boxes);
   auto slice_out = output_tmp.Slice(0, num_keep_boxes);
-  phi::Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
+  Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
 }
 
 }  // namespace phi

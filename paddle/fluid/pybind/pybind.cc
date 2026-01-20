@@ -134,13 +134,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/gpu/gpu_info.h"
-#endif
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_info.h"
-#endif
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -187,6 +183,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/cuda_graph.h"
 #include "paddle/phi/core/memory/allocation/xpu_ipc_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
@@ -696,7 +693,7 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        auto *tensor_temp = var->GetMutable<DenseTensor>();
         tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(), phi::TransToPhiDataType(var_desc.GetDataType()));
@@ -774,8 +771,8 @@ int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
     // Use handle (non-owning) to avoid unnecessary refcount operations
     py::handle handle(static_cast<PyObject *>(py_obj));
     paddle::Tensor tensor = handle.cast<paddle::Tensor>();
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    std::shared_ptr<DenseTensor> dense_tensor =
+        std::static_pointer_cast<DenseTensor>(tensor.impl());
     paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, out);
     return 0;
   } catch (const std::exception &e) {
@@ -789,8 +786,8 @@ int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
   try {
     py::handle handle(static_cast<PyObject *>(py_obj));
     paddle::Tensor tensor = handle.cast<paddle::Tensor>();
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    std::shared_ptr<DenseTensor> dense_tensor =
+        std::static_pointer_cast<DenseTensor>(tensor.impl());
     *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
     return 0;
   } catch (const std::exception &e) {
@@ -802,8 +799,8 @@ int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
 int DLPackManagedTensorToPyObjectNoSync(DLManagedTensorVersioned *src,
                                         void **py_obj_out) {
   try {
-    phi::DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
-    paddle::Tensor tensor(std::make_shared<phi::DenseTensor>(dense_tensor));
+    DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
+    paddle::Tensor tensor(std::make_shared<DenseTensor>(dense_tensor));
     egr::EagerUtils::autograd_meta(&tensor)->SetPersistable(false);
     *py_obj_out = ToPyObject(tensor);
     return 0;
@@ -825,8 +822,8 @@ int DLPackManagedTensorAllocator(::DLTensor *prototype,
     phi::DataType dtype =
         paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
     paddle::Tensor tensor = paddle::empty(shape, dtype, place);
-    std::shared_ptr<phi::DenseTensor> dense_tensor =
-        std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
+    std::shared_ptr<DenseTensor> dense_tensor =
+        std::static_pointer_cast<DenseTensor>(tensor.impl());
     *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
     return 0;
   } catch (const std::exception &e) {
@@ -1784,7 +1781,7 @@ PYBIND11_MODULE(libpaddle, m) {
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-                  [](phi::GPUPlace place, int mode) {
+                  [](GPUPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
                         place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   }
@@ -1798,7 +1795,7 @@ PYBIND11_MODULE(libpaddle, m) {
       .def_static(
           "begin_capture_with_pool_id",
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          [](phi::GPUPlace place, int mode, std::optional<int64_t> pool_id) {
+          [](GPUPlace place, int mode, std::optional<int64_t> pool_id) {
             if (pool_id.has_value()) {
               platform::BeginCUDAGraphCapture(
                   place,
@@ -1832,6 +1829,39 @@ PYBIND11_MODULE(libpaddle, m) {
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  py::class_<phi::backends::xpu::CUDAGraph>(m, "CUDAGraph")
+      .def_static(
+          "begin_capture",
+          [](phi::XPUPlace place, int mode) {
+            platform::BeginCUDAGraphCapture(
+                place,
+                static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
+          })
+      .def_static(
+          "begin_capture_with_pool_id",
+          [](phi::XPUPlace place, int mode, std::optional<int64_t> pool_id) {
+            if (pool_id.has_value()) {
+              platform::BeginCUDAGraphCapture(
+                  place,
+                  static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode),
+                  pool_id.value());
+            } else {
+              platform::BeginCUDAGraphCapture(
+                  place,
+                  static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
+            }
+          })
+      .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def_static("gen_new_memory_pool_id",
+                  &phi::backends::xpu::CUDAGraph::UniqueMemoryPoolID)
+      .def("replay", &phi::backends::xpu::CUDAGraph::Replay)
+      .def("reset", &phi::backends::xpu::CUDAGraph::Reset)
+      .def("print_to_dot_files",
+           &phi::backends::xpu::CUDAGraph::PrintToDotFiles);
+
+#endif
+
   m.def("wait_device", [](const phi::Place &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
@@ -1862,7 +1892,7 @@ PYBIND11_MODULE(libpaddle, m) {
                  phi::IntArray({slicelength}),
                  dtype_phi,
                  phi::DataLayout::NCHW,
-                 phi::CPUPlace(),
+                 CPUPlace(),
                  [self_sp = std::move(self_sp)](
                      void *) mutable {  // NOLINT(readability/casting)
                    pybind11::gil_scoped_acquire gil;
@@ -1923,7 +1953,7 @@ PYBIND11_MODULE(libpaddle, m) {
                          phi::IntArray({actual_count}),
                          dtype,
                          phi::DataLayout::NCHW,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          [obj = obj.release()](void *) {
                            pybind11::gil_scoped_acquire gil;
                            Py_DECREF(obj);
@@ -2310,8 +2340,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def(
           "get_tensor",
-          [](Variable &self) -> phi::DenseTensor * {
-            return self.GetMutable<phi::DenseTensor>();
+          [](Variable &self) -> DenseTensor * {
+            return self.GetMutable<DenseTensor>();
           },
           py::return_value_policy::reference)
       .def("get_bytes",
@@ -2752,7 +2782,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<phi::DeviceContext>(m, "DeviceContext")
       .def_static("create",
-                  [](phi::CPUPlace &place) -> phi::DeviceContext * {
+                  [](CPUPlace &place) -> phi::DeviceContext * {
                     auto *context = new phi::CPUContext();
                     context->SetAllocator(
                         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -2760,7 +2790,7 @@ All parameter, weight, gradient are variables in Paddle.
                             .get());
                     context->SetHostAllocator(
                         paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(phi::CPUPlace())
+                            .GetAllocator(CPUPlace())
                             .get());
                     context->SetZeroAllocator(
                         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -2768,7 +2798,7 @@ All parameter, weight, gradient are variables in Paddle.
                             .get());
                     context->SetHostZeroAllocator(
                         paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetZeroAllocator(phi::CPUPlace())
+                            .GetZeroAllocator(CPUPlace())
                             .get());
                     return context;
                   })
@@ -2787,7 +2817,7 @@ All parameter, weight, gradient are variables in Paddle.
                     .get());
             context->SetHostAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::CPUPlace())
+                    .GetAllocator(CPUPlace())
                     .get());
             context->SetZeroAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
@@ -2795,7 +2825,7 @@ All parameter, weight, gradient are variables in Paddle.
                     .get());
             context->SetHostZeroAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(phi::CPUPlace())
+                    .GetZeroAllocator(CPUPlace())
                     .get());
             context->SetPinnedAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
@@ -2828,7 +2858,7 @@ All parameter, weight, gradient are variables in Paddle.
                   })
       .def_static(
           "create",
-          [](phi::GPUPlace &place) -> phi::DeviceContext * {
+          [](GPUPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
             PADDLE_THROW(common::errors::PermissionDenied(
                 "Cannot use CUDAPlace in CPU only version, "
@@ -2841,7 +2871,7 @@ All parameter, weight, gradient are variables in Paddle.
                     .get());
             context->SetHostAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::CPUPlace())
+                    .GetAllocator(CPUPlace())
                     .get());
             context->SetZeroAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
@@ -2849,7 +2879,7 @@ All parameter, weight, gradient are variables in Paddle.
                     .get());
             context->SetHostZeroAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetZeroAllocator(phi::CPUPlace())
+                    .GetZeroAllocator(CPUPlace())
                     .get());
             context->SetPinnedAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
@@ -2979,9 +3009,7 @@ All parameter, weight, gradient are variables in Paddle.
                     return OpRegistry::CreateOp(desc);
                   })
       .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const phi::CPUPlace &place) {
+           [](OperatorBase &self, const Scope &scope, const CPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2993,9 +3021,7 @@ All parameter, weight, gradient are variables in Paddle.
              self.Run(scope, place);
            })
       .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const phi::GPUPlace &place) {
+           [](OperatorBase &self, const Scope &scope, const GPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -3080,7 +3106,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](Executor &self,
               ExecutorPrepareContext *ctx,
               Scope *scope,
-              std::map<std::string, const phi::DenseTensor *> *feed_targets,
+              std::map<std::string, const DenseTensor *> *feed_targets,
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true,
               bool create_vars = true,
@@ -3188,7 +3214,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
               const std::unordered_map<std::string,
-                                       std::shared_ptr<::pir::Program>> &>(),
+                                       std::shared_ptr<pir::Program>> &>(),
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
@@ -3202,7 +3228,7 @@ All parameter, weight, gradient are variables in Paddle.
         framework::interpreter::GetNoNeedBufferValues);
 #ifdef PADDLE_WITH_CUDA
   py::class_<phi::GPUEventTimer>(m, "GPUEventTimer")
-      .def(py::init<phi::GPUPlace>(), py::arg("place"))
+      .def(py::init<GPUPlace>(), py::arg("place"))
       .def(
           "start",
           [](phi::GPUEventTimer &timer, phi::CUDAStream *stream) {
@@ -3315,7 +3341,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("_cuda_synchronize", [](const phi::GPUPlace &place) {
+  m.def("_cuda_synchronize", [](const GPUPlace &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
   m.def("_set_warmup", [](bool warmup) {
@@ -3385,7 +3411,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const phi::DenseTensor &,
+            const DenseTensor &,
             const std::string &)>(&framework::SetVariable));
   m.def(
       "set_vlog_level",
@@ -3444,7 +3470,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const phi::DenseTensor &,
+            const DenseTensor &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
@@ -3462,7 +3488,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
 #if defined(PADDLE_WITH_CUDA)
-  m.def("allocator_dump", [](const phi::GPUPlace &place) {
+  m.def("allocator_dump", [](const GPUPlace &place) {
     auto allocator = std::dynamic_pointer_cast<
         paddle::memory::allocation::AutoGrowthBestFitAllocator>(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -3520,7 +3546,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("__len__", [](phi::TensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](phi::TensorArray &self, size_t i, const phi::DenseTensor &t) {
+           [](phi::TensorArray &self, size_t i, const DenseTensor &t) {
              PADDLE_ENFORCE_LT(i,
                                self.size(),
                                common::errors::InvalidArgument(
@@ -3530,7 +3556,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def(
           "append",
-          [](phi::TensorArray &self, const phi::DenseTensor &t) {
+          [](phi::TensorArray &self, const DenseTensor &t) {
             self.emplace_back();
             self.back().ShareDataWith(t);
             self.back().set_lod(t.lod());
@@ -3598,7 +3624,7 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def(
           "append",
-          [](FetchList &self, const phi::DenseTensor &t) {
+          [](FetchList &self, const DenseTensor &t) {
             self.emplace_back();
             auto &dense_tensor = PADDLE_GET(phi::DenseTensor, self.back());
             dense_tensor.ShareDataWith(t);
@@ -3655,7 +3681,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("cuda_empty_cache", [] {
     for (int dev_id : platform::GetSelectedDevices()) {
       auto *dev_ctx =
-          phi::DeviceContextPool::Instance().GetByPlace(phi::GPUPlace(dev_id));
+          phi::DeviceContextPool::Instance().GetByPlace(GPUPlace(dev_id));
       dev_ctx->cudnn_workspace_handle().ResetWorkspace();
     }
     platform::EmptyCache();
@@ -3709,23 +3735,22 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(PADDLE_WITH_CUDA)
   m.def("vmm_max_free_size", [](int device_id) {
-    return memory::VmmMaxFreeSize(phi::GPUPlace(device_id), 1);
+    return memory::VmmMaxFreeSize(GPUPlace(device_id), 1);
   });
   m.def("vmm_compact", [](int device_id) {
-    return paddle::memory::VmmCompact(phi::GPUPlace(device_id));
+    return paddle::memory::VmmCompact(GPUPlace(device_id));
   });
   m.def("vmm_free_block_info", [](int device_id) {
-    return paddle::memory::FreeBlockInfoOfVmmAllocator(
-        phi::GPUPlace(device_id));
+    return paddle::memory::FreeBlockInfoOfVmmAllocator(GPUPlace(device_id));
   });
   m.def("vmm_all_block_info", [](int device_id) {
-    return paddle::memory::AllBlockInfoOfVmmAllocator(phi::GPUPlace(device_id));
+    return paddle::memory::AllBlockInfoOfVmmAllocator(GPUPlace(device_id));
   });
   m.def("get_allocate_record", [](int device_id) {
-    return paddle::memory::GetAllocateEvent(phi::GPUPlace(device_id));
+    return paddle::memory::GetAllocateEvent(GPUPlace(device_id));
   });
   m.def("get_compact_size", [](int device_id) {
-    return paddle::memory::GetCompactSize(phi::GPUPlace(device_id));
+    return paddle::memory::GetCompactSize(GPUPlace(device_id));
   });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -3785,6 +3810,40 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_current_device_id", &platform::GetXPUCurrentDeviceId);
   m.def("xpu_empty_cache", platform::EmptyCache);
+  m.def(
+      "get_device_properties",
+      [](int id) -> const gpuDeviceProp & {
+        return platform::GetDeviceProperties(id);
+      },
+      py::return_value_policy::reference);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties", py::module_local())
+      .def_property_readonly(
+          "name", [](const gpuDeviceProp &prop) { return prop.name; })
+      .def_property_readonly(
+          "major", [](const gpuDeviceProp &prop) { return prop.major; })
+      .def_property_readonly(
+          "minor", [](const gpuDeviceProp &prop) { return prop.minor; })
+      .def_property_readonly(
+          "total_memory",
+          [](const gpuDeviceProp &prop) { return prop.totalGlobalMem; })
+      .def_property_readonly(
+          "multi_processor_count",
+          [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+      .def_property_readonly(
+          "is_multi_gpu_board",
+          [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
+      .def_property_readonly(
+          "is_integrated",
+          [](const gpuDeviceProp &prop) { return prop.integrated; })
+      .def("__repr__", [](const gpuDeviceProp &prop) {
+        std::stringstream ostr;
+        ostr << "_gpuDeviceProperties(name='" << prop.name
+             << "', major=" << prop.major << ", minor=" << prop.minor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+        return ostr.str();
+      });
   m.def("get_xpu_device_utilization_rate",
         platform::GetXPUDeviceUtilizationRate);
   m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);

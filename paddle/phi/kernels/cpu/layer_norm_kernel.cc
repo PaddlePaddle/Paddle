@@ -31,8 +31,8 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale_opt,
-                     const paddle::optional<DenseTensor>& bias_opt,
+                     const optional<DenseTensor>& scale_opt,
+                     const optional<DenseTensor>& bias_opt,
                      float epsilon,
                      int begin_norm_axis,
                      DenseTensor* y,
@@ -133,8 +133,8 @@ void LayerNormKernel(const Context& dev_ctx,
   }
 
   auto ker =
-      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, phi::CPUPlace>::Cache()
-          .At(right);
+      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, CPUPlace>::Cache().At(
+          right);
   ker(x_tmp.data<T>(),
       out.data<T>(),
       mean_tmp.data<T>(),

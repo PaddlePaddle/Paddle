@@ -27,22 +27,22 @@ namespace fusion {
 
 template <typename T, typename Context>
 void FFN(const phi::XPUContext& dev_ctx,
-         const phi::DenseTensor* x,
-         const phi::DenseTensor* linear1_weight,
-         const phi::DenseTensor* linear1_bias,
-         const phi::DenseTensor* linear2_weight,
-         const phi::DenseTensor* linear2_bias,
-         const phi::DenseTensor* ln_scale,
-         const phi::DenseTensor* ln_bias,
-         phi::DenseTensor* out,
-         phi::DenseTensor* dropout1_mask,
-         phi::DenseTensor* dropout2_mask,
-         phi::DenseTensor* ln_mean,
-         phi::DenseTensor* ln_variance,
-         phi::DenseTensor* linear1_out,
-         phi::DenseTensor* ln1_out,
-         phi::DenseTensor* dropout1_out,
-         phi::DenseTensor* dropout2_out,
+         const DenseTensor* x,
+         const DenseTensor* linear1_weight,
+         const DenseTensor* linear1_bias,
+         const DenseTensor* linear2_weight,
+         const DenseTensor* linear2_bias,
+         const DenseTensor* ln_scale,
+         const DenseTensor* ln_bias,
+         DenseTensor* out,
+         DenseTensor* dropout1_mask,
+         DenseTensor* dropout2_mask,
+         DenseTensor* ln_mean,
+         DenseTensor* ln_variance,
+         DenseTensor* linear1_out,
+         DenseTensor* ln1_out,
+         DenseTensor* dropout1_out,
+         DenseTensor* dropout2_out,
          const int bsz_seq,
          const int d_model,
          const int dim_feedforward,
@@ -244,16 +244,16 @@ void FFN(const phi::XPUContext& dev_ctx,
 template <typename T, typename Context>
 void FusedFeedForwardKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& dropout1_seed,
-                            const paddle::optional<DenseTensor>& dropout2_seed,
+                            const optional<DenseTensor>& dropout1_seed,
+                            const optional<DenseTensor>& dropout2_seed,
                             const DenseTensor& linear1_weight,
-                            const paddle::optional<DenseTensor>& linear1_bias,
+                            const optional<DenseTensor>& linear1_bias,
                             const DenseTensor& linear2_weight,
-                            const paddle::optional<DenseTensor>& linear2_bias,
-                            const paddle::optional<DenseTensor>& ln1_scale,
-                            const paddle::optional<DenseTensor>& ln1_bias,
-                            const paddle::optional<DenseTensor>& ln2_scale,
-                            const paddle::optional<DenseTensor>& ln2_bias,
+                            const optional<DenseTensor>& linear2_bias,
+                            const optional<DenseTensor>& ln1_scale,
+                            const optional<DenseTensor>& ln1_bias,
+                            const optional<DenseTensor>& ln2_scale,
+                            const optional<DenseTensor>& ln2_bias,
                             bool pre_layer_norm,
                             float ln1_epsilon,
                             float ln2_epsilon,
@@ -286,10 +286,10 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   auto* linear2_weight_ptr = &linear2_weight;
   auto* linear2_bias_ptr = linear2_bias.get_ptr();
 
-  const phi::DenseTensor* ln_scale = nullptr;
-  const phi::DenseTensor* ln_bias = nullptr;
-  phi::DenseTensor* ln_mean = nullptr;
-  phi::DenseTensor* ln_variance = nullptr;
+  const DenseTensor* ln_scale = nullptr;
+  const DenseTensor* ln_bias = nullptr;
+  DenseTensor* ln_mean = nullptr;
+  DenseTensor* ln_variance = nullptr;
 
   if (pre_layer_norm) {
     ln_scale = ln1_scale.get_ptr();
@@ -336,6 +336,10 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dropout1_out);
   dev_ctx.template Alloc<T>(dropout2_out);
   dev_ctx.template Alloc<T>(linear1_out);
+
+  if (out->numel() == 0) {
+    return;
+  }
 
   auto x_dim = x_ptr->dims();
   auto mat_dim_x =

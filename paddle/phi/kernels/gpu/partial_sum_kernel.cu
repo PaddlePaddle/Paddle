@@ -126,7 +126,7 @@ void PartialSumOpCUDAKernel(const Context &dev_ctx,
 
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             tmp_in_array->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             reinterpret_cast<void *>(in_data.data()),
                             in_data.size() * sizeof(T *));
 
@@ -164,7 +164,7 @@ void PartialSumGradOpCUDAKernel(const Context &dev_ctx,
   auto &place = *dev_ctx.eigen_device();
   for (size_t i = 0; i < outs.size(); ++i) {
     dev_ctx.template Alloc<T>(outs[i]);
-    auto dxt = phi::EigenVector<T>::Flatten(*outs[i]);
+    auto dxt = EigenVector<T>::Flatten(*outs[i]);
     dxt.device(place) = dxt.constant(static_cast<T>(0));
   }
 
@@ -207,7 +207,7 @@ void PartialSumGradOpCUDAKernel(const Context &dev_ctx,
 
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             tmp_out_array->ptr(),
-                            phi::CPUPlace(),
+                            CPUPlace(),
                             reinterpret_cast<void *>(out_data.data()),
                             out_data.size() * sizeof(T *));
 

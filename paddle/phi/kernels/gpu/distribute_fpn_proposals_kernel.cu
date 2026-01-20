@@ -80,7 +80,7 @@ template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
     const Context& dev_ctx,
     const DenseTensor& fpn_rois,
-    const paddle::optional<DenseTensor>& rois_num,
+    const optional<DenseTensor>& rois_num,
     int min_level,
     int max_level,
     int refer_level,
@@ -227,7 +227,7 @@ void DistributeFpnProposalsKernel(
   size_t start = 0;
 
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      sub_lod_list_cpu.data(),
                      place,
                      sub_lod_list_data,

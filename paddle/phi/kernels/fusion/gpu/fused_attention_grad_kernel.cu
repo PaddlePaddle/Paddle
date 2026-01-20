@@ -43,22 +43,22 @@ void FusedAttentionGradKernel(
     const DenseTensor &out_grad,
     const DenseTensor &x,
     const DenseTensor &qkv_weight,
-    const paddle::optional<DenseTensor> &qkv_bias,
-    const paddle::optional<DenseTensor> &qkv_bias_out,
-    const paddle::optional<DenseTensor> &src_mask,
-    const paddle::optional<DenseTensor> &src_mask_out,
+    const optional<DenseTensor> &qkv_bias,
+    const optional<DenseTensor> &qkv_bias_out,
+    const optional<DenseTensor> &src_mask,
+    const optional<DenseTensor> &src_mask_out,
     const DenseTensor &out_linear_weight,
-    const paddle::optional<DenseTensor> &out_linear_bias,
-    const paddle::optional<DenseTensor> &ln_scale,
-    const paddle::optional<DenseTensor> &ln_bias,
-    const paddle::optional<DenseTensor> &ln_scale_2,
-    const paddle::optional<DenseTensor> &ln_bias_2,
-    const paddle::optional<DenseTensor> &ln_out,
-    const paddle::optional<DenseTensor> &ln_mean,
-    const paddle::optional<DenseTensor> &ln_var,
-    const paddle::optional<DenseTensor> &ln_mean_2,
-    const paddle::optional<DenseTensor> &ln_var_2,
-    const paddle::optional<DenseTensor> &bias_dropout_residual_out,
+    const optional<DenseTensor> &out_linear_bias,
+    const optional<DenseTensor> &ln_scale,
+    const optional<DenseTensor> &ln_bias,
+    const optional<DenseTensor> &ln_scale_2,
+    const optional<DenseTensor> &ln_bias_2,
+    const optional<DenseTensor> &ln_out,
+    const optional<DenseTensor> &ln_mean,
+    const optional<DenseTensor> &ln_var,
+    const optional<DenseTensor> &ln_mean_2,
+    const optional<DenseTensor> &ln_var_2,
+    const optional<DenseTensor> &bias_dropout_residual_out,
     const DenseTensor &qkv_out,
     const DenseTensor &transpose_out_2,
     const DenseTensor &qk_out,
@@ -247,7 +247,7 @@ void FusedAttentionGradKernel(
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  phi::DenseTensor *seed_1 = nullptr;
+  DenseTensor *seed_1 = nullptr;
 
   // get inputs.
   auto *d_y = &out_grad;
@@ -381,7 +381,7 @@ void FusedAttentionGradKernel(
   int output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
-  phi::DenseTensor d_residual;
+  DenseTensor d_residual;
   T *d_residual_data = nullptr;
   if (add_residual) {
     d_residual.Resize(input_x_dims);
@@ -602,8 +602,8 @@ void FusedAttentionGradKernel(
 
   if (add_residual) {
     // gradient accumulation
-    std::vector<const phi::DenseTensor *> ins = {&d_residual, x_grad};
-    std::vector<phi::DenseTensor *> outs = {x_grad};
+    std::vector<const DenseTensor *> ins = {&d_residual, x_grad};
+    std::vector<DenseTensor *> outs = {x_grad};
     funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, funcs::AddFunctor<T>());
   }
 }

@@ -401,7 +401,7 @@ void q_kv_fmha_launch_kernel(const QkvUnpackMhaParams<T> &params,
 }
 
 template <typename T, typename LoadFunc, typename StoreFunc>
-void fmha_impl_qkv(const phi::GPUContext &dev_ctx,
+void fmha_impl_qkv(const GPUContext &dev_ctx,
                    const QkvUnpackMhaParams<T> &params,
                    int dim_head,
                    LoadFunc load_func,
@@ -442,11 +442,11 @@ void fmha_impl_qkv(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-void DispatchFMHA(const phi::GPUContext &dev_ctx,
-                  const phi::DenseTensor &q,
+void DispatchFMHA(const GPUContext &dev_ctx,
+                  const DenseTensor &q,
                   const QkvUnpackMhaParams<T> &params,
                   int dim_head,
-                  phi::DenseTensor *out_tensor) {
+                  DenseTensor *out_tensor) {
   MMHALoad<T> load_func(q.data<T>());
   MMHAStore<T> store_func(out_tensor->data<T>());
   fmha_impl_qkv(dev_ctx, params, dim_head, load_func, store_func);
@@ -457,7 +457,7 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
                           const DenseTensor &q,
                           const DenseTensor &k,
                           const DenseTensor &v,
-                          const paddle::optional<DenseTensor> &src_mask,
+                          const optional<DenseTensor> &src_mask,
                           DenseTensor *out) {
   const auto &q_dims = q.dims();
   int bsz = q_dims[0];
@@ -506,7 +506,7 @@ void QKVMMHAKernel(const Context &dev_ctx,
                    const DenseTensor &q,
                    const DenseTensor &k,
                    const DenseTensor &v,
-                   const paddle::optional<DenseTensor> &src_mask,
+                   const optional<DenseTensor> &src_mask,
                    DenseTensor *out) {
 #ifndef PADDLE_WITH_HIP
   QKVDispatchWithDtype<T, Context>(dev_ctx, q, k, v, src_mask, out);

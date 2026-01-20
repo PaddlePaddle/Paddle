@@ -435,6 +435,7 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
 #endif
           },
           [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
+#if defined(PADDLE_WITH_SYCL) || defined(PADDLE_WITH_HIP)
             // optim::EliminateCommonGlobalMemoryRead(&(func_body));
             ir::stmt::BlockRef func_body_block =
                 ir::ConvertExprBlockToStmtBlock(func_body);
@@ -444,6 +445,7 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
             VLOG(4) << "After OptimizeExprGPU in op_lowering_impl: \n"
                     << func_body_block;
             func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
+#endif
           });
     }
 
