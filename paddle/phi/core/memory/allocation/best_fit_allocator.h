@@ -109,7 +109,7 @@ class PADDLE_API BestFitAllocator : public Allocator {
 
   void* BasePtr() const { return allocation_->ptr(); }
 
-  const Place& Place() const { return allocation_->place(); }
+  const phi::Place& Place() const { return allocation_->place(); }
 
   size_t NumFreeChunks() const;
 
