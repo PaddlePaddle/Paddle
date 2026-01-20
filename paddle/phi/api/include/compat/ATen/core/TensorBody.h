@@ -337,17 +337,14 @@ class Tensor : public TensorBase {
   }
 #endif
 
-  // var(int dim) - special overload to avoid ambiguity
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
-  // var(bool unbiased) - compute variance over all elements
   Tensor var(bool unbiased = true) const {
     std::vector<int64_t> empty_dims;
     double correction = unbiased ? 1.0 : 0.0;
     return var_impl(empty_dims, correction, false);
   }
 
-  // var(OptionalIntArrayRef dim, bool unbiased, bool keepdim)
   Tensor var(at::OptionalIntArrayRef dim,
              bool unbiased = true,
              bool keepdim = false) const {
@@ -360,16 +357,11 @@ class Tensor : public TensorBase {
     return var_impl(dims_vec, correction, keepdim);
   }
 
-  // var(OptionalIntArrayRef dim, optional<Scalar> correction, bool keepdim)
   Tensor var(at::OptionalIntArrayRef dim,
              const ::std::optional<at::Scalar>& correction,
              bool keepdim = false) const {
-    // Default correction is 1.0 (Bessel's correction)
     double correction_value = 1.0;
     if (correction.has_value()) {
-      // Convert at::Scalar to double
-      // at::Scalar is mapped to paddle::experimental::Scalar in compatibility
-      // layer
       const at::Scalar& scalar = correction.value();
       correction_value = scalar.to<double>();
     }
@@ -381,28 +373,22 @@ class Tensor : public TensorBase {
   }
 
  private:
-  // Internal implementation
   Tensor var_impl(const std::vector<int64_t>& dims_vec,
                   double correction_value,
                   bool keepdim) const {
-    // Convert dims_vec to IntArray
     phi::IntArray dims_int_array(dims_vec);
 
-    // Compute mean along specified dimensions (keepdim=true for intermediate)
     PaddleTensor mean_tensor;
     if (dims_vec.empty()) {
-      // Compute mean over all elements
       mean_tensor = paddle::experimental::mean(
           tensor_, phi::IntArray(std::vector<int64_t>{}), true);
     } else {
       mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
     }
 
-    // Compute (x - mean)^2
     PaddleTensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
     PaddleTensor diff_squared = paddle::experimental::multiply(diff, diff);
 
-    // Compute sum of squared differences
     PaddleTensor sum_squared_diff;
     if (dims_vec.empty()) {
       sum_squared_diff =
@@ -415,10 +401,8 @@ class Tensor : public TensorBase {
           diff_squared, dims_int_array, diff_squared.dtype(), keepdim);
     }
 
-    // Calculate n (number of elements along reduced dimensions)
     int64_t n = tensor_.numel();
     if (!dims_vec.empty()) {
-      // Calculate number of elements along specified dimensions
       n = 1;
       for (int64_t d : dims_vec) {
         int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
@@ -429,14 +413,11 @@ class Tensor : public TensorBase {
       }
     }
 
-    // Compute corrected_n = n - correction
     double corrected_n = static_cast<double>(n) - correction_value;
     if (corrected_n <= 0.0) {
       corrected_n = static_cast<double>(n);
     }
 
-    // Divide by corrected_n
-    // Convert dims to IntArray for full()
     std::vector<int64_t> result_shape_vec;
     for (int64_t i = 0; i < sum_squared_diff.dims().size(); ++i) {
       result_shape_vec.push_back(sum_squared_diff.dims()[i]);
