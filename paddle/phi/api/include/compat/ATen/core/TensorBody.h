@@ -17,9 +17,15 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Device.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
+#if __has_include("paddle/fluid/eager/utils.h")
+#include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/utils.h"
+#define PADDLE_HAS_EAGER
+#endif
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -331,6 +337,54 @@ class Tensor : public TensorBase {
         stream);
   }
 #endif
+
+  // Autograd-related methods
+  const Tensor& set_requires_grad(bool requires_grad) const {
+#ifdef PADDLE_HAS_EAGER
+    auto meta =
+        egr::EagerUtils::autograd_meta(const_cast<PaddleTensor*>(&tensor_));
+    if (meta) {
+      // In Paddle: requires_grad = !stop_gradient
+      meta->SetStopGradient(!requires_grad);
+    }
+#endif
+    return *this;
+  }
+
+  Tensor& mutable_grad() const {
+#ifdef PADDLE_HAS_EAGER
+    auto* grad_ptr = egr::EagerUtils::mutable_grad(tensor_);
+    if (grad_ptr && grad_ptr->defined()) {
+      return *reinterpret_cast<Tensor*>(grad_ptr);
+    }
+#endif
+    // Return a reference to an undefined tensor if grad doesn't exist
+    static Tensor undefined_tensor{PaddleTensor()};
+    return undefined_tensor;
+  }
+
+  const Tensor& grad() const {
+#ifdef PADDLE_HAS_EAGER
+    auto meta =
+        egr::EagerUtils::autograd_meta(const_cast<PaddleTensor*>(&tensor_));
+    if (meta) {
+      const auto& grad_tensor = meta->Grad();
+      if (grad_tensor.defined()) {
+        return *reinterpret_cast<const Tensor*>(&grad_tensor);
+      }
+    }
+#endif
+    // Return a reference to an undefined tensor if grad doesn't exist
+    static const Tensor undefined_tensor{PaddleTensor()};
+    return undefined_tensor;
+  }
+
+  // Forward-mode AD: This is not directly supported in Paddle
+  // Return an undefined tensor as a placeholder
+  const Tensor& _fw_grad(uint64_t level) const {
+    static const Tensor undefined_tensor{PaddleTensor()};
+    return undefined_tensor;
+  }
 
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
