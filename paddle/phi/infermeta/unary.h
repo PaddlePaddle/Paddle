@@ -1117,7 +1117,7 @@ PADDLE_API void IntBincountInferMeta(const MetaTensor& x,
                                      MetaTensor* out);
 
 PADDLE_API void VarInferMeta(const MetaTensor& x,
-                             const IntArray& axis,
+                             const std::vector<int64_t>& axis,
                              bool keepdim,
                              bool unbiased,
                              double correction,
@@ -1125,7 +1125,7 @@ PADDLE_API void VarInferMeta(const MetaTensor& x,
                              MetaConfig config = MetaConfig());
 
 PADDLE_API void StdInferMeta(const MetaTensor& x,
-                             const IntArray& axis,
+                             const std::vector<int64_t>& axis,
                              bool keepdim,
                              bool unbiased,
                              double correction,

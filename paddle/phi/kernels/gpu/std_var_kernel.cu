@@ -150,7 +150,7 @@ struct WelfordOps {
 template <typename T, typename Context>
 void Std_VarKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const IntArray& axis,
+                   const std::vector<int64_t>& axis,
                    bool keepdim,
                    double correction,
                    bool take_sqrt,
@@ -166,8 +166,7 @@ void Std_VarKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   int64_t ndim = x.dims().size();
-  auto axis64 = axis.GetData();
-  std::vector<int32_t> axis32(axis64.begin(), axis64.end());
+  std::vector<int32_t> axis32(axis.begin(), axis.end());
   auto positive_reduce_dims = ConvertToPositiveDims(axis32, ndim);
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
   auto viewed_result = ReviewReduceResult(x, *(out), ndim, mask);
@@ -188,7 +187,7 @@ void Std_VarKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void VarKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const IntArray& axis,
+               const std::vector<int64_t>& axis,
                bool keepdim,
                bool unbiased,
                double correction,
@@ -199,7 +198,7 @@ void VarKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void StdKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const IntArray& axis,
+               const std::vector<int64_t>& axis,
                bool keepdim,
                bool unbiased,
                double correction,

@@ -29,7 +29,7 @@ namespace phi {
 template <typename T, typename Context>
 void VarKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const IntArray& axis,
+               const std::vector<int64_t>& axis,
                bool keepdim,
                bool unbiased,
                double correction,
@@ -70,7 +70,7 @@ void VarKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void StdKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const IntArray& axis,
+               const std::vector<int64_t>& axis,
                bool keepdim,
                bool unbiased,
                double correction,

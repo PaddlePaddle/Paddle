@@ -32,14 +32,14 @@ template <typename T, typename Context>
 void VarGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& out_grad,
-                   const IntArray& axis,
+                   const std::vector<int64_t>& axis,
                    bool keepdim,
                    bool unbiased,
                    double correction,
                    DenseTensor* x_grad) {
   int rank = x.dims().size();
   printf("call CPU VarGradKernel \n\n ");
-  if (rank == 0 || axis.GetData().empty()) {
+  if (rank == 0 || axis.size() == 0) {
     const auto dof = static_cast<double>(x.numel()) - correction;
     DenseTensor x_mean = phi::Mean<T, Context>(dev_ctx, x, {}, true);
     if (dof <= 0) {
@@ -67,7 +67,7 @@ void VarGradKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int64_t> axes64 = axis.GetData();
+  std::vector<int64_t> axes64 = axis;
   for (auto& d : axes64)
     if (d < 0) d += rank;
   std::sort(axes64.begin(), axes64.end());
@@ -101,7 +101,7 @@ void StdGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& out,
                    const DenseTensor& out_grad,
-                   const IntArray& axis,
+                   const std::vector<int64_t>& axis,
                    bool keepdim,
                    bool unbiased,
                    double correction,

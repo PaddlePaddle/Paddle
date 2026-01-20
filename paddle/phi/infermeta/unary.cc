@@ -6832,7 +6832,7 @@ void IntBincountInferMeta(const MetaTensor& x,
 }
 
 void VarInferMeta(const MetaTensor& x,
-                  const IntArray& axis,
+                  const std::vector<int64_t>& axis,
                   bool keepdim,
                   bool unbiased,
                   double correction,
@@ -6842,11 +6842,11 @@ void VarInferMeta(const MetaTensor& x,
   if (axis.size() == 0) {
     reduce_all = true;
   }
-  ReduceIntArrayAxisInferMetaBase(x, axis, keepdim, reduce_all, out, config);
+  ReduceInferMetaBase(x, axis, keepdim, reduce_all, out);
 }
 
 void StdInferMeta(const MetaTensor& x,
-                  const IntArray& axis,
+                  const std::vector<int64_t>& axis,
                   bool keepdim,
                   bool unbiased,
                   double correction,
@@ -6856,7 +6856,7 @@ void StdInferMeta(const MetaTensor& x,
   if (axis.size() == 0) {
     reduce_all = true;
   }
-  ReduceIntArrayAxisInferMetaBase(x, axis, keepdim, reduce_all, out, config);
+  ReduceInferMetaBase(x, axis, keepdim, reduce_all, out);
 }
 
 }  // namespace phi

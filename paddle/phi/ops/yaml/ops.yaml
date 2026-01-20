@@ -5336,7 +5336,7 @@
   traits: pir::UnaryElementWiseTrait
 
 - op : std
-  args : (Tensor x, IntArray axis={}, bool keepdim=false, bool unbiased=true, double correction=1)
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false, bool unbiased=true, double correction=1)
   output : Tensor(out)
   infer_meta :
     func : StdInferMeta
@@ -5856,7 +5856,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : var
-  args : (Tensor x, IntArray axis={}, bool keepdim=false, bool unbiased=true, double correction=1)
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false, bool unbiased=true, double correction=1)
   output : Tensor(out)
   infer_meta :
     func : VarInferMeta
