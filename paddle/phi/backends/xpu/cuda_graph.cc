@@ -223,16 +223,14 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
     int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
     phi::backends::xpu::XPUDeviceGuard guard(device_id);
 
-    // Restore original stream if needed
-    if (original_stream_ != nullptr) {
-      phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
-      dev_ctx->SetStream(original_stream_, 0);
-    }
+    phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
+    dev_ctx->SetStream(original_stream_, 0);
 
     // Destroy the created stream
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(created_stream_));
     created_stream_ = nullptr;
     stream_created_ = false;
+    capturing_graph_->stream_ = original_stream_;
   }
   capturing_thread_id_ = paddle::none;
   return std::move(capturing_graph_);
