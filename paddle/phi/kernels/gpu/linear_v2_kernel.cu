@@ -114,6 +114,7 @@ void LinearV2Kernel(const Context& dev_ctx,
           phi::funcs::MatmulFusedType::kMatmulBias);
     } else {
       DenseTensor bias_processed = bias;
+      DataType out_dtype = out->dtype();
       if (bias.numel() != (M * N)) {
         bias_processed.Resize(common::make_ddim({1, bias.numel()}));
         VLOG(10) << "bias.dim(): " << bias.dims();
@@ -132,6 +133,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                           weight_processed,
                           1.0f,
                           1.0f,
+                          out_dtype,
                           out);
     }
     VLOG(10) << "linear calculate complete";
