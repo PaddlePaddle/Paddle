@@ -79,7 +79,7 @@ template <typename T, typename Context>
 void RoiPoolGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& boxes,
-                       const paddle::optional<DenseTensor>& boxes_num,
+                       const optional<DenseTensor>& boxes_num,
                        const DenseTensor& arg_max,
                        const DenseTensor& out_grad,
                        int pooled_height,
