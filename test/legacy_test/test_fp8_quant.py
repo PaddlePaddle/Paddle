@@ -236,11 +236,6 @@ class TestFP8QuantizationUnalignedFP16(TestFP8Quantization):
         self.n = 2560
         self.dtype_options = paddle.float16
         self.quant_method_options = ["1x128"]
-        self.input_transpose_options = [True]  # return non-transpose afterall
-        self.output_scale_transpose_options = [True, False]
-        self.return_transpose_only_options = [True, False]
-        self.using_pow2_scale_options = [True, False]
-        self.using_ue8m0_scale_options = [True, False]
 
         self.rmse_threshold = 3e-2
 
@@ -250,6 +245,7 @@ class TestFP8QuantizationUnalignedFP16(TestFP8Quantization):
         self.output_scale_transpose_options = [True, False]
         self.return_transpose_only_options = [False]
         self.using_pow2_scale_options = [True, False]
+        self.using_ue8m0_scale_options = [True, False]
 
     def test_quantization_accuracy(self):
         rmses = self.eval_all(self.x)
@@ -259,6 +255,31 @@ class TestFP8QuantizationUnalignedFP16(TestFP8Quantization):
     def test_tensor_shapes(self):
         self.assertEqual(self.x.shape, [self.m, self.n])
         self.assertEqual(self.x.dtype, paddle.float16)
+
+
+# 0 size
+class TestFP8QuantizationZeroSizeBF16(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(42)
+        self.m = 0
+        self.n = 0
+        self.dtype_options = paddle.bfloat16
+        self.x = paddle.randn((self.m, self.n), dtype=self.dtype_options)
+
+    def test_fp8_quant_zero_size_tensor(self):
+        x_q, scale = fp8.fp8_quant_blockwise(
+            self.x,
+            quant_method="1x128",
+            input_transpose=False,
+            output_scale_transpose=False,
+            using_pow2_scale=False,
+            return_transpose_only=False,
+            using_ue8m0_scale=False,
+        )
+        self.assertEqual(x_q.shape, [0, 0])
+        self.assertEqual(x_q.dtype, paddle.float8_e4m3fn)
+        self.assertEqual(scale.shape, [0, 0])
+        self.assertEqual(scale.dtype, paddle.float32)
 
 
 if __name__ == '__main__':

@@ -3605,6 +3605,15 @@ def abs(
 ) -> Tensor
 """,
 )
+add_doc_and_signature(
+    "abs_",
+    """
+    Inplace version of ``abs`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def abs_(x: Tensor, name: str | None = None) -> Tensor
+""",
+)
 # lubingxin
 
 # chenhuangrun

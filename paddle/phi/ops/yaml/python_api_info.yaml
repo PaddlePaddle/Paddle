@@ -3,6 +3,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : abs_
+  name : [paddle.abs_, paddle.Tensor.abs_]
+  args_alias :
+    use_default_mapping : True
+
 - op : acos
   name : [paddle.acos, paddle.Tensor.acos]
   args_alias :
