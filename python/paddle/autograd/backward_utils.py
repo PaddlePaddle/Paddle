@@ -66,6 +66,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.log",
     "pd_op.logcumsumexp",
     "pd_op.logsumexp",
+    "pd_op.linear_v2",
     "pd_op.matmul",
     "pd_op.max",
     "pd_op.maximum",

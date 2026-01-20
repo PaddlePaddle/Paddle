@@ -22,6 +22,7 @@ WHITE_LIST = {
     'einsum',
     'matmul',
     'matmul_v2',
+    'linear_v2',
     'max_pool2d_with_index',
     'mul',
     'fused_gemm_epilogue',

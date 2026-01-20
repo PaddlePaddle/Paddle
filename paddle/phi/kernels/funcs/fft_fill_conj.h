@@ -170,7 +170,7 @@ void FFTFillConj(const DeviceContext& dev_ctx,
   DenseTensor is_fft_axis_g;
   is_fft_axis_g.Resize({rank});
   bool* p_is_fft_axis = dev_ctx.template Alloc<bool>(&is_fft_axis_g);
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
   memory_utils::Copy(gplace,
                      src_strides,

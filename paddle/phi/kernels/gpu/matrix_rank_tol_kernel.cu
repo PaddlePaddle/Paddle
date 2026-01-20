@@ -648,8 +648,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<int64_t>(out);
     if (out && out->numel() != 0) {
-      phi::Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -760,7 +759,7 @@ template <typename T, typename Context>
 void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& atol,
-                              const paddle::optional<DenseTensor>& rtol,
+                              const optional<DenseTensor>& rtol,
                               bool hermitian,
                               DenseTensor* out) {
   using RealType = phi::dtype::Real<T>;
@@ -774,8 +773,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     out->Resize(dim_out);
     if (out && out->numel() != 0) {
-      phi::Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -869,7 +867,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
         dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
 
     DenseTensor zero_tensor;
-    zero_tensor = phi::FullLike<RealType, Context>(
+    zero_tensor = FullLike<RealType, Context>(
         dev_ctx, default_rtol_tensor, static_cast<RealType>(0.0));
 
     DenseTensor atol_compare_result;

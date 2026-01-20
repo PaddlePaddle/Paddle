@@ -769,8 +769,8 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
 template <typename T, typename Context>
 void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
                                        const DenseTensor& V,
-                                       const paddle::optional<DenseTensor>& gL,
-                                       const paddle::optional<DenseTensor>& gV,
+                                       const optional<DenseTensor>& gL,
+                                       const optional<DenseTensor>& gV,
                                        T* x_grad_data,
                                        int batch_count,
                                        int order,
@@ -779,16 +779,14 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   if (gL.get_ptr()) {
     gL_safe = gL.get();
   } else {
-    gL_safe =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(L.dims()), T(0));
+    gL_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(L.dims()), T(0));
   }
 
   DenseTensor gV_safe;
   if (gV.get_ptr()) {
     gV_safe = gV.get();
   } else {
-    gV_safe =
-        Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(V.dims()), T(0));
+    gV_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(V.dims()), T(0));
   }
   DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
   DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
@@ -859,8 +857,8 @@ template <typename T, typename Context>
 void EigGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_w,
                    const DenseTensor& out_v,
-                   const paddle::optional<DenseTensor>& dout_w,
-                   const paddle::optional<DenseTensor>& dout_v,
+                   const optional<DenseTensor>& dout_w,
+                   const optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
   auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
   if (dx->numel() == 0) {

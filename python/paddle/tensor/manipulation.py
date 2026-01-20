@@ -7805,6 +7805,13 @@ def unflatten(
     return x
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "shape": ["size"],
+        "offset": ["storage_offset"],
+    }
+)
 @dygraph_only
 def as_strided(
     x: Tensor,
@@ -7826,10 +7833,10 @@ def as_strided(
          :alt: Legend
 
     Args:
-        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
-        shape (list|tuple): Define the target shape. Each element of it should be integer.
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``. Alias: ``input``.
+        shape (list|tuple): Define the target shape. Each element of it should be integer. Alias: ``size``.
         stride (list|tuple): Define the target stride. Each element of it should be integer.
-        offset (int, optional): Define the target Tensor's offset from x's holder. Default: 0.
+        offset (int, optional): Define the target Tensor's offset from x's holder. Default: 0. Alias: ``storage_offset``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pybind/sot/cpython_internals/internals_3_12.h"
 
+#if (PY_3_12_PLUS && !PY_3_13_PLUS)
+
 #include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
 #define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
@@ -460,3 +462,5 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   Py_DECREF(locals);
   return 0;
 }
+
+#endif  // (PY_3_12_PLUS && !PY_3_13_PLUS)
