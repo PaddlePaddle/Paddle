@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ATen/Utils.h>
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <optional>
@@ -31,10 +32,11 @@ inline at::Tensor zeros_like(
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
-  return paddle::experimental::zeros_like(
+  auto dense = paddle::experimental::zeros_like(
       self._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
       options._PD_GetPlace());
+  return detail::_PD_ConvertToSparseIfNeeded(dense, options.layout());
 }
 
 inline at::Tensor zeros_like(const at::Tensor& self,
@@ -43,18 +45,19 @@ inline at::Tensor zeros_like(const at::Tensor& self,
                              ::std::optional<at::Device> device,
                              ::std::optional<bool> pin_memory,
                              ::std::optional<at::MemoryFormat> memory_format) {
-  PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
   PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
            "`pin_memory` other than False is not supported now.");
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
-  return paddle::experimental::zeros_like(
+  auto dense = paddle::experimental::zeros_like(
       self._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
       device.value_or(at::kCPU)._PD_GetInner());
+  return detail::_PD_ConvertToSparseIfNeeded(dense,
+                                             layout.value_or(c10::kStrided));
 }
 
 }  // namespace at

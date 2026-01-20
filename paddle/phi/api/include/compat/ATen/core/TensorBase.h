@@ -27,6 +27,7 @@
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -167,6 +168,41 @@ class PADDLE_API TensorBase {
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
+  bool is_sparse() const {
+    return tensor_.is_sparse_coo_tensor() || tensor_.is_sparse_csr_tensor();
+  }
+
+  bool is_sparse_csr() const { return tensor_.is_sparse_csr_tensor(); }
+
+  bool is_quantized() const {
+    // Paddle does not support PyTorch-style quantized data types (QInt8,
+    // QUInt8, etc.). Quantization in Paddle is achieved through quantization
+    // operations while tensors still use regular INT8/UINT8 types.
+    return false;
+  }
+
+  bool is_meta() const {
+    // Paddle does not support PyTorch-style meta device. Meta device in
+    // PyTorch is used to create tensors without actual memory allocation
+    // for shape inference and model structure analysis.
+    return false;
+  }
+
+  bool is_inference() const {
+    // Paddle does not support PyTorch-style inference mode at the tensor level.
+    // In PyTorch, inference_mode() is a context manager that marks tensors
+    // created within it as inference tensors. Paddle's inference mode is
+    // function/model-level via decorators, not a tensor-level attribute.
+    return false;
+  }
+
+  bool is_nested() const {
+    // In Paddle, variable-length sequence tensors (with LoD) are treated as
+    // nested tensors
+    auto* dense_tensor = dynamic_cast<phi::DenseTensor*>(tensor_.impl().get());
+    return dense_tensor && !dense_tensor->lod().empty();
+  }
+
   at::TensorBase reshape(at::IntArrayRef shape) const {
     return TensorBase(
         paddle::experimental::reshape(tensor_, shape._PD_ToPaddleIntArray()));
@@ -189,14 +225,14 @@ class PADDLE_API TensorBase {
   }
 
   inline size_t nbytes() const {
-    PD_CHECK(
-        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
-         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
-        "nbytes is not defined for sparse tensors.  If you want the size of "
-        "the constituent "
-        "tensors, add the nbytes of the indices and values.  If you want the "
-        "size of the  "
-        "equivalent dense tensor, multiply numel() by element_size()");
+    PD_CHECK(!is_sparse(),
+             "nbytes is not defined for sparse tensors.  If you want the size "
+             "of "
+             "the constituent "
+             "tensors, add the nbytes of the indices and values.  If you want "
+             "the "
+             "size of the  "
+             "equivalent dense tensor, multiply numel() by element_size()");
     return tensor_.numel() * SizeOf(tensor_.dtype());
   }
 
@@ -209,6 +245,14 @@ class PADDLE_API TensorBase {
   bool defined() const { return tensor_.defined(); }
 
   Layout layout() const {
+    // Check tensor type first for sparse tensors
+    if (tensor_.is_sparse_csr_tensor()) {
+      return c10::kSparseCsr;
+    }
+    if (tensor_.is_sparse_coo_tensor()) {
+      return c10::kSparse;
+    }
+    // Then check data layout for dense tensors
     switch (tensor_.layout()) {
       case common::DataLayout::STRIDED:
       case common::DataLayout::NCHW:

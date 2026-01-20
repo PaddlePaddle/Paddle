@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ATen/Utils.h>
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <optional>
@@ -33,10 +34,11 @@ inline at::Tensor empty_like(
 
   auto dtype = options.dtype_opt().value_or(self.dtype());
   auto place = options.device_opt().value_or(self.device());
-  return paddle::experimental::empty_like(
+  auto dense = paddle::experimental::empty_like(
       self._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       place._PD_GetInner());
+  return detail::_PD_ConvertToSparseIfNeeded(dense, options.layout());
 }
 
 inline at::Tensor empty_like(const at::Tensor& self,
@@ -45,17 +47,18 @@ inline at::Tensor empty_like(const at::Tensor& self,
                              ::std::optional<at::Device> device,
                              ::std::optional<bool> pin_memory,
                              ::std::optional<at::MemoryFormat> memory_format) {
-  PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
   PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
            "`pin_memory` other than False is not supported now.");
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
-  return paddle::experimental::empty_like(
+  auto dense = paddle::experimental::empty_like(
       self._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype.value_or(self.dtype())),
       device.value_or(self.device())._PD_GetInner());
+  return detail::_PD_ConvertToSparseIfNeeded(dense,
+                                             layout.value_or(c10::kStrided));
 }
 
 }  // namespace at

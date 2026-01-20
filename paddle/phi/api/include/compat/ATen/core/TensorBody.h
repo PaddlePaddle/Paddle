@@ -346,14 +346,14 @@ class Tensor : public TensorBase {
   //   int64_t storage_offset() const { return storage_offset_; }
 
   inline size_t nbytes() const {
-    PD_CHECK(
-        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
-         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
-        "nbytes is not defined for sparse tensors.  If you want the size of "
-        "the constituent "
-        "tensors, add the nbytes of the indices and values.  If you want the "
-        "size of the  "
-        "equivalent dense tensor, multiply numel() by element_size()");
+    PD_CHECK(!is_sparse(),
+             "nbytes is not defined for sparse tensors.  If you want the size "
+             "of "
+             "the constituent "
+             "tensors, add the nbytes of the indices and values.  If you want "
+             "the "
+             "size of the  "
+             "equivalent dense tensor, multiply numel() by element_size()");
     return tensor_.numel() * SizeOf(tensor_.dtype());
   }
 
