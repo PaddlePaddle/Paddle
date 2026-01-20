@@ -258,7 +258,6 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
             >>> import paddle
 
             # Get compute capability of the current CUDA device
-            >>> paddle.device.set_device('gpu')
             >>> capability = paddle.cuda.get_device_capability()
             >>> print(capability)  # e.g., (8, 0)
 
