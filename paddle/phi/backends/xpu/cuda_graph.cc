@@ -217,6 +217,7 @@ void CUDAGraph::EndSegmentCapture() {
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
+  EndSegmentCapture();
   // Destroy the created stream before reset
   if (stream_created_ && created_stream_ != nullptr) {
     int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
@@ -233,7 +234,6 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
     created_stream_ = nullptr;
     stream_created_ = false;
   }
-  EndSegmentCapture();
   capturing_thread_id_ = paddle::none;
   return std::move(capturing_graph_);
 }
