@@ -240,14 +240,14 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
   cuda::memcpy_async(
       block,
       shared_routemap_topk,
-      routemap_topk + block_row_base * topk,
+      routemap_topk + static_cast<int64_t>(block_row_base) * topk,
       cuda::aligned_size_t<32>(local_rowmap_size * sizeof(routemap_T)),
       pipe);
 
   cuda::memcpy_async(
       block,
       shared_probs_topk,
-      probs_topk + block_row_base * topk,
+      probs_topk + static_cast<int64_t>(block_row_base) * topk,
       cuda::aligned_size_t<32>(local_rowmap_size * sizeof(probs_T)),
       pipe);
   pipe.producer_commit();
@@ -257,7 +257,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     pipe.producer_acquire();
     cuda::memcpy_async(block,
                        A0,
-                       X + block_row_base * token_length,
+                       X + static_cast<int64_t>(block_row_base) * token_length,
                        cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
                        pipe);
     pipe.producer_commit();
@@ -390,7 +390,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         pipe.producer_acquire();
         cuda::memcpy_async(block,
                            a_next,
-                           X + (row + 1) * token_length,
+                           X + static_cast<int64_t>(row + 1) * token_length,
                            cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
                            pipe);
 
