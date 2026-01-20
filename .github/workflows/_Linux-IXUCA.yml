@@ -139,10 +139,8 @@ jobs:
       - name: Clone PaddleCustomDevice repository
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
-          # 删除旧代理配置
           git config --global --unset-all http.proxy || true
           git config --global --unset-all https.proxy || true
-          # 设置新代理
           export https_proxy=http://oversea-website-proxy.aistudio.public:8888
           export http_proxy=http://oversea-website-proxy.aistudio.public:8888
           git config --global http.proxy "$http_proxy"
