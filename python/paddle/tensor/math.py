@@ -2644,6 +2644,7 @@ def outer(
         )
         return out
 
+
 @ForbidKeywordsDecorator(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
