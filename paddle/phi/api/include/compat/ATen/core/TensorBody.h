@@ -497,10 +497,12 @@ class Tensor : public TensorBase {
       PD_CHECK(values.numel() == indexed_view.numel() || values.numel() == 1,
                "Values shape must match indexed tensor shape or be scalar");
       if (values.numel() == 1) {
-        // Create a tensor filled with the scalar value
+        const PaddleTensor& values_inner =
+            static_cast<const TensorBase&>(values)._PD_GetInner();
+        paddle::experimental::Scalar scalar_value(values_inner);
         broadcasted_values = Tensor(
             paddle::experimental::full(indexed_view.sizes().vec(),
-                                       values.item(),
+                                       scalar_value,
                                        compat::_PD_AtenScalarTypeToPhiDataType(
                                            indexed_view.scalar_type())));
       } else {
@@ -567,7 +569,6 @@ class Tensor : public TensorBase {
   }
 #endif
 
- public:
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };

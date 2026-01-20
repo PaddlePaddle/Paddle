@@ -257,23 +257,23 @@ class PADDLE_API TensorBase {
     auto sizes_array = sizes();
     auto strides_array = strides();
 
-    // If index_t is int64_t, use the original pointers directly
+    // GenericPackedTensorAccessor copies sizes and strides internally,
+    // so we can use stack-allocated arrays without static storage
     if constexpr (std::is_same_v<index_t, int64_t>) {
       return GenericPackedTensorAccessor<T, N, PtrTraits, index_t>(
           ptr, sizes_array.data(), strides_array.data());
     } else {
       // For other types (e.g., int32_t), we need to convert
-      // Note: This creates a temporary accessor that may not work correctly
-      // because TensorAccessor only stores pointers. This is a limitation
-      // of the current implementation.
-      static thread_local std::vector<index_t> sizes_storage(N);
-      static thread_local std::vector<index_t> strides_storage(N);
+      // Use stack-allocated arrays - GenericPackedTensorAccessor will copy the
+      // data
+      index_t sizes_storage[N];
+      index_t strides_storage[N];
       for (size_t i = 0; i < N; ++i) {
         sizes_storage[i] = static_cast<index_t>(sizes_array[i]);
         strides_storage[i] = static_cast<index_t>(strides_array[i]);
       }
       return GenericPackedTensorAccessor<T, N, PtrTraits, index_t>(
-          ptr, sizes_storage.data(), strides_storage.data());
+          ptr, sizes_storage, strides_storage);
     }
   }
 

@@ -20,6 +20,7 @@
 
 #include <c10/macros/Macros.h>
 #include <c10/util/ArrayRef.h>
+#include <algorithm>
 
 namespace at {
 template <typename T>
@@ -104,13 +105,74 @@ class TensorAccessor<T, 1, PtrTraits, index_t>
   }
 };
 
-// GenericPackedTensorAccessor is used for packed tensor accessors
-// In Paddle, we use TensorAccessor as the implementation
+// GenericPackedTensorAccessorBase stores sizes and strides internally
+// (copies data instead of storing pointers, unlike TensorAccessor)
 template <typename T,
           size_t N,
           template <typename U> class PtrTraits = DefaultPtrTraits,
           typename index_t = int64_t>
-using GenericPackedTensorAccessor = TensorAccessor<T, N, PtrTraits, index_t>;
+class GenericPackedTensorAccessorBase {
+ public:
+  typedef typename PtrTraits<T>::PtrType PtrType;
+
+  GenericPackedTensorAccessorBase(PtrType data_ptr,
+                                  const index_t* sizes_ptr,
+                                  const index_t* strides_ptr)  // NOLINT
+      : data_(data_ptr) {
+    std::copy(sizes_ptr, sizes_ptr + N, std::begin(this->sizes_));
+    std::copy(strides_ptr, strides_ptr + N, std::begin(this->strides_));
+  }
+
+  // Constructor for converting from int64_t to other index types
+  template <typename source_index_t,
+            class = std::enable_if_t<std::is_same_v<source_index_t, int64_t>>>
+  GenericPackedTensorAccessorBase(PtrType data_ptr,
+                                  const source_index_t* sizes_ptr,
+                                  const source_index_t* strides_ptr)  // NOLINT
+      : data_(data_ptr) {
+    for (size_t i = 0; i < N; ++i) {
+      this->sizes_[i] = static_cast<index_t>(sizes_ptr[i]);
+      this->strides_[i] = static_cast<index_t>(strides_ptr[i]);
+    }
+  }
+
+  index_t stride(index_t i) const { return strides_[i]; }
+  index_t size(index_t i) const { return sizes_[i]; }
+  PtrType data() { return data_; }
+  const PtrType data() const { return data_; }
+
+ protected:
+  PtrType data_;
+  index_t sizes_[N];
+  index_t strides_[N];
+};
+
+// GenericPackedTensorAccessor is used for packed tensor accessors
+// It copies sizes and strides internally, unlike TensorAccessor
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits,
+          typename index_t = int64_t>
+class GenericPackedTensorAccessor
+    : public GenericPackedTensorAccessorBase<T, N, PtrTraits, index_t> {
+ public:
+  typedef typename PtrTraits<T>::PtrType PtrType;
+
+  GenericPackedTensorAccessor(PtrType data_ptr,
+                              const index_t* sizes_ptr,
+                              const index_t* strides_ptr)
+      : GenericPackedTensorAccessorBase<T, N, PtrTraits, index_t>(
+            data_ptr, sizes_ptr, strides_ptr) {}
+
+  // Constructor for converting from int64_t to other index types
+  template <typename source_index_t,
+            class = std::enable_if_t<std::is_same_v<source_index_t, int64_t>>>
+  GenericPackedTensorAccessor(PtrType data_ptr,
+                              const source_index_t* sizes_ptr,
+                              const source_index_t* strides_ptr)
+      : GenericPackedTensorAccessorBase<T, N, PtrTraits, index_t>(
+            data_ptr, sizes_ptr, strides_ptr) {}
+};
 
 // Type aliases for PackedTensorAccessor32 and PackedTensorAccessor64
 // Compatible with libtorch's naming convention
