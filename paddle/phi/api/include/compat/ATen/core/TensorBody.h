@@ -20,6 +20,11 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
+#if __has_include("paddle/fluid/eager/utils.h")
+#include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/utils.h"
+#define PADDLE_HAS_EAGER
+#endif
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -331,6 +336,56 @@ class Tensor : public TensorBase {
         stream);
   }
 #endif
+
+  Tensor tensor_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareBufferWith(*src_tensor, false);
+        dst_tensor->ShareDataTypeWith(*src_tensor);
+        dst_tensor->Resize(src_tensor->dims());
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    } else {
+      result = paddle::experimental::assign(tensor_);
+    }
+    return Tensor(result);
+  }
+
+  Tensor variable_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareBufferWith(*src_tensor, false);
+        dst_tensor->ShareDataTypeWith(*src_tensor);
+        dst_tensor->Resize(src_tensor->dims());
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    } else {
+      result = paddle::experimental::assign(tensor_);
+    }
+#if __has_include("paddle/fluid/eager/utils.h")
+    auto meta = egr::EagerUtils::autograd_meta(&result);
+    if (meta) {
+      meta->ResetGradNode();
+    }
+#endif
+    return Tensor(result);
+  }
 
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
