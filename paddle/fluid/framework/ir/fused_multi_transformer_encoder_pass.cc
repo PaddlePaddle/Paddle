@@ -1458,9 +1458,9 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
 namespace paddle::framework::ir {
 
 template <typename T>
-inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
-                              phi::DenseTensor* wk_tensor,
-                              phi::DenseTensor* wv_tensor,
+inline void QKVWeightsProcess(DenseTensor* wq_tensor,
+                              DenseTensor* wk_tensor,
+                              DenseTensor* wv_tensor,
                               const int num_head,
                               const int dim_head,
                               const int dim_embed) {
@@ -1500,9 +1500,9 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
 }
 
 template <typename T>
-inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
-                           phi::DenseTensor* bk_tensor,
-                           phi::DenseTensor* bv_tensor,
+inline void QKVBiasProcess(DenseTensor* bq_tensor,
+                           DenseTensor* bk_tensor,
+                           DenseTensor* bv_tensor,
                            const int num_head,
                            const int dim_head,
                            const int dim_embed) {
@@ -1533,12 +1533,12 @@ inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
          sizeof(T) * bq_tensor->numel());
 }
 
-inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
-                                  phi::DenseTensor* wk_tensor,
-                                  phi::DenseTensor* wv_tensor,
-                                  phi::DenseTensor* bq_tensor,
-                                  phi::DenseTensor* bk_tensor,
-                                  phi::DenseTensor* bv_tensor,
+inline void QKVWeightsBiasProcess(DenseTensor* wq_tensor,
+                                  DenseTensor* wk_tensor,
+                                  DenseTensor* wv_tensor,
+                                  DenseTensor* bq_tensor,
+                                  DenseTensor* bk_tensor,
+                                  DenseTensor* bv_tensor,
                                   const int num_head,
                                   const int dim_head,
                                   const int dim_embed) {
@@ -1579,7 +1579,7 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
 }
 
 template <typename T>
-inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
+inline void QKVWeightsProcessFuseQKV(DenseTensor* qkv_w_tensor,
                                      const int num_head,
                                      const int dim_head,
                                      const int dim_embed) {
@@ -1617,7 +1617,7 @@ inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 }
 
 template <typename T>
-inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
+inline void QKVBiasProcessFuseQKV(DenseTensor* qkv_b_tensor,
                                   const int num_head,
                                   const int dim_head,
                                   const int dim_embed) {
@@ -1650,8 +1650,8 @@ inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
          sizeof(T) * qkv_b_tensor->numel());
 }
 
-inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
-                                         phi::DenseTensor* qkv_b_tensor,
+inline void QKVWeightsBiasProcessFuseQKV(DenseTensor* qkv_w_tensor,
+                                         DenseTensor* qkv_b_tensor,
                                          const int num_head,
                                          const int dim_head,
                                          const int dim_embed) {
@@ -1691,7 +1691,7 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 }
 
 // Just use for fused_multi_transformer_int8
-inline void TransposeWeights(phi::DenseTensor* weight_tensor) {
+inline void TransposeWeights(DenseTensor* weight_tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   int m = static_cast<int>(weight_tensor->dims()[0]);
