@@ -177,7 +177,7 @@ void BindAutoParallel(py::module *m) {
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                         tensor.impl());
                 auto res_dist = self.Eval(dev_ctx, *p_dist, dist_attr);
-                return paddle::Tensor(res_dist);
+                return Tensor(res_dist);
               },
               py::call_guard<py::gil_scoped_release>());
 
