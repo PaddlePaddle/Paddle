@@ -62,7 +62,7 @@ C10_DEVICE __forceinline__ T WARP_SHFL_DOWN(T value,
                                             unsigned int delta,
                                             int width = warpSize,
                                             unsigned int mask = 0xffffffff) {
-#if !defined(USE_ROCM)
+#ifndef __HIPCC__
   return __shfl_down_sync(mask, value, delta, width);
 #else
   return __shfl_down(value, delta, width);
