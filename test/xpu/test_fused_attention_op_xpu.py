@@ -376,7 +376,6 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
                 name=None,
             )
 
-            # 确保能走到反向（即使 batch=0，loss 也可构造）
             loss = out.sum()
             loss.backward()
 
