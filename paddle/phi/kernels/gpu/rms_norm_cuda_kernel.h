@@ -16,7 +16,9 @@
 
 #include <cuda_runtime.h>
 
+#include <limits>
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -420,7 +422,15 @@ void launch_vectorized_rms_norm_kernel_driver(int N,
                                               cudaStream_t stream) {
   const int num_threads = 128;
   const dim3 threads(kWarpSize, num_threads / kWarpSize, 1);
-  dim3 blocks(M);
+  // TODO(large-tensor): M may exceed CUDA grid limit
+  PADDLE_ENFORCE_LE(
+      M,
+      static_cast<int64_t>(std::numeric_limits<unsigned int>::max()),
+      common::errors::InvalidArgument(
+          "rows (%ld) exceeds CUDA grid limit (%u)",
+          M,
+          std::numeric_limits<unsigned int>::max()));
+  dim3 blocks(static_cast<unsigned int>(M));
 
   // Shared memory for reduction: need size proportional to threads.y and T_ACC
   int nshared = threads.y > 1 ? threads.y * 3 / 2 * sizeof(T_ACC) : 0;
@@ -904,6 +914,10 @@ void RMSNormFwdKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
+  // TODO(large-tensor): cols may exceed INT_MAX
+  PADDLE_ENFORCE_LE_INT_MAX(cols, "cols");
+  int cols_int = static_cast<int>(cols);
+
   // When using a vectorization size of 8 in fp16 and bf16, there may be
   // misalignment of accuracy and torch alignment.
   if (!FLAGS_use_accuracy_compatible_kernel && rows <= 1024 &&
@@ -916,12 +930,11 @@ void RMSNormFwdKernel(const Context& dev_ctx,
     bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
                                std::is_same<T, phi::dtype::bfloat16>::value);
     if (is_supported_type2 &&
-        cols <=
-            static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
-        cols % num_vec_elems2 == 0 && can_vec_X2 && can_vec_Y2 &&
+        cols_int <= (1ULL << std::numeric_limits<float>::digits) &&
+        cols_int % num_vec_elems2 == 0 && can_vec_X2 && can_vec_Y2 &&
         can_vec_scale2) {
       launch_vectorized_rms_norm_kernel_driver<T, T_ACC, 8>(
-          cols,
+          cols_int,
           rows,
           static_cast<T_ACC>(epsilon),
           x_data,
@@ -944,11 +957,11 @@ void RMSNormFwdKernel(const Context& dev_ctx,
                             std::is_same<T, phi::dtype::bfloat16>::value);
 
   if (is_supported_type &&
-      cols <=
-          static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
-      cols % num_vec_elems == 0 && can_vec_X && can_vec_Y && can_vec_scale) {
+      cols_int <= (1ULL << std::numeric_limits<float>::digits) &&
+      cols_int % num_vec_elems == 0 && can_vec_X && can_vec_Y &&
+      can_vec_scale) {
     launch_vectorized_rms_norm_kernel_driver<T, T_ACC, 4>(
-        cols,
+        cols_int,
         rows,
         static_cast<T_ACC>(epsilon),
         x_data,
@@ -958,12 +971,23 @@ void RMSNormFwdKernel(const Context& dev_ctx,
         stream);
 
   } else {
+    // TODO(large-tensor): rows may exceed CUDA grid limit
+    PADDLE_ENFORCE_LE(
+        rows,
+        static_cast<int64_t>(std::numeric_limits<unsigned int>::max()),
+        common::errors::InvalidArgument(
+            "rows (%ld) exceeds CUDA grid limit (%u)",
+            rows,
+            std::numeric_limits<unsigned int>::max()));
     RowwiseMomentsCUDAKernel<T, T_ACC>
-        <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
-            cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
+        <<<static_cast<unsigned int>(rows),
+           kCUDABlockReduceNumThreads,
+           0,
+           stream>>>(cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
 
-    RMSNormForwardCUDAKernel<T, T_ACC><<<rows, kCUDANumThreads, 0, stream>>>(
-        cols, x_data, rstd_data, scale_data, y_data);
+    RMSNormForwardCUDAKernel<T, T_ACC>
+        <<<static_cast<unsigned int>(rows), kCUDANumThreads, 0, stream>>>(
+            cols, x_data, rstd_data, scale_data, y_data);
   }
 }
 
@@ -988,6 +1012,10 @@ void RMSNormBwdKernel(const Context& dev_ctx,
   auto matrix_dim = common::flatten_to_2d(X.dims(), begin_norm_axis);
   int64_t M = matrix_dim[0];
   int64_t N = matrix_dim[1];
+
+  // TODO(large-tensor): N may exceed INT_MAX
+  PADDLE_ENFORCE_LE_INT_MAX(N, "N");
+  int N_int = static_cast<int>(N);
 
   auto* scale_ptr = scale_opt.get_ptr();
   const DenseTensor& scale = *scale_ptr;
@@ -1023,7 +1051,15 @@ void RMSNormBwdKernel(const Context& dev_ctx,
     bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
                                std::is_same<T, phi::dtype::bfloat16>::value);
 
-    dim3 blocks(M);
+    // TODO(large-tensor): M may exceed CUDA grid limit
+    PADDLE_ENFORCE_LE(
+        M,
+        static_cast<int64_t>(std::numeric_limits<unsigned int>::max()),
+        common::errors::InvalidArgument(
+            "rows (%ld) exceeds CUDA grid limit (%u)",
+            M,
+            std::numeric_limits<unsigned int>::max()));
+    dim3 blocks(static_cast<unsigned int>(M));
     constexpr int num_threads = 128;
     constexpr int nshared = (num_threads / kWarpSize) * sizeof(T_ACC);
 
@@ -1033,15 +1069,15 @@ void RMSNormBwdKernel(const Context& dev_ctx,
         bAlignedBuffers2 && (N % 8 == 0 && M <= 1024 && (N / M >= 32))) {
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, 8>
           <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+              dY_data, X_data, invvar_data, scale_data, dX_data, N_int);
     } else if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
           <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+              dY_data, X_data, invvar_data, scale_data, dX_data, N_int);
     } else {
       rms_norm_grad_input_kernel<T, T_ACC>
           <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+              dY_data, X_data, invvar_data, scale_data, dX_data, N_int);
     }
   }
 
