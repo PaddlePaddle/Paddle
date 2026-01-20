@@ -22,12 +22,12 @@ limitations under the License. */
 namespace phi {
 
 struct ReAllocateVisitor {
-  ReAllocateVisitor(const phi::DDim& dims, phi::DenseTensor* tensor)
+  ReAllocateVisitor(const phi::DDim& dims, DenseTensor* tensor)
       : dims_(dims), tensor_(tensor) {}
 
   template <typename T>
   void operator()() const {
-    phi::DenseTensor cpu_tensor;
+    DenseTensor cpu_tensor;
     phi::CPUPlace cpu;
     T* ptr = cpu_tensor.mutable_data<T>(dims_, cpu);
     const T* old_ptr =
@@ -39,13 +39,13 @@ struct ReAllocateVisitor {
   }
 
   phi::DDim dims_;
-  phi::DenseTensor* tensor_;
+  DenseTensor* tensor_;
 };
 
 struct TensorCopyVisitor {
-  TensorCopyVisitor(phi::DenseTensor* dst,
+  TensorCopyVisitor(DenseTensor* dst,
                     int64_t dst_offset,
-                    const phi::DenseTensor src,
+                    const DenseTensor src,
                     int64_t src_offset,
                     int64_t size)
       : dst_(dst),
@@ -63,15 +63,15 @@ struct TensorCopyVisitor {
                 size_ * sizeof(T));
   }
 
-  phi::DenseTensor* dst_;
+  DenseTensor* dst_;
   int64_t dst_offset_;
-  phi::DenseTensor src_;
+  DenseTensor src_;
   int64_t src_offset_;
   int64_t size_;
 };
 
 struct TensorFillVisitor {
-  TensorFillVisitor(phi::DenseTensor* dst,
+  TensorFillVisitor(DenseTensor* dst,
                     int64_t dst_offset,
                     int64_t size,
                     float value)
@@ -87,7 +87,7 @@ struct TensorFillVisitor {
     std::fill(start, end, static_cast<T>(0.0));
   }
 
-  phi::DenseTensor* dst_;
+  DenseTensor* dst_;
   int64_t dst_offset_;
   int64_t size_;
 };
@@ -171,8 +171,8 @@ void SelectedRowsImpl::SyncIndex() {
   rwlock_->UNLock();
 }
 
-void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
-                           phi::DenseTensor* value,
+void SelectedRowsImpl::Get(const DenseTensor& ids,
+                           DenseTensor* value,
                            bool auto_grown,
                            bool is_test) {
   PADDLE_ENFORCE_EQ(

@@ -28,4 +28,4 @@ void FoldGradKernel(const Context& dev_ctx,
                     const std::vector<int>& paddings,
                     const std::vector<int>& dilations,
                     DenseTensor* x_grad);
-}
+}  // namespace phi

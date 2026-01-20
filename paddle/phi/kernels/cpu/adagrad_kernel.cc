@@ -35,7 +35,7 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
                   const DenseTensor& learning_rate,
-                  const paddle::optional<DenseTensor>& master_param,
+                  const optional<DenseTensor>& master_param,
                   float epsilon_t,
                   bool multi_precision,
                   DenseTensor* param_out_tensor,
@@ -67,7 +67,7 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
 template <typename T>
 struct SparseAdagradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::SelectedRows& grad,
+                  const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
                   DenseTensor* moment,

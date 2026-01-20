@@ -70,7 +70,7 @@ void CublasLtMatmulFP8(const GPUContext& dev_ctx,
                        const DenseTensor& mat_a,
                        const DenseTensor& mat_b,
                        const float scale,
-                       const paddle::optional<DenseTensor>& bias,
+                       const optional<DenseTensor>& bias,
                        const std::string& activation_type,
                        DenseTensor* out) {
   // init data structure
@@ -293,7 +293,7 @@ void cublaslt_fp8_fp8_fp16_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
-    const paddle::optional<DenseTensor>& bias,
+    const optional<DenseTensor>& bias,
     bool transpose_x,
     bool transpose_y,
     const float scale,  // only support per-tensor quantization
@@ -350,7 +350,7 @@ void cublaslt_fp8_fp8_bf16_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
-    const paddle::optional<DenseTensor>& bias,
+    const optional<DenseTensor>& bias,
     bool transpose_x,
     bool transpose_y,
     const float scale,  // only support per-tensor quantization

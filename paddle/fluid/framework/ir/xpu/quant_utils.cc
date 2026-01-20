@@ -27,19 +27,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void Assign(const phi::DenseTensor& in, phi::DenseTensor* out) {
+void Assign(const DenseTensor& in, DenseTensor* out) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   out->Resize(in.dims());
   out->set_type(in.dtype());
   out->set_layout(in.layout());
 
-  paddle::experimental::CheckAndTrans2Contiguous(
-      const_cast<phi::DenseTensor*>(&in));
+  paddle::experimental::CheckAndTrans2Contiguous(const_cast<DenseTensor*>(&in));
   phi::AssignKernel(*cpu_ctx, in, out);
 }
 
-void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
+void Transpose2D(DenseTensor* in, DenseTensor* out) {
   paddle::experimental::CheckAndTrans2Contiguous(in);
   auto in_dims = in->dims();
   PADDLE_ENFORCE_EQ(
@@ -50,7 +49,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
           in_dims.size()));
 
   DenseTensor trans_tensor;
-  phi::DenseTensor* out_ptr = out == nullptr ? &trans_tensor : out;
+  DenseTensor* out_ptr = out == nullptr ? &trans_tensor : out;
   out_ptr->Resize({in_dims[1], in_dims[0]});
   out_ptr->set_type(in->type());
   out_ptr->set_layout(in->layout());
@@ -83,12 +82,12 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   }
 }
 
-void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
+void CastToInt32(DenseTensor* in, DenseTensor* out) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
   DenseTensor int32_tensor;
-  phi::DenseTensor* out_ptr = out == nullptr ? &int32_tensor : out;
+  DenseTensor* out_ptr = out == nullptr ? &int32_tensor : out;
   out_ptr->Resize(in->dims());
   out_ptr->set_type(phi::DataType::INT32);
   out_ptr->set_layout(in->layout());
@@ -115,7 +114,7 @@ void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out) {
     Assign(*out_ptr, in);
   }
 }
-void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType out_dtype) {
+void CastTo(DenseTensor* in, DenseTensor* out, DataType out_dtype) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
 
@@ -128,7 +127,7 @@ void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType out_dtype) {
 
   paddle::experimental::CheckAndTrans2Contiguous(in);
   DenseTensor ori_tensor;
-  phi::DenseTensor* out_ptr = out == nullptr ? &ori_tensor : out;
+  DenseTensor* out_ptr = out == nullptr ? &ori_tensor : out;
   out_ptr->Resize(in->dims());
   out_ptr->set_type(out_dtype);
   out_ptr->set_layout(in->layout());
@@ -150,11 +149,11 @@ void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType out_dtype) {
   }
 }
 
-void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
+void CastToFp32(DenseTensor* in, DenseTensor* out) {
   CastTo(in, out, phi::DataType::FLOAT32);
 }
 
-void CastToFp16(phi::DenseTensor* in, phi::DenseTensor* out) {
+void CastToFp16(DenseTensor* in, DenseTensor* out) {
   CastTo(in, out, phi::DataType::FLOAT16);
 }
 
@@ -285,9 +284,9 @@ template <
     typename Tcpu,
     typename Txpu,
     typename std::enable_if<!std::is_same<Tcpu, float>::value, Tcpu>::type* ptr>
-void ConvertWithQuant(phi::DenseTensor* weight,
-                      phi::DenseTensor* weight_max,
-                      phi::DenseTensor* scale_max,
+void ConvertWithQuant(DenseTensor* weight,
+                      DenseTensor* weight_max,
+                      DenseTensor* scale_max,
                       bool transpose,
                       bool per_channel_quant) {
   std::stringstream ss;
@@ -299,9 +298,9 @@ template <
     typename Tcpu,
     typename Txpu,
     typename std::enable_if<std::is_same<Tcpu, float>::value, Tcpu>::type* ptr>
-void ConvertWithQuant(phi::DenseTensor* weight,
-                      phi::DenseTensor* weight_max,
-                      phi::DenseTensor* scale_max,
+void ConvertWithQuant(DenseTensor* weight,
+                      DenseTensor* weight_max,
+                      DenseTensor* scale_max,
                       bool transpose,
                       bool per_channel_quant) {
   // Convert fp16 to fp32
@@ -380,9 +379,9 @@ void ConvertWithQuant(phi::DenseTensor* weight,
 }
 
 template <typename T>
-void ConvertWithoutQuant(phi::DenseTensor* weight,
-                         phi::DenseTensor* weight_max,
-                         phi::DenseTensor* scale_max,
+void ConvertWithoutQuant(DenseTensor* weight,
+                         DenseTensor* weight_max,
+                         DenseTensor* scale_max,
                          bool transpose,
                          const std::vector<float>& weight_scales) {
   if (transpose) {
@@ -450,29 +449,29 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
   }
 }
 
-template void ConvertWithQuant<float, int16_t>(phi::DenseTensor* weight,
-                                               phi::DenseTensor* weight_max,
-                                               phi::DenseTensor* scale_max,
+template void ConvertWithQuant<float, int16_t>(DenseTensor* weight,
+                                               DenseTensor* weight_max,
+                                               DenseTensor* scale_max,
                                                bool transpose,
                                                bool per_channel_quant);
 
-template void ConvertWithQuant<float, int8_t>(phi::DenseTensor* weight,
-                                              phi::DenseTensor* weight_max,
-                                              phi::DenseTensor* scale_max,
+template void ConvertWithQuant<float, int8_t>(DenseTensor* weight,
+                                              DenseTensor* weight_max,
+                                              DenseTensor* scale_max,
                                               bool transpose,
                                               bool per_channel_quant);
 
 template void ConvertWithoutQuant<int8_t>(
-    phi::DenseTensor* weight,
-    phi::DenseTensor* weight_max,
-    phi::DenseTensor* scale_max,
+    DenseTensor* weight,
+    DenseTensor* weight_max,
+    DenseTensor* scale_max,
     bool transpose,
     const std::vector<float>& weight_scales);
 
 template void ConvertWithoutQuant<float>(
-    phi::DenseTensor* weight,
-    phi::DenseTensor* weight_max,
-    phi::DenseTensor* scale_max,
+    DenseTensor* weight,
+    DenseTensor* weight_max,
+    DenseTensor* scale_max,
     bool transpose,
     const std::vector<float>& weight_scales);
 
