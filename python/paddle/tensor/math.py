@@ -5101,10 +5101,7 @@ def deg2rad(
                 outputs={'Out': out_cast},
                 attrs={'in_dtype': x.dtype, 'out_dtype': paddle.float32},
             )
-        if out is None:
-            out = helper.create_variable_for_type_inference(
-                dtype=out_cast.dtype
-            )
+        out = helper.create_variable_for_type_inference(dtype=out_cast.dtype)
         helper.append_op(
             type='scale',
             inputs={'X': out_cast},
