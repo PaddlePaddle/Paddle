@@ -210,15 +210,13 @@ class Tensor : public TensorBase {
 
   Tensor pin_memory(
       ::std::optional<c10::Device> device = ::std::nullopt) const {
-    // 如果已经在 pinned memory，直接返回
     if (is_pinned(device)) {
       return *this;
     }
-    // 获取对应的 pinned place
+
     PaddlePlace current_place = tensor_.place();
     PaddlePlace pinned_place;
     if (phi::is_cpu_place(current_place)) {
-      // CPU place 应该 pin 到 GPUPinnedPlace
       pinned_place = phi::GPUPinnedPlace();
     } else {
       pinned_place = phi::GetPinnedPlace(current_place);
@@ -263,66 +261,13 @@ class Tensor : public TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
   }
 
-  at::Tensor squeeze() const {
-    return Tensor(paddle::experimental::squeeze(tensor_, {}));
-  }
-
-  at::Tensor squeeze(int64_t dim) const {
-    return Tensor(paddle::experimental::squeeze(tensor_, {dim}));
-  }
-
   at::Tensor squeeze(at::IntArrayRef dim) const {
     return Tensor(
         paddle::experimental::squeeze(tensor_, dim._PD_ToPaddleIntArray()));
   }
 
-  at::Tensor& squeeze_() const {
-    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-    paddle::experimental::squeeze_(self, {});
-    return const_cast<at::Tensor&>(*this);
-  }
-
-  at::Tensor& squeeze_(int64_t dim) const {
-    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-    paddle::experimental::squeeze_(self, {dim});
-    return const_cast<at::Tensor&>(*this);
-  }
-
-  at::Tensor& squeeze_(at::IntArrayRef dim) const {
-    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-    paddle::experimental::squeeze_(self, dim._PD_ToPaddleIntArray());
-    return const_cast<at::Tensor&>(*this);
-  }
-
-  at::Tensor unsqueeze() const {
-    return Tensor(paddle::experimental::unsqueeze(tensor_, {}));
-  }
-
   at::Tensor unsqueeze(int64_t dim) const {
     return Tensor(paddle::experimental::unsqueeze(tensor_, {dim}));
-  }
-
-  at::Tensor unsqueeze(at::IntArrayRef dim) const {
-    return Tensor(
-        paddle::experimental::unsqueeze(tensor_, dim._PD_ToPaddleIntArray()));
-  }
-
-  at::Tensor& unsqueeze_() const {
-    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-    paddle::experimental::unsqueeze_(self, {});
-    return const_cast<at::Tensor&>(*this);
-  }
-
-  at::Tensor& unsqueeze_(int64_t dim) const {
-    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-    paddle::experimental::unsqueeze_(self, {dim});
-    return const_cast<at::Tensor&>(*this);
-  }
-
-  at::Tensor& unsqueeze_(at::IntArrayRef dim) const {
-    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-    paddle::experimental::unsqueeze_(self, dim._PD_ToPaddleIntArray());
-    return const_cast<at::Tensor&>(*this);
   }
 
   at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
