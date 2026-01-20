@@ -17,11 +17,20 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Scalar.h>
+#include <c10/util/OptionalArrayRef.h>
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
 namespace at {
+// Forward declarations for DimnameList support
+struct Dimname;
+using DimnameList = c10::ArrayRef<Dimname>;
+
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
 class Tensor : public TensorBase {
@@ -332,6 +341,135 @@ class Tensor : public TensorBase {
   }
 #endif
 
+  Tensor std(int dim) const { return std(at::IntArrayRef{dim}, true, false); }
+
+  Tensor std(bool unbiased = true) const {
+    std::vector<int64_t> empty_dims;
+    double correction = unbiased ? 1.0 : 0.0;
+    return std_impl(empty_dims, correction, false);
+  }
+
+  Tensor std(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const {
+    // Convert unbiased to correction: unbiased=True means correction=1
+    double correction = unbiased ? 1.0 : 0.0;
+    std::vector<int64_t> dims_vec;
+    if (dim.has_value() && dim.value().size() > 0) {
+      dims_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return std_impl(dims_vec, correction, keepdim);
+  }
+
+  Tensor std(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const {
+    // Default correction is 1.0 (Bessel's correction)
+    double correction_value = 1.0;
+    if (correction.has_value()) {
+      // Convert at::Scalar to double
+      // at::Scalar is mapped to paddle::experimental::Scalar in compatibility
+      // layer
+      const at::Scalar& scalar = correction.value();
+      correction_value = scalar.to<double>();
+    }
+    std::vector<int64_t> dims_vec;
+    if (dim.has_value() && dim.value().size() > 0) {
+      dims_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return std_impl(dims_vec, correction_value, keepdim);
+  }
+
+  Tensor std(at::DimnameList dim, bool unbiased, bool keepdim = false) const {
+    PD_THROW(
+        "std: Paddle does not support named tensors (DimnameList). "
+        "Please use dimension indices instead.");
+  }
+
+  Tensor std(at::DimnameList dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const {
+    PD_THROW(
+        "std: Paddle does not support named tensors (DimnameList). "
+        "Please use dimension indices instead.");
+  }
+
+ private:
+  // Internal implementation for std (standard deviation = sqrt(variance))
+  Tensor std_impl(const std::vector<int64_t>& dims_vec,
+                  double correction_value,
+                  bool keepdim) const {
+    // Convert dims_vec to IntArray
+    phi::IntArray dims_int_array(dims_vec);
+
+    // Compute mean along specified dimensions (keepdim=true for intermediate)
+    PaddleTensor mean_tensor;
+    if (dims_vec.empty()) {
+      // Compute mean over all elements
+      mean_tensor = paddle::experimental::mean(
+          tensor_, phi::IntArray(std::vector<int64_t>{}), true);
+    } else {
+      mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
+    }
+
+    // Compute (x - mean)^2
+    PaddleTensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
+    PaddleTensor diff_squared = paddle::experimental::multiply(diff, diff);
+
+    // Compute sum of squared differences
+    PaddleTensor sum_squared_diff;
+    if (dims_vec.empty()) {
+      sum_squared_diff =
+          paddle::experimental::sum(diff_squared,
+                                    phi::IntArray(std::vector<int64_t>{}),
+                                    diff_squared.dtype(),
+                                    keepdim);
+    } else {
+      sum_squared_diff = paddle::experimental::sum(
+          diff_squared, dims_int_array, diff_squared.dtype(), keepdim);
+    }
+
+    // Calculate n (number of elements along reduced dimensions)
+    int64_t n = tensor_.numel();
+    if (!dims_vec.empty()) {
+      // Calculate number of elements along specified dimensions
+      n = 1;
+      for (int64_t d : dims_vec) {
+        int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
+        if (dim_idx >= 0 &&
+            dim_idx < static_cast<int64_t>(tensor_.dims().size())) {
+          n *= tensor_.dims()[dim_idx];
+        }
+      }
+    }
+
+    // Compute corrected_n = n - correction
+    double corrected_n = static_cast<double>(n) - correction_value;
+    if (corrected_n <= 0.0) {
+      corrected_n = static_cast<double>(n);
+    }
+
+    // Divide by corrected_n to get variance
+    // Convert dims to IntArray for full()
+    std::vector<int64_t> result_shape_vec;
+    for (int64_t i = 0; i < sum_squared_diff.dims().size(); ++i) {
+      result_shape_vec.push_back(sum_squared_diff.dims()[i]);
+    }
+    PaddleTensor correction_scalar =
+        paddle::experimental::full(phi::IntArray(result_shape_vec),
+                                   phi::Scalar(corrected_n),
+                                   sum_squared_diff.dtype(),
+                                   sum_squared_diff.place());
+    PaddleTensor variance =
+        paddle::experimental::divide(sum_squared_diff, correction_scalar);
+
+    // Compute standard deviation = sqrt(variance)
+    PaddleTensor result = paddle::experimental::sqrt(variance);
+
+    return Tensor(result);
+  }
+
+ public:
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };
