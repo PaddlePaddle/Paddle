@@ -17,7 +17,9 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Device.h>
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
@@ -97,6 +99,11 @@ class Tensor : public TensorBase {
 
   Tensor cpu() const {
     PaddlePlace place(phi::AllocationType::CPU);
+    return tensor_.copy_to(place, true);
+  }
+
+  Tensor cuda() const {
+    PaddlePlace place(phi::AllocationType::GPU);
     return tensor_.copy_to(place, true);
   }
 
@@ -195,6 +202,29 @@ class Tensor : public TensorBase {
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
+
+  bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
+    return phi::is_cuda_pinned_place(tensor_.place()) ||
+           phi::is_xpu_pinned_place(tensor_.place());
+  }
+
+  Tensor pin_memory(
+      ::std::optional<c10::Device> device = ::std::nullopt) const {
+    // 如果已经在 pinned memory，直接返回
+    if (is_pinned(device)) {
+      return *this;
+    }
+    // 获取对应的 pinned place
+    PaddlePlace current_place = tensor_.place();
+    PaddlePlace pinned_place;
+    if (phi::is_cpu_place(current_place)) {
+      // CPU place 应该 pin 到 GPUPinnedPlace
+      pinned_place = phi::GPUPinnedPlace();
+    } else {
+      pinned_place = phi::GetPinnedPlace(current_place);
+    }
+    return tensor_.copy_to(pinned_place, true);
+  }
 
   at::Tensor reshape(at::IntArrayRef shape) const {
     return Tensor(
