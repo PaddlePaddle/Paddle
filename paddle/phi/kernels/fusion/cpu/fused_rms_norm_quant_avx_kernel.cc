@@ -25,10 +25,10 @@ namespace fusion {
 template <typename T, typename Context>
 void RmsNormAvxKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& bias,
-                      const paddle::optional<DenseTensor>& residual,
+                      const optional<DenseTensor>& bias,
+                      const optional<DenseTensor>& residual,
                       const DenseTensor& norm_weight,
-                      const paddle::optional<DenseTensor>& norm_bias,
+                      const optional<DenseTensor>& norm_bias,
                       const float epsilon,
                       const int begin_norm_axis,
                       const float quant_scale,

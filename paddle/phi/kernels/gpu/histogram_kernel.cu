@@ -149,8 +149,7 @@ void HistogramKernel(const Context& dev_ctx,
   const int64_t input_numel = input.numel();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   if (input_numel == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -170,13 +169,13 @@ void HistogramKernel(const Context& dev_ctx,
         <<<block_num, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
             input_data, input_numel, block_num, min_block_ptr, max_block_ptr);
     // copy min max value from GPU to CPU
-    phi::memory_utils::Copy(phi::CPUPlace(),
+    phi::memory_utils::Copy(CPUPlace(),
                             &output_min,
                             min_max.place(),
                             min_block_ptr,
                             sizeof(T),
                             dev_ctx.stream());
-    phi::memory_utils::Copy(phi::CPUPlace(),
+    phi::memory_utils::Copy(CPUPlace(),
                             &output_max,
                             min_max.place(),
                             max_block_ptr,
@@ -250,7 +249,7 @@ void HistogramKernel(const Context& dev_ctx,
       DenseTensor sum = phi::Sum<float, Context>(
           dev_ctx, *output, phi::IntArray({0}), phi::DataType::FLOAT32, false);
       float sum_cpu;
-      phi::memory_utils::Copy(phi::CPUPlace(),
+      phi::memory_utils::Copy(CPUPlace(),
                               &sum_cpu,
                               sum.place(),
                               sum.data<float>(),

@@ -51,8 +51,7 @@ void PNormKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   auto xdim = x.dims();

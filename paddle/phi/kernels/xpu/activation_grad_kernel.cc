@@ -198,7 +198,7 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
         dev_ctx.x_context(), tmp, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-    auto x_dims = common::vectorize<int64_t>(x->dims());
+    auto x_dims = vectorize<int64_t>(x->dims());
 
     // use [1] to replace [], because xpu not support []
     if (x_dims.size() == 0) {
@@ -482,9 +482,9 @@ void PowGradKernel(const Context& dev_ctx,
   T* x_grad = dx->data<T>();
 
   // check dims: all dims should equal
-  auto x_dims = common::vectorize<int64_t>(x.dims());
-  auto dy_dims = common::vectorize<int64_t>(dout.dims());
-  auto dx_dims = common::vectorize<int64_t>(dx->dims());
+  auto x_dims = vectorize<int64_t>(x.dims());
+  auto dy_dims = vectorize<int64_t>(dout.dims());
+  auto dx_dims = vectorize<int64_t>(dx->dims());
   PADDLE_ENFORCE_EQ(x_dims,
                     dy_dims,
                     errors::PreconditionNotMet("x_dims should match dy_dims."));

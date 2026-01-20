@@ -6,6 +6,8 @@ extend-exclude = [
     "build",
     # Skip `creater` check in these files
     "paddle/fluid/inference/tensorrt/convert/CMakeLists.txt",
+    # Skip `exlucsive` check in these files for OldIR compatibility
+    "paddle/phi/ops/yaml/op_version.yaml",
 ]
 
 [default]

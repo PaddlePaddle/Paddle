@@ -775,7 +775,8 @@ PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
 
 PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
                                  const MetaTensor& scale,
-                                 float epsilon,
+                                 const std::vector<int64_t>& normalized_shape,
+                                 double epsilon,
                                  MetaTensor* y,
                                  MetaTensor* invvar);
 

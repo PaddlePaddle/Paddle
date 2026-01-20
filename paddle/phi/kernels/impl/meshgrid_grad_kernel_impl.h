@@ -35,8 +35,7 @@ void MeshgridBackward(const Context& dev_ctx,
       auto* out = outs[i];
       dev_ctx.template Alloc<T>(out);
       if (out->numel() != 0) {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        Full<T, Context>(dev_ctx, out->dims(), 0, out);
       }
     }
     return;

@@ -31,11 +31,7 @@ void PReluGradKernel(const Context& dev_ctx,
   if (x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (alpha_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(alpha_grad->dims())),
-          0,
-          alpha_grad);
+      Full<T, Context>(dev_ctx, alpha_grad->dims(), 0, alpha_grad);
     }
     return;
   }

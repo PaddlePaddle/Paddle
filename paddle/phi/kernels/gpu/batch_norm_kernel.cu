@@ -570,7 +570,7 @@ void BatchNormKernel(const Context &dev_ctx,
   }
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -937,7 +937,7 @@ void BatchNormKernel(const Context &dev_ctx,
     // if (dev_ctx.HasInput("MomentumTensor")) {
     //   const auto *mom_tensor = MomentumTensor;
     //   DenseTensor mom_cpu;
-    //   paddle::framework::TensorCopySync(*mom_tensor, phi::CPUPlace(),
+    //   paddle::framework::TensorCopySync(*mom_tensor, CPUPlace(),
     //                                     &mom_cpu);
     //   momentum = mom_cpu.data<float>()[0];
     // }

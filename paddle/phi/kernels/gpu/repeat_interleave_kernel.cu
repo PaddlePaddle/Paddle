@@ -98,7 +98,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -127,7 +127,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
 
     const int64_t* index_data = index.data<int64_t>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -159,7 +159,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
 
     const int* index_data = index.data<int>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
