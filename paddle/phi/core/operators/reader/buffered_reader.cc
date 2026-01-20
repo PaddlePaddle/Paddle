@@ -226,7 +226,7 @@ void BufferedReader::ReadAsync(size_t i) {
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
             phi::GPUPinnedPlace cuda_pinned_place;
-            phi::DenseTensor cuda_pinned_tensor;
+            DenseTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr =
                 dev_ctx_gpu->Alloc(&cuda_pinned_tensor,

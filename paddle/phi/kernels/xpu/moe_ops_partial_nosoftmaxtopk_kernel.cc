@@ -64,33 +64,15 @@ void MoeGateDispatchPartialNoSoftMaxTopkKernel(
   y->Resize({num_experts_diff * capacity, x.dims()[1]});
   dev_ctx.template Alloc<T>(y);
 
-  phi::Full<int32_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(scatter_index->dims())),
-      0,
-      scatter_index);
-  phi::Full<int32_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(scatter_index_rev->dims())),
-      0,
-      scatter_index_rev);
-  phi::Full<int64_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(expert_offset->dims())),
-      0,
-      expert_offset);
-  phi::Full<int64_t, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(expert_nums_local->dims())),
-      0,
-      expert_nums_local);
-  phi::Full<float, Context>(
-      dev_ctx,
-      phi::IntArray(common::vectorize(combine_weights_out->dims())),
-      0,
-      combine_weights_out);
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<int32_t, Context>(dev_ctx, scatter_index->dims(), 0, scatter_index);
+  Full<int32_t, Context>(
+      dev_ctx, scatter_index_rev->dims(), 0, scatter_index_rev);
+  Full<int64_t, Context>(dev_ctx, expert_offset->dims(), 0, expert_offset);
+  Full<int64_t, Context>(
+      dev_ctx, expert_nums_local->dims(), 0, expert_nums_local);
+  Full<float, Context>(
+      dev_ctx, combine_weights_out->dims(), 0, combine_weights_out);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
 
   int r = xpu::copy(dev_ctx.x_context(),
                     combine_weights.data<float>(),

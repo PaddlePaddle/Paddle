@@ -35,7 +35,7 @@ void ActCompute(
   } else if (act_type == tanh) {
     funcs::TanhFunctor<T>()(d, x, y);
   } else if (act_type == relu) {
-    if (place == phi::CPUPlace())
+    if (place == CPUPlace())
       funcs::ReluCPUFunctor<T>()(d, x, y);
     else
       funcs::ReluCUDAFunctor<T>()(d, x, y);

@@ -65,7 +65,7 @@ void SequencePoolKernel(const Context& dev_ctx,
 
   // Do not create index buffer for inference mode
   if (pooltype == "MAX" &&
-      (is_test == false || (dev_ctx.GetPlace() == phi::CPUPlace()) == false)) {
+      (is_test == false || (dev_ctx.GetPlace() == CPUPlace()) == false)) {
     index = max_index;
     index->Resize({dims});
     dev_ctx.template Alloc<int32_t>(index);

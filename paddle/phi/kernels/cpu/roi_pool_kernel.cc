@@ -39,10 +39,8 @@ void RoiPoolKernel(const Context& dev_ctx,
   int rois_num = static_cast<int>(boxes.dims()[0]);
 
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(arg_max->dims())), 0, arg_max);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<int64_t, Context>(dev_ctx, arg_max->dims(), 0, arg_max);
     return;
   }
 

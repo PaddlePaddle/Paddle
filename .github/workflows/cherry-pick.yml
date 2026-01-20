@@ -28,15 +28,19 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Cherry Pick
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.CHERRY_PICK_BOT_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BOT_USERNAME: ShigureNyako
+          BOT_EMAIL: shigure_nyako@outlook.com
+          REPO_NAME: ShigureNyako/Paddle
         run: |
           # Function to post comment
           post_comment() {
@@ -125,17 +129,28 @@ jobs:
               fi
 
               # Push
-              # Check if remote branch already exists, if so, force push? Or maybe fail?
-              # Force push is better to update the PR if we are re-running.
-              git push origin "$NEW_BRANCH" --force
+              # Construct authenticated URL for the fork
+              FORK_URL_AUTH="https://${BOT_USERNAME}:${GH_TOKEN}@github.com/${REPO_NAME}.git"
+
+              echo "Pushing to fork..."
+              git push "$FORK_URL_AUTH" "$NEW_BRANCH" --force
 
               # Create PR
-              NEW_TITLE="[$TARGET_BRANCH] $PR_TITLE"
+              # If PR_TITLE starts with "[", don't insert an extra space.
+              if [ "${PR_TITLE:0:1}" = "[" ]; then
+                NEW_TITLE="[$TARGET_BRANCH]$PR_TITLE"
+              else
+                NEW_TITLE="[$TARGET_BRANCH] $PR_TITLE"
+              fi
+
               NEW_BODY="$PR_BODY
 
-          Cherry-pick of #$PR_NUMBER
+          Cherry-pick of #$PR_NUMBER to \`$TARGET_BRANCH\`.
 
-          Close and reopen this PR to trigger CI checks."
+          <!-- devPR:https://github.com/PaddlePaddle/Paddle/pull/$PR_NUMBER -->"
+
+              # Prepare head ref for PR creation (owner:branch)
+              HEAD_REF="${BOT_USERNAME}:${NEW_BRANCH}"
 
               # Check if PR already exists
               EXISTING_PR=$(gh pr list --base "$TARGET_BRANCH" --head "$NEW_BRANCH" --json url --jq '.[0].url')
@@ -145,7 +160,7 @@ jobs:
                 post_comment "ℹ️ Cherry-pick PR already exists: $EXISTING_PR"
               else
                 # Create PR using gh CLI, ignoring errors because of "Resource not accessible" false positives
-                gh pr create --base "$TARGET_BRANCH" --head "$NEW_BRANCH" --title "$NEW_TITLE" --body "$NEW_BODY" || true
+                gh pr create --base "$TARGET_BRANCH" --head "$HEAD_REF" --title "$NEW_TITLE" --body "$NEW_BODY" || true
 
                 # Wait a bit for eventual consistency
                 sleep 2

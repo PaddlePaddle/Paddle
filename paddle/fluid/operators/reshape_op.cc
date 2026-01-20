@@ -266,7 +266,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
@@ -512,7 +512,7 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,
@@ -541,7 +541,7 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,

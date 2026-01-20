@@ -56,7 +56,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = common::vectorize(x.dims());
+  auto update_dims = vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -96,7 +96,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = common::vectorize(x.dims());
+  auto update_dims = vectorize(x.dims());
   int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];

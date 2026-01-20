@@ -873,3 +873,8 @@ inline void optional_swap(optional<T>& x, optional<T>& y) {
 }  // namespace optional_detail
 
 }  // namespace paddle
+
+namespace phi {
+template <class T>
+using optional = paddle::optional<T>;
+}

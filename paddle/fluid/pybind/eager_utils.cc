@@ -735,9 +735,9 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
     place = ::pybind11::handle(obj).cast<phi::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::GPUPlace>();
+    place = ::pybind11::handle(obj).cast<GPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::CPUPlace>();
+    place = ::pybind11::handle(obj).cast<CPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_xpuplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
@@ -840,9 +840,9 @@ std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
 #endif
 }
 
-phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
-    return ::pybind11::handle(obj).cast<phi::DenseTensor>();
+    return ::pybind11::handle(obj).cast<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "argument (position %d) must be "
@@ -852,16 +852,16 @@ phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
-                                                           ssize_t arg_pos) {
-  std::vector<phi::DenseTensor> result;
+std::vector<DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                      ssize_t arg_pos) {
+  std::vector<DenseTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_framework_tensor_pytype)) {
-        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<DenseTensor>());
       } else {
         PADDLE_THROW(common::errors::InvalidType(
             "argument (position %d) must be "
@@ -877,7 +877,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_framework_tensor_pytype)) {
-        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<DenseTensor>());
       } else {
         PADDLE_THROW(common::errors::InvalidType(
             "argument (position %d) must be "
@@ -896,7 +896,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
-    return {::pybind11::handle(obj).cast<phi::DenseTensor>()};
+    return {::pybind11::handle(obj).cast<DenseTensor>()};
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "argument (position %d) must be "
@@ -1072,6 +1072,49 @@ PyObject* ToPyObject(PyObject* args, ssize_t arg_idx) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
   Py_INCREF(obj);
   return obj;
+}
+
+PyObject* ToPyObject(
+    const paddle::Tensor& value,
+    PyObject* args,
+    PyObject* kwargs,
+    const std::map<ssize_t, ssize_t>& inplace_var_idx_map,
+    const std::map<ssize_t, std::vector<std::string>>& inplace_var_name_map) {
+  if (!inplace_var_idx_map.empty() && inplace_var_idx_map.count(0)) {
+    return ToPyObject(
+        args, kwargs, inplace_var_idx_map.at(0), inplace_var_name_map.at(0));
+  } else {
+    return ToPyObject(value);
+  }
+}
+
+PyObject* ToPyObject(PyObject* args,
+                     PyObject* kwargs,
+                     ssize_t arg_idx,
+                     std::vector<std::string> arg_names) {
+  // For inplace op, directly return the input PyObject of the inplace tensor.
+  // Used for apis with single output
+  // [Parameter]
+  // args: Input PyObject.
+  // kwargs: Input PyObject (keyword arg).
+  // arg_idx: Index of inplace PyObject in input args. Used to find the input
+  // arg_names: Name list of inplace PyObject in input args. Used to find the
+  // input
+  if (PyTuple_Size(args) > arg_idx) {
+    // inplace PyObject in args
+    PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+    Py_INCREF(obj);
+    return obj;
+  } else {
+    // inplace PyObject in kwargs
+    for (size_t i = 0; i < arg_names.size(); i++) {
+      PyObject* obj = PyDict_GetItemString(kwargs, arg_names[i].c_str());
+      if (obj) {
+        Py_INCREF(obj);
+        return obj;
+      }
+    }
+  }
 }
 
 PyObject* ToPyObject(const std::vector<bool>& value) {
@@ -2148,15 +2191,15 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   if (var_type == paddle::framework::proto::VarType::DENSE_TENSOR) {
     // TODO(jiabin): Maybe support LegacyLoD later
-    std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+    std::shared_ptr<DenseTensor> dense_tensor = nullptr;
     if (dims.size() == 1 && dims[0] == 0) {
       std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-      dense_tensor = std::make_shared<phi::DenseTensor>(
+      dense_tensor = std::make_shared<DenseTensor>(
           allocation_ptr,
           phi::DenseTensorMeta(phi::TransToPhiDataType(dtype), ddims));
     } else {
       // TODO(dev): we need enhance check for ddims.
-      dense_tensor = std::make_shared<phi::DenseTensor>(
+      dense_tensor = std::make_shared<DenseTensor>(
           std::make_shared<phi::Allocation>(),
           phi::DenseTensorMeta(phi::TransToPhiDataType(dtype), ddims));
     }
@@ -2464,7 +2507,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
     } else if (PyObject_CheckLong(item)) {
       int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
       value_list.emplace_back(
-          paddle::dialect::full(shape, k_tmp, dtype, phi::CPUPlace()));
+          paddle::dialect::full(shape, k_tmp, dtype, CPUPlace()));
     } else if (item == Py_None) {
       continue;  // skip
     } else {

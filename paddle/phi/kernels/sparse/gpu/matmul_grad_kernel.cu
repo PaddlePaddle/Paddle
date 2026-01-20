@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/matmul_grad_kernel.h"
-
-#include <vector>
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -37,7 +34,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCooTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
+#if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 403
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCoo} = dout{Dense} * y'{Dense}
@@ -74,18 +71,6 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
 #endif
   }
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
-      "CUDA 11.3"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(
-      common::errors::Unimplemented("backward of 'sparse.matmul' use "
-                                    "rocsparse_sddmm with transpose, which is "
-                                    "supported from "
-                                    "ROCM 4.3.0"));
-#endif
 #endif
 }
 
@@ -96,7 +81,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
+#if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 403
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
@@ -125,18 +110,6 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
-      "CUDA 11.3"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(
-      common::errors::Unimplemented("backward of 'sparse.matmul' use "
-                                    "rocsparse_sddmm with transpose, which is "
-                                    "supported from "
-                                    "ROCM 4.3.0"));
-#endif
 #endif
 }
 
@@ -147,7 +120,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& dout,
                             SparseCsrTensor* dx,
                             SparseCsrTensor* dy) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
@@ -162,7 +135,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   // dx{SparseCsr} = dout{SparseCsr} * y'{SparseCsr}
   if (dx) {
     // cusparseSpGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    // transopse y before cusparseSpGEMM computation.
+    // transpose y before cusparseSpGEMM computation.
     SparseCsrTensor trans_y;
     TransposeCsrKernel<T, Context>(dev_ctx, y, perm, &trans_y);
 
@@ -173,19 +146,13 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   // dy{SparseCsr} = x'{SparseCsr} * dout{SparseCsr}
   if (dy) {
     // cusparseSpGEMM only support CUSPARSE_OPERATION_NON_TRANSPOSE.
-    // transopse x before cusparseSpGEMM computation.
+    // transpose x before cusparseSpGEMM computation.
     SparseCsrTensor trans_x;
     TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &trans_x);
 
     sparse_blas.SPGEMM(
         false, false, static_cast<T>(1), trans_x, dout, static_cast<T>(0), dy);
   }
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSpGEMM, which is supported from "
-      "CUDA 11.0"));
-#endif
 #endif
 }
 
@@ -217,7 +184,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const SparseCsrTensor& dout,
                                DenseTensor* dx,
                                DenseTensor* dy) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{Dense} = dout{SparseCsr} * y'{Dense}

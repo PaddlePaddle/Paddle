@@ -60,10 +60,9 @@ class ConditionalBlockInferOp : public ConditionalOp {
       // vector or tensor, whether need to execute the operators in sub-block
       // depends on the input variables (Input).
       auto xs = InputTensors(scope, "Input");
-      need_run =
-          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
-            return t->numel() != 0;
-          });
+      need_run = std::all_of(xs.begin(), xs.end(), [](const DenseTensor *t) {
+        return t->numel() != 0;
+      });
     }
 
     if (need_run) {
