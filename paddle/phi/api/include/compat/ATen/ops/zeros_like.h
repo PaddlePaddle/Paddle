@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/sparse_api.h"
 
 namespace at {
 
@@ -32,11 +33,26 @@ inline at::Tensor zeros_like(
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
+  auto layout = options.layout();
+  if (layout == c10::kStrided && (self.is_sparse() || self.is_sparse_csr())) {
+    layout = self.layout();
+  }
+
+  auto dtype = options.dtype();
+  if (dtype == c10::ScalarType::Undefined) {
+    dtype = self.scalar_type();
+  }
+
+  paddle::Tensor base = self._PD_GetInner();
+  if (self.is_sparse() || self.is_sparse_csr()) {
+    base = paddle::experimental::sparse::to_dense(base);
+  }
+
   auto dense = paddle::experimental::zeros_like(
-      self._PD_GetInner(),
-      compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+      base,
+      compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       options._PD_GetPlace());
-  return detail::_PD_ConvertToSparseIfNeeded(dense, options.layout());
+  return detail::_PD_ConvertToSparseIfNeeded(dense, layout);
 }
 
 inline at::Tensor zeros_like(const at::Tensor& self,
@@ -51,13 +67,22 @@ inline at::Tensor zeros_like(const at::Tensor& self,
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
+  auto resolved_layout = layout.value_or(
+      (self.is_sparse() || self.is_sparse_csr()) ? self.layout()
+                                                 : c10::kStrided);
+  auto resolved_dtype = dtype.value_or(self.scalar_type());
+  auto resolved_device = device.value_or(self.device());
+
+  paddle::Tensor base = self._PD_GetInner();
+  if (self.is_sparse() || self.is_sparse_csr()) {
+    base = paddle::experimental::sparse::to_dense(base);
+  }
+
   auto dense = paddle::experimental::zeros_like(
-      self._PD_GetInner(),
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
-      device.value_or(at::kCPU)._PD_GetInner());
-  return detail::_PD_ConvertToSparseIfNeeded(dense,
-                                             layout.value_or(c10::kStrided));
+      base,
+      compat::_PD_AtenScalarTypeToPhiDataType(resolved_dtype),
+      resolved_device._PD_GetInner());
+  return detail::_PD_ConvertToSparseIfNeeded(dense, resolved_layout);
 }
 
 }  // namespace at

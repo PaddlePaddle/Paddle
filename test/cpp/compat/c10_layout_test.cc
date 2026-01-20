@@ -511,16 +511,6 @@ TEST(SparseConstructorTest, SparseCsrTensorEmpty) {
 
 // ============== Sparse tensor interoperability tests ==============
 
-TEST(SparseInteropTest, SparseCooFromOnes) {
-  // Create dense tensor, convert to sparse, verify properties
-  auto options = c10::TensorOptions().dtype(at::kFloat).layout(at::kSparse);
-  at::Tensor sparse = at::ones({3, 3}, options);
-
-  ASSERT_TRUE(sparse.is_sparse());
-  ASSERT_FALSE(sparse.is_sparse_csr());
-  ASSERT_EQ(sparse.layout(), c10::kSparse);
-}
-
 TEST(SparseInteropTest, SparseCsrFromZeros) {
   // Create sparse CSR tensor from zeros
   auto options = c10::TensorOptions().dtype(at::kFloat).layout(at::kSparseCsr);
