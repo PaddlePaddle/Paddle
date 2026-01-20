@@ -28,6 +28,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
 
+#include "paddle/phi/core/platform/profiler.h"
 namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;
@@ -872,7 +873,26 @@ void linear_v2_double_grad(const Tensor& input,
                         weight_grad,
                         grad_out_grad);
   if (bias_grad) {
-    add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+    if (grad_out.dims() != bias.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(bias.dims(), grad_out.dims());
+      if (!reduce_dim.size()) {
+        by_pass<T>(grad_out, bias_grad);
+      } else {
+        auto ograd_reduce_res =
+            grad_out.sum(common::vectorize(reduce_dim),
+                         grad_out.dtype(),
+                         bias.dims().size() == grad_out.dims().size());
+        if (ograd_reduce_res.dims() != bias.dims()) {
+          ograd_reduce_res =
+              reshape<T>(ograd_reduce_res, common::vectorize(bias.dims()));
+        }
+        set_output<T>(ograd_reduce_res, bias_grad);
+      }
+
+    } else {
+      by_pass<T>(grad_out, bias_grad);
+    }
   }
 }
 

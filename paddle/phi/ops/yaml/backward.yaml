@@ -2087,6 +2087,7 @@
   infer_meta :
     func : GeneralQuaternaryGradInferMeta
     param : [input, weight, bias, grad_out]
+  optional : grad_input_grad, grad_weight_grad, grad_bias_grad
   composite: linear_v2_double_grad(input, weight, bias, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, bias_grad, grad_out_grad)
 
 - backward_op : linear_v2_grad
