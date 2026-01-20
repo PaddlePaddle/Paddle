@@ -1219,7 +1219,7 @@ def fill_diagonal_(
         Tensor, Tensor with diagonal filled with value.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.ones((4, 3)) * 2
@@ -1228,7 +1228,7 @@ def fill_diagonal_(
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
 
             >>> # Use 'fill_value' alias (PyTorch compatible)
-            >>> x.fill_diagonal_(fill_value=0.0) # type: ignore
+            >>> x.fill_diagonal_(fill_value=0.0)  # type: ignore
             >>> print(x.tolist())
             [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
     """
