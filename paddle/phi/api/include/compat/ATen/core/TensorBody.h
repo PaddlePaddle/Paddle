@@ -412,7 +412,7 @@ class Tensor : public TensorBase {
     }
 #endif
     // Return a reference to an undefined tensor if grad doesn't exist
-    static Tensor undefined_tensor{PaddleTensor()};
+    thread_local static Tensor undefined_tensor{PaddleTensor()};
     return undefined_tensor;
   }
 
@@ -428,14 +428,12 @@ class Tensor : public TensorBase {
     }
 #endif
     // Return a reference to an undefined tensor if grad doesn't exist
-    static const Tensor undefined_tensor{PaddleTensor()};
+    thread_local static const Tensor undefined_tensor{PaddleTensor()};
     return undefined_tensor;
   }
 
-  // Forward-mode AD: This is not directly supported in Paddle
-  // Return an undefined tensor as a placeholder
   const Tensor& _fw_grad(uint64_t level) const {
-    static const Tensor undefined_tensor{PaddleTensor()};
+    thread_local static const Tensor undefined_tensor{PaddleTensor()};
     return undefined_tensor;
   }
 
