@@ -31,7 +31,6 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& mask,
                         DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
   if (x.numel() == 0 || mask.numel() == 0) {
     out->Resize(common::make_ddim({0}));
     dev_ctx.template Alloc<T>(out);
@@ -70,7 +69,6 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         "value.",
                         input_dim,
                         mask_dim));
-
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t* out_size = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
   int64_t out_size_cpu;
