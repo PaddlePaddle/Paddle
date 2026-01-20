@@ -2138,7 +2138,7 @@ class Device(str):
                     dev_index = int(idx)
                 else:
                     dev_type = t
-                    dev_index = 0 if t != "cpu" else None
+                    dev_index = None
 
         elif isinstance(type, int):
             dev_type = "cuda"
@@ -2150,7 +2150,7 @@ class Device(str):
         else:
             raise TypeError(f"Unsupported type for Device: {type}")
 
-        s = f"{dev_type}:{dev_index}" if dev_type != "cpu" else "cpu"
+        s = f"{dev_type}:{dev_index}" if dev_index else dev_type
         obj = str.__new__(cls, s)
         obj._dev_type = dev_type
         obj._index = dev_index

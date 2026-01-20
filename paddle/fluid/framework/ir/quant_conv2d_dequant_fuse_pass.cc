@@ -285,7 +285,7 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
         scope,
         common::errors::InvalidArgument(
             "Scope in QuantDequantFuse pass should not be null."));
-    const phi::DenseTensor& input_scale_tensor =
+    const DenseTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
@@ -408,7 +408,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
           common::errors::InvalidArgument(
               "Scales size in channel-wise dequantize op should be 2, got %d.",
               scales_name.size()));
-      const phi::DenseTensor& channel_scale_tensor =
+      const DenseTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(phi::is_cpu_place(channel_scale_tensor.place()),
                         true,

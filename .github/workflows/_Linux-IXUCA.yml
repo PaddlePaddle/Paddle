@@ -139,13 +139,18 @@ jobs:
       - name: Clone PaddleCustomDevice repository
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
-          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
-          tar -zxf PaddleCustomDevice-develop.tar.gz
-          mv PaddleCustomDevice-develop PaddleCustomDevice
+          git config --global --unset-all http.proxy || true
+          git config --global --unset-all https.proxy || true
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+          git config --global http.proxy "$http_proxy"
+          git config --global https.proxy "$https_proxy"
+          # Clone PaddleCustomDevice
+          git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git
           cd PaddleCustomDevice
           cp -r ../Paddle .
           git add Paddle
-          git commit -m "add Paddle to nightly"
+          git commit -m "add Paddle submodule"
 
       - name: Check docker image and run container
         if: steps.check-approval.outputs.can-skip != 'true'

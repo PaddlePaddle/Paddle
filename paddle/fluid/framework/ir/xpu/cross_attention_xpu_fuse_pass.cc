@@ -350,9 +350,9 @@ void CrossAttentionXPUFusePass::PrepareQKVBias(Graph* graph,
                                                Node** real_q_bias,
                                                Node** real_k_bias,
                                                Node** real_v_bias) const {
-  phi::DenseTensor* q_bias_tensor;
-  phi::DenseTensor* k_bias_tensor;
-  phi::DenseTensor* v_bias_tensor;
+  DenseTensor* q_bias_tensor;
+  DenseTensor* k_bias_tensor;
+  DenseTensor* v_bias_tensor;
   DenseTensor q_bias_fp32_tensor;
   DenseTensor k_bias_fp32_tensor;
   DenseTensor v_bias_fp32_tensor;
