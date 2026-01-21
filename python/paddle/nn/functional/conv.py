@@ -152,6 +152,52 @@ def _conv_nd(
     ).get(
         "FLAGS_use_accuracy_compatible_kernel", False
     )  # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    # Pre-validate shapes in eager/pir mode to catch invalid convolution
+    # configurations (e.g. dilated kernel larger than input) before calling
+    # into the C++ kernel, which could otherwise crash (e.g. Eigen shuffling
+    # with zero-sized output when using NHWC).
+    if in_dynamic_or_pir_mode() and op_type == "conv2d":
+        channel_last = data_format == "NHWC"
+        stride_list = convert_to_list(stride, 2, 'stride')
+        dilation_list = convert_to_list(dilation, 2, 'dilation')
+        padding, padding_algorithm = _update_padding_nd(
+            padding, channel_last, 2
+        )
+        paddings_wo_bc = _exclude_padding_in_batch_and_channel(
+            padding, channel_last
+        )
+
+        # Only run the check when all required dimensions are known.
+        in_shape = x.shape
+        w_shape = weight.shape
+        h_idx, w_idx = (1, 2) if channel_last else (2, 3)
+        if (
+            in_shape[h_idx] != -1
+            and in_shape[w_idx] != -1
+            and w_shape[2] != -1
+            and w_shape[3] != -1
+        ):
+            in_h, in_w = int(in_shape[h_idx]), int(in_shape[w_idx])
+            k_h, k_w = int(w_shape[2]), int(w_shape[3])
+
+            # Allow zero-sized inputs/filters to proceed; the kernel will
+            # short-circuit to produce empty outputs.
+            if in_h > 0 and in_w > 0 and k_h > 0 and k_w > 0:
+                eff_k_h = dilation_list[0] * (k_h - 1) + 1
+                eff_k_w = dilation_list[1] * (k_w - 1) + 1
+                out_h = in_h + paddings_wo_bc[0] + paddings_wo_bc[1] - eff_k_h
+                out_h = out_h // stride_list[0] + 1
+                out_w = in_w + paddings_wo_bc[2] + paddings_wo_bc[3] - eff_k_w
+                out_w = out_w // stride_list[1] + 1
+                if out_h <= 0 or out_w <= 0:
+                    raise ValueError(
+                        "Invalid convolution parameters lead to non-positive "
+                        f"output size: got H={out_h}, W={out_w}. Input "
+                        f"(H, W)=({in_h}, {in_w}), effective kernel="
+                        f"({eff_k_h}, {eff_k_w}), stride={stride_list}, "
+                        f"padding={paddings_wo_bc}, dilation={dilation_list}, "
+                        f"data_format={data_format}."
+                    )
     if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
