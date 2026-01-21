@@ -2161,34 +2161,43 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "Input(X) <= 65535 * 128, but got %d",
                         rows));
 
-  PADDLE_ENFORCE_EQ(cols % 128,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The last dim of Input(X) should be exactly divided "
-                        "by 128 , but got %d",
-                        cols));
+  PADDLE_ENFORCE_EQ(
+      cols % 4,
+      0,
+      common::errors::InvalidArgument(
+          "The last dimension of Input(X) should be divisible by 4, "
+          "but received last dimension is %d.",
+          cols));
 
-  if (rows % 128 != 0) {
+  if (rows % 128 != 0 || cols % 128 != 0) {
     PADDLE_ENFORCE_EQ(
         input_transpose,
         0,
-        common::errors::InvalidArgument("When rows is not aligned to 128, only "
-                                        "supports input_transpose=False, "
-                                        "but received input_transpose=%d.",
-                                        input_transpose));
+        common::errors::InvalidArgument(
+            "When rows(%d) or cols(%d) is not aligned to 128, "
+            "input_transpose should be False, but received input_transpose=%d.",
+            rows,
+            cols,
+            input_transpose));
+
     PADDLE_ENFORCE_EQ(return_transpose_only,
                       0,
                       common::errors::InvalidArgument(
-                          "When rows is not aligned to 128, only supports "
-                          "return_transpose_only=False, "
-                          "but received return_transpose_only=%d.",
+                          "When rows(%d) or cols(%d) is not aligned to 128, "
+                          "return_transpose_only should be False, but received "
+                          "return_transpose_only=%d.",
+                          rows,
+                          cols,
                           return_transpose_only));
+
     PADDLE_ENFORCE_EQ(using_1x128_vec_quant,
                       1,
                       common::errors::InvalidArgument(
-                          "When rows is not aligned to 128, only supports "
-                          "using_1x128_vec_quant=True, "
-                          "but received using_1x128_vec_quant=%d.",
+                          "When rows(%d) or cols(%d) is not aligned to 128, "
+                          "using_1x128_vec_quant should be True, but received "
+                          "using_1x128_vec_quant=%d.",
+                          rows,
+                          cols,
                           using_1x128_vec_quant));
   }
 
@@ -2263,7 +2272,6 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                               scale_transposed_outer_dim));
         scale_transposed_outer_dim /= 4;
       }
-
     } else {
       PADDLE_ENFORCE_EQ(
           scale_inner_dim % 4,
