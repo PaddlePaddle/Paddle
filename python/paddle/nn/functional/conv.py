@@ -754,6 +754,26 @@ def conv2d(
     stride = convert_to_list(stride, 2, 'stride')
     dilation = convert_to_list(dilation, 2, 'dilation')
 
+    # Calculate the effective kernel size after dilation
+    effective_kernel_h = dilation[0] * (weight.shape[2] - 1) + 1
+    effective_kernel_w = dilation[1] * (weight.shape[3] - 1) + 1
+
+    # Calculate the output height and width
+    output_h = (x.shape[1] + 2 * padding[0] - effective_kernel_h) // stride[
+        0
+    ] + 1
+    output_w = (x.shape[2] + 2 * padding[1] - effective_kernel_w) // stride[
+        1
+    ] + 1
+
+    # Check if the output dimensions are valid
+    if output_h <= 0 or output_w <= 0:
+        raise ValueError(
+            f"Invalid convolution parameters: the effective kernel size ({effective_kernel_h}, {effective_kernel_w}) "
+            f"exceeds the input size ({x.shape[1]}, {x.shape[2]}). "
+            f"Please adjust the stride, dilation, or padding."
+        )
+
     l_type = "conv2d"
     if (
         num_channels == groups
