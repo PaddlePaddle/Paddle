@@ -667,7 +667,7 @@ class ModelCheckpoint(Callback):
             >>> train_dataset = MNIST(mode='train', transform=transform)
 
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet, 
+            >>> model = paddle.Model(lenet,
             ...     inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
