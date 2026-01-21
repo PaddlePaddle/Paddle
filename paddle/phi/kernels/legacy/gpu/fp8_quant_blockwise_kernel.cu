@@ -749,8 +749,8 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
     const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     const size_t min_grid_x = sm_count * 8;
     const size_t min_block_x = 1024;
-    const size_t gridx = min(min_grid_x, src_rows);
-    const size_t blockx = min(min_block_x, src_cols / 128 * 32);
+    const size_t gridx = std::min(min_grid_x, src_rows);
+    const size_t blockx = std::min(min_block_x, src_cols / 128 * 32);
 
     quant_per_token_per_block_padding<NvType,
                                       ScaleT,
