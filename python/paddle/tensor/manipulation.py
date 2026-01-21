@@ -8123,12 +8123,17 @@ def index_fill(
 
 
 @inplace_apis_in_dygraph_only
+@ParamAliasDecorator({"axis": ["dim"]})
 def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
     Inplace version of ``index_fill`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_index_fill`.
+
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``index_fill_(x, index, dim=0, value=-1)`` is equivalent to ``index_fill_(x, index, axis=0, value=-1)``.
     """
     return _index_fill_impl(x, index, axis, value, True)
 

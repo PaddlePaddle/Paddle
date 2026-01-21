@@ -192,5 +192,30 @@ class TestIndexFillAPI_ZeroSize2(TestIndexFillAPI_ZeroSize):
         self.value = -1
 
 
+class TestIndexFillInplaceAlias(unittest.TestCase):
+    def test_alias_dim(self):
+        """Test that dim parameter works as an alias for axis in index_fill_"""
+        paddle.disable_static()
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+        index = paddle.to_tensor([0, 2], dtype='int32')
+
+        # Test using axis parameter
+        x1 = x.clone()
+        x1.index_fill_(index, axis=0, value=-1)
+
+        # Test using dim parameter (alias)
+        x2 = x.clone()
+        x2.index_fill_(index, dim=0, value=-1)
+
+        # Both should produce the same result
+        np.testing.assert_array_equal(x1.numpy(), x2.numpy())
+
+        # Verify the result is correct
+        expected = np.array([[-1, -1, -1], [4, 5, 6], [-1, -1, -1]])
+        np.testing.assert_array_equal(x1.numpy(), expected)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
