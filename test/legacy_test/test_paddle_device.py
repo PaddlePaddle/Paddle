@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import device as Device
+from paddle.device import current_device
 
 
 class TestDevice(unittest.TestCase):
@@ -24,21 +25,25 @@ class TestDevice(unittest.TestCase):
         self.assertEqual(str(d), "cpu")
         self.assertEqual(d.type, "cpu")
         self.assertIsNone(d.index)
+        self.assertEqual(repr(d), "device(type='cpu')")
 
+        current_device_id = current_device()
         d = Device("cuda")
-        self.assertEqual(str(d), "cuda")
+        self.assertEqual(str(d), "cuda:" + str(current_device_id))
         self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, None)
+        self.assertEqual(d.index, current_device_id)
+        if str(d) == "cuda:0":
+            self.assertEqual(repr(d), "device(type='cuda', index=0)")
 
         d = Device("gpu")
-        self.assertEqual(str(d), "gpu")
+        self.assertEqual(str(d), "gpu:" + str(current_device_id))
         self.assertEqual(d.type, "gpu")
-        self.assertEqual(d.index, None)
+        self.assertEqual(d.index, current_device_id)
 
         d = Device("xpu")
-        self.assertEqual(str(d), "xpu")
+        self.assertEqual(str(d), "xpu:" + str(current_device_id))
         self.assertEqual(d.type, "xpu")
-        self.assertEqual(d.index, None)
+        self.assertEqual(d.index, current_device_id)
 
     def test_str_with_index(self):
         d = Device("cuda", 1)
