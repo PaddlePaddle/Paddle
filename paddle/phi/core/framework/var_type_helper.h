@@ -42,7 +42,7 @@ struct DataTypeTrait<void> {
 };
 
 #define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
-  callback(cpp_type, VarType::proto_type);
+  callback(cpp_type, ::paddle::framework::proto::VarType::proto_type);
 
 #define _ForEachDataType_(callback)                                           \
   _ForEachDataTypeHelper_(callback, float, FP32);                             \
@@ -125,10 +125,12 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int16_t, INT16);               \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);
 
-#define DefineDataTypeTrait(cpp_type, proto_type)                    \
-  template <>                                                        \
-  struct DataTypeTrait<cpp_type> {                                   \
-    constexpr static VarType::Type DataType() { return proto_type; } \
+#define DefineDataTypeTrait(cpp_type, proto_type)                         \
+  template <>                                                             \
+  struct DataTypeTrait<cpp_type> {                                        \
+    constexpr static paddle::framework::proto::VarType::Type DataType() { \
+      return proto_type;                                                  \
+    }                                                                     \
   }
 
 _ForEachDataType_(DefineDataTypeTrait);
@@ -151,7 +153,8 @@ inline void VisitDataType(VarType::Type type, Visitor visitor) {
   _ForEachDataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not supported VarType::Type(%d) as data type.", static_cast<int>(type)));
+      "Not supported paddle::framework::proto::VarType::Type(%d) as data type.",
+      static_cast<int>(type)));
 }
 
 template <typename Visitor>
