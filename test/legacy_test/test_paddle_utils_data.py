@@ -14,6 +14,14 @@
 import unittest
 
 
+class TestUtilsAttrError(unittest.TestCase):
+    def test_error(self):
+        with self.assertRaises(AttributeError):
+            import paddle.utils
+
+            type(paddle.utils.nonexist)
+
+
 class TestAlias(unittest.TestCase):
     def setUp(self):
         from paddle.io import Dataset as IoDataset
