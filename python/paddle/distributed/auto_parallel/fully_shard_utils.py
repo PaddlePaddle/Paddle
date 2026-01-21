@@ -32,12 +32,10 @@ from .sharding import (
 
 
 class TensorFusionBuffer:
-    def __init__(
-        self, unique_key, params, sharding_degree, dtype, is_params=False
-    ):
+    def __init__(self, unique_key, params, fsdp_degree, dtype, is_params=False):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
-        self.sharding_degree = sharding_degree  # need fix
+        self.fsdp_degree = fsdp_degree  # need fix
         self.total_buffer_size = 0
         self.param2index = {}
         self.dtype = dtype
@@ -88,7 +86,7 @@ class TensorFusionBuffer:
         else:
             # Create fused grads_buffer with shard
             self.data_buffer = paddle.zeros(
-                shape=[self.total_buffer_size // self.sharding_degree],
+                shape=[self.total_buffer_size // self.fsdp_degree],
                 dtype=dtype,
             )
             # register get_main_grad method for each param, which returns view_slice of grad_buffer
@@ -114,7 +112,7 @@ class TensorFusionBuffer:
         align_size = (
             alignment[get_current_device_type()]
             // align[param.dtype]
-            * self.sharding_degree
+            * self.fsdp_degree
         )
         return ((size + align_size - 1) // align_size) * align_size
 
@@ -139,7 +137,7 @@ class FSDPBufferManager:
         for group in shard_groups:
             comm_group = dist.new_group(sorted(group))
             if dist.get_rank() in group:
-                self._sharding_group = comm_group
+                self._fsdp_group = comm_group
 
         parameters = model.parameters()
         freeze_parameters = [p for p in parameters if p.stop_gradient]
@@ -176,7 +174,7 @@ class FSDPBufferManager:
             params_buffer = TensorFusionBuffer(
                 group_idx,
                 params,
-                self._sharding_group.nranks,
+                self._fsdp_group.nranks,
                 params[0].dtype,
                 is_params=True,
             )
@@ -184,7 +182,7 @@ class FSDPBufferManager:
                 grads_buffer = TensorFusionBuffer(
                     group_idx,
                     params,
-                    self._sharding_group.nranks,
+                    self._fsdp_group.nranks,
                     paddle.float32,
                 )
             else:
@@ -219,7 +217,7 @@ class FSDPCommManager:
             if params_buffer.is_shard:
                 params_buffer.is_shard = False
                 tmp_buffer = params_buffer.get_tmp_buffer()
-                self.buffer_manager._sharding_group.process_group.all_gather(
+                self.buffer_manager._fsdp_group.process_group.all_gather(
                     params_buffer.data_buffer, tmp_buffer
                 ).wait()
                 index = params_buffer.param2index[param.name]
@@ -267,7 +265,7 @@ class FSDPCommManager:
                 grads_buffer.data_buffer,
                 tmp_grad_buffer,
                 op=paddle.distributed.ReduceOp.SUM,
-                group=self.buffer_manager._sharding_group,
+                group=self.buffer_manager._fsdp_group,
                 sync_op=False,
             ).wait()
             grads_buffer.clear_tmp_buffer()

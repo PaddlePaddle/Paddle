@@ -1682,9 +1682,8 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                param = params_grads[0][0]
-                if hasattr(param, 'buffer_manager'):
-                    buffer_manager = param.buffer_manager
+                if hasattr(params_grads[0][0], 'buffer_manager'):
+                    buffer_manager = params_grads[0][0].buffer_manager
                     new_params_grads = []
                     for group in buffer_manager.buffer_groups:
                         if not group["params_buffer"].data_buffer.stop_gradient:
@@ -1697,6 +1696,7 @@ class Optimizer:
                     params_grads = new_params_grads
                     if self._grad_clip is not None:
                         self._grad_clip.should_comm_on_shard_dim = True
+                        self._grad_clip.fsdp_group = buffer_manager._fsdp_group
                 elif auto_dp:
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
