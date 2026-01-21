@@ -142,6 +142,8 @@ jobs:
             echo "Rebase failed, attempting to continue with current state"
             git rebase --abort || true
           }
+          echo "Latest 5 commits after rebase:"
+          git log --oneline -5
 
       - name: Determine the runner
         if: steps.check-approval.outputs.can-skip != 'true'
