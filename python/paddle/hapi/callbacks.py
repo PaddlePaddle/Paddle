@@ -653,6 +653,7 @@ class ModelCheckpoint(Callback):
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
             >>> from paddle.static import InputSpec
+            >>> # doctest: +TIMEOUT(80)
 
             >>> paddle.seed(2023)
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
@@ -663,11 +664,10 @@ class ModelCheckpoint(Callback):
             ...     T.Normalize([127.5], [127.5])
             ... ])
 
-            >>> full_dataset = MNIST(mode='train', transform=transform)
-            >>> train_dataset = paddle.io.Subset(dataset=full_dataset, indices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+            >>> train_dataset = MNIST(mode='train', transform=transform)
 
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet,
+            >>> model = paddle.Model(lenet, 
             ...     inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
