@@ -4708,46 +4708,43 @@ def addcmul(
     tensor2: Tensor,
     value: float = 1.0,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
-    Performs the element-wise multiplication of tensor1 by tensor2,
-    multiplies the result by the scalar value, and adds it to input.
-
-    The equation is:
+    Computes the element-wise multiplication of ``tensor1`` and ``tensor2``,
+    multiplies the result by the scalar ``value``, and adds it to ``input``.
 
     .. math::
-        Out = input + value * tensor1 * tensor2
+        Out = input + value * (tensor1 * tensor2)
 
     Args:
-        input (Tensor): The input Tensor to be added to the final result.
-        tensor1 (Tensor): The first input Tensor for element-wise multiplication.
-        tensor2 (Tensor): The second input Tensor for element-wise multiplication.
-        value (float, optional): Multiplier for tensor1 * tensor2, default is 1.0.
+        input (Tensor): The input tensor to be added to the final result.
+            It's data type should be float16, float32, float64.
+        tensor1 (Tensor): The first tensor for element-wise multiplication.
+            It's data type should be float16, float32, float64.
+        tensor2 (Tensor): The second tensor for element-wise multiplication.
+            It's data type should be float16, float32, float64.
+        value (float, optional): The scalar multiplier for tensor1 * tensor2. Default: 1.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
+
     Returns:
-        Tensor: The output Tensor of addcmul.
+        Tensor: The result tensor, whose data type is the same as ``input``.
 
     Examples:
         .. code-block:: pycon
 
             >>> import paddle
-
-            >>> input = paddle.ones([2, 2])
-            >>> tensor1 = paddle.ones([2, 2]) * 2
-            >>> tensor2 = paddle.ones([2, 2]) * 3
-
-            >>> out = paddle.addcmul(
-            ...     input=input,
-            ...     tensor1=tensor1,
-            ...     tensor2=tensor2,
-            ...     value=0.5,
-            ... )
-
-            >>> print(out)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[4., 4.],
-             [4., 4.]])
+            >>> input = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> tensor1 = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> tensor2 = paddle.to_tensor([10.0, 20.0, 30.0, 40.0])
+            >>> result = paddle.addcmul(input, tensor1, tensor2, value=0.1)
+            >>> print(result)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.10000002, 2.40000010, 3.90000010, 5.60000038])
     """
     ...
 
