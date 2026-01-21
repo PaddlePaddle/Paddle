@@ -1986,6 +1986,11 @@ PHI_DEFINE_EXPORTED_string(
     "For instance, /usr/local/cuda/lib64. If default, "
     "dlopen will search cuda from LD_LIBRARY_PATH");
 
+PHI_DEFINE_EXPORTED_bool(
+    search_nccl_in_system,
+    false,
+    "Whether to search nccl in system path when using pip cuda libraries");
+
 PHI_DEFINE_EXPORTED_string(cupti_dir,
                            "",
                            "Specify path for loading cupti.so.");  // NOLINT
