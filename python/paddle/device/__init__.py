@@ -2138,7 +2138,7 @@ class Device(str):
                     dev_index = int(idx)
                 else:
                     dev_type = t
-                    dev_index = current_device() if t != "cpu" else None
+                    dev_index = None
 
         elif isinstance(type, int):
             dev_type = "cuda"
@@ -2149,8 +2149,10 @@ class Device(str):
 
         else:
             raise TypeError(f"Unsupported type for Device: {type}")
-
-        s = f"{dev_type}:{dev_index}" if dev_type != 'cpu' else 'cpu'
+        cond = None
+        s = f"{dev_type}:{dev_index}" if dev_index != cond else dev_type
+        if dev_type == 'cpu':
+            s = 'cpu'
         obj = str.__new__(cls, s)
         obj._dev_type = dev_type
         obj._index = dev_index
@@ -2175,8 +2177,8 @@ class Device(str):
             raise ValueError(f"Unsupported device type: {self.type}")
 
     def __repr__(self) -> str:
-        if self.type == "cpu":
-            return "device(type='cpu')"
+        if self.type == "cpu" or self.index is None:
+            return f"device(type='{self.type}')"
         return f"device(type='{self.type}', index={self.index})"
 
     def __dlpack_device__(self) -> tuple[int, int]:
