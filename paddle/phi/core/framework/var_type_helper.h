@@ -42,7 +42,7 @@ struct DataTypeTrait<void> {
 };
 
 #define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
-  callback(cpp_type, ::VarType::proto_type);
+  callback(cpp_type, VarType::proto_type);
 
 #define _ForEachDataType_(callback)                                           \
   _ForEachDataTypeHelper_(callback, float, FP32);                             \
