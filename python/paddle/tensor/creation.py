@@ -3707,7 +3707,7 @@ def complex(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
@@ -3715,8 +3715,12 @@ def complex(
             >>> z = paddle.complex(x, y)
             >>> print(z)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[0j    , 1j    , 2j    ],
-             [(1+0j), (1+1j), (1+2j)]])
+            [[(0.00000000+0.00000000j),
+              (0.00000000+1.00000000j),
+              (0.00000000+2.00000000j)],
+             [(1.00000000+0.00000000j),
+              (1.00000000+1.00000000j),
+              (1.00000000+2.00000000j)]])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.complex(real, imag, out=out)
@@ -3767,26 +3771,26 @@ def tril_indices(
         where the first row contains row coordinates of and the second row contains column coordinates.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # example 1, default offset value
-            >>> data1 = paddle.tril_indices(4,4,0)
+            >>> data1 = paddle.tril_indices(4, 4, 0)
             >>> print(data1)
             Tensor(shape=[2, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3],
              [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]])
 
             >>> # example 2, positive offset value
-            >>> data2 = paddle.tril_indices(4,4,2)
+            >>> data2 = paddle.tril_indices(4, 4, 2)
             >>> print(data2)
             Tensor(shape=[2, 15], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
              [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]])
 
             >>> # example 3, negative offset value
-            >>> data3 = paddle.tril_indices(4,4,-1)
+            >>> data3 = paddle.tril_indices(4, 4, -1)
             >>> print(data3)
             Tensor(shape=[2, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1, 2, 2, 3, 3, 3],
