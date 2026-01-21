@@ -36,7 +36,6 @@ COMMON_DECLARE_string(cudnn_dir);
 COMMON_DECLARE_string(cuda_dir);
 COMMON_DECLARE_string(cublas_dir);
 COMMON_DECLARE_string(nccl_dir);
-COMMON_DECLARE_bool(search_nccl_in_system);
 COMMON_DECLARE_string(cupti_dir);
 COMMON_DECLARE_string(tensorrt_dir);
 COMMON_DECLARE_string(mklml_dir);
@@ -332,8 +331,7 @@ static inline void* GetDsoHandleFromSearchPath(
     const std::string& dso_name,
     bool throw_on_error = true,
     const std::vector<std::string>& extra_paths = std::vector<std::string>(),
-    const std::string& warning_msg = std::string(),
-    bool search_system_path = true) {
+    const std::string& warning_msg = std::string()) {
 #if !defined(_WIN32)
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
 #else
@@ -367,7 +365,7 @@ static inline void* GetDsoHandleFromSearchPath(
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
     // 2. search in system default path
-    if (nullptr == dso_handle && search_system_path) {
+    if (nullptr == dso_handle) {
       dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
     }
     // 3. search in extra paths
@@ -944,12 +942,8 @@ void* GetNCCLDsoHandle() {
       FLAGS_rccl_dir, "librccl.so", true, {}, warning_msg);
 #else
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
-  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir,
-                                    "libnccl.so;libnccl.so.2",
-                                    true,
-                                    {},
-                                    warning_msg,
-                                    FLAGS_search_nccl_in_system);
+  return GetDsoHandleFromSearchPath(
+      FLAGS_nccl_dir, "libnccl.so.2;libnccl.so", true, {}, warning_msg);
 #else
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(
