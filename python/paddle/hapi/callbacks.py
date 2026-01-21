@@ -647,7 +647,7 @@ class ModelCheckpoint(Callback):
             If None, will not save checkpoint. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
         
             >>> import paddle
             >>> import paddle.vision.transforms as T
