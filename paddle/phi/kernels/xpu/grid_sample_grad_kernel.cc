@@ -29,7 +29,6 @@ void GridSampleGradKernel(const Context& dev_ctx,
                           bool align_corners,
                           DenseTensor* x_grad,
                           DenseTensor* grid_grad) {
-                            
   if (out_grad.numel() == 0) {
     if (x_grad) {
       Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
@@ -39,7 +38,7 @@ void GridSampleGradKernel(const Context& dev_ctx,
     }
     return;
   }
-    PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_EQ(
       x.dims().size(),
       4,
       common::errors::InvalidArgument(

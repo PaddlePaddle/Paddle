@@ -271,6 +271,7 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
         paddle.disable_static()
         np.testing.assert_allclose(res[0], self.ref_out, rtol=5e-03, atol=1e-03)
 
+
 class TestMemEffAttentionVariableAPI_ZeroHeadsMaskMismatch(unittest.TestCase):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
@@ -314,6 +315,7 @@ class TestMemEffAttentionVariableAPI_ZeroHeadsMaskMismatch(unittest.TestCase):
 
         self.assertEqual(out.numel(), 0)
         paddle.enable_static()
+
 
 if __name__ == '__main__':
     unittest.main()

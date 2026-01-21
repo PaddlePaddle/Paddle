@@ -560,6 +560,7 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
 
             self.no_need_check_grad = True
 
+
 class TestGridSampleGrad5DZeroBatchXPU(unittest.TestCase):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
@@ -589,6 +590,7 @@ class TestGridSampleGrad5DZeroBatchXPU(unittest.TestCase):
         self.assertEqual(list(x.grad.shape), [0, 64, 80, 94, 311])
         self.assertEqual(list(grid.grad.shape), [0, 280, 376, 25, 3])
         paddle.enable_static()
+
 
 support_types = get_xpu_op_support_types('grid_sampler')
 for stype in support_types:
