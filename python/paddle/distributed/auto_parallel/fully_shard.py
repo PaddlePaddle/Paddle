@@ -38,7 +38,7 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
     for param, _ in parameters_and_grads:
         optimizer._create_accumulators(
             target_block,
-            [param],  # need fix with local_value
+            [param],
         )
         target_name = param.name
         if param.name in optimizer._master_weights.keys():
@@ -76,11 +76,10 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
 
 
 class FullyShardAuto:
-    def __init__(self, model, mesh):
+    def __init__(self, model, mesh, enable_tensor_fusion=True):
         self.model = model
         self.mesh = mesh
-        use_fusion = True
-        if use_fusion:
+        if enable_tensor_fusion:
             self.init_tensor_fusion()
             self.register_tensor_fusion_hooks(model)
         else:

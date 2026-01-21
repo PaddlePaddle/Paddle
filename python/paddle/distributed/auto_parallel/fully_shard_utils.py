@@ -26,9 +26,6 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 )
 from paddle.framework import core
 
-from .moe_utils import (
-    _dtensor_from_local,
-)
 from .sharding import (
     get_mesh_comm_list,
 )
@@ -44,22 +41,19 @@ class TensorFusionBuffer:
         self.total_buffer_size = 0
         self.param2index = {}
         self.dtype = dtype
+        self.tmp_data_buffer = None
         for param in params:
             self.param2index[param.name] = self.total_buffer_size
             self.total_buffer_size += self.get_padded_size(param)
-        # Create fused buffers
-        self.data_buffer = paddle.zeros(
-            shape=[self.total_buffer_size],
-            dtype=dtype,
-        )
-        self.d_name = "fused_tensor_" + str(unique_key)  # need fix
-        self.d_stop_gradient = params[0].stop_gradient
-        self.d_optimize_attr = params[0].optimize_attr
-        self.tmp_data_buffer = None
 
         if is_params:
+            # Create fused params_buffer
+            self.data_buffer = paddle.zeros(
+                shape=[self.total_buffer_size],
+                dtype=dtype,
+            )
+            self.is_shard = True
             for param in params:
-                optimize_attr = param.optimize_attr
                 index = self.param2index[param.name]
                 stop_gradient = param.stop_gradient
                 param.stop_gradient = True
@@ -72,16 +66,31 @@ class TensorFusionBuffer:
                     ),
                 )
                 param.stop_gradient = stop_gradient
-                tmp_param = paddle._C_ops.view_slice(
-                    self.data_buffer,
-                    index,
-                    index + param._numel(),
-                )
-                param._local_value().data = tmp_param
+                param._local_value()._clear_data()
 
                 paddle.device.cuda.empty_cache()
-
+            mesh = dist.auto_parallel.get_mesh()
+            curr_global_rank = paddle.distributed.get_rank()
+            if curr_global_rank in mesh.process_ids:
+                total_nums = self.data_buffer.shape[0]
+                num_of_pieces = mesh.shape[0]
+                piece_len = (total_nums + num_of_pieces - 1) // num_of_pieces
+                rank_relative = mesh.process_ids.index(curr_global_rank)
+                start = rank_relative * piece_len
+                end = min(start + piece_len, total_nums)
+                self.data_buffer = paddle.slice(
+                    self.data_buffer, [0], [start], [end]
+                )
+            # init params_buffer attr
+            self.data_buffer.name = "fuse_params_" + str(unique_key)
+            self.data_buffer.stop_gradient = params[0].stop_gradient
+            self.data_buffer.optimize_attr = params[0].optimize_attr
         else:
+            # Create fused grads_buffer with shard
+            self.data_buffer = paddle.zeros(
+                shape=[self.total_buffer_size // self.sharding_degree],
+                dtype=dtype,
+            )
             # register get_main_grad method for each param, which returns view_slice of grad_buffer
             for param in params:
                 if param.trainable:
@@ -99,21 +108,6 @@ class TensorFusionBuffer:
                         return tmp_grad
 
                     param.get_main_grad = main_grad_getter.__get__(param)
-
-        self.data_buffer = _dtensor_from_local(
-            self.data_buffer,
-            dist.auto_parallel.get_mesh(),
-            [dist.Replicate()],  # need fix
-        )
-        self.data_buffer = dist.reshard(
-            self.data_buffer, dist.auto_parallel.get_mesh(), [dist.Shard(0)]
-        )
-
-        if is_params:  # need fix
-            self.data_buffer.stop_gradient = stop_gradient
-            self.data_buffer.optimize_attr = optimize_attr
-
-        self.data_buffer.name = "fused_params_" + str(unique_key)
 
     def get_padded_size(self, param):
         size = np.prod(param._local_shape)
@@ -199,27 +193,26 @@ class FSDPCommManager:
         self.buffer_manager = buffer_manager
 
     def all_gather_params(self, params):
-        if len(params) == 0:
-            return
         for param in params:
             group_idx = self.buffer_manager.param_to_buffer_group[param.name]
             self.buffer_manager.buffer_groups[group_idx]["params_use_cnt"] += 1
-            buffer = self.buffer_manager.buffer_groups[group_idx][
+
+            params_buffer = self.buffer_manager.buffer_groups[group_idx][
                 "params_buffer"
-            ].data_buffer
-            if buffer.placements[0] == dist.Shard(0):
-                name = buffer.name  # need fix with hand comm
-                stop_grad = param.stop_gradient
-                buffer = dist.reshard(
-                    buffer,
-                    buffer.process_mesh,
-                    [dist.Replicate(), dist.Replicate(), dist.Replicate()],
+            ]
+            if params_buffer.is_shard:
+                params_buffer.is_shard = False
+                tmp_buffer = params_buffer.get_tmp_buffer()
+                self.buffer_manager._sharding_group.process_group.all_gather(
+                    params_buffer.data_buffer, tmp_buffer
+                ).wait()
+                index = params_buffer.param2index[param.name]
+                tmp_param = paddle._C_ops.view_slice(
+                    tmp_buffer,
+                    index,
+                    index + param._numel(),
                 )
-                buffer.name = name
-                buffer.stop_gradient = stop_grad
-                self.buffer_manager.buffer_groups[group_idx][
-                    "params_buffer"
-                ].data_buffer = buffer
+                param._local_value().data = tmp_param
 
     def shard_params(self, params):
         for param in params:
@@ -233,19 +226,11 @@ class FSDPCommManager:
                 self.buffer_manager.buffer_groups[group_idx][
                     "params_use_cnt"
                 ] = 0
-                buffer = self.buffer_manager.buffer_groups[group_idx][
+                params_buffer = self.buffer_manager.buffer_groups[group_idx][
                     "params_buffer"
-                ].data_buffer
-                name = buffer.name  # need fix with hand comm
-                stop_grad = param.stop_gradient
-                buffer = dist.reshard(
-                    buffer, buffer.process_mesh, [dist.Shard(0)]
-                )
-                buffer.name = name
-                buffer.stop_gradient = stop_grad
-                self.buffer_manager.buffer_groups[group_idx][
-                    "params_buffer"
-                ].data_buffer = buffer
+                ]
+                params_buffer.is_shard = True
+                params_buffer.clear_tmp_buffer()
 
     def reduce_scatter_grad(self, param):
         group_idx = self.buffer_manager.param_to_buffer_group[param.name]
@@ -261,30 +246,15 @@ class FSDPCommManager:
             ].get_tmp_buffer()
             grads_buffer = self.buffer_manager.buffer_groups[group_idx][
                 "grads_buffer"
-            ].data_buffer
-
-            tmp_grad_buffer = _dtensor_from_local(
+            ]
+            paddle.distributed.reduce_scatter(
+                grads_buffer.data_buffer,
                 tmp_grad_buffer,
-                dist.auto_parallel.get_mesh(),
-                [
-                    dist.Partial(dist.ReduceType.kRedSum),
-                    dist.Replicate(),
-                    dist.Replicate(),
-                ],  # 这里最好改成全Replicate
-            )
-            tmp_grad_buffer = dist.reshard(
-                tmp_grad_buffer,
-                tmp_grad_buffer.process_mesh,
-                [dist.Shard(0), dist.Replicate(), dist.Replicate()],
-            )
-            grads_buffer.get_tensor()._share_data_with(
-                tmp_grad_buffer.get_tensor()
-            )  # need fix
-
-            # clear tmp_grad_buffer
-            self.buffer_manager.buffer_groups[group_idx][
-                "grads_buffer"
-            ].clear_tmp_buffer()
+                op=paddle.distributed.ReduceOp.SUM,
+                group=self.buffer_manager._sharding_group,
+                sync_op=False,
+            ).wait()
+            grads_buffer.clear_tmp_buffer()
 
 
 class FusionLayerHook(PyLayer):
