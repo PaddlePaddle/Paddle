@@ -4023,9 +4023,9 @@ def geometric_(
             >>> # doctest: +SKIP('random check')
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 4., 1., 2.],
-             [2., 1., 1., 3.],
-             [1., 5., 1., 1.]])
+            [[2.42739224, 4.78268528, 1.23302543, 3.76555204],
+             [1.38877118, 0.16075331, 0.16401523, 2.47349310],
+             [1.72872102, 2.76533413, 0.33410925, 1.63351011]])
 
     """
     tiny = np.finfo(dtype=convert_dtype(x.dtype)).tiny
