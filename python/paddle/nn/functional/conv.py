@@ -800,25 +800,38 @@ def conv2d(
     stride = convert_to_list(stride, 2, 'stride')
     dilation = convert_to_list(dilation, 2, 'dilation')
 
-    # Calculate the effective kernel size after dilation
-    effective_kernel_h = dilation[0] * (weight.shape[2] - 1) + 1
-    effective_kernel_w = dilation[1] * (weight.shape[3] - 1) + 1
+    # Validate output size only when all spatial dims and kernel dims are known
+    # and positive. Zero-sized inputs/filters are allowed to pass through and
+    # will yield empty outputs in the kernel.
+    spatial_known = (
+        x.shape[1] != -1
+        and x.shape[2] != -1
+        and weight.shape[2] != -1
+        and weight.shape[3] != -1
+    )
+    if spatial_known:
+        in_h, in_w = int(x.shape[1]), int(x.shape[2])
+        k_h, k_w = int(weight.shape[2]), int(weight.shape[3])
+        if in_h > 0 and in_w > 0 and k_h > 0 and k_w > 0:
+            # Calculate the effective kernel size after dilation
+            effective_kernel_h = dilation[0] * (k_h - 1) + 1
+            effective_kernel_w = dilation[1] * (k_w - 1) + 1
 
-    # Calculate the output height and width
-    output_h = (x.shape[1] + 2 * padding[0] - effective_kernel_h) // stride[
-        0
-    ] + 1
-    output_w = (x.shape[2] + 2 * padding[1] - effective_kernel_w) // stride[
-        1
-    ] + 1
+            # Calculate the output height and width
+            output_h = (in_h + 2 * padding[0] - effective_kernel_h) // stride[
+                0
+            ] + 1
+            output_w = (in_w + 2 * padding[1] - effective_kernel_w) // stride[
+                1
+            ] + 1
 
-    # Check if the output dimensions are valid
-    if output_h <= 0 or output_w <= 0:
-        raise ValueError(
-            f"Invalid convolution parameters: the effective kernel size ({effective_kernel_h}, {effective_kernel_w}) "
-            f"exceeds the input size ({x.shape[1]}, {x.shape[2]}). "
-            f"Please adjust the stride, dilation, or padding."
-        )
+            # Check if the output dimensions are valid
+            if output_h <= 0 or output_w <= 0:
+                raise ValueError(
+                    "Invalid convolution parameters: the effective kernel size "
+                    f"({effective_kernel_h}, {effective_kernel_w}) exceeds the input "
+                    f"size ({in_h}, {in_w}). Please adjust the stride, dilation, or padding."
+                )
 
     l_type = "conv2d"
     if (
