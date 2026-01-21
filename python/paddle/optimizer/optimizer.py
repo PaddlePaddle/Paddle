@@ -1682,7 +1682,31 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                if auto_dp:
+                if hasattr(params_grads[0][0], 'buffer_manager'):
+                    buffer_manager = params_grads[0][0].buffer_manager
+                    new_params_grads = []
+                    for group in buffer_manager.buffer_groups:
+                        group[
+                            "params_buffer"
+                        ].data_buffer.stop_gradient = group[
+                            "params_buffer"
+                        ].d_stop_gradient
+                        group[
+                            "params_buffer"
+                        ].data_buffer.optimize_attr = group[
+                            "params_buffer"
+                        ].d_optimize_attr
+                        group[
+                            "params_buffer"
+                        ].data_buffer._need_shard_auto = True
+                        new_params_grads.append(
+                            (
+                                group["params_buffer"].data_buffer,
+                                group["grads_buffer"].data_buffer,
+                            )
+                        )
+                    params_grads = new_params_grads
+                elif auto_dp:
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
                     )
