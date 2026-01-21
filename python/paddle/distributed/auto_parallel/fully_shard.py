@@ -76,7 +76,7 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
 
 
 class FullyShardAuto:
-    def __init__(self, model, mesh, enable_tensor_fusion=True):
+    def __init__(self, model, mesh, enable_tensor_fusion=False):
         self.model = model
         self.mesh = mesh
         if enable_tensor_fusion:

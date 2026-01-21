@@ -1687,12 +1687,13 @@ class Optimizer:
                     buffer_manager = param.buffer_manager
                     new_params_grads = []
                     for group in buffer_manager.buffer_groups:
-                        new_params_grads.append(
-                            (
-                                group["params_buffer"].data_buffer,
-                                group["grads_buffer"].data_buffer,
+                        if not group["params_buffer"].data_buffer.stop_gradient:
+                            new_params_grads.append(
+                                (
+                                    group["params_buffer"].data_buffer,
+                                    group["grads_buffer"].data_buffer,
+                                )
                             )
-                        )
                     params_grads = new_params_grads
                     if self._grad_clip is not None:
                         self._grad_clip.should_comm_on_shard_dim = True

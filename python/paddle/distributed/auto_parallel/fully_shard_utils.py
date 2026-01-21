@@ -142,22 +142,31 @@ class FSDPBufferManager:
                 self._sharding_group = comm_group
 
         parameters = model.parameters()
+        freeze_parameters = [p for p in parameters if p.stop_gradient]
+        trainable_parameters = [p for p in parameters if not p.stop_gradient]
 
         # create buffer_groups
         comm_buffer_size_MB = 256  # need fix
         group_size = comm_buffer_size_MB * 1024 * 1024
-        is_sparse_gradient = [False] * len(parameters)
-        shape_dict = {param.name: param.shape for param in parameters}
-        dense_params = [param._local_value() for param in parameters]
-        # group params according to comm_buffer_size_MB
-        group_indices = core.eager_assign_group_by_size(
-            dense_params, is_sparse_gradient, [group_size, group_size]
-        )
 
         vars_groups = OrderedDict()
-        for group_idx, indices in enumerate(group_indices):
-            for i in indices:
-                vars_groups.setdefault(group_idx, []).append(parameters[i])
+        curr_group_idx = 0
+
+        for cur_params in [freeze_parameters, trainable_parameters]:
+            if len(cur_params) == 0:
+                continue
+            is_sparse_gradient = [False] * len(cur_params)
+            dense_params = [param._local_value() for param in cur_params]
+            # group params according to comm_buffer_size_MB
+            group_indices = core.eager_assign_group_by_size(
+                dense_params, is_sparse_gradient, [group_size, group_size]
+            )
+            for indices in group_indices:
+                for i in indices:
+                    vars_groups.setdefault(curr_group_idx, []).append(
+                        cur_params[i]
+                    )
+                curr_group_idx += 1
 
         self.buffer_groups = []
         self.param_to_buffer_group = {}
@@ -171,9 +180,16 @@ class FSDPBufferManager:
                 params[0].dtype,
                 is_params=True,
             )
-            grads_buffer = TensorFusionBuffer(
-                group_idx, params, self._sharding_group.nranks, paddle.float32
-            )
+            if not params[0].stop_gradient:
+                grads_buffer = TensorFusionBuffer(
+                    group_idx,
+                    params,
+                    self._sharding_group.nranks,
+                    paddle.float32,
+                )
+            else:
+                grads_buffer = None
+
             self.buffer_groups.append(
                 {
                     "params_buffer": params_buffer,
