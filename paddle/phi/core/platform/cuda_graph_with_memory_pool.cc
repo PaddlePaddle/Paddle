@@ -423,7 +423,7 @@ void BeginCUDAGraphCapture(phi::XPUPlace place,
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = true;
   }
-  // 多流
+
   if (num_stream > 1) {
     // Set cuda graph allocator for all streams.
     // Establish dependencies between cuda graph stream and all other streams
