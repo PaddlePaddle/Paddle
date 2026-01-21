@@ -101,7 +101,7 @@ std::string IntTypeToString<int16_t>() {
 }
 
 template <typename T>
-size_t HashTensor(const phi::DenseTensor& in) {
+size_t HashTensor(const DenseTensor& in) {
   size_t ret = 0;
   auto in_dims = in.dims();
   HashCombine(&ret,
@@ -120,12 +120,12 @@ size_t HashTensor(const phi::DenseTensor& in) {
   return ret;
 }
 
-template size_t HashTensor<int16_t>(const phi::DenseTensor& in);
-template size_t HashTensor<float>(const phi::DenseTensor& in);
-template size_t HashTensor<int8_t>(const phi::DenseTensor& in);
+template size_t HashTensor<int16_t>(const DenseTensor& in);
+template size_t HashTensor<float>(const DenseTensor& in);
+template size_t HashTensor<int8_t>(const DenseTensor& in);
 
 template <>
-size_t HashTensor<float16>(const phi::DenseTensor& in) {
+size_t HashTensor<float16>(const DenseTensor& in) {
   DenseTensor dst_tensor;
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
@@ -141,8 +141,8 @@ std::string GetPrefixWithoutHash(const std::string& name) {
   return found == std::string::npos ? name : name.substr(0, found);
 }
 
-void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
-                           phi::DenseTensor* weight_max,
+void ConvertFromFp32ToFp16(DenseTensor* weight,
+                           DenseTensor* weight_max,
                            bool transpose) {
   // Convert fp16 to fp32
   DenseTensor weight_fp32;
