@@ -85,6 +85,8 @@ class CUDAGraph:
             elif is_compiled_with_xpu():
                 device_id = int(os.environ.get('FLAGS_selected_xpus', 0))
                 place = XPUPlace(device_id)
+            elif check_compiled_with_custom_device():
+                place = current_expected_place()
             else:
                 raise RuntimeError("Not Supported devices")
 
