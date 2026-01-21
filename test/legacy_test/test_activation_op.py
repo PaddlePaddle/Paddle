@@ -3474,6 +3474,35 @@ class TestLeakyReluInplaceAPI(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
 
 
+class TestInplaceOpsCoverage(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_relu_inplace_coverage(self):
+        x_np = np.array([-1.0, 0.0, 1.0]).astype('float32')
+        x = paddle.to_tensor(x_np)
+
+        # Directly call relu_ from activation.py
+        res = paddle.nn.functional.relu_(x)
+
+        expected = np.maximum(x_np, 0)
+        np.testing.assert_allclose(res.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_inplace_coverage(self):
+        x_np = np.array([-1.0, 0.0, 1.0]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        negative_slope = 0.1
+
+        # Directly call leaky_relu_ from activation.py
+        res = paddle.nn.functional.leaky_relu_(x, negative_slope=negative_slope)
+
+        expected = np.where(x_np > 0, x_np, x_np * negative_slope)
+        np.testing.assert_allclose(res.numpy(), expected, rtol=1e-05)
+
+
 def gelu(x, approximate):
     if approximate:
         y_ref = (
