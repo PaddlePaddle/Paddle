@@ -26,6 +26,10 @@ namespace backends {
 namespace xpu {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
+XPUStream CUDAGraph::created_stream_{nullptr};
+XPUStream CUDAGraph::original_stream_{nullptr};
+bool CUDAGraph::stream_created_{false};
+
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
 std::vector<std::function<void()>> CUDAGraph::cudagraph_pre_capture_callbacks_;
 
@@ -126,16 +130,32 @@ void CUDAGraph::BeginCapture(phi::XPUPlace place,
   // Create CUDAGraph instance, which will create a new stream in constructor
   // and set it as the current device stream
   capturing_graph_.reset(new CUDAGraph());
-  capturing_graph_->place_ = place;
+
   // Get the stream from the device context after constructor has set it
   // The constructor has already created a new stream and set it as current
   // device stream
-  phi::XPUContext *dev_ctx = phi::get_xpu_context(place.GetDeviceId());
+  // Create a new stream and set it as the current device stream
+  int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+  phi::backends::xpu::XPUDeviceGuard guard(device_id);
+
+  // Get current XPUContext and save original stream
+  phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
+  XPUStream current_stream = dev_ctx->stream(0);
+
+  if (current_stream == nullptr) {
+    original_stream_ = current_stream;
+    // Create new stream
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&created_stream_));
+    stream_created_ = true;
+    // Set the new stream as current stream
+    dev_ctx->SetStream(created_stream_, 0);
+  }
   XPUStream actual_stream = dev_ctx->stream(0);
   PADDLE_ENFORCE_NOT_NULL(
       actual_stream,
       common::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
+  capturing_graph_->place_ = place;
   capturing_graph_->stream_ = actual_stream;
   capturing_graph_->capture_mode_ = mode;
   if (mode == xpuStreamCaptureModeThreadLocal) {
@@ -194,11 +214,24 @@ void CUDAGraph::EndSegmentCapture() {
       cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
-#endif
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   EndSegmentCapture();
+  // Destroy the created stream before reset
+  if (stream_created_ && created_stream_ != nullptr) {
+    int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+    phi::backends::xpu::XPUDeviceGuard guard(device_id);
+
+    phi::XPUContext *dev_ctx = phi::get_xpu_context(device_id);
+    dev_ctx->SetStream(original_stream_, 0);
+
+    // Destroy the created stream
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(created_stream_));
+    created_stream_ = nullptr;
+    stream_created_ = false;
+    capturing_graph_->stream_ = original_stream_;
+  }
   capturing_thread_id_ = paddle::none;
   return std::move(capturing_graph_);
 }
@@ -305,3 +338,4 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi
+#endif
