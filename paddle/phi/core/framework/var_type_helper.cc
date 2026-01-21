@@ -13,16 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/core/framework/var_type_helper.h"
-
-#include <string>
-
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"
-
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using pstring = phi::dtype::pstring;
 
 namespace phi {
 

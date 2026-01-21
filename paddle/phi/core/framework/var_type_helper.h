@@ -16,22 +16,15 @@
 #include <iostream>
 #include <string>
 #include <typeindex>
-
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
-#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/framework/framework.pb.h"
-#include "paddle/utils/test_macros.h"
 
 namespace phi {
+using VarType = paddle::framework::proto::VarType;
 
-PADDLE_API std::string VarDataTypeToString(
-    const paddle::framework::proto::VarType::Type type);
-TEST_API extern size_t SizeOfType(paddle::framework::proto::VarType::Type type);
+PADDLE_API std::string VarDataTypeToString(const VarType::Type type);
+TEST_API extern size_t SizeOfType(VarType::Type type);
 
 template <typename T>
 struct IsComplex : public std::false_type {};
@@ -45,13 +38,11 @@ struct DataTypeTrait {};
 // Stub handle for void
 template <>
 struct DataTypeTrait<void> {
-  constexpr static paddle::framework::proto::VarType::Type DataType() {
-    return paddle::framework::proto::VarType::RAW;
-  }
+  constexpr static VarType::Type DataType() { return VarType::RAW; }
 };
 
 #define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
-  callback(cpp_type, ::paddle::framework::proto::VarType::proto_type);
+  callback(cpp_type, ::VarType::proto_type);
 
 #define _ForEachDataType_(callback)                                           \
   _ForEachDataTypeHelper_(callback, float, FP32);                             \
@@ -134,26 +125,21 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int16_t, INT16);               \
   _ForEachDataTypeHelper_(callback, int8_t, INT8);
 
-#define DefineDataTypeTrait(cpp_type, proto_type)                         \
-  template <>                                                             \
-  struct DataTypeTrait<cpp_type> {                                        \
-    constexpr static paddle::framework::proto::VarType::Type DataType() { \
-      return proto_type;                                                  \
-    }                                                                     \
+#define DefineDataTypeTrait(cpp_type, proto_type)                    \
+  template <>                                                        \
+  struct DataTypeTrait<cpp_type> {                                   \
+    constexpr static VarType::Type DataType() { return proto_type; } \
   }
 
 _ForEachDataType_(DefineDataTypeTrait);
 
 #undef DefineDataTypeTrait
 
-TEST_API extern paddle::framework::proto::VarType::Type ToDataType(
-    std::type_index type);
-extern std::type_index ToTypeIndex(
-    paddle::framework::proto::VarType::Type type);
+TEST_API extern VarType::Type ToDataType(std::type_index type);
+extern std::type_index ToTypeIndex(VarType::Type type);
 
 template <typename Visitor>
-inline void VisitDataType(paddle::framework::proto::VarType::Type type,
-                          Visitor visitor) {
+inline void VisitDataType(VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallback(cpp_type, proto_type) \
   do {                                              \
     if (type == proto_type) {                       \
@@ -165,13 +151,11 @@ inline void VisitDataType(paddle::framework::proto::VarType::Type type,
   _ForEachDataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not supported paddle::framework::proto::VarType::Type(%d) as data type.",
-      static_cast<int>(type)));
+      "Not supported VarType::Type(%d) as data type.", static_cast<int>(type)));
 }
 
 template <typename Visitor>
-inline void VisitDataTypeSmall(paddle::framework::proto::VarType::Type type,
-                               Visitor visitor) {
+inline void VisitDataTypeSmall(VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallbackSmall(cpp_type, proto_type) \
   do {                                                   \
     if (type == proto_type) {                            \
@@ -186,8 +170,7 @@ inline void VisitDataTypeSmall(paddle::framework::proto::VarType::Type type,
 
 // for normal dtype, int, int64, float, float64, float16
 template <typename Visitor>
-inline void VisitDataTypeNormal(paddle::framework::proto::VarType::Type type,
-                                Visitor visitor) {
+inline void VisitDataTypeNormal(VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallbackNormal(cpp_type, proto_type) \
   do {                                                    \
     if (type == proto_type) {                             \
@@ -201,8 +184,7 @@ inline void VisitDataTypeNormal(paddle::framework::proto::VarType::Type type,
 }
 
 template <typename Visitor>
-inline void VisitIntDataType(paddle::framework::proto::VarType::Type type,
-                             Visitor visitor) {
+inline void VisitIntDataType(VarType::Type type, Visitor visitor) {
 #define VisitIntDataTypeCallback(cpp_type, proto_type) \
   do {                                                 \
     if (type == proto_type) {                          \
@@ -220,8 +202,7 @@ inline void VisitIntDataType(paddle::framework::proto::VarType::Type type,
 }
 
 template <typename Visitor>
-inline void VisitDataTypeTiny(paddle::framework::proto::VarType::Type type,
-                              Visitor visitor) {
+inline void VisitDataTypeTiny(VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallbackTiny(cpp_type, proto_type) \
   do {                                                  \
     if (type == proto_type) {                           \
@@ -235,8 +216,7 @@ inline void VisitDataTypeTiny(paddle::framework::proto::VarType::Type type,
 }
 
 template <typename Visitor>
-inline void VisitDataTypeForHIP(paddle::framework::proto::VarType::Type type,
-                                Visitor visitor) {
+inline void VisitDataTypeForHIP(VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallbackHIP(cpp_type, proto_type) \
   do {                                                 \
     if (type == proto_type) {                          \
@@ -249,29 +229,24 @@ inline void VisitDataTypeForHIP(paddle::framework::proto::VarType::Type type,
 #undef VisitDataTypeCallbackHIP
 }
 
-inline std::ostream& operator<<(
-    std::ostream& out, const paddle::framework::proto::VarType::Type& type) {
+inline std::ostream& operator<<(std::ostream& out, const VarType::Type& type) {
   out << VarDataTypeToString(type);
   return out;
 }
 
-extern inline bool IsComplexType(
-    const paddle::framework::proto::VarType::Type& type) {
-  return (type == paddle::framework::proto::VarType::COMPLEX64 ||
-          type == paddle::framework::proto::VarType::COMPLEX128);
+extern inline bool IsComplexType(const VarType::Type& type) {
+  return (type == VarType::COMPLEX64 || type == VarType::COMPLEX128);
 }
 
-extern paddle::framework::proto::VarType::Type PromoteTypesIfComplexExists(
-    const paddle::framework::proto::VarType::Type type_a,
-    const paddle::framework::proto::VarType::Type type_b);
+extern VarType::Type PromoteTypesIfComplexExists(const VarType::Type type_a,
+                                                 const VarType::Type type_b);
 
-extern inline paddle::framework::proto::VarType::Type ToComplexType(
-    paddle::framework::proto::VarType::Type t) {
+extern inline VarType::Type ToComplexType(VarType::Type t) {
   switch (t) {
-    case paddle::framework::proto::VarType::FP32:
-      return paddle::framework::proto::VarType::COMPLEX64;
-    case paddle::framework::proto::VarType::FP64:
-      return paddle::framework::proto::VarType::COMPLEX128;
+    case VarType::FP32:
+      return VarType::COMPLEX64;
+    case VarType::FP64:
+      return VarType::COMPLEX128;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unknown real value data type (%s), now only support float32 and "
@@ -280,13 +255,12 @@ extern inline paddle::framework::proto::VarType::Type ToComplexType(
   }
 }
 
-extern inline paddle::framework::proto::VarType::Type ToRealType(
-    paddle::framework::proto::VarType::Type t) {
+extern inline VarType::Type ToRealType(VarType::Type t) {
   switch (t) {
-    case paddle::framework::proto::VarType::COMPLEX64:
-      return paddle::framework::proto::VarType::FP32;
-    case paddle::framework::proto::VarType::COMPLEX128:
-      return paddle::framework::proto::VarType::FP64;
+    case VarType::COMPLEX64:
+      return VarType::FP32;
+    case VarType::COMPLEX128:
+      return VarType::FP64;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unknown complex value data type (%s), now only support complex64 "
