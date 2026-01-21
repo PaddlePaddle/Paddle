@@ -313,44 +313,33 @@ class TestInverseAPICompatibility(unittest.TestCase):
         x = paddle.to_tensor(self.np_input)
         paddle_dygraph_out = []
 
-        # 位置参数 (args)
         out1 = paddle.inverse(x)
         paddle_dygraph_out.append(out1)
 
-        # Paddle关键字参数 (kwargs)
         out2 = paddle.inverse(x=x)
         paddle_dygraph_out.append(out2)
 
-        # Torch关键字参数
         out3 = paddle.inverse(input=x)
         paddle_dygraph_out.append(out3)
 
-        # 测试out参数
         out4 = paddle.empty(self.out_shape)
         paddle.inverse(x, out=out4)
         paddle_dygraph_out.append(out4)
 
-        # Tensor方法 - kwargs
         out5 = x.inverse()
         paddle_dygraph_out.append(out5)
 
-        # Numpy参考输出
         ref_out = np.linalg.inv(self.np_input)
-
-        # 验证所有输出
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5)
         paddle.enable_static()
 
     def test_edge_cases(self):
-        """测试边缘情况"""
         paddle.disable_static()
 
-        # 测试有效矩阵的正常计算
         x = paddle.to_tensor(self.np_input)
         out = paddle.inverse(x)
 
-        # 验证计算结果
         expected = np.linalg.inv(self.np_input)
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
         paddle.enable_static()
@@ -362,11 +351,8 @@ class TestInverseAPICompatibility(unittest.TestCase):
         with base.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
 
-            # 位置参数
             out1 = paddle.inverse(x)
-            # Paddle关键字参数
             out2 = paddle.inverse(x=x)
-            # Torch关键字参数
             out3 = paddle.inverse(input=x)
 
             exe = base.Executor(paddle.CPUPlace())
@@ -383,18 +369,15 @@ class TestInverseAPICompatibility(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_input)
 
-        # Tensor方法调用
         out1 = x.inverse()
-        out2 = x.inverse()  # 重复测试验证一致性
+        out2 = x.inverse()
         np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-5)
         paddle.enable_static()
 
     def test_parameter_aliases(self):
-        """测试参数别名映射功能"""
         paddle.disable_static()
         x = paddle.to_tensor(self.np_input)
 
-        # 使用所有支持的别名进行测试
         output_default = paddle.inverse(x)
         output_torch = paddle.inverse(input=x)
 
@@ -403,13 +386,11 @@ class TestInverseAPICompatibility(unittest.TestCase):
         )
 
     def test_dimension_validation(self):
-        """测试维度验证"""
         paddle.disable_static()
 
-        # 测试0维输入（应该报错）
+        # 0D Tensor should raise ValueError
         scalar_input = paddle.to_tensor(1.0)
         with self.assertRaises(ValueError):
-            # 输入维度不足2
             paddle.inverse(scalar_input)
         paddle.enable_static()
 
