@@ -4007,8 +4007,8 @@ def geometric_(
     Args:
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (float|Tensor): Probability parameter.
+            Alias for ``probs``.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
-        p (float|Tensor, optional): Alias for ``probs``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4029,11 +4029,9 @@ def geometric_(
 
     """
     tiny = np.finfo(dtype=convert_dtype(x.dtype)).tiny
-    with paddle.no_grad():
-        probs = paddle.to_tensor(probs).astype(x.dtype)
-        x.uniform_(min=float(tiny), max=float(1))
-        x.log_().divide_(paddle.log1p(-(probs)))
-        x.floor_().add_(paddle.to_tensor(1.0, dtype=x.dtype))
+    probs = paddle.to_tensor(probs).astype(x.dtype)
+    x.uniform_(min=float(tiny), max=float(1))
+    x.log_().divide_(paddle.log1p(-(probs)))
     return x
 
 
