@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void SwiGluKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& y,
+                  const optional<DenseTensor>& y,
                   DenseTensor* z) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();

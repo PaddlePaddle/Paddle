@@ -46,7 +46,7 @@ void AffineChannelKernel(const Context& dev_ctx,
   auto* y = out;
   dev_ctx.template Alloc<T>(y);
 
-  const DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int N = static_cast<int>(dims[0]);

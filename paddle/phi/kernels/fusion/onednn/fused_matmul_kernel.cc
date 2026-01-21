@@ -440,7 +440,7 @@ template <typename T, typename Context>
 void FusedMatmulKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        const DenseTensor &y,
-                       const paddle::optional<DenseTensor> &residual_data,
+                       const optional<DenseTensor> &residual_data,
                        bool transpose_x,
                        bool transpose_y,
                        const float matmul_alpha,

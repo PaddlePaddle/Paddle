@@ -35,9 +35,9 @@ namespace phi {
 namespace proto = paddle::framework::proto;
 
 template <typename Context>
-phi::DenseTensor InnerTensorContiguous(const Context& dev_ctx,
-                                       const phi::DenseTensor& tensor) {
-  phi::DenseTensor dense_out;
+DenseTensor InnerTensorContiguous(const Context& dev_ctx,
+                                  const DenseTensor& tensor) {
+  DenseTensor dense_out;
   phi::MetaTensor meta_input(tensor);
   phi::MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
@@ -49,7 +49,7 @@ phi::DenseTensor InnerTensorContiguous(const Context& dev_ctx,
   return dense_out;
 }
 
-phi::DenseTensor InnerTensorContiguous(const phi::DenseTensor& tensor) {
+DenseTensor InnerTensorContiguous(const DenseTensor& tensor) {
   auto& pool = phi::DeviceContextPool::Instance();
 
   if (tensor.place().GetType() == phi::AllocationType::CPU) {
@@ -68,15 +68,15 @@ phi::DenseTensor InnerTensorContiguous(const phi::DenseTensor& tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
     auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
-    phi::DenseTensor dense_out;
+    DenseTensor dense_out;
     phi::MetaTensor meta_input(tensor);
     phi::MetaTensor meta_out(&dense_out);
     UnchangedInferMeta(meta_input, &meta_out);
     const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(tensor.place()),
                                         phi::DataLayout::ALL_LAYOUT,
                                         tensor.dtype()};
-    using kernel_signature = void (*)(
-        const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+    using kernel_signature =
+        void (*)(const phi::DeviceContext&, const DenseTensor&, DenseTensor*);
     PD_VISIT_KERNEL("contiguous",
                     kernel_key,
                     kernel_signature,
@@ -95,15 +95,15 @@ phi::DenseTensor InnerTensorContiguous(const phi::DenseTensor& tensor) {
 }
 
 void TensorToStream(std::ostream& os,
-                    const phi::DenseTensor& tensor,
+                    const DenseTensor& tensor,
                     const phi::DeviceContext& dev_ctx) {
-  const auto ensure_contiguous = [](const phi::DenseTensor& tensor) {
+  const auto ensure_contiguous = [](const DenseTensor& tensor) {
     if (tensor.meta().is_contiguous()) {
       return tensor;
     }
     return InnerTensorContiguous(tensor);
   };
-  const phi::DenseTensor& contiguous_tensor = ensure_contiguous(tensor);
+  const DenseTensor& contiguous_tensor = ensure_contiguous(tensor);
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
@@ -214,7 +214,7 @@ void TensorToStream(std::ostream& os,
 
 struct DeserializedDataFunctor {
   DeserializedDataFunctor(void** buf,
-                          phi::DenseTensor* tensor,
+                          DenseTensor* tensor,
                           const phi::Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
@@ -226,12 +226,12 @@ struct DeserializedDataFunctor {
   }
 
   void** buf_;
-  phi::DenseTensor* tensor_;
+  DenseTensor* tensor_;
   phi::Place place_;
 };
 
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      DenseTensor* tensor,
                       const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
@@ -270,7 +270,7 @@ void TensorFromStream(std::istream& is,
         phi::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-      phi::DenseTensor cpu_tensor;
+      DenseTensor cpu_tensor;
       cpu_tensor.Resize(common::make_ddim(shape));
       VisitDataType(desc.data_type(),
                     DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
@@ -298,7 +298,7 @@ void TensorFromStream(std::istream& is,
 }
 
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      DenseTensor* tensor,
                       const phi::DeviceContext& dev_ctx) {
   uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
@@ -317,10 +317,10 @@ void TensorFromStream(std::istream& is,
         is.good(),
         true,
         common::errors::Unavailable("Cannot read tensor desc size"));
-    PADDLE_ENFORCE_GE(size,
-                      0,
-                      common::errors::InvalidArgument(
-                          "phi::DenseTensor desc size should >= 0"));
+    PADDLE_ENFORCE_GE(
+        size,
+        0,
+        common::errors::InvalidArgument("DenseTensor desc size should >= 0"));
     std::unique_ptr<char[]> buf(new char[size]);  // NOLINT
     is.read(reinterpret_cast<char*>(buf.get()), size);
     PADDLE_ENFORCE_EQ(
@@ -341,7 +341,7 @@ void TensorFromStream(std::istream& is,
         phi::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-      phi::DenseTensor cpu_tensor;
+      DenseTensor cpu_tensor;
       cpu_tensor.Resize(common::make_ddim(dims));
       VisitDataType(desc.data_type(),
                     DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));

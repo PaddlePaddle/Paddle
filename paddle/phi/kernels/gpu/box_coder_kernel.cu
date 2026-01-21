@@ -152,7 +152,7 @@ __global__ void DecodeCenterSizeKernel(const T *prior_box_data,
 template <typename T, typename Context>
 void BoxCoderKernel(const Context &dev_ctx,
                     const DenseTensor &prior_box,
-                    const paddle::optional<DenseTensor> &prior_box_var,
+                    const optional<DenseTensor> &prior_box_var,
                     const DenseTensor &target_box,
                     const std::string &code_type_str,
                     bool normalized,
