@@ -57,7 +57,6 @@ def get_device_properties(
             >>> paddle.device.get_device_properties('metax_gpu:0')
             >>> paddle.device.get_device_properties(0)
             >>> paddle.device.get_device_properties(paddle.CustomPlace('metax_gpu', 0))
-
     """
     raise RuntimeError(
         "get_device_properties is not supported for this device type. "

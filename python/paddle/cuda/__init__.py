@@ -192,8 +192,6 @@ def get_device_properties(device: DeviceLike = None):
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
-            >>> paddle.device.set_device('gpu')
-
             # Get the properties of the current device
             >>> props = paddle.cuda.get_device_properties()
             >>> print(props)
@@ -225,7 +223,6 @@ def get_device_name(device: DeviceLike = None) -> str:
             >>> import paddle
 
             # Get the name of the current CUDA device
-            >>> paddle.device.set_device('gpu')
             >>> name = paddle.cuda.get_device_name()
             >>> print(name)
 
@@ -259,7 +256,6 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
             >>> import paddle
 
             # Get compute capability of the current CUDA device
-            >>> paddle.device.set_device('gpu')
             >>> capability = paddle.cuda.get_device_capability()
             >>> print(capability)  # e.g., (8, 0)
 
