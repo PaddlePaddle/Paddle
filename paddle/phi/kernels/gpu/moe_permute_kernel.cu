@@ -270,9 +270,10 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     shared_expert_infos[i / max_num_experts][i % max_num_experts] =
         expert_infos_t();
   }
-  // waiting for the shared_routemap_topk and shared_probs_topk async loading
+  // Waiting for the shared_routemap_topk and shared_probs_topk async loading
   pipe.consumer_wait();
   __syncthreads();
+  // Finishing  shared_routemap_topk and shared_probs_topk loading, we should release the stage
   pipe.consumer_release();
 
   // ---------------Expertwise deterministic job scheduling ---------------
@@ -281,9 +282,17 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     local_expert_offsets = expert_base_offset[expert_id];
     local_expert_end_offsets = expert_base_offset_end[expert_id];
 
-    // From the block with a smaller idx to the block with a larger idx
-    const int mid = gridDim.x / 2;
-    if (blockIdx.x < mid) {
+    const bool use_cumsum = blockIdx.x % 2 == 0;
+    // clang-format off
+    // If blockid.x is even, we will use cumsum to compute the position in X_unzipped,          // NOLINT
+    // the dependency relationship between blocks is here:                                      // NOLINT
+    //    ----------<------- ---------<-------                   -----------<-----------        // NOLINT
+    //    |                 |                 |                 |                       |       // NOLINT
+    // | block0 | block1 | block2 | block3 | block4 | ... | block2n -2 | block2n-1 |  block2n | // NOLINT
+    // clang-format on
+    // Compute the cumsum from the block with a smaller idx to the block with a
+    // larger idx  which block idx is even
+    if (use_cumsum) {
       for (int row = block_row_base; row < block_row_end; row++) {
         const int internal_row = row - block_row_base;
 #pragma unroll
@@ -303,7 +312,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       }
       // Inter-block communication
       const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-      const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
+      const int push_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
       if (blockIdx.x != 0) {
         // signal receive from previous block, using light-weight
         // atomicAdd(check) this will not change any data, only do fetch in
@@ -325,8 +334,14 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
                 : shared_expert_infos[i][expert_id].expert_row_idx +
                       cumsum_offset;
       }
-    } else {  // From the block with a larger idx to the block with a smaller
-              // idx
+    } else {
+      // clang-format off
+      // If blockid.x is odd, we will use suffix sum to compute the position in X_unzipped,         // NOLINT
+      // the dependency relationship between blocks is here:                                        // NOLINT
+      //               ----------<-------                           --------<---------------        // NOLINT
+      //              |                 |                         |                         |       // NOLINT
+      // | block0 | block1 | block2 | block3 | block4 | ... | block2n - 1 | block2n | block2n+1 |   // NOLINT
+      // clang-format on
       int local_suffixsum = 0;
       for (int row = block_row_end - 1; row >= block_row_base; --row) {
         const int internal_row = row - block_row_base;
@@ -345,10 +360,10 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       }
       // Inter-block communication
       const int anticipate_signal_idx =
-          (blockIdx.x + 1) * num_experts + threadIdx.x;
-      const int push_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+          (blockIdx.x) * num_experts + threadIdx.x;
+      const int push_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
       int suffixsum_offset = 0;
-      if (blockIdx.x != gridDim.x - 1) {
+      if (blockIdx.x != 1) {
         // signal receive from previous block, using light-weight
         // atomicAdd(check) this will not change any data, only do fetch in
         // low-cost
@@ -376,18 +391,18 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
   __syncthreads();
 
   for (int row = block_row_base; row < block_row_end; row++) {
-    // OOB check
     const int internal_row = row - block_row_base;
     X_T *a_stage = (internal_row % 2 == 0) ? A0 : A1;
     X_T *a_next = (internal_row % 2 == 0) ? A1 : A0;
     if constexpr (do_gather) {
-      // wait current using stage
+      // wait async loading to SMEM(a_stage) done
       pipe.consumer_wait();
       block.sync();  // ensure shared memory is ready
 
       // start next stage
       if (row + 1 < block_row_end) {
         pipe.producer_acquire();
+        // Start loading the next rows token into SMEM(a_next)
         cuda::memcpy_async(block,
                            a_next,
                            X + static_cast<int64_t>(row + 1) * token_length,
@@ -398,7 +413,6 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       }
     }
 
-#pragma unroll
     for (int expert = 0; expert < num_experts; expert++) {
       const expert_infos_t this_expert_token_info =
           shared_expert_infos[internal_row][expert];
@@ -442,7 +456,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         cuda::device::experimental::cp_async_bulk_wait_group_read<0>();
       }
 #endif
-      // release stage
+      // release stage for SMEM (a_stage)
       pipe.consumer_release();
     }
   }
@@ -472,10 +486,7 @@ void dispatch_permute_kernel(const Context &dev_ctx,
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   static int capability = dev_ctx.GetComputeCapability();
-  if (capability >= 100) {
-    block.x = 256;
-  } else {
-  }
+
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
@@ -820,7 +831,7 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   DenseTensor global_expertwise_block_cumsum;
   global_expertwise_block_cumsum.Resize(
-      {static_cast<int64_t>(cumsum_blocknum + 1),
+      {static_cast<int64_t>(cumsum_blocknum + 2),
        static_cast<int64_t>(num_experts)});
   dev_ctx.template Alloc<int>(&global_expertwise_block_cumsum);
 
