@@ -139,33 +139,10 @@ class FSDPBufferManager:
             if dist.get_rank() in group:
                 self._fsdp_group = comm_group
 
-        parameters = model.parameters()
-        freeze_parameters = [p for p in parameters if p.stop_gradient]
-        trainable_parameters = [p for p in parameters if not p.stop_gradient]
+        # group params
+        vars_groups = self.build_param_groups()
 
         # create buffer_groups
-        comm_buffer_size_MB = 256  # need fix
-        group_size = comm_buffer_size_MB * 1024 * 1024
-
-        vars_groups = OrderedDict()
-        curr_group_idx = 0
-
-        for cur_params in [freeze_parameters, trainable_parameters]:
-            if len(cur_params) == 0:
-                continue
-            is_sparse_gradient = [False] * len(cur_params)
-            dense_params = [param._local_value() for param in cur_params]
-            # group params according to comm_buffer_size_MB
-            group_indices = core.eager_assign_group_by_size(
-                dense_params, is_sparse_gradient, [group_size, group_size]
-            )
-            for indices in group_indices:
-                for i in indices:
-                    vars_groups.setdefault(curr_group_idx, []).append(
-                        cur_params[i]
-                    )
-                curr_group_idx += 1
-
         self.buffer_groups = []
         self.param_to_buffer_group = {}
 
@@ -200,6 +177,48 @@ class FSDPBufferManager:
             )
             for param in params:
                 self.param_to_buffer_group[param.name] = group_idx
+
+    def build_param_groups(self):
+        parameters = self.model.parameters()
+        comm_buffer_size_MB = 256  # need fix
+        group_size = comm_buffer_size_MB * 1024 * 1024
+        vars_groups = OrderedDict()
+        curr_group_idx = 0
+        freeze_parameters, trainable_parameters, tie_parameters = [], [], []
+
+        # get tie_param_name if using tie_weights
+        tie_param_name = None
+        if hasattr(self.model, "get_input_embeddings"):
+            tie_param_name = self.model.get_input_embeddings().weight.name
+
+        for param in parameters:
+            if tie_param_name and param.name == tie_param_name:
+                tie_parameters.append(param)
+            elif param.stop_gradient:
+                freeze_parameters.append(param)
+            else:
+                trainable_parameters.append(param)
+
+        for cur_params in [
+            freeze_parameters,
+            trainable_parameters,
+            tie_parameters,
+        ]:
+            if len(cur_params) == 0:
+                continue
+            is_sparse_gradient = [False] * len(cur_params)
+            dense_params = [param._local_value() for param in cur_params]
+            # group params according to comm_buffer_size_MB
+            group_indices = core.eager_assign_group_by_size(
+                dense_params, is_sparse_gradient, [group_size, group_size]
+            )
+            for indices in group_indices:
+                for i in indices:
+                    vars_groups.setdefault(curr_group_idx, []).append(
+                        cur_params[i]
+                    )
+                curr_group_idx += 1
+        return vars_groups
 
 
 class FSDPCommManager:
