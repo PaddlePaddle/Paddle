@@ -273,7 +273,8 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
   // Waiting for the shared_routemap_topk and shared_probs_topk async loading
   pipe.consumer_wait();
   __syncthreads();
-  // Finishing  shared_routemap_topk and shared_probs_topk loading, we should release the stage
+  // Finishing  shared_routemap_topk and shared_probs_topk loading, we should
+  // release the stage
   pipe.consumer_release();
 
   // ---------------Expertwise deterministic job scheduling ---------------
