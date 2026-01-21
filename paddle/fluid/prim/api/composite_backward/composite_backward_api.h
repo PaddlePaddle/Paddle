@@ -24,6 +24,7 @@
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
+#include "paddle/fluid/primitive/decomp_rule/decomp_rule/composite.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
@@ -222,6 +223,76 @@ void transpose_grad(const Tensor& grad_out,
     }
     auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
     set_output<T>(grad_x_tmp, grad_x);
+  }
+}
+
+template <typename T>
+void var_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool unbiased,
+              double correction,
+              Tensor* x_grad) {
+  if (x_grad) {
+    auto axis_vec = axis.GetData();
+    auto x_dims = x.dims();
+    if (axis_vec.empty()) {
+      for (int i = 0; i < x_dims.size(); ++i) {
+        axis_vec.push_back(i);
+      }
+    }
+
+    // 1. Calculate Mean (keepdim=True)
+    auto mean_val = paddle::primitive::details::mean_decomp<T>(x, axis, true);
+
+    // 2. diff = x - mean
+    auto diff = x - mean_val;
+
+    // 3. Calculate N
+    int64_t n = 1;
+    for (auto ax : axis_vec) {
+      if (ax < 0) ax += x_dims.size();
+      n *= x_dims[ax];
+    }
+
+    double divisor_val = static_cast<double>(n) - correction;
+
+    // 2.0 / divisor
+    double scale_val = 2.0 / divisor_val;
+
+    auto scale =
+        full<T>(common::vectorize(x.dims()), scale_val, x.dtype(), x.place());
+
+    // 4. Handle out_grad broadcasting
+    Tensor out_grad_processed = out_grad;
+    if (!keepdim) {
+      std::vector<int64_t> target_shape = common::vectorize(x.dims());
+      if (axis_vec.size() == x_dims.size()) {
+        for (auto& d : target_shape) d = 1;
+      } else {
+        int out_idx = 0;
+        for (int i = 0; i < x_dims.size(); ++i) {
+          bool is_reduced = false;
+          for (auto ax : axis_vec) {
+            if (ax < 0) ax += x_dims.size();
+            if (i == ax) {
+              is_reduced = true;
+              break;
+            }
+          }
+          if (is_reduced) {
+            target_shape[i] = 1;
+          } else {
+            out_idx++;
+          }
+        }
+      }
+      out_grad_processed = reshape<T>(out_grad, target_shape);
+    }
+
+    auto res = out_grad_processed * scale * diff;
+    set_output<T>(res, x_grad);
   }
 }
 

@@ -106,6 +106,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.transpose",
     "pd_op.trunc",
     "pd_op.unsqueeze",
+    "pd_op.var",
     "pd_op.where",
     "pd_op.p_norm",
     "pd_op.index_put",
