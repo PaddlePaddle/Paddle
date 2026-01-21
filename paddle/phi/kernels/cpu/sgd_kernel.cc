@@ -54,6 +54,29 @@ void sgd_dense_param_dense_grad_impl<phi::bfloat16>(
 }
 
 template <typename T>
+void sgd_dense_param_dense_grad_mixed_impl(const DenseTensor& param,
+                                           const DenseTensor& learning_rate,
+                                           const DenseTensor& grad,
+                                           DenseTensor* param_out) {
+  const T* param_data = param.data<T>();
+  const float* grad_data = grad.data<float>();
+  const T* lr_ptr = learning_rate.data<T>();
+
+  float lr = static_cast<float>(lr_ptr[0]);
+  T* out_data = param_out->data<T>();
+  int64_t numel = param.numel();
+
+  for (int64_t i = 0; i < numel; ++i) {
+    float p = static_cast<float>(param_data[i]);
+    float g = grad_data[i];
+
+    p = p - lr * g;
+
+    out_data[i] = static_cast<T>(p);
+  }
+}
+
+template <typename T>
 void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
                                       const DenseTensor& learning_rate,
                                       const SelectedRows& grad,
@@ -116,38 +139,44 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param UNUSED,
+                    const optional<DenseTensor>& master_param UNUSED,
                     bool multi_precision UNUSED,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
-  sgd_dense_param_dense_grad_impl<T>(param, learning_rate, grad, param_out);
+  if (grad.dtype() == phi::DataType::FLOAT32 &&
+      param.dtype() != phi::DataType::FLOAT32) {
+    sgd_dense_param_dense_grad_mixed_impl<T>(
+        param, learning_rate, grad, param_out);
+  } else {
+    sgd_dense_param_dense_grad_impl<T>(param, learning_rate, grad, param_out);
+  }
 }
 
 template <typename T, typename Context>
-void SGDDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param UNUSED,
-    bool multi_precision UNUSED,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out UNUSED) {
+void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& param,
+                                   const DenseTensor& learning_rate,
+                                   const SelectedRows& grad,
+                                   const optional<DenseTensor>& master_param
+                                       UNUSED,
+                                   bool multi_precision UNUSED,
+                                   DenseTensor* param_out,
+                                   DenseTensor* master_param_out UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
   sgd_dense_param_sparse_grad_impl<T>(param, learning_rate, grad, param_out);
 }
 
 template <typename T, typename Context>
-void SGDSparseParamSparseGradKernel(
-    const Context& dev_ctx UNUSED,
-    const SelectedRows& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<SelectedRows>& master_param UNUSED,
-    bool multi_precision UNUSED,
-    SelectedRows* param_out,
-    SelectedRows* master_param_out UNUSED) {
+void SGDSparseParamSparseGradKernel(const Context& dev_ctx UNUSED,
+                                    const SelectedRows& param,
+                                    const DenseTensor& learning_rate,
+                                    const SelectedRows& grad,
+                                    const optional<SelectedRows>& master_param
+                                        UNUSED,
+                                    bool multi_precision UNUSED,
+                                    SelectedRows* param_out,
+                                    SelectedRows* master_param_out UNUSED) {
   // for distributed training, a sparse var may be empty,
   // just skip updating.
   if (grad.rows().empty()) {

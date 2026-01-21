@@ -46,7 +46,7 @@ void Stream::set_stream(stream_t stream) { stream_ = stream; }
 // For compatible
 Stream::Stream(const Place& place, stream_t stream)
     : place_(place),
-      device_(phi::DeviceManager::GetDeviceWithPlace(place)),
+      device_(DeviceManager::GetDeviceWithPlace(place)),
       stream_(stream),
       callback_manager_(new CallbackManager(this)),
       own_data_(false) {}
@@ -55,11 +55,11 @@ bool Stream::Init(const Place& place,
                   const Priority& priority,
                   const Flag& flag) {
   place_ = place;
-  device_ = phi::DeviceManager::GetDeviceWithPlace(place);
+  device_ = DeviceManager::GetDeviceWithPlace(place);
 
   // note(wangran16): bind device to the current thread. fix npu plugin null
   // context bug.
-  phi::DeviceManager::SetDevice(place_);
+  DeviceManager::SetDevice(place_);
   device_->CreateStream(this, priority, flag);
 
   callback_manager_ = std::make_unique<CallbackManager>(this);
@@ -101,9 +101,8 @@ void Stream::WaitCallback() const { callback_manager_->Wait(); }
 
 void Stream::Destroy() {
   if (device_) {
-    if (own_data_ &&
-        phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
-      phi::DeviceManager::SetDevice(place_);
+    if (own_data_ && DeviceManager::HasDeviceType(place_.GetDeviceType())) {
+      DeviceManager::SetDevice(place_);
       device_->DestroyStream(this->raw_stream());
     }
     own_data_ = false;

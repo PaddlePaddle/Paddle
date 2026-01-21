@@ -135,7 +135,7 @@ __global__ void KernelMinMax(const T min_value,
 template <typename T, typename Context>
 void HistogramKernel(const Context& dev_ctx,
                      const DenseTensor& input,
-                     const paddle::optional<DenseTensor>& weight,
+                     const optional<DenseTensor>& weight,
                      int64_t bins,
                      float min,
                      float max,
@@ -149,8 +149,7 @@ void HistogramKernel(const Context& dev_ctx,
   const int64_t input_numel = input.numel();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   if (input_numel == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 

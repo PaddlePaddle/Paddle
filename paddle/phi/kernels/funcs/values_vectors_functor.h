@@ -194,7 +194,7 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                             const int64_t batch_size,
                             int *info) {
   std::vector<int> error_info(batch_size);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      error_info.data(),
                      dev_ctx.GetPlace(),
                      info,

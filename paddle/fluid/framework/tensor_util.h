@@ -107,8 +107,8 @@ void TensorToVector(const phi::DenseTensor& src,
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
-TEST_API phi::DenseTensor TensorFromDLPack(DLManagedTensor* src);
-TEST_API phi::DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src);
+TEST_API DenseTensor TensorFromDLPack(DLManagedTensor* src);
+TEST_API DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src);
 
 // The implementation of template functions.
 //
@@ -420,7 +420,7 @@ template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!phi::is_cpu_place(x->place())) {
-    phi::DenseTensor cpu_x;
+    DenseTensor cpu_x;
     framework::TensorCopy(*x, CPUPlace(), &cpu_x);
     value = cpu_x.data<T>()[0];
   } else {

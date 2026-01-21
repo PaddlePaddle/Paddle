@@ -144,7 +144,7 @@ template <typename T, typename Context>
 void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
-                    const paddle::optional<DenseTensor>& boxes_num,
+                    const optional<DenseTensor>& boxes_num,
                     int pooled_height,
                     int pooled_width,
                     float spatial_scale,
@@ -156,8 +156,7 @@ void RoiAlignKernel(const Context& dev_ctx,
     return;
   }
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   auto in_dims = x.dims();

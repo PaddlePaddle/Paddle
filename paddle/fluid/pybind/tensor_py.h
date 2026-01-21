@@ -337,7 +337,7 @@ inline std::string TensorDTypeToPyDTypeStr(
 }  // namespace details
 
 template <typename T>
-T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
+T TensorGetElement(const DenseTensor &self, size_t offset) {
   PADDLE_ENFORCE_LT(offset,
                     self.numel(),
                     common::errors::InvalidArgument(
@@ -374,7 +374,7 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 }
 
 template <typename T>
-void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
+void TensorSetElement(DenseTensor *self, size_t offset, T elem) {
   PADDLE_ENFORCE_LT(offset,
                     self->numel(),
                     common::errors::InvalidArgument(
@@ -408,7 +408,7 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
 
 template <typename T, typename P>
 void SetTensorFromPyArrayT(
-    phi::DenseTensor *self,
+    DenseTensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     const P &place,
     bool zero_copy) {
@@ -521,7 +521,7 @@ void SetTensorFromPyArrayT(
 }
 
 template <typename P>
-void SetTensorFromPyArray(phi::DenseTensor *self,
+void SetTensorFromPyArray(DenseTensor *self,
                           const py::object &obj,
                           const P &place,
                           bool zero_copy) {
@@ -626,7 +626,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
 
 template <typename T>
 void SetUVATensorFromPyArrayImpl(
-    phi::DenseTensor *self_tensor,
+    DenseTensor *self_tensor,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
@@ -666,7 +666,7 @@ void SetUVATensorFromPyArray(
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
-  auto *self_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto *self_tensor = self->MutableVar()->GetMutable<DenseTensor>();
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
 }
@@ -679,20 +679,20 @@ void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
-  std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
+  std::shared_ptr<DenseTensor> tmp_t = std::make_shared<DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(CPUPlace())
           .get(),
       meta);
   self.get()->set_impl(tmp_t);
-  auto *self_tensor = static_cast<phi::DenseTensor *>(self.get()->impl().get());
+  auto *self_tensor = static_cast<DenseTensor *>(self.get()->impl().get());
 
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
 }
 
 template <typename T, size_t D>
-void _sliceCompute(const phi::DenseTensor *in,
-                   phi::DenseTensor *out,
+void _sliceCompute(const DenseTensor *in,
+                   DenseTensor *out,
                    const phi::CPUContext &ctx,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
@@ -726,8 +726,8 @@ void _sliceCompute(const phi::DenseTensor *in,
 }
 
 template <typename T>
-void _concatCompute(const std::vector<phi::DenseTensor> &ins,
-                    phi::DenseTensor *out,
+void _concatCompute(const std::vector<DenseTensor> &ins,
+                    DenseTensor *out,
                     const phi::CPUContext &ctx,
                     int64_t axis) {
   if (axis == 0 && ins.size() < 10) {
@@ -751,7 +751,7 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
   }
 }
 
-inline void _getSliceinfo(const phi::DenseTensor &self,
+inline void _getSliceinfo(const DenseTensor &self,
                           py::object obj,
                           const int64_t dim,
                           int64_t *pstart,
@@ -803,9 +803,8 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
   }
 }
 
-inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
-                                    const phi::DDim &ddim) {
-  phi::DenseTensor *output = new phi::DenseTensor();
+inline DenseTensor *_getTensor(const DenseTensor &self, const phi::DDim &ddim) {
+  DenseTensor *output = new phi::DenseTensor();
   output->Resize(ddim);
   auto place = self.place();
   if (phi::is_cpu_place(place)) {
@@ -829,8 +828,8 @@ inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
 }
 
 template <typename T>
-void _sliceDapper(const phi::DenseTensor *in,
-                  phi::DenseTensor *out,
+void _sliceDapper(const DenseTensor *in,
+                  DenseTensor *out,
                   const phi::CPUContext &ctx,
                   const std::vector<int> &axes,
                   const std::vector<int> &starts,
@@ -871,32 +870,32 @@ void _sliceDapper(const phi::DenseTensor *in,
 }
 
 template <typename T>
-inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
-                                       const phi::CPUContext &ctx,
-                                       py::object obj UNUSED,
-                                       int dim,
-                                       int64_t start,
-                                       int64_t slicelength) {
+inline DenseTensor *_sliceWrapper(const DenseTensor &self,
+                                  const phi::CPUContext &ctx,
+                                  py::object obj UNUSED,
+                                  int dim,
+                                  int64_t start,
+                                  int64_t slicelength) {
   phi::DDim dstDDim = self.dims();
   dstDDim[dim] = static_cast<int64_t>(slicelength);
   std::vector<int> axes({dim});
   std::vector<int> starts({static_cast<int>(start)});
-  phi::DenseTensor *output = _getTensor(self, dstDDim);
+  DenseTensor *output = _getTensor(self, dstDDim);
   _sliceDapper<T>(&self, output, ctx, axes, starts, dstDDim.size());
   return output;
 }
 
 template <typename T>
-inline phi::DenseTensor *_sliceAndConcat(const phi::DenseTensor &self,
-                                         py::object obj,
-                                         int dim) {
+inline DenseTensor *_sliceAndConcat(const DenseTensor &self,
+                                    py::object obj,
+                                    int dim) {
   phi::CPUContext ctx;
   int64_t start, stop, step, slicelength;
   _getSliceinfo(self, obj, dim, &start, &stop, &step, &slicelength);
   if (step == 1 || slicelength == 1) {
     return _sliceWrapper<T>(self, ctx, obj, dim, start, slicelength);
   } else {
-    std::vector<phi::DenseTensor> ins;
+    std::vector<DenseTensor> ins;
     for (auto i = 0; i < slicelength; ++i, start += step) {
       ins.emplace_back(*_sliceWrapper<T>(self, ctx, obj, dim, start, 1));
     }
@@ -904,15 +903,15 @@ inline phi::DenseTensor *_sliceAndConcat(const phi::DenseTensor &self,
     // do the concat operation
     phi::DDim dstDDim = self.dims();
     dstDDim[dim] = static_cast<int64_t>(slicelength);
-    phi::DenseTensor *output1 = _getTensor(self, dstDDim);
+    DenseTensor *output1 = _getTensor(self, dstDDim);
     _concatCompute<T>(ins, output1, ctx, dim);
     return output1;
   }
 }
 
-inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
-                                      py::object obj,
-                                      int dim) {
+inline DenseTensor *_sliceTensor(const DenseTensor &self,
+                                 py::object obj,
+                                 int dim) {
   auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
@@ -946,12 +945,11 @@ inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
   }
 }
 
-inline phi::DenseTensor *_pySliceTensor(const phi::DenseTensor &self,
-                                        py::object obj) {
+inline DenseTensor *_pySliceTensor(const DenseTensor &self, py::object obj) {
   if (py::isinstance<py::tuple>(obj)) {
     py::list l = static_cast<py::list>(obj);
-    std::unique_ptr<phi::DenseTensor> target;
-    phi::DenseTensor *src = const_cast<phi::DenseTensor *>(&self);
+    std::unique_ptr<DenseTensor> target;
+    DenseTensor *src = const_cast<DenseTensor *>(&self);
     for (auto i = 0; i < static_cast<int>(l.size()); ++i) {
       src = _sliceTensor(*src, l[i], i);
       if (i + 1 == static_cast<int>(l.size())) {
@@ -966,15 +964,14 @@ inline phi::DenseTensor *_pySliceTensor(const phi::DenseTensor &self,
   }
 }
 
-inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
-                                       py::object obj) {
+inline DenseTensor *PySliceTensor(const DenseTensor &self, py::object obj) {
   if (phi::is_gpu_place(self.place())) {
-    std::unique_ptr<phi::DenseTensor> holder;
-    phi::DenseTensor src;
+    std::unique_ptr<DenseTensor> holder;
+    DenseTensor src;
     framework::TensorCopySync(self, CPUPlace(), &src);
-    phi::DenseTensor *output = _pySliceTensor(src, obj);
+    DenseTensor *output = _pySliceTensor(src, obj);
     holder.reset(output);
-    phi::DenseTensor *dst = _getTensor(*output, output->dims());
+    DenseTensor *dst = _getTensor(*output, output->dims());
     framework::TensorCopySync(*output, self.place(), dst);
     return dst;
   } else {
@@ -982,7 +979,7 @@ inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
   }
 }
 
-inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
+inline py::array TensorToPyArray(const DenseTensor &tensor,
                                  py::object copy = py::none()) {
   if (!tensor.has_allocation()) {
     return py::array();
@@ -1019,7 +1016,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                        const_cast<void *>(tensor_buf_ptr),
                        base);
     } else {
-      phi::DenseTensor cpu_tensor;
+      DenseTensor cpu_tensor;
       CPUPlace cpu_place;
 
       cpu_tensor.set_meta(tensor.meta());
@@ -1045,7 +1042,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   } else if (is_xpu_tensor) {
 #ifdef PADDLE_WITH_XPU
     auto p = tensor.place();
-    phi::DenseTensor cpu_tensor;
+    DenseTensor cpu_tensor;
     CPUPlace cpu_place;
 
     cpu_tensor.set_meta(tensor.meta());
@@ -1078,7 +1075,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
 #endif
-    phi::DenseTensor cpu_tensor;
+    DenseTensor cpu_tensor;
     CPUPlace cpu_place;
 
     cpu_tensor.set_meta(tensor.meta());
@@ -1107,16 +1104,16 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     // TODO(qili93): temporary for ascend npu performance to be removed along
     // with npu_identity op
-    paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
+    paddle::Tensor tensor_out(std::make_shared<DenseTensor>());
     if (tensor.storage_properties_initialized()) {
-      paddle::Tensor tensor_in(std::make_shared<phi::DenseTensor>(tensor));
+      paddle::Tensor tensor_in(std::make_shared<DenseTensor>(tensor));
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
+          std::dynamic_pointer_cast<DenseTensor>(tensor_out.impl());
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &ctx = *pool.Get(tensor.place());
       auto p = dense_tensor->place();
-      phi::DenseTensor cpu_tensor;
+      DenseTensor cpu_tensor;
       CPUPlace cpu_place;
 
       cpu_tensor.set_meta(dense_tensor->meta());
@@ -1146,7 +1143,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());
     auto p = tensor.place();
-    phi::DenseTensor cpu_tensor;
+    DenseTensor cpu_tensor;
     CPUPlace cpu_place;
 
     cpu_tensor.set_meta(tensor.meta());

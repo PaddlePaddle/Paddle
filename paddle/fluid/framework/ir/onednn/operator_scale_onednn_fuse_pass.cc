@@ -101,7 +101,7 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       auto *scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto *scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
+      auto *scale_tensor = scale_var->GetMutable<DenseTensor>();
       scale = *(scale_tensor->data<float>());
     }
 

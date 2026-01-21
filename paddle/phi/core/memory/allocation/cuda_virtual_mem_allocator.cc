@@ -35,7 +35,7 @@ std::mutex CUDAVirtualMemAllocator::base_ptr_handle_mu_;
 std::unordered_map<void*, CUmemGenericAllocationHandle>
     CUDAVirtualMemAllocator::base_ptr_handle_map_;
 
-CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
+CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const GPUPlace& place)
     : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
 

@@ -45,8 +45,7 @@ void EigKernel(const Context& dev_ctx,
 
     // double the size of out_w_real, the first half stores the real part,
     // the next half stores the imag part
-    std::vector<int64_t> real_w_dims =
-        common::vectorize<int64_t>(out_w->dims());
+    std::vector<int64_t> real_w_dims = vectorize<int64_t>(out_w->dims());
     real_w_dims.back() *= 2;
     out_w_real.Resize(common::make_ddim(real_w_dims));
     dev_ctx.template Alloc<phi::dtype::Real<T>>(&out_w_real);

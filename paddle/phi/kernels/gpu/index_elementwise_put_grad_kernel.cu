@@ -61,8 +61,8 @@ void GPUIndexElementwisePutGradKernel(
   // default value_ele_size when value_grad is nullptr
   int64_t value_ele_size = 4;
   if (value_grad) {
-    value_dims = common::vectorize<int64_t>(value_grad->dims());
-    value_strides = common::vectorize<int64_t>(value_grad->strides());
+    value_dims = vectorize<int64_t>(value_grad->dims());
+    value_strides = vectorize<int64_t>(value_grad->strides());
     value_ele_size = phi::SizeOf(value_grad->dtype());
   }
 
@@ -268,9 +268,8 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
                                                             x_grad,
                                                             &tmp_value_grad);
 
-      std::vector<int64_t> after_dims =
-          common::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims = vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
 
@@ -402,7 +401,7 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
+                             vectorize(value_grad->dims()),
                              0.0f,
                              value_grad->dtype(),
                              value_grad);

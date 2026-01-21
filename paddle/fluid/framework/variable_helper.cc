@@ -27,7 +27,7 @@ namespace paddle::framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::DENSE_TENSOR) {
-    var->GetMutable<phi::DenseTensor>();
+    var->GetMutable<DenseTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
@@ -63,9 +63,9 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
   auto cpu_place = CPUPlace();
 
-  if (src_var.IsType<phi::DenseTensor>()) {
-    auto *tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
-    auto &src_tensor = src_var.Get<phi::DenseTensor>();
+  if (src_var.IsType<DenseTensor>()) {
+    auto *tmp_grad_tensor = dst_var->GetMutable<DenseTensor>();
+    auto &src_tensor = src_var.Get<DenseTensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
     framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
   } else if (src_var.IsType<phi::SelectedRows>()) {
