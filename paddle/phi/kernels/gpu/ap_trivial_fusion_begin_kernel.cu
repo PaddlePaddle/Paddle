@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void ApTrivialFusionBeginKernel(
     const Context& dev_ctx,
-    const paddle::optional<std::vector<const DenseTensor*>>& xs,
+    const optional<std::vector<const DenseTensor*>>& xs,
     DenseTensor* out) {
   PADDLE_THROW(common::errors::Unimplemented(
       "pd_op.ap_trivial_fusion_begin has no kernel registered."));
