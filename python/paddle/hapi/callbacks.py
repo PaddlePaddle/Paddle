@@ -647,29 +647,36 @@ class ModelCheckpoint(Callback):
             If None, will not save checkpoint. Default: None.
 
     Examples:
-        .. code-block:: pycon
-
+        .. code-block:: python
+        
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
             >>> from paddle.static import InputSpec
+
             >>> paddle.seed(2023)
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
+
             >>> transform = T.Compose([
             ...     T.Transpose(),
             ...     T.Normalize([127.5], [127.5])
             ... ])
+
             >>> full_dataset = MNIST(mode='train', transform=transform)
             >>> train_dataset = paddle.io.Subset(dataset=full_dataset, indices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet, inputs, labels)
+            >>> model = paddle.Model(lenet,
+            ...     inputs, labels)
+
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
             >>> model.prepare(
             ...     optimizer=optim,
             ...     loss=paddle.nn.CrossEntropyLoss(),
             ...     metrics=paddle.metric.Accuracy()
             ... )
+
             >>> callback = paddle.callbacks.ModelCheckpoint(save_dir='./temp')
             >>> model.fit(train_dataset, batch_size=2, epochs=1, callbacks=callback, verbose=0)
             >>> print('Fit finished')
