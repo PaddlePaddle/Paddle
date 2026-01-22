@@ -51,6 +51,7 @@ from paddle._C_ops import (  # noqa: F401
     sign,
     sin,
     sum,
+    tan,
     tanh,
 )
 from paddle.base.libpaddle import DataType
@@ -125,7 +126,6 @@ from .ops import (  # noqa: F401
     sqrt_,
     square,
     square_,
-    tan,
     tan_,
 )
 
@@ -5043,7 +5043,10 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(['x', 'input'])
+def deg2rad(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Convert each of the elements of input x from degrees to angles in radians.
 
@@ -5054,6 +5057,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
@@ -5080,7 +5084,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.scale(x, deg2rad_scale, 0.0, True)
+        return _C_ops.scale(x, deg2rad_scale, 0.0, True, out=out)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad'
