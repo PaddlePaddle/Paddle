@@ -163,9 +163,39 @@ def _conv_nd(
         padding, padding_algorithm = _update_padding_nd(
             padding, channel_last, 2
         )
-        paddings_wo_bc = _exclude_padding_in_batch_and_channel(
-            padding, channel_last
-        )
+
+        # Normalize padding to [pad_top, pad_bottom, pad_left, pad_right].
+        def _normalize_padding_for_check(pad):
+            try:
+                if _is_list_or_tuple(pad):
+                    pad_list = list(pad)
+                else:
+                    pad_list = [pad]
+
+                if len(pad_list) == 1:
+                    p = pad_list[0]
+                    return [p, p, p, p]
+                if len(pad_list) == 2:
+                    return [pad_list[0], pad_list[0], pad_list[1], pad_list[1]]
+                if len(pad_list) >= 4:
+                    return [pad_list[0], pad_list[1], pad_list[2], pad_list[3]]
+
+                # Rare/ambiguous forms: best effort convert and pad/truncate.
+                pad_list = convert_to_list(pad_list, len(pad_list), 'padding')
+                if len(pad_list) >= 4:
+                    return pad_list[:4]
+                # pad with the last value to reach 4
+                if len(pad_list) > 0:
+                    last = pad_list[-1]
+                    return pad_list + [last] * (4 - len(pad_list))
+            except Exception:
+                return None
+            return None
+
+        paddings_wo_bc = _normalize_padding_for_check(padding)
+        if paddings_wo_bc is None:
+            # Unknown padding form; skip pre-validation and let backend handle it.
+            paddings_wo_bc = []
 
         # Only run the check when all required dimensions are known.
         in_shape = x.shape
@@ -182,7 +212,7 @@ def _conv_nd(
 
             # Allow zero-sized inputs/filters to proceed; the kernel will
             # short-circuit to produce empty outputs.
-            if in_h > 0 and in_w > 0 and k_h > 0 and k_w > 0:
+            if paddings_wo_bc and in_h > 0 and in_w > 0 and k_h > 0 and k_w > 0:
                 eff_k_h = dilation_list[0] * (k_h - 1) + 1
                 eff_k_w = dilation_list[1] * (k_w - 1) + 1
                 out_h = in_h + paddings_wo_bc[0] + paddings_wo_bc[1] - eff_k_h
