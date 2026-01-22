@@ -165,7 +165,7 @@ add_doc_and_signature(
         Tensor: The output Tensor of addmm.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
