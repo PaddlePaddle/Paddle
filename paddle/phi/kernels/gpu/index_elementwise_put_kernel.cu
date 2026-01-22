@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
+#include <iostream>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -51,9 +52,6 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (int64_t i = 0; i < num_indices; i++) {
-    if (index_dims[i] == 0) {
-      return;
-    }
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -77,7 +75,11 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
 
@@ -160,9 +162,6 @@ void GPUIndexElementwisePutWithTensorKernel(
   auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
-    if (index_dims[i] == 0) {
-      return;
-    }
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -185,6 +184,11 @@ void GPUIndexElementwisePutWithTensorKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
 
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
