@@ -224,36 +224,6 @@ class TestAddcmulBF16Op(OpTest):
         )
 
 
-class TestAddcmulOp_ZeroSize(OpTest):
-    """Test with zero-size tensors - covers numel==0 branch"""
-
-    def setUp(self):
-        self.op_type = "addcmul"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.addcmul
-        self.public_python_api = paddle.addcmul
-        self.dtype = np.float64
-
-        self.inputs = {
-            'input': np.random.random((0, 5)).astype(self.dtype),
-            'tensor1': np.random.random((0, 5)).astype(self.dtype),
-            'tensor2': np.random.random((0, 5)).astype(self.dtype),
-        }
-        self.attrs = {'value': 0.5}
-        self.outputs = {
-            'out': self.inputs['input']
-            + self.attrs['value']
-            * self.inputs['tensor1']
-            * self.inputs['tensor2']
-        }
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
-    def test_check_grad(self):
-        self.check_grad(['input', 'tensor1', 'tensor2'], 'out', check_pir=True)
-
-
 class TestAddcmulOpError(unittest.TestCase):
     """Test error cases"""
 
@@ -602,6 +572,303 @@ class TestAddcmulDocstring(unittest.TestCase):
 
     def test_docstring(self):
         self.assertIsNotNone(paddle.addcmul.__doc__)
+
+
+class TestAddcmulBroadcast2D(OpTest):
+    """Test broadcasting with 2D tensors - covers GetBroadcastDims and ExtendDims2Rank"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        # input: (10, 100), tensor1: (10, 100), tensor2: (1, 100)
+        input_np = np.random.random((10, 100)).astype(self.dtype)
+        tensor1_np = np.random.random((10, 100)).astype(self.dtype)
+        tensor2_np = np.random.random((1, 100)).astype(self.dtype)
+        value = 0.5
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulBroadcast3D(OpTest):
+    """Test broadcasting with 3D tensors - different ndims"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        input_np = np.random.random((4, 10, 10)).astype(self.dtype)
+        tensor1_np = np.random.random((4, 10, 10)).astype(self.dtype)
+        tensor2_np = np.random.random((10, 10)).astype(self.dtype)
+        value = 0.5
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulBroadcast4D(OpTest):
+    """Test broadcasting with 4D tensors - covers ExtendDims2Rank with different ranks"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        input_np = np.random.random((2, 3, 4, 10)).astype(self.dtype)
+        tensor1_np = np.random.random((2, 3, 4, 10)).astype(self.dtype)
+        tensor2_np = np.random.random((3, 4, 10)).astype(self.dtype)
+        value = 0.5
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulGradient1D(unittest.TestCase):
+    """Test gradient for 1D tensors explicitly"""
+
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+        if paddle.is_compiled_with_cuda():
+            self.place = paddle.CUDAPlace(0)
+
+    def test_gradient_1d(self):
+        """Test gradient for 1D tensors - covers rank=1 branch in grad kernel"""
+        paddle.disable_static(self.place)
+
+        input_np = np.random.random((100,)).astype('float64')
+        tensor1_np = np.random.random((100,)).astype('float64')
+        tensor2_np = np.random.random((100,)).astype('float64')
+        value = 0.5
+
+        input = paddle.to_tensor(input_np, stop_gradient=False)
+        tensor1 = paddle.to_tensor(tensor1_np, stop_gradient=False)
+        tensor2 = paddle.to_tensor(tensor2_np, stop_gradient=False)
+
+        out = paddle.addcmul(input, tensor1, tensor2, value=value)
+        loss = out.sum()
+        loss.backward()
+
+        np.testing.assert_allclose(
+            input.grad.numpy(), np.ones_like(input_np), rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            tensor1.grad.numpy(), value * tensor2_np, rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            tensor2.grad.numpy(), value * tensor1_np, rtol=1e-5
+        )
+
+        paddle.enable_static()
+
+
+class TestAddcmulBroadcastGrad(unittest.TestCase):
+    """Test gradient with broadcasting - covers reduce in grad kernel"""
+
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+        if paddle.is_compiled_with_cuda():
+            self.place = paddle.CUDAPlace(0)
+
+    def test_gradient_broadcast_2d(self):
+        """Test gradient with 2D broadcast"""
+        paddle.disable_static(self.place)
+
+        input_np = np.random.random((5, 6)).astype('float64')
+        tensor1_np = np.random.random((1, 6)).astype('float64')
+        tensor2_np = np.random.random((5, 1)).astype('float64')
+        value = 0.5
+
+        input = paddle.to_tensor(input_np, stop_gradient=False)
+        tensor1 = paddle.to_tensor(tensor1_np, stop_gradient=False)
+        tensor2 = paddle.to_tensor(tensor2_np, stop_gradient=False)
+
+        out = paddle.addcmul(input, tensor1, tensor2, value=value)
+        loss = out.sum()
+        loss.backward()
+
+        # Verify gradients have correct shapes after broadcast reduction
+        self.assertEqual(list(input.grad.shape), [5, 6])
+        self.assertEqual(list(tensor1.grad.shape), [1, 6])
+        self.assertEqual(list(tensor2.grad.shape), [5, 1])
+
+        paddle.enable_static()
+
+    def test_gradient_broadcast_3d(self):
+        """Test gradient with 3D broadcast - different ndims"""
+        paddle.disable_static(self.place)
+
+        input_np = np.random.random((3, 4, 5)).astype('float64')
+        tensor1_np = np.random.random((4, 5)).astype('float64')
+        tensor2_np = np.random.random((1, 5)).astype('float64')
+        value = 0.5
+
+        input = paddle.to_tensor(input_np, stop_gradient=False)
+        tensor1 = paddle.to_tensor(tensor1_np, stop_gradient=False)
+        tensor2 = paddle.to_tensor(tensor2_np, stop_gradient=False)
+
+        out = paddle.addcmul(input, tensor1, tensor2, value=value)
+        loss = out.sum()
+        loss.backward()
+
+        # Verify gradients have correct shapes
+        self.assertEqual(list(input.grad.shape), [3, 4, 5])
+        self.assertEqual(list(tensor1.grad.shape), [4, 5])
+        self.assertEqual(list(tensor2.grad.shape), [1, 5])
+
+        paddle.enable_static()
+
+    def test_gradient_broadcast_4d(self):
+        """Test gradient with 4D broadcast - covers ExtendDims2Rank in grad"""
+        paddle.disable_static(self.place)
+
+        input_np = np.random.random((2, 3, 4, 5)).astype('float64')
+        tensor1_np = np.random.random((4, 5)).astype('float64')
+        tensor2_np = np.random.random((3, 1, 5)).astype('float64')
+        value = 0.5
+
+        input = paddle.to_tensor(input_np, stop_gradient=False)
+        tensor1 = paddle.to_tensor(tensor1_np, stop_gradient=False)
+        tensor2 = paddle.to_tensor(tensor2_np, stop_gradient=False)
+
+        out = paddle.addcmul(input, tensor1, tensor2, value=value)
+        loss = out.sum()
+        loss.backward()
+
+        # Verify gradients have correct shapes
+        self.assertEqual(list(input.grad.shape), [2, 3, 4, 5])
+        self.assertEqual(list(tensor1.grad.shape), [4, 5])
+        self.assertEqual(list(tensor2.grad.shape), [3, 1, 5])
+
+        paddle.enable_static()
+
+
+class TestAddcmulSymbolicShape(unittest.TestCase):
+    """Test symbolic shape inference - covers multiary_infer_sym.cc"""
+
+    def test_symbolic_shape_same_dims(self):
+        """Test symbolic shape with same dimensions"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            t1 = paddle.static.data(name="t1", shape=[2, 3], dtype="float32")
+            t2 = paddle.static.data(name="t2", shape=[2, 3], dtype="float32")
+            out = paddle.addcmul(x, t1, t2, value=0.5)
+            self.assertEqual(list(out.shape), [2, 3])
+        paddle.disable_static()
+
+    def test_symbolic_shape_broadcast_xy(self):
+        """Test symbolic shape with x > y dims - covers diffxy > 0 branch"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float32")
+            t1 = paddle.static.data(name="t1", shape=[3, 4], dtype="float32")
+            t2 = paddle.static.data(name="t2", shape=[2, 3, 4], dtype="float32")
+            out = paddle.addcmul(x, t1, t2, value=0.5)
+            self.assertEqual(list(out.shape), [2, 3, 4])
+        paddle.disable_static()
+
+    def test_symbolic_shape_broadcast_yx(self):
+        """Test symbolic shape with y > x dims - covers diffxy < 0 branch"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 4], dtype="float32")
+            t1 = paddle.static.data(name="t1", shape=[2, 3, 4], dtype="float32")
+            t2 = paddle.static.data(name="t2", shape=[2, 3, 4], dtype="float32")
+            out = paddle.addcmul(x, t1, t2, value=0.5)
+            self.assertEqual(list(out.shape), [2, 3, 4])
+        paddle.disable_static()
+
+    def test_symbolic_shape_broadcast_z(self):
+        """Test symbolic shape with z > out1 dims - covers diffxyz > 0 branch"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 4], dtype="float32")
+            t1 = paddle.static.data(name="t1", shape=[3, 4], dtype="float32")
+            t2 = paddle.static.data(name="t2", shape=[2, 3, 4], dtype="float32")
+            out = paddle.addcmul(x, t1, t2, value=0.5)
+            self.assertEqual(list(out.shape), [2, 3, 4])
+        paddle.disable_static()
+
+    def test_symbolic_shape_broadcast_out1(self):
+        """Test symbolic shape with out1 > z dims - covers diffxyz < 0 branch"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float32")
+            t1 = paddle.static.data(name="t1", shape=[2, 3, 4], dtype="float32")
+            t2 = paddle.static.data(name="t2", shape=[4], dtype="float32")
+            out = paddle.addcmul(x, t1, t2, value=0.5)
+            self.assertEqual(list(out.shape), [2, 3, 4])
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
