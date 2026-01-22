@@ -960,7 +960,7 @@ class ThreeDCommGroupStateResharder:
                     f"Broadcasting item {idx}/{total_items}: {read_item.tensor_name}"
                 )
             if self.cur_rank == read_item.src_rank:
-                buffer = self.source_state_dict[read_item.tensor_name][
+                buffer = self.source_state_dict[read_item.file_name][
                     read_item.tensor_name
                 ]
                 if not isinstance(buffer.place, paddle.CUDAPlace):
