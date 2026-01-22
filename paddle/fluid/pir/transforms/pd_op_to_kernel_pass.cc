@@ -18,6 +18,8 @@
 #include <regex>
 #include <string>
 #include <unordered_set>
+#include <algorithm>
+#include <cctype>
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
@@ -245,7 +247,11 @@ static bool NeedFallBackCpu(const pir::Operation* op,
 
   phi::KernelKey copy_key = kernel_key;
   if (copy_key.backend() == phi::Backend::GPUDNN) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    copy_key.set_backend(phi::Backend::DEFAULT_CUSTOM_DEVICE);
+#else
     copy_key.set_backend(phi::Backend::GPU);
+#endif
     if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
       return false;
     }
@@ -258,16 +264,21 @@ static bool NeedFallBackCpu(const pir::Operation* op,
   return false;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
-  if (op->HasAttribute(kForceBackendAttr) &&
-      op->attributes()
-              .at(kForceBackendAttr)
-              .dyn_cast<pir::StrAttribute>()
-              .AsString() == "gpu") {
-    return true;
+  if (op->HasAttribute(kForceBackendAttr)) {
+    auto backend_str = op->attributes()
+                           .at(kForceBackendAttr)
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    std::string upper_str = backend_str;
+    std::transform(upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
+    auto forced_backend = paddle::experimental::StringToBackend(upper_str.c_str());
+    if (forced_backend == phi::Backend::GPU || forced_backend == phi::Backend::DEFAULT_CUSTOM_DEVICE) {
+      return true;
+    }
   }
 
   // NOTE(phlrain): keep the same kernel select strategy with
@@ -287,17 +298,17 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
       return true;
     }
     bool use_cudnn = true;
-    int version = -1;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    version = platform::DnnVersion();
-#endif
-    if (version >= 6000 && op->attributes()
-                                   .at("align_corners")
-                                   .dyn_cast<pir::BoolAttribute>()
-                                   .data() == true) {
+    if (op->attributes()
+            .at("align_corners")
+            .dyn_cast<pir::BoolAttribute>()
+            .data() == true) {
       use_cudnn = true;
-    } else {
-      use_cudnn = false;
+#if defined(PADDLE_WITH_CUDA)
+      int version = platform::DnnVersion();
+      if (version < 6000) {
+        use_cudnn = false;
+      }
+#endif
     }
 
     auto shape = pir::GetShapeFromValue(op->operand_source(0));
@@ -310,7 +321,6 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     return !use_cudnn;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPUDNN) {
     auto iter = phi::KernelFactory::Instance().kernels().find(kernel_name);
     if (iter != phi::KernelFactory::Instance().kernels().end()) {
@@ -322,7 +332,6 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
       }
     }
   }
-#endif
 
   return false;
 }
@@ -1426,7 +1435,13 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
+    res.set_backend(phi::Backend::DEFAULT_CUSTOM_DEVICE);
+    VLOG(8) << "kernel backend must be on CustomDevice when need fallback from "
+               "GPUDNN to CustomDevice";
+  }
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
     res.set_backend(phi::Backend::GPU);
     VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "

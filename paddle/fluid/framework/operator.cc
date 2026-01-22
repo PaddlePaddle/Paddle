@@ -2864,7 +2864,6 @@ Scope* OperatorWithKernel::PrepareData(
     need_prepare_data_ = false;
   }
 
-  VLOG(0) << "PrepareData: completed processing for operator " << Type();
   return new_scope;
 }
 

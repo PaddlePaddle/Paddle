@@ -290,7 +290,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (stride_kernel_iter == iter->second.end() &&
-        const_kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+        (const_kernel_key.backend() > phi::Backend::NUM_BACKENDS ||
+         const_kernel_key.backend() == phi::Backend::GPUDNN)) {
       stride_kernel_iter = iter->second.find({phi::Backend::CUSTOM,
                                               phi::DataLayout::STRIDED,
                                               const_kernel_key.dtype()});
