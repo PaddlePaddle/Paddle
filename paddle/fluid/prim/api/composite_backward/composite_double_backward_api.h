@@ -853,14 +853,12 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
 template <typename T>
 void linear_v2_double_grad(const Tensor& input,
                            const Tensor& weight,
-                           const Tensor& bias,
                            const Tensor& grad_out,
                            const paddle::optional<Tensor>& grad_input_grad,
                            const paddle::optional<Tensor>& grad_weight_grad,
                            const paddle::optional<Tensor>& grad_bias_grad,
                            Tensor* input_grad,
                            Tensor* weight_grad,
-                           Tensor* bias_grad,
                            Tensor* grad_out_grad) {
   matmul_double_grad<T>(input,
                         weight,
@@ -872,27 +870,9 @@ void linear_v2_double_grad(const Tensor& input,
                         input_grad,
                         weight_grad,
                         grad_out_grad);
-  if (bias_grad) {
-    if (grad_out.dims() != bias.dims()) {
-      // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(bias.dims(), grad_out.dims());
-      if (!reduce_dim.size()) {
-        by_pass<T>(grad_out, bias_grad);
-      } else {
-        auto ograd_reduce_res =
-            grad_out.sum(common::vectorize(reduce_dim),
-                         grad_out.dtype(),
-                         bias.dims().size() == grad_out.dims().size());
-        if (ograd_reduce_res.dims() != bias.dims()) {
-          ograd_reduce_res =
-              reshape<T>(ograd_reduce_res, common::vectorize(bias.dims()));
-        }
-        set_output<T>(ograd_reduce_res, bias_grad);
-      }
-
-    } else {
-      by_pass<T>(grad_out, bias_grad);
-    }
+  if (grad_bias_grad && grad_out_grad) {
+    auto tmp = grad_out_grad + grad_bias_grad.get();
+    set_output<T>(tmp, grad_out_grad);
   }
 }
 
