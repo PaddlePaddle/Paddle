@@ -1354,7 +1354,7 @@ def softplus(
 
 add_doc_and_signature(
     "i0",
-    """
+    r"""
     The function used to calculate modified bessel function of order 0.
 
     Equation:
@@ -1380,9 +1380,9 @@ add_doc_and_signature(
             >>> paddle.i0(x)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
-    """,
+""",
     """
-    def i0(
+def i0(
     x: Tensor,
     name: str | None = None,
     *,
@@ -1393,7 +1393,7 @@ add_doc_and_signature(
 
 add_doc_and_signature(
     "i0e",
-    """
+    r"""
     The function used to calculate exponentially scaled modified Bessel function of order 0.
 
     Equation:
@@ -1420,7 +1420,7 @@ add_doc_and_signature(
             >>> print(paddle.i0e(x))
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
-    """,
+""",
     """
 def i0e(
     x: Tensor,
