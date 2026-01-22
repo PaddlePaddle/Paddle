@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <regex>
 #include <string>
 #include <unordered_set>
-#include <algorithm>
-#include <cctype>
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
@@ -264,7 +264,8 @@ static bool NeedFallBackCpu(const pir::Operation* op,
   return false;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
@@ -274,9 +275,12 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                            .dyn_cast<pir::StrAttribute>()
                            .AsString();
     std::string upper_str = backend_str;
-    std::transform(upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
-    auto forced_backend = paddle::experimental::StringToBackend(upper_str.c_str());
-    if (forced_backend == phi::Backend::GPU || forced_backend == phi::Backend::DEFAULT_CUSTOM_DEVICE) {
+    std::transform(
+        upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
+    auto forced_backend =
+        paddle::experimental::StringToBackend(upper_str.c_str());
+    if (forced_backend == phi::Backend::GPU ||
+        forced_backend == phi::Backend::DEFAULT_CUSTOM_DEVICE) {
       return true;
     }
   }
