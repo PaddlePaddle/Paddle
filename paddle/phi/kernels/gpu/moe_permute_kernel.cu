@@ -464,24 +464,24 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
 }
 
 template <typename T, typename Context>
-void dispatch_tokens_unzip_stable(const Context &dev_ctx,
-                                  const DenseTensor &X,
-                                  const DenseTensor &expert_routemap_topk,
-                                  const DenseTensor &expert_prob_topk,
-                                  const paddle::optional<DenseTensor> &XScale,
-                                  const DenseTensor &expert_offsets,
-                                  DenseTensor *X_unzipped,
-                                  DenseTensor *zipped_expertwise_rowmap,
-                                  DenseTensor *token_prob_unzipped,
-                                  DenseTensor *XScale_unzipped,
-                                  DenseTensor *global_expertwise_block_cumsum,
-                                  const int total_zipped_tokens_num,
-                                  const int token_length,
-                                  const int topk,  // deprecated
-                                  const int num_experts,
-                                  const int scale_length,
-                                  const bool do_gather,
-                                  const bool using_ue8m0_scale) {
+void dispatch_permute_kernel(const Context &dev_ctx,
+                             const DenseTensor &X,
+                             const DenseTensor &expert_routemap_topk,
+                             const DenseTensor &expert_prob_topk,
+                             const paddle::optional<DenseTensor> &XScale,
+                             const DenseTensor &expert_offsets,
+                             DenseTensor *X_unzipped,
+                             DenseTensor *zipped_expertwise_rowmap,
+                             DenseTensor *token_prob_unzipped,
+                             DenseTensor *XScale_unzipped,
+                             DenseTensor *global_expertwise_block_cumsum,
+                             const int total_zipped_tokens_num,
+                             const int token_length,
+                             const int topk,  // deprecated
+                             const int num_experts,
+                             const int scale_length,
+                             const bool do_gather,
+                             const bool using_ue8m0_scale) {
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
