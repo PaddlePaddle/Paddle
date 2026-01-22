@@ -75,6 +75,12 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            &numel,
                            strides_vec);
 
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
+
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
 
@@ -179,6 +185,12 @@ void GPUIndexElementwisePutWithTensorKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
+
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
 
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
