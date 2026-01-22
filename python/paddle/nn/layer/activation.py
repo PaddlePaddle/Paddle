@@ -724,8 +724,12 @@ class ReLU(Layer):
         return F.relu(x, inplace=self._inplace, name=self._name)
 
     def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'inplace={self._inplace}{name_str}'
+        parts = []
+        if self._inplace:
+            parts.append(f'inplace={self._inplace}')
+        if self._name:
+            parts.append(f'name={self._name}')
+        return ', '.join(parts)
 
 
 class ReLU6(Layer):
@@ -898,8 +902,12 @@ class LeakyReLU(Layer):
         )
 
     def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'negative_slope={self._negative_slope}, inplace={self._inplace}{name_str}'
+        parts = [f'negative_slope={self._negative_slope}']
+        if self._inplace:
+            parts.append(f'inplace={self._inplace}')
+        if self._name:
+            parts.append(f'name={self._name}')
+        return ', '.join(parts)
 
 
 class Sigmoid(Layer):

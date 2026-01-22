@@ -3113,7 +3113,7 @@ class TestReluAPI(unittest.TestCase):
     def test_layer_extra_repr(self):
         # test extra_repr for nn.ReLU layer
         with dynamic_guard():
-            self.assertIn('inplace=False', paddle.nn.ReLU().extra_repr())
+            self.assertNotIn('inplace', paddle.nn.ReLU().extra_repr())
             self.assertIn(
                 'inplace=True', paddle.nn.ReLU(inplace=True).extra_repr()
             )
@@ -3361,7 +3361,7 @@ class TestLeakyReluAPI(unittest.TestCase):
         with dynamic_guard():
             s = paddle.nn.LeakyReLU().extra_repr()
             self.assertIn('negative_slope=0.01', s)
-            self.assertIn('inplace=False', s)
+            self.assertNotIn('inplace', s)
             s2 = paddle.nn.LeakyReLU(
                 negative_slope=0.2, inplace=True, name='custom'
             ).extra_repr()
