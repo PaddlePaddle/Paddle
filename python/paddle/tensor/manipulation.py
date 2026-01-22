@@ -8123,7 +8123,7 @@ def index_fill(
 
 
 @inplace_apis_in_dygraph_only
-@ParamAliasDecorator({"axis": ["dim"]})
+@param_one_alias(["axis", "dim"])
 def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
