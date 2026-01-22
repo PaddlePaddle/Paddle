@@ -51,6 +51,9 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (int64_t i = 0; i < num_indices; i++) {
+    if (index_dims[i] == 0) {
+      return;
+    }
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -157,6 +160,9 @@ void GPUIndexElementwisePutWithTensorKernel(
   auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
+    if (index_dims[i] == 0) {
+      return;
+    }
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
