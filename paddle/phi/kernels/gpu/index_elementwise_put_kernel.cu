@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
-#include <iostream>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
