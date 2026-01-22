@@ -13,22 +13,19 @@
 # limitations under the License.
 import unittest
 
+import paddle
+
 
 class TestUtilsAttrError(unittest.TestCase):
     def test_error(self):
         with self.assertRaises(AttributeError):
-            import paddle.utils
-
             type(paddle.utils.nonexist)
 
 
 class TestAlias(unittest.TestCase):
     def setUp(self):
-        from paddle.io import Dataset as IoDataset
-        from paddle.utils.data import Dataset as UtilsDataset
-
-        self.ioObject = IoDataset
-        self.utilsObject = UtilsDataset
+        self.ioObject = paddle.io.Dataset
+        self.utilsObject = paddle.utils.data.Dataset
 
     def test_compatibility(self):
         self.assertTrue(type(self.ioObject) == type(self.utilsObject))
@@ -36,29 +33,56 @@ class TestAlias(unittest.TestCase):
 
 class TestChainDatasetAlias(TestAlias):
     def setUp(self):
-        from paddle.io import ChainDataset as IoChainDataset
-        from paddle.utils.data import ChainDataset as UtilsChainDataset
-
-        self.ioObject = IoChainDataset
-        self.utilsObject = UtilsChainDataset
+        self.ioObject = paddle.io.ChainDataset
+        self.utilsObject = paddle.utils.data.ChainDataset
 
 
 class TestConcatDatasetAlias(TestAlias):
     def setUp(self):
-        from paddle.io import ConcatDataset as IoConcatDataset
-        from paddle.utils.data import ConcatDataset as UtilsConcatDataset
-
-        self.ioObject = IoConcatDataset
-        self.utilsObject = UtilsConcatDataset
+        self.ioObject = paddle.io.ConcatDataset
+        self.utilsObject = paddle.utils.data.ConcatDataset
 
 
 class TestIterableDatasetAlias(TestAlias):
     def setUp(self):
-        from paddle.io import IterableDataset as IoIterableDataset
-        from paddle.utils.data import IterableDataset as UtilsIterableDataset
+        self.ioObject = paddle.io.IterableDataset
+        self.utilsObject = paddle.utils.data.IterableDataset
 
-        self.ioObject = IoIterableDataset
-        self.utilsObject = UtilsIterableDataset
+
+class TestSamplerAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.Sampler
+        self.utilsObject = paddle.utils.data.Sampler
+
+
+class TestSequentialSamplerAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.SequenceSampler
+        self.utilsObject = paddle.utils.data.SequentialSampler
+
+
+class TestSubsetAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.Subset
+        self.utilsObject = paddle.utils.data.Subset
+
+
+class TestGetWorkerInfoAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.get_worker_info
+        self.utilsObject = paddle.utils.data.get_worker_info
+
+
+class TestRandomSplitAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.random_split
+        self.utilsObject = paddle.utils.data.random_split
+
+
+class TestDefaultCollateAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.dataloader.collate.default_collate_fn
+        self.utilsObject = paddle.utils.data.default_collate
 
 
 if __name__ == "__main__":
