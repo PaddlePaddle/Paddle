@@ -20,6 +20,9 @@
 #include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
 namespace phi {
+// defined at flash_attn_kernel.cc
+XPUStream get_flashmask_stream();
+
 template <typename T, typename Context>
 void FlashAttnGradKernelBase(const Context& dev_ctx,
                              const DenseTensor& q,
@@ -66,9 +69,8 @@ void FlashAttnGradKernelBase(const Context& dev_ctx,
   void *downstart_row_indices_data = nullptr, *upend_row_indices_data = nullptr,
        *downend_row_indices_data = nullptr, *upstart_row_indices_data = nullptr;
   bool is_flashmask = startend_row_indices.get_ptr() != nullptr;
-  XPUStream flashmask_stream;
+  XPUStream flashmask_stream = get_flashmask_stream();
   if (is_flashmask) {
-    xpu_stream_create(&flashmask_stream);
     PADDLE_ENFORCE_EQ(
         startend_row_indices->dims().size(),
         4,
@@ -227,11 +229,6 @@ void FlashAttnGradKernelBase(const Context& dev_ctx,
       nullptr,
       is_flashmask ? flashmask_stream : nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
-  if (is_flashmask && flashmask_stream != nullptr) {
-    r = xpu_wait(flashmask_stream);
-    PADDLE_ENFORCE_XPU_SUCCESS(r);
-    xpu_stream_destroy(flashmask_stream);
-  }
 }
 
 template <typename T, typename Context>

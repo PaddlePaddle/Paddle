@@ -20,6 +20,14 @@
 #include "xfa/flash_api.h"
 namespace phi {
 
+XPUStream get_flashmask_stream() {
+  static XPUStream flashmask_stream;
+  static std::once_flag create_flashmask_stream_flag;
+  std::call_once(create_flashmask_stream_flag,
+                 [&] { xpu_stream_create(&flashmask_stream); });
+  return flashmask_stream;
+}
+
 #define MHA_VARLEN_FWD(T1, T2, T3, T4)                    \
   baidu::xpu::xfa::mha_varlen_fwd<T1, T2, T3, T4>(        \
       dev_ctx.x_context(),                                \
@@ -126,9 +134,8 @@ void FlashAttnKernelBase(const Context& dev_ctx,
   void *downstart_row_indices_data = nullptr, *upend_row_indices_data = nullptr,
        *downend_row_indices_data = nullptr, *upstart_row_indices_data = nullptr;
   bool is_flashmask = startend_row_indices.get_ptr() != nullptr;
-  XPUStream flashmask_stream;
+  XPUStream flashmask_stream = get_flashmask_stream();
   if (is_flashmask) {
-    xpu_stream_create(&flashmask_stream);
     PADDLE_ENFORCE_EQ(
         startend_row_indices->dims().size(),
         4,
@@ -246,12 +253,6 @@ void FlashAttnKernelBase(const Context& dev_ctx,
       r = MHA_VARLEN_FWD(XPUType, float, tfloat32, int32_t);
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
-  }
-
-  if (is_flashmask && flashmask_stream != nullptr) {
-    int r = xpu_wait(flashmask_stream);
-    PADDLE_ENFORCE_XPU_SUCCESS(r);
-    xpu_stream_destroy(flashmask_stream);
   }
 }
 
