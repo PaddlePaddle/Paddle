@@ -1412,7 +1412,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
