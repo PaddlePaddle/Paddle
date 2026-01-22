@@ -1682,7 +1682,9 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                if hasattr(params_grads[0][0], 'buffer_manager'):
+                if isinstance(params_grads, list) and hasattr(
+                    params_grads[0][0], 'buffer_manager'
+                ):
                     buffer_manager = params_grads[0][0].buffer_manager
                     new_params_grads = []
                     for group in buffer_manager.buffer_groups:

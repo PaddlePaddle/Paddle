@@ -139,7 +139,7 @@ class FSDPBufferManager:
             if dist.get_rank() in group:
                 self._fsdp_group = comm_group
 
-        # group params
+        # build_param_groups
         vars_groups = self.build_param_groups()
 
         # create buffer_groups
@@ -187,12 +187,12 @@ class FSDPBufferManager:
         freeze_parameters, trainable_parameters, tie_parameters = [], [], []
 
         # get tie_param_name if using tie_weights
-        tie_param_name = None
+        self.tie_param_name = None
         if hasattr(self.model, "get_input_embeddings"):
-            tie_param_name = self.model.get_input_embeddings().weight.name
+            self.tie_param_name = self.model.get_input_embeddings().weight.name
 
         for param in parameters:
-            if tie_param_name and param.name == tie_param_name:
+            if self.tie_param_name and param.name == self.tie_param_name:
                 tie_parameters.append(param)
             elif param.stop_gradient:
                 freeze_parameters.append(param)
@@ -264,6 +264,16 @@ class FSDPCommManager:
                 ]
                 params_buffer.is_shard = True
                 params_buffer.clear_tmp_buffer()
+            elif (
+                self.buffer_manager.buffer_groups[group_idx]["params_use_cnt"]
+                > self.buffer_manager.buffer_groups[group_idx]["params_use_sum"]
+            ):
+                raise RuntimeError(
+                    f"Parameter usage count exceeds the expected sum. "
+                    f"Param: {param.name}, "
+                    f"use count: {self.buffer_manager.buffer_groups[group_idx]['params_use_cnt']}, "
+                    f"expected sum: {self.buffer_manager.buffer_groups[group_idx]['params_use_sum']}"
+                )
 
     def reduce_scatter_grad(self, param):
         group_idx = self.buffer_manager.param_to_buffer_group[param.name]
@@ -273,7 +283,7 @@ class FSDPCommManager:
             == self.buffer_manager.buffer_groups[group_idx]["grads_use_sum"]
         ):
             self.buffer_manager.buffer_groups[group_idx]["grads_use_cnt"] = 0
-            # reduce-scatter from tmp_grad_buffer into grads_buffer.
+            # reduce_scatter from tmp_grad_buffer into grads_buffer.
             tmp_grad_buffer = self.buffer_manager.buffer_groups[group_idx][
                 "grads_buffer"
             ].get_tmp_buffer()
@@ -305,4 +315,19 @@ class FusionLayerHook(PyLayer):
             if param.trainable:
                 trainable_params.append(param)
         ctx.comm_manager.all_gather_params(trainable_params)
+        return args
+
+
+class FusionLayerPostHook(PyLayer):
+    @staticmethod
+    def forward(ctx, *inputs, layer, comm_manager):
+        ctx.layer = layer
+        ctx.comm_manager = comm_manager
+        return inputs
+
+    @staticmethod
+    def backward(ctx, *args):
+        layer = ctx.layer
+        params = list(ctx.layer.parameters(include_sublayers=False))
+        ctx.comm_manager.shard_params(params)
         return args

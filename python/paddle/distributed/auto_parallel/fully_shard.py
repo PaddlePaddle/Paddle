@@ -25,6 +25,7 @@ from .fully_shard_utils import (
     FSDPBufferManager,
     FSDPCommManager,
     FusionLayerHook,
+    FusionLayerPostHook,
 )
 from .moe_utils import (
     _dtensor_from_local,
@@ -175,8 +176,24 @@ class FullyShardAuto:
                 comm_manager=self.comm_manager,
             )
 
+        def _forward_pre_hook(layer, inputs):
+            return FusionLayerPostHook.apply(
+                *inputs,
+                layer=layer,
+                comm_manager=self.comm_manager,
+            )
+
         if layer.parameters(include_sublayers=False):
             layer.register_forward_post_hook(_forward_post_hook)
+
+            # register an additional hook for tie_weights shard_params.
+            for param in layer.parameters(include_sublayers=False):
+                if (
+                    param.name
+                    == self.comm_manager.buffer_manager.tie_param_name
+                ):
+                    layer.register_forward_pre_hook(_forward_pre_hook)
+
         for name, sub_layer in layer.named_children():
             self._register_fusion_layer_hooks(sub_layer, name)
 
