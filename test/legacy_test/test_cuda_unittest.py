@@ -227,7 +227,9 @@ class TestCudaCompat(unittest.TestCase):
 
         if paddle.is_compiled_with_xpu():
             paddle.set_default_device("xpu")
-            self.assertEqual(paddle.get_default_device(), paddle.device('xpu'))
+            self.assertEqual(
+                paddle.get_default_device(), paddle.device('xpu:0')
+            )
 
     @unittest.skipIf(
         (
