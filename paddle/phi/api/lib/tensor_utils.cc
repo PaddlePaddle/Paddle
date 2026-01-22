@@ -44,7 +44,8 @@ PADDLE_API phi::Place GetPlaceFromPtr(void* data) {
 #else
   hipPointerAttribute_t attr = {};
   hipError_t status = hipPointerGetAttributes(&attr, data);
-  if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
+  // ROCm 7.0+ uses 'type' instead of 'memoryType'
+  if (status == hipSuccess && attr.type == hipMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
   }
 #endif

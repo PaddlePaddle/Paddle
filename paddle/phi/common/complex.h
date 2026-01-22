@@ -28,7 +28,11 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
+// Note: thrust/complex.h should only be included in .cu files when using ROCm
+// because rocThrust >= 7.0 includes rocprim which requires HIP compiler built-ins
+#if defined(__HIPCC__) || defined(__HIP_DEVICE_COMPILE__)
 #include <thrust/complex.h>  // NOLINT
+#endif
 #endif
 
 #ifndef PADDLE_WITH_HIP
@@ -66,7 +70,8 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   HOSTDEVICE constexpr complex(T real, T imag) : real(real), imag(imag) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// thrust::complex interop: CUDA always, HIP only when compiled with hipcc
+#if defined(PADDLE_WITH_CUDA) || (defined(PADDLE_WITH_HIP) && defined(__HIPCC__))
 
   template <typename T1>
   HOSTDEVICE inline explicit complex(const thrust::complex<T1>& c) {
@@ -86,6 +91,9 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   HOSTDEVICE inline explicit operator thrust::complex<T1>() const {
     return thrust::complex<T1>(real, imag);
   }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
   HOSTDEVICE inline explicit operator hipFloatComplex() const {

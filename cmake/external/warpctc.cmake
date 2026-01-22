@@ -52,8 +52,8 @@ if(WITH_ROCM)
   set(WARPCTC_PATCH_ROCM_COMMAND
       patch -p1 <
       ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
+      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch &&
+      cp ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.rocm70 cmake/hip.cmake)
 endif()
 
 set(WARPCTC_INCLUDE_DIR
