@@ -32,6 +32,9 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+import os
+
+cached_env_flash_attn_version = os.getenv("FLAGS_flash_attn_version", None)
 
 
 @signature_safe_contextmanager
@@ -340,6 +343,7 @@ def flash_attention(
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
 
+    device_name = paddle.device.get_device_name()
     if sdp_func_name == "flash_attn":
         if "xpu" in paddle.get_device():
             fa_version = 2
@@ -349,6 +353,12 @@ def flash_attention(
             "FLAGS_cudnn_deterministic"
         ]:
             fa_version = 2
+        elif cached_env_flash_attn_version is None and (
+            "H100" in device_name
+            or "H800" in device_name
+            or "Hopper" in device_name
+        ):
+            fa_version = 3
         else:
             fa_version = paddle.base.framework.get_flags(
                 ["FLAGS_flash_attn_version"]
