@@ -2231,38 +2231,6 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     scale_transposed_inner_dim = scale_outer_dim;
   }
 
-  PADDLE_ENFORCE_GE(
-      output_outer_dim,
-      0,
-      phi::errors::InvalidArgument(
-          "The output_outer_dim should be greater than or equal to 0, "
-          "but received output_outer_dim is %d.",
-          output_outer_dim));
-
-  PADDLE_ENFORCE_GE(
-      output_inner_dim,
-      0,
-      phi::errors::InvalidArgument(
-          "The output_inner_dim should be greater than or equal to 0, "
-          "but received output_inner_dim is %d.",
-          output_inner_dim));
-
-  PADDLE_ENFORCE_GE(
-      scale_outer_dim,
-      0,
-      phi::errors::InvalidArgument(
-          "The scale_outer_dim should be greater than or equal to 0, "
-          "but received scale_outer_dim is %d.",
-          scale_outer_dim));
-
-  PADDLE_ENFORCE_GE(
-      scale_inner_dim,
-      0,
-      phi::errors::InvalidArgument(
-          "The scale_inner_dim should be greater than or equal to 0, "
-          "but received scale_inner_dim is %d.",
-          scale_inner_dim));
-
   if (using_ue8m0_scale) {
     // 1. Add using_ue8m0_scale param, support ue8m0 quantization scale.
     // 2. After using using_ue8m0_scale, the method will convert the original
@@ -2325,24 +2293,55 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     }
   }
 
+  PADDLE_ENFORCE_GE(
+      output_outer_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The output_outer_dim should be greater than or equal to 0, "
+          "but received output_outer_dim is %d.",
+          output_outer_dim));
+
+  PADDLE_ENFORCE_GE(
+      output_inner_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The output_inner_dim should be greater than or equal to 0, "
+          "but received output_inner_dim is %d.",
+          output_inner_dim));
+
+  PADDLE_ENFORCE_GE(
+      scale_outer_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The scale_outer_dim should be greater than or equal to 0, "
+          "but received scale_outer_dim is %d.",
+          scale_outer_dim));
+
+  PADDLE_ENFORCE_GE(
+      scale_inner_dim,
+      0,
+      phi::errors::InvalidArgument(
+          "The scale_inner_dim should be greater than or equal to 0, "
+          "but received scale_inner_dim is %d.",
+          scale_inner_dim));
+
   if (X && out && scale) {
     if (!return_transpose_only) {
-      out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
+      out->set_dims(make_ddim({output_outer_dim, output_inner_dim}));
       out->set_dtype(DataType::FLOAT8_E4M3FN);
-      scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
+      scale->set_dims(make_ddim({scale_outer_dim, scale_inner_dim}));
       scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
     } else {
-      out->set_dims(common::make_ddim({0}));
+      out->set_dims(make_ddim({0}));
       out->set_dtype(DataType::FLOAT8_E4M3FN);
-      scale->set_dims(common::make_ddim({0}));
+      scale->set_dims(make_ddim({0}));
       scale->set_dtype(using_ue8m0_scale ? DataType::INT32 : DataType::FLOAT32);
     }
     if (input_transpose) {
-      out_transposed->set_dims(
-          common::make_ddim({output_inner_dim, output_outer_dim}));
+      out_transposed->set_dims(make_ddim({output_inner_dim, output_outer_dim}));
       out_transposed->set_dtype(DataType::FLOAT8_E4M3FN);
-      scale_transposed->set_dims(common::make_ddim(
-          {scale_transposed_outer_dim, scale_transposed_inner_dim}));
+      scale_transposed->set_dims(
+          make_ddim({scale_transposed_outer_dim, scale_transposed_inner_dim}));
       scale_transposed->set_dtype(using_ue8m0_scale ? DataType::INT32
                                                     : DataType::FLOAT32);
     }
