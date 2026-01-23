@@ -655,11 +655,12 @@ class ModelCheckpoint(Callback):
             >>> from paddle.vision.datasets import MNIST
             >>> from paddle.static import InputSpec
 
-            >>> paddle.seed(2023)
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+            >>> transform = T.Compose(
+            ...     [T.Transpose(), T.Normalize([127.5], [127.5])],
+            ... )
 
             >>> train_dataset = MNIST(mode='train', transform=transform)
 
@@ -667,10 +668,20 @@ class ModelCheckpoint(Callback):
             >>> model = paddle.Model(lenet, inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
-            >>> model.prepare(optimizer=optim, loss=paddle.nn.CrossEntropyLoss(), metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> callback = paddle.callbacks.ModelCheckpoint(save_dir='./temp')
-            >>> model.fit(train_dataset, batch_size=2, epochs=1, callbacks=callback, verbose=0)
+            >>> model.fit(
+            ...     train_dataset,
+            ...     batch_size=2,
+            ...     epochs=1,
+            ...     callbacks=callback,
+            ...     verbose=0,
+            ... )
     """
 
     def __init__(self, save_freq: int = 1, save_dir: str | None = None) -> None:
