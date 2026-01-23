@@ -454,9 +454,25 @@ void matmul_double_grad(const Tensor& x,
   }
   Tensor dx, dy, ddout_1, ddout_2, ddout;
   if (!grad_x_grad && !grad_y_grad) {
-    return;
-
+    if (x_grad) {
+      dx = full<T>(
+          common::vectorize(x_help.dims()), 0, x_help.dtype(), x_help.place());
+    }
+    if (y_grad) {
+      dy = full<T>(
+          common::vectorize(y_help.dims()), 0, y_help.dtype(), y_help.place());
+    }
+    if (grad_out_grad) {
+      ddout = full<T>(common::vectorize(out_help.dims()),
+                      0,
+                      out_help.dtype(),
+                      out_help.place());
+    }
   } else if (!grad_x_grad) {
+    if (y_grad) {
+      dy = full<T>(
+          common::vectorize(y_help.dims()), 0, y_help.dtype(), y_help.place());
+    }
     if (!transpose_x && !transpose_y) {
       if (x_grad) {
         dx = matmul<T>(out_help, yg_help, false, true);
@@ -488,6 +504,10 @@ void matmul_double_grad(const Tensor& x,
     }
 
   } else if (!grad_y_grad) {
+    if (x_grad) {
+      dx = full<T>(
+          common::vectorize(x_help.dims()), 0, x_help.dtype(), x_help.place());
+    }
     if (!transpose_x && !transpose_y) {
       if (y_grad) {
         dy = matmul<T>(xg_help, out_help, true, false);
