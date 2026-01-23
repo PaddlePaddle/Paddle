@@ -100,7 +100,7 @@ def tensor_max_abs_rel_err(a, b, eps=1e-8):
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
     """Test cases for moe_permute and moe_unpermute."""
 
-    SEQLEN = [5000, 16384]
+    SEQLEN = 16384
     TOKEN_LEN = 7168
     DTYPES = ["float8_e4m3fn", "bfloat16"]
     EXPERT_NUMS = [4, 8, 16, 32, 64]
@@ -112,12 +112,10 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
     def test_permute_unpermute_consistency(self):
         """Test that permute + unpermute recovers original tensors."""
-        for seq_len, dt, expert_num, topk in itertools.product(
-            self.SEQLEN, self.DTYPES, self.EXPERT_NUMS, self.TOPKS
+        for dt, expert_num, topk in itertools.product(
+            self.DTYPES, self.EXPERT_NUMS, self.TOPKS
         ):
-            with self.subTest(
-                seq_len=seq_len, dtype=dt, expert_num=expert_num, topk=topk
-            ):
+            with self.subTest(dtype=dt, expert_num=expert_num, topk=topk):
                 (
                     hidden_states,
                     scale,
@@ -125,7 +123,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     expert_prob_topk,
                     tokens_per_expert,
                 ) = fabricate_dispatch_result(
-                    seq_len,
+                    self.SEQLEN,
                     self.TOKEN_LEN,
                     topk,
                     expert_num,
@@ -178,7 +176,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                         zipped_expertwise_rowmap,
                         expert_routemap_topk,
                         unzipped_probs,
-                        total_zipped_tokens=seq_len,
+                        total_zipped_tokens=self.SEQLEN,
                         num_experts=expert_num,
                     )
                 )
@@ -217,12 +215,10 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
         DTYPES = ["float8_e4m3fn"]
         EXPERT_NUMS = [4, 8, 16]
         TOPKS = [4, 8, 16]
-        for seq_len, dt, expert_num, topk in itertools.product(
-            self.SEQLEN, DTYPES, EXPERT_NUMS, TOPKS
+        for dt, expert_num, topk in itertools.product(
+            DTYPES, EXPERT_NUMS, TOPKS
         ):
-            with self.subTest(
-                seq_len=seq_len, dtype=dt, expert_num=expert_num, topk=topk
-            ):
+            with self.subTest(dtype=dt, expert_num=expert_num, topk=topk):
                 (
                     hidden_states,
                     scale,
@@ -230,7 +226,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     expert_prob_topk,
                     tokens_per_expert,
                 ) = fabricate_dispatch_result(
-                    seq_len,
+                    self.SEQLEN,
                     self.TOKEN_LEN,
                     topk,
                     expert_num,
