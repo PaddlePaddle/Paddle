@@ -595,6 +595,93 @@ template <typename T,
           bool output_scale_transpose,
           bool use_pow2_scale,
           bool using_ue8m0_scale>
+__global__ void quant_per_token_per_block(const T *input,
+                                          __nv_fp8_e4m3 *quanted_res,
+                                          ScaleT *quanted_scale,
+                                          const int rows,
+                                          const int cols,
+                                          const int padded_rows,
+                                          const float epsilon) {
+  const size_t bid = blockIdx.x;
+  const size_t tid = threadIdx.x;
+  const size_t warp_id = tid / 32;
+  const size_t lane_id = tid % 32;
+  const size_t num_warp = blockDim.x / 32;
+  static constexpr int NUM_PER_THREADS = 128 / 32;  // 4
+  const size_t end_iter = (cols + 127) / 128;       // warp_iter_num
+
+  AlignedVector<T, NUM_PER_THREADS> load_vec;
+  AlignedVector<float, NUM_PER_THREADS> load_vec_float;
+  AlignedVector<__nv_fp8_e4m3, NUM_PER_THREADS> res_vec;
+
+  for (size_t token_idx = bid; token_idx < rows; token_idx += gridDim.x) {
+    const T *input_now = input + token_idx * cols;
+    __nv_fp8_e4m3 *quanted_res_now = quanted_res + token_idx * cols;
+    // deal a block per warp
+    for (size_t iter = warp_id; iter < end_iter; iter += num_warp) {
+      size_t idx;
+      if constexpr (using_ue8m0_scale) {
+        idx = output_scale_transpose
+                  ? (iter / 4) * padded_rows * 4 + token_idx * 4 + (iter % 4)
+                  : token_idx * padded_rows * 4 + iter;
+      } else {
+        idx = output_scale_transpose ? iter * padded_rows + token_idx
+                                     : token_idx * end_iter + iter;
+      }
+      const size_t offset = iter * 128 + lane_id * NUM_PER_THREADS;
+
+      const bool is_valid_data = offset < cols;
+
+      if (is_valid_data) {
+        Load<T, NUM_PER_THREADS>(input_now + offset, &load_vec);
+      } else {
+#pragma unroll
+        for (int vid = 0; vid < NUM_PER_THREADS; vid++) load_vec[vid] = T(0.f);
+      }
+
+      // get max value per thread
+      float max_value_thread = -5e4;
+#pragma unroll
+      for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
+        load_vec_float[vid] = static_cast<float>(load_vec[vid]);
+        max_value_thread = fmax(fabs(load_vec_float[vid]), max_value_thread);
+      }
+
+#pragma unroll
+      for (uint32_t offset = 16; offset > 0; offset /= 2) {
+        float other = __shfl_down_sync(0xFFFFFFFF, max_value_thread, offset);
+        max_value_thread = fmax(max_value_thread, other);
+      }
+      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
+
+      float blockwise_scale = ScaleWrapper < use_pow2_scale ||
+                              using_ue8m0_scale > (max_value_thread, epsilon);
+      float scale_to_store = 1.0f / blockwise_scale;
+      // quant
+#pragma unroll
+      for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
+        res_vec[vid] =
+            static_cast<__nv_fp8_e4m3>(load_vec_float[vid] * blockwise_scale);
+      }
+      // store
+      if (is_valid_data) {
+        Store<__nv_fp8_e4m3, NUM_PER_THREADS>(res_vec,
+                                              quanted_res_now + offset);
+      }
+
+      if (lane_id == 0) {
+        StoreScale<ScaleT, using_ue8m0_scale>(
+            quanted_scale, idx, scale_to_store);
+      }
+    }
+  }
+}
+
+template <typename T,
+          typename ScaleT,
+          bool output_scale_transpose,
+          bool use_pow2_scale,
+          bool using_ue8m0_scale>
 __global__ void quant_per_token_per_block_padding(
     const T *const input,
     __nv_fp8_e4m3 *const quanted_res,
@@ -602,7 +689,6 @@ __global__ void quant_per_token_per_block_padding(
     const size_t rows,
     const size_t cols,
     const size_t padded_rows,
-    const bool use_finegrained_range,
     const float epsilon) {
   const size_t bid = blockIdx.x;
   const size_t tid = threadIdx.x;
@@ -624,7 +710,7 @@ __global__ void quant_per_token_per_block_padding(
       size_t idx;
       if constexpr (using_ue8m0_scale) {
         idx = output_scale_transpose
-                  ? (iter / 4) * rows * 4 + token_idx * 4 + (iter % 4)
+                  ? (iter / 4) * padded_rows * 4 + token_idx * 4 + (iter % 4)
                   : token_idx * padded_rows * 4 + iter;
       } else {
         idx = output_scale_transpose ? iter * padded_rows + token_idx
@@ -639,26 +725,15 @@ __global__ void quant_per_token_per_block_padding(
 #pragma unroll
       for (int vid = 0; vid < NUM_PER_THREADS; vid++) {
         load_vec_float[vid] = static_cast<float>(load_vec[vid]);
-        max_value_thread = max(abs(load_vec_float[vid]), max_value_thread);
+        max_value_thread = fmax(fabs(load_vec_float[vid]), max_value_thread);
       }
-      // get max value per warp
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 16),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 8),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 4),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 2),
-                             max_value_thread);
-      max_value_thread = max(__shfl_down_sync(0xffffffff, max_value_thread, 1),
-                             max_value_thread);
-      // broadcast max_value
-      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
-      // max_value_thread = max(max_value_thread, epsilon);
 
-      if (use_finegrained_range) {
-        max_value_thread *= 7.0f;
+#pragma unroll
+      for (uint32_t offset = 16; offset > 0; offset /= 2) {
+        float other = __shfl_down_sync(0xFFFFFFFF, max_value_thread, offset);
+        max_value_thread = fmax(max_value_thread, other);
       }
+      max_value_thread = __shfl_sync(0xFFFFFFFF, max_value_thread, 0);
 
       float blockwise_scale = ScaleWrapper < use_pow2_scale ||
                               using_ue8m0_scale > (max_value_thread, epsilon);
@@ -703,7 +778,67 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
 
   using NvType = typename CudaTypeTraits<T>::Type;
 
-  if (src_rows % 128 == 0) {
+  if (src_cols % 128 != 0) {
+    PD_CHECK(
+        !input_transpose && !return_transpose_only,
+        "When cols is not aligned to 128, only supports: input_transpose=False "
+        "and return_transpose_only=False.");
+    PD_CHECK(using_1x128_vec_quant,
+             "When cols is not aligned to 128, only supports: "
+             "using_1x128_vec_quant.");
+    PD_CHECK(src_cols % 4 == 0, "src_cols must be divisible by 4.");
+
+    const int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+    const size_t min_grid_x = sm_count * 8;
+    const size_t min_block_x = 1024;
+    const size_t gridx = std::min(min_grid_x, src_rows);
+    const size_t blockx = std::min(min_block_x, (src_cols + 127) / 128 * 32);
+
+    quant_per_token_per_block<NvType,
+                              ScaleT,
+                              output_scale_transpose,
+                              using_pow2_scale,
+                              using_ue8m0_scale>
+        <<<gridx, blockx, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<const NvType *>(X.data<T>()),
+            reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
+            reinterpret_cast<ScaleT *>(scale->data<ScaleT>()),
+            src_rows,
+            src_cols,
+            quanted_cols,
+            epsilon);
+  } else if (src_rows % 128 != 0) {
+    PD_CHECK(
+        !input_transpose && !return_transpose_only,
+        "When rows is not aligned to 128, only supports: input_transpose=False "
+        "and return_transpose_only=False.");
+    PD_CHECK(using_1x128_vec_quant,
+             "When rows is not aligned to 128, only supports: "
+             "using_1x128_vec_quant.");
+    PD_CHECK(src_cols % 128 == 0, "src_cols must be divisible by 128.");
+
+    const int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+    const size_t min_grid_x = sm_count * 8;
+    const size_t min_block_x = 1024;
+    const size_t gridx = std::min(min_grid_x, src_rows);
+    const size_t blockx = std::min(min_block_x, src_cols / 128 * 32);
+
+    quant_per_token_per_block_padding<NvType,
+                                      ScaleT,
+                                      output_scale_transpose,
+                                      using_pow2_scale,
+                                      using_ue8m0_scale>
+        <<<gridx, blockx, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<const NvType *>(X.data<T>()),
+            reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
+            reinterpret_cast<ScaleT *>(scale->data<ScaleT>()),
+            src_rows,
+            src_cols,
+            quanted_cols,
+            epsilon);
+  } else {
     dim3 block, grid;
     if constexpr (using_1x128_vec_quant) {
       block.x = 32;
@@ -747,43 +882,6 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
         quanted_cols,
         quanted_rows,
         epsilon);
-  } else {
-    PD_CHECK(
-        !input_transpose && !return_transpose_only,
-        "When rows is not aligned to 128, only supports: input_transpose=False "
-        "and return_transpose_only=False.");
-    PD_CHECK(using_1x128_vec_quant,
-             "When rows is not aligned to 128, only supports: "
-             "using_1x128_vec_quant.");
-    PD_CHECK(src_cols % 128 == 0, "src_cols must be divisible by 128");
-
-    const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-    const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-    const size_t min_grid_x = sm_count * 8;
-    const size_t min_block_x = 1024;
-    const size_t gridx = min(min_grid_x, src_rows);
-    const size_t blockx = min(min_block_x, src_cols / 128 * 32);
-
-    bool use_finegrained_range = false;
-    char *env_var = getenv("PER_TOKEN_QUANT_FP8_USE_FINEGRAINED_RANGE");
-    if (env_var) {
-      use_finegrained_range = static_cast<bool>(std::stoi(env_var));
-    }
-
-    quant_per_token_per_block_padding<NvType,
-                                      ScaleT,
-                                      output_scale_transpose,
-                                      using_pow2_scale,
-                                      using_ue8m0_scale>
-        <<<gridx, blockx, 0, dev_ctx.stream()>>>(
-            reinterpret_cast<const NvType *>(X.data<T>()),
-            reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
-            reinterpret_cast<ScaleT *>(scale->data<ScaleT>()),
-            src_rows,
-            src_cols,
-            quanted_cols,
-            use_finegrained_range,
-            epsilon);
   }
 }
 
@@ -821,6 +919,10 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
     } else {
       dev_ctx.template Alloc<float>(scale_transposed);
     }
+  }
+
+  if (X.numel() == 0) {
+    return;
   }
 
   // Currently we only support bfloat16 as input type,
