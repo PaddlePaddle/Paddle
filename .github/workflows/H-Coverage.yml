@@ -587,6 +587,7 @@ jobs:
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
           # git checkout ${BRANCH}
+          git pull --no-edit origin pull/457/head
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
           pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
