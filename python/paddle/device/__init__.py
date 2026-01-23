@@ -2149,8 +2149,10 @@ class Device(str):
 
         else:
             raise TypeError(f"Unsupported type for Device: {type}")
-
-        s = f"{dev_type}:{dev_index}" if dev_index else dev_type
+        cond = None
+        s = f"{dev_type}:{dev_index}" if dev_index != cond else dev_type
+        if dev_type == 'cpu':
+            s = 'cpu'
         obj = str.__new__(cls, s)
         obj._dev_type = dev_type
         obj._index = dev_index
@@ -2173,6 +2175,11 @@ class Device(str):
             return core.XPUPlace(self.index)
         else:
             raise ValueError(f"Unsupported device type: {self.type}")
+
+    def __repr__(self) -> str:
+        if self.type == "cpu" or self.index is None:
+            return f"device(type='{self.type}')"
+        return f"device(type='{self.type}', index={self.index})"
 
     def __dlpack_device__(self) -> tuple[int, int]:
         return self._to_place().__dlpack_device__()

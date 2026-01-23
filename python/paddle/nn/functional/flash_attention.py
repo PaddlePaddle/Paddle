@@ -1943,9 +1943,10 @@ def flashmask_attention(
         )
         assert startend_row_indices.shape[1] in [
             1,
+            query.shape[2],
             key.shape[2],
         ], (
-            "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
+            "startend_row_indices head_num must be equal to 1(broadcast) or head_num_q or head_num_k."
         )
 
         if block_mask is not None:

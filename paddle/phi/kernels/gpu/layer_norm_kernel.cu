@@ -472,8 +472,10 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(
     float eps) {
   const auto x_dims = common::make_ddim(input_shape);
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
-  int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
-  int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
+  int64_t batch_size = matrix_dim[0];
+  int64_t feature_size = matrix_dim[1];
+  // TODO(large-tensor): generic kernel launch uses int32 grid dim
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
   switch (funcs::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
         funcs::LayerNormForward<T, U, kBlockDim>
@@ -519,7 +521,8 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
 #endif
   if ((hidden_size >= 768 && hidden_size <= 2048 && hidden_size % 256 == 0 ||
        hidden_size == 4096) &&
-      scale != nullptr && bias != nullptr) {
+      x_numel <= std::numeric_limits<int>::max() && scale != nullptr &&
+      bias != nullptr) {
     return LayerNormKernelVariant::FAST_LN_V1;
   }
 
@@ -577,8 +580,10 @@ void LayerNormKernel(const Context& dev_ctx,
   }
 
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
-  int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
-  int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
+  int64_t batch_size = matrix_dim[0];
+  // TODO(large-tensor): generic kernel launch uses int32 grid dim
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  int64_t feature_size = matrix_dim[1];
   auto stream = dev_ctx.stream();
   auto place = x.place();
 
