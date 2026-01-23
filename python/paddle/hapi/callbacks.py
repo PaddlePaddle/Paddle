@@ -659,7 +659,10 @@ class ModelCheckpoint(Callback):
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
             >>> transform = T.Compose(
-            ...     [T.Transpose(), T.Normalize([127.5], [127.5])],
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ]
             ... )
 
             >>> train_dataset = MNIST(mode='train', transform=transform)
