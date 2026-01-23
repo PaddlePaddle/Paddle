@@ -1283,7 +1283,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
