@@ -23,6 +23,16 @@ from paddle import base
 from paddle.base import core
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+# Add source test directories
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "test"))
+)
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "test", "legacy_test")
+    )
+)
+# Add build test directories
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "build", "test")
@@ -40,6 +50,15 @@ import static_mode_white_list
 
 def main():
     sys.path.append(os.getcwd())
+    # Map build test dir to source test dir (e.g., build/test/distribution -> test/distribution)
+    # Also add parent test dir for relative imports like sys.path.append("../sequence")
+    cwd = os.getcwd()
+    if '/build/test' in cwd:
+        source_test_dir = cwd.replace('/build/test', '/test')
+        if os.path.isdir(source_test_dir):
+            sys.path.append(source_test_dir)
+            # Change to source dir so relative paths work (e.g., "../sequence")
+            os.chdir(source_test_dir)
     if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
         if os.getenv('FLAGS_enable_gpu_memory_usage_log') is None:
             os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
