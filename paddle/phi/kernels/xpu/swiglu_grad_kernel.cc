@@ -29,7 +29,7 @@ namespace phi {
 template <typename T, typename Context>
 void SwiGluGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& y,
+                      const optional<DenseTensor>& y,
                       const DenseTensor& dz,
                       DenseTensor* dx,
                       DenseTensor* dy) {
