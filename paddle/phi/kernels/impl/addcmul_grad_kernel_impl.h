@@ -98,23 +98,15 @@ static void AddcmulGradFunction(const Context& dev_ctx,
 
   auto& place = *dev_ctx.eigen_device();
 
-  // d(input) = sum(dout)
+  // d(input) = sum(dout) along broadcasted dimensions
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
     auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
-    eigen_dx.device(place) =
-        eigen_dout
-            .broadcast(
-                Eigen::DSizes<int, D>())  // dout is already broadcasted shape?
-                                          // No, dout is output shape. Wait,
-                                          // eigen_dout is From(dout, g_dims).
-                                          // g_dims is extended dout dims. We
-                                          // treat dout as fully broadcasted
-                                          // result. We reshape it to split
-                                          // broadcasted dimensions and reduce.
-            .reshape(dx_reshape_dims)
-            .sum(reduce_dims)
-            .reshape(eigen_dx.dimensions());
+    // Reshape dout to separate broadcasted dims from actual dims,
+    // then sum along broadcasted dims (even indices in reshape_dims)
+    eigen_dx.device(place) = eigen_dout.reshape(dx_reshape_dims)
+                                 .sum(reduce_dims)
+                                 .reshape(eigen_dx.dimensions());
   }
 
   using MPType = typename dtype::MPTypeTrait<T>::Type;
