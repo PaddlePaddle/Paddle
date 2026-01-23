@@ -70,7 +70,7 @@ typedef enum {
 
 typedef struct C_Device_st {
   int id;
-}* C_Device;
+} * C_Device;
 
 typedef enum {
   C_StreamCaptureModeGlobal = 0,
