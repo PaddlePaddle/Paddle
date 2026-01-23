@@ -1516,8 +1516,8 @@ def _device_to_paddle(
     elif isinstance(dev, str):
         cleaned_device = dev.strip()
         return (
-            cleaned_device.replace("cuda:", "gpu:")
-            if "cuda:" in cleaned_device
+            cleaned_device.replace("cuda", "gpu")
+            if "cuda" in cleaned_device
             else cleaned_device
         )
     elif dev is None:
