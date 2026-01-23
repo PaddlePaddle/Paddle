@@ -214,7 +214,7 @@ def enabled() -> bool:
         bool: Whether the program is running in dynamic graph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
 
@@ -246,7 +246,7 @@ def enable_dygraph(place: PlaceLike | None = None) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> print(paddle.in_dynamic_mode())
@@ -284,7 +284,7 @@ def disable_dygraph() -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> print(paddle.in_dynamic_mode())
@@ -483,10 +483,10 @@ class set_grad_enabled(_DecoratorContextManager):
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([1.], stop_gradient=False)
+            >>> x = paddle.to_tensor([1.0], stop_gradient=False)
             >>> is_train = False
             >>> with paddle.set_grad_enabled(is_train):
             ...     y = x * 2
