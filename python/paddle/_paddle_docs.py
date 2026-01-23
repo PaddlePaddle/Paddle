@@ -1283,19 +1283,19 @@ add_doc_and_signature(
 
     Examples:
 
-    .. code-block:: pycon
+        .. code-block:: python
 
-        >>> import paddle
+            >>> import paddle
 
-        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        >>> out1 = paddle.logsumexp(x)
-        >>> out1
-        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-        3.46912265)
-        >>> out2 = paddle.logsumexp(x, 1)
-        >>> out2
-        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [2.15317822, 3.15684605])
+            >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+            >>> out1 = paddle.logsumexp(x)
+            >>> out1
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.46912265)
+            >>> out2 = paddle.logsumexp(x, 1)
+            >>> out2
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2.15317822, 3.15684605])
 
 """,
     """
