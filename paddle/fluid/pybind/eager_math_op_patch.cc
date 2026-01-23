@@ -171,10 +171,10 @@ void SetDevice(phi::Place place) {
 
 // scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
 // this function will update gradually.
-paddle::Tensor CallScalarFunction(const paddle::Tensor& self_tensor,
-                                  double other,
-                                  std::string op_type) {
-  paddle::Tensor ret;
+Tensor CallScalarFunction(const Tensor& self_tensor,
+                          double other,
+                          std::string op_type) {
+  Tensor ret;
   SetPythonStack();
   // scale_ad_func need scalar and bias with float type.
   if (op_type == "add" || op_type == "radd") {
@@ -209,8 +209,8 @@ paddle::Tensor CallScalarFunction(const paddle::Tensor& self_tensor,
 }
 
 void TypePromotionForZeroDimTensor(std::string func,
-                                   paddle::Tensor& self_tensor,  // NOLINT
-                                   paddle::Tensor& other_tensor  // NOLINT
+                                   Tensor& self_tensor,  // NOLINT
+                                   Tensor& other_tensor  // NOLINT
 ) {
   if ((self_tensor.shape().size() == 0 || other_tensor.shape().size() == 0) &&
       self_tensor.dtype() != other_tensor.dtype()) {
@@ -261,8 +261,8 @@ static PyObject* tensor__add__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -295,7 +295,7 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
 
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
@@ -374,9 +374,9 @@ static PyObject* tensor__sub__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
+  Tensor ret;
 
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -409,7 +409,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -485,8 +485,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -519,7 +519,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -580,9 +580,9 @@ static PyObject* tensor__mul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
+  Tensor ret;
 
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -617,7 +617,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   // if lhs or rhs input is tensor, we need to inplace cast it to dist_tensor
   // if one of the input is numpy or scalar, no need to do inplace cast.
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -702,9 +702,9 @@ static PyObject* tensor__div__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
+  Tensor ret;
 
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -731,7 +731,7 @@ static PyObject* tensor__div__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -812,9 +812,9 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
+  Tensor ret;
 
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -836,7 +836,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
 
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -900,8 +900,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -928,7 +928,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -993,8 +993,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1021,7 +1021,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1086,9 +1086,9 @@ static PyObject* tensor__mod__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
+  Tensor ret;
 
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1115,7 +1115,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1195,9 +1195,9 @@ static PyObject* tensor__rmod__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
+  Tensor ret;
 
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1224,7 +1224,7 @@ static PyObject* tensor__rmod__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1288,8 +1288,8 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1314,7 +1314,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func({1},
@@ -1431,8 +1431,8 @@ static PyObject* tensor__rmatmul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1457,7 +1457,7 @@ static PyObject* tensor__rmatmul__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func({1},
@@ -1558,8 +1558,8 @@ static PyObject* tensor__lt__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1586,7 +1586,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1651,8 +1651,8 @@ static PyObject* tensor__le__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1679,7 +1679,7 @@ static PyObject* tensor__le__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1743,8 +1743,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1773,7 +1773,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1852,8 +1852,8 @@ static PyObject* tensor__rfloordiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1882,7 +1882,7 @@ static PyObject* tensor__rfloordiv__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1945,8 +1945,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1979,7 +1979,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -2058,8 +2058,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -2088,7 +2088,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -2153,8 +2153,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -2181,7 +2181,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -2254,8 +2254,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::Tensor ret;
-  paddle::Tensor self_tensor = self->tensor;
+  Tensor ret;
+  Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -2282,7 +2282,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::Tensor other_tensor;
+  Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);

@@ -51,7 +51,8 @@ static dim3 GetDesiredGridDim(int64_t grid_size) {
   int64_t grid_y = 1;
   if (grid_x > 2147483648LL) {
     grid_y = 1024;
-    grid_x = (grid_x + grid_y - 1) / grid_x;
+    grid_x = (grid_x + grid_y - 1) / grid_y;
+    PADDLE_ENFORCE_LE_INT_MAX(grid_x, "grid_x");
   }
   grid_dim.x = static_cast<uint32_t>(grid_x);
   grid_dim.y = static_cast<uint32_t>(grid_y);
@@ -1731,11 +1732,17 @@ static void LayerNormBackward(
   auto stream = dev_ctx.stream();
   const int kMaxBlockDim = 512;
   const int kMaxBlockNum = 128;
+  // TODO(large-tensor): generic backward kernel launch uses int32 grid dim
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |
                       ((d_bias != nullptr ? 1 : 0));
   if (gradient_flag == 0) return;
   if (batch_size == 1) {
+    // TODO(large-tensor): batch_size==1 path uses int32 grid dim
+    PADDLE_ENFORCE_LE_INT_MAX(
+        (feature_size + kMaxBlockDim - 1) / kMaxBlockDim,
+        "(feature_size + kMaxBlockDim - 1) / kMaxBlockDim");
     LayerNormBackwardWhenBatchSizeIsOne<T, U, ScaleBiasWithSameTypeX>
         <<<(feature_size + kMaxBlockDim - 1) / kMaxBlockDim,
            kMaxBlockDim,
