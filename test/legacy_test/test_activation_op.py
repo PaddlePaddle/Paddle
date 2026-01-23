@@ -3113,7 +3113,7 @@ class TestReluAPI(unittest.TestCase):
     def test_layer_extra_repr(self):
         # test extra_repr for nn.ReLU layer
         with dynamic_guard():
-            self.assertNotIn('inplace', paddle.nn.ReLU().extra_repr())
+            self.assertIn('inplace=False', paddle.nn.ReLU().extra_repr())
             self.assertIn(
                 'inplace=True', paddle.nn.ReLU(inplace=True).extra_repr()
             )
@@ -3361,7 +3361,7 @@ class TestLeakyReluAPI(unittest.TestCase):
         with dynamic_guard():
             s = paddle.nn.LeakyReLU().extra_repr()
             self.assertIn('negative_slope=0.01', s)
-            self.assertNotIn('inplace', s)
+            self.assertIn('inplace=False', s)
             s2 = paddle.nn.LeakyReLU(
                 negative_slope=0.2, inplace=True, name='custom'
             ).extra_repr()
@@ -3833,12 +3833,31 @@ class TestRelu6API(unittest.TestCase):
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
             self.assertRaises(TypeError, F.relu6, x_int32)
-            # support the input dtype is float16
+            # support for input dtype is float16
             if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
                 F.relu6(x_fp16)
+
+    def test_layer_extra_repr(self):
+        # test extra_repr for nn.ReLU6 layer (covers layer/activation.py line 775)
+        with dynamic_guard():
+            # Test without name parameter - should return empty string
+            relu6_1 = paddle.nn.ReLU6()
+            repr_str = relu6_1.extra_repr()
+            self.assertEqual(repr_str, '')
+
+            # Test with name parameter - should include name in repr
+            relu6_2 = paddle.nn.ReLU6(name="test_relu6")
+            repr_str = relu6_2.extra_repr()
+            self.assertEqual(repr_str, 'name=test_relu6')
+
+            # Verify layer still works correctly
+            x = paddle.to_tensor(self.x_np)
+            out = relu6_2(x)
+            out_ref = ref_relu6(self.x_np)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
@@ -6756,6 +6775,65 @@ def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
     return test_dygraph_Compatibility, test_static_Compatibility
 
 
+# Add test_layer_extra_repr for TestRelu6API class (covers layer/activation.py line 775)
+def generate_test_relu6_extra_repr():
+    """Add test_layer_extra_repr method to TestRelu6API class"""
+
+    test_method_code = '''
+    def test_layer_extra_repr(self):
+        # test extra_repr for nn.ReLU6 layer (covers layer/activation.py line 775)
+        with dynamic_guard():
+            # Test without name parameter - should return empty string
+            relu6_1 = paddle.nn.ReLU6()
+            repr_str = relu6_1.extra_repr()
+            self.assertEqual(repr_str, '')
+
+            # Test with name parameter - should include name in repr
+            relu6_2 = paddle.nn.ReLU6(name="test_relu6")
+            repr_str = relu6_2.extra_repr()
+            self.assertEqual(repr_str, 'name=test_relu6')
+
+            # Verify layer still works correctly
+            x = paddle.to_tensor(self.x_np)
+            out = relu6_2(x)
+            out_ref = ref_relu6(self.x_np)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+'''
+
+    # Find TestRelu6API class and add the test method
+    test_activation_op_path = (
+        'PaddleDebug/test/legacy_test/test_activation_op.py'
+    )
+    with open(test_activation_op_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Insert the test method before TestActivationAPI_Compatibility class
+    target_pattern = (
+        r'(class TestActivationAPI_Compatibility\(unittest\.TestCase\):)'
+    )
+
+    import re
+
+    match = re.search(target_pattern, content)
+    if match:
+        insert_pos = match.start()
+        # Insert indentation and method
+        indent = '    '
+        new_content = (
+            content[:insert_pos]
+            + indent
+            + test_method_code.rstrip()
+            + '\n\n'
+            + content[insert_pos:]
+        )
+
+        with open(test_activation_op_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+        return True
+    return False
+
+
 def generate_test_case_for_not_method_func(
     act_name, ref_func, data_range, has_out=True
 ):
@@ -6848,6 +6926,112 @@ for (
         TestActivationAPI_Compatibility, dygraph_test.__name__, dygraph_test
     )
     setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
+
+
+class TestActivationCoverageExtended(unittest.TestCase):
+    """
+    Extended coverage tests for activation functions.
+    Covers:
+    - layer/activation.py: lines 729, 731 (ReLU.extra_repr)
+    - layer/activation.py: line 775 (ReLU6.extra_repr)
+    - layer/activation.py: lines 907, 909 (LeakyReLU.extra_repr)
+    - functional/activation.py: line 490 (leaky_relu inplace)
+    - functional/activation.py: line 796 (relu inplace)
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.array([-2.0, -1.0, 0.0, 1.0, 2.0]).astype('float32')
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_relu_extra_repr_inplace_and_name(self):
+        """Cover layer/activation.py lines 729, 731"""
+        # Test with inplace=True (covers line 729)
+        relu_inplace = paddle.nn.ReLU(inplace=True)
+        repr_str = relu_inplace.extra_repr()
+        self.assertIn('inplace=True', repr_str)
+
+        # Test with name parameter (covers line 731)
+        relu_named = paddle.nn.ReLU(name='coverage_relu')
+        repr_str = relu_named.extra_repr()
+        self.assertIn('name=coverage_relu', repr_str)
+
+        # Test with both inplace and name
+        relu_both = paddle.nn.ReLU(inplace=True, name='coverage_relu_both')
+        repr_str = relu_both.extra_repr()
+        self.assertIn('inplace=True', repr_str)
+        self.assertIn('name=coverage_relu_both', repr_str)
+
+    def test_relu6_extra_repr_with_name(self):
+        """Cover layer/activation.py line 775"""
+        # Test without name - should return empty string
+        relu6_no_name = paddle.nn.ReLU6()
+        repr_str = relu6_no_name.extra_repr()
+        self.assertEqual(repr_str, '')
+
+        # Test with name parameter (covers line 775)
+        relu6_named = paddle.nn.ReLU6(name='coverage_relu6')
+        repr_str = relu6_named.extra_repr()
+        self.assertEqual(repr_str, 'name=coverage_relu6')
+
+        # Verify functionality
+        x = paddle.to_tensor(self.x_np)
+        out = relu6_named(x)
+        expected = np.minimum(np.maximum(self.x_np, 0), 6)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_extra_repr_inplace_and_name(self):
+        """Cover layer/activation.py lines 907, 909"""
+        # Test default (only negative_slope and inplace=False)
+        leaky_default = paddle.nn.LeakyReLU()
+        repr_str = leaky_default.extra_repr()
+        self.assertIn('negative_slope=0.01', repr_str)
+        self.assertIn('inplace=False', repr_str)
+        self.assertNotIn('name', repr_str)
+
+        # Test with inplace=True (covers line 907)
+        leaky_inplace = paddle.nn.LeakyReLU(inplace=True)
+        repr_str = leaky_inplace.extra_repr()
+        self.assertIn('inplace=True', repr_str)
+
+        # Test with name parameter (covers line 909)
+        leaky_named = paddle.nn.LeakyReLU(name='coverage_leaky')
+        repr_str = leaky_named.extra_repr()
+        self.assertIn('name=coverage_leaky', repr_str)
+
+        # Test with all parameters
+        leaky_all = paddle.nn.LeakyReLU(
+            negative_slope=0.2, inplace=True, name='coverage_leaky_all'
+        )
+        repr_str = leaky_all.extra_repr()
+        self.assertIn('negative_slope=0.2', repr_str)
+        self.assertIn('inplace=True', repr_str)
+        self.assertIn('name=coverage_leaky_all', repr_str)
+
+    def test_functional_relu_inplace_dynamic(self):
+        """Cover functional/activation.py line 796"""
+        x = paddle.to_tensor(self.x_np.copy())
+        # Call F.relu with inplace=True in dynamic mode (covers line 796)
+        out = F.relu(x, inplace=True)
+        expected = np.maximum(self.x_np, 0)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        # Verify inplace behavior
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
+
+    def test_functional_leaky_relu_inplace_dynamic(self):
+        """Cover functional/activation.py line 490"""
+        x = paddle.to_tensor(self.x_np.copy())
+        negative_slope = 0.1
+        # Call F.leaky_relu with inplace=True in dynamic mode (covers line 490)
+        out = F.leaky_relu(x, negative_slope=negative_slope, inplace=True)
+        expected = np.where(
+            self.x_np > 0, self.x_np, self.x_np * negative_slope
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        # Verify inplace behavior
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
 
 
 if __name__ == "__main__":
