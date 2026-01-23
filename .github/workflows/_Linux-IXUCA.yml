@@ -129,6 +129,21 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           git config pull.rebase false
           git checkout test
+          echo "Fetching upstream develop branch"
+          git config --global --unset-all http.proxy || true
+          git config --global --unset-all https.proxy || true
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+          git config --global http.proxy "$http_proxy"
+          git config --global https.proxy "$https_proxy"
+          git fetch upstream develop
+          echo "Rebasing test branch onto upstream/develop"
+          git rebase upstream/develop || {
+            echo "Rebase failed, attempting to continue with current state"
+            git rebase --abort || true
+          }
+          echo "Latest 5 commits after rebase:"
+          git log --oneline -5
 
       - name: Determine the runner
         if: steps.check-approval.outputs.can-skip != 'true'
@@ -139,12 +154,6 @@ jobs:
       - name: Clone PaddleCustomDevice repository
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
-          git config --global --unset-all http.proxy || true
-          git config --global --unset-all https.proxy || true
-          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
-          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
-          git config --global http.proxy "$http_proxy"
-          git config --global https.proxy "$https_proxy"
           # Clone PaddleCustomDevice
           git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git
           cd PaddleCustomDevice

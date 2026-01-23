@@ -44,8 +44,8 @@ static void CheckDataType(const std::string& op_name,
       phi::DataTypeToString(expect_dtype),
       phi::DataTypeToString(var_dtype)));
 }
-void ExpandAsPreProcess(paddle::Tensor* x,
-                        paddle::optional<paddle::Tensor>* y,
+void ExpandAsPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* y,
                         std::vector<int64_t>* target_shape) {
   if (target_shape->empty() && y->get_ptr() == nullptr) {
     PADDLE_THROW(common::errors::InvalidArgument(
