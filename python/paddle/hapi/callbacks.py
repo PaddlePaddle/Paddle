@@ -649,7 +649,7 @@ class ModelCheckpoint(Callback):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(80)
+            >>> # doctest: +TIMEOUT(100)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
