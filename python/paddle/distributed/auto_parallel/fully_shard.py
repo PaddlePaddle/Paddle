@@ -21,15 +21,7 @@ import paddle.distributed as dist
 from paddle.autograd import PyLayer
 
 from .auto_dp_utils import in_auto_dp_mode
-from .fully_shard_utils import (
-    FSDPBufferManager,
-    FSDPCommManager,
-    FusionLayerHook,
-    FusionLayerPostHook,
-)
-from .moe_utils import (
-    _dtensor_from_local,
-)
+from .fully_shard_utils import FullyShardTensorFusion
 
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
@@ -78,12 +70,11 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
 
 class FullyShardAuto:
     def __init__(self, model, mesh, enable_tensor_fusion=False):
-        self.model = model
-        self.mesh = mesh
         if enable_tensor_fusion:
-            self.init_tensor_fusion()
-            self.register_tensor_fusion_hooks(model)
+            FullyShardTensorFusion(model, mesh)
         else:
+            self.model = model
+            self.mesh = mesh
             # use first dims as sharding axis
             self._shard_fn = dist.ShardingStage3(0, mesh)
             for param in self.model.parameters():
@@ -94,108 +85,6 @@ class FullyShardAuto:
             if in_auto_dp_mode():
                 self._register_comm_hook(model)
             os.environ["skip_sharding3_output_reshard"] = "1"
-
-    def init_tensor_fusion(self):
-        self.buffer_manager = FSDPBufferManager(self.model, self.mesh)
-        self.comm_manager = FSDPCommManager(self.buffer_manager)
-
-        for param in self.model.parameters():
-            param.buffer_manager = self.buffer_manager
-
-    def register_tensor_fusion_hooks(self, model):
-        def _pre_forward_hook(sublayers):
-            comm_manager = self.comm_manager
-
-            @paddle.autograd.no_grad()
-            def all_gather_comm(*_):
-                comm_manager.all_gather_params(
-                    sublayers.parameters(include_sublayers=False)
-                )
-
-            return all_gather_comm
-
-        def _post_forward_hook(sublayers):
-            comm_manager = self.comm_manager
-
-            @paddle.autograd.no_grad()
-            def shard_comm(*_):
-                comm_manager.shard_params(
-                    sublayers.parameters(include_sublayers=False)
-                )
-
-            return shard_comm
-
-        def _update_main_grad_hook(param):
-            comm_manager = self.comm_manager
-
-            @paddle.autograd.no_grad()
-            def comm_hook(tmp_grad):
-                if tmp_grad is not None and tmp_grad._is_initialized():
-                    # share mem with grads_buffer
-                    if param.main_grad is None:
-                        tmp = param.get_main_grad()
-                        tmp.get_tensor()._set_dims(
-                            tmp_grad._local_shape
-                        )  # need fix with need shape?
-                        param.main_grad = _dtensor_from_local(
-                            tmp,
-                            tmp_grad.process_mesh,
-                            tmp_grad.placements,
-                        )
-                    param.main_grad._local_value().add_(tmp_grad._local_value())
-                    tmp_grad._clear_data()
-                comm_manager.shard_params([param])
-                comm_manager.reduce_scatter_grad(param)
-
-            return comm_hook
-
-        def _post_backward_hook(param):
-            group_id = self.buffer_manager.param_to_buffer_group[param.name]
-            group = self.buffer_manager.buffer_groups[group_id]
-            param.main_grad = None
-            param._register_grad_hook(_update_main_grad_hook(param))
-
-        # register pre and post forward hooks
-        for name, sublayers in model.named_sublayers(include_self=True):
-            sublayers.register_forward_pre_hook(_pre_forward_hook(sublayers))
-            sublayers.register_forward_post_hook(_post_forward_hook(sublayers))
-
-        # register pre backward hooks
-        self._register_fusion_layer_hooks(model)
-
-        # register post backward hooks
-        for param in model.parameters():
-            if param.trainable:
-                _post_backward_hook(param)
-
-    def _register_fusion_layer_hooks(self, layer, name="last_layer"):
-        def _forward_post_hook(layer, inputs, outputs):
-            return FusionLayerHook.apply(
-                outputs,
-                layer=layer,
-                comm_manager=self.comm_manager,
-            )
-
-        def _forward_pre_hook(layer, inputs):
-            return FusionLayerPostHook.apply(
-                *inputs,
-                layer=layer,
-                comm_manager=self.comm_manager,
-            )
-
-        if layer.parameters(include_sublayers=False):
-            layer.register_forward_post_hook(_forward_post_hook)
-
-            # register an additional hook for tie_weights shard_params.
-            for param in layer.parameters(include_sublayers=False):
-                if (
-                    param.name
-                    == self.comm_manager.buffer_manager.tie_param_name
-                ):
-                    layer.register_forward_pre_hook(_forward_pre_hook)
-
-        for name, sub_layer in layer.named_children():
-            self._register_fusion_layer_hooks(sub_layer, name)
 
     def _register_comm_hook(self, model):
         def _pre_forward_hook(sublayers):

@@ -39,9 +39,9 @@ class TensorFusionBuffer:
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
         self.fsdp_degree = fsdp_degree  # need fix
+        self.dtype = dtype
         self.total_buffer_size = 0
         self.param2index = {}
-        self.dtype = dtype
         self.tmp_data_buffer = None
 
         for param in params:
@@ -50,7 +50,7 @@ class TensorFusionBuffer:
 
         if is_params:
             # Create fused params_buffer
-            # TODO(lizhenxing): build full params_buffer on CPU and only move shards to GPU to minimize mem peaks.
+            # TODO(lizhenxing): build full params_buffer on CPU and only move shards to GPU to minimize mem peaks
             self.data_buffer = paddle.zeros(
                 shape=[self.total_buffer_size],
                 dtype=dtype,
@@ -63,7 +63,6 @@ class TensorFusionBuffer:
                 local_shape = param._local_shape
                 param.stop_gradient = True
                 param._local_value().flatten_()
-
                 paddle.assign(
                     param._local_value(),
                     self.data_buffer._slice(
@@ -79,7 +78,6 @@ class TensorFusionBuffer:
 
             mesh = dist.auto_parallel.get_mesh()
             curr_global_rank = paddle.distributed.get_rank()
-
             if curr_global_rank in mesh.process_ids:
                 total_nums = self.data_buffer.shape[0]
                 num_of_pieces = mesh.shape[0]
@@ -102,23 +100,23 @@ class TensorFusionBuffer:
                 dtype=dtype,
             )
 
-            # register get_main_grad method for each param, which returns view_slice of grad_buffer
+            # register get_main_grad method for each param, which return view_slice of grad_buffer
             for param in params:
                 if param.trainable:
                     param._fusion_buffer = self
                     param._param2index = self.param2index  # need fix
 
-                    def main_grad_getter(param):
+                    def get_grad_from_tmp_buf(param):
                         tmp_buffer = param._fusion_buffer.get_tmp_buffer()
                         index = param._param2index[param.name]
-                        tmp_grad = paddle._C_ops.view_slice(
+                        main_grad = paddle._C_ops.view_slice(
                             tmp_buffer,
                             index,
                             index + param._numel(),  # need fix
                         )
-                        return tmp_grad
+                        return main_grad
 
-                    param.get_main_grad = main_grad_getter.__get__(param)
+                    param.get_main_grad = get_grad_from_tmp_buf.__get__(param)
 
     def get_padded_size(self, param):
         size = np.prod(param.shape)
@@ -130,7 +128,7 @@ class TensorFusionBuffer:
         return ((size + align_size - 1) // align_size) * align_size
 
     def get_tmp_buffer(self):
-        # reuse temp grad_buffer if exists, else create.
+        # reuse tmp_buffer if exists else create
         if self.tmp_data_buffer is None:
             self.tmp_data_buffer = paddle.zeros(
                 shape=[self.total_buffer_size], dtype=self.dtype
@@ -147,8 +145,8 @@ class TensorFusionBuffer:
 class FSDPBufferManager:
     def __init__(self, model, mesh):
         self.model = model
-        shard_groups = get_mesh_comm_list(mesh, "dp")  # need fix
 
+        shard_groups = get_mesh_comm_list(mesh, "dp")  # need fix
         for group in shard_groups:
             comm_group = dist.new_group(sorted(group))
             if dist.get_rank() in group:
@@ -225,11 +223,11 @@ class FSDPBufferManager:
                 continue
 
             is_sparse_gradient = [False] * len(cur_params)
-            dense_params = [param._local_value() for param in cur_params]
+            local_params = [param._local_value() for param in cur_params]
 
             # group params according to comm_buffer_size_MB
             group_indices = core.eager_assign_group_by_size(
-                dense_params, is_sparse_gradient, [group_size, group_size]
+                local_params, is_sparse_gradient, [group_size, group_size]
             )
 
             for indices in group_indices:
@@ -245,6 +243,8 @@ class FSDPCommManager:
         self.buffer_manager = buffer_manager
 
     def all_gather_params(self, params):
+        if len(params) == 0:
+            return
         for param in params:
             gid = self.buffer_manager.param_to_buffer_group[param.name]
             self.buffer_manager.buffer_groups[gid]["params_use_cnt"] += 1
@@ -294,9 +294,10 @@ class FSDPCommManager:
                 params_buffer.is_shard = True
                 params_buffer.clear_tmp_buffer()
 
-    def reduce_scatter_grad(self, param):
+    def reduce_scatter_grads(self, param):
         gid = self.buffer_manager.param_to_buffer_group[param.name]
         self.buffer_manager.buffer_groups[gid]["grads_use_cnt"] += 1
+        param.main_grad = None  # need fix for acc
 
         if (
             self.buffer_manager.buffer_groups[gid]["grads_use_cnt"]
@@ -304,15 +305,15 @@ class FSDPCommManager:
         ):
             self.buffer_manager.buffer_groups[gid]["grads_use_cnt"] = 0
 
-            # reduce_scatter from tmp_grad_buffer into grads_buffer.
+            # reduce_scatter from tmp_grad_buffer into grads_buffer
             grads_buffer = self.buffer_manager.buffer_groups[gid][
                 "grads_buffer"
             ]
-            tmp_grad_buffer = grads_buffer.get_tmp_buffer()
+            tmp_buffer = grads_buffer.get_tmp_buffer()
 
             paddle.distributed.reduce_scatter(
                 grads_buffer.data_buffer,
-                tmp_grad_buffer,
+                tmp_buffer,
                 op=paddle.distributed.ReduceOp.SUM,
                 group=self.buffer_manager._fsdp_group,
                 sync_op=False,
@@ -321,7 +322,7 @@ class FSDPCommManager:
             grads_buffer.clear_tmp_buffer()
 
 
-class FusionLayerHook(PyLayer):
+class FusionBackwardHook(PyLayer):
     @staticmethod
     def forward(ctx, inputs, layer, comm_manager):
         ctx.layer = layer
@@ -341,7 +342,7 @@ class FusionLayerHook(PyLayer):
         return args
 
 
-class FusionLayerPostHook(PyLayer):
+class FusionForwardHook(PyLayer):
     @staticmethod
     def forward(ctx, *inputs, layer, comm_manager):
         ctx.layer = layer
@@ -354,3 +355,110 @@ class FusionLayerPostHook(PyLayer):
         params = list(ctx.layer.parameters(include_sublayers=False))
         ctx.comm_manager.shard_params(params)
         return args
+
+
+class FullyShardTensorFusion:
+    def __init__(self, model, mesh):
+        self.model = model
+        self.mesh = mesh
+        self.buffer_manager = FSDPBufferManager(self.model, self.mesh)
+        self.comm_manager = FSDPCommManager(self.buffer_manager)
+
+        for param in self.model.parameters():
+            param.buffer_manager = self.buffer_manager
+
+        self.register_tensor_fusion_hooks(self.model)
+
+    def register_tensor_fusion_hooks(self, model):
+        def _pre_forward_hook(sublayers):
+            comm_manager = self.comm_manager
+
+            @paddle.autograd.no_grad()
+            def all_gather_comm(*_):
+                comm_manager.all_gather_params(
+                    sublayers.parameters(include_sublayers=False)
+                )
+
+            return all_gather_comm
+
+        def _post_forward_hook(sublayers):
+            comm_manager = self.comm_manager
+
+            @paddle.autograd.no_grad()
+            def shard_comm(*_):
+                comm_manager.shard_params(
+                    sublayers.parameters(include_sublayers=False)
+                )
+
+            return shard_comm
+
+        def _update_main_grad_hook(param):
+            comm_manager = self.comm_manager
+
+            @paddle.autograd.no_grad()
+            def comm_hook(grad):
+                if grad is not None and grad._is_initialized():
+                    # share mem with grads_tmp_buffer
+                    if param.main_grad is None:
+                        # reset main_grad to None after each step and rebind it here
+                        _main_grad = param.get_main_grad()
+                        _main_grad.get_tensor()._set_dims(
+                            grad._local_shape
+                        )  # need fix with need shape?
+                        param.main_grad = _dtensor_from_local(
+                            _main_grad,
+                            grad.process_mesh,
+                            grad.placements,
+                        )
+                    param.main_grad._local_value().add_(grad._local_value())
+                    grad._clear_data()
+                comm_manager.shard_params([param])
+                comm_manager.reduce_scatter_grads(param)
+
+            return comm_hook
+
+        def _post_backward_hook(param):
+            param.main_grad = None
+            param._register_grad_hook(_update_main_grad_hook(param))
+
+        # register pre and post forward hooks
+        for name, sublayers in model.named_sublayers(include_self=True):
+            sublayers.register_forward_pre_hook(_pre_forward_hook(sublayers))
+            sublayers.register_forward_post_hook(_post_forward_hook(sublayers))
+
+        # register backward layer hooks
+        self._register_fusion_layer_hooks(model)
+
+        # register post backward hooks
+        for param in model.parameters():
+            if param.trainable:
+                _post_backward_hook(param)
+
+    def _register_fusion_layer_hooks(self, layer, name="last_layer"):
+        def _forward_post_hook(layer, inputs, outputs):
+            return FusionBackwardHook.apply(
+                outputs,
+                layer=layer,
+                comm_manager=self.comm_manager,
+            )
+
+        def _forward_pre_hook(layer, inputs):
+            return FusionForwardHook.apply(
+                *inputs,
+                layer=layer,
+                comm_manager=self.comm_manager,
+            )
+
+        if layer.parameters(include_sublayers=False):
+            layer.register_forward_post_hook(_forward_post_hook)
+
+            # register an additional hook for tie_weights shard_params
+            for param in layer.parameters(include_sublayers=False):
+                if (
+                    param.name
+                    == self.comm_manager.buffer_manager.tie_param_name
+                ):
+                    layer.register_forward_pre_hook(_forward_pre_hook)
+
+        for name, sub_layer in layer.named_children():
+            self._register_fusion_layer_hooks(sub_layer, name)
