@@ -115,9 +115,23 @@ class TestVarAPI2(OpTest):
         )
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['x'], 'out', check_prim=False, check_pir=True, check_prim_pir=False
+        self.check_grad_with_place(
+            paddle.CPUPlace(),
+            ['x'],
+            'out',
+            check_prim=False,
+            check_pir=True,
+            check_prim_pir=False,
         )
+        if paddle.core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                paddle.CUDAPlace(0),
+                ['x'],
+                'out',
+                check_prim=False,
+                check_pir=True,
+                check_prim_pir=False,
+            )
 
 
 class TestVarAPI_dtype(TestVarAPI):
@@ -185,10 +199,10 @@ class TestVarAPI_ZeroSize(unittest.TestCase):
 
 class TestVarAPI_ZeroSize1(unittest.TestCase):
     def init_data(self):
-        self.x_shape = []
-        # x = torch.tensor([])
-        # res= torch.var(x)     Here, res is nan
+        self.x_shape = [0]
+        self.dtype = 'float64'
         self.expact_out = np.nan
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
 
     def test_zerosize(self):
         self.init_data()
@@ -197,6 +211,17 @@ class TestVarAPI_ZeroSize1(unittest.TestCase):
         out1 = paddle.var(x).numpy()
         np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
         paddle.enable_static()
+
+    def test_static_zero(self):
+        paddle.enable_static()
+        self.init_data()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.x_shape, self.dtype)
+            out = paddle.var(x)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+            np.testing.assert_allclose(self.expact_out, res[0], rtol=1e-05)
+        paddle.disable_static()
 
 
 class TestVarAPI_UnBiased1(unittest.TestCase):

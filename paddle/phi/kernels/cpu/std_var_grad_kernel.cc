@@ -38,7 +38,6 @@ void VarGradKernel(const Context& dev_ctx,
                    double correction,
                    DenseTensor* x_grad) {
   int rank = x.dims().size();
-  printf("call CPU VarGradKernel \n\n ");
   if (rank == 0 || axis.size() == 0) {
     const auto dof = static_cast<double>(x.numel()) - correction;
     DenseTensor x_mean = phi::Mean<T, Context>(dev_ctx, x, {}, true);
