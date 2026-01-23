@@ -871,5 +871,226 @@ class TestAddcmulSymbolicShape(unittest.TestCase):
         paddle.disable_static()
 
 
+# class TestAddcmulKernelSpecialCases(OpTest):
+#     """Test special cases in addcmul kernel implementation - tests core kernel functions"""
+
+#     def setUp(self):
+#         self.op_type = "addcmul"
+#         self.prim_op_type = "comp"
+#         self.python_api = paddle.addcmul
+#         self.public_python_api = paddle.addcmul
+#         self.init_dtype_type()
+#         self.init_shapes_and_data()
+
+#     def init_dtype_type(self):
+#         self.dtype = np.float64
+
+#     def init_shapes_and_data(self):
+#         self.inputs = {
+#             'input': np.random.random((10, 20)).astype(self.dtype),
+#             'tensor1': np.random.random((10, 20)).astype(self.dtype),
+#             'tensor2': np.random.random((10, 20)).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 0.5}
+#         self.outputs = {
+#             'out': self.inputs['input']
+#             + self.attrs['value']
+#             * self.inputs['tensor1']
+#             * self.inputs['tensor2']
+#         }
+
+#     def test_check_output(self):
+#         self.check_output(check_pir=True)
+
+#     def test_check_grad(self):
+#         self.check_grad(
+#             ['input', 'tensor1', 'tensor2'],
+#             'out',
+#             numeric_grad_delta=0.005,
+#             max_relative_error=0.005,
+#             check_pir=True,
+#         )
+
+
+# class TestAddcmulKernelLargeValue(TestAddcmulKernelSpecialCases):
+#     """Test with large value that might cause overflow"""
+
+#     def init_shapes_and_data(self):
+#         self.inputs = {
+#             'input': np.random.random((5, 5)).astype(self.dtype),
+#             'tensor1': np.random.random((5, 5)).astype(self.dtype),
+#             'tensor2': np.random.random((5, 5)).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 1000.0}
+
+
+# class TestAddcmulKernelPrecisionBoundary(TestAddcmulKernelSpecialCases):
+#     """Test precision boundary cases"""
+
+#     def init_shapes_and_data(self):
+#         self.inputs = {
+#             'input': np.random.random((3, 3)).astype(self.dtype),
+#             'tensor1': np.random.random((3, 3)).astype(self.dtype),
+#             'tensor2': np.random.random((3, 3)).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 1e-10}
+
+
+# class TestAddcmulKernelComplexBroadcasting(TestAddcmulKernelSpecialCases):
+#     """Test complex broadcasting scenarios"""
+
+#     def init_shapes_and_data(self):
+#         # Test 3D with different broadcasting patterns
+#         self.inputs = {
+#             'input': np.random.random((2, 3, 4)).astype(self.dtype),
+#             'tensor1': np.random.random((2, 1, 4)).astype(self.dtype),
+#             'tensor2': np.random.random((1, 3, 4)).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 0.5}
+
+
+# class TestAddcmulKernelVeryHighDimension(TestAddcmulKernelSpecialCases):
+#     """Test very high dimension cases (approaching 6D limit)"""
+
+#     def init_shapes_and_data(self):
+#         self.inputs = {
+#             'input': np.random.random((2, 2, 2, 3, 4)).astype(self.dtype),
+#             'tensor1': np.random.random((2, 2, 2, 3, 4)).astype(self.dtype),
+#             'tensor2': np.random.random((2, 2, 2, 3, 4)).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 0.5}
+
+
+# class TestAddcmulGradKernelBroadcastSpecial(OpTest):
+#     """Test gradient computation with broadcasting in kernel - tests core gradient functions"""
+
+#     def setUp(self):
+#         self.op_type = "addcmul"
+#         self.prim_op_type = "comp"
+#         self.python_api = paddle.addcmul
+#         self.public_python_api = paddle.addcmul
+#         self.init_dtype_type()
+#         self.init_shapes_and_data()
+
+#     def init_dtype_type(self):
+#         self.dtype = np.float64
+
+#     def init_shapes_and_data(self):
+#         # Ensure >= 100 elements total (10*10 = 100)
+#         self.inputs = {
+#             'input': np.random.random((10, 10)).astype(self.dtype),
+#             'tensor1': np.random.random((1, 10)).astype(self.dtype),
+#             'tensor2': np.random.random((10, 1)).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 0.5}
+#         self.outputs = {
+#             'out': self.inputs['input']
+#             + self.attrs['value']
+#             * self.inputs['tensor1']
+#             * self.inputs['tensor2']
+#         }
+
+#     def test_check_grad(self):
+#         self.check_grad(
+#             ['input', 'tensor1', 'tensor2'],
+#             'out',
+#             numeric_grad_delta=0.005,
+#             max_relative_error=0.005,
+#             check_pir=True,
+#         )
+
+
+# class TestAddcmulGradKernelScalarInputSpecial(OpTest):
+#     """Test gradient computation with scalar (0D) inputs - tests GradFunctionZero"""
+
+#     def setUp(self):
+#         self.op_type = "addcmul"
+#         self.prim_op_type = "comp"
+#         self.python_api = paddle.addcmul
+#         self.public_python_api = paddle.addcmul
+#         self.init_dtype_type()
+#         self.init_shapes_and_data()
+
+#     def init_dtype_type(self):
+#         self.dtype = np.float64
+
+#     def init_shapes_and_data(self):
+#         self.inputs = {
+#             'input': np.random.random(()).astype(self.dtype),
+#             'tensor1': np.random.random(()).astype(self.dtype),
+#             'tensor2': np.random.random(()).astype(self.dtype),
+#         }
+#         self.attrs = {'value': 2.0}
+#         self.outputs = {
+#             'out': self.inputs['input']
+#             + self.attrs['value']
+#             * self.inputs['tensor1']
+#             * self.inputs['tensor2']
+#         }
+
+#     def test_check_grad(self):
+#         self.check_grad(
+#             ['input', 'tensor1', 'tensor2'],
+#             'out',
+#             numeric_grad_delta=0.005,
+#             max_relative_error=0.005,
+#             check_pir=True,
+#         )
+
+
+# class TestCommonShapeIntegration(unittest.TestCase):
+#     """Test integration of common shape functions with addcmul operator"""
+
+#     def setUp(self):
+#         self.place = paddle.CPUPlace()
+#         if paddle.is_compiled_with_cuda():
+#             self.place = paddle.CUDAPlace(0)
+
+#     def test_common_shape_with_broadcasting(self):
+#         """Test that shape functions work correctly with broadcasting"""
+#         paddle.disable_static(self.place)
+
+#         # Test basic shape functions through addcmul operator
+#         input_np = np.random.random((3, 4)).astype('float64')
+#         tensor1_np = np.random.random((1, 4)).astype('float64')
+#         tensor2_np = np.random.random((3, 1)).astype('float64')
+
+#         input_tensor = paddle.to_tensor(input_np)
+#         tensor1_tensor = paddle.to_tensor(tensor1_np)
+#         tensor2_tensor = paddle.to_tensor(tensor2_np)
+
+#         # Test various value scenarios
+#         values = [0.0, 1.0, -1.0, 0.5, 2.0]
+
+#         for value in values:
+#             with self.subTest(value=value):
+#                 result = paddle.addcmul(input_tensor, tensor1_tensor, tensor2_tensor, value=value)
+
+#                 # Verify output shape is correct
+#                 expected_shape = [3, 4]
+#                 self.assertEqual(list(result.shape), expected_shape)
+
+#         paddle.enable_static()
+
+#     def test_common_shape_very_high_dimension(self):
+#         """Test shape functions with 5D tensors"""
+#         paddle.disable_static(self.place)
+
+#         input_np = np.random.random((2, 2, 2, 3, 4)).astype('float64')
+#         tensor1_np = np.random.random((2, 2, 2, 3, 4)).astype('float64')
+#         tensor2_np = np.random.random((2, 2, 2, 3, 4)).astype('float64')
+
+#         input_tensor = paddle.to_tensor(input_np)
+#         tensor1_tensor = paddle.to_tensor(tensor1_np)
+#         tensor2_tensor = paddle.to_tensor(tensor2_np)
+
+#         result = paddle.addcmul(input_tensor, tensor1_tensor, tensor2_tensor, value=0.5)
+
+#         expected_shape = [2, 2, 2, 3, 4]
+#         self.assertEqual(list(result.shape), expected_shape)
+
+#         paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

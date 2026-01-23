@@ -39,12 +39,6 @@ static void AddcmulGradFunction(const Context& dev_ctx,
   auto* dt1 = t1_grad;
   auto* dt2 = t2_grad;
 
-  // Output dims (broadcasted dims) is dout dims
-  // But wait, dout dims might be same as output dims.
-  // We need the broadcasted shape `out_dims` to properly reduce.
-  // Usually dout has same shape as forward output.
-  auto out_dims = out_grad.dims();
-
   DDim dx_dims, dt1_dims, dt2_dims;
 
   auto t1_dims = funcs::ExtendDims2Rank(tensor1.dims(), D);
@@ -58,22 +52,24 @@ static void AddcmulGradFunction(const Context& dev_ctx,
   Eigen::DSizes<int, D> t2_bcast_dims;
 
   // Calculate broadcast dims for inputs vs output
+  // Note: Use g_dims (extended out_grad dims) instead of out_dims to ensure
+  // consistent rank D for GetBroadcastDims template function
   if (dx) {
     dx_dims = funcs::ExtendDims2Rank(dx->dims(), D);
-    funcs::GetBroadcastDims<D>(dx_dims, out_dims, &dx_bcast_dims);
+    funcs::GetBroadcastDims<D>(dx_dims, g_dims, &dx_bcast_dims);
   }
   if (dt1) {
     dt1_dims = funcs::ExtendDims2Rank(dt1->dims(), D);
-    funcs::GetBroadcastDims<D>(dt1_dims, out_dims, &dt1_bcast_dims);
+    funcs::GetBroadcastDims<D>(dt1_dims, g_dims, &dt1_bcast_dims);
   }
   if (dt2) {
     dt2_dims = funcs::ExtendDims2Rank(dt2->dims(), D);
-    funcs::GetBroadcastDims<D>(dt2_dims, out_dims, &dt2_bcast_dims);
+    funcs::GetBroadcastDims<D>(dt2_dims, g_dims, &dt2_bcast_dims);
   }
 
   // Need broadcast dims for t1 and t2 to use in expression
-  funcs::GetBroadcastDims<D>(t1_dims, out_dims, &t1_bcast_dims);
-  funcs::GetBroadcastDims<D>(t2_dims, out_dims, &t2_bcast_dims);
+  funcs::GetBroadcastDims<D>(t1_dims, g_dims, &t1_bcast_dims);
+  funcs::GetBroadcastDims<D>(t2_dims, g_dims, &t2_bcast_dims);
 
   auto eigen_t1 = phi::EigenTensor<T, D>::From(tensor1, t1_dims);
   auto eigen_t2 = phi::EigenTensor<T, D>::From(tensor2, t2_dims);
