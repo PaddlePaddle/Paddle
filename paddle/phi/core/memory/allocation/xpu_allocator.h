@@ -24,7 +24,7 @@ namespace allocation {
 
 class XPUAllocator : public Allocator {
  public:
-  explicit XPUAllocator(const phi::XPUPlace& place) : place_(place) {}
+  explicit XPUAllocator(const XPUPlace& place) : place_(place) {}
 
   bool IsAllocThreadSafe() const override;
 
@@ -33,7 +33,7 @@ class XPUAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  phi::XPUPlace place_;
+  XPUPlace place_;
   std::once_flag once_flag_;
 };
 
