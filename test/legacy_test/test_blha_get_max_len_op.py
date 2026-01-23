@@ -190,6 +190,7 @@ class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
             res_max_dec_len_this_time.shape
         ) == (1,)
 
+
 @unittest.skipIf(
     not (
         (core.is_compiled_with_cuda() or is_custom_device())
@@ -240,8 +241,9 @@ class TestBlhaGetMaxLenOp_ZeroSize_BatchSizeEmptyTensor(unittest.TestCase):
             seq_lens_decoder,
             batch_size_tensor,
         )
-        assert int(max_enc_len_this_time) == 0 and int(max_dec_len_this_time) == 0
-
+        assert (
+            int(max_enc_len_this_time) == 0 and int(max_dec_len_this_time) == 0
+        )
 
 
 if __name__ == '__main__':

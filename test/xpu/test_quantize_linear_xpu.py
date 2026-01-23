@@ -145,5 +145,6 @@ class TestQuantizeLinerAPI(unittest.TestCase):
         )
         self.assertEqual(list(out.shape), [0, 1024])
 
+
 if __name__ == "__main__":
     unittest.main()

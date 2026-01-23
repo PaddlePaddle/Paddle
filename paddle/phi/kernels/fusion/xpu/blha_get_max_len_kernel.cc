@@ -39,11 +39,10 @@ void GetMaxLenTensor(const Context& dev_ctx,
   if (bsz <= 0 || seq_lens_tensor.numel() <= 0) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx_cpu = *pool.Get(CPUPlace());
-    phi::Full<int, CPUContext>(
-        reinterpret_cast<const CPUContext&>(dev_ctx_cpu),
-        phi::IntArray(common::vectorize(out->dims())),
-        0,
-        out);
+    phi::Full<int, CPUContext>(reinterpret_cast<const CPUContext&>(dev_ctx_cpu),
+                               phi::IntArray(common::vectorize(out->dims())),
+                               0,
+                               out);
     return;
   }
   int r = baidu::xpu::api::reduce_max<int>(dev_ctx.x_context(),
