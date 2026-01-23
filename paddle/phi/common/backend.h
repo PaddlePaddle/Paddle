@@ -203,7 +203,7 @@ inline Backend get_accelerat_backend() {
 #elif defined(PADDLE_WITH_IPU)
   return Backend::IPU;
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-  return Backend::CUSTOM;
+  return Backend::DEFAULT_CUSTOM_DEVICE;
 #else
   return Backend::UNDEFINED;
 #endif

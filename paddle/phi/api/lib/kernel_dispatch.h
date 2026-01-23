@@ -109,20 +109,13 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (tensor_backend_set == BackendSet(Backend::DEFAULT_CUSTOM_DEVICE) ||
+    if (tensor_backend_set ==
+            BackendSet(paddle::experimental::get_accelerat_backend()) ||
         disable_gpudnn) {
       disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
       VLOG(8) << "Disable kernel backend: GPUDNN";
     }
-#else
-    if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
-      disable_gpudnn = true;
-      key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
-      VLOG(8) << "Disable kernel backend: GPUDNN";
-    }
-#endif
     // assign DataLayout
     phi::DataLayout tensor_layout = tensor.layout();
     key_set.layout =

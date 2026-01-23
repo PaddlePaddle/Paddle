@@ -2656,11 +2656,8 @@ Scope* OperatorWithKernel::PrepareData(
           auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
           if ((in_def->backend != tensor_backend &&
                !(in_def->backend == phi::Backend::GPUDNN &&
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-                 tensor_backend == phi::Backend::DEFAULT_CUSTOM_DEVICE) &&
-#else
-                 tensor_backend == phi::Backend::GPU) &&
-#endif
+                 tensor_backend ==
+                     paddle::experimental::get_accelerat_backend()) &&
                !(in_def->backend == phi::Backend::KPS &&
                  tensor_backend == phi::Backend::XPU) &&
                !(in_def->backend == phi::Backend::ONEDNN &&
@@ -2705,38 +2702,22 @@ Scope* OperatorWithKernel::PrepareData(
       enable_cache_transfer_scope_ = false;
       if (!run_by_executor_) {
         if (new_expected_kernel_key) {
-          if (
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-              kernel_type_for_var.backend() ==
-                  phi::Backend::DEFAULT_CUSTOM_DEVICE ||
+          if (kernel_type_for_var.backend() ==
+                  paddle::experimental::get_accelerat_backend() ||
               new_expected_kernel_key->backend() ==
-                  phi::Backend::DEFAULT_CUSTOM_DEVICE ||
-#else
-              kernel_type_for_var.backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPU ||
-#endif
+                  paddle::experimental::get_accelerat_backend() ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
-              kernel_type_for_var.backend() == phi::Backend::XPU ||
-              new_expected_kernel_key->backend() == phi::Backend::XPU) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
           }
-        } else if (
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-            kernel_type_for_var.backend() ==
-                phi::Backend::DEFAULT_CUSTOM_DEVICE ||
-            new_expected_kernel_key->backend() ==
-                phi::Backend::DEFAULT_CUSTOM_DEVICE ||
-#else
-            kernel_type_for_var.backend() == phi::Backend::GPU ||
-            new_expected_kernel_key->backend() == phi::Backend::GPU ||
-#endif
-            kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
-            expected_kernel_key.backend() == phi::Backend::GPUDNN ||
-            kernel_type_for_var.backend() == phi::Backend::XPU ||
-            expected_kernel_key.backend() == phi::Backend::XPU) {
+        } else if (kernel_type_for_var.backend() ==
+                       paddle::experimental::get_accelerat_backend() ||
+                   new_expected_kernel_key->backend() ==
+                       paddle::experimental::get_accelerat_backend() ||
+                   kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;

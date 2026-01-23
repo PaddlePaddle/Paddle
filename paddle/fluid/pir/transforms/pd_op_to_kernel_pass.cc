@@ -247,11 +247,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
 
   phi::KernelKey copy_key = kernel_key;
   if (copy_key.backend() == phi::Backend::GPUDNN) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    copy_key.set_backend(phi::Backend::DEFAULT_CUSTOM_DEVICE);
-#else
-    copy_key.set_backend(phi::Backend::GPU);
-#endif
+    copy_key.set_backend(paddle::experimental::get_accelerat_backend());
     if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
       return false;
     }
@@ -279,8 +275,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
         upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
     auto forced_backend =
         paddle::experimental::StringToBackend(upper_str.c_str());
-    if (forced_backend == phi::Backend::GPU ||
-        forced_backend == phi::Backend::DEFAULT_CUSTOM_DEVICE) {
+    if (forced_backend == paddle::experimental::get_accelerat_backend()) {
       return true;
     }
   }
@@ -1439,17 +1434,13 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
-    res.set_backend(phi::Backend::DEFAULT_CUSTOM_DEVICE);
-    VLOG(8) << "kernel backend must be on CustomDevice when need fallback from "
-               "GPUDNN to CustomDevice";
-  }
-#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
-    res.set_backend(phi::Backend::GPU);
+    res.set_backend(paddle::experimental::get_accelerat_backend());
     VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "
-               "to GPU";
+               "to "
+            << paddle::experimental::get_accelerat_backend();
   }
 #endif
 
@@ -1771,6 +1762,7 @@ void AddShadowFeedForValue(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   phi::Backend backend = paddle::experimental::get_accelerat_backend();
+  VLOG(0) << "get_accelerat_backend returned backend: " << backend;
 
   if (op_item->result(index).type().isa<DenseTensorType>()) {
     phi::KernelKey shadow_key{
@@ -1778,6 +1770,7 @@ void AddShadowFeedForValue(
         phi::DataLayout::ANY,
         TransToPhiDataType(
             op_item->result(index).type().dyn_cast<DenseTensorType>().dtype())};
+    VLOG(0) << "Constructed KernelKey shadow_key: " << shadow_key;
     std::unordered_map<std::string, pir::Attribute> attr_map{
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
         {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -2304,10 +2297,12 @@ void HandleForSpecialOp(
           auto out_place = phi::TransToPhiPlace(dst_backend);
           auto out_type =
               AllocatedDenseTensorType::get(ctx, out_place, value_type);
-          phi::KernelKey kernel_key(
-              paddle::experimental::get_accelerat_backend(),
-              phi::DataLayout::ANY,
-              TransToPhiDataType(value_type.dtype()));
+          phi::Backend backend = paddle::experimental::get_accelerat_backend();
+          VLOG(0) << "get_accelerat_backend returned backend: " << backend;
+          phi::KernelKey kernel_key(backend,
+                                    phi::DataLayout::ANY,
+                                    TransToPhiDataType(value_type.dtype()));
+          VLOG(0) << "Constructed KernelKey kernel_key: " << kernel_key;
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
@@ -3611,9 +3606,11 @@ void ProcessBlock(
         auto place_attr = arg.attribute<PlaceAttribute>("place");
         if (place_attr && place_attr.data() == place) continue;
         auto dtype = dense_tensor_type.dtype();
-        phi::KernelKey shadow_key{paddle::experimental::get_accelerat_backend(),
-                                  phi::DataLayout::ANY,
-                                  TransToPhiDataType(dtype)};
+        phi::Backend backend = paddle::experimental::get_accelerat_backend();
+        VLOG(0) << "get_accelerat_backend returned backend: " << backend;
+        phi::KernelKey shadow_key{
+            backend, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+        VLOG(0) << "Constructed KernelKey shadow_key: " << shadow_key;
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
             {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -3641,11 +3638,14 @@ void ProcessBlock(
                   "AddShadowFeedTensors only support DenseTensorType Now"));
         }
         // Add ShadowFeedTensors Op
+        phi::Backend backend = paddle::experimental::get_accelerat_backend();
+        VLOG(0) << "get_accelerat_backend returned backend: " << backend;
         phi::KernelKey shadow_key{
-            paddle::experimental::get_accelerat_backend(),
+            backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
                 vec_type[0].dyn_cast<DenseTensorType>().dtype())};
+        VLOG(0) << "Constructed KernelKey shadow_key: " << shadow_key;
 
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name",
