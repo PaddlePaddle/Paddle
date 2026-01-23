@@ -139,7 +139,7 @@ class TensorFusionBuffer:
         if self.tmp_data_buffer is not None:
             self.tmp_data_buffer._clear_data()
             self.tmp_data_buffer = None
-            paddle.device.cuda.empty_cache()
+            # paddle.device.cuda.empty_cache()
 
 
 class FSDPBufferManager:
