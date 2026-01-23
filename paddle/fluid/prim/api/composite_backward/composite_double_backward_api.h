@@ -28,7 +28,6 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
 
-#include "paddle/phi/core/platform/profiler.h"
 namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;

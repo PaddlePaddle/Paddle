@@ -565,10 +565,10 @@ void LinearV2DoubleGradInferMeta(
     MetaTensor* input_grad,
     MetaTensor* weight_grad,
     MetaTensor* grad_out_grad) {
-  if (input_grad && grad_input_grad) {
+  if (input_grad) {
     input_grad->share_meta(input);
   }
-  if (weight_grad && grad_weight_grad) {
+  if (weight_grad) {
     weight_grad->share_meta(weight);
   }
   if (grad_out_grad) {
