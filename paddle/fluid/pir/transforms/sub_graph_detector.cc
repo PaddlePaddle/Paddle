@@ -54,9 +54,9 @@
 COMMON_DECLARE_bool(merge_all_horizontal_groups);
 REGISTER_FILE_SYMBOLS(sub_graph_detector);
 namespace pir {
-std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
-  std::vector<pir::Operation*> sort_ops;
-  std::unordered_map<pir::Operation*, size_t> pending_count;
+std::vector<Operation*> InverselyTopologicalSort(Block* block) {
+  std::vector<Operation*> sort_ops;
+  std::unordered_map<Operation*, size_t> pending_count;
   // step 1: initialize pending_cout for defined op
   for (auto& op : *block) {
     if (pending_count.find(&op) == pending_count.end()) {
@@ -75,7 +75,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     }
   }
 
-  std::queue<pir::Operation*> queue;
+  std::queue<Operation*> queue;
   for (auto& op : *block) {
     if (pending_count[&op] == 0) {
       queue.push(&op);
@@ -110,12 +110,11 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   return sort_ops;
 }
 
-std::vector<pir::Operation*> GetProducerOpsReverseSort(
-    pir::Operation* op,
-    const std::unordered_map<pir::Operation*, int>& op2index) {
-  std::unordered_set<pir::Operation*> producers;
+std::vector<Operation*> GetProducerOpsReverseSort(
+    Operation* op, const std::unordered_map<Operation*, int>& op2index) {
+  std::unordered_set<Operation*> producers;
 
-  std::vector<pir::Operation*> vec_res;
+  std::vector<Operation*> vec_res;
   for (auto operand : GetUsedExternalValue(*op)) {
     if (!operand || !operand.defining_op()) {
       continue;
@@ -131,17 +130,16 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
     }
   }
 
-  std::sort(vec_res.begin(),
-            vec_res.end(),
-            [&op2index](pir::Operation* a, pir::Operation* b) {
-              return op2index.at(a) > op2index.at(b);
-            });
+  std::sort(
+      vec_res.begin(), vec_res.end(), [&op2index](Operation* a, Operation* b) {
+        return op2index.at(a) > op2index.at(b);
+      });
 
   return vec_res;
 }
 
-std::vector<pir::Operation*> GetProducerOps(pir::Operation* op) {
-  std::vector<pir::Operation*> producers;
+std::vector<Operation*> GetProducerOps(Operation* op) {
+  std::vector<Operation*> producers;
 
   for (auto operand : GetUsedExternalValue(*op)) {
     if (!operand || !operand.defining_op()) {
@@ -155,10 +153,9 @@ std::vector<pir::Operation*> GetProducerOps(pir::Operation* op) {
   return producers;
 }
 
-std::vector<pir::Operation*> GetConsumerOps(
-    pir::Operation* op,
-    const std::unordered_map<pir::Operation*, int>& op2index) {
-  std::vector<pir::Operation*> consumers;
+std::vector<Operation*> GetConsumerOps(
+    Operation* op, const std::unordered_map<Operation*, int>& op2index) {
+  std::vector<Operation*> consumers;
 
   for (auto& result : op->results()) {
     for (auto it = result.use_begin(); it != result.use_end(); ++it) {
@@ -175,37 +172,36 @@ std::vector<pir::Operation*> GetConsumerOps(
   return consumers;
 }
 
-std::vector<std::pair<pir::Value, pir::Value>> GetInplaceValues(
-    pir::Operation* op) {
+std::vector<std::pair<Value, Value>> GetInplaceValues(Operation* op) {
   if (!op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) return {};
   auto op_info =
       op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
   auto input_info_list = std::get<0>(op_info);
   auto output_info_list = std::get<2>(op_info);
   auto inplace_info_map = std::get<3>(op_info).inplace;
-  std::unordered_map<std::string, pir::Value> input_name_value;
-  std::unordered_map<std::string, pir::Value> output_name_value;
+  std::unordered_map<std::string, Value> input_name_value;
+  std::unordered_map<std::string, Value> output_name_value;
   for (size_t i = 0; i < input_info_list.size(); ++i) {
     input_name_value[input_info_list[i].name] = op->operand_source(i);
   }
   for (size_t i = 0; i < output_info_list.size(); ++i) {
     output_name_value[output_info_list[i].name] = op->result(i);
   }
-  std::vector<std::pair<pir::Value, pir::Value>> inplace_values;
+  std::vector<std::pair<Value, Value>> inplace_values;
   for (const auto& [out, in] : inplace_info_map) {
     inplace_values.emplace_back(output_name_value[out], input_name_value[in]);
   }
   return inplace_values;
 }
 
-bool IsSideEffectButNotInplaceOp(pir::Operation* op) {
-  return op->HasTrait<pir::SideEffectTrait>() &&
+bool IsSideEffectButNotInplaceOp(Operation* op) {
+  return op->HasTrait<SideEffectTrait>() &&
          !op->HasTrait<paddle::dialect::InplaceTrait>();
 }
 
-static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
+static std::string OpsDebugStr(std::vector<Operation*> ops) {
   std::stringstream ss;
-  pir::IrPrinter printer(ss);
+  IrPrinter printer(ss);
   for (const auto* op : ops) {
     printer.PrintOperation(*op);
     ss << "{" << op->id() << "}\n";
@@ -216,7 +212,7 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
 struct SubGraph : public std::enable_shared_from_this<SubGraph> {
   using SubGraphPtr = std::shared_ptr<SubGraph>;
   SubGraph() = delete;
-  SubGraph(pir::Operation* op, int index, bool subst)
+  SubGraph(Operation* op, int index, bool subst)
       : substitute(subst), topo_index(index), id(UniqueId()) {
     ops.push_back(op);
   }
@@ -268,7 +264,7 @@ struct SubGraph : public std::enable_shared_from_this<SubGraph> {
     }
   };
 
-  std::vector<pir::Operation*> ops;
+  std::vector<Operation*> ops;
   std::set<SubGraphPtr, CompareById> upstreams;
   std::set<SubGraphPtr, CompareById> downstreams;
 
@@ -410,7 +406,7 @@ std::optional<std::string> DetectCirclesInSubgraphs(
 
 class SubgraphDetector {
  public:
-  SubgraphDetector(pir::Block* block, const OpClassifier& classifier);
+  SubgraphDetector(Block* block, const OpClassifier& classifier);
 
   void SubgraphFusion();
 
@@ -426,7 +422,7 @@ class SubgraphDetector {
                               const SubGraph& source_back,
                               const SubGraph& target_back);
 
-  void InitInplaceOpsOrder(const std::vector<pir::Operation*>& inplace_ops);
+  void InitInplaceOpsOrder(const std::vector<Operation*>& inplace_ops);
 
   bool CheckSideEffectOpsOrder() {
     int last_index = INT_MIN;
@@ -446,7 +442,7 @@ class SubgraphDetector {
     return true;
   }
 
-  SubGraphPtr GetOpSubgraph(pir::Operation* op) {
+  SubGraphPtr GetOpSubgraph(Operation* op) {
     PADDLE_ENFORCE(
         op2subgraph_.count(op),
         ::common::errors::InvalidArgument(
@@ -466,11 +462,11 @@ class SubgraphDetector {
     return subgraph_list;
   }
 
-  std::unordered_map<pir::Operation*, int> op2index_;
-  std::vector<pir::Operation*> sort_ops_;
-  std::vector<pir::Operation*> side_effect_ops_;
-  std::vector<std::vector<pir::Operation*>> inplace_ops_order_;
-  std::unordered_map<pir::Operation*, SubGraphPtr> op2subgraph_;
+  std::unordered_map<Operation*, int> op2index_;
+  std::vector<Operation*> sort_ops_;
+  std::vector<Operation*> side_effect_ops_;
+  std::vector<std::vector<Operation*>> inplace_ops_order_;
+  std::unordered_map<Operation*, SubGraphPtr> op2subgraph_;
   std::unordered_set<int> subgraph_index_set_;
 };
 
@@ -613,11 +609,11 @@ void SubgraphDetector::FallbackSubGraphFusion(const SubGraphPtr& source,
 }
 
 void SubgraphDetector::InitInplaceOpsOrder(
-    const std::vector<pir::Operation*>& inplace_ops) {
-  std::unordered_map<pir::Value, pir::Value> inplace_map;
-  const auto& get_inplace_root_value = [&inplace_map](const pir::Value& value) {
-    pir::Value root = value;
-    std::unordered_set<pir::Value> visited;
+    const std::vector<Operation*>& inplace_ops) {
+  std::unordered_map<Value, Value> inplace_map;
+  const auto& get_inplace_root_value = [&inplace_map](const Value& value) {
+    Value root = value;
+    std::unordered_set<Value> visited;
     while (inplace_map.count(root)) {
       if (visited.count(root)) break;
       visited.insert(root);
@@ -625,10 +621,10 @@ void SubgraphDetector::InitInplaceOpsOrder(
     }
     return root;
   };
-  std::vector<std::set<pir::Value>> inplace_values_sets;
+  std::vector<std::set<Value>> inplace_values_sets;
   for (const auto& op : inplace_ops) {
     auto output_input_values = GetInplaceValues(op);
-    std::set<pir::Value> inplace_input_values;
+    std::set<Value> inplace_input_values;
     for (const auto& output_input_value : output_input_values) {
       inplace_input_values.insert(
           get_inplace_root_value(output_input_value.second));
@@ -636,7 +632,7 @@ void SubgraphDetector::InitInplaceOpsOrder(
     }
     inplace_values_sets.push_back(inplace_input_values);
   }
-  std::set<pir::Value> shared_inplace_values_set;
+  std::set<Value> shared_inplace_values_set;
   for (size_t i = 0; i < inplace_values_sets.size(); ++i) {
     for (size_t j = i + 1; j < inplace_values_sets.size(); ++j) {
       std::set_intersection(inplace_values_sets[i].begin(),
@@ -647,8 +643,8 @@ void SubgraphDetector::InitInplaceOpsOrder(
                                           shared_inplace_values_set.begin()));
     }
   }
-  std::vector<std::vector<pir::Operation*>> inplace_ops_order;
-  std::vector<pir::Value> shared_inplace_values;
+  std::vector<std::vector<Operation*>> inplace_ops_order;
+  std::vector<Value> shared_inplace_values;
   for (const auto& shared_value : shared_inplace_values_set) {
     inplace_ops_order.emplace_back();
     shared_inplace_values.push_back(shared_value);
@@ -663,10 +659,10 @@ void SubgraphDetector::InitInplaceOpsOrder(
   for (size_t i = 0; i < inplace_ops_order.size(); ++i) {
     auto only_inplace_ops = inplace_ops_order[i];
     auto inplace_root_value = shared_inplace_values[i];
-    std::unordered_set<pir::Operation*> ordered_ops_set(
-        only_inplace_ops.begin(), only_inplace_ops.end());
+    std::unordered_set<Operation*> ordered_ops_set(only_inplace_ops.begin(),
+                                                   only_inplace_ops.end());
     for (const auto& inplace_op : only_inplace_ops) {
-      pir::Value output_inplace_value;
+      Value output_inplace_value;
       auto output_input_values = GetInplaceValues(inplace_op);
       for (const auto& [output_value, _unused] : output_input_values) {
         if (get_inplace_root_value(output_value) == inplace_root_value) {
@@ -684,8 +680,8 @@ void SubgraphDetector::InitInplaceOpsOrder(
       }
     }
     // Sort by origin order in blocks
-    std::vector<pir::Operation*> ordered_ops(ordered_ops_set.begin(),
-                                             ordered_ops_set.end());
+    std::vector<Operation*> ordered_ops(ordered_ops_set.begin(),
+                                        ordered_ops_set.end());
     std::sort(ordered_ops.begin(),
               ordered_ops.end(),
               [this](const auto& lhs, const auto& rhs) {
@@ -695,10 +691,10 @@ void SubgraphDetector::InitInplaceOpsOrder(
   }
 }
 
-SubgraphDetector::SubgraphDetector(pir::Block* block,
+SubgraphDetector::SubgraphDetector(Block* block,
                                    const OpClassifier& classifier) {
   // init sort_ops_ in reverse topo order and op2index_ in topo order
-  std::vector<pir::Operation*> inplace_ops;
+  std::vector<Operation*> inplace_ops;
   int index = 0;
   for (auto& op : *block) {
     sort_ops_.push_back(&op);
@@ -826,32 +822,30 @@ std::vector<GroupOpsVec> SubgraphDetector::BuildGroups() {
       continue;
     }
     // sort group ops by natural increasing index.
-    std::vector<pir::Operation*> group_ops(subgraph->ops.begin(),
-                                           subgraph->ops.end());
-    std::sort(group_ops.begin(),
-              group_ops.end(),
-              [this](pir::Operation* a, pir::Operation* b) {
-                return this->op2index_.at(a) < this->op2index_.at(b);
-              });
+    std::vector<Operation*> group_ops(subgraph->ops.begin(),
+                                      subgraph->ops.end());
+    std::sort(
+        group_ops.begin(), group_ops.end(), [this](Operation* a, Operation* b) {
+          return this->op2index_.at(a) < this->op2index_.at(b);
+        });
     groups.push_back(group_ops);
   }
   return groups;
 }
 
-std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
+std::vector<GroupOpsVec> DetectSubGraphs(Block* block,
                                          const OpClassifier& classifier) {
   auto subgraph_detector = SubgraphDetector(block, classifier);
   subgraph_detector.SubgraphFusion();
   return subgraph_detector.BuildGroups();
 }
 
-std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops,
-                                        bool at_least_one_output) {
+std::vector<Value> AnalysisOutputs(const GroupOpsVec& group_ops,
+                                   bool at_least_one_output) {
   // Get output by ud chain
-  std::unordered_set<pir::Operation*> op_set(group_ops.begin(),
-                                             group_ops.end());
+  std::unordered_set<Operation*> op_set(group_ops.begin(), group_ops.end());
 
-  std::vector<pir::Value> outputs;
+  std::vector<Value> outputs;
   for (auto* op : group_ops) {
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
@@ -880,7 +874,7 @@ std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops,
 namespace {
 
 struct IncrementalOrder {
-  bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
+  bool operator()(const Operation* lhs, const Operation* rhs) const {
     PADDLE_ENFORCE_EQ(lhs->GetParent() == rhs->GetParent(),
                       true,
                       common::errors::PreconditionNotMet(
@@ -901,23 +895,22 @@ struct IncrementalOrder {
   }
 };
 
-std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
-    const pir::Operation* position_op,
-    const pir::Block* block,
-    pir::Operation* op,
-    std::unordered_set<pir::Operation*>* visited_ops) {
-  std::unordered_set<pir::Operation*> ops;
-  const auto& IsInBlock = [](const pir::Operation* src_op,
-                             const pir::Block* block) {
+std::unordered_set<Operation*> GetUpstreamOpsAfterPosition(
+    const Operation* position_op,
+    const Block* block,
+    Operation* op,
+    std::unordered_set<Operation*>* visited_ops) {
+  std::unordered_set<Operation*> ops;
+  const auto& IsInBlock = [](const Operation* src_op, const Block* block) {
     for (auto& item : *block) {
       if (src_op->id() == item.id()) return true;
     }
     return false;
   };
-  std::vector<pir::Value> op_inputs = GetUsedExternalValue(*op);
+  std::vector<Value> op_inputs = GetUsedExternalValue(*op);
   for (auto value : op_inputs) {
     if (!value || !value.defining_op()) continue;
-    pir::Operation* defining_op = value.defining_op();
+    Operation* defining_op = value.defining_op();
     if (visited_ops->count(defining_op)) continue;
     visited_ops->insert(defining_op);
     if (!IsInBlock(defining_op, block)) continue;
@@ -933,11 +926,11 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
 }  // namespace
 
 void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
-                               pir::Block* block,
-                               pir::Operation* insert_point_op) {
+                               Block* block,
+                               Operation* insert_point_op) {
   const auto moved_ops = [&]() {
-    std::set<pir::Operation*, IncrementalOrder> ops_set;
-    std::unordered_set<pir::Operation*> visited_ops;
+    std::set<Operation*, IncrementalOrder> ops_set;
+    std::unordered_set<Operation*> visited_ops;
     for (auto& op : group_ops) {
       auto upstream_ops =
           GetUpstreamOpsAfterPosition(insert_point_op, block, op, &visited_ops);
@@ -954,15 +947,14 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
   }
 }
 
-pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
-                                const std::vector<pir::Value>& outputs) {
+Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                           const std::vector<Value>& outputs) {
   // Regard last op as insert position if there are no downstream ops between in
   // group_ops.
-  pir::Operation* first_op = group_ops.front();
-  pir::Operation* insert_point_op = group_ops.back();
-  auto order_info =
-      [&]() -> std::unordered_map<const pir::Operation*, int64_t> {
-    std::unordered_map<const pir::Operation*, int64_t> map;
+  Operation* first_op = group_ops.front();
+  Operation* insert_point_op = group_ops.back();
+  auto order_info = [&]() -> std::unordered_map<const Operation*, int64_t> {
+    std::unordered_map<const Operation*, int64_t> map;
     // initialize the position index with block size by default.
     auto block = insert_point_op->GetParent();
     int64_t order = 0;
@@ -983,12 +975,11 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 
   auto begin = first_op->operator Block::ConstIterator();
   auto end = ++(insert_point_op->operator Block::ConstIterator());
-  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
-                                                   outputs.end());
-  const std::unordered_set<const pir::Operation*> group_ops_set(
-      group_ops.begin(), group_ops.end());
+  const std::unordered_set<Value> outputs_set(outputs.begin(), outputs.end());
+  const std::unordered_set<const Operation*> group_ops_set(group_ops.begin(),
+                                                           group_ops.end());
 
-  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
+  const auto& IsDownstreamOp = [&](const Operation* op) -> bool {
     if (group_ops_set.find(op) != group_ops_set.end()) return false;
     for (auto& value : GetUsedExternalValue(*op)) {
       if (outputs_set.find(value) != outputs_set.end()) {
@@ -1007,18 +998,18 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
   return insert_point_op;
 }
 
-void ReplaceWithGroupOp(pir::Block* block,
+void ReplaceWithGroupOp(Block* block,
                         const GroupOpsVec& group_ops,
                         bool at_least_one_output) {  // NOLINT
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  IrContext* ctx = IrContext::Instance();
 #ifdef PADDLE_WITH_CINN
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 #endif
 #ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
-  ::pir::Builder builder = ::pir::Builder(ctx, block);
-  const std::vector<pir::Value> outputs =
+  Builder builder = Builder(ctx, block);
+  const std::vector<Value> outputs =
       AnalysisOutputs(group_ops, at_least_one_output);
 
   // step 1: Analysis and insert group op before insert_point.
@@ -1031,7 +1022,7 @@ void ReplaceWithGroupOp(pir::Block* block,
 #ifdef PADDLE_WITH_CINN
 
   auto new_group_op = [&]() -> cinn::dialect::GroupOp {
-    std::vector<pir::Type> output_types;
+    std::vector<Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());
 
     auto group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
@@ -1041,11 +1032,11 @@ void ReplaceWithGroupOp(pir::Block* block,
     return group_op;
   }();
 #else
-  auto new_group_op = [&]() -> pir::GroupOp {
-    std::vector<pir::Type> output_types;
+  auto new_group_op = [&]() -> GroupOp {
+    std::vector<Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());
 
-    auto group_op = builder.Build<pir::GroupOp>(output_types);
+    auto group_op = builder.Build<GroupOp>(output_types);
     for (auto op : group_ops) {
       op->MoveTo(group_op.block(), group_op.block()->end());
     }
@@ -1054,19 +1045,17 @@ void ReplaceWithGroupOp(pir::Block* block,
 #endif
 
   // step 3: Replace outputs of inner ops
-  const std::vector<pir::Value> group_outs = new_group_op->results();
-  std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
-                                                group_ops.end());
+  const std::vector<Value> group_outs = new_group_op->results();
+  std::unordered_set<Operation*> inner_ops(group_ops.begin(), group_ops.end());
   for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i].ReplaceUsesWithIf(group_outs[i],
-                                 [&inner_ops](pir::OpOperand op) {
-                                   return !inner_ops.count(op.owner());
-                                 });
+    outputs[i].ReplaceUsesWithIf(group_outs[i], [&inner_ops](OpOperand op) {
+      return !inner_ops.count(op.owner());
+    });
   }
 
   // step 4: Insert YieldOp for outputs
   builder.SetInsertionPointToBlockEnd(new_group_op.block());
-  builder.Build<::pir::YieldOp>(outputs);
+  builder.Build<YieldOp>(outputs);
 }
 
 }  // namespace pir
