@@ -214,7 +214,6 @@ from . import (
     functional as functional,
     hub as hub,
     library as library,
-    linalg as linalg,
     signal as signal,
     special as special,
     tensor as tensor,
@@ -1543,6 +1542,8 @@ __all__ = [
 import os
 
 import paddle._paddle_docs
+
+from .tensor import linalg as linalg
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":
