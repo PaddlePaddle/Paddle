@@ -3347,7 +3347,7 @@ void BindDrrPatternContext(pybind11::module *m) {
           pybind11::arg("py_func"));
 
   m->def("value_is_persistable",
-         [](const Value &value) { return ValueIsPersistable(value); });
+         [](const Value &value) { return pir::ValueIsPersistable(value); });
 }
 
 void BindShapeOrDataDimExprs(pybind11::module *m) {
