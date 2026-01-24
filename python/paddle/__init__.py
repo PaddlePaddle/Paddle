@@ -759,6 +759,11 @@ from .utils.dlpack import (
     to_dlpack,
 )
 
+# Patch pybind functions in paddle.tensor/paddle with Python wrappers
+# This must be called AFTER all tensor modules are imported but BEFORE
+# any user code runs. This ensures dy2static can properly trace these calls.
+monkey_patch_generated_methods_for_tensor()
+
 
 class _TensorMethodOrModule:
     def __init__(self):
@@ -1537,7 +1542,6 @@ __all__ = [
 ]
 import os
 
-monkey_patch_generated_methods_for_tensor()
 import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
