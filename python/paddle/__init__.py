@@ -214,6 +214,7 @@ from . import (
     functional as functional,
     hub as hub,
     library as library,
+    linalg as linalg,
     signal as signal,
     special as special,
     tensor as tensor,
@@ -757,11 +758,6 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
-
-# Patch pybind functions in paddle.tensor/paddle with Python wrappers
-# This must be called AFTER all tensor modules are imported but BEFORE
-# any user code runs. This ensures dy2static can properly trace these calls.
-monkey_patch_generated_methods_for_tensor()
 
 
 class _TensorMethodOrModule:
@@ -1541,9 +1537,8 @@ __all__ = [
 ]
 import os
 
+monkey_patch_generated_methods_for_tensor()
 import paddle._paddle_docs
-
-from .tensor import linalg as linalg
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":

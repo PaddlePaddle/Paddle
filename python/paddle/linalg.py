@@ -57,9 +57,9 @@ from .tensor.linalg import (
 
 def __getattr__(name):
     if name == 'inv':
-        from .tensor import inverse
+        import paddle.tensor
 
-        return inverse
+        return paddle.tensor.inverse
     raise AttributeError(f"module 'paddle.linalg' has no attribute '{name}'")
 
 
