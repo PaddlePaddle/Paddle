@@ -18,169 +18,200 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
-template <typename Context, typename T, size_t D>
-static void AddcmulGradFunction(const Context& dev_ctx,
-                                const DenseTensor& input UNUSED,
-                                const DenseTensor& tensor1,
-                                const DenseTensor& tensor2,
-                                const DenseTensor& out_grad,
-                                const Scalar& value,
-                                DenseTensor* input_grad,
-                                DenseTensor* t1_grad,
-                                DenseTensor* t2_grad) {
-  auto& dout = out_grad;
-  auto* dx = input_grad;
-  auto* dt1 = t1_grad;
-  auto* dt2 = t2_grad;
+// Helper: compute reshape_dims and reduce_dims for broadcast gradient
+inline void ComputeBroadcastGradDims(const std::vector<int64_t>& grad_dims,
+                                     const std::vector<int64_t>& out_dims,
+                                     std::vector<int>* reshape_dims_vec,
+                                     std::vector<int>* reduce_dims_vec) {
+  std::vector<int64_t> extended = grad_dims;
+  size_t diff = out_dims.size() - grad_dims.size();
+  extended.insert(extended.begin(), diff, 1);
 
-  DDim dx_dims, dt1_dims, dt2_dims;
-
-  auto t1_dims = funcs::ExtendDims2Rank(tensor1.dims(), D);
-  auto t2_dims = funcs::ExtendDims2Rank(tensor2.dims(), D);
-  auto g_dims = funcs::ExtendDims2Rank(out_grad.dims(), D);
-
-  Eigen::DSizes<int, D> dx_bcast_dims;
-  Eigen::DSizes<int, D> dt1_bcast_dims;
-  Eigen::DSizes<int, D> dt2_bcast_dims;
-  Eigen::DSizes<int, D> t1_bcast_dims;
-  Eigen::DSizes<int, D> t2_bcast_dims;
-
-  // Calculate broadcast dims for inputs vs output
-  // Note: Use g_dims (extended out_grad dims) instead of out_dims to ensure
-  // consistent rank D for GetBroadcastDims template function
-  if (dx) {
-    dx_dims = funcs::ExtendDims2Rank(dx->dims(), D);
-    funcs::GetBroadcastDims<D>(dx_dims, g_dims, &dx_bcast_dims);
+  reshape_dims_vec->clear();
+  reduce_dims_vec->clear();
+  for (size_t i = 0; i < extended.size(); ++i) {
+    reduce_dims_vec->push_back(static_cast<int>(reshape_dims_vec->size()));
+    reshape_dims_vec->push_back(static_cast<int>(out_dims[i] / extended[i]));
+    reshape_dims_vec->push_back(static_cast<int>(extended[i]));
   }
-  if (dt1) {
-    dt1_dims = funcs::ExtendDims2Rank(dt1->dims(), D);
-    funcs::GetBroadcastDims<D>(dt1_dims, g_dims, &dt1_bcast_dims);
+}
+
+// Use EigenBroadcastGrad for reduction (robust on GPU)
+template <typename Context, typename T, int Dims>
+static void ReduceGrad(const Context& dev_ctx,
+                       const DenseTensor& src,
+                       const std::vector<int>& reshape_dims_vec,
+                       const std::vector<int>& reduce_dims_vec,
+                       DenseTensor* dst) {
+  dev_ctx.template Alloc<T>(dst);
+  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+  for (size_t i = 0; i < reshape_dims_vec.size(); ++i) {
+    reshape_dims[i] = reshape_dims_vec[i];
   }
-  if (dt2) {
-    dt2_dims = funcs::ExtendDims2Rank(dt2->dims(), D);
-    funcs::GetBroadcastDims<D>(dt2_dims, g_dims, &dt2_bcast_dims);
+  for (size_t i = 0; i < reduce_dims_vec.size(); ++i) {
+    reduce_dims[i] = reduce_dims_vec[i];
   }
-
-  // Need broadcast dims for t1 and t2 to use in expression
-  funcs::GetBroadcastDims<D>(t1_dims, g_dims, &t1_bcast_dims);
-  funcs::GetBroadcastDims<D>(t2_dims, g_dims, &t2_bcast_dims);
-
-  auto eigen_t1 = phi::EigenTensor<T, D>::From(tensor1, t1_dims);
-  auto eigen_t2 = phi::EigenTensor<T, D>::From(tensor2, t2_dims);
-  auto eigen_dout = phi::EigenTensor<T, D>::From(dout, g_dims);
-
-  Eigen::DSizes<int, D * 2> dx_reshape_dims;
-  Eigen::DSizes<int, D * 2> dt1_reshape_dims;
-  Eigen::DSizes<int, D * 2> dt2_reshape_dims;
-  Eigen::DSizes<int, D> reduce_dims;
-
-  for (int i = 0; i < D; ++i) {
-    if (dx) {
-      dx_reshape_dims[2 * i] = dx_bcast_dims[i];
-      dx_reshape_dims[2 * i + 1] = dx_dims[i];
-    }
-    if (dt1) {
-      dt1_reshape_dims[2 * i] = dt1_bcast_dims[i];
-      dt1_reshape_dims[2 * i + 1] = dt1_dims[i];
-    }
-    if (dt2) {
-      dt2_reshape_dims[2 * i] = dt2_bcast_dims[i];
-      dt2_reshape_dims[2 * i + 1] = dt2_dims[i];
-    }
-    reduce_dims[i] = 2 * i;
-  }
-
+  auto src_flat = EigenVector<T>::Flatten(src);
+  auto dst_flat = EigenVector<T>::Flatten(*dst);
   auto& place = *dev_ctx.eigen_device();
+  funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+      place, dst_flat, src_flat, reduce_dims, reshape_dims);
+}
 
-  // d(input) = sum(dout) along broadcasted dimensions
-  if (dx) {
-    dev_ctx.template Alloc<T>(dx);
-    auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
-    // Reshape dout to separate broadcasted dims from actual dims,
-    // then sum along broadcasted dims (even indices in reshape_dims)
-    eigen_dx.device(place) = eigen_dout.reshape(dx_reshape_dims)
-                                 .sum(reduce_dims)
-                                 .reshape(eigen_dx.dimensions());
-  }
-
+template <typename T, typename Context, int Dims>
+static void AddcmulGradImpl(const Context& dev_ctx,
+                            const DenseTensor& tensor1,
+                            const DenseTensor& tensor2,
+                            const DenseTensor& out_grad,
+                            const Scalar& value,
+                            DenseTensor* input_grad,
+                            DenseTensor* tensor1_grad,
+                            DenseTensor* tensor2_grad) {
   using MPType = typename dtype::MPTypeTrait<T>::Type;
+  auto& place = *dev_ctx.eigen_device();
+  MPType val = static_cast<MPType>(value.to<float>());
+  auto out_dims = common::vectorize<int64_t>(out_grad.dims());
 
-  // d(t1) = sum(dout * value * t2)
-  if (dt1) {
-    dev_ctx.template Alloc<T>(dt1);
-    auto eigen_dt1 = phi::EigenTensor<T, D>::From(*dt1, dt1_dims);
-    auto expr = eigen_dout.template cast<MPType>() *
-                eigen_t2.broadcast(t2_bcast_dims).template cast<MPType>() *
-                static_cast<MPType>(value.to<T>());
+  // Extend dims helper
+  auto extend_dims = [&](const DDim& dims) {
+    auto v = common::vectorize<int64_t>(dims);
+    size_t diff = out_dims.size() - v.size();
+    v.insert(v.begin(), diff, 1);
+    return v;
+  };
 
-    eigen_dt1.device(place) = expr.reshape(dt1_reshape_dims)
-                                  .sum(reduce_dims)
-                                  .reshape(eigen_dt1.dimensions())
-                                  .template cast<T>();
+  auto compute_bcast = [&](const std::vector<int64_t>& ext) {
+    Eigen::DSizes<Eigen::DenseIndex, Dims> bcast;
+    for (size_t i = 0; i < out_dims.size(); ++i) {
+      bcast[i] = out_dims[i] / ext[i];
+    }
+    return bcast;
+  };
+
+  // d(input) = reduce_sum(dout)
+  if (input_grad) {
+    if (input_grad->dims() == out_grad.dims()) {
+      dev_ctx.template Alloc<T>(input_grad);
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, input_grad);
+    } else {
+      std::vector<int> reshape_vec, reduce_vec;
+      ComputeBroadcastGradDims(common::vectorize<int64_t>(input_grad->dims()),
+                               out_dims,
+                               &reshape_vec,
+                               &reduce_vec);
+      ReduceGrad<Context, T, Dims>(
+          dev_ctx, out_grad, reshape_vec, reduce_vec, input_grad);
+    }
   }
 
-  // d(t2) = sum(dout * value * t1)
-  if (dt2) {
-    dev_ctx.template Alloc<T>(dt2);
-    auto eigen_dt2 = phi::EigenTensor<T, D>::From(*dt2, dt2_dims);
-    auto expr = eigen_dout.template cast<MPType>() *
-                eigen_t1.broadcast(t1_bcast_dims).template cast<MPType>() *
-                static_cast<MPType>(value.to<T>());
+  // d(tensor1) = reduce_sum(dout * value * tensor2)
+  if (tensor1_grad) {
+    DenseTensor temp;
+    temp.Resize(out_grad.dims());
+    dev_ctx.template Alloc<T>(&temp);
 
-    eigen_dt2.device(place) = expr.reshape(dt2_reshape_dims)
-                                  .sum(reduce_dims)
-                                  .reshape(eigen_dt2.dimensions())
-                                  .template cast<T>();
+    auto ext_t2 = extend_dims(tensor2.dims());
+    auto t2_bcast = compute_bcast(ext_t2);
+    auto eigen_t2 =
+        EigenTensor<T, Dims>::From(tensor2, common::make_ddim(ext_t2));
+    auto eigen_dout = EigenTensor<T, Dims>::From(out_grad);
+    auto eigen_temp = EigenTensor<T, Dims>::From(temp);
+    eigen_temp.device(place) =
+        (eigen_dout.template cast<MPType>() * val *
+         eigen_t2.broadcast(t2_bcast).template cast<MPType>())
+            .template cast<T>();
+
+    if (tensor1_grad->dims() == out_grad.dims()) {
+      dev_ctx.template Alloc<T>(tensor1_grad);
+      phi::Copy(dev_ctx, temp, dev_ctx.GetPlace(), false, tensor1_grad);
+    } else {
+      std::vector<int> reshape_vec, reduce_vec;
+      ComputeBroadcastGradDims(common::vectorize<int64_t>(tensor1_grad->dims()),
+                               out_dims,
+                               &reshape_vec,
+                               &reduce_vec);
+      ReduceGrad<Context, T, Dims>(
+          dev_ctx, temp, reshape_vec, reduce_vec, tensor1_grad);
+    }
+  }
+
+  // d(tensor2) = reduce_sum(dout * value * tensor1)
+  if (tensor2_grad) {
+    DenseTensor temp;
+    temp.Resize(out_grad.dims());
+    dev_ctx.template Alloc<T>(&temp);
+
+    auto ext_t1 = extend_dims(tensor1.dims());
+    auto t1_bcast = compute_bcast(ext_t1);
+    auto eigen_t1 =
+        EigenTensor<T, Dims>::From(tensor1, common::make_ddim(ext_t1));
+    auto eigen_dout = EigenTensor<T, Dims>::From(out_grad);
+    auto eigen_temp = EigenTensor<T, Dims>::From(temp);
+    eigen_temp.device(place) =
+        (eigen_dout.template cast<MPType>() * val *
+         eigen_t1.broadcast(t1_bcast).template cast<MPType>())
+            .template cast<T>();
+
+    if (tensor2_grad->dims() == out_grad.dims()) {
+      dev_ctx.template Alloc<T>(tensor2_grad);
+      phi::Copy(dev_ctx, temp, dev_ctx.GetPlace(), false, tensor2_grad);
+    } else {
+      std::vector<int> reshape_vec, reduce_vec;
+      ComputeBroadcastGradDims(common::vectorize<int64_t>(tensor2_grad->dims()),
+                               out_dims,
+                               &reshape_vec,
+                               &reduce_vec);
+      ReduceGrad<Context, T, Dims>(
+          dev_ctx, temp, reshape_vec, reduce_vec, tensor2_grad);
+    }
   }
 }
 
 template <typename Context, typename T>
-static void AddcmulGradFunctionZero(const Context& dev_ctx,
-                                    const DenseTensor& input UNUSED,
-                                    const DenseTensor& tensor1,
-                                    const DenseTensor& tensor2,
-                                    const DenseTensor& out_grad,
-                                    const Scalar& value,
-                                    DenseTensor* input_grad,
-                                    DenseTensor* t1_grad,
-                                    DenseTensor* t2_grad) {
-  // Zero dim logic (scalar)
+static void AddcmulGradZero(const Context& dev_ctx,
+                            const DenseTensor& tensor1,
+                            const DenseTensor& tensor2,
+                            const DenseTensor& out_grad,
+                            const Scalar& value,
+                            DenseTensor* input_grad,
+                            DenseTensor* t1_grad,
+                            DenseTensor* t2_grad) {
   auto dim = ::common::make_ddim(std::vector<int64_t>(1, 1));
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  auto& place = *dev_ctx.eigen_device();
+  MPType val = static_cast<MPType>(value.to<float>());
+
   auto eigen_t1 = phi::EigenTensor<T, 1>::From(tensor1, dim);
   auto eigen_t2 = phi::EigenTensor<T, 1>::From(tensor2, dim);
   auto eigen_dout = phi::EigenTensor<T, 1>::From(out_grad, dim);
-
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  auto& place = *dev_ctx.eigen_device();
 
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     auto eigen_dx = phi::EigenTensor<T, 1>::From(*input_grad, dim);
     eigen_dx.device(place) = eigen_dout;
   }
-
   if (t1_grad) {
     dev_ctx.template Alloc<T>(t1_grad);
     auto eigen_dt1 = phi::EigenTensor<T, 1>::From(*t1_grad, dim);
-    eigen_dt1.device(place) =
-        (eigen_dout.template cast<MPType>() * eigen_t2.template cast<MPType>() *
-         static_cast<MPType>(value.to<T>()))
-            .template cast<T>();
+    eigen_dt1.device(place) = (eigen_dout.template cast<MPType>() *
+                               eigen_t2.template cast<MPType>() * val)
+                                  .template cast<T>();
   }
-
   if (t2_grad) {
     dev_ctx.template Alloc<T>(t2_grad);
     auto eigen_dt2 = phi::EigenTensor<T, 1>::From(*t2_grad, dim);
-    eigen_dt2.device(place) =
-        (eigen_dout.template cast<MPType>() * eigen_t1.template cast<MPType>() *
-         static_cast<MPType>(value.to<T>()))
-            .template cast<T>();
+    eigen_dt2.device(place) = (eigen_dout.template cast<MPType>() *
+                               eigen_t1.template cast<MPType>() * val)
+                                  .template cast<T>();
   }
 }
 
@@ -217,88 +248,80 @@ void AddcmulGradKernel(const Context& dev_ctx,
   }
 
   int rank = out_grad.dims().size();
-
   switch (rank) {
     case 0:
-      AddcmulGradFunctionZero<Context, T>(dev_ctx,
-                                          input,
-                                          tensor1,
-                                          tensor2,
-                                          out_grad,
-                                          value,
-                                          input_grad,
-                                          tensor1_grad,
-                                          tensor2_grad);
+      AddcmulGradZero<Context, T>(dev_ctx,
+                                  tensor1,
+                                  tensor2,
+                                  out_grad,
+                                  value,
+                                  input_grad,
+                                  tensor1_grad,
+                                  tensor2_grad);
       break;
     case 1:
-      AddcmulGradFunction<Context, T, 1>(dev_ctx,
-                                         input,
-                                         tensor1,
-                                         tensor2,
-                                         out_grad,
-                                         value,
-                                         input_grad,
-                                         tensor1_grad,
-                                         tensor2_grad);
+      AddcmulGradImpl<T, Context, 1>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
       break;
     case 2:
-      AddcmulGradFunction<Context, T, 2>(dev_ctx,
-                                         input,
-                                         tensor1,
-                                         tensor2,
-                                         out_grad,
-                                         value,
-                                         input_grad,
-                                         tensor1_grad,
-                                         tensor2_grad);
+      AddcmulGradImpl<T, Context, 2>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
       break;
     case 3:
-      AddcmulGradFunction<Context, T, 3>(dev_ctx,
-                                         input,
-                                         tensor1,
-                                         tensor2,
-                                         out_grad,
-                                         value,
-                                         input_grad,
-                                         tensor1_grad,
-                                         tensor2_grad);
+      AddcmulGradImpl<T, Context, 3>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
       break;
     case 4:
-      AddcmulGradFunction<Context, T, 4>(dev_ctx,
-                                         input,
-                                         tensor1,
-                                         tensor2,
-                                         out_grad,
-                                         value,
-                                         input_grad,
-                                         tensor1_grad,
-                                         tensor2_grad);
+      AddcmulGradImpl<T, Context, 4>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
       break;
     case 5:
-      AddcmulGradFunction<Context, T, 5>(dev_ctx,
-                                         input,
-                                         tensor1,
-                                         tensor2,
-                                         out_grad,
-                                         value,
-                                         input_grad,
-                                         tensor1_grad,
-                                         tensor2_grad);
+      AddcmulGradImpl<T, Context, 5>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
       break;
     case 6:
-      AddcmulGradFunction<Context, T, 6>(dev_ctx,
-                                         input,
-                                         tensor1,
-                                         tensor2,
-                                         out_grad,
-                                         value,
-                                         input_grad,
-                                         tensor1_grad,
-                                         tensor2_grad);
+      AddcmulGradImpl<T, Context, 6>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
       break;
     default:
       PADDLE_THROW(::common::errors::InvalidArgument(
-          "AddcmulGrad only supports rank <= 6"));
+          "AddcmulGrad only supports rank <= 6, got %d", rank));
   }
 }
 
