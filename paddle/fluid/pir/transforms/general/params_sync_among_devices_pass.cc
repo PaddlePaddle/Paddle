@@ -69,7 +69,7 @@ class ParamsSyncAmongDevicesPass : public Pass {
       if (inner_op.template isa<ParameterOp>() && inner_op.num_results() > 0) {
         auto var = inner_op.result(0);
         auto bool_attr =
-            var.template attribute<::BoolAttribute>(kAttrIsPersistable);
+            var.template attribute<BoolAttribute>(kAttrIsPersistable);
         if (!bool_attr || !bool_attr.data()) {
           continue;
         }

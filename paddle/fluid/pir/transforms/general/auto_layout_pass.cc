@@ -76,10 +76,10 @@ class AutoLayoutPass : public Pass {
   void Run(Operation* op) override {
     auto program = op->GetParentProgram();
     PrintProgram(*program, "Before pass");
-    ::IrMapping ir_mapping;
+    IrMapping ir_mapping;
     auto program_clone = program->Clone(ir_mapping);
 
-    PassManager pm(::IrContext::Instance(), 2);
+    PassManager pm(IrContext::Instance(), 2);
 
     pm.AddPass(CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",
                                            "pd_op.conv2d",
@@ -89,7 +89,7 @@ class AutoLayoutPass : public Pass {
 
     PrintProgram(*program, "Middle");
     if (IsNeedAllTranspose(program_clone->module_op())) {
-      PassManager pm_(::IrContext::Instance(), 2);
+      PassManager pm_(IrContext::Instance(), 2);
       pm_.AddPass(CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",
                                               "pd_op.conv2d",
                                               "pd_op.conv2d_transpose"}));
@@ -97,7 +97,7 @@ class AutoLayoutPass : public Pass {
       pm_.Run(program);
     } else {
       // Same as TransferLayoutPass, only transpose fused_conv2d_add_act
-      PassManager pm_(::IrContext::Instance(), 2);
+      PassManager pm_(IrContext::Instance(), 2);
       pm_.AddPass(CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act"}));
       pm_.AddPass(CreateAutoLayoutSimplifyPass());
       pm_.Run(program);
