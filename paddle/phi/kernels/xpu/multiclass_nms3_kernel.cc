@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void MultiClassNMSKernel(const Context& dev_ctx,
                          const DenseTensor& bboxes,
                          const DenseTensor& scores,
-                         const paddle::optional<DenseTensor>& rois_num,
+                         const optional<DenseTensor>& rois_num,
                          float score_threshold,
                          int nums_top_k,
                          int keep_top_k,

@@ -244,7 +244,7 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const phi::Place& place) {
+uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
   if (UNLIKELY(in_cuda_graph_capturing_)) {
     VLOG(7) << "Memory release forbidden in CUDA Graph Capturing";
     return 0;
@@ -260,7 +260,7 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const phi::Place& place) {
   return released_size;
 }
 
-size_t StreamSafeCUDAAllocator::CompactImpl(const phi::Place& place) {
+size_t StreamSafeCUDAAllocator::CompactImpl(const Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   VLOG(4) << "enter StreamSafeCUDAAllocator compact!!";
   std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
@@ -297,7 +297,7 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
-std::map<phi::Place, std::vector<StreamSafeCUDAAllocator*>>
+std::map<Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;
 SpinLock StreamSafeCUDAAllocator::allocator_map_lock_;
 
