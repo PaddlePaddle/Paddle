@@ -55,7 +55,7 @@ inline bool cudnnIsAvailable() {
     // Get current device ID for this device type
     int device_id = DeviceManager::GetDevice(device_type);
     // Create place for the current device
-    phi::Place place(phi::CustomPlace(device_type, device_id));
+    Place place(CustomPlace(device_type, device_id));
     // Check if this device has DNN support
     return DeviceManager::IsDnnAvailable(place);
   }
