@@ -47,7 +47,8 @@ class TopkCalculator {
     }
     return true;
   }
-  // TODO 再进行一次堆排序merge各个shard的结果
+  // TODO(zhaocaibei123): Perform another heap sort to merge the results of each
+  // shard
   int top() {
     double total = 0;
     for (const auto &item : _mpq) {

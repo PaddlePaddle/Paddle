@@ -460,7 +460,7 @@ void DotSdd(const phi::GPUContext& dev_ctx,
             const int num_cols,
             const bool a_transpose,
             const bool b_transpose) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11030
+#if defined(PADDLE_WITH_CUDA)
   const T* a_data = a->data<T>();
   const T* b_data = b->data<T>();
   const int* c_offset_data = c_offset->data<int>();
@@ -560,7 +560,7 @@ void DotDsd(const phi::GPUContext& dev_ctx,
             const int num_cols,
             const bool a_transpose,
             const bool b_transpose) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   const int* a_offset_data = a_offset->data<int>();
   const int* a_columns_data = a_columns->data<int>();
   const T* a_value_data = a_value->data<T>();
