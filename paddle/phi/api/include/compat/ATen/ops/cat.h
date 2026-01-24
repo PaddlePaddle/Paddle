@@ -28,7 +28,7 @@ inline at::Tensor cat(const std::vector<at::Tensor>& tensors, int64_t dim = 0) {
   std::vector<paddle::Tensor> pd_tensors;
   pd_tensors.reserve(tensors.size());
   for (const auto& t : tensors) {
-    pd_tensors.push_back(t._PD_GetInner());
+    pd_tensors.push_back(static_cast<const at::TensorBase&>(t)._PD_GetInner());
   }
   return paddle::experimental::concat(pd_tensors, dim);
 }

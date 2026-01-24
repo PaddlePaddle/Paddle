@@ -26,7 +26,7 @@ namespace at {
 inline at::Tensor sum(const at::Tensor& self,
                       ::std::optional<at::ScalarType> dtype = ::std::nullopt) {
   return paddle::experimental::sum(
-      self._PD_GetInner(),
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(),
       {},
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
@@ -38,7 +38,7 @@ inline at::Tensor sum(const at::Tensor& self,
                       bool keepdim = false,
                       ::std::optional<at::ScalarType> dtype = ::std::nullopt) {
   return paddle::experimental::sum(
-      self._PD_GetInner(),
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(),
       dim.has_value() ? dim.value()._PD_ToPaddleIntArray()
                       : paddle::experimental::IntArray(),
       compat::_PD_AtenScalarTypeToPhiDataType(
@@ -54,7 +54,9 @@ inline at::Tensor& sum_out(
     bool keepdim = false,
     ::std::optional<at::ScalarType> dtype = ::std::nullopt) {
   auto res = sum(self, dim, keepdim, dtype);
-  paddle::experimental::assign_out_(res._PD_GetInner(), out._PD_GetInner());
+  paddle::experimental::assign_out_(
+      static_cast<const at::TensorBase&>(res)._PD_GetInner(),
+      static_cast<at::TensorBase&>(out)._PD_GetInner());
   return out;
 }
 
@@ -64,7 +66,9 @@ inline at::Tensor& sum_out(
     const at::Tensor& self,
     ::std::optional<at::ScalarType> dtype = ::std::nullopt) {
   auto res = sum(self, dtype);
-  paddle::experimental::assign_out_(res._PD_GetInner(), out._PD_GetInner());
+  paddle::experimental::assign_out_(
+      static_cast<const at::TensorBase&>(res)._PD_GetInner(),
+      static_cast<at::TensorBase&>(out)._PD_GetInner());
   return out;
 }
 

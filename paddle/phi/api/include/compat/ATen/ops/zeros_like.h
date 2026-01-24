@@ -32,7 +32,7 @@ inline at::Tensor zeros_like(
            "`MemoryFormat` other than Contiguous is not supported now.");
 
   return paddle::experimental::zeros_like(
-      self._PD_GetInner(),
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
       options._PD_GetPlace());
 }
@@ -51,7 +51,7 @@ inline at::Tensor zeros_like(const at::Tensor& self,
            "`MemoryFormat` other than Contiguous is not supported now.");
 
   return paddle::experimental::zeros_like(
-      self._PD_GetInner(),
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
       device.value_or(at::kCPU)._PD_GetInner());

@@ -42,7 +42,8 @@ inline at::Tensor transpose(const at::Tensor& self,
   }
   std::swap(perm[d0], perm[d1]);
 
-  return paddle::experimental::transpose(self._PD_GetInner(), perm);
+  return paddle::experimental::transpose(
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(), perm);
 }
 
 }  // namespace at

@@ -107,8 +107,8 @@ inline py::object OperationInvoker::to_py_object(const torch::IValue& value) {
   } else if (value.is_string()) {
     return py::cast(value.to_string());
   } else if (value.is_tensor()) {
-    return py::reinterpret_borrow<py::object>(
-        paddle::pybind::ToPyObject(value.to_tensor()._PD_GetInner()));
+    return py::reinterpret_borrow<py::object>(paddle::pybind::ToPyObject(
+        static_cast<const at::TensorBase&>(value.to_tensor())._PD_GetInner()));
   } else if (value.is_list()) {
     auto ivalue_list = value.to_list();
     py::list py_list;

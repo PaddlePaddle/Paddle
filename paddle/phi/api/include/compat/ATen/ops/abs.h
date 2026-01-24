@@ -24,7 +24,8 @@
 namespace at {
 
 inline at::Tensor abs(const at::Tensor& self) {
-  return paddle::experimental::abs(self._PD_GetInner());
+  return paddle::experimental::abs(
+      static_cast<const at::TensorBase&>(self)._PD_GetInner());
 }
 
 }  // namespace at

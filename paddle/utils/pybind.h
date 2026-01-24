@@ -152,7 +152,8 @@ struct type_caster<at::Tensor> {
   static handle cast(const at::Tensor& src,
                      return_value_policy /* policy */,
                      handle /* parent */) {
-    const auto& src_pd_tensor = src._PD_GetInner();
+    const auto& src_pd_tensor =
+        static_cast<const at::TensorBase&>(src)._PD_GetInner();
 
 #ifdef PADDLE_WITH_DISTRIBUTE
     bool return_none =

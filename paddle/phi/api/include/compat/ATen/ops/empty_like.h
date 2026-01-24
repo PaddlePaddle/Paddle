@@ -34,7 +34,7 @@ inline at::Tensor empty_like(
   auto dtype = options.dtype_opt().value_or(self.dtype());
   auto place = options.device_opt().value_or(self.device());
   return paddle::experimental::empty_like(
-      self._PD_GetInner(),
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       place._PD_GetInner());
 }
@@ -53,7 +53,7 @@ inline at::Tensor empty_like(const at::Tensor& self,
            "`MemoryFormat` other than Contiguous is not supported now.");
 
   return paddle::experimental::empty_like(
-      self._PD_GetInner(),
+      static_cast<const at::TensorBase&>(self)._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype.value_or(self.dtype())),
       device.value_or(self.device())._PD_GetInner());
 }
