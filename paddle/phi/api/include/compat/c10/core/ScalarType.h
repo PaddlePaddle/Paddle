@@ -314,12 +314,7 @@ inline bool isSignedType(ScalarType t) {
     case ScalarType::ComplexFloat:
     case ScalarType::ComplexDouble:
       return true;
-    case ScalarType::Undefined:
-      break;
-      // Do not add default here, but rather define behavior of every new entry
-      // here.  `-Wswitch-enum` would raise a warning in those cases.
   }
-  TORCH_CHECK(false, "Unknown ScalarType ", t);
 #undef CASE_ISSIGNED
 }
 
