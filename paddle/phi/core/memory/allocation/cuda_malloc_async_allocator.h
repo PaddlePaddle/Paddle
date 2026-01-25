@@ -45,7 +45,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
  public:
   CUDAMallocAsyncAllocation(void* ptr,
                             size_t size,
-                            phi::Place place,
+                            Place place,
                             gpuStream_t malloc_stream,
                             gpuStream_t free_stream)
       : Allocation(ptr, size, place),
@@ -85,7 +85,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
-  uint64_t ReleaseImpl(const phi::Place& place) override;
+  uint64_t ReleaseImpl(const Place& place) override;
 
  private:
   void LazyInitializeCudaFreeStream();

@@ -23,10 +23,10 @@
 namespace phi {
 void TransDataType(const phi::KernelKey& kernel_type_for_var,
                    const phi::KernelKey& expected_kernel_type,
-                   const phi::DenseTensor& in,
-                   phi::DenseTensor* out);
+                   const DenseTensor& in,
+                   DenseTensor* out);
 
-void TransDataType(const phi::DenseTensor& in,
+void TransDataType(const DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
-                   phi::DenseTensor* out);
+                   DenseTensor* out);
 }  // namespace phi

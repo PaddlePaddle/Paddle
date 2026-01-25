@@ -34,6 +34,10 @@ from paddle._C_ops import (  # noqa: F401
     fmax,
     fmin,
     heaviside,
+    i0,
+    i0e,
+    i1,
+    i1e,
     isfinite,
     isinf,
     isnan,
@@ -49,6 +53,7 @@ from paddle._C_ops import (  # noqa: F401
     sign,
     sin,
     sum,
+    tan,
     tanh,
 )
 from paddle.base.libpaddle import DataType
@@ -123,7 +128,6 @@ from .ops import (  # noqa: F401
     sqrt_,
     square,
     square_,
-    tan,
     tan_,
 )
 
@@ -5041,7 +5045,10 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(['x', 'input'])
+def deg2rad(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Convert each of the elements of input x from degrees to angles in radians.
 
@@ -5052,6 +5059,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
@@ -5078,7 +5086,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.scale(x, deg2rad_scale, 0.0, True)
+        return _C_ops.scale(x, deg2rad_scale, 0.0, True, out=out)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad'
@@ -6188,50 +6196,6 @@ def vander(
     return res
 
 
-def i0(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    The function used to calculate modified bessel function of order 0.
-
-    Equation:
-        ..  math::
-
-            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> paddle.i0(x)
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i0(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i0",
-        )
-
-        helper = LayerHelper("i0", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='i0', inputs={'x': x}, outputs={'out': out})
-    return out
-
-
 @inplace_apis_in_dygraph_only
 def i0_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -6241,134 +6205,6 @@ def i0_(x: Tensor, name: str | None = None) -> Tensor:
 
     if in_dynamic_mode():
         return _C_ops.i0_(x)
-
-
-def i0e(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    The function used to calculate exponentially scaled modified Bessel function of order 0.
-
-    Equation:
-        ..  math::
-
-            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
-            I_{0e}(x) = e^{-|x|}I_0(x)
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> print(paddle.i0e(x))
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i0e(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i0e",
-        )
-
-        helper = LayerHelper("i0e", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='i0e', inputs={'x': x}, outputs={'out': out})
-    return out
-
-
-def i1(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    The function is used to calculate modified bessel function of order 1.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> print(paddle.i1(x))
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i1(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i1",
-        )
-
-        helper = LayerHelper("i1", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='i1', inputs={'x': x}, outputs={'out': out}, attrs={}
-        )
-    return out
-
-
-def i1e(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    The function is used to calculate exponentially scaled modified Bessel function of order 1.
-
-    Args:
-
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> print(paddle.i1e(x))
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i1e(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i1e",
-        )
-
-        helper = LayerHelper("i1e", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='i1e', inputs={'x': x}, outputs={'out': out}, attrs={}
-        )
-    return out
 
 
 def polygamma(x: Tensor, n: int, name: str | None = None) -> Tensor:

@@ -40,7 +40,7 @@ void AffineChannelGradXPUKernel(const Context& dev_ctx,
   auto* dscale = scale_grad;
   auto* dbias = bias_grad;
 
-  const DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int64_t N = dims[0];

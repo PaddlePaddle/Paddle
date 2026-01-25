@@ -72,7 +72,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
                                         const std::string& data_format,
                                         DenseTensor* dx,
                                         DenseTensor* dfilter) {
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
 
   if (!dx && !dfilter) {

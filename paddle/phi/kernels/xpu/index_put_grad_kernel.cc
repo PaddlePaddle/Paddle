@@ -35,11 +35,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     // Fill value_grad with 0.
     if (value_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(value_grad->dims())),
-          0,
-          value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0, value_grad);
     }
     return;
   }
@@ -59,11 +55,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             vectorize(value_grad->dims()),
-                             0.0f,
-                             value_grad->dtype(),
-                             value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
     }
     return;
   }

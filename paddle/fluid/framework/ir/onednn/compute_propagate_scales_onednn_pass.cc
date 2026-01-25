@@ -24,7 +24,7 @@
 namespace paddle::framework::ir {
 
 void ComputePropagateScalesOnednnPass::GetTensorFromVector(
-    const std::vector<float>& data_v, phi::DenseTensor* tensor) const {
+    const std::vector<float>& data_v, DenseTensor* tensor) const {
   const int size = static_cast<int>(data_v.size());
   auto* data = tensor->mutable_data<float>({size}, CPUPlace());
   for (int i = 0; i < size; i++) {
@@ -46,7 +46,7 @@ void ComputePropagateScalesOnednnPass::GetQuantInfo(
 }
 
 std::vector<float> ComputePropagateScalesOnednnPass::GetScales(
-    phi::DenseTensor* tensor, int axis) const {
+    DenseTensor* tensor, int axis) const {
   PADDLE_ENFORCE_LT(axis,
                     2,
                     common::errors::InvalidArgument(
@@ -139,7 +139,7 @@ void ComputePropagateScalesOnednnPass::ComputeSingleGruWeightScales(
     Scope* scope,
     const std::string& wx_var_name,
     const std::string& wh_var_name,
-    phi::DenseTensor* tensor) const {
+    DenseTensor* tensor) const {
   auto* wx_var = scope->FindVar(wx_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wx_var,
@@ -241,7 +241,7 @@ void ComputePropagateScalesOnednnPass::ComputeSingleLstmWeightScales(
     Scope* scope,
     const std::string& wx_var_name,
     const std::string& wh_var_name,
-    phi::DenseTensor* tensor) const {
+    DenseTensor* tensor) const {
   auto* wx_var = scope->FindVar(wx_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wx_var,
