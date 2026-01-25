@@ -1,5 +1,6 @@
 if(NOT WIN32)
   if(WITH_GPU)
+    nv_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc)
     nv_test(compat_basic_test SRCS compat_basic_test.cc)
     nv_test(compat_squeeze_test SRCS compat_squeeze_test.cc)
     nv_test(c10_ScalarType_test SRCS c10_ScalarType_test.cc)
