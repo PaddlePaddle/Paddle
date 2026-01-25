@@ -403,7 +403,6 @@ def stft(
         ], f'pad_mode should be "reflect" or "constant", but got "{pad_mode}".'
 
         pad_length = n_fft // 2
-        # FIXME: Input `x` can be a complex tensor but pad does not support complex input.
         x = paddle.nn.functional.pad(
             x.unsqueeze(-1),
             pad=[pad_length, pad_length],
@@ -594,7 +593,6 @@ def istft(
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
         pad_right = n_fft - win_length - pad_left
-        # FIXME: Input `window` can be a complex tensor but pad does not support complex input.
         window = paddle.nn.functional.pad(
             window, pad=[pad_left, pad_right], mode='constant'
         )
