@@ -21,6 +21,7 @@ pip config set global.trusted-host files.pythonhosted.org
 pip config set global.trusted-host pypi.python.org
 @REM pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 @REM pip config set install.trusted-host pypi.tuna.tsinghua.edu.cn
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 git config --global core.longpaths true
 git config --global user.name "PaddleCI"
 git config --global user.email "paddle_ci@example.com"
