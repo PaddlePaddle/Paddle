@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
@@ -29,10 +28,6 @@ void ShadowFeedKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int dst_place_type,
                       DenseTensor* out) {
-  // VLOG(0) << "Enter ShadowFeedKernel";
-  // VLOG(0) << "context place: " << dev_ctx.GetPlace();
-  // VLOG(0) << "src_place: " << x.place();
-  // VLOG(0) << "dst_place_type: " << dst_place_type;
   Place target_place;
   switch (dst_place_type) {
     case 0:  // CPUPlace
