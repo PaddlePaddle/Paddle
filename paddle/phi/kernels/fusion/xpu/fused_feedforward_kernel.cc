@@ -337,6 +337,10 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dropout2_out);
   dev_ctx.template Alloc<T>(linear1_out);
 
+  if (out->numel() == 0) {
+    return;
+  }
+
   auto x_dim = x_ptr->dims();
   auto mat_dim_x =
       funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);

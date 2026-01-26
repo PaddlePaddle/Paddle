@@ -54,25 +54,24 @@ class AllocatorFacade {
 
   AllocatorFacadePrivate* GetPrivate() const;
 
-  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
-      const phi::Place& place);
+  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(const Place& place);
 
   PADDLE_API const std::shared_ptr<Allocator>& GetAutoGrowthAllocator(
-      const phi::Place& place);
+      const Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
   PADDLE_API const std::shared_ptr<Allocator>& GetZeroAllocator(
-      const phi::Place& place);
+      const Place& place);
 
   // Allocate a shared allocation.
-  std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size);
+  std::shared_ptr<Allocation> AllocShared(const Place& place, size_t size);
   // Allocate a unique allocation.
-  PADDLE_API AllocationPtr Alloc(const phi::Place& place, size_t size);
+  PADDLE_API AllocationPtr Alloc(const Place& place, size_t size);
   // Release unused memory pool.
-  uint64_t Release(const phi::Place& place);
+  uint64_t Release(const Place& place);
   // Compact memory of free blocks held by the VmmAllocator.
-  size_t Compact(const phi::Place& place);
+  size_t Compact(const Place& place);
 
   /**
    * @brief Accepts an AllocatorVisitor and iterates over all nested Allocator
@@ -87,13 +86,13 @@ class AllocatorFacade {
    * @param visitor A pointer to the AllocatorVisitor whose Visit methods will
    * be executed against the nested allocators found at the specified Place.
    */
-  void Accept(const phi::Place& place, AllocatorVisitor* visitor);
+  void Accept(const Place& place, AllocatorVisitor* visitor);
 
-  std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+  std::shared_ptr<Allocation> AllocShared(const Place& place,
                                           size_t size,
                                           const phi::Stream& stream);
 
-  AllocationPtr Alloc(const phi::Place& place,
+  AllocationPtr Alloc(const Place& place,
                       size_t size,
                       const phi::Stream& stream);
 
@@ -109,15 +108,15 @@ class AllocatorFacade {
   bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
-      const phi::Place& place, gpuStream_t stream);
+  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(const Place& place,
+                                                            gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const GPUPlace& place, gpuStream_t stream);
 #elif defined(PADDLE_WITH_XPU)
-  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
-      const phi::Place& place, XPUStream stream);
+  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(const Place& place,
+                                                            XPUStream stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
-  void SetDefaultStream(const phi::XPUPlace& place, XPUStream stream);
+  void SetDefaultStream(const XPUPlace& place, XPUStream stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 #endif
 
@@ -138,7 +137,7 @@ class AllocatorFacade {
   void EraseStream(std::shared_ptr<Allocation> allocation,
                    phi::stream::stream_t stream);
   PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
-      const phi::Place& place, phi::stream::stream_t stream);
+      const Place& place, phi::stream::stream_t stream);
   phi::stream::stream_t GetStream(
       const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const phi::CustomPlace& place,

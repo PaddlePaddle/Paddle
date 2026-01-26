@@ -180,7 +180,7 @@ template <typename T, typename Context>
 void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
-                    const paddle::optional<DenseTensor>& boxes_num,
+                    const optional<DenseTensor>& boxes_num,
                     int pooled_height,
                     int pooled_width,
                     float spatial_scale,

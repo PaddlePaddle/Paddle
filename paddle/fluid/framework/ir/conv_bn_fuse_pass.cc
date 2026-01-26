@@ -73,12 +73,12 @@ namespace paddle::framework::ir {
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance, pattern_name)
 
 void recompute_bias_and_weights(const Scope* scope,
-                                ir::Node* conv_weight,                   //
-                                const ir::Node& bn_scale,                //
-                                const phi::DenseTensor& bn_bias_tensor,  //
-                                const ir::Node& bn_mean,                 //
-                                const ir::Node& bn_variance,             //
-                                phi::DenseTensor* eltwise_y_in_tensor,   //
+                                ir::Node* conv_weight,              //
+                                const ir::Node& bn_scale,           //
+                                const DenseTensor& bn_bias_tensor,  //
+                                const ir::Node& bn_mean,            //
+                                const ir::Node& bn_variance,        //
+                                DenseTensor* eltwise_y_in_tensor,   //
                                 float epsilon,
                                 const std::string& conv_type) {
   using EigenVectorArrayMap =
@@ -373,7 +373,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     bool onednn_with_bias = is_onednn && has_bias;
 
     // Create eltwise_y (conv bias) variable
-    phi::DenseTensor* eltwise_y_in_tensor = nullptr;
+    DenseTensor* eltwise_y_in_tensor = nullptr;
     Node* eltwise_y_in_node = nullptr;
     if (!onednn_with_bias) {
       VarDesc eltwise_y_in_desc(

@@ -21,7 +21,7 @@ limitations under the License. */
 
 namespace paddle::framework {
 
-void SaveTensor(const phi::DenseTensor& x,
+void SaveTensor(const DenseTensor& x,
                 const std::string& file_path,
                 bool overwrite) {
   std::string new_path(file_path);
@@ -39,7 +39,7 @@ void SaveTensor(const phi::DenseTensor& x,
   fout.close();
 }
 
-void LoadTensor(const std::string& file_path, phi::DenseTensor* out) {
+void LoadTensor(const std::string& file_path, DenseTensor* out) {
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
