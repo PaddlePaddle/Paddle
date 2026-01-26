@@ -4237,6 +4237,41 @@ def bitwise_xor(
 )
 
 add_doc_and_signature(
+    "bitwise_xor_",
+    r"""
+    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_xor`.
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_xor_``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_xor_``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Result of ``bitwise_xor_``. It is the same Tensor as input ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> x.bitwise_xor_(y)
+            >>> print(x)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1, -3, -4])
+""",
+    """
+def bitwise_xor_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "conj",
     r"""
     This function computes the conjugate of the Tensor elementwisely.

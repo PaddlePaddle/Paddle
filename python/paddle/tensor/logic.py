@@ -25,6 +25,7 @@ from paddle._C_ops import (  # noqa: F401
     bitwise_and,
     bitwise_not,
     bitwise_xor,
+    bitwise_xor_,
     greater_than,
     isclose,
     logical_and,
@@ -1072,21 +1073,6 @@ def __rxor__(
         raise TypeError(
             f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
         )
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_xor_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_xor`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_mode():
-        return _C_ops.bitwise_xor_(x, y)
 
 
 @inplace_apis_in_dygraph_only

@@ -119,6 +119,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : bitwise_xor_
+  name : [paddle.bitwise_xor_, paddle.Tensor.bitwise_xor_]
+  args_alias :
+    use_default_mapping : True
+
 - op : ceil
   name : [paddle.ceil, paddle.Tensor.ceil]
   args_alias :

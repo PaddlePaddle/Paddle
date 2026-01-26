@@ -1193,5 +1193,64 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_array_equal(out, ref_out)
 
 
+# Test bitwise_xor_ (inplace) compatibility
+class TestBitwiseXorInplaceAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'int32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_y = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # Position args (args)
+        x1 = paddle.to_tensor(self.np_x.copy())
+        y1 = paddle.to_tensor(self.np_y)
+        out1 = paddle.bitwise_xor_(x1, y1)
+
+        # Paddle keyword args (kwargs)
+        x2 = paddle.to_tensor(self.np_x.copy())
+        y2 = paddle.to_tensor(self.np_y)
+        out2 = paddle.bitwise_xor_(x=x2, y=y2)
+
+        # Torch keyword args
+        x3 = paddle.to_tensor(self.np_x.copy())
+        y3 = paddle.to_tensor(self.np_y)
+        out3 = paddle.bitwise_xor_(input=x3, other=y3)
+
+        # Tensor method - args
+        x4 = paddle.to_tensor(self.np_x.copy())
+        y4 = paddle.to_tensor(self.np_y)
+        out4 = x4.bitwise_xor_(y4)
+
+        # Tensor method - kwargs
+        x5 = paddle.to_tensor(self.np_x.copy())
+        y5 = paddle.to_tensor(self.np_y)
+        out5 = x5.bitwise_xor_(y=y5)
+
+        # Numpy reference output
+        ref_out = np.bitwise_xor(self.np_x, self.np_y)
+
+        # Verify all outputs
+        paddle_dygraph_out = [out1, out2, out3, out4, out5]
+        for out in paddle_dygraph_out:
+            np.testing.assert_array_equal(ref_out, out.numpy())
+
+        # Verify inplace modification
+        np.testing.assert_array_equal(ref_out, x1.numpy())
+        np.testing.assert_array_equal(ref_out, x2.numpy())
+        np.testing.assert_array_equal(ref_out, x3.numpy())
+        np.testing.assert_array_equal(ref_out, x4.numpy())
+        np.testing.assert_array_equal(ref_out, x5.numpy())
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
