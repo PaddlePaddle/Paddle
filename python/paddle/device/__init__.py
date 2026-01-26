@@ -873,7 +873,7 @@ def get_device_properties(
             >>> # paddle.device.get_device_properties('npu')
             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
     """
-    device = _device_to_paddle(device)
+    device = device_to_place(device)
     return _get_device_properties(device)
 
 
@@ -1516,8 +1516,8 @@ def _device_to_paddle(
     elif isinstance(dev, str):
         cleaned_device = dev.strip()
         return (
-            cleaned_device.replace("cuda:", "gpu:")
-            if "cuda:" in cleaned_device
+            cleaned_device.replace("cuda", "gpu")
+            if "cuda" in cleaned_device
             else cleaned_device
         )
     elif dev is None:
