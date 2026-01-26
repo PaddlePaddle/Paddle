@@ -555,27 +555,6 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   }
 }
 
-void LinearV2DoubleGradInferMeta(
-    const MetaTensor& input,
-    const MetaTensor& weight,
-    const MetaTensor& grad_out,
-    const paddle::optional<MetaTensor>& grad_input_grad,
-    const paddle::optional<MetaTensor>& grad_weight_grad,
-    const paddle::optional<MetaTensor>& grad_bias_grad,
-    MetaTensor* input_grad,
-    MetaTensor* weight_grad,
-    MetaTensor* grad_out_grad) {
-  if (input_grad) {
-    input_grad->share_meta(input);
-  }
-  if (weight_grad) {
-    weight_grad->share_meta(weight);
-  }
-  if (grad_out_grad) {
-    grad_out_grad->share_meta(grad_out);
-  }
-}
-
 void LSTMGradInferMeta(const MetaTensor& input,
                        const MetaTensor& h0,
                        const MetaTensor& c0,
