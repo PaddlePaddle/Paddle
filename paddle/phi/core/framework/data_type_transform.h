@@ -21,8 +21,8 @@
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
-void TransDataType(const phi::KernelKey& kernel_type_for_var,
-                   const phi::KernelKey& expected_kernel_type,
+void TransDataType(const KernelKey& kernel_type_for_var,
+                   const KernelKey& expected_kernel_type,
                    const DenseTensor& in,
                    DenseTensor* out);
 

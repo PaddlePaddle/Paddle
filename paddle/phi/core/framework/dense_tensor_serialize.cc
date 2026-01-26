@@ -20,7 +20,7 @@ namespace phi {
 
 void SerializeToStream(std::ostream &os,
                        const DenseTensor &tensor,
-                       const phi::DeviceContext &dev_ctx) {
+                       const DeviceContext &dev_ctx) {
   constexpr uint32_t kCurTensorVersion = 0;
   {  // the 1st field, uint32_t version for DenseTensor
     os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
@@ -37,7 +37,7 @@ void SerializeToStream(std::ostream &os,
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
 
     for (auto &each : lod) {
-      size = each.size() * sizeof(phi::LegacyLoD::value_type::value_type);
+      size = each.size() * sizeof(LegacyLoD::value_type::value_type);
       os.write(reinterpret_cast<const char *>(&size), sizeof(size));
       os.write(reinterpret_cast<const char *>(each.data()),
                static_cast<std::streamsize>(size));
@@ -48,23 +48,23 @@ void SerializeToStream(std::ostream &os,
 }
 
 void SerializeToStream(std::ostream &os, const DenseTensor &tensor) {
-  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  const phi::DeviceContext *dev_ctx = nullptr;
+  DeviceContextPool &pool = DeviceContextPool::Instance();
+  const DeviceContext *dev_ctx = nullptr;
   auto place = tensor.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, tensor, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &os, DenseTensor *tensor) {
-  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  const phi::DeviceContext *dev_ctx = nullptr;
-  dev_ctx = pool.Get(phi::CPUPlace());
+  DeviceContextPool &pool = DeviceContextPool::Instance();
+  const DeviceContext *dev_ctx = nullptr;
+  dev_ctx = pool.Get(CPUPlace());
   DeserializeFromStream(os, tensor, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &is,
                            DenseTensor *tensor,
-                           const phi::DeviceContext &dev_ctx,
+                           const DeviceContext &dev_ctx,
                            const size_t &seek,
                            const std::vector<int64_t> &shape) {
   {
@@ -94,7 +94,7 @@ void DeserializeFromStream(std::istream &is,
 
 void DeserializeFromStream(std::istream &is,
                            DenseTensor *tensor,
-                           const phi::DeviceContext &dev_ctx) {
+                           const DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for DenseTensor
     uint32_t version = 0;
