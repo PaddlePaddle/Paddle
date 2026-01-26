@@ -35,7 +35,7 @@ inline CONTEXT_TYPE *GetCurrentContext() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   auto dev_types = DeviceManager::GetAllCustomDeviceTypes();
   int device_id = DeviceManager::GetDevice(dev_types[0]);
-  auto gplace = phi::CustomPlace(dev_types[0], device_id);
+  auto gplace = CustomPlace(dev_types[0], device_id);
   auto *dev_ctx = static_cast<CustomContext *>(
       phi::DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;

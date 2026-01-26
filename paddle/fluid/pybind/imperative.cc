@@ -330,7 +330,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             .Get<DenseTensor>());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "We should only get paddle::Tensor or VarBase in this "
+        "We should only get Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
 }

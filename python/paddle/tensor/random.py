@@ -1738,12 +1738,15 @@ def uniform_(
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
+@param_one_alias(["shape", "size"])
 def randint(
     low: int = 0,
     high: int | None = None,
     shape: ShapeLike = [1],
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
@@ -1760,12 +1763,14 @@ def randint(
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
+            Alias: ``size``.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the
             output tensor. Supported data types: int32, int64. If ``dtype``
             is None, the data type is int64. Default is None.
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
@@ -1846,7 +1851,7 @@ def randint(
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place()
+            low, high, shape, dtype, _current_expected_place(), out=out
         )
     elif in_pir_mode():
         check_shape(shape, 'randint')
@@ -1854,7 +1859,7 @@ def randint(
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
         return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place()
+            low, high, shape, dtype, _current_expected_place(), out=out
         )
     else:
         check_shape(shape, 'randint')
@@ -1872,7 +1877,8 @@ def randint(
         )
 
         helper = LayerHelper("randint", **locals())
-        out = helper.create_variable_for_type_inference(dtype=dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs
         )

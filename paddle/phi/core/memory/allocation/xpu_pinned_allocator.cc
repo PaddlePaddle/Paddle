@@ -58,11 +58,9 @@ phi::Allocation* XPUPinnedAllocator::AllocateImpl(size_t size) {
 
   VLOG(10) << "cudaHostAlloc " << size << " " << ptr;
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
-  platform::RecordMemEvent(ptr,
-                           phi::XPUPinnedPlace(),
-                           size,
-                           phi::TracerMemEventType::ReservedAllocate);
-  return new Allocation(ptr, size, phi::XPUPinnedPlace());
+  platform::RecordMemEvent(
+      ptr, XPUPinnedPlace(), size, phi::TracerMemEventType::ReservedAllocate);
+  return new Allocation(ptr, size, XPUPinnedPlace());
 }
 
 }  // namespace paddle::memory::allocation

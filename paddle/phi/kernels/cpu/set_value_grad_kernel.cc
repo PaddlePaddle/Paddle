@@ -280,11 +280,7 @@ void SetValueGradKernel(const Context& dev_ctx,
 
   if (ellipsis_flag) {
     if (x_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             vectorize(x_grad->dims()),
-                             Scalar(0),
-                             x_grad->dtype(),
-                             x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), Scalar(0), x_grad);
     }
     if (value_grad) {
       if (value_grad->numel() == out_grad.numel()) {

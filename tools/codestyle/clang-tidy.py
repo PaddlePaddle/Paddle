@@ -482,7 +482,7 @@ if __name__ == '__main__':
         )
         sys.exit(0)
 
-    target_version = "15.0.2"
+    target_version = "15.0"
     try:
         out = subprocess.check_output(['clang-tidy', '--version'], shell=True)
         version = out.decode('utf-8')
