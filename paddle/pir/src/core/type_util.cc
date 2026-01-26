@@ -23,8 +23,7 @@ Type GetElementTypeOrSelf(Type type) {
   return type;
 }
 
-bool VerifyCompatibleShape(const pir::DDim &lhs_shape,
-                           const pir::DDim &rhs_shape) {
+bool VerifyCompatibleShape(const DDim &lhs_shape, const DDim &rhs_shape) {
   if (lhs_shape.size() != rhs_shape.size()) return false;
 
   for (auto dim1 : common::vectorize(lhs_shape)) {
