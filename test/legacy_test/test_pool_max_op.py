@@ -177,7 +177,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.global_pool,
             self.adaptive,
         )
-        mask = mask.astype("int32")
+        mask = mask.astype("int64")
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
         else:
@@ -534,7 +534,7 @@ class TestMaxPool2dV2Op(OpTest):
             input = input.transpose((0, 2, 3, 1))
             output = output.transpose((0, 2, 3, 1))
 
-        saved_idx = np.zeros(shape=output.shape, dtype=np.int32)
+        saved_idx = np.zeros(shape=output.shape, dtype=np.int64)
 
         if self.is_bfloat16_op():
             self.inputs = {

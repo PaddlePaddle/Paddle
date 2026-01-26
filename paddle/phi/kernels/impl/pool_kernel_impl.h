@@ -216,7 +216,7 @@ void PoolRawKernel(const Context& dev_ctx,
   }
 }
 
-template <typename Context, typename T1, typename T2 = int>
+template <typename Context, typename T1, typename T2 = int64_t>
 void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const std::vector<int>& kernel_size,

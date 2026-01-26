@@ -407,7 +407,7 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
-  const auto* index_data = mask.data<int>();
+  const auto* index_data = mask.data<int64_t>();
 
   PADDLE_ENFORCE_NOT_NULL(index_data,
                           errors::NotFound("index data should not be nullptr"));

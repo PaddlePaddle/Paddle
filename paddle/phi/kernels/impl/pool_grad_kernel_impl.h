@@ -169,7 +169,7 @@ void PoolGradRawKernel(const Context& dev_ctx,
   }
 }
 
-template <typename Context, typename T1, typename T2 = int>
+template <typename Context, typename T1, typename T2 = int64_t>
 void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                                    const DenseTensor& x UNUSED,
                                    const DenseTensor& mask,

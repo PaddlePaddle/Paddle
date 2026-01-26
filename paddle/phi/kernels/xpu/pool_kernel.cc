@@ -325,14 +325,14 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
       Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      Full<int, Context>(dev_ctx, mask->dims(), 0, mask);
+      Full<int64_t, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  dev_ctx.template Alloc<int>(mask);
-  auto* index_data = mask->data<int>();
+  dev_ctx.template Alloc<int64_t>(mask);
+  auto* index_data = mask->data<int64_t>();
 
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
@@ -392,5 +392,5 @@ PD_REGISTER_KERNEL(max_pool2d_with_index,
                    phi::MaxPool2dWithIndexKernel,
                    float,
                    phi::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

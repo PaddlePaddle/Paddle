@@ -2956,7 +2956,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   mask->set_dims(make_ddim(output_shape));
-  mask->set_dtype(phi::CppTypeToDataType<int>::Type());
+  mask->set_dtype(phi::CppTypeToDataType<int64_t>::Type());
 }
 
 void MaxPoolV2InferMeta(const MetaTensor& x,
@@ -2990,7 +2990,7 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
                   out,
                   config);
   saved_idx->set_dims(out->dims());
-  saved_idx->set_dtype(phi::CppTypeToDataType<int>::Type());
+  saved_idx->set_dtype(phi::CppTypeToDataType<int64_t>::Type());
 }
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {

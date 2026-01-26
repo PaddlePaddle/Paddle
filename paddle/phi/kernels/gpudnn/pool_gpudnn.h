@@ -32,6 +32,16 @@ template <typename T>
 class CudnnIndexType;
 
 template <>
+class CudnnIndexType<int64_t> {
+ public:
+#ifdef PADDLE_WITH_CUDA
+  static const dnnDataType_t type = CUDNN_DATA_INT64;
+#else
+  static const dnnDataType_t type = miopenInt64;
+#endif
+};
+
+template <>
 class CudnnIndexType<int> {
  public:
 #ifdef PADDLE_WITH_CUDA

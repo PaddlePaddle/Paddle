@@ -2406,18 +2406,22 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, float, int>;
-template class MaxPool2dWithIndexGradFunctor<phi::GPUContext, float, int>;
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, double, int>;
-template class MaxPool2dWithIndexGradFunctor<phi::GPUContext, double, int>;
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, dtype::float16, int>;
+template class MaxPool2dWithIndexFunctor<phi::GPUContext, float, int64_t>;
+template class MaxPool2dWithIndexGradFunctor<phi::GPUContext, float, int64_t>;
+template class MaxPool2dWithIndexFunctor<phi::GPUContext, double, int64_t>;
+template class MaxPool2dWithIndexGradFunctor<phi::GPUContext, double, int64_t>;
+template class MaxPool2dWithIndexFunctor<phi::GPUContext,
+                                         dtype::float16,
+                                         int64_t>;
 template class MaxPool2dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::float16,
-                                             int>;
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, dtype::bfloat16, int>;
+                                             int64_t>;
+template class MaxPool2dWithIndexFunctor<phi::GPUContext,
+                                         dtype::bfloat16,
+                                         int64_t>;
 template class MaxPool2dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::bfloat16,
-                                             int>;
+                                             int64_t>;
 
 template <typename T1, typename T2, typename IndexT>
 __global__ void KernelMaxPool3DWithIdx(
@@ -2784,18 +2788,22 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, float, int>;
-template class MaxPool3dWithIndexGradFunctor<phi::GPUContext, float, int>;
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, double, int>;
-template class MaxPool3dWithIndexGradFunctor<phi::GPUContext, double, int>;
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, dtype::float16, int>;
+template class MaxPool3dWithIndexFunctor<phi::GPUContext, float, int64_t>;
+template class MaxPool3dWithIndexGradFunctor<phi::GPUContext, float, int64_t>;
+template class MaxPool3dWithIndexFunctor<phi::GPUContext, double, int64_t>;
+template class MaxPool3dWithIndexGradFunctor<phi::GPUContext, double, int64_t>;
+template class MaxPool3dWithIndexFunctor<phi::GPUContext,
+                                         dtype::float16,
+                                         int64_t>;
 template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::float16,
-                                             int>;
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, dtype::bfloat16, int>;
+                                             int64_t>;
+template class MaxPool3dWithIndexFunctor<phi::GPUContext,
+                                         dtype::bfloat16,
+                                         int64_t>;
 template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::bfloat16,
-                                             int>;
+                                             int64_t>;
 // fractional max pool
 template <typename T1, typename T2, typename IndexT>
 __global__ void FractionalKernelMaxPool2d(

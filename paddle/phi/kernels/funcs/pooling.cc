@@ -1232,10 +1232,10 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
   }
 };
 
-template class MaxPool2dWithIndexFunctor<CPUContext, float, int>;
-template class MaxPool2dWithIndexGradFunctor<CPUContext, float, int>;
-template class MaxPool2dWithIndexFunctor<CPUContext, double, int>;
-template class MaxPool2dWithIndexGradFunctor<CPUContext, double, int>;
+template class MaxPool2dWithIndexFunctor<CPUContext, float, int64_t>;
+template class MaxPool2dWithIndexGradFunctor<CPUContext, float, int64_t>;
+template class MaxPool2dWithIndexFunctor<CPUContext, double, int64_t>;
+template class MaxPool2dWithIndexGradFunctor<CPUContext, double, int64_t>;
 
 /*
  * All tensors are in NCDHW format.
@@ -1393,10 +1393,10 @@ class MaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
   }
 };
 
-template class MaxPool3dWithIndexFunctor<CPUContext, float, int>;
-template class MaxPool3dWithIndexGradFunctor<CPUContext, float, int>;
-template class MaxPool3dWithIndexFunctor<CPUContext, double, int>;
-template class MaxPool3dWithIndexGradFunctor<CPUContext, double, int>;
+template class MaxPool3dWithIndexFunctor<CPUContext, float, int64_t>;
+template class MaxPool3dWithIndexGradFunctor<CPUContext, float, int64_t>;
+template class MaxPool3dWithIndexFunctor<CPUContext, double, int64_t>;
+template class MaxPool3dWithIndexGradFunctor<CPUContext, double, int64_t>;
 
 /*
  * All tensors are in NCHW format.

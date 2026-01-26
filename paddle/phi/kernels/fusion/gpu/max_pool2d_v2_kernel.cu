@@ -27,7 +27,7 @@ COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 
-template <typename Context, typename T1, typename T2 = int>
+template <typename Context, typename T1, typename T2 = int64_t>
 void MaxPoolV2CUDNNKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<int>& kernel_size,
@@ -231,5 +231,5 @@ PD_REGISTER_KERNEL(max_pool2d_v2,  // cuda_only
                    float,
                    phi::float16,
                    phi::bfloat16) {
-  kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
+  kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int64_t>::Type());
 }

@@ -1260,7 +1260,7 @@ def max_pool2d(
         pool_out = helper.create_variable_for_type_inference(dtype)
 
         if return_mask:
-            mask = helper.create_variable_for_type_inference("int32")
+            mask = helper.create_variable_for_type_inference("int64")
             outputs = {"Out": pool_out, "Mask": mask}
 
             helper.append_op(
@@ -1415,7 +1415,7 @@ def max_pool3d(
         )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
-        mask = helper.create_variable_for_type_inference('int32')
+        mask = helper.create_variable_for_type_inference('int64')
         outputs = {"Out": pool_out, "Mask": mask}
 
         helper.append_op(
@@ -1883,7 +1883,7 @@ def adaptive_max_pool1d(
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
 
-        mask = helper.create_variable_for_type_inference('int32')
+        mask = helper.create_variable_for_type_inference('int64')
         outputs = {"Out": pool_out, "Mask": mask}
 
         helper.append_op(
@@ -1979,7 +1979,7 @@ def adaptive_max_pool2d(
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
 
-        mask = helper.create_variable_for_type_inference('int32')
+        mask = helper.create_variable_for_type_inference('int64')
         outputs = {"Out": pool_out, "Mask": mask}
 
         helper.append_op(
@@ -2077,7 +2077,7 @@ def adaptive_max_pool3d(
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
 
-        mask = helper.create_variable_for_type_inference('int32')
+        mask = helper.create_variable_for_type_inference('int64')
         outputs = {"Out": pool_out, "Mask": mask}
 
         helper.append_op(
