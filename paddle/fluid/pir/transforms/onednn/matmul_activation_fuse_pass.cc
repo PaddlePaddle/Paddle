@@ -21,6 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+namespace {
 std::set<std::string> act_ops = {paddle::dialect::AbsOp::name(),          //
                                  paddle::dialect::Abs_Op::name(),         //
                                  paddle::dialect::GeluOp::name(),         //
@@ -59,6 +60,7 @@ std::unordered_map<std::string, std::string> activation_type = {
     {paddle::dialect::SwishOp::name(), "swish"},
     {paddle::dialect::TanhOp::name(), "tanh"},
     {paddle::dialect::Tanh_Op::name(), "tanh"}};
+}  // namespace
 
 namespace pir {
 class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
