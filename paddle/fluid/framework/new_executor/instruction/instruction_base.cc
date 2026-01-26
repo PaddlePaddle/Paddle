@@ -290,7 +290,7 @@ void InstructionBase::SetOutputs(
 }
 
 void InstructionBase::InitInputsOutputsIds(
-    ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
+    pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
   if (op_attributes.count("op_name")) {
@@ -350,7 +350,7 @@ std::string InstructionBase::DebugStringEx(
   std::stringstream ss;
   ss << "Op(" << Name() << "), inputs:{";
 
-  const std::unordered_set<::pir::Value> no_need_buffer_vars = NoNeedBuffer();
+  const std::unordered_set<pir::Value> no_need_buffer_vars = NoNeedBuffer();
 
   for (auto it = Inputs().begin(); it != Inputs().end();) {
     auto& input = *it;

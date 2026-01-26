@@ -70,7 +70,7 @@ bool IsCommunicationOp(const OperatorBase* op);
 
 bool IsCommunicationOp(const Instruction& instr);
 
-bool IsCommunicationOp(const ::pir::Operation* op);
+bool IsCommunicationOp(const pir::Operation* op);
 
 bool IsCpuOp(const Instruction& instr);
 
@@ -119,7 +119,7 @@ void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           phi::DeviceContext* dev_ctx);
 
-void SetDeviceCommContext(::pir::Operation* op, phi::DeviceContext* dev_ctx);
+void SetDeviceCommContext(pir::Operation* op, phi::DeviceContext* dev_ctx);
 
 std::unordered_set<std::string> GetSpecialOpNames();
 
@@ -142,7 +142,7 @@ const std::vector<std::string> GetInstructionCallStack(
     const std::string& type, const pir::AttributeMap& attrs);
 
 std::unordered_map<std::string, std::set<std::string>> GetNoNeedBufferValues(
-    const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
+    const std::unordered_map<std::string, std::shared_ptr<pir::Program>>&
         type_to_ir_program);
 }  // namespace interpreter
 }  // namespace framework
