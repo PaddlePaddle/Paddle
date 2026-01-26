@@ -242,8 +242,8 @@ void CrossEntropyGradInferMeta(const MetaTensor& x,
   bool check = config.is_runtime || !contain_unknown_dim;
 
   if (check) {
-    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
-                      common::slice_ddim(dy_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(slice_ddim(x_dims, 0, rank - 1),
+                      slice_ddim(dy_dims, 0, rank - 1),
                       common::errors::InvalidArgument(
                           "The Input(X) and Input(Y@GRAD) should have the same "
                           "shape except the last dimension. but received: "
@@ -284,8 +284,8 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
   bool check = config.is_runtime || !contain_unknown_dim;
 
   if (check) {
-    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
-                      common::slice_ddim(dy_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(slice_ddim(x_dims, 0, rank - 1),
+                      slice_ddim(dy_dims, 0, rank - 1),
                       common::errors::InvalidArgument(
                           "The Input(X) and Input(Y@GRAD) should have the same "
                           "shape except the last dimension. but received: "
@@ -388,7 +388,7 @@ void Flatten2GradInferMeta(const MetaTensor& x,
                            int axis,
                            MetaTensor* x_grad) {
   const auto& xshape_dims = x_shape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
   x_grad->set_dims(x_dims);
   x_grad->share_lod(x_shape);
   x_grad->set_dtype(out_grad.dtype());
@@ -504,7 +504,7 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   auto bias_dims = bias.dims();
   auto dout_dims = out_grad.dims();
 
-  auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  auto dout_mat_dims = flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
   const int64_t input_ndim = input_dims.size();
   auto k_from_dout = input_ndim >= 2 ? dout_dims[input_ndim - 2] : 1;
@@ -1075,7 +1075,7 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape,
                                const MetaTensor& out,
                                MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
   dx->set_dims(x_dims);
   dx->set_dtype(out.dtype());
   dx->share_lod(xshape);

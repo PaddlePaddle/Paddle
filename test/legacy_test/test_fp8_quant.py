@@ -257,6 +257,29 @@ class TestFP8QuantizationUnalignedFP16(TestFP8Quantization):
         self.assertEqual(self.x.dtype, paddle.float16)
 
 
+class TestFP8QuantizatioUnalignedNBF16(TestFP8Quantization):
+    def setUp(self):
+        paddle.seed(42)
+        self.m = 129
+        self.n = 508
+        self.dtype_options = paddle.bfloat16
+        self.quant_method_options = ["1x128"]
+        self.rmse_threshold = 3e-2
+
+        self.x = paddle.randn((self.m, self.n), dtype=self.dtype_options)
+
+        self.input_transpose_options = [False]
+        self.return_transpose_only_options = [False]
+        self.output_scale_transpose_options = [True, False]
+        self.using_pow2_scale_options = [True, False]
+        self.using_ue8m0_scale_options = [True, False]
+
+    def test_quantization_accuracy(self):
+        rmses = self.eval_all(self.x)
+        for r in rmses:
+            self.assertLessEqual(r, self.rmse_threshold)
+
+
 # 0 size
 class TestFP8QuantizationZeroSizeBF16(unittest.TestCase):
     def setUp(self):

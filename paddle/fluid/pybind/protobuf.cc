@@ -472,7 +472,7 @@ void BindOpDesc(pybind11::module *m) {
       .def(py::init<paddle::experimental::Scalar>())
       .def("__str__", &paddle::experimental::Scalar::ToString)
       .def("__repr__", &paddle::experimental::Scalar::ToString)
-      .def("__eq__", &paddle::experimental::Scalar::operator==<paddle::Tensor>)
+      .def("__eq__", &paddle::experimental::Scalar::operator==<Tensor>)
       .def("value",
            [](const paddle::experimental::Scalar &self)
                -> paddle::variant<bool, int64_t, double, std::complex<double>> {

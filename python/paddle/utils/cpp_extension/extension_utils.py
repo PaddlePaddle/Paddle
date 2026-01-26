@@ -499,7 +499,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
             for dev_id in range(paddle.device.device_count()):
                 capability = paddle.device.get_device_capability(
-                    dev_types[0], dev_id
+                    f"{dev_types[0]}:{dev_id}"
                 )
                 arch = f"{capability[0]}.{capability[1]}"
                 if arch not in arch_list:

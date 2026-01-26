@@ -3875,7 +3875,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   pir::Value xshape_value;
   VLOG(10) << "create data op for " << input_xshape_name;
   auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
-  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto dtype = phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
   // NOTE(dev): GraphOp depends on X instead of XShape, so we need
   // erase first element in xshape.
@@ -3912,7 +3912,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   PADDLE_ENFORCE_EQ(
       input_outgrad_value.type().isa<paddle::dialect::DenseTensorType>(),
       true,
-      ::common::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "input type must be DenseTensorType, but received: %s.",
           input_outgrad_value.type()));
 
