@@ -23,8 +23,13 @@ from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
     allclose,
     bitwise_and,
+    bitwise_and_,
     bitwise_not,
+    bitwise_not_,
+    bitwise_or,
+    bitwise_or_,
     bitwise_xor,
+    bitwise_xor_,
     greater_than,
     isclose,
     logical_and,
@@ -35,7 +40,6 @@ from paddle._C_ops import (  # noqa: F401
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
 )
@@ -962,72 +966,6 @@ def __rand__(x: Tensor, y: int | bool):
         )
 
 
-@inplace_apis_in_dygraph_only
-def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_and`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bitwise_and_(x, y)
-
-
-@param_two_alias(["x", "input"], ["y", "other"])
-def bitwise_or(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
-) -> Tensor:
-    r"""
-
-    Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
-
-    .. math::
-        Out = X | Y
-
-    Note:
-        ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
-        For example, ``bitwise_or(input=tensor_x, other=tensor_y, ...)`` is equivalent to ``bitwise_or(x=tensor_x, y=tensor_y, ...)``.
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            alias: ``input``.
-        y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            alias: ``oth``.
-        out (Tensor|None, optional): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
-            >>> res = paddle.bitwise_or(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [-1, -1, -3])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bitwise_or(x, y, out=out)
-
-    return _bitwise_op(
-        op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
 def __ror__(
     x: Tensor,
     y: int | bool,
@@ -1043,22 +981,6 @@ def __ror__(
         )
 
 
-@inplace_apis_in_dygraph_only
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
-def bitwise_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_or`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_mode():
-        return _C_ops.bitwise_or_(x, y)
-
-
 def __rxor__(
     x: Tensor,
     y: int | bool,
@@ -1072,31 +994,6 @@ def __rxor__(
         raise TypeError(
             f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
         )
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_xor_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_xor`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_mode():
-        return _C_ops.bitwise_xor_(x, y)
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_not_(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_not`.
-    """
-    if in_dynamic_mode():
-        return _C_ops.bitwise_not_(x)
 
 
 def bitwise_invert(

@@ -85,11 +85,37 @@
   args_alias :
     use_default_mapping : True
 
+- op : addmm
+  name : [paddle.addmm, paddle.Tensor.addmm]
+  args_alias :
+    x : [mat1]
+    y : [mat2]
+  pre_process :
+    func : AddmmPreProcess(input, x, y)
+
+- op : addmm_
+  name : [paddle.addmm_, paddle.Tensor.addmm_]
+  args_alias :
+    x : [mat1]
+    y : [mat2]
+  pre_process :
+    func : AddmmPreProcess(input, x, y)
+
 - op : baddbmm
   name : [paddle.baddbmm, paddle.Tensor.baddbmm]
   args_alias :
     x : [batch1]
     y : [batch2]
+  pre_process :
+    func : BaddbmmPreProcess(input, x, y)
+
+- op : baddbmm_
+  name : [paddle.baddbmm_, paddle.Tensor.baddbmm_]
+  args_alias :
+    x : [batch1]
+    y : [batch2]
+  pre_process :
+    func : BaddbmmPreProcess(input, x, y)
 
 - op : bmm
   name : [paddle.bmm, paddle.Tensor.bmm]
@@ -109,13 +135,58 @@
   args_alias :
     use_default_mapping : True
 
+- op : bitwise_and_
+  name : [paddle.bitwise_and_, paddle.Tensor.bitwise_and_]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_left_shift
+  name : [paddle.bitwise_left_shift, paddle.Tensor.bitwise_left_shift]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_left_shift_
+  name : [paddle.bitwise_left_shift_, paddle.Tensor.bitwise_left_shift_]
+  args_alias :
+    use_default_mapping : True
+
 - op : bitwise_not
   name : [paddle.bitwise_not, paddle.Tensor.bitwise_not]
   args_alias :
     use_default_mapping : True
 
+- op : bitwise_not_
+  name : [paddle.bitwise_not_, paddle.Tensor.bitwise_not_]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_or
+  name : [paddle.bitwise_or, paddle.Tensor.bitwise_or]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_or_
+  name : [paddle.bitwise_or_, paddle.Tensor.bitwise_or_]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_right_shift
+  name : [paddle.bitwise_right_shift, paddle.Tensor.bitwise_right_shift]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_right_shift_
+  name : [paddle.bitwise_right_shift_, paddle.Tensor.bitwise_right_shift_]
+  args_alias :
+    use_default_mapping : True
+
 - op : bitwise_xor
   name : [paddle.bitwise_xor, paddle.Tensor.bitwise_xor]
+  args_alias :
+    use_default_mapping : True
+
+- op : bitwise_xor_
+  name : [paddle.bitwise_xor_, paddle.Tensor.bitwise_xor_]
   args_alias :
     use_default_mapping : True
 
