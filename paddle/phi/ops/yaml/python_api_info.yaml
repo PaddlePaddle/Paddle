@@ -3,8 +3,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : abs_
+  name : [paddle.abs_, paddle.Tensor.abs_]
+  args_alias :
+    use_default_mapping : True
+
 - op : acos
   name : [paddle.acos, paddle.Tensor.acos]
+  args_alias :
+    use_default_mapping : True
+
+- op : angle
+  name : [paddle.angle,paddle.Tensor.angle]
   args_alias :
     use_default_mapping : True
 
@@ -204,6 +214,26 @@
   args_alias :
     x : [input]
     y : [values]
+
+- op : i0
+  name : [paddle.i0,paddle.Tensor.i0]
+  args_alias :
+    use_default_mapping : True
+
+- op : i0e
+  name : [paddle.i0e,paddle.Tensor.i0e]
+  args_alias :
+    use_default_mapping : True
+
+- op : i1
+  name : [paddle.i1,paddle.Tensor.i1]
+  args_alias :
+    use_default_mapping : True
+
+- op : i1e
+  name : [paddle.i1e,paddle.Tensor.i1e]
+  args_alias :
+    use_default_mapping : True
 
 - op : index_put
   name : [paddle.index_put, paddle.Tensor.index_put]

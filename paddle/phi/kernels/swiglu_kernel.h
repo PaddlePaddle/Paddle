@@ -26,7 +26,7 @@ void SwiGLUKernelImpl(
 template <typename T, typename Context>
 void SwiGLUKernel(const Context &dev_ctx,
                   const DenseTensor &x,
-                  const paddle::optional<DenseTensor> &y,
+                  const optional<DenseTensor> &y,
                   DenseTensor *z) {
   // If either x or y has a numel 0, the numel of z is 0.
   if (z->numel() == 0) {

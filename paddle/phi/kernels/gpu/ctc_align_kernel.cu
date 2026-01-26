@@ -83,7 +83,7 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
 template <typename T, typename Context>
 void CTCAlignOpCUDAKernel(const Context& dev_ctx,
                           const DenseTensor& input,
-                          const paddle::optional<DenseTensor>& input_length,
+                          const optional<DenseTensor>& input_length,
                           int blank,
                           bool merge_repeated,
                           int padding_value,

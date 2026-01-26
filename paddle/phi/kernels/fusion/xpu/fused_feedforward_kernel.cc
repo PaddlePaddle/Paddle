@@ -244,16 +244,16 @@ void FFN(const phi::XPUContext& dev_ctx,
 template <typename T, typename Context>
 void FusedFeedForwardKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& dropout1_seed,
-                            const paddle::optional<DenseTensor>& dropout2_seed,
+                            const optional<DenseTensor>& dropout1_seed,
+                            const optional<DenseTensor>& dropout2_seed,
                             const DenseTensor& linear1_weight,
-                            const paddle::optional<DenseTensor>& linear1_bias,
+                            const optional<DenseTensor>& linear1_bias,
                             const DenseTensor& linear2_weight,
-                            const paddle::optional<DenseTensor>& linear2_bias,
-                            const paddle::optional<DenseTensor>& ln1_scale,
-                            const paddle::optional<DenseTensor>& ln1_bias,
-                            const paddle::optional<DenseTensor>& ln2_scale,
-                            const paddle::optional<DenseTensor>& ln2_bias,
+                            const optional<DenseTensor>& linear2_bias,
+                            const optional<DenseTensor>& ln1_scale,
+                            const optional<DenseTensor>& ln1_bias,
+                            const optional<DenseTensor>& ln2_scale,
+                            const optional<DenseTensor>& ln2_bias,
                             bool pre_layer_norm,
                             float ln1_epsilon,
                             float ln2_epsilon,
@@ -336,6 +336,10 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dropout1_out);
   dev_ctx.template Alloc<T>(dropout2_out);
   dev_ctx.template Alloc<T>(linear1_out);
+
+  if (out->numel() == 0) {
+    return;
+  }
 
   auto x_dim = x_ptr->dims();
   auto mat_dim_x =

@@ -45,7 +45,7 @@ AttentionLSTMFusePass::AttentionLSTMFusePass() {
       .IsTensor()
       .IsOptional()
       .End()
-      .AddInput("ShapeTensorList")  // vector<phi::DenseTensor<int>>
+      .AddInput("ShapeTensorList")  // vector<DenseTensor<int>>
       .IsOptional()
       .End()
       .AddOutput("Out")
@@ -177,21 +177,21 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   CHECK_P4(x0, x1, x2, x3);          \
   CHECK_P1(x4);
 
-void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
-                       const phi::DenseTensor& W_forget_w1,
-                       const phi::DenseTensor& W_input_w0,
-                       const phi::DenseTensor& W_input_w1,
-                       const phi::DenseTensor& W_output_w0,
-                       const phi::DenseTensor& W_output_w1,
-                       const phi::DenseTensor& W_cell_w0,
-                       const phi::DenseTensor& W_cell_w1,
-                       phi::DenseTensor* out);
+void PrepareLSTMWeight(const DenseTensor& W_forget_w0,
+                       const DenseTensor& W_forget_w1,
+                       const DenseTensor& W_input_w0,
+                       const DenseTensor& W_input_w1,
+                       const DenseTensor& W_output_w0,
+                       const DenseTensor& W_output_w1,
+                       const DenseTensor& W_cell_w0,
+                       const DenseTensor& W_cell_w1,
+                       DenseTensor* out);
 
-void PrepareLSTMBias(const phi::DenseTensor& B_forget,
-                     const phi::DenseTensor& B_input,
-                     const phi::DenseTensor& B_output,
-                     const phi::DenseTensor& B_cell,
-                     phi::DenseTensor* out);
+void PrepareLSTMBias(const DenseTensor& B_forget,
+                     const DenseTensor& B_input,
+                     const DenseTensor& B_output,
+                     const DenseTensor& B_cell,
+                     DenseTensor* out);
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
@@ -283,15 +283,15 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
 }
 
 // Prepare parameters
-void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
-                       const phi::DenseTensor& W_forget_w1,
-                       const phi::DenseTensor& W_input_w0,
-                       const phi::DenseTensor& W_input_w1,
-                       const phi::DenseTensor& W_output_w0,
-                       const phi::DenseTensor& W_output_w1,
-                       const phi::DenseTensor& W_cell_w0,
-                       const phi::DenseTensor& W_cell_w1,
-                       phi::DenseTensor* out) {
+void PrepareLSTMWeight(const DenseTensor& W_forget_w0,
+                       const DenseTensor& W_forget_w1,
+                       const DenseTensor& W_input_w0,
+                       const DenseTensor& W_input_w1,
+                       const DenseTensor& W_output_w0,
+                       const DenseTensor& W_output_w1,
+                       const DenseTensor& W_cell_w0,
+                       const DenseTensor& W_cell_w1,
+                       DenseTensor* out) {
   int D = static_cast<int>(W_forget_w0.dims()[0]);
   int M = static_cast<int>(W_forget_w1.dims()[0]);
   out->Resize(common::make_ddim({D + M, 4 * D}));
@@ -324,11 +324,11 @@ void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
   }
 }
 
-void PrepareLSTMBias(const phi::DenseTensor& B_forget,
-                     const phi::DenseTensor& B_input,
-                     const phi::DenseTensor& B_output,
-                     const phi::DenseTensor& B_cell,
-                     phi::DenseTensor* out) {
+void PrepareLSTMBias(const DenseTensor& B_forget,
+                     const DenseTensor& B_input,
+                     const DenseTensor& B_output,
+                     const DenseTensor& B_cell,
+                     DenseTensor* out) {
   std::array<const float*, 4> tensors{B_forget.data<float>(),
                                       B_input.data<float>(),
                                       B_output.data<float>(),

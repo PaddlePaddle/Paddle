@@ -825,7 +825,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
   paddle::experimental::CheckAndTrans2Contiguous(&q_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&k_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&v_w_t);
-  std::vector<const phi::DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
+  std::vector<const DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
   bool is_per_channel = false;
   if (!enable_int8) {
     CastToFp32(&q_w_t);

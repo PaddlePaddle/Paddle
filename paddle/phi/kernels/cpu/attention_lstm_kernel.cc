@@ -51,26 +51,25 @@ inline void vec_softmax(const int n, const T* x, T* y) {
 }
 
 template <typename T, typename Context>
-void AttentionLSTMKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x_in,
-    const DenseTensor& c0_in,
-    const paddle::optional<DenseTensor>& h0_in,
-    const DenseTensor& attention_weight_in,
-    const paddle::optional<DenseTensor>& attention_bias_in,
-    const paddle::optional<DenseTensor>& attention_scalar_in,
-    const paddle::optional<DenseTensor>& attention_scalar_bias_in,
-    const DenseTensor& lstm_weight_in,
-    const DenseTensor& lstm_bias_in,
-    const std::string& gate_activation,
-    const std::string& cell_activation,
-    const std::string& candidate_activation,
-    DenseTensor* hidden,
-    DenseTensor* cell,
-    DenseTensor* attentioned_x,
-    DenseTensor* attention_fc_out,
-    DenseTensor* lstm_x,
-    DenseTensor* lstm_out) {
+void AttentionLSTMKernel(const Context& dev_ctx,
+                         const DenseTensor& x_in,
+                         const DenseTensor& c0_in,
+                         const optional<DenseTensor>& h0_in,
+                         const DenseTensor& attention_weight_in,
+                         const optional<DenseTensor>& attention_bias_in,
+                         const optional<DenseTensor>& attention_scalar_in,
+                         const optional<DenseTensor>& attention_scalar_bias_in,
+                         const DenseTensor& lstm_weight_in,
+                         const DenseTensor& lstm_bias_in,
+                         const std::string& gate_activation,
+                         const std::string& cell_activation,
+                         const std::string& candidate_activation,
+                         DenseTensor* hidden,
+                         DenseTensor* cell,
+                         DenseTensor* attentioned_x,
+                         DenseTensor* attention_fc_out,
+                         DenseTensor* lstm_x,
+                         DenseTensor* lstm_out) {
   auto* x = &x_in;
   auto* h0 = h0_in.get_ptr();
   auto* c0 = &c0_in;

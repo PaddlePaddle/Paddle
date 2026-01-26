@@ -17,8 +17,8 @@
 namespace phi {
 
 void SerializeToStream(std::ostream& os,
-                       const phi::SelectedRows& selected_rows,
-                       const phi::DeviceContext& dev_ctx) {
+                       const SelectedRows& selected_rows,
+                       const DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
@@ -41,25 +41,24 @@ void SerializeToStream(std::ostream& os,
   TensorToStream(os, selected_rows.value(), dev_ctx);
 }
 
-void SerializeToStream(std::ostream& os,
-                       const phi::SelectedRows& selected_rows) {
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  const phi::DeviceContext* dev_ctx = nullptr;
+void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows) {
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  const DeviceContext* dev_ctx = nullptr;
   auto place = selected_rows.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, selected_rows, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows) {
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  const phi::DeviceContext* dev_ctx = nullptr;
-  dev_ctx = pool.Get(phi::CPUPlace());
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows) {
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  const DeviceContext* dev_ctx = nullptr;
+  dev_ctx = pool.Get(CPUPlace());
   DeserializeFromStream(is, selected_rows, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream& is,
-                           phi::SelectedRows* selected_rows,
-                           const phi::DeviceContext& dev_ctx) {
+                           SelectedRows* selected_rows,
+                           const DeviceContext& dev_ctx) {
   {
     // the 1st field, unit32_t version for SelectedRows
     uint32_t version = 0;

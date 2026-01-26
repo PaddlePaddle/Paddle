@@ -672,7 +672,7 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T>
-void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
+void SetUVATensorFromPyArray(const std::shared_ptr<Tensor> &self,
                              const py::array_t<T> &array,
                              int device_id) {
 #if defined(PADDLE_WITH_CUDA)
@@ -1104,9 +1104,9 @@ inline py::array TensorToPyArray(const DenseTensor &tensor,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     // TODO(qili93): temporary for ascend npu performance to be removed along
     // with npu_identity op
-    paddle::Tensor tensor_out(std::make_shared<DenseTensor>());
+    Tensor tensor_out(std::make_shared<DenseTensor>());
     if (tensor.storage_properties_initialized()) {
-      paddle::Tensor tensor_in(std::make_shared<DenseTensor>(tensor));
+      Tensor tensor_in(std::make_shared<DenseTensor>(tensor));
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<DenseTensor>(tensor_out.impl());

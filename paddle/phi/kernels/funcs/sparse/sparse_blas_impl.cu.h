@@ -73,7 +73,7 @@ inline cusparseSpMMAlg_t GetSpMMAlgorithm(const SparseCooTensor& x) {
 /************* SPARSE MATRIX DESCRIPTOR (COO/CSR) ************/
 
 template <typename T, typename IntT>
-inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
+inline void CreateCsrDescriptor(const SparseCsrTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 cusparseSpMatDescr_t* descriptor) {
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -128,7 +128,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
 }
 
 template <typename T, typename IntT>
-inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
+inline void CreateCooDescriptor(const SparseCooTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 cusparseSpMatDescr_t* descriptor) {
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
@@ -185,7 +185,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 template <typename T>
 class CuSparseSpMatDescriptor {
  public:
-  explicit CuSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
+  explicit CuSparseSpMatDescriptor(const SparseCsrTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
@@ -195,7 +195,7 @@ class CuSparseSpMatDescriptor {
     VLOG(6) << "Create csr cusparseSpMatDescr_t " << &descriptor_;
   }
 
-  explicit CuSparseSpMatDescriptor(const phi::SparseCooTensor& x,
+  explicit CuSparseSpMatDescriptor(const SparseCooTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
     PD_VISIT_BASE_INTEGRAL_TYPES(

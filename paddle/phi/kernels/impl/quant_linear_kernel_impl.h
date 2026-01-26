@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void QuantLinearKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& w,
-                       const paddle::optional<DenseTensor>& bias,
+                       const optional<DenseTensor>& bias,
                        int in_num_col_dims,
                        const std::string& activation_type,
                        bool padding_weights,
