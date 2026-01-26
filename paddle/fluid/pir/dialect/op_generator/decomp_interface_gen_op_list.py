@@ -81,7 +81,6 @@ GENERATE_IMPL_DECOMP = [
     "unsqueeze",
     "unstack",
     "masked_fill",
-    "var",
 ]
 decomp_rule_interface_declare_gen_op_list = (
     GENERATE_IMPL_DECOMP + MANUAL_IMPL_DECOMP
