@@ -39,7 +39,7 @@ class XpuIpcAllocation : public Allocation {
                             size_t size,
                             int device_id,
                             std::shared_ptr<void> shared_ptr)
-      : Allocation(ptr, size, phi::XPUPlace(device_id)),
+      : Allocation(ptr, size, XPUPlace(device_id)),
         device_id_(device_id),
         shared_ptr_(std::move(shared_ptr)) {}
 

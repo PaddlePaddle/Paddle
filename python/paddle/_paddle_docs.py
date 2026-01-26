@@ -1353,6 +1353,85 @@ def softplus(
 )
 
 add_doc_and_signature(
+    "i0",
+    r"""
+    The function used to calculate modified bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \\sum^{\\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> paddle.i0(x)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
+""",
+    """
+def i0(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i0e",
+    r"""
+    The function used to calculate exponentially scaled modified Bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \\sum^{\\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
+            I_{0e}(x) = e^{-|x|}I_0(x)
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i0e(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
+""",
+    """
+def i0e(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "isclose",
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:

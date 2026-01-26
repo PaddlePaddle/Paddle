@@ -239,11 +239,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     predicted_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&predicted_logits);
 
-    phi::FullKernel<T, phi::GPUContext>(dev_ctx,
-                                        vectorize(predicted_logits.dims()),
-                                        0,
-                                        predicted_logits.dtype(),
-                                        &predicted_logits);
+    Full<T, phi::GPUContext>(
+        dev_ctx, predicted_logits.dims(), 0, &predicted_logits);
 
     const int64_t start_index = rank * D;
     const int64_t end_index = start_index + D;

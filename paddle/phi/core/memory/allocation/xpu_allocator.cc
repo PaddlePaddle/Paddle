@@ -41,7 +41,7 @@ phi::Allocation* XPUAllocator::AllocateImpl(size_t size) {
   void* ptr;
   auto result = platform::RecordedXPUMalloc(&ptr, size, place_.device);
   if (LIKELY(result == XPU_SUCCESS)) {
-    return new Allocation(ptr, size, phi::Place(place_));
+    return new Allocation(ptr, size, Place(place_));
   }
 
   PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
