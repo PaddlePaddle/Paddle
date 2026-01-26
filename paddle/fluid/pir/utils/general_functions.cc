@@ -199,12 +199,10 @@ std::string GetParameterNameFromValue(const Value& value) {
 }
 
 std::vector<int64_t> GetShapeFromValue(const Value& value) {
-  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
-    return phi::vectorize(
-        value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
-  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
-    return phi::vectorize(
-        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
+  if (value.type().isa<DenseTensorType>()) {
+    return phi::vectorize(value.type().dyn_cast<DenseTensorType>().dims());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return phi::vectorize(value.type().dyn_cast<SelectedRowsType>().dims());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get shape for dense_tensor or selected_rows."));
@@ -213,11 +211,11 @@ std::vector<int64_t> GetShapeFromValue(const Value& value) {
 
 Type GetDataTypeFromValue(const Value& value) {
   // TODO(dev): Support other types like DenseTensor.
-  PADDLE_ENFORCE_EQ(value.type().isa<paddle::dialect::DenseTensorType>(),
+  PADDLE_ENFORCE_EQ(value.type().isa<DenseTensorType>(),
                     true,
                     common::errors::InvalidArgument(
                         "Value's type must be a DenseTensorType."));
-  return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+  return value.type().dyn_cast<DenseTensorType>().dtype();
 }
 
 Operation* GetDefiningOpForInput(const Operation* op, uint32_t index) {
@@ -292,8 +290,7 @@ phi::DataType GetTensorDtype(Type type) {
   } else if (auto sparse_csr_tensor_type =
                  type.dyn_cast<paddle::dialect::SparseCsrTensorType>()) {
     return paddle::dialect::TransToPhiDataType(sparse_csr_tensor_type.dtype());
-  } else if (auto select_rows =
-                 type.dyn_cast<paddle::dialect::SelectedRowsType>()) {
+  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
     return paddle::dialect::TransToPhiDataType(select_rows.dtype());
   } else if (auto dense_array =
                  type.dyn_cast<paddle::dialect::DenseTensorArrayType>()) {
