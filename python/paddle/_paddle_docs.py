@@ -83,7 +83,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -121,7 +121,7 @@ Acosh Activation Operator.
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -159,7 +159,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -212,7 +212,7 @@ add_doc_and_signature(
     Keyword args:
         out(Tensor, optional): The output tensor.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
@@ -353,7 +353,7 @@ add_doc_and_signature(
         it's data type is the same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
@@ -541,7 +541,7 @@ add_doc_and_signature(
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # x is a bool Tensor with following elements:
@@ -613,7 +613,7 @@ add_doc_and_signature(
         Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -666,7 +666,7 @@ add_doc_and_signature(
         Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -716,7 +716,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -754,7 +754,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -793,7 +793,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -850,7 +850,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -906,7 +906,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -945,7 +945,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -982,7 +982,7 @@ add_doc_and_signature(
         Tensor. Output of Square operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1023,7 +1023,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1062,7 +1062,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1216,7 +1216,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1283,19 +1283,19 @@ add_doc_and_signature(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: pycon
 
-        >>> import paddle
+            >>> import paddle
 
-        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        >>> out1 = paddle.logsumexp(x)
-        >>> out1
-        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-        3.46912265)
-        >>> out2 = paddle.logsumexp(x, 1)
-        >>> out2
-        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [2.15317822, 3.15684605])
+            >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+            >>> out1 = paddle.logsumexp(x)
+            >>> out1
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.46912265)
+            >>> out2 = paddle.logsumexp(x, 1)
+            >>> out2
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2.15317822, 3.15684605])
 
 """,
     """
@@ -1331,7 +1331,7 @@ add_doc_and_signature(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1540,7 +1540,7 @@ add_doc_and_signature(
         `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -1575,7 +1575,7 @@ add_doc_and_signature(
         `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -1610,7 +1610,7 @@ add_doc_and_signature(
         `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1660,7 +1660,7 @@ add_doc_and_signature(
         Tensor, A Tensor with same data type as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -1712,7 +1712,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1768,7 +1768,7 @@ add_doc_and_signature(
         otherwise it's data type is the same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1862,7 +1862,7 @@ add_doc_and_signature(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1942,7 +1942,7 @@ add_doc_and_signature(
         Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2018,7 +2018,7 @@ add_doc_and_signature(
         N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2137,7 +2137,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2219,7 +2219,7 @@ add_doc_and_signature(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2279,7 +2279,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2321,7 +2321,7 @@ add_doc_and_signature(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2362,7 +2362,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2396,7 +2396,7 @@ add_doc_and_signature(
         Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2436,7 +2436,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2478,7 +2478,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2519,7 +2519,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2560,7 +2560,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2599,7 +2599,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2643,7 +2643,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2712,7 +2712,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2775,7 +2775,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2824,7 +2824,7 @@ add_doc_and_signature(
         it's data type is the same as x's Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2896,7 +2896,7 @@ add_doc_and_signature(
         it's data type is the same as x's Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2962,7 +2962,7 @@ add_doc_and_signature(
         Tensor: The product Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3027,7 +3027,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3081,7 +3081,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3133,7 +3133,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3185,7 +3185,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3237,7 +3237,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3292,7 +3292,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3335,7 +3335,7 @@ add_doc_and_signature(
         Tensor. Output of Exp operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3378,7 +3378,7 @@ add_doc_and_signature(
         Tensor. Output of Expm1 operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3473,7 +3473,7 @@ add_doc_and_signature(
              [-1,  2, -1],
              [-1, -1,  3]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: diag-example-2
 
             >>> import paddle
@@ -3540,7 +3540,7 @@ add_doc_and_signature(
         Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3621,7 +3621,7 @@ add_doc_and_signature(
         Tensor. Output of Round operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3665,7 +3665,7 @@ add_doc_and_signature(
         Tensor.A Tensor with the same data type and shape as :math:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3716,7 +3716,7 @@ add_doc_and_signature(
         out (Tensor): An N-D Tensor, the shape and data type is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
@@ -3821,7 +3821,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-0.5, 0, 0.5])
@@ -3864,7 +3864,7 @@ add_doc_and_signature(
         Tensor. Same shape and data type as input (integer types are autocasted into float32)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4078,7 +4078,7 @@ add_doc_and_signature(
         Tensor: The tensor of frequency.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([1, 2, 1, 4, 5])
@@ -4128,7 +4128,7 @@ add_doc_and_signature(
         Tensor: Result of ``bitwise_and``. It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
@@ -4172,7 +4172,7 @@ add_doc_and_signature(
         Tensor: Result of ``bitwise_not``. It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
@@ -4215,7 +4215,7 @@ add_doc_and_signature(
         Tensor: Result of ``bitwise_xor``. It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
@@ -4250,7 +4250,7 @@ add_doc_and_signature(
         out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4289,7 +4289,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4324,7 +4324,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
