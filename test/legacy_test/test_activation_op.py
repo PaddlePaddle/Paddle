@@ -3123,10 +3123,13 @@ class TestReluAPI(unittest.TestCase):
             x = paddle.static.data('X', [10, 12], dtype="float32")
             out = F.relu(x, inplace=True)
             res = paddle.static.Executor(self.place).run(
-                feed={'X': self.x_np}, fetch_list=[out]
+                feed={'X': self.x_np}, fetch_list=[out, x]
             )
             np.testing.assert_allclose(
                 np.maximum(self.x_np, 0), res[0], rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                np.maximum(self.x_np, 0), res[1], rtol=1e-05
             )
 
 
@@ -3355,20 +3358,26 @@ class TestLeakyReluAPI(unittest.TestCase):
                 x = paddle.static.data('X', [10, 12], dtype="float32")
                 out = F.leaky_relu(x, inplace=True)
                 res = paddle.static.Executor(self.place).run(
-                    feed={'X': self.x_np}, fetch_list=[out]
+                    feed={'X': self.x_np}, fetch_list=[out, x]
                 )
                 np.testing.assert_allclose(
                     ref_leaky_relu(self.x_np), res[0], rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    ref_leaky_relu(self.x_np), res[1], rtol=1e-05
                 )
 
             with paddle.static.program_guard(paddle.static.Program()):
                 x2 = paddle.static.data('X', [10, 12], dtype="float32")
                 out2 = F.leaky_relu(x2, negative_slope=0.2, inplace=True)
                 res2 = paddle.static.Executor(self.place).run(
-                    feed={'X': self.x_np}, fetch_list=[out2]
+                    feed={'X': self.x_np}, fetch_list=[out2, x2]
                 )
                 np.testing.assert_allclose(
                     ref_leaky_relu(self.x_np, alpha=0.2), res2[0], rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    ref_leaky_relu(self.x_np, alpha=0.2), res2[1], rtol=1e-05
                 )
 
 
@@ -4928,7 +4937,7 @@ class TestLog10APICompatibility(unittest.TestCase):
         ref_out = np.log10(self.np_input)
         # Check
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
 
     def test_static_compatibility(self):
@@ -6959,5 +6968,4 @@ class TestActivationCoverageExtended(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.disable_static()
     unittest.main()
