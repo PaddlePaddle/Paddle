@@ -10,10 +10,7 @@
 
 
 ### Precision Change Impact
-<!-- 必须选择一项（二选一）：
-- Has precision change
-- No precision change
--->
+<!-- one of the following [ Has precision change | No precision change ]-->
 
 
 ### Description
