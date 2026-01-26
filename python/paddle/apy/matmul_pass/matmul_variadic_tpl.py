@@ -60,7 +60,7 @@ class MatmulVariadicTemplate:
             kernel_arg_id=pair[0], cpp_var_name=pair[1]
         )
     
-    def make_gpu_compile_cmd(self, dir_name, source_dir):
+    def make_cuda_compile_cmd(self, dir_name, source_dir):
         cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
         compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
         compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
@@ -79,7 +79,7 @@ class MatmulVariadicTemplate:
         )
         return compile_cmd
 
-    def make_dcu_compile_cmd(self, dir_name, source_dir):
+    def make_rocm_compile_cmd(self, dir_name, source_dir):
         ck_dir = f"{dir_name}/matmul/composable_kernel"
         compile_cmd = "hipcc -std=c++20 -O3 -fPIC --offload-arch=gfx906"
         compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
@@ -87,6 +87,18 @@ class MatmulVariadicTemplate:
         compile_cmd = (
             compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
         )
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
+        )
+        return compile_cmd
+
+    def make_cpu_compile_cmd(self, dir_name, source_dir):
+        gops_dir = f"{dir_name}/matmul/gemm-ops"
+        compile_cmd = "g++ -std=c++17 -O3 -fPIC -march=native -mno-avx512f -fopenmp"
+        compile_cmd = compile_cmd + " -I " + gops_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
         compile_cmd = (
             compile_cmd
             + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
@@ -278,7 +290,7 @@ struct VariadicEpilogueFunctor {
 
 template <int TuningConfigId>
 static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
-  using ElementT = ${output_dtype};
+  using ElementT = ${input0_dtype};
   using ElementComputeT = float;
 
   typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
@@ -315,7 +327,9 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 }
   """
 
+        
         output_dtype = self.dtype2type_name[output_karg.type.data_type]
+        input0_dtype = self.dtype2type_name[input0_karg.type.data_type]
         code = (
             code_template.replace(
                 "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
@@ -355,6 +369,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${input1}", self.get_kernel_arg_id_var_name(input1_karg))
             .replace("${output}", self.get_kernel_arg_id_var_name(output_karg))
             .replace("${output_dtype}", output_dtype)
+            .replace("${input0_dtype}", input0_dtype)
             .replace("${k_value}", f"{input0_shape_kargs[-1].value}")
             .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
         )
@@ -364,13 +379,16 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         dir_name = ap.dirname(__file__)
         source_dir = f"{dir_name}/matmul"
 
-        compile_cmd = (
-            self.make_dcu_compile_cmd(dir_name, source_dir)
-            if device_type == "dcu"
-            else self.make_gpu_compile_cmd(dir_name, source_dir)
+        compile_cmds = ap.OrderedDict(
+            [
+                ["cpu", self.make_cpu_compile_cmd(dir_name, source_dir)],
+                ["rocm", self.make_rocm_compile_cmd(dir_name, source_dir)],
+                ["cuda", self.make_cuda_compile_cmd(dir_name, source_dir)],
+            ]
         )
+        compile_cmd = compile_cmds[device_type]
 
-        file_ext = "cpp" if device_type == "dcu" else "cu"
+        file_ext = "cu" if device_type == "cuda" else "cpp"
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
