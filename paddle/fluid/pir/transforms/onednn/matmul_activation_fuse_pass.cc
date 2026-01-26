@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 std::set<std::string> act_ops = {paddle::dialect::AbsOp::name(),          //
                                  paddle::dialect::Abs_Op::name(),         //
                                  paddle::dialect::GeluOp::name(),         //
@@ -647,13 +647,13 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class MatmulActivationFusePass : public pir::PatternRewritePass {
+class MatmulActivationFusePass : public PatternRewritePass {
  public:
   MatmulActivationFusePass()
-      : pir::PatternRewritePass("matmul_activation_fuse_pass", 2) {}
+      : PatternRewritePass("matmul_activation_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     int benefit_idx = 1;
     for (auto act_op : act_ops) {
       ps.Add(paddle::drr::Create<MatmulActivationFusePattern>(
@@ -711,10 +711,6 @@ class MatmulActivationFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateMatmulActivationFusePass() {
   // pd_op.matmul + pd_op.relu -> onednn_op.fused_matmul
   // pd_op.matmul + pd_op.add + pd_op.relu(act) ->  onednn_op.fused_matmul +
@@ -723,4 +719,4 @@ std::unique_ptr<Pass> CreateMatmulActivationFusePass() {
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_activation_fuse_pass, MatmulActivationFusePass);
+REGISTER_IR_PASS(matmul_activation_fuse_pass, pir::MatmulActivationFusePass);
