@@ -6913,6 +6913,50 @@ class TestActivationCoverageExtended(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
         np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
 
+    def test_relu_layer_forward_inplace(self):
+        """Test nn.ReLU layer forward with inplace=True"""
+        x = paddle.to_tensor(self.x_np.copy())
+        relu_layer = paddle.nn.ReLU(inplace=True)
+        out = relu_layer(x)
+        expected = np.maximum(self.x_np, 0)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_relu_layer_forward_inplace_with_name(self):
+        """Test nn.ReLU layer forward with inplace=True and name"""
+        x = paddle.to_tensor(self.x_np.copy())
+        relu_layer = paddle.nn.ReLU(inplace=True, name='test_relu_inplace')
+        out = relu_layer(x)
+        expected = np.maximum(self.x_np, 0)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_layer_forward_inplace(self):
+        """Test nn.LeakyReLU layer forward with inplace=True"""
+        x = paddle.to_tensor(self.x_np.copy())
+        negative_slope = 0.1
+        leaky_relu_layer = paddle.nn.LeakyReLU(
+            negative_slope=negative_slope, inplace=True
+        )
+        out = leaky_relu_layer(x)
+        expected = np.where(
+            self.x_np > 0, self.x_np, self.x_np * negative_slope
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_layer_forward_inplace_with_name(self):
+        """Test nn.LeakyReLU layer forward with inplace=True and name"""
+        x = paddle.to_tensor(self.x_np.copy())
+        negative_slope = 0.2
+        leaky_relu_layer = paddle.nn.LeakyReLU(
+            negative_slope=negative_slope,
+            inplace=True,
+            name='test_leaky_inplace',
+        )
+        out = leaky_relu_layer(x)
+        expected = np.where(
+            self.x_np > 0, self.x_np, self.x_np * negative_slope
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
 
 if __name__ == "__main__":
     paddle.disable_static()
