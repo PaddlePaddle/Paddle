@@ -21,6 +21,6 @@
 #include "cutlass_patch/cutlass_matmul.cuh"
 
 #else
-#include "cpu_matmul.h"
+#include "cpu_patch/cpu_matmul.h"
 #endif
 

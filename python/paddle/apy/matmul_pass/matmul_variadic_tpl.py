@@ -94,9 +94,9 @@ class MatmulVariadicTemplate:
         return compile_cmd
 
     def make_cpu_compile_cmd(self, dir_name, source_dir):
-        gops_dir = f"{dir_name}/matmul/gemm-ops"
+        # gops_dir = f"{dir_name}/matmul/gemm-ops"
         compile_cmd = "g++ -std=c++17 -O3 -fPIC -march=native -mno-avx512f -fopenmp"
-        compile_cmd = compile_cmd + " -I " + gops_dir + "/include"
+        # compile_cmd = compile_cmd + " -I " + gops_dir + "/include"
         compile_cmd = compile_cmd + " -I " + source_dir
         compile_cmd = compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
         compile_cmd = (
