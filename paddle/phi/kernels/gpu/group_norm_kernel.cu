@@ -716,9 +716,9 @@ template class PADDLE_API groupNormNDHWCScale<half>;
 template <typename T, typename Context>
 void GroupNormNDHWCKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& residual,
-                          const paddle::optional<DenseTensor>& scale,
-                          const paddle::optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& residual,
+                          const optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& bias,
                           float epsilon,
                           int groups,
                           const std::string& data_layout_str,
@@ -1114,8 +1114,8 @@ template class PADDLE_API GroupNormDirectCUDAFunctor<half, float>;
 template <typename T, typename Context>
 void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
-                                const paddle::optional<DenseTensor>& scale,
-                                const paddle::optional<DenseTensor>& bias,
+                                const optional<DenseTensor>& scale,
+                                const optional<DenseTensor>& bias,
                                 float epsilon,
                                 int groups,
                                 const std::string& data_layout_str,
@@ -1232,8 +1232,8 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void GroupNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& scale,
+                     const optional<DenseTensor>& bias,
                      float epsilon,
                      int groups,
                      const std::string& data_layout_str,
@@ -1252,8 +1252,7 @@ void GroupNormKernel(const Context& dev_ctx,
   }
   using std::is_same;
   if (is_same<T, phi::float16>::value && data_layout_str == "NHWC") {
-    const paddle::optional<DenseTensor>& residual =
-        paddle::optional<DenseTensor>(paddle::none);
+    const optional<DenseTensor>& residual = optional<DenseTensor>(paddle::none);
     DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::float16, Context>(dev_ctx,
                                                 x,
@@ -1273,8 +1272,7 @@ void GroupNormKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_CUDA_BF16
   if (is_same<T, phi::bfloat16>::value && data_layout_str == "NHWC") {
-    const paddle::optional<DenseTensor>& residual =
-        paddle::optional<DenseTensor>(paddle::none);
+    const optional<DenseTensor>& residual = optional<DenseTensor>(paddle::none);
     DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::bfloat16, Context>(dev_ctx,
                                                  x,

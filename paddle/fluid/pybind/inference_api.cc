@@ -353,8 +353,8 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   }
 }
 
-void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
-                                   paddle::Tensor &paddle_tensor) {  // NOLINT
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
+                                   Tensor &paddle_tensor) {       // NOLINT
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
     shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
@@ -1278,18 +1278,18 @@ void BindPaddleInferPredictor(py::module *m) {
       .def(
           "run",
           [](paddle_infer::Predictor &self,
-             const std::vector<paddle::Tensor> &in_tensor_list) {
+             const std::vector<Tensor> &in_tensor_list) {
             auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
             std::string release_gil_device = "npu";
             if (std::find(device_types.begin(),
                           device_types.end(),
                           release_gil_device) != device_types.end()) {
               pybind11::gil_scoped_release release;
-              std::vector<paddle::Tensor> outputs;
+              std::vector<Tensor> outputs;
               self.Run(in_tensor_list, &outputs);
               return outputs;
             } else {
-              std::vector<paddle::Tensor> outputs;
+              std::vector<Tensor> outputs;
               self.Run(in_tensor_list, &outputs);
               return outputs;
             }

@@ -76,7 +76,7 @@ void ArangeInferMeta(const Scalar& start,
 
 #undef GET_SIZE_GIVEN_TYPE
 
-    out->set_dims(common::make_ddim(std::vector<int64_t>(1, arange_size)));
+    out->set_dims(make_ddim(std::vector<int64_t>(1, arange_size)));
   }
   out->set_dtype(dtype);
 }
@@ -137,7 +137,7 @@ void RangeInferMeta(const Scalar& start,
 
 #undef GET_SIZE_GIVEN_TYPE
 
-    out->set_dims(common::make_ddim(std::vector<int64_t>(1, arange_size)));
+    out->set_dims(make_ddim(std::vector<int64_t>(1, arange_size)));
   }
   out->set_dtype(dtype);
 }
@@ -145,7 +145,7 @@ void RangeInferMeta(const Scalar& start,
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out) {
-  out->set_dims(common::make_ddim(shape));
+  out->set_dims(make_ddim(shape));
   out->set_dtype(dtype);
 }
 
@@ -281,14 +281,14 @@ void PartialRecvInferMeta(int peer,
       common::errors::InvalidArgument(
           "The output numel (%d) must be divisible by num(%d)", numel, num));
 
-  out->set_dims(common::make_ddim(out_shape));
+  out->set_dims(make_ddim(out_shape));
   out->set_dtype(dtype);
 }
 
 void LoadInferMeta(MetaTensor* out, MetaConfig config) {}
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out) {
-  out->set_dims(common::make_ddim({n}));
+  out->set_dims(make_ddim({n}));
   out->set_dtype(dtype);
 }
 
@@ -320,21 +320,21 @@ void RandintInferMeta(
   for (auto dim : shape_vector) {
     tensor_shape.push_back(static_cast<int64_t>(dim));
   }
-  out->set_dims(common::make_ddim(tensor_shape));
+  out->set_dims(make_ddim(tensor_shape));
   out->set_dtype(dtype);
 }
 
 void RandomInferMeta(const MetaTensor& x, MetaTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
       out, errors::InvalidArgument("Output(Out) of RandomOp is null."));
-  auto shape_vector = common::vectorize(x.dims());
+  auto shape_vector = vectorize(x.dims());
 
   std::vector<int64_t> tensor_shape;
   tensor_shape.reserve(shape_vector.size());
   for (auto dim : shape_vector) {
     tensor_shape.push_back(static_cast<int64_t>(dim));
   }
-  out->set_dims(common::make_ddim(tensor_shape));
+  out->set_dims(make_ddim(tensor_shape));
   out->set_dtype(x.dtype());
 }
 
@@ -367,7 +367,7 @@ void PRecvInferMeta(const int peer,
                             i,
                             out_shape[i]));
     }
-    out->set_dims(common::make_ddim(out_shape));
+    out->set_dims(make_ddim(out_shape));
   }
   out->set_dtype(dtype);
 }
@@ -439,13 +439,13 @@ void RecvV2InferMeta(const int ring_id,
                             i,
                             out_shape[i]));
     }
-    out->set_dims(common::make_ddim(out_shape));
+    out->set_dims(make_ddim(out_shape));
   }
   out->set_dtype(dtype);
 }
 
 void SeedInferMeta(int seed, MetaTensor* out) {
-  out->set_dims(common::make_ddim({1}));
+  out->set_dims(make_ddim({1}));
   out->set_dtype(DataType::INT32);
 }
 
