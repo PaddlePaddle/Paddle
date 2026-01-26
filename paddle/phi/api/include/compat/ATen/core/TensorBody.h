@@ -380,6 +380,20 @@ class Tensor : public TensorBase {
     return index_put_(c10::ArrayRef<at::indexing::TensorIndex>(indices), v);
   }
 
+  inline Tensor clone() const {
+    PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
+    return Tensor(cloned_tensor);
+  }
+
+  Tensor operator[](int64_t index) const {
+    return paddle::experimental::slice(tensor_,
+                                       /*axes=*/{0},
+                                       /*starts=*/{index},
+                                       /*ends=*/{index + 1},
+                                       /*infer_flags=*/{1},
+                                       /*decrease_axis=*/{0});
+  }
+
  private:
   // Internal implementation for index
   at::Tensor _index_impl(
@@ -547,21 +561,6 @@ class Tensor : public TensorBase {
     return static_cast<int64_t>(SizeOf(tensor_.dtype()));
   }
 
-  inline Tensor clone() const {
-    PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
-    return Tensor(cloned_tensor);
-  }
-
-  Tensor operator[](int64_t index) const {
-    return paddle::experimental::slice(tensor_,
-                                       /*axes=*/{0},
-                                       /*starts=*/{index},
-                                       /*ends=*/{index + 1},
-                                       /*infer_flags=*/{1},
-                                       /*decrease_axis=*/{0});
-  }
-
- public:
   void record_stream(const cudaStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
