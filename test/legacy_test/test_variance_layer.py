@@ -107,12 +107,21 @@ class TestVarAPI2(OpTest):
         self.unbiased = True
 
     def test_check_output(self):
-        self.check_output(
+        self.check_output_with_place(
+            paddle.CPUPlace(),
             check_prim=True,
             check_pir=True,
             check_symbol_infer=True,
             check_prim_pir=True,
         )
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(
+                paddle.CUDAPlace(0),
+                check_prim=True,
+                check_pir=True,
+                check_symbol_infer=True,
+                check_prim_pir=True,
+            )
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
@@ -576,6 +585,40 @@ class TestVarAPI_NewParamsAlias(TestVarAPI_alias):
 
         np.testing.assert_allclose(result1, result2, rtol=1e-05)
 
+        paddle.enable_static()
+
+
+class TestVarAPI_Backward1(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+        self.shape = []
+        self.axis = []
+        self.x = np.random.uniform(-1, 1, self.shape).astype('float64')
+        paddle.set_device(paddle.CPUPlace())
+
+        out_ref = ref_var(self.x, self.axis, True, False)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.var(x, self.axis, True, False)
+
+        out.sum().backward()
+        paddle.enable_static()
+
+
+class TestVarAPI_Backward2(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+        self.shape = [2]
+        self.axis = []
+        self.x = np.random.uniform(-1, 1, self.shape).astype('float64')
+        paddle.set_device(paddle.CPUPlace())
+
+        out_ref = ref_var(self.x, self.axis, True, False)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.var(x, self.axis, True, False)
+
+        out.sum().backward()
         paddle.enable_static()
 
 
