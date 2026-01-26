@@ -9,5 +9,14 @@
 <!-- One of [ New features | Bug fixes | Improvements | Performance | BC Breaking | Deprecations | Docs | Devs | Not User Facing | Security | Others ] -->
 
 
+### Precision Change Impact
+<!-- 必须选择一项（二选一）：
+- Has precision change
+- No precision change
+-->
+
+
 ### Description
 <!-- Describe what you’ve done -->
+
+
