@@ -167,19 +167,11 @@ template<
     typename Epilogue,
     size_t... Is
 >
-inline void kernel_16x6_impl_inner(
-    std::index_sequence<Is...>,
-    float* blockA_packed,
-    float* blockB_packed,
-    float* C,
-    int mr,
-    int M,
-    int kc,
-    const Epilogue& epilogue,
-    int batch,
-    int row,
-    int col)
-{
+inline void kernel_16x6_impl_inner(std::index_sequence<Is...>,
+                                   float* blockA_packed, float* blockB_packed,
+                                   float* C, int mr, int M, int kc,
+                                   const Epilogue& epilogue,
+                                   int batch, int row, int col) {
     __m256 C_accum[NR][2];
     __m256 b_packFloat8 = {};
     __m256 a0_packFloat8 = {};
@@ -237,18 +229,10 @@ template<
     typename InitPolicy,
     typename Epilogue
 >
-inline void kernel_16x6_dispatch(
-    float* blockA_packed,
-    float* blockB_packed,
-    float* C,
-    int mr,
-    int M,
-    int kc,
-    const Epilogue& epilogue,
-    int batch,
-    int row,
-    int col)
-{
+inline void kernel_16x6_dispatch(float* blockA_packed, float* blockB_packed,
+                                 float* C, int mr, int M, int kc,
+                                 const Epilogue& epilogue,
+                                 int batch, int row, int col) {
     if (mr != 16) {
         kernel_16x6_impl_inner<
             NR, true, InitPolicy
@@ -275,19 +259,10 @@ inline void kernel_16x6_dispatch(
     mr, M, kc, epilogue, batch, row, col
 
 template<typename InitPolicy, typename Epilogue>
-void kernel_16x6(
-    float* blockA_packed,
-    float* blockB_packed,
-    float* C,
-    int mr,
-    int nr,
-    int kc,
-    int M,
-    const Epilogue& epilogue,
-    int batch,
-    int row,
-    int col)
-{
+void kernel_16x6(float* blockA_packed, float* blockB_packed,
+                 float* C, int mr, int nr, int kc, int M,
+                 const Epilogue& epilogue,
+                 int batch, int row, int col) {
     switch (nr) {
     case 1: kernel_16x6_dispatch<1, InitPolicy>(KERNEL_16X6_ARGS); break;
     case 2: kernel_16x6_dispatch<2, InitPolicy>(KERNEL_16X6_ARGS); break;
