@@ -561,7 +561,7 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#ifdef PADDLE_WITH_CUDA
+ public:
   void record_stream(const cudaStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
