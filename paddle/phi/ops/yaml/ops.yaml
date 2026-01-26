@@ -7,7 +7,6 @@
 
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-# Trigger rebuild for addcmul
 - op : abs
   args : (Tensor x)
   output : Tensor(out)

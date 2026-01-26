@@ -58,7 +58,7 @@ class TestAddcmulOp(OpTest):
         self.attrs = {'value': 0.5}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -67,6 +67,7 @@ class TestAddcmulOp(OpTest):
             numeric_grad_delta=0.005,
             max_relative_error=0.005,
             check_pir=True,
+            check_cinn=True,
         )
 
 
@@ -163,7 +164,7 @@ class TestAddcmulFP16Op(TestAddcmulOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-2, check_pir=True)
+        self.check_output(atol=1e-2, check_pir=True, check_cinn=True)
 
     def test_check_grad(self):
         pass
@@ -236,7 +237,7 @@ class TestAddcmulBroadcast2D(OpTest):
         self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -245,6 +246,7 @@ class TestAddcmulBroadcast2D(OpTest):
             numeric_grad_delta=0.005,
             max_relative_error=0.005,
             check_pir=True,
+            check_cinn=True,
         )
 
 
@@ -272,7 +274,7 @@ class TestAddcmulBroadcast3D(OpTest):
         self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -281,6 +283,7 @@ class TestAddcmulBroadcast3D(OpTest):
             numeric_grad_delta=0.005,
             max_relative_error=0.005,
             check_pir=True,
+            check_cinn=True,
         )
 
 
@@ -313,9 +316,6 @@ class TestAddcmulAPI(unittest.TestCase):
 
     def setUp(self):
         np.random.seed(123)
-        self.place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            self.place = paddle.CUDAPlace(0)
         self.shape = [5, 6]
         self.dtype = 'float32'
         self.np_input = np.random.uniform(1, 4, self.shape).astype(self.dtype)
@@ -370,7 +370,7 @@ class TestAddcmulAPI(unittest.TestCase):
 
     def test_out_parameter(self):
         """Test out parameter"""
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input = paddle.to_tensor(self.np_input)
         tensor1 = paddle.to_tensor(self.np_tensor1)
         tensor2 = paddle.to_tensor(self.np_tensor2)
@@ -409,13 +409,8 @@ class TestAddcmulGradEmptyTensor(unittest.TestCase):
 class TestAddcmulSelectiveGrad(unittest.TestCase):
     """Test gradient with selective stop_gradient - covers null grad pointer branches"""
 
-    def setUp(self):
-        self.place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            self.place = paddle.CUDAPlace(0)
-
     def test_only_input_grad(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((3, 4)).astype('float64')
         tensor1_np = np.random.random((3, 4)).astype('float64')
         tensor2_np = np.random.random((3, 4)).astype('float64')
@@ -433,7 +428,7 @@ class TestAddcmulSelectiveGrad(unittest.TestCase):
         paddle.enable_static()
 
     def test_only_tensor1_grad(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((3, 4)).astype('float64')
         tensor1_np = np.random.random((3, 4)).astype('float64')
         tensor2_np = np.random.random((3, 4)).astype('float64')
@@ -451,7 +446,7 @@ class TestAddcmulSelectiveGrad(unittest.TestCase):
         paddle.enable_static()
 
     def test_only_tensor2_grad(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((3, 4)).astype('float64')
         tensor1_np = np.random.random((3, 4)).astype('float64')
         tensor2_np = np.random.random((3, 4)).astype('float64')
@@ -472,13 +467,8 @@ class TestAddcmulSelectiveGrad(unittest.TestCase):
 class TestAddcmulGrad0DScalar(unittest.TestCase):
     """Test 0D scalar gradient - covers AddcmulGradZero"""
 
-    def setUp(self):
-        self.place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            self.place = paddle.CUDAPlace(0)
-
     def test_0d_all_grads(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.array(2.0).astype('float64')
         tensor1_np = np.array(3.0).astype('float64')
         tensor2_np = np.array(4.0).astype('float64')
@@ -502,7 +492,7 @@ class TestAddcmulGrad0DScalar(unittest.TestCase):
 
     def test_0d_selective_grads(self):
         """Test 0D with selective gradients"""
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_t = paddle.to_tensor(
             np.array(2.0).astype('float64'), stop_gradient=True
         )
@@ -523,14 +513,9 @@ class TestAddcmulGrad0DScalar(unittest.TestCase):
 class TestAddcmulGradBroadcastReduction(unittest.TestCase):
     """Test gradient broadcast reduction - covers ReduceGrad and ComputeBroadcastGradDims"""
 
-    def setUp(self):
-        self.place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            self.place = paddle.CUDAPlace(0)
-
     def test_input_broadcast_reduce(self):
         """Test input gradient reduction"""
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((1, 4)).astype('float64')
         tensor1_np = np.random.random((3, 4)).astype('float64')
         tensor2_np = np.random.random((3, 4)).astype('float64')
@@ -550,7 +535,7 @@ class TestAddcmulGradBroadcastReduction(unittest.TestCase):
 
     def test_tensor1_broadcast_reduce(self):
         """Test tensor1 gradient reduction"""
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((3, 4)).astype('float64')
         tensor1_np = np.random.random((1, 4)).astype('float64')
         tensor2_np = np.random.random((3, 4)).astype('float64')
@@ -570,7 +555,7 @@ class TestAddcmulGradBroadcastReduction(unittest.TestCase):
 
     def test_tensor2_broadcast_reduce_3d(self):
         """Test tensor2 gradient reduction with 3D"""
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((2, 3, 5)).astype('float64')
         tensor1_np = np.random.random((2, 3, 5)).astype('float64')
         tensor2_np = np.random.random((1, 1, 5)).astype('float64')
@@ -590,7 +575,7 @@ class TestAddcmulGradBroadcastReduction(unittest.TestCase):
 
     def test_all_broadcast_reduce_4d(self):
         """Test all gradients with reduction in 4D"""
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((1, 1, 4, 5)).astype('float64')
         tensor1_np = np.random.random((2, 1, 1, 5)).astype('float64')
         tensor2_np = np.random.random((1, 3, 1, 1)).astype('float64')
@@ -612,13 +597,8 @@ class TestAddcmulGradBroadcastReduction(unittest.TestCase):
 class TestAddcmulBroadcastGradHighRank(unittest.TestCase):
     """Test broadcast gradient for high rank tensors (5D, 6D)"""
 
-    def setUp(self):
-        self.place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            self.place = paddle.CUDAPlace(0)
-
     def test_broadcast_5d(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((2, 2, 3, 4, 6)).astype('float64')
         tensor1_np = np.random.random((3, 4, 6)).astype('float64')
         tensor2_np = np.random.random((1, 1, 1, 4, 6)).astype('float64')
@@ -636,7 +616,7 @@ class TestAddcmulBroadcastGradHighRank(unittest.TestCase):
         paddle.enable_static()
 
     def test_broadcast_6d(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_np = np.random.random((2, 2, 2, 3, 4, 5)).astype('float64')
         tensor1_np = np.random.random((2, 3, 4, 5)).astype('float64')
         tensor2_np = np.random.random((1, 1, 2, 1, 4, 5)).astype('float64')
