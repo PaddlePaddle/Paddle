@@ -170,10 +170,8 @@ struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 6> {
 
 template <typename ElementT, int SwizzleFactor, bool Batched>
 struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 7> {
-  // using TShape = cutlass::gemm::GemmShape<256, 64, 64>;
-  // using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
-  using TShape = cutlass::gemm::GemmShape<256, 64, 32>;
-  using WShape = cutlass::gemm::GemmShape<64, 64, 32>;
+  using TShape = cutlass::gemm::GemmShape<256, 64, 64>;
+  using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
   using IShape = cutlass::gemm::GemmShape<16, 8, 16>;
   static constexpr int kNumStages = 3;
 
@@ -196,10 +194,8 @@ struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 8> {
 
 template <typename ElementT, int SwizzleFactor, bool Batched>
 struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 9> {
-  // using TShape = cutlass::gemm::GemmShape<256, 128, 64>;
-  // using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
-  using TShape = cutlass::gemm::GemmShape<256, 128, 32>;
-  using WShape = cutlass::gemm::GemmShape<64, 64, 32>;
+  using TShape = cutlass::gemm::GemmShape<256, 128, 64>;
+  using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
   using IShape = cutlass::gemm::GemmShape<16, 8, 16>;
   static constexpr int kNumStages = 3;
 
@@ -234,10 +230,8 @@ struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 11> {
 
 template <typename ElementT, int SwizzleFactor, bool Batched>
 struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 12> {
-  // using TShape = cutlass::gemm::GemmShape<128, 128, 64>;
-  // using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
-  using TShape = cutlass::gemm::GemmShape<128, 128, 32>;
-  using WShape = cutlass::gemm::GemmShape<64, 64, 32>;
+  using TShape = cutlass::gemm::GemmShape<128, 128, 64>;
+  using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
   using IShape = cutlass::gemm::GemmShape<16, 8, 16>;
   static constexpr int kNumStages = 4;
 
@@ -248,10 +242,8 @@ struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 12> {
 
 template <typename ElementT, int SwizzleFactor, bool Batched>
 struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 13> {
-  // using TShape = cutlass::gemm::GemmShape<256, 64, 64>;
-  // using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
-  using TShape = cutlass::gemm::GemmShape<256, 64, 32>;
-  using WShape = cutlass::gemm::GemmShape<64, 64, 32>;
+  using TShape = cutlass::gemm::GemmShape<256, 64, 64>;
+  using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
   using IShape = cutlass::gemm::GemmShape<16, 8, 16>;
   static constexpr int kNumStages = 4;
 
@@ -310,10 +302,8 @@ struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 17> {
 
 template <typename ElementT, int SwizzleFactor, bool Batched>
 struct GemmTuningConfigs<ElementT, SwizzleFactor, Batched, 18> {
-  // using TShape = cutlass::gemm::GemmShape<128, 128, 64>;
-  // using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
-  using TShape = cutlass::gemm::GemmShape<128, 128, 32>;
-  using WShape = cutlass::gemm::GemmShape<64, 64, 32>;
+  using TShape = cutlass::gemm::GemmShape<128, 128, 64>;
+  using WShape = cutlass::gemm::GemmShape<64, 64, 64>;
   using IShape = cutlass::gemm::GemmShape<16, 8, 16>;
   static constexpr int kNumStages = 5;
 
