@@ -92,7 +92,7 @@ def parameter_accuracy(body):
     ]
     body = re.sub("\r\n", "", body)
     type_end = body.find('### PR Types')
-    changes_end = body.find('### Description')
+    changes_end = body.find('### Precision Change Impact')
     PR_dic['PR Category'] = body[len('### PR Category') : type_end]
     PR_dic['PR Types'] = body[type_end + len('### PR Types') : changes_end]
     message = ''
