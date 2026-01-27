@@ -202,21 +202,36 @@ class TestIndexFillInplaceAlias(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
         index = paddle.to_tensor([0, 2], dtype='int32')
-
-        # Test using axis parameter
-        x1 = x.clone()
-        x1.index_fill_(index, axis=0, value=-1)
-
-        # Test using dim parameter (alias)
-        x2 = x.clone()
-        x2.index_fill_(index, dim=0, value=-1)
-
-        # Both should produce the same result
-        np.testing.assert_array_equal(x1.numpy(), x2.numpy())
-
-        # Verify the result is correct
         expected = np.array([[-1, -1, -1], [4, 5, 6], [-1, -1, -1]])
-        np.testing.assert_array_equal(x1.numpy(), expected)
+
+        # Position args
+        x1 = x.clone()
+        out1 = paddle.index_fill_(x1, index, 0, -1)
+        np.testing.assert_array_equal(out1.numpy(), expected)
+
+        # Paddle keyword args
+        x2 = x.clone()
+        out2 = paddle.index_fill_(x2, index=index, axis=0, value=-1)
+        np.testing.assert_array_equal(out2.numpy(), expected)
+
+        # Torch keyword args
+        x3 = x.clone()
+        out3 = paddle.index_fill_(x3, index=index, dim=0, value=-1)
+        np.testing.assert_array_equal(out3.numpy(), expected)
+
+        # Mixed args
+        x4 = x.clone()
+        out4 = paddle.index_fill_(x4, index, dim=0, value=-1)
+        np.testing.assert_array_equal(out4.numpy(), expected)
+
+        # Tensor method (axis and dim)
+        x5 = x.clone()
+        out5 = x5.index_fill_(index, axis=0, value=-1)
+        np.testing.assert_array_equal(out5.numpy(), expected)
+
+        x6 = x.clone()
+        out6 = x6.index_fill_(index, dim=0, value=-1)
+        np.testing.assert_array_equal(out6.numpy(), expected)
 
         paddle.enable_static()
 
