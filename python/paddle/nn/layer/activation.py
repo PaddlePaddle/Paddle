@@ -725,10 +725,8 @@ class ReLU(Layer):
 
     def extra_repr(self) -> str:
         parts = []
-        if self._inplace:
-            parts.append(f'inplace={self._inplace}')
-        if self._name:
-            parts.append(f'name={self._name}')
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
         return ', '.join(parts)
 
 
@@ -901,10 +899,8 @@ class LeakyReLU(Layer):
 
     def extra_repr(self) -> str:
         parts = [f'negative_slope={self._negative_slope}']
-        if self._inplace:
-            parts.append(f'inplace={self._inplace}')
-        if self._name:
-            parts.append(f'name={self._name}')
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
         return ', '.join(parts)
 
 
