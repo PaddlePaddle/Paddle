@@ -91,7 +91,7 @@ class XPUTestPoolWithIndex_op(XPUOpTestWrapper):
                 self.adaptive,
             )
             output = output.astype(self.dtype)
-            mask = mask.astype("int64")
+            mask = mask.astype("int32")
 
             self.attrs = {
                 'strides': self.strides,
