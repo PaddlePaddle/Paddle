@@ -16,15 +16,11 @@
 
 #include <iterator>
 #include <random>
-#include <set>
-#include <string>
-#include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "paddle/utils/optional.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
