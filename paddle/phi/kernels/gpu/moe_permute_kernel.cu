@@ -57,6 +57,7 @@ template <typename X_T,
           typename scale_T,
           bool has_scale,
           bool do_gather,
+          bool return_expert_indices,
           int max_num_experts = 64>
 __global__ __launch_bounds__(512) void permute_generic_kernel(
     const X_T *__restrict__ X,
@@ -70,6 +71,7 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
     probs_T *__restrict__ probs_unzipped,
     scale_T *__restrict__ XScale_unzipped,
     int *global_expertwise_block_cumsum,
+    int *__restrict__ expert_indices,
     const int total_zipped_tokens_num,
     const int token_length,
     const int scale_length,
@@ -156,8 +158,12 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
       if (threadIdx.x == 0)
         zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
-      if (threadIdx.x == 0)
+      if (threadIdx.x == 0) {
         probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+        if constexpr (return_expert_indices) {
+          expert_indices[proposed_row_idx] = expert;
+        }
+      }
 
       if constexpr (do_gather) {
         // vec copy
@@ -183,6 +189,7 @@ template <typename X_T,
           typename scale_T,
           bool has_scale,
           bool do_gather,
+          bool return_expert_indices,
           int max_num_experts = 32>
 __global__ __launch_bounds__(256) void permute_opt_kernel(
     const X_T *__restrict__ X,
@@ -196,6 +203,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     probs_T *__restrict__ probs_unzipped,
     scale_T *__restrict__ XScale_unzipped,
     int *global_expertwise_block_cumsum,
+    int *__restrict__ expert_indices,
     const int total_zipped_tokens_num,
     const int token_length,
     const int scale_length,
@@ -436,8 +444,12 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       if (threadIdx.x == 0)
         zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
       if (proposed_row_idx == -1) continue;  // no memcpy
-      if (threadIdx.x == 0)
+      if (threadIdx.x == 0) {
         probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+        if constexpr (return_expert_indices) {
+          expert_indices[proposed_row_idx] = expert;
+        }
+      }
 
       if constexpr (do_gather) {
 #if CUDA_VERSION >= 12080
@@ -481,116 +493,172 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
 
 template <typename T, typename Context>
 void dispatch_permute_kernel(const Context &dev_ctx,
-                             const DenseTensor &X,
-                             const DenseTensor &expert_routemap_topk,
-                             const DenseTensor &expert_prob_topk,
-                             const optional<DenseTensor> &XScale,
-                             const DenseTensor &expert_offsets,
-                             const DenseTensor &expert_offset_end,
-                             DenseTensor *X_unzipped,
-                             DenseTensor *zipped_expertwise_rowmap,
-                             DenseTensor *token_prob_unzipped,
-                             DenseTensor *XScale_unzipped,
-                             DenseTensor *global_expertwise_block_cumsum,
+                             const phi::DenseTensor &X,
+                             const phi::DenseTensor &expert_routemap_topk,
+                             const phi::DenseTensor &expert_prob_topk,
+                             const paddle::optional<phi::DenseTensor> &XScale,
+                             const phi::DenseTensor &expert_offsets,
+                             const phi::DenseTensor &expert_offset_end,
+                             phi::DenseTensor *X_unzipped,
+                             phi::DenseTensor *zipped_expertwise_rowmap,
+                             phi::DenseTensor *token_prob_unzipped,
+                             phi::DenseTensor *XScale_unzipped,
+                             phi::DenseTensor *global_expertwise_block_cumsum,
+                             phi::DenseTensor *expert_indices,
                              const int total_zipped_tokens_num,
                              const int token_length,
-                             const int topk,  // deprecated
+                             const int topk,  // deprecated in some versions
                              const int num_experts,
                              const int scale_length,
                              const bool do_gather,
-                             const bool using_ue8m0_scale) {
+                             const bool using_ue8m0_scale,
+                             const bool return_expert_indices) {
   dim3 grid, block;
   grid.x =
       (total_zipped_tokens_num + CUMSUM_BLOCK_SIZE - 1) / CUMSUM_BLOCK_SIZE;
   static int capability = dev_ctx.GetComputeCapability();
 
-#define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
-#define GET_DATA(tensor, type) tensor.data<type>()
-#define GET_PTR_DATA(tensor, type) tensor->data<type>()
+  // Helper macros for cleaner code
+#define DTYPE_CASE(dtype, type) (dtype) == phi::DataType::type
+#define GET_DATA(tensor, type) (tensor).data<type>()
+#define GET_PTR_DATA(tensor, type) (tensor)->data<type>()
 #define MAX_NUM_EXPERTS_FOR_OPT_KERNEL 32
 
+  /**
+   * Final Kernel Launch Dispatcher
+   * Sets up shared memory and launches either optimized or generic kernel.
+   */
+#define DISPATCH_FINAL_KERNEL(TOKEN_T,                                   \
+                              PROB_T,                                    \
+                              INT_T,                                     \
+                              SCALE_T,                                   \
+                              HAS_SCALE,                                 \
+                              DO_GATHER,                                 \
+                              RETURN_INDICES,                            \
+                              KERNEL_TYPE)                               \
+  if (KERNEL_TYPE == 1) { /* Optimized Kernel */                         \
+    auto kernel = permute_opt_kernel<TOKEN_T,                            \
+                                     INT_T,                              \
+                                     PROB_T,                             \
+                                     SCALE_T,                            \
+                                     HAS_SCALE,                          \
+                                     DO_GATHER,                          \
+                                     RETURN_INDICES,                     \
+                                     MAX_NUM_EXPERTS_FOR_OPT_KERNEL>;    \
+    block.x = 256;                                                       \
+    const int smem =                                                     \
+        2 * token_length * sizeof(TOKEN_T) +                             \
+        (sizeof(INT_T) + sizeof(PROB_T)) * topk * CUMSUM_BLOCK_SIZE;     \
+    kernel<<<grid, block, smem, dev_ctx.stream()>>>(                     \
+        GET_DATA(X, TOKEN_T),                                            \
+        GET_DATA(expert_routemap_topk, INT_T),                           \
+        GET_DATA(expert_prob_topk, PROB_T),                              \
+        XScale ? GET_PTR_DATA(XScale.get_ptr(), SCALE_T) : nullptr,      \
+        GET_DATA(expert_offsets, int),                                   \
+        GET_DATA(expert_offset_end, int),                                \
+        GET_PTR_DATA(X_unzipped, TOKEN_T),                               \
+        GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                   \
+        GET_PTR_DATA(token_prob_unzipped, PROB_T),                       \
+        GET_PTR_DATA(XScale_unzipped, SCALE_T),                          \
+        global_expertwise_block_cumsum->data<int>(),                     \
+        (RETURN_INDICES && expert_indices) ? expert_indices->data<int>() \
+                                           : nullptr,                    \
+        total_zipped_tokens_num,                                         \
+        token_length,                                                    \
+        scale_length,                                                    \
+        num_experts,                                                     \
+        topk);                                                           \
+  } else { /* Generic Kernel */                                          \
+    auto kernel = permute_generic_kernel<TOKEN_T,                        \
+                                         INT_T,                          \
+                                         PROB_T,                         \
+                                         SCALE_T,                        \
+                                         HAS_SCALE,                      \
+                                         DO_GATHER,                      \
+                                         RETURN_INDICES,                 \
+                                         MAX_NUM_EXPERTS>;               \
+    block.x = 512;                                                       \
+    kernel<<<grid, block, 0, dev_ctx.stream()>>>(                        \
+        GET_DATA(X, TOKEN_T),                                            \
+        GET_DATA(expert_routemap_topk, INT_T),                           \
+        GET_DATA(expert_prob_topk, PROB_T),                              \
+        XScale ? GET_PTR_DATA(XScale.get_ptr(), SCALE_T) : nullptr,      \
+        GET_DATA(expert_offsets, int),                                   \
+        GET_DATA(expert_offset_end, int),                                \
+        GET_PTR_DATA(X_unzipped, TOKEN_T),                               \
+        GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                   \
+        GET_PTR_DATA(token_prob_unzipped, PROB_T),                       \
+        GET_PTR_DATA(XScale_unzipped, SCALE_T),                          \
+        global_expertwise_block_cumsum->data<int>(),                     \
+        (RETURN_INDICES && expert_indices) ? expert_indices->data<int>() \
+                                           : nullptr,                    \
+        total_zipped_tokens_num,                                         \
+        token_length,                                                    \
+        scale_length,                                                    \
+        num_experts,                                                     \
+        topk);                                                           \
+  }
+
+  /**
+   * Decision Layer: Select Optimized vs Generic based on hardware and alignment
+   */
 #if CUDA_VERSION >= 12080
-#define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)   \
-  if (capability >= 100 && num_experts <= MAX_NUM_EXPERTS_FOR_OPT_KERNEL &&    \
-      is_aligned_in_bytes(token_length * sizeof(TOKEN_T)) &&                   \
-      is_aligned_in_bytes(sizeof(INT_T) * topk * CUMSUM_BLOCK_SIZE)) {         \
-    DISPATCH_OPT_KERNEL(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER) \
-  } else {                                                                     \
-    DISPATCH_GENERIC_KERNEL(                                                   \
-        TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)                 \
+#define DISPATCH_CASE(                                                      \
+    TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER, RETURN_INDICES)  \
+  if (capability >= 100 && num_experts <= MAX_NUM_EXPERTS_FOR_OPT_KERNEL && \
+      is_aligned_in_bytes(token_length * sizeof(TOKEN_T)) &&                \
+      is_aligned_in_bytes(sizeof(INT_T) * topk * CUMSUM_BLOCK_SIZE)) {      \
+    DISPATCH_FINAL_KERNEL(TOKEN_T,                                          \
+                          PROB_T,                                           \
+                          INT_T,                                            \
+                          SCALE_T,                                          \
+                          HAS_SCALE,                                        \
+                          DO_GATHER,                                        \
+                          RETURN_INDICES,                                   \
+                          1)                                                \
+  } else {                                                                  \
+    DISPATCH_FINAL_KERNEL(TOKEN_T,                                          \
+                          PROB_T,                                           \
+                          INT_T,                                            \
+                          SCALE_T,                                          \
+                          HAS_SCALE,                                        \
+                          DO_GATHER,                                        \
+                          RETURN_INDICES,                                   \
+                          0)                                                \
   }
 #else
-#define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER) \
-  DISPATCH_GENERIC_KERNEL(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)
-
+#define DISPATCH_CASE(                                                     \
+    TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER, RETURN_INDICES) \
+  DISPATCH_FINAL_KERNEL(TOKEN_T,                                           \
+                        PROB_T,                                            \
+                        INT_T,                                             \
+                        SCALE_T,                                           \
+                        HAS_SCALE,                                         \
+                        DO_GATHER,                                         \
+                        RETURN_INDICES,                                    \
+                        0)
 #endif
 
-#define DISPATCH_OPT_KERNEL(                                        \
-    TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)          \
-  auto kernel = permute_opt_kernel<TOKEN_T,                         \
-                                   INT_T,                           \
-                                   PROB_T,                          \
-                                   SCALE_T,                         \
-                                   HAS_SCALE,                       \
-                                   DO_GATHER,                       \
-                                   MAX_NUM_EXPERTS_FOR_OPT_KERNEL>; \
-  block.x = 256;                                                    \
-  const int smem =                                                  \
-      2 * token_length * sizeof(TOKEN_T) +                          \
-      (sizeof(INT_T) + sizeof(PROB_T)) * topk * CUMSUM_BLOCK_SIZE;  \
-  kernel<<<grid, block, smem, dev_ctx.stream()>>>(                  \
-      GET_DATA(X, TOKEN_T),                                         \
-      GET_DATA(expert_routemap_topk, INT_T),                        \
-      GET_DATA(expert_prob_topk, PROB_T),                           \
-      XScale ? GET_PTR_DATA(XScale.get_ptr(), SCALE_T) : nullptr,   \
-      GET_DATA(expert_offsets, int),                                \
-      GET_DATA(expert_offset_end, int),                             \
-      GET_PTR_DATA(X_unzipped, TOKEN_T),                            \
-      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                \
-      GET_PTR_DATA(token_prob_unzipped, PROB_T),                    \
-      GET_PTR_DATA(XScale_unzipped, SCALE_T),                       \
-      global_expertwise_block_cumsum->data<int>(),                  \
-      total_zipped_tokens_num,                                      \
-      token_length,                                                 \
-      scale_length,                                                 \
-      num_experts,                                                  \
-      topk);
-
-#define DISPATCH_GENERIC_KERNEL(                                  \
-    TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)        \
-  block.x = 512;                                                  \
-  auto kernel = permute_generic_kernel<TOKEN_T,                   \
-                                       INT_T,                     \
-                                       PROB_T,                    \
-                                       SCALE_T,                   \
-                                       HAS_SCALE,                 \
-                                       DO_GATHER,                 \
-                                       MAX_NUM_EXPERTS>;          \
-  const int smem = 0;                                             \
-  kernel<<<grid, block, smem, dev_ctx.stream()>>>(                \
-      GET_DATA(X, TOKEN_T),                                       \
-      GET_DATA(expert_routemap_topk, INT_T),                      \
-      GET_DATA(expert_prob_topk, PROB_T),                         \
-      XScale ? GET_PTR_DATA(XScale.get_ptr(), SCALE_T) : nullptr, \
-      GET_DATA(expert_offsets, int),                              \
-      GET_DATA(expert_offset_end, int),                           \
-      GET_PTR_DATA(X_unzipped, TOKEN_T),                          \
-      GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),              \
-      GET_PTR_DATA(token_prob_unzipped, PROB_T),                  \
-      GET_PTR_DATA(XScale_unzipped, SCALE_T),                     \
-      global_expertwise_block_cumsum->data<int>(),                \
-      total_zipped_tokens_num,                                    \
-      token_length,                                               \
-      scale_length,                                               \
-      num_experts,                                                \
-      topk);
-
-#define HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, DO_GATHER)  \
-  if (using_ue8m0_scale) {                                               \
-    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, int32_t, HAS_SCALE, DO_GATHER) \
-  } else {                                                               \
-    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, float, HAS_SCALE, DO_GATHER)   \
+  /**
+   * Routing Toggles: Handles expert indices, scaling, and gathering
+   */
+#define HANDLE_RETURN_INDICES(                                                 \
+    TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)                     \
+  if (return_expert_indices) {                                                 \
+    DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER, true) \
+  } else {                                                                     \
+    DISPATCH_CASE(                                                             \
+        TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER, false)          \
   }
+
+#define HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, DO_GATHER)        \
+  if (using_ue8m0_scale) {                                                     \
+    HANDLE_RETURN_INDICES(                                                     \
+        TOKEN_T, PROB_T, INT_T, int32_t, HAS_SCALE, DO_GATHER)                 \
+  } else {                                                                     \
+    HANDLE_RETURN_INDICES(TOKEN_T, PROB_T, INT_T, float, HAS_SCALE, DO_GATHER) \
+  }
+
 #define HANDLE_GATHER_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE)   \
   if (do_gather) {                                              \
     HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, true)  \
@@ -598,6 +666,9 @@ void dispatch_permute_kernel(const Context &dev_ctx,
     HANDLE_SCALE_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE, false) \
   }
 
+  /**
+   * Type Dispatching Layer: Token and Probability types
+   */
 #define HANDLE_TOKEN_TYPE(PROB_T, INT_T)                        \
   if (DTYPE_CASE(X.dtype(), BFLOAT16)) {                        \
     HANDLE_GATHER_CASE(phi::bfloat16, PROB_T, INT_T, false)     \
@@ -612,25 +683,34 @@ void dispatch_permute_kernel(const Context &dev_ctx,
     HANDLE_TOKEN_TYPE(float, INT_T)                           \
   }
 
+  // Initial entry point based on index type
   if (DTYPE_CASE(zipped_expertwise_rowmap->dtype(), INT32)) {
     HANDLE_PROB_TYPE(int)
   }
 
+  // Cleanup macros
 #undef DTYPE_CASE
 #undef GET_DATA
+#undef GET_PTR_DATA
+#undef MAX_NUM_EXPERTS_FOR_OPT_KERNEL
+#undef DISPATCH_FINAL_KERNEL
 #undef DISPATCH_CASE
-#undef HANDLE_EXPERT_CASE
+#undef HANDLE_RETURN_INDICES
+#undef HANDLE_SCALE_CASE
+#undef HANDLE_GATHER_CASE
 #undef HANDLE_TOKEN_TYPE
 #undef HANDLE_PROB_TYPE
 }
 template <typename X_T,
           typename SCALE_T,
           bool FILLING_X_UNZIPPED,
-          bool FILLING_X_SCALE_UNZIPPED>
+          bool FILLING_X_SCALE_UNZIPPED,
+          bool FILLING_EXPERT_INDICES>
 __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
     X_T *__restrict__ X_unzipped_ptr,
     SCALE_T *__restrict__ XScale_unzipped_ptr,
     float *__restrict__ token_prob_unzipped_ptr,
+    int *__restrict__ expert_indices_ptr,
     const int cols,
     const int quanted_cols,
     const int *__restrict__ padding_rows) {
@@ -645,6 +725,9 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
   }
   if (threadIdx.x == 0) {
     token_prob_unzipped_ptr[rows] = static_cast<float>(0.0);
+    if constexpr (FILLING_EXPERT_INDICES) {
+      expert_indices_ptr[rows] = -1;
+    }
   }
 }
 template <typename X_T, typename SCALE_T, typename Context>
@@ -652,6 +735,7 @@ void FillingPaddingRows(const Context &dev_ctx,
                         X_T *X_unzipped_ptr,
                         SCALE_T *XScale_unzipped_ptr,
                         float *token_prob_unzipped_ptr,
+                        int *expert_indices_ptr,
                         const int cols,
                         const int quanted_cols,
                         const std::vector<int> &padding_rows) {
@@ -673,31 +757,45 @@ void FillingPaddingRows(const Context &dev_ctx,
   grid.x = padding_rows.size();
   block.x = 512;
 // Launch kernel
-#define DISPATCH_CASE(FILLING_X_UNZIPPED, FILLING_X_SCALE_UNZIPPED) \
-  filling_padding_rows_kernel<X_T,                                  \
-                              SCALE_T,                              \
-                              FILLING_X_UNZIPPED,                   \
-                              FILLING_X_SCALE_UNZIPPED>             \
-      <<<grid, block, 0, dev_ctx.stream()>>>(                       \
-          X_unzipped_ptr,                                           \
-          XScale_unzipped_ptr,                                      \
-          token_prob_unzipped_ptr,                                  \
-          cols,                                                     \
-          quanted_cols,                                             \
+#define DISPATCH_CASE(                                                    \
+    FILLING_X_UNZIPPED, FILLING_X_SCALE_UNZIPPED, FILLING_EXPERT_INDICES) \
+  filling_padding_rows_kernel<X_T,                                        \
+                              SCALE_T,                                    \
+                              FILLING_X_UNZIPPED,                         \
+                              FILLING_X_SCALE_UNZIPPED,                   \
+                              FILLING_EXPERT_INDICES>                     \
+      <<<grid, block, 0, dev_ctx.stream()>>>(                             \
+          X_unzipped_ptr,                                                 \
+          XScale_unzipped_ptr,                                            \
+          token_prob_unzipped_ptr,                                        \
+          expert_indices_ptr,                                             \
+          cols,                                                           \
+          quanted_cols,                                                   \
           padding_tokens_tensor.data<int>());
-#define HANDLE_X_SCALED(X_UNZIPPED)     \
-  if (XScale_unzipped_ptr != nullptr) { \
-    DISPATCH_CASE(X_UNZIPPED, true)     \
-  } else {                              \
-    DISPATCH_CASE(X_UNZIPPED, false)    \
+
+#define HANDLE_EXPERT_INDICES(X_UNZIPPED, X_SCALE_UNZIPPED) \
+  if (expert_indices_ptr != nullptr) {                      \
+    DISPATCH_CASE(X_UNZIPPED, X_SCALE_UNZIPPED, true)       \
+  } else {                                                  \
+    DISPATCH_CASE(X_UNZIPPED, X_SCALE_UNZIPPED, false)      \
   }
 
+#define HANDLE_X_SCALED(X_UNZIPPED)          \
+  if (XScale_unzipped_ptr != nullptr) {      \
+    HANDLE_EXPERT_INDICES(X_UNZIPPED, true)  \
+  } else {                                   \
+    HANDLE_EXPERT_INDICES(X_UNZIPPED, false) \
+  }
+
+  // 最终分发逻辑
   if (X_unzipped_ptr != nullptr) {
     HANDLE_X_SCALED(true)
   } else {
     HANDLE_X_SCALED(false)
   }
+
 #undef DISPATCH_CASE
+#undef HANDLE_EXPERT_INDICES
 #undef HANDLE_X_SCALED
 }
 
@@ -712,6 +810,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const int padding_multiplex,
                       const bool do_gather,
                       const bool using_ue8m0_scale,
+                      const bool using_tp_alloc,
                       const bool return_expert_indices,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
@@ -783,7 +882,9 @@ void MoePermuteKernel(const Context &dev_ctx,
                       cudaMemcpyHostToDevice,
                       dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
-  const int output_rows = tokens_cumulated;
+  const int output_rows = using_tp_alloc
+                              ? (tokens_cumulated * topk + num_expert * (127))
+                              : tokens_cumulated;
   const int64_t topk = expert_routemap_topk.dims()[1];
   PADDLE_ENFORCE_LE(
       topk,
@@ -800,6 +901,9 @@ void MoePermuteKernel(const Context &dev_ctx,
 
       XScale_unzipped->Resize({output_rows, quanted_cols});
     }
+  }
+  if (return_expert_indices) {
+    expert_indices->Resize({output_rows});
   }
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
@@ -840,6 +944,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                        do_gather ? X_unzipped->data<T>() : nullptr,
                        XScale ? XScale_unzipped->data<int32_t>() : nullptr,
                        token_prob_unzipped->data<float>(),
+                       expert_indices->data<int>(),
                        cols,
                        quanted_cols,
                        padding_rows);
@@ -848,6 +953,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                        do_gather ? X_unzipped->data<T>() : nullptr,
                        XScale ? XScale_unzipped->data<float>() : nullptr,
                        token_prob_unzipped->data<float>(),
+                       expert_indices->data<int>(),
                        cols,
                        quanted_cols,
                        padding_rows);
@@ -881,13 +987,15 @@ void MoePermuteKernel(const Context &dev_ctx,
                                       token_prob_unzipped,
                                       XScale_unzipped,
                                       &global_expertwise_block_cumsum,
+                                      expert_indices,
                                       static_cast<int>(rows),
                                       static_cast<int>(cols),
                                       static_cast<int>(topk),
                                       num_experts,
                                       static_cast<int>(quanted_cols),
                                       do_gather,
-                                      using_ue8m0_scale);
+                                      using_ue8m0_scale,
+                                      return_expert_indices);
 }
 #undef CUMSUM_BLOCK_SIZE
 #undef CUMSUM_INVALID_TAG

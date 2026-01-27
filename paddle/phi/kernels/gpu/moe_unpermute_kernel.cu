@@ -18,16 +18,12 @@
 #include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 
 namespace phi {
-__device__ __nv_bfloat16 __custom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
-  return static_cast<__nv_bfloat16>(static_cast<float>(x) +
-                                    static_cast<float>(y));
-}
 
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 64
 #endif
 
-template <bool MP>
+template <bool MP, bool WEIGHTED_TOKEN>
 __global__ __launch_bounds__(256) void tokens_zip_kernel(
     const phi::bfloat16 *__restrict__ unzipped_tokens_in,
     const int *__restrict__ zipped_expertwise_rowmap,
@@ -49,11 +45,16 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
       reinterpret_cast<__nv_bfloat16 *>(zipped_tokens_out);
 
   __shared__ int local_row_fetchlist[MAX_NUM_EXPERTS];
+  __shared__ int local_row_weight[MAX_NUM_EXPERTS];
 
   if (threadIdx.x < num_experts) {
     const int fetch_row =
         zipped_expertwise_rowmap[this_row * num_experts + threadIdx.x];
     local_row_fetchlist[threadIdx.x] = fetch_row;
+    if constexpr (WEIGHTED_TOKEN) {
+      local_row_weight[threadIdx.x] =
+          static_cast<int>(unzipped_token_probs[fetch_row]);
+    }
   }
 
   __syncthreads();
@@ -76,131 +77,94 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   const int num_full_vec = token_length / VecSize;
   const int64_t thread_stride = static_cast<int64_t>(blockDim.x) * VecSize;
 
-  if constexpr (MP) {
 #pragma unroll 1
-    for (int64_t x_offset = static_cast<int64_t>(threadIdx.x) * VecSize;
-         x_offset < num_full_vec * VecSize;
-         x_offset += thread_stride) {
-      __nv_bfloat162 raw[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
-      float2 sum[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
+  for (int64_t x_offset = static_cast<int64_t>(threadIdx.x) * VecSize;
+       x_offset < num_full_vec * VecSize;
+       x_offset += thread_stride) {
+    __nv_bfloat162 raw[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
+    float2 sum[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
 
-      int aggreg_cnt = 0;
-
-#pragma unroll
-      for (int expert = 0; expert < num_experts; ++expert) {
-        const int fetch_row = local_row_fetchlist[expert];
-
-        if (fetch_row < 0) continue;
-
-        aggreg_cnt++;
-
-        const __nv_bfloat162 *base_ptr =
-            reinterpret_cast<const __nv_bfloat162 *>(
-                &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
-                                 x_offset]);
-
-        // Cast the input pointer to uint4* to enforce a single 128-bit
-        // vectorized load (LDG.E.128) for optimal memory bandwidth.
-        uint4 packed_raw = *reinterpret_cast<const uint4 *>(base_ptr);
-
-        const __nv_bfloat162 *raw_ptr =
-            reinterpret_cast<const __nv_bfloat162 *>(&packed_raw);
+    int aggreg_cnt = 0;
 
 #pragma unroll
-        for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
-          raw[i] = raw_ptr[i];
-          float2 token_vec = __bfloat1622float2(raw[i]);
+    for (int expert = 0; expert < num_experts; ++expert) {
+      const float weight;
+      const int fetch_row = local_row_fetchlist[expert];
+      if (fetch_row < 0) continue;
+      // Get weight of current copy of token.
+      if constexpr (WEIGHTED_TOKEN) {
+        weight = local_row_weight[expert];
+      }
+      aggreg_cnt++;
+
+      const __nv_bfloat162 *base_ptr = reinterpret_cast<const __nv_bfloat162 *>(
+          &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
+                           x_offset]);
+
+      // Cast the input pointer to uint4* to enforce a single 128-bit
+      // vectorized load (LDG.E.128) for optimal memory bandwidth.
+      uint4 packed_raw = *reinterpret_cast<const uint4 *>(base_ptr);
+
+      const __nv_bfloat162 *raw_ptr =
+          reinterpret_cast<const __nv_bfloat162 *>(&packed_raw);
+
+#pragma unroll
+      for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
+        raw[i] = raw_ptr[i];
+        float2 token_vec = __bfloat1622float2(raw[i]);
+        if constexpr (WEIGHTED_TOKEN) {
+          sum[i].x = __fmaf_rn(token_vec.x, weight, sum[i].x);
+          sum[i].y = __fmaf_rn(token_vec.y, weight, sum[i].y);
+        } else {
           sum[i].x = __fadd_rn(token_vec.x, sum[i].x);
           sum[i].y = __fadd_rn(token_vec.y, sum[i].y);
         }
-      }
+      }  // Pack loop
+    }    // Expert loop
 
-      __nv_bfloat162 results[PACKED_VEC_SIZE];
+    __nv_bfloat162 results[PACKED_VEC_SIZE];
 #pragma unroll
-      for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
-        results[i] = (aggreg_cnt > 1) ? __float22bfloat162_rn(sum[i]) : raw[i];
-      }
-
-      __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
-          &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
-
-      // Cast the output pointer to uint4* to enforce a single 128-bit
-      // vectorized store (STG.E.128) for optimal memory bandwidth.
-      *reinterpret_cast<uint4 *>(out_ptr) = *reinterpret_cast<uint4 *>(results);
+    for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
+      // Using raw if not aggregated, prevent submornal downcast.
+      results[i] = (aggreg_cnt > 1) ? __float22bfloat162_rn(sum[i]) : raw[i];
     }
+
+    __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
+        &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
+
+    // Cast the output pointer to uint4* to enforce a single 128-bit
+    // vectorized store (STG.E.128) for optimal memory bandwidth.
+    *reinterpret_cast<uint4 *>(out_ptr) = *reinterpret_cast<uint4 *>(results);
+  }  // Vectorized token length loop
 
 #pragma unroll 1
-    for (int i = num_full_vec * VecSize + threadIdx.x; i < token_length;
-         i += blockDim.x) {
-      float sum = 0.0f;
-      __nv_bfloat16 raw = 0.0f;
-      int aggreg_cnt = 0;
+  for (int i = num_full_vec * VecSize + threadIdx.x; i < token_length;
+       i += blockDim.x) {
+    float sum = 0.0f;
+    __nv_bfloat16 raw = 0.0f;
+    int aggreg_cnt = 0;
 
 #pragma unroll
-      for (int expert = 0; expert < num_experts; ++expert) {
-        int fetch_row = local_row_fetchlist[expert];
-        if (fetch_row < 0) continue;
-        aggreg_cnt++;
-        raw = unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
-        float token_val = static_cast<float>(raw);
+    for (int expert = 0; expert < num_experts; ++expert) {
+      int fetch_row = local_row_fetchlist[expert];
+      float weight;
+      if constexpr (WEIGHTED_TOKEN) {
+        weight = local_row_weight[expert];
+      }
+      if (fetch_row < 0) continue;
+      aggreg_cnt++;
+      raw = unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
+      float token_val = static_cast<float>(raw);
+
+      if constexpr (WEIGHTED_TOKEN) {
+        sum = __fmaf_rn(token_val, weight, sum);
+      } else {
         sum = __fadd_rn(token_val, sum);
       }
-      zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] =
-          (aggreg_cnt > 1) ? static_cast<__nv_bfloat16>(sum) : raw;
     }
-  } else {
-    for (int64_t x_offset = static_cast<int64_t>(threadIdx.x) * VecSize;
-         x_offset < num_full_vec * VecSize;
-         x_offset += thread_stride) {
-      __nv_bfloat162 sum[PACKED_VEC_SIZE] = {{0.0f, 0.0f}};
-
-      __nv_bfloat162 *out_ptr = reinterpret_cast<__nv_bfloat162 *>(
-          &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
-
-#pragma unroll
-      for (int expert = 0; expert < num_experts; ++expert) {
-        const int fetch_row = local_row_fetchlist[expert];
-        if (fetch_row < 0) continue;
-
-        const __nv_bfloat162 *base_ptr =
-            reinterpret_cast<const __nv_bfloat162 *>(
-                &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
-                                 x_offset]);
-
-        // Cast the input pointer to uint4* to enforce a single 128-bit
-        // vectorized load (LDG.E.128) for optimal memory bandwidth.
-        uint4 packed_raw = *reinterpret_cast<const uint4 *>(base_ptr);
-
-        const __nv_bfloat162 *raw_ptr =
-            reinterpret_cast<const __nv_bfloat162 *>(&packed_raw);
-
-#pragma unroll
-        for (int i = 0; i < PACKED_VEC_SIZE; ++i) {
-          __nv_bfloat162 token_vec = raw_ptr[i];
-          sum[i].x = __custom_hadd(sum[i].x, token_vec.x);
-          sum[i].y = __custom_hadd(sum[i].y, token_vec.y);
-        }
-      }
-
-      // Cast the output pointer to uint4* to enforce a single 128-bit
-      // vectorized store (STG.E.128) for optimal memory bandwidth.
-      *reinterpret_cast<uint4 *>(out_ptr) = *reinterpret_cast<uint4 *>(sum);
-    }
-
-    for (int i = num_full_vec * VecSize + threadIdx.x; i < token_length;
-         i += blockDim.x) {
-      __nv_bfloat16 sum = (__nv_bfloat16)0.0f;
-#pragma unroll
-      for (int expert = 0; expert < num_experts; ++expert) {
-        int fetch_row = local_row_fetchlist[expert];
-        if (fetch_row < 0) continue;
-        __nv_bfloat16 token_val =
-            unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
-        sum = __custom_hadd(sum, token_val);
-      }
-      zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] = sum;
-    }
-  }
+    zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] =
+        (aggreg_cnt > 1) ? static_cast<__nv_bfloat16>(sum) : raw;
+  }  // Trailing token length loop
 
   // Optimization: A dummy synchronization primitive is placed here to act as a
   // compiler barrier. This forces the compiler to shrink the live ranges of
@@ -222,39 +186,46 @@ void dispatch_tokens_zip(const Context &dev_ctx,
                          const int num_experts,
                          const int token_length,
                          const int topk,
-                         const bool MP) {
+                         const bool MP,
+                         const bool using_weighted_combine) {
   dim3 grid, block;
   grid.x = total_zipped_tokens_num;
   block.x = 256;
 
-  // Map data types to C++ types
+// Core kernel launcher: strictly typed to your requirements
+#define LAUNCH_ZIP_KERNEL(MP_CONST, WEIGHTED_CONST) \
+  tokens_zip_kernel<MP_CONST, WEIGHTED_CONST>       \
+      <<<grid, block, 0, dev_ctx.stream()>>>(       \
+          unzipped_tokens.data<phi::bfloat16>(),    \
+          zipped_expertwise_rowmap.data<int>(),     \
+          expert_routemap_topk.data<int>(),         \
+          unzipped_token_probs.data<float>(),       \
+          zipped_tokens->data<phi::bfloat16>(),     \
+          zipped_probs_topk->data<float>(),         \
+          total_zipped_tokens_num,                  \
+          token_length,                             \
+          num_experts,                              \
+          topk)
+
+// Dispatch Level 2: Handle 'using_weighted_combine' boolean
+#define DISPATCH_WEIGHTED(MP_CONST)     \
+  if (using_weighted_combine) {         \
+    LAUNCH_ZIP_KERNEL(MP_CONST, true);  \
+  } else {                              \
+    LAUNCH_ZIP_KERNEL(MP_CONST, false); \
+  }
+
+  // Dispatch Level 1: Handle 'MP' boolean and Type check
   if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
-    if (MP == true) {
-      tokens_zip_kernel<true><<<grid, block, 0, dev_ctx.stream()>>>(
-          unzipped_tokens.data<phi::bfloat16>(),
-          zipped_expertwise_rowmap.data<int>(),
-          expert_routemap_topk.data<int>(),
-          unzipped_token_probs.data<float>(),
-          zipped_tokens->data<phi::bfloat16>(),
-          zipped_probs_topk->data<float>(),
-          total_zipped_tokens_num,
-          token_length,
-          num_experts,
-          topk);
+    if (MP) {
+      DISPATCH_WEIGHTED(true)
     } else {
-      tokens_zip_kernel<false><<<grid, block, 0, dev_ctx.stream()>>>(
-          unzipped_tokens.data<phi::bfloat16>(),
-          zipped_expertwise_rowmap.data<int>(),
-          expert_routemap_topk.data<int>(),
-          unzipped_token_probs.data<float>(),
-          zipped_tokens->data<phi::bfloat16>(),
-          zipped_probs_topk->data<float>(),
-          total_zipped_tokens_num,
-          token_length,
-          num_experts,
-          topk);
+      DISPATCH_WEIGHTED(false)
     }
   }
+
+#undef DISPATCH_WEIGHTED
+#undef LAUNCH_ZIP_KERNEL
 }
 
 template <typename T, typename Context>
@@ -266,6 +237,7 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const int total_zipped_tokens_num,
                         const int num_experts,
                         const bool MP,
+                        const bool using_weighted_combine,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
   const int64_t cols = unzipped_tokens.dims()[1];
@@ -312,7 +284,8 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                                   num_experts,
                                   static_cast<int>(cols),
                                   static_cast<int>(topk),
-                                  MP);
+                                  MP,
+                                  using_weighted_combine);
 }
 }  // namespace phi
 
