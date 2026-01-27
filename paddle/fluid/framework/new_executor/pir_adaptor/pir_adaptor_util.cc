@@ -63,7 +63,7 @@ std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
   return info;
 }
 
-void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
+void ValueExecutionInfo::Add(pir::Value value, const std::string& var_name) {
   auto* var = scope_->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var, common::errors::NotFound("Cannot find %s in scope.", var_name));
@@ -136,7 +136,7 @@ Variable* ValueExecutionInfo::GetVarByValue(pir::Value value) const {
   return scope_->FindVar(GetVarName(value));
 }
 
-::pir::Value ValueExecutionInfo::GetValueByVar(const Variable* var) const {
+pir::Value ValueExecutionInfo::GetValueByVar(const Variable* var) const {
   for (const auto& pair : value_2_var_name_) {
     if (pair.second == GetVarName(var)) {
       return pair.first;
@@ -146,17 +146,17 @@ Variable* ValueExecutionInfo::GetVarByValue(pir::Value value) const {
                                                GetVarName(var)));
 }
 
-const std::unordered_map<::pir::Value, std::string>&
+const std::unordered_map<pir::Value, std::string>&
 ValueExecutionInfo::GetValue2VarName() const {
   return value_2_var_name_;
 }
 
-void ValueExecutionInfo::AddValue2VarName(::pir::Value value,
+void ValueExecutionInfo::AddValue2VarName(pir::Value value,
                                           const std::string& var_name) {
   value_2_var_name_.emplace(value, var_name);
 }
 
-void ValueExecutionInfo::UpdateValue2VarName(::pir::Value value,
+void ValueExecutionInfo::UpdateValue2VarName(pir::Value value,
                                              const std::string& var_name) {
   value_2_var_name_[value] = var_name;
 }
@@ -191,7 +191,7 @@ bool ValueExecutionInfo::HasVar(const std::string& var_name) const {
   return false;
 }
 
-bool ValueExecutionInfo::HasValue(::pir::Value value) const {
+bool ValueExecutionInfo::HasValue(pir::Value value) const {
   auto it = value_2_var_name_.find(value);
   if (it != value_2_var_name_.end()) {
     return true;
@@ -199,7 +199,7 @@ bool ValueExecutionInfo::HasValue(::pir::Value value) const {
   return false;
 }
 
-std::string ValueExecutionInfo::GetVarName(::pir::Value value) const {
+std::string ValueExecutionInfo::GetVarName(pir::Value value) const {
   auto it = value_2_var_name_.find(value);
   if (it != value_2_var_name_.end()) {
     return it->second;
@@ -216,7 +216,7 @@ std::string ValueExecutionInfo::GetVarName(const Variable* var) const {
   return "";
 }
 
-int ValueExecutionInfo::GetVarId(::pir::Value value) const {
+int ValueExecutionInfo::GetVarId(pir::Value value) const {
   auto var_name = GetVarName(value);
   auto it = var_name_2_id_.find(var_name);
   if (it != var_name_2_id_.end()) {
@@ -258,7 +258,7 @@ Variable* CreateVar(pir::Value value,
                     ValueExecutionInfo* value_exe_info) {
   pir::Operation* def_op = value.defining_op();
   bool is_persistable = false;
-  if (def_op->isa<::pir::ParameterOp>()) {
+  if (def_op->isa<pir::ParameterOp>()) {
     is_persistable = true;
   } else if (auto attr =
                  value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
