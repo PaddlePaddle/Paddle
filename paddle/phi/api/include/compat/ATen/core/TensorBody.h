@@ -17,6 +17,9 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <optional>
+#include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
@@ -322,6 +325,96 @@ class Tensor : public TensorBase {
                                        /*ends=*/{index + 1},
                                        /*infer_flags=*/{1},
                                        /*decrease_axis=*/{0});
+  }
+
+  // as_strided: Create a tensor view with custom size, stride, and
+  // storage_offset
+  at::Tensor as_strided(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
+    // Get the underlying DenseTensor
+    auto src_impl = tensor_.impl();
+    auto* src_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+
+    if (!src_tensor) {
+      PD_THROW("as_strided: tensor must be a DenseTensor");
+    }
+
+    // Create a new DenseTensor that shares the buffer
+    auto new_tensor = std::make_shared<phi::DenseTensor>();
+    new_tensor->ShareDataWith(*src_tensor);
+
+    // Convert IntArrayRef to vector for DDim creation
+    std::vector<int64_t> size_vec(size.begin(), size.end());
+    std::vector<int64_t> stride_vec(stride.begin(), stride.end());
+
+    // Set new size and stride
+    new_tensor->Resize(common::make_ddim(size_vec));
+    new_tensor->set_strides(common::make_ddim(stride_vec));
+
+    // Set storage_offset if provided
+    int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
+    if (offset != 0) {
+      // Create a new meta with updated offset
+      auto meta = phi::DenseTensorMeta(new_tensor->meta());
+      meta.offset = static_cast<size_t>(offset);
+      new_tensor->set_meta(meta);
+    }
+
+    PaddleTensor result;
+    result.set_impl(new_tensor);
+    return Tensor(result);
+  }
+
+  // as_strided_: Inplace version
+  const at::Tensor& as_strided_(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
+    // Get the underlying DenseTensor
+    auto src_impl = tensor_.impl();
+    auto* src_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+
+    if (!src_tensor) {
+      PD_THROW("as_strided_: tensor must be a DenseTensor");
+    }
+
+    // Convert IntArrayRef to vector for DDim creation
+    std::vector<int64_t> size_vec(size.begin(), size.end());
+    std::vector<int64_t> stride_vec(stride.begin(), stride.end());
+
+    // Set new size and stride inplace
+    src_tensor->Resize(common::make_ddim(size_vec));
+    src_tensor->set_strides(common::make_ddim(stride_vec));
+
+    // Set storage_offset if provided
+    int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
+    if (offset != 0) {
+      // Create a new meta with updated offset
+      auto meta = phi::DenseTensorMeta(src_tensor->meta());
+      meta.offset = static_cast<size_t>(offset);
+      src_tensor->set_meta(meta);
+    }
+
+    return *this;
+  }
+
+  // as_strided_scatter: Scatter src into a strided view
+  at::Tensor as_strided_scatter(
+      const at::Tensor& src,
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
+    // Create the strided view
+    at::Tensor strided_view = as_strided(size, stride, storage_offset);
+
+    // Copy src into the strided view
+    strided_view.copy_(src);
+
+    return strided_view;
   }
 
 #ifdef PADDLE_WITH_CUDA
