@@ -19,9 +19,9 @@
 
 namespace pir {
 
-inline pir::Value PromoteCast(const std::string& input_name,
-                              const pir::Value& input,
-                              const phi::DataType& dst_dtype) {
+inline Value PromoteCast(const std::string& input_name,
+                         const Value& input,
+                         const phi::DataType& dst_dtype) {
   if (paddle::dialect::GetValueDataType(input) != dst_dtype) {
     return paddle::dialect::cast(input, dst_dtype);
   } else {
@@ -30,14 +30,14 @@ inline pir::Value PromoteCast(const std::string& input_name,
 }
 
 inline void PromoteCastInplace(const std::string& input_name,
-                               const pir::Value& input,
+                               const Value& input,
                                const phi::DataType& dst_dtype) {
   if (paddle::dialect::GetValueDataType(input) != dst_dtype) {
     paddle::dialect::cast_(input, dst_dtype);
   }
 }
 
-std::vector<int64_t> GetValueShape(const pir::Value& value) {
+std::vector<int64_t> GetValueShape(const Value& value) {
   if (value.type().isa<paddle::dialect::DenseTensorType>()) {
     return phi::vectorize(
         value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());

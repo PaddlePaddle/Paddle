@@ -52,7 +52,7 @@ void XPUDealWithIndices(const Context& dev_ctx,
     tmp_indices_v.emplace_back(expanded_index);
   }
 
-  auto bd_dim_vec = common::vectorize<int64_t>(bd_dim);
+  auto bd_dim_vec = vectorize<int64_t>(bd_dim);
   std::vector<int64_t> stacked_dim_vec(bd_dim.size() + 1);
   std::copy(bd_dim_vec.begin(), bd_dim_vec.end(), stacked_dim_vec.begin());
   stacked_dim_vec.back() = int_indices_v.size();

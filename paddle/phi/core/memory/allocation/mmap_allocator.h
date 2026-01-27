@@ -48,14 +48,14 @@ class MemoryMapAllocation : public Allocation {
                                size_t size,
                                std::string ipc_name,
                                int fd)
-      : Allocation(ptr, size, phi::CPUPlace()),
+      : Allocation(ptr, size, CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
         map_ptr_(ptr),
         map_size_(size) {}
   explicit MemoryMapAllocation(
       void *ptr, size_t size, std::string ipc_name, int fd, int flags)
-      : Allocation(ptr, size, phi::CPUPlace()),
+      : Allocation(ptr, size, CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
         flags_(flags),
@@ -117,8 +117,7 @@ class MemoryMapWriterAllocation : public Allocation {
   explicit MemoryMapWriterAllocation(void *ptr,
                                      size_t size,
                                      std::string ipc_name)
-      : Allocation(ptr, size, phi::CPUPlace()),
-        ipc_name_(std::move(ipc_name)) {}
+      : Allocation(ptr, size, CPUPlace()), ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
   inline int shared_fd() const { return fd_; }
@@ -135,8 +134,7 @@ class MemoryMapReaderAllocation : public Allocation {
   explicit MemoryMapReaderAllocation(void *ptr,
                                      size_t size,
                                      std::string ipc_name)
-      : Allocation(ptr, size, phi::CPUPlace()),
-        ipc_name_(std::move(ipc_name)) {}
+      : Allocation(ptr, size, CPUPlace()), ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
   inline int shared_fd() const { return fd_; }

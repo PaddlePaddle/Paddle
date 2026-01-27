@@ -217,13 +217,13 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 }
 
 // Make while_op could run on GPU place
-bool GetCondData(const phi::DenseTensor &cond) {
+bool GetCondData(const DenseTensor &cond) {
   if (cond.place().GetType() == phi::AllocationType::CPU) {
     return cond.data<bool>()[0];
   }
   // when cond.place().GetType() == phi::AllocationType::GPU or
   // cond.place().GetType() == phi::AllocationType::XPU is true
-  std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
@@ -262,14 +262,14 @@ void TransferVariablePlace(const framework::Scope *scope,
              << phi::TransToPhiDataType(framework::ToVarType(var->Type()));
     return;
   }
-  phi::DenseTensor *t = var->GetMutable<phi::DenseTensor>();
+  DenseTensor *t = var->GetMutable<DenseTensor>();
   if (t->place() == dst_place) {
     VLOG(10) << "[TransferVariablePlace]"
              << "no need transfer: " << var_name;
     return;
   }
 
-  phi::DenseTensor *new_t = new phi::DenseTensor;
+  DenseTensor *new_t = new phi::DenseTensor;
   framework::TensorCopy(*t, dst_place, new_t);
   dev_ctx.Wait();
 

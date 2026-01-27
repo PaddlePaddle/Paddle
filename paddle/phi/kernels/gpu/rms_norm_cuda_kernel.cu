@@ -11,122 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <cassert>
-#include <vector>
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/empty_kernel.h"  // NOLINT
 
+#include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"  // NOLINT
-
-namespace phi {
-
-static void GetRowsCols(const std::vector<int64_t> &shape,
-                        int *p_rows,
-                        int *p_cols) {
-  int rows = 1;
-  for (int i = 0; i + 1 < shape.size(); ++i) {
-    rows *= shape[i];
-  }
-  int cols = shape[shape.size() - 1];
-  *p_rows = rows;
-  *p_cols = cols;
-}
-
-template <typename T, typename Context>
-void RMSNormFwdKernel(const Context &dev_ctx,
-                      const DenseTensor &x,
-                      const DenseTensor &scale,
-                      float epsilon,
-                      DenseTensor *y,
-                      DenseTensor *invvar) {
-  const auto &scale_shape = scale.dims();
-  int rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
-  if (scale.dtype() == phi::DataType::BFLOAT16) {
-    dev_ctx.template Alloc<phi::bfloat16>(y);
-  } else if (scale.dtype() == phi::DataType::FLOAT32) {
-    dev_ctx.template Alloc<float>(y);
-  } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of scale must be FLOAT32, BFLOAT16, but got [%s]",
-        scale.dtype()));
-  }
-  invvar->Resize({rows});
-  dev_ctx.template Alloc<float>(invvar);
-  cuda_rms_norm<T, Context>(dev_ctx, x, scale, rows, cols, epsilon, y, invvar);
-}
-
-template <typename T, typename Context>
-void RMSNormBwdKernel(const Context &dev_ctx,
-                      const DenseTensor &x,
-                      const DenseTensor &scale,
-                      const DenseTensor &invvar,
-                      const DenseTensor &y_grad,
-                      float epsilon,
-                      DenseTensor *x_grad,
-                      DenseTensor *scale_grad) {
-  int rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
-  dev_ctx.template Alloc<T>(x_grad);
-  if (scale_grad) {
-    if (scale.dtype() == phi::DataType::BFLOAT16) {
-      dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
-    } else if (scale.dtype() == phi::DataType::FLOAT32) {
-      dev_ctx.template Alloc<float>(scale_grad);
-    } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The dtype of scale must be FLOAT32, BFLOAT16, but got [%s]",
-          scale.dtype()));
-    }
-    cuda_rms_norm_gradient<T, Context>(dev_ctx,
-                                       x,
-                                       scale,
-                                       invvar,
-                                       y_grad,
-                                       rows,
-                                       cols,
-                                       epsilon,
-                                       x_grad,
-                                       scale_grad);
-  } else {
-    // lora specific
-    if (scale.dtype() == phi::DataType::BFLOAT16) {
-      DenseTensor scale_grad_tmp =
-          EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
-      cuda_rms_norm_gradient<T, Context>(dev_ctx,
-                                         x,
-                                         scale,
-                                         invvar,
-                                         y_grad,
-                                         rows,
-                                         cols,
-                                         epsilon,
-                                         x_grad,
-                                         &scale_grad_tmp);
-    } else if (scale.dtype() == phi::DataType::FLOAT32) {
-      DenseTensor scale_grad_tmp = EmptyLike<float, Context>(dev_ctx, scale);
-      cuda_rms_norm_gradient<T, Context>(dev_ctx,
-                                         x,
-                                         scale,
-                                         invvar,
-                                         y_grad,
-                                         rows,
-                                         cols,
-                                         epsilon,
-                                         x_grad,
-                                         &scale_grad_tmp);
-    } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The dtype of scale must be FLOAT32, BFLOAT16, but got [%s]",
-          scale.dtype()));
-    }
-  }
-}
-
-}  // namespace phi
 
 PD_REGISTER_KERNEL(rms_norm,
                    GPU,
@@ -134,6 +22,7 @@ PD_REGISTER_KERNEL(rms_norm,
                    phi::RMSNormFwdKernel,
                    float,
                    double,
+                   phi::float16,
                    phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(rms_norm_grad,
@@ -142,4 +31,5 @@ PD_REGISTER_KERNEL(rms_norm_grad,
                    phi::RMSNormBwdKernel,
                    float,
                    double,
+                   phi::float16,
                    phi::bfloat16) {}

@@ -33,7 +33,7 @@ jobs:
     name: Coverage clone
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      workflow-name: 'coverage'
+      workflow-name: "coverage"
       clone_dir: h-ci
 
   build:
@@ -49,7 +49,8 @@ jobs:
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
-          CCACHE_DIR: "/root/.ccache/h-coverage"
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
@@ -63,7 +64,7 @@ jobs:
           WITH_FA_BUILD_WITH_CACHE: "ON"
           PY_VERSION: "3.10"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
-          CCACHE_MAXSIZE: 200G
+          CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: 0.8
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,7 +75,7 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/home/data/shared:/home/data/shared" \
             -v "/dev/shm:/dev/shm" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
@@ -87,6 +88,7 @@ jobs:
             -e GIT_PR_ID \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
             -e CTEST_PARALLEL_LEVEL \
@@ -155,10 +157,15 @@ jobs:
           mkdir -p ${CFS_DIR}/.ccache/coverage
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           pip install -r python/requirements.txt
-          mkdir build && cd build
+          mkdir -p build && cd build
+          ccache -z
           cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
           make -j20
+          EXIT_CODE=$?
+          ccache -s
+          exit $EXIT_CODE
           '
 
       - name: Clean up env
@@ -339,9 +346,98 @@ jobs:
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
+  fleet-build:
+    name: Build Fleet whl
+    needs: [build]
+    if: needs.build.outputs.can-skip != 'true'
+    runs-on:
+      group: GZ_BD-CPU
+    env:
+      TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+    steps:
+      - name: Check docker image and run container
+        env:
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+          CCACHE_MAXSIZE: 50G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          CCACHE_STATSLOG: /paddle/build/.stats.log
+          CCACHE_SLOPPINESS: clang_index_store,time_macros,include_file_mtime
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker pull $docker_image
+          docker run -d -t --name ${container_name} \
+            -v "/dev/shm:/dev/shm"  \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/shared:/home/data/shared" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e CCACHE_STATSLOG \
+            -e CCACHE_SLOPPINESS \
+            -w /paddle --network host ${docker_image}
+
+      - name: uv build whl
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -ce '
+          rm -rf * .[^.]*
+          set -x
+          source ${{ github.workspace }}/../../../proxy
+          git clone https://github.com/PaddlePaddle/PaddleFleet.git .
+          git config --global --add safe.directory /paddle
+          git config user.name "PaddleCI"
+          git config user.email "paddle_ci@example.com"
+          git config pull.rebase false
+          mkdir -p /home/.cache/pip
+          pip cache dir
+          echo "Install uv"
+          export UV_HTTP_TIMEOUT=300
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          echo "uv build"
+          git submodule update --init --recursive
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
+          uv build --wheel
+          '
+
+      - name: upload whl to BOS
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -ce '
+          export AK=paddle
+          export SK=paddle
+          cd /paddle/dist
+          if [ ! -f "bos/BosClient.py" ]; then
+            wget -q --no-proxy -O bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            mkdir bos
+            tar xf bos_new.tar.gz -C bos
+          fi
+          whl_file=$(ls paddlefleet*.whl)
+          mv ${whl_file} paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
+          target_path="paddle-github-action/PR/paddlefleet/${{ env.PR_ID }}/${{ env.COMMIT_ID }}"
+          python bos/BosClient.py paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl ${target_path}
+          '
+      - name: Terminate and delete the container
+        if: ${{ always() }}
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'bash ci/clean_uv_cache.sh; rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}
+
+
   fleet_single_card_test:
     name: Fleet Unit test (single card)
-    needs: [build]
+    needs: [build, fleet-build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-single-card
@@ -395,16 +491,10 @@ jobs:
           source /root/proxy
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
-          git config user.name "PaddleCI"
-          git config user.email "paddle_ci@example.com"
-          git config pull.rebase false
-          mkdir -p /root/.cache/pip
-          pip cache dir
-          echo "Install uv"
-          pip install uv
-          echo "uv sync"
-          git submodule update --init --recursive
-          uv sync --group ci -v > /dev/null
+          # git checkout ${BRANCH}
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
+          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -415,19 +505,17 @@ jobs:
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
-          source /root/proxy
-          source /paddle/.venv/bin/activate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
-          uv pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall
+          pip uninstall paddlepaddle-gpu -y
+          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           '
 
       - name: Single card test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
-          source .venv/bin/activate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
@@ -451,7 +539,7 @@ jobs:
 
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
-    needs: [build]
+    needs: [build, fleet-build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-multi-card
@@ -498,18 +586,10 @@ jobs:
           source /root/proxy
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
-          git config user.name "PaddleCI"
-          git config user.email "paddle_ci@example.com"
-          git config pull.rebase false
-          mkdir -p /root/.cache/pip
-          pip cache dir
-          echo "Install uv"
-          pip install uv
-          echo "uv sync"
-          git submodule update --init --recursive
-          uv sync --group ci -v > /dev/null
-          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
-          chmod +x /usr/local/bin/yq
+          # git checkout ${BRANCH}
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
+          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -520,18 +600,16 @@ jobs:
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
-          source /root/proxy
-          source /paddle/.venv/bin/activate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
-          uv pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall
+          pip uninstall paddlepaddle-gpu -y
+          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           '
 
       - name: Multi-card test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
-          source /paddle/.venv/bin/activate
           export PYTHONPATH=$(pwd)
           python -c "import paddle; print(paddle.version.commit)"
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.

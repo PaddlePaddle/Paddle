@@ -66,7 +66,7 @@ class PADDLE_API NaiveExecutor {
 
   void PrepareInterpreterCore(
       Scope* scope,
-      const ::pir::Program& pir_program,
+      const pir::Program& pir_program,
       const framework::interpreter::ExecutionConfig& execution_config =
           framework::interpreter::ExecutionConfig{});
 
@@ -86,7 +86,7 @@ class PADDLE_API NaiveExecutor {
                           bool switch_stream = false);
 
   // Get an tensor to operating directly, without the need for feed_ops.
-  phi::DenseTensor* FindTensor(const std::string& name);
+  DenseTensor* FindTensor(const std::string& name);
 
   Scope* GetScope() { return scope_; }
 
@@ -116,9 +116,9 @@ class PADDLE_API NaiveExecutor {
   std::vector<PirHookFunc> pir_input_hookfuncs_;
 
   // Record information that tensor_a should ShareBufferWith tensor_b.
-  std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>
+  std::unordered_map<OperatorBase*, std::unordered_map<DenseTensor*, int>>
       reuse_cache_;
-  std::vector<phi::DenseTensor*> cluster_buffer_;
+  std::vector<DenseTensor*> cluster_buffer_;
 
   std::unique_ptr<framework::InterpreterCore> interpreter_core_;
 };

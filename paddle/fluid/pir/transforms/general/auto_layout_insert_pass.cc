@@ -40,55 +40,54 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #endif
 
-namespace {
+namespace pir {
 
 extern const std::set<std::string> kOpsNchw;
 extern const std::set<std::string> kOpsWithAxis;
 
-class AutoLayoutInsertPass : public pir::Pass {
+class AutoLayoutInsertPass : public Pass {
  public:
-  AutoLayoutInsertPass() : pir::Pass("auto_layout_insert_pass", 2) {}
+  AutoLayoutInsertPass() : Pass("auto_layout_insert_pass", 2) {}
   AutoLayoutInsertPass(const std::set<std::string>& kOpsNhwc)  // NOLINT
-      : pir::Pass("auto_layout_insert_pass", 2), kOpsNhwc_(kOpsNhwc) {}
+      : Pass("auto_layout_insert_pass", 2), kOpsNhwc_(kOpsNhwc) {}
 
-  void Run(pir::Operation* op) override {
+  void Run(Operation* op) override {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
       for (auto& block : region) {
-        pir::Builder builder = pir::Builder(ctx_, &block);
+        Builder builder = Builder(ctx_, &block);
         VLOG(4) << "Transforming block";
         TransferLayout(builder, &block);
       }
     }
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
+  bool CanApplyOn(Operation* op) const override {
     return op->num_regions() > 0;
   }
 
  private:
-  void RewriteLayout(pir::Operation* op) {
+  void RewriteLayout(Operation* op) {
     // If op already register LayoutTransformationInterface, use it to rewrite.
     // if not, maybe it is a new operator. If it has a UnaryElementWiseTrait or
     // BinaryElementWiseTrait, then use input operands to rewrite the Layout.
     if (auto layout_interface =
             op->dyn_cast<paddle::dialect::LayoutTransformationInterface>()) {
       layout_interface.RewriteByLayout(op, common::DataLayout::NHWC);
-    } else if (op->HasTrait<pir::UnaryElementWiseTrait>() ||
-               op->HasTrait<pir::BinaryElementWiseTrait>()) {
-      pir::TransLayoutCallbackFn callback = nullptr;
+    } else if (op->HasTrait<UnaryElementWiseTrait>() ||
+               op->HasTrait<BinaryElementWiseTrait>()) {
+      TransLayoutCallbackFn callback = nullptr;
 #ifdef PADDLE_WITH_CINN
       auto& shape_analysis =
-          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-      callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
+          ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+      callback = [&](Value value, common::DataLayout new_layout) -> void {
         shape_analysis.UpdateShapeOrDataByTransLayout(
-            value, pir::TransLayoutType::NCHW2NHWC);
+            value, TransLayoutType::NCHW2NHWC);
       };
 #endif
       for (size_t i = 0; i < op->results().size(); ++i) {
         op->result(i).set_type(op->operands_source().at(i).type());
-        pir::SetNewLayoutForValue(
-            op->result(i), common::DataLayout::NHWC, callback);
+        SetNewLayoutForValue(op->result(i), common::DataLayout::NHWC, callback);
       }
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -98,9 +97,8 @@ class AutoLayoutInsertPass : public pir::Pass {
     }
   }
 
-  bool JudgeOperand(const pir::Value& operand,
-                    const std::vector<int32_t>& layout) {
-    if (operand.type().isa<pir::VectorType>()) {
+  bool JudgeOperand(const Value& operand, const std::vector<int32_t>& layout) {
+    if (operand.type().isa<VectorType>()) {
       auto defined_op = operand.defining_op();
       for (auto inner_operand : defined_op->operands_source()) {
         if (JudgeOperand(inner_operand, kNchw2Nhwc_)) {
@@ -113,26 +111,25 @@ class AutoLayoutInsertPass : public pir::Pass {
       auto transposeInputOp =
           operand.defining_op<paddle::dialect::TransposeOp>();
       if (!transposeInputOp) return false;
-      pir::Operation* op = transposeInputOp.operation();
+      Operation* op = transposeInputOp.operation();
       if (!op->HasAttribute("source")) return false;
       auto source =
-          transposeInputOp.attribute<pir::StrAttribute>("source").AsString();
+          transposeInputOp.attribute<StrAttribute>("source").AsString();
       if (source != "auto_layout_pass") return false;
-      const auto perm_attr =
-          transposeInputOp.attribute<pir::ArrayAttribute>("perm");
+      const auto perm_attr = transposeInputOp.attribute<ArrayAttribute>("perm");
       std::vector<int32_t> perm;
       for (size_t i = 0; i < perm_attr.size(); ++i) {
         auto attr = perm_attr.at(i);
-        perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+        perm.push_back(attr.dyn_cast<Int32Attribute>().data());
       }
       return perm == layout;
     }
   }
 
-  bool IsInsertTransposeOpBefore(pir::Operation* op) {
+  bool IsInsertTransposeOpBefore(Operation* op) {
     bool is_insert_transpose = false;
 
-    for (pir::Value operand : op->operands_source()) {
+    for (Value operand : op->operands_source()) {
       if (is_insert_transpose) break;
       is_insert_transpose = JudgeOperand(operand, kNhwc2Nchw_);
     }
@@ -140,40 +137,38 @@ class AutoLayoutInsertPass : public pir::Pass {
   }
 
   // Convert NCHW permutation to NHWC permutation
-  std::vector<pir::Attribute> ConvertNchwToNhwc(
-      const std::vector<pir::Attribute>& nchw_perm) {
-    std::vector<pir::Attribute> nhwc_perm(4);
+  std::vector<Attribute> ConvertNchwToNhwc(
+      const std::vector<Attribute>& nchw_perm) {
+    std::vector<Attribute> nhwc_perm(4);
     for (int i = 0; i < 4; ++i) {
-      int32_t nchw_perm_value =
-          nchw_perm[i].dyn_cast<pir::Int32Attribute>().data();
+      int32_t nchw_perm_value = nchw_perm[i].dyn_cast<Int32Attribute>().data();
       int32_t new_value =
           nchw_perm_value == 0
               ? 0
               : (nchw_perm_value == 1 ? 3 : nchw_perm_value - 1);
-      nhwc_perm[i] = pir::Int32Attribute::get(ctx_, new_value);
+      nhwc_perm[i] = Int32Attribute::get(ctx_, new_value);
     }
     return nhwc_perm;
   }
 
   void TransformTransposePerm(paddle::dialect::TransposeOp* op) {
-    std::vector<pir::Attribute> perm_values =
-        op->attribute<pir::ArrayAttribute>("perm").AsVector();
+    std::vector<Attribute> perm_values =
+        op->attribute<ArrayAttribute>("perm").AsVector();
 
     if (perm_values.size() == 4) {
-      std::vector<pir::Attribute> new_perm_values =
-          ConvertNchwToNhwc(perm_values);
+      std::vector<Attribute> new_perm_values = ConvertNchwToNhwc(perm_values);
       op->operation()->set_attribute(
-          "perm", pir::ArrayAttribute::get(ctx_, new_perm_values));
+          "perm", ArrayAttribute::get(ctx_, new_perm_values));
     }
   }
 
   // return true if op is need to be skipped
-  bool SkipUnsupportedOp(const pir::Operation& op) {
+  bool SkipUnsupportedOp(const Operation& op) {
     // Skip special ops.
     if (op.operands().size() == 0) return true;
-    if (op.HasTrait<pir::ImmutableLayoutTrait>()) return true;
-    if (op.HasTrait<pir::UnaryElementWiseTrait>()) return false;
-    if (op.HasTrait<pir::BinaryElementWiseTrait>()) {
+    if (op.HasTrait<ImmutableLayoutTrait>()) return true;
+    if (op.HasTrait<UnaryElementWiseTrait>()) return false;
+    if (op.HasTrait<BinaryElementWiseTrait>()) {
       int32_t dim_size = -3;
       bool is_broadcast = false;
       int32_t inp_size = op.num_operands();
@@ -203,7 +198,7 @@ class AutoLayoutInsertPass : public pir::Pass {
     return !op.HasInterface<paddle::dialect::LayoutTransformationInterface>();
   }
 
-  void TransferLayout(pir::Builder builder, pir::Block* block) {
+  void TransferLayout(Builder builder, Block* block) {
     for (auto&& op_item : *block) {
       if (SkipUnsupportedOp(op_item)) continue;
       auto op = &op_item;
@@ -219,8 +214,7 @@ class AutoLayoutInsertPass : public pir::Pass {
         if (new_layout != common::DataLayout::NHWC) continue;
 
         if (op->HasAttribute("data_format") &&
-            op->attribute<pir::StrAttribute>("data_format").AsString() ==
-                "NCHW") {
+            op->attribute<StrAttribute>("data_format").AsString() == "NCHW") {
           VLOG(4) << "enter NHWC op: " << op_name;
           DoTransposeOpOperand(op, builder);
           RewriteLayout(op);
@@ -249,7 +243,7 @@ class AutoLayoutInsertPass : public pir::Pass {
 
   // Skip the operand which is not dense tensor or not 4-D tensor, they don't
   // need transpose.
-  bool JudgeValue(const pir::Value& value) {
+  bool JudgeValue(const Value& value) {
     if (!value) return false;
     if (!value.type()) return false;
     if (auto type = value.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
@@ -258,9 +252,9 @@ class AutoLayoutInsertPass : public pir::Pass {
     return false;
   }
 
-  void DoTransposeOpOperand(pir::Operation* op,
-                            pir::Builder& builder) {  // NOLINT
-    auto InsertTranspose = [&](pir::OpOperand* operand) {
+  void DoTransposeOpOperand(Operation* op,
+                            Builder& builder) {  // NOLINT
+    auto InsertTranspose = [&](OpOperand* operand) {
       // if operand defining op is reshape op, try to rewrite reshape op
       if (operand->source().defining_op<paddle::dialect::ReshapeOp>()) {
         auto reshape_op = operand->source()
@@ -280,10 +274,8 @@ class AutoLayoutInsertPass : public pir::Pass {
           operand->source(), kNchw2Nhwc_);
       transpose_op->set_attribute(
           "source",
-          pir::StrAttribute::get(transpose_op->ir_context(),
-                                 "auto_layout_pass"));
-      pir::SetNewLayoutForValue(transpose_op->result(0),
-                                common::DataLayout::NHWC);
+          StrAttribute::get(transpose_op->ir_context(), "auto_layout_pass"));
+      SetNewLayoutForValue(transpose_op->result(0), common::DataLayout::NHWC);
       operand->set_source(transpose_op->result(0));
     };
 
@@ -304,8 +296,8 @@ class AutoLayoutInsertPass : public pir::Pass {
       InsertTranspose(&operand);
     }
   }
-  void DoTransposeOpResult(pir::Operation* op,
-                           pir::Builder& builder) {  // NOLINT
+  void DoTransposeOpResult(Operation* op,
+                           Builder& builder) {  // NOLINT
     builder.SetInsertionPointAfter(op);
     for (auto& result : op->results()) {
       if (!JudgeValue(result)) continue;
@@ -313,16 +305,14 @@ class AutoLayoutInsertPass : public pir::Pass {
           builder.Build<paddle::dialect::TransposeOp>(result, kNhwc2Nchw_);
       transpose_op->set_attribute(
           "source",
-          pir::StrAttribute::get(transpose_op->ir_context(),
-                                 "auto_layout_pass"));
-      pir::SetNewLayoutForValue(transpose_op->result(0),
-                                common::DataLayout::NCHW);
+          StrAttribute::get(transpose_op->ir_context(), "auto_layout_pass"));
+      SetNewLayoutForValue(transpose_op->result(0), common::DataLayout::NCHW);
       result.ReplaceAllUsesWith(transpose_op->result(0));
       transpose_op->operand(0).set_source(result);
     }
   }
 
-  pir::IrContext* ctx_ = pir::IrContext::Instance();
+  IrContext* ctx_ = IrContext::Instance();
   std::set<std::string> kOpsNhwc_;
   const std::vector<int32_t> kNchw2Nhwc_ = {0, 2, 3, 1};
   const std::vector<int32_t> kNhwc2Nchw_ = {0, 3, 1, 2};
@@ -413,9 +403,6 @@ const std::set<std::string> kOpsWithAxis = {
     "pd_op.unsqueeze",
     "pd_op.unstack"};
 
-}  // namespace
-namespace pir {
-
 std::unique_ptr<Pass> CreateAutoLayoutInsertPass(
     const std::set<std::string>& kOpsNhwc) {
   return std::make_unique<AutoLayoutInsertPass>(kOpsNhwc);
@@ -423,4 +410,4 @@ std::unique_ptr<Pass> CreateAutoLayoutInsertPass(
 
 }  // namespace pir
 
-REGISTER_IR_PASS(auto_layout_insert_pass, AutoLayoutInsertPass);
+REGISTER_IR_PASS(auto_layout_insert_pass, pir::AutoLayoutInsertPass);

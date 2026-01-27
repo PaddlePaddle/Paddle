@@ -291,7 +291,7 @@ void PowGradKernel(const Context& dev_ctx,
                    const Scalar& factor,
                    DenseTensor* dx) {
   if (factor.to<float>() == 0) {
-    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
+    std::vector<int64_t> vec_dims = vectorize(dx->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), dx);
     return;

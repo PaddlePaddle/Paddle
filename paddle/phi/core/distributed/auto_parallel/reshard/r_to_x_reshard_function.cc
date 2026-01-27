@@ -46,7 +46,7 @@ bool RToXExpandReshardFunction::IsSuitable(
   return true;
 }
 
-void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void RToXExpandReshardFunction::Eval(DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {

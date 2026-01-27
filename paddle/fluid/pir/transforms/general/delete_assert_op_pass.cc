@@ -19,19 +19,18 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class DeleteAssertOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::AssertOp> {
+    : public OpRewritePattern<paddle::dialect::AssertOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::AssertOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::AssertOp op,
-      pir::PatternRewriter& rewriter) const override {  // NOLINT
+  using OpRewritePattern<paddle::dialect::AssertOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::AssertOp op,
+                       PatternRewriter& rewriter) const override {  // NOLINT
     auto data_defining_op = op.data().defining_op();
     rewriter.EraseOp(op);
 
-    if (data_defining_op && data_defining_op->isa<pir::CombineOp>() &&
+    if (data_defining_op && data_defining_op->isa<CombineOp>() &&
         op.data().use_empty()) {
       rewriter.EraseOp(data_defining_op);
     }
@@ -39,28 +38,24 @@ class DeleteAssertOpPattern
   }
 };
 
-class DeleteAssertOpPass : public pir::PatternRewritePass {
+class DeleteAssertOpPass : public PatternRewritePass {
  public:
-  DeleteAssertOpPass() : pir::PatternRewritePass("delete_assert_op_pass", 1) {}
+  DeleteAssertOpPass() : PatternRewritePass("delete_assert_op_pass", 1) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext* context) override {
+    RewritePatternSet ps(context);
     ps.Add<DeleteAssertOpPattern>(context);
     return ps;
   }
 
  private:
-  pir::FrozenRewritePatternSet patterns_;
+  FrozenRewritePatternSet patterns_;
 };
 
-}  // namespace
-
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateDeleteAssertOpPass() {
+std::unique_ptr<Pass> CreateDeleteAssertOpPass() {
   return std::make_unique<DeleteAssertOpPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(delete_assert_op_pass, DeleteAssertOpPass);
+REGISTER_IR_PASS(delete_assert_op_pass, pir::DeleteAssertOpPass);

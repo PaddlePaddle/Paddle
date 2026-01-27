@@ -183,6 +183,14 @@ PADDLE_API void CudnnLSTMGradInferMeta(
     MetaTensor* init_c_grad,
     std::vector<MetaTensor*> weight_list_grad);
 
+PADDLE_API void LinearV2GradInferMeta(const MetaTensor& input,
+                                      const MetaTensor& weight,
+                                      const MetaTensor& bias,
+                                      const MetaTensor& out_grad,
+                                      MetaTensor* input_grad,
+                                      MetaTensor* weight_grad,
+                                      MetaTensor* bias_grad);
+
 PADDLE_API void LSTMGradInferMeta(const MetaTensor& input,
                                   const MetaTensor& h0,
                                   const MetaTensor& c0,
@@ -392,7 +400,16 @@ PADDLE_API void KernelWithXShapeInferMeta(const MetaTensor& x,
 PADDLE_API void GradSameWithXInferMeta(const MetaTensor& xshape,
                                        const MetaTensor& out,
                                        MetaTensor* dx);
-
+PADDLE_API void LinearV2DoubleGradInferMeta(
+    const MetaTensor& input,
+    const MetaTensor& weight,
+    const MetaTensor& grad_out,
+    const paddle::optional<MetaTensor>& grad_input_grad,
+    const paddle::optional<MetaTensor>& grad_weight_grad,
+    const paddle::optional<MetaTensor>& grad_bias_grad,
+    MetaTensor* input_grad,
+    MetaTensor* weight_grad,
+    MetaTensor* grad_out_grad);
 PADDLE_API void LodResetGradInferMeta(const MetaTensor& x,
                                       const MetaTensor& out_grad,
                                       const std::vector<int>& target_lod,
@@ -629,13 +646,15 @@ PADDLE_API void FusedRmsNormQuantGradInferMeta(const MetaTensor& x,
                                                MetaTensor* norm_weight_grad,
                                                MetaTensor* norm_bias_grad);
 
-PADDLE_API void RMSNormGradInferMeta(const MetaTensor& x,
-                                     const MetaTensor& scale,
-                                     const MetaTensor& invvar,
-                                     const MetaTensor& y_grad,
-                                     float epsilon,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* scale_grad);
+PADDLE_API void RMSNormGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& scale,
+    const MetaTensor& invvar,
+    const MetaTensor& y_grad,
+    const std::vector<int64_t>& normalized_shape,
+    double epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* scale_grad);
 
 PADDLE_API void RnnGradInferMeta(
     const MetaTensor& x,

@@ -41,7 +41,7 @@ ParameterConvertInterface::ParameterToVariable(pir::Parameter *parameter) {
         parameter->type().dyn_cast<DenseTensorType>().offset());
     tensor->set_meta(meta);
     phi::DeviceContext *dev_ctx =
-        phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
+        phi::DeviceContextPool::Instance().Get(CPUPlace());
     dev_ctx->Alloc(tensor,
                    TransToPhiDataType(
                        parameter->type().dyn_cast<DenseTensorType>().dtype()));

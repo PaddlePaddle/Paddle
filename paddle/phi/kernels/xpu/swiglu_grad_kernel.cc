@@ -29,23 +29,21 @@ namespace phi {
 template <typename T, typename Context>
 void SwiGluGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& y,
+                      const optional<DenseTensor>& y,
                       const DenseTensor& dz,
                       DenseTensor* dx,
                       DenseTensor* dy) {
   if (dx && dx->numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
     if (dy) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
     }
     return;
   }
   if (dy && dy->numel() == 0) {
     dev_ctx.template Alloc<T>(dy);
     if (dx) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     return;
   }
@@ -55,7 +53,7 @@ void SwiGluGradKernel(const Context& dev_ctx,
   auto* dx_data = dev_ctx.template Alloc<T>(dx);
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
-  auto dims_vec = common::vectorize<int64_t>(dims);
+  auto dims_vec = vectorize<int64_t>(dims);
   const XPUType* y_ptr = nullptr;
   XPUType* dy_ptr = nullptr;
 

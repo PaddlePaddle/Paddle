@@ -24,8 +24,8 @@ template <typename T, typename Context>
 void CRFDecodingOpKernel(const Context& dev_ctx,
                          const DenseTensor& emission,
                          const DenseTensor& transition,
-                         const paddle::optional<DenseTensor>& label,
-                         const paddle::optional<DenseTensor>& length,
+                         const optional<DenseTensor>& label,
+                         const optional<DenseTensor>& length,
                          DenseTensor* viterbi_path);
 
 }  // namespace phi
