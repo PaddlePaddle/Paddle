@@ -92,8 +92,8 @@ void StridedCopyKernel(const Context& dev_ctx,
             phi::StridedCopyKernel<data_t, phi::GPUContext>(
                 reinterpret_cast<const phi::GPUContext&>(*gpu_dev_ctx),
                 dst_gpu,
-                common::vectorize<int64_t>(out->dims()),
-                common::vectorize<int64_t>(out->strides()),
+                vectorize<int64_t>(out->dims()),
+                vectorize<int64_t>(out->strides()),
                 out->offset(),
                 out);
           }));

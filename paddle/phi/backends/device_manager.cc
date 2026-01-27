@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/custom/cuda_graph.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 
@@ -544,7 +545,7 @@ bool DeviceManager::IsDnnAvailable(const Place& place) {
 }
 
 void* DeviceManager::InitEigenDevice(const Place& place,
-                                     phi::stream::stream_t stream,
+                                     stream::stream_t stream,
                                      phi::Allocator* allocator) {
   auto device_type = place.GetDeviceType();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
@@ -631,7 +632,7 @@ void DeviceManager::CCLGetUniqueId(const std::string& device_type,
 void DeviceManager::CCLBroadcast(const std::string& device_type,
                                  void* data,
                                  size_t num,
-                                 phi::DataType data_type,
+                                 DataType data_type,
                                  size_t root_id,
                                  const ccl::CCLComm& ccl_comm,
                                  const stream::stream_t& stream) {
@@ -643,7 +644,7 @@ void DeviceManager::CCLAllReduce(const std::string& device_type,
                                  void* in_data,
                                  void* out_data,
                                  size_t num,
-                                 phi::DataType data_type,
+                                 DataType data_type,
                                  ccl::CCLReduceOp reduce_op,
                                  const ccl::CCLComm& ccl_comm,
                                  const stream::stream_t& stream) {
@@ -656,7 +657,7 @@ void DeviceManager::CCLReduce(const std::string& device_type,
                               void* in_data,
                               void* out_data,
                               size_t num,
-                              phi::DataType data_type,
+                              DataType data_type,
                               ccl::CCLReduceOp reduce_op,
                               size_t root_id,
                               const ccl::CCLComm& ccl_comm,
@@ -670,7 +671,7 @@ void DeviceManager::CCLAllGather(const std::string& device_type,
                                  void* in_data,
                                  void* out_data,
                                  size_t num,
-                                 phi::DataType data_type,
+                                 DataType data_type,
                                  const ccl::CCLComm& ccl_comm,
                                  const stream::stream_t& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
@@ -681,7 +682,7 @@ void DeviceManager::CCLReduceScatter(const std::string& device_type,
                                      void* in_data,
                                      void* out_data,
                                      size_t num,
-                                     phi::DataType data_type,
+                                     DataType data_type,
                                      ccl::CCLReduceOp op,
                                      const ccl::CCLComm& ccl_comm,
                                      const stream::stream_t& stream) {
@@ -703,7 +704,7 @@ void DeviceManager::CCLGroupEnd(const std::string& device_type) {
 void DeviceManager::CCLSend(const std::string& device_type,
                             void* sendbuf,
                             size_t num,
-                            phi::DataType data_type,
+                            DataType data_type,
                             size_t dst_rank,
                             const ccl::CCLComm& ccl_comm,
                             const stream::stream_t& stream) {
@@ -714,7 +715,7 @@ void DeviceManager::CCLSend(const std::string& device_type,
 void DeviceManager::CCLRecv(const std::string& device_type,
                             void* recvbuf,
                             size_t num,
-                            phi::DataType data_type,
+                            DataType data_type,
                             size_t src_rank,
                             const ccl::CCLComm& ccl_comm,
                             const stream::stream_t& stream) {
@@ -725,10 +726,10 @@ void DeviceManager::CCLRecv(const std::string& device_type,
 void DeviceManager::CCLAllToAll(const std::string& device_type,
                                 const void** send_buf,
                                 const size_t* send_count,
-                                const phi::DataType* send_dtype,
+                                const DataType* send_dtype,
                                 void** recv_buf,
                                 const size_t* recv_count,
-                                const phi::DataType* recv_dtype,
+                                const DataType* recv_dtype,
                                 size_t rank,
                                 size_t nranks,
                                 const ccl::CCLComm& comm,
@@ -903,7 +904,7 @@ void DeviceManager::ProfilerCollectTraceData(
 
 void DeviceManager::InitBlasHandle(const Place& place,
                                    void** blas_handle,
-                                   phi::stream::stream_t stream) {
+                                   stream::stream_t stream) {
   auto device_type = place.GetDeviceType();
   auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
@@ -951,6 +952,7 @@ void DeviceManager::Release() {
   stream::Stream::ReleaseAll();
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::distributed::XCCLCommContext::ReleaseAll();
+  phi::backends::gpu::CUDAGraph::ReleaseAll();
 #endif
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();

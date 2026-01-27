@@ -360,15 +360,15 @@ template <typename T>
 void PSGPUTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
                                     phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_root;
-  TensorCopySync(*root_tensor, phi::CPUPlace(), &tmp_root);
+  TensorCopySync(*root_tensor, CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   phi::DenseTensor tmp_tensor;
-  TensorCopySync(*tensor, phi::CPUPlace(), &tmp_tensor);
+  TensorCopySync(*tensor, CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopySync(tmp_root, phi::CPUPlace(), root_tensor);
+  TensorCopySync(tmp_root, CPUPlace(), root_tensor);
 }
 
 void PSGPUTrainer::MergeDenseParam() {

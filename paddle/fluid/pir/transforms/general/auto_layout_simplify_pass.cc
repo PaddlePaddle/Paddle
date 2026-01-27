@@ -35,12 +35,12 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
-namespace {
+namespace pir {
 
 class RedundantTransposePattern
-    : public pir::OpRewritePattern<paddle::dialect::TransposeOp> {
+    : public OpRewritePattern<paddle::dialect::TransposeOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::TransposeOp>::OpRewritePattern;
+  using OpRewritePattern<paddle::dialect::TransposeOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::TransposeOp op) const override {
     auto before_transpose = op.x().defining_op();
@@ -49,22 +49,22 @@ class RedundantTransposePattern
     }
     if (!(before_transpose->HasAttribute("source"))) return false;
     auto source =
-        before_transpose->attribute<pir::StrAttribute>("source").AsString();
+        before_transpose->attribute<StrAttribute>("source").AsString();
     if (source != "auto_layout_pass") return false;
     const auto before_perm_attr =
-        before_transpose->attribute<pir::ArrayAttribute>("perm");
+        before_transpose->attribute<ArrayAttribute>("perm");
 
     std::vector<int32_t> before_perm;
     for (size_t i = 0; i < before_perm_attr.size(); ++i) {
       auto attr = before_perm_attr.at(i);
-      before_perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      before_perm.push_back(attr.dyn_cast<Int32Attribute>().data());
     }
 
-    const auto after_perm_attr = op.attribute<pir::ArrayAttribute>("perm");
+    const auto after_perm_attr = op.attribute<ArrayAttribute>("perm");
     std::vector<int32_t> after_perm;
     for (size_t i = 0; i < after_perm_attr.size(); ++i) {
       auto attr = after_perm_attr.at(i);
-      after_perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
+      after_perm.push_back(attr.dyn_cast<Int32Attribute>().data());
     }
 
     if (before_perm == NCHW2NHWC_ && after_perm == NHWC2NCHW_) return true;
@@ -72,7 +72,7 @@ class RedundantTransposePattern
     return false;
   }
   void Rewrite(paddle::dialect::TransposeOp op,
-               pir::PatternRewriter& rewriter) const override {
+               PatternRewriter& rewriter) const override {
     auto before_transpose =
         op.x().defining_op()->dyn_cast<paddle::dialect::TransposeOp>();
     rewriter.ReplaceAllUsesWith(op.out(), before_transpose.x());
@@ -86,22 +86,20 @@ class RedundantTransposePattern
   const std::vector<int32_t> NCHW2NHWC_ = {0, 2, 3, 1};
   const std::vector<int32_t> NHWC2NCHW_ = {0, 3, 1, 2};
 };
-class AutoLayoutSimplifyPass : public pir::PatternRewritePass {
+class AutoLayoutSimplifyPass : public PatternRewritePass {
  public:
   AutoLayoutSimplifyPass()
-      : pir::PatternRewritePass("auto_layout_simplify_pass", 2) {}
-  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
+      : PatternRewritePass("auto_layout_simplify_pass", 2) {}
+  RewritePatternSet InitializePatterns(IrContext* context) override {
+    RewritePatternSet ps(context);
     ps.Add<RedundantTransposePattern>(context);
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
+  bool CanApplyOn(Operation* op) const override {
     return op->num_regions() > 0;
   }
 };
-}  // namespace
-namespace pir {
 
 std::unique_ptr<Pass> CreateAutoLayoutSimplifyPass() {
   return std::make_unique<AutoLayoutSimplifyPass>();
@@ -109,4 +107,4 @@ std::unique_ptr<Pass> CreateAutoLayoutSimplifyPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(auto_layout_simplify_pass, AutoLayoutSimplifyPass);
+REGISTER_IR_PASS(auto_layout_simplify_pass, pir::AutoLayoutSimplifyPass);

@@ -84,7 +84,7 @@ struct __string_view {
   char const* data;
   std::size_t size;
 };
-#if __cplusplus >= 201402L
+
 template <class T>
 constexpr __string_view __get_type_name() {
   char const* p = __PRETTY_FUNCTION__;
@@ -106,12 +106,6 @@ constexpr __string_view __get_type_name() {
   }
   return {};
 }
-#else
-template <class T>
-constexpr __string_view __get_type_name() {
-  return {"unsupported", 11};
-}
-#endif
 
 // Print a given array
 #define PRINT_ACCUM8_T0_L0_START(name, accum, start)          \

@@ -49,11 +49,7 @@ void ConvGradKernel(const Context& dev_ctx,
   if (input.numel() == 0 || filter_t.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(filter_grad->dims())),
-          0,
-          filter_grad);
+      Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
     }
     return;
   }
@@ -160,7 +156,7 @@ void ConvGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_input_grad, static_cast<T>(0));
     }
-    funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+    funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
     funcs::Col2VolFunctor<Context, T> col2vol;
 
     for (int64_t i = 0; i < batch_size; i++) {
@@ -214,7 +210,7 @@ void ConvGradKernel(const Context& dev_ctx,
     Tensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
     funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; i++) {
       DenseTensor out_grad_batch =
@@ -264,8 +260,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
                         const DenseTensor& input,
                         const DenseTensor& filter,
                         const DenseTensor& out_grad,
-                        const paddle::optional<DenseTensor>& input_grad_grad,
-                        const paddle::optional<DenseTensor>& filter_grad_grad,
+                        const optional<DenseTensor>& input_grad_grad,
+                        const optional<DenseTensor>& filter_grad_grad,
                         const std::vector<int>& strides_t,
                         const std::vector<int>& paddings_t,
                         const std::string& padding_algorithm,
@@ -391,7 +387,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     if (is_expand) {
       set_zero(dev_ctx, &transformed_dX, static_cast<T>(0));
     }
-    funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+    funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
     funcs::Col2VolFunctor<Context, T> col2vol;
 
     for (int64_t i = 0; i < batch_size; i++) {
@@ -436,7 +432,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dW, static_cast<T>(0));
     DenseTensor dW_arr = *dW;
     dW_arr.Resize(filter_matrix_shape);
-    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
     funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor dy_batch =
@@ -483,7 +479,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     }
 
     set_zero(dev_ctx, &transformed_ddY, static_cast<T>(0));
-    funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+    funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
     funcs::Vol2ColFunctor<Context, T> vol2col;
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor ddy_batch =

@@ -49,7 +49,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          Copy(*dev_ctx, step_id, phi::CPUPlace(), false, &out);
+          Copy(*dev_ctx, step_id, CPUPlace(), false, &out);
           dev_ctx->Wait();
         }
 
@@ -72,7 +72,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          Copy(*dev_ctx, step_score, phi::CPUPlace(), false, &out);
+          Copy(*dev_ctx, step_score, CPUPlace(), false, &out);
           dev_ctx->Wait();
         }
 

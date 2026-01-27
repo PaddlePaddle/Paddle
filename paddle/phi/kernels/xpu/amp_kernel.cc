@@ -54,7 +54,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   const bool* found_inf_data = found_infinite.data<bool>();
   bool cpu_found_inf_data = false;
   if (found_infinite.place().GetType() == AllocationType::XPU) {
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_found_inf_data),
                        found_infinite.place(),
                        static_cast<const void*>(found_inf_data),
@@ -94,7 +94,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   int cpu_good_in_data;
   MPDType cpu_pre_loss_scaling_data;
   if (in_bad_steps.place().GetType() == AllocationType::XPU) {
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_bad_in_data),
                        in_bad_steps.place(),
                        static_cast<const void*>(bad_in_data),
@@ -104,7 +104,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   }
 
   if (in_good_steps.place().GetType() == AllocationType::XPU) {
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_good_in_data),
                        in_good_steps.place(),
                        static_cast<const void*>(good_in_data),
@@ -114,7 +114,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   }
 
   if (prev_loss_scaling.place().GetType() == AllocationType::XPU) {
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_pre_loss_scaling_data),
                        prev_loss_scaling.place(),
                        static_cast<const void*>(pre_loss_scaling_data),
@@ -151,17 +151,17 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   // copy to device
   memory_utils::Copy(dev_ctx.GetPlace(),
                      bad_out_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &cpu_bad_out_data,
                      sizeof(int));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      good_out_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &cpu_good_out_data,
                      sizeof(int));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      updated_loss_scaling_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &cpu_updated_loss_scaling_data,
                      sizeof(MPDType));
 }
@@ -186,7 +186,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   bool has_inf_nans = false;
   MPDType cpu_scale_data;
   if (scale.place().GetType() == AllocationType::XPU) {
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_scale_data),
                        scale.place(),
                        static_cast<const void*>(scale_data),
@@ -221,7 +221,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
           inf_nan_check_ptr + i);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "check_finite_unscale");
     }
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        cpu_found_tensor.data<bool>(),
                        dev_ctx.GetPlace(),
                        inf_nan_check.data<bool>(),
@@ -249,7 +249,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
             inf_nan_check.data<bool>(),
             x->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "check_nan_or_inf");
-        memory_utils::Copy(phi::CPUPlace(),
+        memory_utils::Copy(CPUPlace(),
                            &has_inf_nans,
                            dev_ctx.GetPlace(),
                            inf_nan_check.data<bool>(),
@@ -303,7 +303,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   }
   memory_utils::Copy(dev_ctx.GetPlace(),
                      found_inf_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &cpu_found_inf_data,
                      sizeof(bool));
 }

@@ -816,7 +816,7 @@ void RnnKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<const DenseTensor*>& pre_state,
                const std::vector<const DenseTensor*>& weight_list,
-               const paddle::optional<DenseTensor>& sequence_length,
+               const optional<DenseTensor>& sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,
@@ -834,7 +834,7 @@ void RnnKernel(const Context& dev_ctx,
       if (dropout_state->numel() != out->numel()) dropout_state->clear();
     }
     const auto& out_dim = out->dims();
-    Full<uint8_t>(dev_ctx, {out_dim.Get(), out_dim.size()}, 1, dropout_state);
+    Full<uint8_t>(dev_ctx, out_dim, 1, dropout_state);
   }
 
   // init the output and allocate the memory

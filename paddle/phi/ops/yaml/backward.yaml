@@ -2080,6 +2080,27 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- backward_op : linear_v2_double_grad
+  forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
+  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad)
+  output: Tensor(input_grad), Tensor(weight_grad), Tensor(grad_out_grad)
+  optional: grad_input_grad, grad_weight_grad, grad_bias_grad
+  infer_meta :
+      func : GeneralTernaryGradInferMeta
+      param : [input, weight, grad_out]
+  no_need_buffer: input
+  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, grad_out_grad)
+
+- backward_op : linear_v2_grad
+  forward : linear_v2 (Tensor input, Tensor weight, Tensor bias) -> Tensor(out)
+  args: (Tensor input, Tensor weight, Tensor bias, Tensor out_grad)
+  output: Tensor(input_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta :
+    func : LinearV2GradInferMeta
+  kernel :
+    func : linear_v2_grad
+  backward: linear_v2_double_grad
+
 - backward_op : log10_grad
   forward : log10 (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -4239,14 +4260,15 @@
     data_type: w
 
 - backward_op: rms_norm_grad
-  forward: rms_norm (Tensor x, Tensor scale, float epsilon) -> Tensor(y), Tensor(invvar)
-  args: (Tensor x, Tensor scale,Tensor invvar, Tensor y_grad, float epsilon)
+  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1e-5) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1e-5)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: RMSNormGradInferMeta
   kernel:
     func: rms_norm_grad
     data_type: x
+  optional : scale
 
 - backward_op: shuffle_batch_grad
   forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)

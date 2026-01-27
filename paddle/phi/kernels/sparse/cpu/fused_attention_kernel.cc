@@ -20,16 +20,15 @@ limitations under the License. */
 namespace phi::sparse {
 
 template <typename T, typename Context>
-void FusedAttentionCsrKernel(
-    const Context& dev_ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const SparseCsrTensor& sparse_mask,
-    const paddle::optional<DenseTensor>& key_padding_mask,
-    const paddle::optional<DenseTensor>& attn_mask,
-    DenseTensor* out,
-    SparseCsrTensor* softmax) {
+void FusedAttentionCsrKernel(const Context& dev_ctx,
+                             const DenseTensor& query,
+                             const DenseTensor& key,
+                             const DenseTensor& value,
+                             const SparseCsrTensor& sparse_mask,
+                             const optional<DenseTensor>& key_padding_mask,
+                             const optional<DenseTensor>& attn_mask,
+                             DenseTensor* out,
+                             SparseCsrTensor* softmax) {
   PD_THROW(
       "Not support CPU kernel of 'sparse.nn.functional.fused_attention' now");
 }

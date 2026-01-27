@@ -69,9 +69,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
   size_t num_ins = in_tensors.size();
   if (dout[0] && dout[0]->numel() == 0) {
     for (auto dx : out_tensors) {
-      if (dx)
-        Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      if (dx) Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     return;
   }

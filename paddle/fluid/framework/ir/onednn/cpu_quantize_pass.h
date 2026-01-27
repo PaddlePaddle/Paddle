@@ -37,7 +37,7 @@ class Graph;
 class Node;
 
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+    std::unordered_map<std::string, std::pair<bool, DenseTensor>>;
 
 /*
  * Quantize all supported operators.
@@ -103,11 +103,11 @@ class CPUQuantizePass : public FusePassBase {
 
   bool AreScalesPresentForVarNames(std::vector<std::string> names) const;
   bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;
-  std::pair<bool, phi::DenseTensor> GetScaleDataByName(
+  std::pair<bool, DenseTensor> GetScaleDataByName(
       const std::string& name) const;
-  std::pair<bool, phi::DenseTensor> GetScaleDataForNode(const Node* node) const;
-  phi::DenseTensor GetScaleTensorByName(const std::string& name) const;
-  phi::DenseTensor GetScaleTensorForNode(const Node* node) const;
+  std::pair<bool, DenseTensor> GetScaleDataForNode(const Node* node) const;
+  DenseTensor GetScaleTensorByName(const std::string& name) const;
+  DenseTensor GetScaleTensorForNode(const Node* node) const;
   double GetScaleValueByName(const std::string& name,
                              bool* is_unsigned = nullptr) const;
   double GetScaleValueForNode(const Node* node,

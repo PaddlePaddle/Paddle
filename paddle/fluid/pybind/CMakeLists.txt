@@ -140,10 +140,13 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     sot/eval_frame_tools.cc
-    sot/cpython_internals.c
     sot/frame_proxy.c
     sot/eval_frame.c
     sot/guards.cc
+    sot/cpython_internals/internals_3_11.c
+    sot/cpython_internals/internals_3_12.c
+    sot/cpython_internals/internals_3_13.c
+    sot/cpython_internals/internals_3_14.c
     op_callstack_utils.cc
     python_callable_registry.cc
     arg_pre_process.cc

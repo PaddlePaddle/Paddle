@@ -73,11 +73,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
   if (new_data_tensor->dtype() == phi::DataType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
     if (new_data_tensor->place().GetType() == AllocationType::GPU) {
-      phi::Copy(*dev_ctx,
-                *new_data_tensor,
-                phi::CPUPlace(),
-                true,
-                &cpu_starts_tensor);
+      phi::Copy(
+          *dev_ctx, *new_data_tensor, CPUPlace(), true, &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
     }
     std::vector<int64_t> vec_new_data(new_data,
@@ -87,11 +84,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
     if (new_data_tensor->place().GetType() == AllocationType::GPU) {
-      phi::Copy(*dev_ctx,
-                *new_data_tensor,
-                phi::CPUPlace(),
-                true,
-                &cpu_starts_tensor);
+      phi::Copy(
+          *dev_ctx, *new_data_tensor, CPUPlace(), true, &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
     for (int64_t i = 0; i < new_data_tensor->numel(); ++i) {
@@ -124,7 +118,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
 
     if (tensor->dtype() == phi::DataType::INT32) {
       if (tensor->place().GetType() == AllocationType::GPU) {
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
@@ -132,7 +126,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     } else if (tensor->dtype() == phi::DataType::INT64) {
       if (tensor->place().GetType() == AllocationType::GPU) {
         DenseTensor temp;
-        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+        phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
         vec_new_shape.push_back(*tensor->data<int64_t>());
