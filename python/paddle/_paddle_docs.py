@@ -4706,7 +4706,7 @@ def addcmul(
     input: Tensor,
     tensor1: Tensor,
     tensor2: Tensor,
-    value: float = 1.0,
+    value: float = 1,
     name: str | None = None,
     *,
     out: Tensor | None = None,
@@ -4716,7 +4716,7 @@ def addcmul(
     multiplies the result by the scalar ``value``, and adds it to ``input``.
 
     .. math::
-        Out = input + value * (tensor1 * tensor2)
+        out = input + value \times tensor1 \times tensor2
 
     Args:
         input (Tensor): The input tensor to be added to the final result.

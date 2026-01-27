@@ -1472,7 +1472,8 @@ paddle::optional<Tensor> GetOptionalTensorFromArgs(
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be Tensor, but got None",
           op_type,
           arg_name,
           arg_idx));
@@ -1489,7 +1490,8 @@ paddle::optional<Tensor> GetOptionalTensorFromArgs(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be Tensor, but got %s",
         op_type,
         arg_name,
         arg_idx,
@@ -1514,7 +1516,8 @@ paddle::optional<Tensor> GetOptionalTensorFromArgsOrKWArgs(
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be Tensor, but got None",
           op_type,
           arg_name,
           arg_idx));
@@ -1531,7 +1534,8 @@ paddle::optional<Tensor> GetOptionalTensorFromArgsOrKWArgs(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be Tensor, but got %s",
         op_type,
         arg_name,
         arg_idx,
@@ -1554,7 +1558,8 @@ static Tensor& GetTensorFromPyObject(const std::string& op_type,
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be Tensor, but got None",
           op_type,
           arg_name,
           arg_idx));
@@ -1568,7 +1573,8 @@ static Tensor& GetTensorFromPyObject(const std::string& op_type,
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be Tensor, but got %s",
         op_type,
         arg_name,
         arg_idx,
@@ -1586,7 +1592,8 @@ std::vector<Tensor> GetTensorListFromPyObject_(
   if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensor, but got "
           "None",
           op_type,
           arg_name,
@@ -1604,7 +1611,8 @@ std::vector<Tensor> GetTensorListFromPyObject_(
     result.reserve(static_cast<size_t>(len));
     if (len == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensors, but got "
           "empty list",
           op_type,
           arg_name,
@@ -1616,7 +1624,8 @@ std::vector<Tensor> GetTensorListFromPyObject_(
           PyObject_TypeCheck(tensor_obj, p_tensor_type),
           true,
           common::errors::InvalidArgument(
-              "%s(): argument '%s' (position %d) must be list of Tensors",
+              "%s() received an invalid combination of arguments - argument "
+              "'%s' (position %d) must be list of Tensors",
               op_type,
               arg_name,
               arg_idx));
@@ -1645,7 +1654,8 @@ std::vector<Tensor> GetTensorListFromPyObject_(
     result.reserve(static_cast<size_t>(len));
     if (len == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensors, but got "
           "empty list",
           op_type,
           arg_name,
@@ -1657,7 +1667,8 @@ std::vector<Tensor> GetTensorListFromPyObject_(
           PyObject_TypeCheck(tensor_obj, p_tensor_type),
           true,
           common::errors::InvalidArgument(
-              "%s(): argument '%s' (position %d) must be list of Tensors",
+              "%s() received an invalid combination of arguments - argument "
+              "'%s' (position %d) must be list of Tensors",
               op_type,
               arg_name,
               arg_idx));
@@ -1685,7 +1696,8 @@ std::vector<Tensor> GetTensorListFromPyObject_(
     return {};
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be list of Tensors, but got "
         "%s",
         op_type,
         arg_name,
@@ -1762,7 +1774,8 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
   if (list == nullptr || list == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensor, but got "
           "None",
           op_type,
           arg_name,
@@ -1780,7 +1793,8 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
     result.reserve(static_cast<size_t>(len));
     if (len == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensors, but got "
           "empty list",
           op_type,
           arg_name,
@@ -1792,7 +1806,8 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
           PyObject_TypeCheck(tensor_obj, p_tensor_type),
           true,
           common::errors::InvalidArgument(
-              "%s(): argument '%s' (position %d) must be list of Tensors",
+              "%s() received an invalid combination of arguments - argument "
+              "'%s' (position %d) must be list of Tensors",
               op_type,
               arg_name,
               arg_idx));
@@ -1821,7 +1836,8 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
     result.reserve(static_cast<size_t>(len));
     if (len == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensors, but got "
           "empty list",
           op_type,
           arg_name,
@@ -1833,7 +1849,8 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
           PyObject_TypeCheck(tensor_obj, p_tensor_type),
           true,
           common::errors::InvalidArgument(
-              "%s(): argument '%s' (position %d) must be list of Tensors",
+              "%s() received an invalid combination of arguments - argument "
+              "'%s' (position %d) must be list of Tensors",
               op_type,
               arg_name,
               arg_idx));
@@ -1859,7 +1876,8 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be list of Tensors, but got "
         "%s",
         op_type,
         arg_name,
@@ -1880,7 +1898,8 @@ Tensor* GetTensorPtrFromArgs(const std::string& op_type,
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be Tensor, but got None",
           op_type,
           arg_name,
           arg_idx));
@@ -1893,7 +1912,8 @@ Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     return &(reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be Tensor, but got %s",
         op_type,
         arg_name,
         arg_idx,
@@ -1913,7 +1933,8 @@ std::vector<Tensor*> GetTensorPtrListFromArgs(
   if (list == nullptr) {
     if (!dispensable) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensor, but got "
           "None",
           op_type,
           arg_name,
@@ -1930,7 +1951,8 @@ std::vector<Tensor*> GetTensorPtrListFromArgs(
     Py_ssize_t len = PyList_Size(list);
     if (len == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensors, but got "
           "empty list",
           op_type,
           arg_name,
@@ -1962,7 +1984,8 @@ std::vector<Tensor*> GetTensorPtrListFromArgs(
     Py_ssize_t len = PyTuple_Size(list);
     if (len == 0) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "%s() received an invalid combination of arguments - argument '%s' "
+          "(position %d) must be list of Tensors, but got "
           "empty list",
           op_type,
           arg_name,
@@ -1994,7 +2017,8 @@ std::vector<Tensor*> GetTensorPtrListFromArgs(
     return {};
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be list of Tensors, but got "
         "%s",
         op_type,
         arg_name,
@@ -2781,7 +2805,8 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     return {};
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be list of Tensors, but got "
         "%s",
         op_type,
         arg_name,
@@ -2852,7 +2877,8 @@ std::pair<PyObject*, ssize_t> GetPyArgumentInfo(const std::string& op_type,
   ssize_t list_len = 0;
   if (list == nullptr && !dispensable) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be list of Tensor, but got "
         "None",
         op_type,
         arg_name,
@@ -2866,7 +2892,8 @@ std::pair<PyObject*, ssize_t> GetPyArgumentInfo(const std::string& op_type,
     list_len = PyTuple_Size(list);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s() received an invalid combination of arguments - argument '%s' "
+        "(position %d) must be list of Tensors, but got "
         "%s",
         op_type,
         arg_name,
@@ -2896,7 +2923,8 @@ std::vector<Tensor>& GetTensorListFromArgsWithBuffer(
           PyObject_TypeCheck(tensor_obj, p_tensor_type),
           true,
           common::errors::InvalidArgument(
-              "%s(): argument '%s' (position %d) must be list of Tensors",
+              "%s() received an invalid combination of arguments - argument "
+              "'%s' (position %d) must be list of Tensors",
               op_type,
               arg_name,
               arg_idx));
@@ -2927,7 +2955,8 @@ std::vector<Tensor>& GetTensorListFromArgsWithBuffer(
           PyObject_TypeCheck(tensor_obj, p_tensor_type),
           true,
           common::errors::InvalidArgument(
-              "%s(): argument '%s' (position %d) must be list of Tensors",
+              "%s() received an invalid combination of arguments - argument "
+              "'%s' (position %d) must be list of Tensors",
               op_type,
               arg_name,
               arg_idx));
