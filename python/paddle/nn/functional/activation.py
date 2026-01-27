@@ -486,9 +486,11 @@ def leaky_relu(
 
     """
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.leaky_relu_(x, negative_slope)
-        return _C_ops.leaky_relu(x, negative_slope)
+        return (
+            _C_ops.leaky_relu_(x, negative_slope)
+            if inplace
+            else _C_ops.leaky_relu(x, negative_slope)
+        )
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'leaky_relu'
@@ -792,9 +794,7 @@ def relu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     """
 
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.relu_(x)
-        return _C_ops.relu(x)
+        return _C_ops.relu_(x) if inplace else _C_ops.relu(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'

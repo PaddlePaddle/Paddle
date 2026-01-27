@@ -771,9 +771,7 @@ class ReLU6(Layer):
         return F.relu6(x, self._name)
 
     def extra_repr(self) -> str:
-        if self._name:
-            return f'name={self._name}'
-        return ''
+        return f'name={self._name}' if self._name else ''
 
 
 class SELU(Layer):
