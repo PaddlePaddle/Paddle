@@ -2082,17 +2082,17 @@
 
 - backward_op : linear_v2_double_grad
   forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out, bool is_receiving_transposed_weight) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
-  args : (Tensor input, Tensor weight, Tensor grad_out, bool is_receiving_transposed_weight, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad)
+  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad, bool is_receiving_transposed_weight)
   output: Tensor(input_grad), Tensor(weight_grad), Tensor(grad_out_grad)
   optional: grad_input_grad, grad_weight_grad, grad_bias_grad
   infer_meta :
       func : GeneralTernaryGradInferMeta
       param : [input, weight, grad_out]
   no_need_buffer: input
-  composite: linear_v2_double_grad(input, weight, grad_out, bool is_receiving_transposed_weight, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, grad_out_grad)
+  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, grad_out_grad, is_receiving_transposed_weight)
 
 - backward_op : linear_v2_grad
-  forward : linear_v2 (Tensor input, Tensor weight, Tensor bias) -> Tensor(out)
+  forward : linear_v2 (Tensor input, Tensor weight, Tensor bias, bool is_receiving_transposed_weight=false) -> Tensor(out)
   args: (Tensor input, Tensor weight, Tensor bias, Tensor out_grad, bool is_receiving_transposed_weight=false)
   output: Tensor(input_grad), Tensor(weight_grad), Tensor(bias_grad)
   infer_meta :

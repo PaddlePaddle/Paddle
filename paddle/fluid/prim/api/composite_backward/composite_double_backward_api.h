@@ -875,10 +875,10 @@ template <typename T>
 void linear_v2_double_grad(const Tensor& input,
                            const Tensor& weight,
                            const Tensor& grad_out,
-                           const bool is_receiving_transposed_weight,
                            const paddle::optional<Tensor>& grad_input_grad,
                            const paddle::optional<Tensor>& grad_weight_grad,
                            const paddle::optional<Tensor>& grad_bias_grad,
+                           const bool is_receiving_transposed_weight,
                            Tensor* input_grad,
                            Tensor* weight_grad,
                            Tensor* grad_out_grad) {
