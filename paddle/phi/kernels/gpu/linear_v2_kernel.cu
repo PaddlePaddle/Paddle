@@ -66,6 +66,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& weight,
                     const DenseTensor& bias,
+                    const bool is_receiving_transposed_weight,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
@@ -78,12 +79,17 @@ void LinearV2Kernel(const Context& dev_ctx,
   if (!FLAGS_use_legacy_linear) {
     VLOG(10) << "Use LinearV2Kernel with cublaslt";
     const auto out_dim_original = out->dims();
-    const auto [M, N, K] = canonicalize_dims(input, weight);
+    const auto [M, N, K] =
+        canonicalize_dims(input, weight, is_receiving_transposed_weight);
     VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
     input_processed.Resize(common::make_ddim({M, K}));
-    weight_processed.Resize(common::make_ddim({K, N}));
+    if (is_receiving_transposed_weight) {
+      weight_processed.Resize(common::make_ddim({N, K}));
+    } else {
+      weight_processed.Resize(common::make_ddim({K, N}));
+    }
     out->Resize(common::make_ddim({M, N}));
     VLOG(10) << "input_processed: " << input_processed.dims()
              << ", weight_processed: " << weight_processed.dims()
@@ -110,10 +116,11 @@ void LinearV2Kernel(const Context& dev_ctx,
           N,
           K,
           false,
-          false,
+          is_receiving_transposed_weight,
           phi::funcs::MatmulFusedType::kMatmulBias);
     } else {
       DenseTensor bias_processed = bias;
+      auto blas = funcs::GetBlas<Context, T>(dev_ctx);
       if (bias.numel() != (M * N)) {
         bias_processed.Resize(common::make_ddim({1, bias.numel()}));
         VLOG(10) << "bias.dim(): " << bias.dims();
@@ -126,15 +133,23 @@ void LinearV2Kernel(const Context& dev_ctx,
       } else {
         bias_processed = bias;
       }
-      phi::AddmmKernel<T>(dev_ctx,
-                          bias_processed,
-                          input_processed,
-                          weight_processed,
-                          1.0f,
-                          1.0f,
-                          out);
+      const T alpha = static_cast<T>(1.0f);
+      const T beta = static_cast<T>(1.0f);
+      blas.GEMM(false,
+                is_receiving_transposed_weight,
+                M,
+                N,
+                K,
+                alpha,
+                input_processed.data<T>(),
+                K,
+                weight_processed.data<T>(),
+                is_receiving_transposed_weight ? K : N,
+                beta,
+                bias_processed.data<T>(),
+                N);
+      *out = bias_processed;  // inplace update
     }
-    VLOG(10) << "linear calculate complete";
     out->Resize(out_dim_original);
   } else  // NOLINT
 #endif
@@ -153,7 +168,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                                weight_dims_vec,
                                out,
                                false,
-                               false);
+                               is_receiving_transposed_weight);
     AddKernel<T, Context>(dev_ctx, *out, bias, out);
   }
 }

@@ -2536,6 +2536,12 @@ def linear(
         or not paddle.is_compiled_with_cuda()
         or not in_dynamic_or_pir_mode()
     ):
+        if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
+            "FLAGS_use_accuracy_compatible_kernel"
+        ]:
+            raise ValueError(
+                "Legacy linear op is not capable for accuracy compatible kernel mode, please use cuda capable device or check your environment configuration 'FLAGS_use_legacy_linear'."
+            )
         if in_dynamic_mode():
             return _C_ops.linear(x, weight, bias)
 
@@ -2580,10 +2586,19 @@ def linear(
                 res = tmp
             return res
     else:
-        if bias is not None:
-            return _C_ops.linear_v2(x, weight, bias)
+        if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
+            "FLAGS_use_accuracy_compatible_kernel"
+        ]:
+            # Note(Pan Zhaowu): In accuracy compatible kernel mode, we use linear_v2 op that receives transposed weight, aligning with torch. Note that this will incurs a real transpose op, which might cause performance degradation.
+            if bias is not None:
+                return _C_ops.linear_v2(x, weight.T.contiguous(), bias, True)
+            else:
+                return _C_ops.matmul(x, weight.T.contiguous(), False, True)
         else:
-            return _C_ops.matmul(x, weight)
+            if bias is not None:
+                return _C_ops.linear_v2(x, weight, bias, False)
+            else:
+                return _C_ops.matmul(x, weight)
 
 
 def label_smooth(
