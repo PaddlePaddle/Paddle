@@ -17,6 +17,8 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Scalar.h>
+#include <optional>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
@@ -313,6 +315,93 @@ class Tensor : public TensorBase {
   inline Tensor clone() const {
     PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
     return Tensor(cloned_tensor);
+  }
+
+  at::Tensor clamp(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const {
+    // Use default values for missing min/max since clip requires both
+    at::Scalar min_scalar = min.has_value() ? min.value() : at::Scalar(-1e38);
+    at::Scalar max_scalar = max.has_value() ? max.value() : at::Scalar(1e38);
+    return Tensor(paddle::experimental::clip(tensor_, min_scalar, max_scalar));
+  }
+
+  at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
+                   const ::std::optional<at::Tensor>& max = {}) const {
+    // clamp(x, min, max) = minimum(maximum(x, min), max)
+    PaddleTensor result = tensor_;
+    if (min.has_value()) {
+      result =
+          paddle::experimental::maximum(result, min.value()._PD_GetInner());
+    }
+    if (max.has_value()) {
+      result =
+          paddle::experimental::minimum(result, max.value()._PD_GetInner());
+    }
+    return Tensor(result);
+  }
+
+  at::Tensor& clamp_(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const {
+    at::Scalar min_scalar = min.has_value() ? min.value() : at::Scalar(-1e38);
+    at::Scalar max_scalar = max.has_value() ? max.value() : at::Scalar(1e38);
+    paddle::experimental::clip_(
+        const_cast<PaddleTensor&>(tensor_), min_scalar, max_scalar);
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+                     const ::std::optional<at::Tensor>& max = {}) const {
+    if (min.has_value()) {
+      PaddleTensor temp =
+          paddle::experimental::maximum(tensor_, min.value()._PD_GetInner());
+      const_cast<PaddleTensor&>(tensor_) = temp;
+    }
+    if (max.has_value()) {
+      PaddleTensor temp =
+          paddle::experimental::minimum(tensor_, max.value()._PD_GetInner());
+      const_cast<PaddleTensor&>(tensor_) = temp;
+    }
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor clamp_max(const at::Scalar& max) const {
+    return clamp(::std::nullopt, max);
+  }
+
+  at::Tensor clamp_max(const at::Tensor& max) const {
+    return Tensor(paddle::experimental::minimum(tensor_, max._PD_GetInner()));
+  }
+
+  at::Tensor& clamp_max_(const at::Scalar& max) const {
+    return clamp_(::std::nullopt, max);
+  }
+
+  at::Tensor& clamp_max_(const at::Tensor& max) const {
+    PaddleTensor temp =
+        paddle::experimental::minimum(tensor_, max._PD_GetInner());
+    const_cast<PaddleTensor&>(tensor_) = temp;
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor clamp_min(const at::Scalar& min) const {
+    return clamp(min, ::std::nullopt);
+  }
+
+  at::Tensor clamp_min(const at::Tensor& min) const {
+    return Tensor(paddle::experimental::maximum(tensor_, min._PD_GetInner()));
+  }
+
+  at::Tensor& clamp_min_(const at::Scalar& min) const {
+    return clamp_(min, ::std::nullopt);
+  }
+
+  at::Tensor& clamp_min_(const at::Tensor& min) const {
+    PaddleTensor temp =
+        paddle::experimental::maximum(tensor_, min._PD_GetInner());
+    const_cast<PaddleTensor&>(tensor_) = temp;
+    return const_cast<at::Tensor&>(*this);
   }
 
   Tensor operator[](int64_t index) const {
