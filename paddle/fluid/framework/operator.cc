@@ -2714,7 +2714,7 @@ Scope* OperatorWithKernel::PrepareData(
           }
         } else if (kernel_type_for_var.backend() ==
                        paddle::experimental::get_accelerat_backend() ||
-                   new_expected_kernel_key->backend() ==
+                   expected_kernel_key.backend() ==
                        paddle::experimental::get_accelerat_backend() ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
                    expected_kernel_key.backend() == phi::Backend::GPUDNN) {

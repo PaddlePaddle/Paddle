@@ -296,13 +296,13 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     if (FLAGS_use_accuracy_compatible_kernel) {
       return true;
     }
-    bool use_cudnn = true;
+    bool use_cudnn = false;
     if (op->attributes()
             .at("align_corners")
             .dyn_cast<pir::BoolAttribute>()
             .data() == true) {
       use_cudnn = true;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       int version = platform::DnnVersion();
       if (version < 6000) {
         use_cudnn = false;
@@ -1762,7 +1762,6 @@ void AddShadowFeedForValue(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   phi::Backend backend = paddle::experimental::get_accelerat_backend();
-  VLOG(0) << "get_accelerat_backend returned backend: " << backend;
 
   if (op_item->result(index).type().isa<DenseTensorType>()) {
     phi::KernelKey shadow_key{
@@ -1770,7 +1769,6 @@ void AddShadowFeedForValue(
         phi::DataLayout::ANY,
         TransToPhiDataType(
             op_item->result(index).type().dyn_cast<DenseTensorType>().dtype())};
-    VLOG(0) << "Constructed KernelKey shadow_key: " << shadow_key;
     std::unordered_map<std::string, pir::Attribute> attr_map{
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
         {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -2298,11 +2296,9 @@ void HandleForSpecialOp(
           auto out_type =
               AllocatedDenseTensorType::get(ctx, out_place, value_type);
           phi::Backend backend = paddle::experimental::get_accelerat_backend();
-          VLOG(0) << "get_accelerat_backend returned backend: " << backend;
           phi::KernelKey kernel_key(backend,
                                     phi::DataLayout::ANY,
                                     TransToPhiDataType(value_type.dtype()));
-          VLOG(0) << "Constructed KernelKey kernel_key: " << kernel_key;
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
@@ -3607,10 +3603,8 @@ void ProcessBlock(
         if (place_attr && place_attr.data() == place) continue;
         auto dtype = dense_tensor_type.dtype();
         phi::Backend backend = paddle::experimental::get_accelerat_backend();
-        VLOG(0) << "get_accelerat_backend returned backend: " << backend;
         phi::KernelKey shadow_key{
             backend, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
-        VLOG(0) << "Constructed KernelKey shadow_key: " << shadow_key;
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
             {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -3639,13 +3633,11 @@ void ProcessBlock(
         }
         // Add ShadowFeedTensors Op
         phi::Backend backend = paddle::experimental::get_accelerat_backend();
-        VLOG(0) << "get_accelerat_backend returned backend: " << backend;
         phi::KernelKey shadow_key{
             backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
                 vec_type[0].dyn_cast<DenseTensorType>().dtype())};
-        VLOG(0) << "Constructed KernelKey shadow_key: " << shadow_key;
 
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name",
