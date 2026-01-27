@@ -235,7 +235,7 @@ class FallbackWrapper:
                     self.partial_program,
                 ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
                 self.partial_program.training = self.is_training
-        outputs = self.partial_program.sot_call(*args, **kwargs)
+        outputs = self.partial_program.py_call(*args, **kwargs)
 
         clear_eager_tensor_name(outputs)
         log_do(

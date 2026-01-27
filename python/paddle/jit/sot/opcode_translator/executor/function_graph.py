@@ -566,24 +566,30 @@ class FunctionGraph:
         compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(graph_fn, compiled_fn_name)
-        self.gen_load_inputs(symbolic_inputs)
+        with self.pycode_gen.gen_nvtx_event("FunctionGraph_load_inputs"):
+            self.gen_load_inputs(symbolic_inputs)
         # Pack all args into a tuple, because we don't support *args now.
         self.pycode_gen.gen_build_tuple(count=len(symbolic_inputs))
-        # call the graph_fn
-        self.pycode_gen.gen_call_function(argc=1)
+        with self.pycode_gen.gen_nvtx_event("FunctionGraph_call_function"):
+            # call the graph_fn
+            self.pycode_gen.gen_call_function(argc=1)
 
-        # Store outputs to f_locals
-        self.pycode_gen.gen_unpack_sequence(count=len(symbolic_outputs))
-        for tensor_var in symbolic_outputs:
-            self.pycode_gen.gen_store_fast(tensor_var.out_var_name)
-        # restore the outputs.
-        for ret_var in ret_vars:
-            ret_var.reconstruct(self.pycode_gen)
+        with self.pycode_gen.gen_nvtx_event("FunctionGraph_restore_outputs"):
+            # Store outputs to f_locals
+            self.pycode_gen.gen_unpack_sequence(count=len(symbolic_outputs))
+            for tensor_var in symbolic_outputs:
+                self.pycode_gen.gen_store_fast(tensor_var.out_var_name)
+            # restore the outputs.
+            for ret_var in ret_vars:
+                ret_var.reconstruct(self.pycode_gen)
 
-        # deal side effect
-        self.restore_inplace_tensor(self._inplace_tensors)
-        self.restore_print_stmts(self._print_variables)
-        self.restore_side_effects(self.side_effects.proxy_variables)
+        with self.pycode_gen.gen_nvtx_event(
+            "FunctionGraph_restore_side_effects"
+        ):
+            # deal side effect
+            self.restore_inplace_tensor(self._inplace_tensors)
+            self.restore_print_stmts(self._print_variables)
+            self.restore_side_effects(self.side_effects.proxy_variables)
         self.pycode_gen.gen_enable_eval_frame()
 
     def call_paddle_api(

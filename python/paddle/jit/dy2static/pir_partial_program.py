@@ -675,6 +675,299 @@ class FullGraphPreProcessPass(ValuePreservePass):
         return program
 
 
+import hashlib
+import importlib.util
+import types
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+
+PADDLE_CACHE_DIR = Path("~/.cache/paddle/sot").expanduser()
+
+
+class FunctionModule:
+    def __init__(
+        self, module: types.ModuleType, entry_point: str, path: Path
+    ) -> None:
+        self.module = module
+        self.path = path
+        self.entry_point = entry_point
+
+    def get_function(self) -> types.FunctionType:
+        func = getattr(self.module, self.entry_point, None)
+        if func is None or not isinstance(func, types.FunctionType):
+            raise ValueError(
+                f"Function '{self.entry_point}' not found in module '{self.path}'"
+            )
+        return func
+
+
+def load_function_module(module_path: Path, entry_point: str) -> FunctionModule:
+    module_name = module_path.stem
+    loader = SourceFileLoader(module_name, str(module_path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None, f"Could not create module spec from {module_path}"
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return FunctionModule(module, entry_point, module_path)
+
+
+def load_function_from_source(
+    source_code: str, entry_point: str
+) -> types.FunctionType:
+    source_hash = hashlib.sha256(source_code.encode("utf-8")).hexdigest()
+    cache_dir = Path(PADDLE_CACHE_DIR)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    module_path = cache_dir / f"function_{source_hash}.py"
+    if not module_path.exists():
+        with module_path.open("w", encoding="utf-8") as f:
+            f.write(source_code)
+    function_module = load_function_module(module_path, entry_point)
+    return function_module.get_function()
+
+
+class ScopeNameEscaper:
+    ESCAPE_MAP = {
+        ".": "__dot__",
+    }
+
+    def __init__(self):
+        self.UNESCAPE_MAP = self.build_unexcape_map()
+
+    def build_unexcape_map(self):
+        return {v: k for k, v in ScopeNameEscaper.ESCAPE_MAP.items()}
+
+    def escape_name(self, name: str) -> str:
+        for k, v in ScopeNameEscaper.ESCAPE_MAP.items():
+            name = name.replace(k, v)
+        return name
+
+    def unescape_name(self, name: str) -> str:
+        for k, v in self.UNESCAPE_MAP.items():
+            name = name.replace(k, v)
+        return name
+
+
+class UniqueNameGenerator:
+    def __init__(self):
+        self.existing_names = dict[str, int]()
+
+    def generate(self, base_name: str) -> str:
+        if base_name not in self.existing_names:
+            self.existing_names[base_name] = 0
+            return base_name
+        else:
+            self.existing_names[base_name] += 1
+            unique_name = f"{base_name}__{self.existing_names[base_name]}"
+            return unique_name
+
+
+class ProgramCompiler:
+    def __init__(
+        self, program: paddle.static.Program, program_attr: dict[str, list[str]]
+    ):
+        self._program = program
+        self._program_attr = program_attr
+        self._compiled_function = None
+        self._generated_code = ""
+        self.symbol_table = ValueDict()  # TODO: support alias
+        self.scope_name_escaper = ScopeNameEscaper()
+        self.required_imports = []
+        self.indent_level = 0
+        self.clean_comments = True
+
+    @contextmanager
+    def indent(self):
+        self.indent_level += 1
+        yield
+        self.indent_level -= 1
+
+    def escape_scope_name(self, name: str) -> str:
+        return self.scope_name_escaper.escape_name(name)
+
+    def unescape_scope_name(self, name: str) -> str:
+        return self.scope_name_escaper.unescape_name(name)
+
+    def request_import(self, name):
+        if name not in self.required_imports:
+            self.required_imports.append(name)
+
+    def append_line(self, code):
+        indent = self.indent_level * " " * 4
+        self._generated_code += f"{indent}{code}\n"
+
+    def add_comment(self, comment):
+        if self.clean_comments:
+            return
+        self.append_line(f"# {comment}")
+
+    def format_dtype(self, dtype):
+        if isinstance(dtype, str):
+            return f"paddle.{str}"
+        if isinstance(dtype, paddle.dtype):
+            if dtype == paddle.uint16:
+                return "paddle.uint16"
+            return str(dtype)
+        raise ValueError(f"Unsupported dtype: {dtype}")
+
+    # def load(self, name):
+    #     self._generated_code += f"{name} = "
+
+    def builtin_parameter(self, op):
+        scope_name = op.attrs()['parameter_name']
+        self.symbol_table[op.results()[0]] = scope_name
+
+    def pd_op_data(self, op):
+        scope_name = op.attrs()['name']
+        self.symbol_table[op.results()[0]] = scope_name
+
+    def pd_op_matmul(self, op):
+        input_name = self.escape_scope_name(
+            self.symbol_table[op.operands()[0].source()]
+        )
+        weight_name = self.escape_scope_name(
+            self.symbol_table[op.operands()[1].source()]
+        )
+        op_name = op.name().removeprefix("pd_op.")
+        output_name = UniqueNameGenerator().generate(op_name)
+        self.append_line(
+            f"{output_name} = paddle._C_ops.matmul({input_name}, {weight_name})"
+        )
+        self.symbol_table[op.results()[0]] = output_name
+
+    def pd_op_add(self, op):
+        input1_name = self.escape_scope_name(
+            self.symbol_table[op.operands()[0].source()]
+        )
+        input2_name = self.escape_scope_name(
+            self.symbol_table[op.operands()[1].source()]
+        )
+        op_name = op.name().removeprefix("pd_op.")
+        output_name = UniqueNameGenerator().generate(op_name)
+        self.append_line(
+            f"{output_name} = paddle._C_ops.add({input1_name}, {input2_name})"
+        )
+        self.symbol_table[op.results()[0]] = output_name
+
+    def pd_op_relu(self, op):
+        input_name = self.escape_scope_name(
+            self.symbol_table[op.operands()[0].source()]
+        )
+        op_name = op.name().removeprefix("pd_op.")
+        output_name = UniqueNameGenerator().generate(op_name)
+        self.append_line(f"{output_name} = paddle._C_ops.relu({input_name})")
+        self.symbol_table[op.results()[0]] = output_name
+
+    def pd_op_full(self, op):
+        shape = op.attrs()['shape']
+        dtype = op.attrs()['dtype']
+        place = op.attrs()['place']
+        fill_value = op.attrs()['value']
+        op_name = op.name().removeprefix("pd_op.")
+        output_name = UniqueNameGenerator().generate(op_name)
+        self.append_line(
+            f"{output_name} = paddle._C_ops.full({shape}, {fill_value}, '{dtype}', '{place}')"
+        )
+        self.symbol_table[op.results()[0]] = output_name
+
+    def builtin_shadow_output(self, op):
+        scope_name = self.symbol_table[op.operands()[0].source()]
+        escaped_scope_name = self.escape_scope_name(scope_name)
+        new_scope_name = op.attrs()['output_name']
+        # TODO: record this name
+        escaped_new_scope_name = self.escape_scope_name(new_scope_name)
+        self.append_line(f"{escaped_new_scope_name} = {escaped_scope_name}")
+
+    def dispatch(self, op):
+        print(op.name())
+        self.add_comment(repr(op))
+        if op.name() == "builtin.parameter":
+            self.builtin_parameter(op)
+        elif op.name() == "pd_op.data":
+            self.pd_op_data(op)
+        elif op.name() == "pd_op.matmul":
+            self.pd_op_matmul(op)
+        elif op.name() == "pd_op.add":
+            self.pd_op_add(op)
+        elif op.name() == "pd_op.relu":
+            self.pd_op_relu(op)
+        elif op.name() == "pd_op.full":
+            self.pd_op_full(op)
+        elif op.name() == "builtin.shadow_output":
+            self.builtin_shadow_output(op)
+        else:
+            raise NotImplementedError(
+                f"Operator {op.name()} is not supported in ProgramCompiler yet."
+            )
+        # TODO: eager GC
+        # if op.name().startswith("pd_op."):
+        #     for result in op.results():
+        #         result.
+
+    def generate_fn_def(self):
+        self.append_line("def compiled_program(inputs, parameters):")
+
+    def prepare_locals(self):
+        self.add_comment("Prepare locals")
+
+        self.add_comment(f"input_names: {self._program_attr['fx_names']}")
+        # NOTE(SigureMo): For single inputs, we cannot use join here
+        load_inputs_expr = ""
+        for name in self._program_attr['fx_names']:
+            load_inputs_expr += f"{self.escape_scope_name(name)}, "
+        self.append_line(f"{load_inputs_expr.strip()} = inputs")
+
+        self.add_comment(f"parameter_names: {self._program_attr['fp_names']}")
+        load_inputs_expr = ""
+        for name in self._program_attr['fp_names']:
+            load_inputs_expr += f"{self.escape_scope_name(name)}, "
+        self.append_line(f"{load_inputs_expr.strip()} = parameters")
+
+    def build_return(self):
+        self.add_comment("Prepare outputs")
+        output_names = self._program_attr['fo_names']
+        return_expr = ""
+        for name in output_names:
+            escaped_name = self.escape_scope_name(name)
+            return_expr += f"{escaped_name}, "
+        self.append_line(f"return {return_expr.strip()}")
+
+    def compile(self):
+        self.request_import("paddle")
+        self.add_comment("Auto-generated by ProgramCompiler")
+        self.generate_fn_def()
+        with self.indent():
+            self.prepare_locals()
+            for op in self._program.global_block().ops:
+                self.dispatch(op)
+            self.build_return()
+
+        for import_name in reversed(self.required_imports):
+            self._generated_code = (
+                f"import {import_name}\n" + self._generated_code
+            )
+        print(self._generated_code)
+        self._compiled_function = load_function_from_source(
+            self._generated_code, "compiled_program"
+        )
+        return self._compiled_function
+
+
+class ProgramInterpreter:
+    def __init__(self, program, program_attr):
+        self._program = program
+        self._program_attr = program_attr
+        self._compiled_function = None
+
+    def compile(self):
+        compiler = ProgramCompiler(self._program, self._program_attr)
+        self._compiled_function = compiler.compile()
+
+    def __call__(self, *args):
+        assert self._compiled_function is not None
+        with paddle.no_grad():
+            return self._compiled_function(*args)
+
+
 class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
@@ -802,6 +1095,30 @@ class PartialProgramLayer:
             self._params,
             attrs,
         )
+        return self._outputs.quick_restore(out)
+
+    @cached_property
+    def interpreter(self):
+        interpreter = ProgramInterpreter(
+            self.program.forward_program, self.program.program_attr
+        )
+        interpreter.compile()
+        return interpreter
+
+    @event_register("sot call partial_program")
+    def py_call(self, inputs):
+        """
+        In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
+        """
+
+        out = self.interpreter(inputs, self._params)
+        # attrs = self._prepare_attributes(in_sot_mode=True)
+
+        # out = self.call_run_impl_with_hook(
+        #     inputs,
+        #     self._params,
+        #     attrs,
+        # )
         return self._outputs.quick_restore(out)
 
     def call_run_impl_with_hook(
