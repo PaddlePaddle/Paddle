@@ -712,10 +712,12 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const int padding_multiplex,
                       const bool do_gather,
                       const bool using_ue8m0_scale,
+                      const bool return_expert_indices,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
-                      DenseTensor *XScale_unzipped) {
+                      DenseTensor *XScale_unzipped,
+                      DenseTensor *expert_indices) {
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
   PADDLE_ENFORCE_LE(
@@ -802,6 +804,9 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);
+  if (return_expert_indices) {
+    dev_ctx.template Alloc<int>(expert_indices);
+  }
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   auto token_prob_unzipped_ptr =
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());

@@ -570,10 +570,12 @@ PADDLE_API void MoePermuteInferMeta(const MetaTensor& X,
                                     const int padding_alignment,
                                     const bool do_gather,
                                     const bool using_ue8m0_scale,
+                                    const bool return_expert_indices,
                                     MetaTensor* X_unzipped,
                                     MetaTensor* zipped_expertwise_rowmap,
                                     MetaTensor* token_prob_unzipped,
-                                    MetaTensor* XScale_unzipped);
+                                    MetaTensor* XScale_unzipped,
+                                    MetaTensor* expert_indices);
 
 PADDLE_API void MoeUnpermuteInferMeta(
     const MetaTensor& unzipped_tokens,
@@ -583,6 +585,7 @@ PADDLE_API void MoeUnpermuteInferMeta(
     const int total_zipped_tokens_num,
     const int num_experts,
     const bool MP,
+    const bool using_weighted_combine,
     MetaTensor* zipped_tokens,
     MetaTensor* zipped_probs_topk);
 
