@@ -201,13 +201,26 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     const int scale_length,
     const int num_experts,
     const int topk) {
-// This kernel using TMA, so it only be compiled on Hopper or above architecture
+// This kernel need TMA support, so it only be compiled on Hopper or above
+// architecture
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
   using expert_infos_t = expert_infos<probs_T>;
   int local_cumsum = 0;
   int local_expert_offsets;
   int local_expert_end_offsets;
-  const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
+  // clang-format off
+  // The task allocation for each block is as follows:
+  //blockIdx.x    0   2  4   6  ..   5    3    1      // NOLINT
+  // X          ｜X0｜X1｜X2｜X3|...|Xn-2|Xn-1| Xn |   // NOLINT
+  // clang-format on
+  const bool use_cumsum = blockIdx.x % 2 == 0;
+  int block_index_in_X = 0;
+  if (use_cumsum) {
+    block_index_in_X = blockIdx.x / 2;
+  } else {
+    block_index_in_X = gridDim.x - 1 - blockIdx.x / 2;
+  }
+  const int block_row_base = block_index_in_X * CUMSUM_BLOCK_SIZE;
   const int block_row_end =
       min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
@@ -286,47 +299,108 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     const int expert_id = threadIdx.x;
     local_expert_offsets = expert_base_offset[expert_id];
     local_expert_end_offsets = expert_base_offset_end[expert_id];
-
-    for (int row = block_row_base; row < block_row_end; row++) {
-      const int internal_row = row - block_row_base;
+    // clang-format off
+    // If blockid.x is even, we will use cumsum to compute the position in X_unzipped,          // NOLINT
+    // the dependency relationship between blocks is here:                                      // NOLINT
+    //    ----------<------- ---------<-------                   -----------<-----------        // NOLINT
+    //    |                 |                 |                 |                       |       // NOLINT
+    // | block0 | block1 | block2 | block3 | block4 | ... | block2n -2 | block2n-1 |  block2n | // NOLINT
+    // clang-format on
+    // Compute the cumsum from the block with a smaller idx to the block with a
+    // larger idx  which block idx is even
+    if (use_cumsum) {
+      for (int row = block_row_base; row < block_row_end; row++) {
+        const int internal_row = row - block_row_base;
 #pragma unroll
-      for (int k = 0; k < topk; k++) {
-        expert_infos_t proposed = {
-            shared_routemap_topk[internal_row * topk + k],
-            shared_probs_topk[internal_row * topk + k]};
-        // const expert_infos_t proposed = {routemap_topk[row * topk + k],
-        //                     probs_topk[row * topk + k]};
-        if (proposed.expert_row_idx == -1) continue;
-        if (threadIdx.x == proposed.expert_row_idx) {
-          shared_expert_infos[internal_row][expert_id] = {
-              local_cumsum + local_expert_offsets, proposed.expert_probs};
-          local_cumsum += 1;
+        for (int k = 0; k < topk; k++) {
+          expert_infos_t proposed = {
+              shared_routemap_topk[internal_row * topk + k],
+              shared_probs_topk[internal_row * topk + k]};
+          // const expert_infos_t proposed = {routemap_topk[row * topk + k],
+          //                     probs_topk[row * topk + k]};
+          if (proposed.expert_row_idx == -1) continue;
+          if (threadIdx.x == proposed.expert_row_idx) {
+            shared_expert_infos[internal_row][expert_id] = {
+                local_cumsum + local_expert_offsets, proposed.expert_probs};
+            local_cumsum += 1;
+          }
         }
       }
-    }
-    // Inter-block communication
-    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
-    if (blockIdx.x != 0) {
-      // signal receive from previous block, using light-weight
-      // atomicAdd(check) this will not change any data, only do fetch in
-      // low-cost
-      while ((cumsum_offset = atomicAdd(
-                  &global_expertwise_block_cumsum[anticipate_signal_idx], 0)) ==
-             CUMSUM_INVALID_TAG) {
+      // Inter-block communication
+      const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+      const int push_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
+      if (blockIdx.x != 0) {
+        // signal receive from previous block, using light-weight
+        // atomicAdd(check) this will not change any data, only do fetch in
+        // low-cost
+        while ((cumsum_offset = atomicAdd(
+                    &global_expertwise_block_cumsum[anticipate_signal_idx],
+                    0)) == CUMSUM_INVALID_TAG) {
+        }
       }
-    }
-    // signal send for next block, with current cumsum
-    const int proposed_offset = cumsum_offset + local_cumsum;
-    global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+      // signal send for next block, with current cumsum
+      const int proposed_offset = cumsum_offset + local_cumsum;
+      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
 // Intra-block communication;
 #pragma unroll
-    for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
-      shared_expert_infos[i][expert_id].expert_row_idx =
-          (shared_expert_infos[i][expert_id].expert_row_idx == -1)
-              ? -1
-              : shared_expert_infos[i][expert_id].expert_row_idx +
-                    cumsum_offset;
+      for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
+        shared_expert_infos[i][expert_id].expert_row_idx =
+            (shared_expert_infos[i][expert_id].expert_row_idx == -1)
+                ? -1
+                : shared_expert_infos[i][expert_id].expert_row_idx +
+                      cumsum_offset;
+      }
+    } else {
+      // clang-format off
+      // If blockid.x is odd, we will use suffix sum to compute the position in X_unzipped,         // NOLINT
+      // the dependency relationship between blocks is here:                                        // NOLINT
+      //               ----------<-------                           --------<---------------        // NOLINT
+      //              |                 |                         |                         |       // NOLINT
+      // | block0 | block1 | block2 | block3 | block4 | ... | block2n - 1 | block2n | block2n+1 |   // NOLINT
+      // clang-format on
+      int local_suffixsum = 0;
+      for (int row = block_row_end - 1; row >= block_row_base; --row) {
+        const int internal_row = row - block_row_base;
+#pragma unroll
+        for (int k = 0; k < topk; k++) {
+          expert_infos_t proposed = {
+              shared_routemap_topk[internal_row * topk + k],
+              shared_probs_topk[internal_row * topk + k]};
+          if (proposed.expert_row_idx == -1) continue;
+          if (threadIdx.x == proposed.expert_row_idx) {
+            shared_expert_infos[internal_row][expert_id] = {
+                local_suffixsum, proposed.expert_probs};
+            local_suffixsum += 1;
+          }
+        }
+      }
+      // Inter-block communication
+      const int anticipate_signal_idx =
+          (blockIdx.x) * num_experts + threadIdx.x;
+      const int push_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
+      int suffixsum_offset = 0;
+      if (blockIdx.x != 1) {
+        // signal receive from previous block, using light-weight
+        // atomicAdd(check) this will not change any data, only do fetch in
+        // low-cost
+        while ((suffixsum_offset = atomicAdd(
+                    &global_expertwise_block_cumsum[anticipate_signal_idx],
+                    0)) == CUMSUM_INVALID_TAG) {
+        }
+      }
+      // signal send for next block, with current cumsum
+      const int proposed_offset = suffixsum_offset + local_suffixsum;
+      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+// Intra-block communication;
+#pragma unroll
+      for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
+        shared_expert_infos[i][expert_id].expert_row_idx =
+            (shared_expert_infos[i][expert_id].expert_row_idx == -1)
+                ? -1
+                : local_expert_end_offsets -
+                      (shared_expert_infos[i][expert_id].expert_row_idx +
+                       suffixsum_offset);
+      }
     }
   }
   // --------------------------- Jobs schedule done -------------------------
