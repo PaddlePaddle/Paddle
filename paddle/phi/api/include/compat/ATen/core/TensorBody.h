@@ -17,6 +17,7 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
@@ -313,6 +314,67 @@ class Tensor : public TensorBase {
   inline Tensor clone() const {
     PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
     return Tensor(cloned_tensor);
+  }
+
+  // all: Check if all elements are true (non-zero)
+  // Version 1: all() - check all elements in the tensor
+  at::Tensor all() const {
+    return Tensor(paddle::experimental::all(tensor_, {}, false));
+  }
+
+  // Version 2: all(dim, keepdim) - check along a specific dimension
+  at::Tensor all(int64_t dim, bool keepdim = false) const {
+    return Tensor(paddle::experimental::all(tensor_, {dim}, keepdim));
+  }
+
+  // Version 3: all(dim, keepdim) - check along optional dimensions
+  at::Tensor all(at::OptionalIntArrayRef dim, bool keepdim = false) const {
+    std::vector<int64_t> axis_vec;
+    if (dim.has_value()) {
+      axis_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return Tensor(paddle::experimental::all(tensor_, axis_vec, keepdim));
+  }
+
+  // allclose: Check if two tensors are close to each other
+  bool allclose(const at::Tensor& other,
+                double rtol = 1e-05,
+                double atol = 1e-08,
+                bool equal_nan = false) const {
+    // Paddle's allclose returns a Tensor, but PyTorch's allclose returns bool
+    // We need to extract the scalar value from the result tensor
+    PaddleTensor result =
+        paddle::experimental::allclose(tensor_,
+                                       other._PD_GetInner(),
+                                       paddle::experimental::Scalar(rtol),
+                                       paddle::experimental::Scalar(atol),
+                                       equal_nan);
+
+    // Extract the boolean value from the result tensor
+    // allclose should return a scalar tensor with a single boolean value
+    auto* result_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+    if (!result_tensor || result_tensor->numel() != 1) {
+      PD_THROW("allclose: expected scalar tensor result");
+    }
+
+    // Read the value from the tensor (could be bool, int8, int32, etc.)
+    auto dtype = result_tensor->dtype();
+    if (dtype == phi::DataType::BOOL) {
+      bool* bool_ptr = result_tensor->data<bool>();
+      return *bool_ptr;
+    } else if (dtype == phi::DataType::INT8) {
+      int8_t* int8_ptr = result_tensor->data<int8_t>();
+      return *int8_ptr != 0;
+    } else if (dtype == phi::DataType::INT32) {
+      int32_t* int32_ptr = result_tensor->data<int32_t>();
+      return *int32_ptr != 0;
+    } else if (dtype == phi::DataType::INT64) {
+      int64_t* int64_ptr = result_tensor->data<int64_t>();
+      return *int64_ptr != 0;
+    } else {
+      PD_THROW("allclose: unsupported result dtype");
+    }
   }
 
   Tensor operator[](int64_t index) const {
