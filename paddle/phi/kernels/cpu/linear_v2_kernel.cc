@@ -39,7 +39,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& weight,
                     const DenseTensor& bias,
-                    cosnt bool is_receiving_transposed_weight,
+                    const bool is_receiving_transposed_weight,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
