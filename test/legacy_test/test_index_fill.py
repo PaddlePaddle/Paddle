@@ -195,7 +195,7 @@ class TestIndexFillAPI_ZeroSize2(TestIndexFillAPI_ZeroSize):
 class TestIndexFillInplaceAlias(unittest.TestCase):
     @unittest.skipIf(
         paddle.device.get_device().startswith('xpu'),
-        "Skip on XPU due to strided kernel limitation"
+        "Skip on XPU due to strided kernel limitation",
     )
     def test_alias_dim(self):
         """Test that dim parameter works as an alias for axis in index_fill_"""
