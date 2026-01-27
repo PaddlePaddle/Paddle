@@ -395,9 +395,7 @@ class Tensor : public TensorBase {
         result.set_impl(std::make_shared<phi::DenseTensor>());
         auto* dst_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
-        dst_tensor->ShareBufferWith(*src_tensor, false);
-        dst_tensor->ShareDataTypeWith(*src_tensor);
-        dst_tensor->Resize(src_tensor->dims());
+        dst_tensor->ShareDataWith(*src_tensor);
       } else {
         result = paddle::experimental::assign(tensor_);
       }
@@ -417,9 +415,7 @@ class Tensor : public TensorBase {
         result.set_impl(std::make_shared<phi::DenseTensor>());
         auto* dst_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
-        dst_tensor->ShareBufferWith(*src_tensor, false);
-        dst_tensor->ShareDataTypeWith(*src_tensor);
-        dst_tensor->Resize(src_tensor->dims());
+        dst_tensor->ShareDataWith(*src_tensor);
       } else {
         result = paddle::experimental::assign(tensor_);
       }
