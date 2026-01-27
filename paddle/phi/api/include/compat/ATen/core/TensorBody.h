@@ -26,6 +26,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime_api.h>
+#endif
+
 namespace at {
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
@@ -333,7 +337,7 @@ class Tensor : public TensorBase {
   void record_stream(const cudaStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        stream);
+        reinterpret_cast<gpuStream_t>(stream));
   }
 #endif
 
