@@ -124,6 +124,31 @@ void FusedAttentionKernel(const Context &dev_ctx,
   int64_t num_heads = qkv_w_dims[1];
   int64_t head_dims = qkv_w_dims[2];
 
+  if (batch_size == 0 || seq_len == 0) {
+    if (ln_mean) dev_ctx.template Alloc<float>(ln_mean);
+    if (ln_var) dev_ctx.template Alloc<float>(ln_var);
+    if (ln_out) dev_ctx.template Alloc<T>(ln_out);
+    if (qkv_out) dev_ctx.template Alloc<T>(qkv_out);
+    if (qkv_bias_out) dev_ctx.template Alloc<T>(qkv_bias_out);
+    if (transpose_out_2) dev_ctx.template Alloc<T>(transpose_out_2);
+    if (qk_out) dev_ctx.template Alloc<T>(qk_out);
+    if (qktv_out) dev_ctx.template Alloc<T>(qktv_out);
+    if (softmax_out) dev_ctx.template Alloc<T>(softmax_out);
+    if (attn_dropout_mask_out) dev_ctx.template Alloc<T>(attn_dropout_mask_out);
+    if (attn_dropout_out) dev_ctx.template Alloc<T>(attn_dropout_out);
+    if (src_mask_out) dev_ctx.template Alloc<T>(src_mask_out);
+    if (fmha_out) dev_ctx.template Alloc<T>(fmha_out);
+    if (out_linear_out) dev_ctx.template Alloc<T>(out_linear_out);
+    if (dropout_mask_out) dev_ctx.template Alloc<T>(dropout_mask_out);
+    if (ln_mean_2) dev_ctx.template Alloc<float>(ln_mean_2);
+    if (ln_var_2) dev_ctx.template Alloc<float>(ln_var_2);
+    if (bias_dropout_residual_out)
+      dev_ctx.template Alloc<T>(bias_dropout_residual_out);
+    if (cache_kv_out) dev_ctx.template Alloc<T>(cache_kv_out);
+    if (out) dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   // 输入指针
   const XPUTypeT *input_x_ptr = reinterpret_cast<const XPUTypeT *>(x.data<T>());
 

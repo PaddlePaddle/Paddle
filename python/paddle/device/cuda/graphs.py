@@ -40,12 +40,8 @@ if (
     is_compiled_with_cuda()
     or is_compiled_with_rocm()
     or check_compiled_with_custom_device()
+    or is_compiled_with_xpu()
 ):
-    from paddle.base.core import CUDAGraph as CoreCUDAGraph
-
-    def is_cuda_graph_supported():
-        return True
-elif is_compiled_with_xpu():
     from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():
@@ -78,7 +74,9 @@ class CUDAGraph:
         )
 
         self._graph = None
-        if place is None:
+        if place is None and check_compiled_with_custom_device():
+            place = current_expected_place()
+        elif place is None:
             if is_compiled_with_cuda():
                 device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
                 place = CUDAPlace(device_id)
