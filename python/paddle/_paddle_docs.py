@@ -3693,6 +3693,16 @@ add_doc_and_signature(
 def abs_(x: Tensor, name: str | None = None) -> Tensor
 """,
 )
+add_doc_and_signature(
+    "squeeze_",
+    """
+    Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_squeeze`.
+""",
+    """
+def squeeze_(x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None) -> Tensor
+""",
+)
 # lubingxin
 
 # chenhuangrun

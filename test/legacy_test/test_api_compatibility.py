@@ -872,6 +872,63 @@ class TestSquareAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
+class TestSqueezeInplaceAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [1, 3, 1, 2]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        ref_out = np.squeeze(self.np_input, axis=2)
+        paddle_dygraph_out = []
+
+        x1 = paddle.to_tensor(self.np_input)
+        out1 = paddle.squeeze_(x1, axis=2)
+        paddle_dygraph_out.append(out1)
+
+        x2 = paddle.to_tensor(self.np_input)
+        out2 = paddle.squeeze_(x2, dim=2)
+        paddle_dygraph_out.append(out2)
+
+        x3 = paddle.to_tensor(self.np_input)
+        out3 = x3.squeeze_(axis=2)
+        paddle_dygraph_out.append(out3)
+
+        x4 = paddle.to_tensor(self.np_input)
+        out4 = x4.squeeze_(dim=2)
+        paddle_dygraph_out.append(out4)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.squeeze_(x, axis=2)
+            out2 = paddle.squeeze_(x, dim=2)
+            out3 = x.squeeze_(dim=2)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.squeeze(self.np_input, axis=2)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 class TestTanAPI_Compatibility(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)

@@ -24,7 +24,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
+from paddle._C_ops import index_put, index_put_, roll, squeeze_  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -3485,27 +3485,6 @@ def squeeze(
         )
 
         return out
-
-
-@inplace_apis_in_dygraph_only
-def squeeze_(
-    x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
-) -> Tensor:
-    """
-    Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_squeeze`.
-    """
-    if axis is None:
-        axis = []
-    elif isinstance(axis, int):
-        axis = [axis]
-    elif isinstance(axis, tuple):
-        axis = list(axis)
-
-    input = x
-    axes = axis
-    if in_dynamic_mode():
-        return _C_ops.squeeze_(input, axes)
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
