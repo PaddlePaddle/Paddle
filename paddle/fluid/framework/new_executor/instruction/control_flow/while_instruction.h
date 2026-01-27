@@ -44,7 +44,7 @@ class WhileInstruction : public InstructionBase {
  public:
   WhileInstruction(size_t id,
                    const phi::Place& place,
-                   ::pir::Operation* op,
+                   pir::Operation* op,
                    ValueExecutionInfo* parent_exe_info,
                    interpreter::ExecutionConfig execution_config);
 
@@ -52,7 +52,7 @@ class WhileInstruction : public InstructionBase {
 
   const std::string& Name() const override { return name_; }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   PirInterpreter* BodyInterpreter() const { return body_inter_.get(); }
 
@@ -85,9 +85,9 @@ class WhileInstruction : public InstructionBase {
   std::unique_ptr<PirInterpreter> body_inter_;
   std::set<std::string> external_input_names_;
 
-  ::pir::Block* body_block_;
+  pir::Block* body_block_;
 
-  ::pir::Operation* op_;
+  pir::Operation* op_;
 
   CheckGCEarlyHook check_gc_early_;
 };

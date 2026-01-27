@@ -29,22 +29,22 @@
 #include "paddle/pir/include/core/builder.h"
 
 namespace pir {
-using OpClassifier = std::function<bool(const pir::Operation&)>;
-using GroupOpsVec = std::vector<pir::Operation*>;
+using OpClassifier = std::function<bool(const Operation&)>;
+using GroupOpsVec = std::vector<Operation*>;
 
-std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
+std::vector<GroupOpsVec> DetectSubGraphs(Block* block,
                                          const OpClassifier& classifier);
 
-std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops,
-                                        bool at_least_one_output = true);
-void ReplaceWithGroupOp(pir::Block* block,
+std::vector<Value> AnalysisOutputs(const GroupOpsVec& group_ops,
+                                   bool at_least_one_output = true);
+void ReplaceWithGroupOp(Block* block,
                         const GroupOpsVec& group_ops,
                         bool at_least_one_output = true);
 
-pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
-                                const std::vector<pir::Value>& outputs);
+Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                           const std::vector<Value>& outputs);
 void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
-                               pir::Block* block,
-                               pir::Operation* insert_point_op);
+                               Block* block,
+                               Operation* insert_point_op);
 
 }  // namespace pir

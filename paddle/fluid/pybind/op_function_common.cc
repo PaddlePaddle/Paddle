@@ -1582,19 +1582,20 @@ PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
 void CheckRemainingParamsValidity(PyObject* args,
                                   PyObject* kwargs,
                                   int remaining_kwargs,
-                                  int nargs) {
+                                  int nargs,
+                                  bool inplace) {
   const std::string ignored_arg_name = "name";
   const std::string ignored_arg_out = "out";
   if (remaining_kwargs == 0) return;
   PyObject* name = PyDict_GetItemString(kwargs, ignored_arg_name.c_str());
   PyObject* out = PyDict_GetItemString(kwargs, ignored_arg_out.c_str());
-  if (remaining_kwargs == 1 && (name || out)) {
-    return;
-  } else if (remaining_kwargs == 2 && (name && out)) {
-    return;
+  if (inplace) {
+    if (remaining_kwargs == 1 && name) return;
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument("has too many arguments"));
+    if (remaining_kwargs == 1 && (name || out)) return;
+    if (remaining_kwargs == 2 && (name && out)) return;
   }
+  PADDLE_THROW(common::errors::InvalidArgument("has too many arguments"));
   return;
 }
 }  // namespace paddle::pybind

@@ -482,7 +482,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
         auto* dst_node = FindNodeWithName(graph, dst_name);
         if (dst_node == nullptr) {
-          phi::DenseTensor* curr_tensor =
+          DenseTensor* curr_tensor =
               scope->Var(name)->GetMutable<DenseTensor>();
           PADDLE_ENFORCE_NE(
               curr_tensor,

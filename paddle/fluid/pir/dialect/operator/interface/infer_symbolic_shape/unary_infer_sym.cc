@@ -2797,7 +2797,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
     }
   } else {
     if (keepdim) {
-      for (unsigned int i = 0; i < x_rank; ++i) {
+      for (int i = 0; i < x_rank; ++i) {
         if (i == axis) {
           out_shape.emplace_back(symbol::DimExpr(1));
         } else {
@@ -2805,7 +2805,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
         }
       }
     } else {
-      for (unsigned int i = 0; i < x_rank; ++i) {
+      for (int i = 0; i < x_rank; ++i) {
         if (i != axis) {
           out_shape.emplace_back(x_shape[i]);
         }

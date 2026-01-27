@@ -344,7 +344,7 @@ template <typename T, typename Context>
 void MoeDispatchAndQuantKernel(const Context &dev_ctx,
                                const DenseTensor &x,
                                const DenseTensor &gate_logits,
-                               const paddle::optional<DenseTensor> &corr_bias,
+                               const optional<DenseTensor> &corr_bias,
                                int64_t k,
                                int64_t capacity,
                                bool use_pad,

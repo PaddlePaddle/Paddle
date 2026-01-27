@@ -44,8 +44,6 @@
 #include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
 namespace experimental {
 class InternalUtils;
 };
