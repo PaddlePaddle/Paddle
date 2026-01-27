@@ -1193,5 +1193,79 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_array_equal(out, ref_out)
 
 
+# Edit By AI Agent
+# Test unsqueeze_ compatibility
+class TestUnsqueezeInplaceAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [2, 3]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+
+    def _make_tensor(self):
+        return paddle.to_tensor(self.np_x)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        paddle_dygraph_out = []
+
+        # Position args (args)
+        x1 = self._make_tensor()
+        out1 = paddle.unsqueeze_(x1, 0)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args (kwargs)
+        x2 = self._make_tensor()
+        out2 = paddle.unsqueeze_(x2, axis=0)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args
+        x3 = self._make_tensor()
+        out3 = paddle.unsqueeze_(x3, dim=0)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method - kwargs
+        x4 = self._make_tensor()
+        out4 = x4.unsqueeze_(dim=0)
+        paddle_dygraph_out.append(out4)
+
+        # Numpy reference output
+        ref_out = np.expand_dims(self.np_x, axis=0)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Position args
+            out1 = paddle.unsqueeze_(x, 0)
+            # Paddle keyword args
+            out2 = paddle.unsqueeze_(x, axis=0)
+            # Torch keyword args
+            out3 = paddle.unsqueeze_(x, dim=0)
+            # Tensor method
+            out4 = x.unsqueeze_(dim=0)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.expand_dims(self.np_x, axis=0)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == '__main__':
     unittest.main()

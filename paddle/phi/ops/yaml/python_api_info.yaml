@@ -427,3 +427,8 @@
   name : [paddle.triu, paddle.Tensor.triu]
   args_alias :
     use_default_mapping : True
+
+- op : unsqueeze
+  name : [paddle.Tensor.unsqueeze_]
+  args_alias :
+    use_default_mapping : True

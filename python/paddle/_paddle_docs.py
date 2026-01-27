@@ -4342,3 +4342,18 @@ def i1e(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "unsqueeze_",
+    r"""
+    Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tensor_unsqueeze`.
+""",
+    """
+def unsqueeze_(
+    x: Tensor,
+    axis: int | Sequence[int] | Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
