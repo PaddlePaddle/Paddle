@@ -26,6 +26,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/forwards.h"
+#endif
+
 namespace at {
 // Forward declarations for DimnameList support
 struct Dimname;
