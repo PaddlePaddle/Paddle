@@ -1624,7 +1624,6 @@ def monkey_patch_tensor():
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
 
-
     for method_name, method in (
         ("__bool__", __bool__),
         ("__nonzero__", __nonzero__),
