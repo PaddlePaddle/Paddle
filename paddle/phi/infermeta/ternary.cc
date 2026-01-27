@@ -1647,9 +1647,9 @@ void LinearV2InferMeta(const MetaTensor& input,
                         weight_ndim));
   // Assume weight to be [K, N] if not tranasposed, [N, K] if transposed
   const int64_t weight_elewise_dim =
-      is_receiving_transposed_weightght ? weight_dims[0] : weight_dims[1];
+      is_receiving_transposed_weight ? weight_dims[0] : weight_dims[1];
   const int64_t weight_reduce_dim =
-      is_receiving_transposed_weightght ? weight_dims[1] : weight_dims[0];
+      is_receiving_transposed_weight ? weight_dims[1] : weight_dims[0];
   // Assume bias to be [N] or [1]
   const bool is_bias_need_broadcast =
       ((bias.numel() == 1) && (weight_elewise_dim != 1));
