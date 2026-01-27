@@ -181,11 +181,7 @@ void AddmmInferMeta(const MetaTensor& input,
 
   out->set_dims(make_ddim(output_dims));
   out->share_lod(input);
-  if (out_dtype != phi::DataType::UNDEFINED) {
-    out->set_dtype(out_dtype);
-  } else {
-    out->set_dtype(input.dtype());
-  }
+  out->set_dtype(input.dtype());
 }
 
 void BaddbmmInferMeta(const MetaTensor& input,
