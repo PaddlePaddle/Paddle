@@ -78,9 +78,9 @@ void testIm2col() {
       {output_height, output_width, 1, filter_size, filter_size}, *place);
 
   // Im2Col
-  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::CFO, DeviceContext, float>
       im2col;
-  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::OCF, DeviceContext, float>
       im2col_ocf;
 
   im2col(*context, input, dilation, stride, padding, &output_cfo);
@@ -112,10 +112,10 @@ void testIm2col() {
     EXPECT_EQ(out_ocf_ptr[i], out_ocf_data[i]);
   }
 
-  // Col2Im: kCFO
-  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, float>
+  // Col2Im: CFO
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::CFO, DeviceContext, float>
       col2im;
-  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::OCF, DeviceContext, float>
       col2im_ocf;
   std::array<float, 6> col2im_data = {0, 2, 2, 3, 8, 5};
 
@@ -139,7 +139,7 @@ void testIm2col() {
     EXPECT_EQ(in_ptr[i], col2im_data[i]);
   }
 
-  // Col2Im: kOCF
+  // Col2Im: OCF
   memset(input_ptr, 0, 6 * sizeof(float));
   if (phi::is_cpu_place(*place)) {
     input = input_tmp;
@@ -223,9 +223,9 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
       {output_height, output_width, 1, filter_size, filter_size}, *place);
 
   // Im2Col
-  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::CFO, phi::GPUContext, float>
       im2col;
-  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::OCF, phi::GPUContext, float>
       im2col_ocf;
 
   im2col(*context, input, dilation, stride, padding, &output_cfo);
@@ -257,10 +257,10 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
     EXPECT_EQ(out_ocf_ptr[i], out_ocf_data[i]);
   }
 
-  // Col2Im: kCFO
-  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, float>
+  // Col2Im: CFO
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::CFO, phi::GPUContext, float>
       col2im;
-  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::OCF, phi::GPUContext, float>
       col2im_ocf;
   std::array<float, 6> col2im_data = {0, 2, 2, 3, 8, 5};
 
@@ -284,7 +284,7 @@ void testIm2col<phi::GPUContext, phi::GPUPlace>() {
     EXPECT_EQ(in_ptr[i], col2im_data[i]);
   }
 
-  // Col2Im: kOCF
+  // Col2Im: OCF
   memset(input_ptr, 0, 6 * sizeof(float));
   if (phi::is_cpu_place(*place)) {
     input = input_tmp;
@@ -334,7 +334,7 @@ TEST(math, im2col) {
   out.mutable_data<float>({ic, fh, fw, output_height, output_width}, place); \
   ref.mutable_data<float>({ic, fh, fw, output_height, output_width}, place); \
   phi::funcs::                                                               \
-      Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, float>     \
+      Im2ColFunctor<phi::funcs::ColFormat::CFO, phi::CPUContext, float>      \
           im2col
 
 void testIm2colCPU(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {

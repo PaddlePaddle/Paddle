@@ -47,10 +47,7 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   T* grad_theta_data = dev_ctx.template Alloc<T>(input_grad);
 
   if (output_grad.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(input_grad->dims())),
-                          0,
-                          input_grad);
+    Full<T, Context>(dev_ctx, input_grad->dims(), 0, input_grad);
     return;
   }
 
@@ -109,10 +106,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   T* grad_theta_data = dev_ctx.template Alloc<T>(input_grad);
 
   if (output_grad.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(input_grad->dims())),
-                          0,
-                          input_grad);
+    Full<T, Context>(dev_ctx, input_grad->dims(), 0, input_grad);
     return;
   }
 

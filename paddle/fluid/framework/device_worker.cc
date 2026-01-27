@@ -252,16 +252,16 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     if (var == nullptr || !var->IsInitialized()) {
       continue;
     }
-    if (!var->IsType<phi::DenseTensor>()) {
+    if (!var->IsType<DenseTensor>()) {
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
     if (tensor == nullptr || !tensor->IsInitialized()) {
       continue;
     }
-    phi::DenseTensor cpu_tensor;
+    DenseTensor cpu_tensor;
     if (phi::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
+      TensorCopySync(*tensor, CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
     }
     int64_t len = tensor->numel();
@@ -313,7 +313,7 @@ void DeviceWorker::DumpField(
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
@@ -368,15 +368,15 @@ void DeviceWorker::DumpField(
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
-      phi::DenseTensor cpu_tensor;
+      DenseTensor cpu_tensor;
       if (phi::is_gpu_place(tensor->place())) {
-        TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
+        TensorCopySync(*tensor, CPUPlace(), &cpu_tensor);
         cpu_tensor.set_lod(tensor->lod());
         tensor = &cpu_tensor;
       }
@@ -451,20 +451,20 @@ void DeviceWorker::DumpField(
               << "] cannot be find in scope, so it was skipped.";
       continue;
     }
-    if (!var->IsType<phi::DenseTensor>()) {
+    if (!var->IsType<DenseTensor>()) {
       VLOG(3) << "Note: field[" << field
               << "] is not dense tensor, so it was skipped.";
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
     if (!tensor->IsInitialized()) {
       VLOG(3) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;
     }
-    phi::DenseTensor cpu_tensor;
+    DenseTensor cpu_tensor;
     if (phi::is_gpu_place(tensor->place())) {
-      TensorCopySync(*tensor, phi::CPUPlace(), &cpu_tensor);
+      TensorCopySync(*tensor, CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());
       tensor = &cpu_tensor;
     }

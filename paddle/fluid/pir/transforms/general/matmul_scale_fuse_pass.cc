@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -48,7 +48,7 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
              {&pat.Tensor("scale_out")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+      if (!ValueIsPersistable(match_ctx.Tensor("w"))) {
         return false;
       }
       return std::abs(match_ctx.Attr<float>("bias")) <= 1e-6;
@@ -75,25 +75,20 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class MatmulScaleFusePass : public pir::PatternRewritePass {
+class MatmulScaleFusePass : public PatternRewritePass {
  public:
-  MatmulScaleFusePass()
-      : pir::PatternRewritePass("matmul_scale_fuse_pass", 2) {}
+  MatmulScaleFusePass() : PatternRewritePass("matmul_scale_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<MatmulScaleFusePattern>(context));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateMatmulScaleFusePass() {
   return std::make_unique<MatmulScaleFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_scale_fuse_pass, MatmulScaleFusePass);
+REGISTER_IR_PASS(matmul_scale_fuse_pass, pir::MatmulScaleFusePass);

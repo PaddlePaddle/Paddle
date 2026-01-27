@@ -89,16 +89,15 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
 }
 
 template <typename T, typename Context>
-void FusedAttentionCsrKernel(
-    const Context& dev_ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const SparseCsrTensor& sparse_mask,
-    const paddle::optional<DenseTensor>& key_padding_mask,
-    const paddle::optional<DenseTensor>& attn_mask,
-    DenseTensor* out,
-    SparseCsrTensor* softmax) {
+void FusedAttentionCsrKernel(const Context& dev_ctx,
+                             const DenseTensor& query,
+                             const DenseTensor& key,
+                             const DenseTensor& value,
+                             const SparseCsrTensor& sparse_mask,
+                             const optional<DenseTensor>& key_padding_mask,
+                             const optional<DenseTensor>& attn_mask,
+                             DenseTensor* out,
+                             SparseCsrTensor* softmax) {
 #if CUDA_VERSION >= 11080
   /* Check Shape */
   auto q_dim = query.dims();

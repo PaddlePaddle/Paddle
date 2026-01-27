@@ -344,7 +344,7 @@ template <typename T, typename Context>
 void MoeDispatchAndQuantKernel(const Context &dev_ctx,
                                const DenseTensor &x,
                                const DenseTensor &gate_logits,
-                               const paddle::optional<DenseTensor> &corr_bias,
+                               const optional<DenseTensor> &corr_bias,
                                int64_t k,
                                int64_t capacity,
                                bool use_pad,
@@ -367,8 +367,7 @@ void MoeDispatchAndQuantKernel(const Context &dev_ctx,
                   sizeof(phi::float8_e4m3fn) * out_fp8->numel(),
                   dev_ctx.stream());
 
-  phi::Full<float, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(scale->dims())), 1, scale);
+  Full<float, Context>(dev_ctx, scale->dims(), 1, scale);
 
   const auto &x_shape = x.dims();
   const auto &gate_logits_shape = gate_logits.dims();

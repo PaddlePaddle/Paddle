@@ -81,7 +81,7 @@ template <typename T, typename Context>
 void moe_dispatch_fwd(const Context &dev_ctx,
                       const DenseTensor &x,
                       const DenseTensor &gate_logits,
-                      const paddle::optional<DenseTensor> &corr_bias,
+                      const optional<DenseTensor> &corr_bias,
                       int64_t num_rows,
                       int64_t num_experts,
                       int64_t hidden_size,
@@ -120,7 +120,7 @@ template <typename T, typename Context>
 void MoEDispatchPermuteKernel(const Context &dev_ctx,
                               const DenseTensor &x,
                               const DenseTensor &gate_logits,
-                              const paddle::optional<DenseTensor> &corr_bias,
+                              const optional<DenseTensor> &corr_bias,
                               int64_t k,
                               int64_t capacity,
                               int64_t world_size,
@@ -134,8 +134,7 @@ void MoEDispatchPermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<int>(scatter_index);
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
   const auto &x_shape = x.dims();
   const auto &gate_logits_shape = gate_logits.dims();
   int64_t num_rows = x_shape[0];

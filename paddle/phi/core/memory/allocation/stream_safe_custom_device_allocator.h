@@ -69,13 +69,13 @@ class StreamSafeCustomDeviceAllocator
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
-  uint64_t ReleaseImpl(const phi::Place &place) override;
+  uint64_t ReleaseImpl(const Place &place) override;
 
  private:
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<phi::Place, std::vector<StreamSafeCustomDeviceAllocator *>>
+  static std::map<Place, std::vector<StreamSafeCustomDeviceAllocator *>>
       allocator_map_;
   static SpinLock allocator_map_lock_;
 

@@ -44,8 +44,8 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
   auto reduce_dims = dims.GetData();
 
-  std::vector<int64_t> xdims = common::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> ydims = common::vectorize<int64_t>(out_grad.dims());
+  std::vector<int64_t> xdims = vectorize<int64_t>(x.dims());
+  std::vector<int64_t> ydims = vectorize<int64_t>(out_grad.dims());
 
   int64_t reduce_numel = 1;
   if (reduce_all) {

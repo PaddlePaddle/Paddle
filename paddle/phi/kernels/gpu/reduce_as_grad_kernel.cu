@@ -35,7 +35,7 @@ void ReduceAsGradKernel(const Context& dev_ctx,
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
-  auto update_dims = common::vectorize(x.dims());
+  auto update_dims = vectorize(x.dims());
   for (auto i : reduce_dim) {
     update_dims[i] = 1;
   }

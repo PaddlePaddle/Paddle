@@ -34,7 +34,7 @@ class MemcpyD2HOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),

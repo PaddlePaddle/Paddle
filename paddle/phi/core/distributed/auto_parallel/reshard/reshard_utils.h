@@ -47,8 +47,7 @@ PADDLE_API bool NeedComputationClipForPP(
 
 PADDLE_API Place GetDefaultPlace();
 
-PADDLE_API phi::DeviceContext* GetDistTensorDeviceContext(
-    phi::distributed::DistTensor* input);
+PADDLE_API DeviceContext* GetDistTensorDeviceContext(DistTensor* input);
 
 PADDLE_API int64_t GetLocalRankInParticipate(
     const std::vector<int64_t>& process_ids, int64_t global_rank = -1);

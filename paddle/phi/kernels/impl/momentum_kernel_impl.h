@@ -409,7 +409,7 @@ void MomentumDenseImpl(const Context& dev_ctx,
                        const DenseTensor& grad,
                        const DenseTensor& velocity,
                        const DenseTensor& learning_rate,
-                       const paddle::optional<DenseTensor>& master_param_opt,
+                       const optional<DenseTensor>& master_param_opt,
                        float mu_t,
                        bool use_nesterov,
                        const std::string& regularization_method,
@@ -520,7 +520,7 @@ void MomentumSparseImpl(const Context& dev_ctx,
                         const SelectedRows& grad,
                         const DenseTensor& velocity,
                         const DenseTensor& learning_rate,
-                        const paddle::optional<DenseTensor>& master_param_opt,
+                        const optional<DenseTensor>& master_param_opt,
                         float mu_t,
                         bool use_nesterov,
                         const std::string& regularization_method,
@@ -566,8 +566,8 @@ void MomentumSparseImpl(const Context& dev_ctx,
     return;
   }
 
-  phi::SelectedRows tmp_merged_grad;
-  phi::SelectedRows* merged_grad = &tmp_merged_grad;
+  SelectedRows tmp_merged_grad;
+  SelectedRows* merged_grad = &tmp_merged_grad;
   funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, grad, merged_grad);
 
@@ -622,7 +622,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                          const DenseTensor& grad,
                          const DenseTensor& velocity,
                          const DenseTensor& learning_rate,
-                         const paddle::optional<DenseTensor>& master_param,
+                         const optional<DenseTensor>& master_param,
                          float mu,
                          bool use_nesterov,
                          const std::string& regularization_method,
@@ -674,7 +674,7 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           const SelectedRows& grad,
                           const DenseTensor& velocity,
                           const DenseTensor& learning_rate,
-                          const paddle::optional<DenseTensor>& master_param,
+                          const optional<DenseTensor>& master_param,
                           float mu,
                           bool use_nesterov,
                           const std::string& regularization_method,

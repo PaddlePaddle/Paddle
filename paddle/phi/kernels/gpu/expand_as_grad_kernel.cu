@@ -29,8 +29,7 @@ void ExpandAsGradKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
   if (out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    Full<T, Context>(dev_ctx, in_grad->dims(), 0, in_grad);
     return;
   }
   auto in_dims = x.dims();

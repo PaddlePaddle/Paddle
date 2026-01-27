@@ -87,7 +87,7 @@ class DeviceInterface {  // Driver / Runtime
   virtual bool IsDnnAvailable(size_t dev_id);
 
   virtual void* InitEigenDevice(const Place& place,
-                                phi::stream::stream_t stream,
+                                stream::stream_t stream,
                                 phi::Allocator* allocator);
 
   virtual void DestroyEigenDevice(size_t dev_id, void* eigen_device);
@@ -324,7 +324,7 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual void InitBlasHandle(size_t dev_id,
                               void** blas_handle,
-                              phi::stream::stream_t stream);
+                              stream::stream_t stream);
 
   virtual void BlasSetMathMode(size_t dev_id, void* blas_handle, int math_mode);
 
