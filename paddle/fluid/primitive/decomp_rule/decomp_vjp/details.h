@@ -1443,8 +1443,8 @@ void linear_v2_grad(const Tensor& input,
                     const Tensor& weight,
                     const Tensor& bias,
                     const Tensor& out_grad,
-                    const bool is_receiving_transposed_weight
-                        Tensor* input_grad,
+                    const bool is_receiving_transposed_weight,
+                    Tensor* input_grad,
                     Tensor* weight_grad,
                     Tensor* bias_grad) {
   matmul_grad<T>(input,
