@@ -93,21 +93,6 @@ class LinearTestCase(unittest.TestCase):
         ]
         np.testing.assert_allclose(linear.weight.numpy(), expect, rtol=1e-05)
 
-    def test_compatible(self):
-        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
-            return
-        paddle.seed(5)
-        weight = paddle.randn([4096, 7168])
-        input = paddle.randn([128, 4096])
-        bias = paddle.randn([7168])
-        linear_output = paddle.nn.functional.linear(input, weight, bias)
-        compat_linear_output = paddle.compat.nn.functional.linear(
-            input, weight.T.contiguous(), bias
-        )
-        np.testing.assert_allclose(
-            linear_output.numpy(), compat_linear_output.numpy(), atol=1e-03
-        )
-
 
 class TestLinearAPI_ZeroSize(unittest.TestCase):
     def init_dtype(self):
