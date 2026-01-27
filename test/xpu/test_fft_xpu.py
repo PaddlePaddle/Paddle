@@ -325,6 +325,16 @@ class TestFftn(unittest.TestCase):
         # ('test_axis_not_default', rand_x(5), None, (1, 2), 'backward'),
         # ('test_norm_forward', rand_x(5), None, (1, 2), 'forward'),
         # ('test_norm_ortho', rand_x(5), None, (1, 2), 'ortho'),
+        (
+            'test_xpu_0size_pad',
+            (
+                np.random.randn(50, 8, 0, 14, 14)
+                + 1j * np.random.randn(50, 8, 0, 14, 14)
+            ).astype(np.complex64),
+            (39, 14, 14),
+            None,
+            'backward',
+        ),
     ],
 )
 class TestIFftn(unittest.TestCase):
@@ -2155,6 +2165,7 @@ class TestIfftn_ZeroSize(unittest.TestCase):
 class TestIhfft2_ZeroSize(unittest.TestCase):
     def test_ihfft2(self):
         with paddle.base.dygraph.guard(self.place):
+            print(self.x)
             np.testing.assert_allclose(
                 scipy.fft.ihfft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ihfft2(
