@@ -33,7 +33,6 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& y,
                  float beta,
                  float alpha,
-                 DataType out_dtype,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 

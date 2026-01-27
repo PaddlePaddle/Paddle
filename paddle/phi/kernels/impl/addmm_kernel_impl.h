@@ -19,7 +19,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/kernels/addmm_kernel.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -42,7 +41,6 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& y,
                  float beta,
                  float alpha,
-                 DataType out_dtype,
                  DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -138,9 +136,6 @@ void AddmmKernel(const Context& dev_ctx,
             t_beta,
             out->data<T>(),
             y_dims[1]);
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != out->dtype()) {
-    phi::CastKernel<T>(dev_ctx, *out, out_dtype, out);
-  }
 }
 
 }  // namespace phi

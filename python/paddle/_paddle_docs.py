@@ -187,7 +187,6 @@ def addmm(
     y: Tensor,
     beta: float = 1.0,
     alpha: float = 1.0,
-    out_dtype: paddle.dtype | None = None,
     name: str | None = None,
     *,
     out: Tensor | None = None,

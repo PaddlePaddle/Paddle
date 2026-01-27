@@ -96,7 +96,6 @@ void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& y,
                     float beta,
                     float alpha,
-                    phi::DataType out_dtype,
                     MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
