@@ -315,6 +315,19 @@ class Tensor : public TensorBase {
     return Tensor(cloned_tensor);
   }
 
+  // abs: Compute absolute value, returns a new tensor
+  at::Tensor abs() const { return Tensor(paddle::experimental::abs(tensor_)); }
+
+  // abs_: Compute absolute value inplace
+  at::Tensor& abs_() const {
+    paddle::experimental::abs_(const_cast<PaddleTensor&>(tensor_));
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  at::Tensor absolute() const { return abs(); }
+
+  at::Tensor& absolute_() const { return abs_(); }
+
   Tensor operator[](int64_t index) const {
     return paddle::experimental::slice(tensor_,
                                        /*axes=*/{0},
