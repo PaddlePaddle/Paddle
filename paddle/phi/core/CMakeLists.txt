@@ -20,7 +20,6 @@ collect_srcs(
   os_info.cc
   kernel_context.cc
   tensor_base.cc
-  allocator.cc
   tensor_meta.cc
   lod_utils.cc
   threadpool.cc

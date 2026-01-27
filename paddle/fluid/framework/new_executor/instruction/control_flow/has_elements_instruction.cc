@@ -24,7 +24,7 @@ namespace framework {
 HasElementsInstruction::HasElementsInstruction(
     size_t id,
     const phi::Place& place,
-    ::pir::Operation* op,
+    pir::Operation* op,
     ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   auto has_elements_op = op->dyn_cast<paddle::dialect::HasElementsOp>();

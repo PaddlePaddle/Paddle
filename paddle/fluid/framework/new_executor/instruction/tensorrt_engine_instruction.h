@@ -31,10 +31,10 @@ class TensorRTEngineInstruction : public InstructionBase {
  public:
   TensorRTEngineInstruction(size_t id,
                             const phi::Place& place,
-                            ::pir::Operation* op,
+                            pir::Operation* op,
                             const ValueExecutionInfo* value_exec_info);
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -68,7 +68,7 @@ class TensorRTEngineInstruction : public InstructionBase {
   std::vector<int> outputs_rank_;
   std::vector<phi::DataType> outputs_dtype_;
   std::string op_name_ = "pd_op.tensorrt_engine";
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
   std::string refit_params_path_;
   std::vector<std::string> refit_param_names_;
   std::map<std::string, std::map<std::string, std::string>>

@@ -61,7 +61,6 @@ from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    floor_divide_decorator,
     param_one_alias,
     param_two_alias,
 )
@@ -1133,7 +1132,7 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-@floor_divide_decorator()
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def floor_divide(
     x: Tensor,
     y: Number | Tensor,
@@ -1159,7 +1158,7 @@ def floor_divide(
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``input``.
-        y (Tensor｜Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+        y (Tensor|Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output tensor. Default: None.
@@ -1169,7 +1168,7 @@ def floor_divide(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1182,10 +1181,17 @@ def floor_divide(
 
             >>> x = paddle.to_tensor([2, 3, 8, 7])
             >>> y = paddle.to_tensor([1, -5, -3, -3])
-            >>> z = paddle.floor_divide(x, y)
+            >>> z = paddle.floor_divide(x=x, y=y)
             >>> print(z)
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [2, -1, -3, -3])
+
+            >>> x = paddle.to_tensor([2, -3, 8, -7])
+            >>> y = paddle.to_tensor([1, -5, -3, 3])
+            >>> z = paddle.floor_divide(input=x, other=y)  # type: ignore[call-arg]
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 0, -3, -3])
     """
     if in_dynamic_or_pir_mode():
         if isinstance(y, numbers.Number):
