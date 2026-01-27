@@ -1976,6 +1976,17 @@ static PyObject* tensor__pow__method(TensorObject* self,
       self_tensor = cast_ad_func(
           self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
     }
+    paddle::Tensor other_tensor;
+    {
+      eager_gil_scoped_release guard;
+      other_tensor = full_ad_func(
+          {1}, other_obj, DataType::COMPLEX64, self_tensor.place());
+    }
+    {
+      eager_gil_scoped_release guard;
+      ret = elementwise_pow_ad_func(self_tensor, other_tensor);
+    }
+    return ToPyObject(ret);
   }
 
   // 2. create or get tensor for other_obj
@@ -2034,9 +2045,23 @@ static PyObject* tensor__pow__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling elementwise_pow_ad_func in tensor__pow__method";
+
+  // Validate tensor state before computation
+  if (!self_tensor.defined() || !other_tensor.defined()) {
+    PyErr_SetString(PyExc_ValueError, "Tensor not initialized");
+    return nullptr;
+  }
+
   {
     eager_gil_scoped_release guard;
     ret = elementwise_pow_ad_func(self_tensor, other_tensor);
+  }
+
+  // Validate result before returning
+  if (!ret.defined()) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Power operation returned undefined tensor");
+    return nullptr;
   }
 
   return ToPyObject(ret);
