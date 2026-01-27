@@ -4800,6 +4800,8 @@ bool WeightQuantizeOpInferSymbolicShape(
 
 bool VarOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
+  PADDLE_THROW(
+      common::errors::InvalidArgument("call VarOpInferSymbolicShape."));
   const auto &axis = details::GetVectorAttr(op, "axis");
   return details::ReduceInferDim(op,
                                  infer_context,
