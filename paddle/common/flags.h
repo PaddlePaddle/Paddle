@@ -408,5 +408,3 @@ PADDLE_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
       name, true, ::std::string, string, default_value, doc)
 
 }  // namespace phi
-
-namespace paddle::flags {}  // namespace paddle::flags
