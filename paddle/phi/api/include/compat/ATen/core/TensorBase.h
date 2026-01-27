@@ -167,6 +167,14 @@ class PADDLE_API TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()));
   }
 
+  bool is_complex() const { return at::isComplexType(this->scalar_type()); }
+
+  bool is_floating_point() const {
+    return at::isFloatingType(this->scalar_type());
+  }
+
+  bool is_signed() const { return at::isSignedType(this->scalar_type()); }
+
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
