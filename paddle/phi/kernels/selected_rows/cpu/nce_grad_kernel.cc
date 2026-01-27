@@ -16,6 +16,7 @@
 
 #include <iterator>
 #include <random>
+#include <set>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
