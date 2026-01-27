@@ -56,8 +56,13 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+@param_one_alias(["x", "input"])
 def bernoulli(
-    x: Tensor, p: float | None = None, name: str | None = None
+    x: Tensor,
+    p: float | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -71,11 +76,17 @@ def bernoulli(
             1-x_i,&y=0
         \end{cases}.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``bernoulli(input=tensor_x, ...)`` is equivalent to ``bernoulli(x=tensor_x, ...)``.
+
     Args:
         x (Tensor): The input Tensor, it's data type should be float32, float64.
+            alias: ``input``.
         p (float|None, optional): If ``p`` is given, the success probability will always be ``p``. Default is None, which means
             to use the success probability specified by input ``x``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         Tensor, A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
@@ -115,16 +126,29 @@ def bernoulli(
         x = paddle.full_like(x, p)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.bernoulli(x)
+        out_tensor = _C_ops.bernoulli(x)
+        if out is not None:
+            paddle.assign(out_tensor, out)
+            return out
+        return out_tensor
     else:
         check_variable_and_dtype(
             x, "x", ["float32", "float64", "float16", "uint16"], "bernoulli"
         )
 
+        if out is not None:
+            check_variable_and_dtype(
+                out,
+                "out",
+                ["float32", "float64", "float16", "uint16"],
+                "bernoulli",
+            )
+
         helper = LayerHelper("randint", **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=x.dtype
-        )  # maybe set out to int32 ?
+        if out is None:
+            out = helper.create_variable_for_type_inference(
+                dtype=x.dtype
+            )  # maybe set out to int32 ?
         helper.append_op(
             type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={}
         )

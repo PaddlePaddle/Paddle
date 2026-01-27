@@ -1193,5 +1193,76 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_array_equal(out, ref_out)
 
 
+class TestBernoulliAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.shape = [2, 3]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 1.0]]).astype(
+            self.dtype
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        # Position args (args)
+        out1 = paddle.bernoulli(x)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.bernoulli(x=x)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args
+        out3 = paddle.bernoulli(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Mixed args + out parameter
+        out4 = paddle.empty_like(x)
+        out5 = paddle.bernoulli(x, out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+
+        # Torch keyword args + out parameter
+        out6 = paddle.empty_like(x)
+        out7 = paddle.bernoulli(input=x, out=out6)
+        paddle_dygraph_out.append(out6)
+        paddle_dygraph_out.append(out7)
+
+        ref_out = self.np_x
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Position args
+            out1 = paddle.bernoulli(x)
+            # Paddle keyword args
+            out2 = paddle.bernoulli(x=x)
+            # Torch keyword args
+            out3 = paddle.bernoulli(input=x)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = self.np_x
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == '__main__':
     unittest.main()
