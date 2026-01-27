@@ -539,17 +539,17 @@ void LinearV2GradInferMeta(const MetaTensor& input,
     }
   }
 
-  if (input_grad) {
+  if (input_grad && input) {
     input_grad->set_dims(input_dims);
     input_grad->set_dtype(input.dtype());
   }
 
-  if (weight_grad) {
+  if (weight_grad && weight) {
     weight_grad->set_dims(weight_dims);
     weight_grad->set_dtype(weight.dtype());
   }
 
-  if (bias_grad) {
+  if (bias_grad && bias) {
     bias_grad->set_dims(bias_dims);
     bias_grad->set_dtype(bias.dtype());
   }

@@ -400,7 +400,16 @@ PADDLE_API void KernelWithXShapeInferMeta(const MetaTensor& x,
 PADDLE_API void GradSameWithXInferMeta(const MetaTensor& xshape,
                                        const MetaTensor& out,
                                        MetaTensor* dx);
-
+PADDLE_API void LinearV2DoubleGradInferMeta(
+    const MetaTensor& input,
+    const MetaTensor& weight,
+    const MetaTensor& grad_out,
+    const paddle::optional<MetaTensor>& grad_input_grad,
+    const paddle::optional<MetaTensor>& grad_weight_grad,
+    const paddle::optional<MetaTensor>& grad_bias_grad,
+    MetaTensor* input_grad,
+    MetaTensor* weight_grad,
+    MetaTensor* grad_out_grad);
 PADDLE_API void LodResetGradInferMeta(const MetaTensor& x,
                                       const MetaTensor& out_grad,
                                       const std::vector<int>& target_lod,
