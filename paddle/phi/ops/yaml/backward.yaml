@@ -2089,7 +2089,7 @@
       func : GeneralTernaryGradInferMeta
       param : [input, weight, grad_out]
   no_need_buffer: input
-  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, grad_out_grad, is_receiving_transposed_weight)
+  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, is_receiving_transposed_weight,input_grad, weight_grad, grad_out_grad)
 
 - backward_op : linear_v2_grad
   forward : linear_v2 (Tensor input, Tensor weight, Tensor bias, bool is_receiving_transposed_weight=false) -> Tensor(out)
