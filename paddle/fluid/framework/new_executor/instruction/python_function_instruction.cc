@@ -95,10 +95,10 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
                             common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
-    if (var->IsType<phi::DenseTensor>()) {
-      auto dense_tensor_in = var->GetMutable<phi::DenseTensor>();
+    if (var->IsType<DenseTensor>()) {
+      auto dense_tensor_in = var->GetMutable<DenseTensor>();
 
-      std::shared_ptr<phi::DenseTensor> tensor_in(
+      std::shared_ptr<DenseTensor> tensor_in(
           dense_tensor_in, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
@@ -170,9 +170,9 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
     if (out_ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
       auto dense_tensor_out =
           inner_scope->FindVar(value_exec_info_.GetVarName(out_ptr))
-              ->GetMutable<phi::DenseTensor>();
+              ->GetMutable<DenseTensor>();
       cache_out_ptrs_.push_back(dense_tensor_out);
-      std::shared_ptr<phi::DenseTensor> tensor_out(
+      std::shared_ptr<DenseTensor> tensor_out(
           dense_tensor_out, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });

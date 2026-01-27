@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void FCKernel(const Context& dev_ctx,
               const DenseTensor& input,
               const DenseTensor& w,
-              const paddle::optional<DenseTensor>& bias,
+              const optional<DenseTensor>& bias,
               const int in_num_col_dims,
               const std::string& activation_type,
               const bool padding_weights,

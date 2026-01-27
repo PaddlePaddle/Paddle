@@ -52,8 +52,7 @@ static DenseTensor Fill(const Context& dev_ctx,
 
 template <class T, class Context>
 static DenseTensor identity_matrix(const Context& dev_ctx, common::DDim shape) {
-  DenseTensor M =
-      Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(shape), T(0));
+  DenseTensor M = Fill<T, Context>(dev_ctx, vectorize<int64_t>(shape), T(0));
   size_t rank = M.dims().size();
   int64_t M_diag_len = std::min(M.dims()[rank - 1], M.dims()[rank - 2]);
   std::vector<int64_t> M_diag_shape;
@@ -62,7 +61,7 @@ static DenseTensor identity_matrix(const Context& dev_ctx, common::DDim shape) {
   }
   M_diag_shape.push_back(M_diag_len);
   DenseTensor M_diag = Fill<T, Context>(
-      dev_ctx, common::vectorize<int64_t>(make_ddim(M_diag_shape)), T(1));
+      dev_ctx, vectorize<int64_t>(make_ddim(M_diag_shape)), T(1));
   M = FillDiagonalTensor<T, Context>(dev_ctx, M, M_diag, 0, rank - 2, rank - 1);
   return M;
 }
@@ -102,7 +101,7 @@ struct QrFunctor {
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &qr);
 
     // Prepare tau
-    auto tau_dims_vec = common::vectorize<int64_t>(x_dims);
+    auto tau_dims_vec = vectorize<int64_t>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     DenseTensor tau = Fill<T, Context>(dev_ctx, tau_dims_vec, T(0));
@@ -150,7 +149,7 @@ struct QrFunctor {
         Copy(dev_ctx, sliced_q, q->place(), false, q);
       } else {
         if (m > n) {
-          auto new_qr_dims_vec = common::vectorize<int64_t>(x_dims);
+          auto new_qr_dims_vec = vectorize<int64_t>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
           DenseTensor new_qr = Fill<T, Context>(dev_ctx, new_qr_dims_vec, T(0));
           auto new_qr_data =
@@ -229,7 +228,7 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
     // input
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &qr);
     // Prepare tau
-    auto tau_dims_vec = common::vectorize<int64_t>(x_dims);
+    auto tau_dims_vec = vectorize<int64_t>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     DenseTensor tau =
@@ -280,7 +279,7 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
         Copy(dev_ctx, sliced_q, q->place(), false, q);
       } else {
         if (m > n) {
-          auto new_qr_dims_vec = common::vectorize<int64_t>(x_dims);
+          auto new_qr_dims_vec = vectorize<int64_t>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
           DenseTensor new_qr = Fill<phi::dtype::complex<T>, Context>(
               dev_ctx, new_qr_dims_vec, T(0));
@@ -478,7 +477,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
                                          info_d));
 
       int info_h;
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          &info_h,
                          dev_ctx.GetPlace(),
                          info_d,
@@ -523,7 +522,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
       // Do we need synchronized here?
       // check the error info
       int info_h;
-      memory_utils::Copy(phi::CPUPlace(),
+      memory_utils::Copy(CPUPlace(),
                          &info_h,
                          dev_ctx.GetPlace(),
                          info_d,
@@ -578,7 +577,7 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -634,7 +633,7 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -690,7 +689,7 @@ void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -746,7 +745,7 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -802,7 +801,7 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -867,7 +866,7 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -932,7 +931,7 @@ void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,

@@ -89,7 +89,7 @@ __global__ void KernelBincount(const InputT* input,
 template <typename Context, typename T, typename InputT>
 void BincountCUDAInner(const Context& dev_ctx,
                        const DenseTensor& x,
-                       const paddle::optional<DenseTensor>& weights,
+                       const optional<DenseTensor>& weights,
                        int64_t minlength,
                        DenseTensor* out) {
   const DenseTensor* input = &x;
@@ -101,8 +101,7 @@ void BincountCUDAInner(const Context& dev_ctx,
   if (input_data == nullptr) {
     DDim out_dim{minlength};
     output->Resize(out_dim);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<int64_t, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -125,7 +124,7 @@ void BincountCUDAInner(const Context& dev_ctx,
       <<<num_blocks, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
           input_data, input_numel, input_min_max_data, input_min_max_data + 1);
 
-  Copy(dev_ctx, input_min_max_t, phi::CPUPlace(), true, &input_min_max_cpu);
+  Copy(dev_ctx, input_min_max_t, CPUPlace(), true, &input_min_max_cpu);
 
   InputT input_min = input_min_max_cpu.data<InputT>()[0];
 
@@ -178,7 +177,7 @@ void BincountCUDAInner(const Context& dev_ctx,
 template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& weights,
+                    const optional<DenseTensor>& weights,
                     const Scalar& minlength,
                     DenseTensor* out) {
   int64_t int_minlength = minlength.to<int64_t>();

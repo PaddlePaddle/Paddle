@@ -22,7 +22,7 @@ void SliceDfsImpl(const ExprVec &datas,
                   int64_t start,
                   int64_t end,
                   int64_t cur_visit_axis,
-                  int offset,
+                  int64_t offset,
                   ExprVec *result) {
   int64_t begin = 0;
   int64_t stop = shape.at(cur_visit_axis);

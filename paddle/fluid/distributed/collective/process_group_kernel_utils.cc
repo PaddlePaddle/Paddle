@@ -23,8 +23,8 @@ namespace distributed {
 
 template <>
 void SplitDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
-                                     const phi::DenseTensor &t_in,
-                                     std::vector<phi::DenseTensor> *t_list,
+                                     const DenseTensor &t_in,
+                                     std::vector<DenseTensor> *t_list,
                                      phi::DataType type) {
   switch (type) {
     case phi::DataType::FLOAT16:
@@ -57,11 +57,10 @@ void SplitDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
 }
 
 template <>
-void ConcatDenseTensorByNumelWithType(
-    const phi::XPUContext &dev_ctx,
-    const std::vector<phi::DenseTensor> &t_list,
-    phi::DenseTensor *p_out,
-    phi::DataType type) {
+void ConcatDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
+                                      const std::vector<DenseTensor> &t_list,
+                                      DenseTensor *p_out,
+                                      phi::DataType type) {
   switch (type) {
     case phi::DataType::FLOAT16:
       ConcatDenseTensorByNumel<phi::XPUContext, phi::dtype::float16>()(
@@ -94,8 +93,8 @@ void ConcatDenseTensorByNumelWithType(
 }
 
 void ConcatTensorByNumel(const phi::DeviceContext &dev_ctx,
-                         const std::vector<phi::DenseTensor> &tensor_list,
-                         phi::DenseTensor *tensor) {
+                         const std::vector<DenseTensor> &tensor_list,
+                         DenseTensor *tensor) {
   const auto &place = dev_ctx.GetPlace();
   if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
@@ -116,8 +115,8 @@ void ConcatTensorByNumel(const phi::DeviceContext &dev_ctx,
 }
 
 void SplitTensorByNumel(const phi::DeviceContext &dev_ctx,
-                        const phi::DenseTensor &tensor,
-                        std::vector<phi::DenseTensor> *tensor_list) {
+                        const DenseTensor &tensor,
+                        std::vector<DenseTensor> *tensor_list) {
   const auto &place = dev_ctx.GetPlace();
   if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU

@@ -41,9 +41,9 @@ void Decode(const Context& dev_ctx,
   DenseTensor track;
   track.Resize(emission_dims);
   int* track_value = dev_ctx.template Alloc<int>(&track);
-  auto ker = phi::jit::KernelFuncs<phi::jit::CRFDecodingTuple<T>,
-                                   phi::CPUPlace>::Cache()
-                 .At(tag_num);
+  auto ker =
+      phi::jit::KernelFuncs<phi::jit::CRFDecodingTuple<T>, CPUPlace>::Cache()
+          .At(tag_num);
   ker(static_cast<int>(seq_len), x, w, alpha_value, track_value, tag_num);
   T max_score = -std::numeric_limits<T>::max();
   int max_i = 0;
@@ -66,8 +66,8 @@ template <typename T, typename Context>
 void CRFDecodingOpKernel(const Context& dev_ctx,
                          const DenseTensor& emission,
                          const DenseTensor& transition,
-                         const paddle::optional<DenseTensor>& label,
-                         const paddle::optional<DenseTensor>& length,
+                         const optional<DenseTensor>& label,
+                         const optional<DenseTensor>& length,
                          DenseTensor* viterbi_path) {
   auto* emission_weights = &emission;
   auto* transition_weights = &transition;
