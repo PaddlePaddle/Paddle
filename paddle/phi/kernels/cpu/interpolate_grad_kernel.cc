@@ -592,7 +592,6 @@ static void Interpolate2DCPUBwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   double ratio_h =
       funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
   double ratio_w =
@@ -769,7 +768,6 @@ static void Interpolate3DCPUBwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   double ratio_d =
       funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
   double ratio_h =

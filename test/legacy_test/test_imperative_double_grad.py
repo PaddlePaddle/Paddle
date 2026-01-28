@@ -1204,8 +1204,7 @@ class TestDygraphDoubleGradMatmul(TestCase):
             z = paddle.grad(v, x, create_graph=True)[0]
             zz = paddle.grad(z, x, create_graph=True)[0]
 
-        with self.assertRaises(ValueError):
-            test()
+            np.testing.assert_equal(zz.numpy(), paddle.zeros_like(zz).numpy())
 
 
 if __name__ == '__main__':

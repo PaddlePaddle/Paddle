@@ -222,10 +222,10 @@ void FusedElemwiseAddActivationKernel(
 template <typename T, typename Context>
 void FusedElemwiseAddActivationGradKernel(
     const Context &dev_ctx,
-    const paddle::optional<DenseTensor> &x,
+    const optional<DenseTensor> &x,
     const DenseTensor &y,
     const DenseTensor &out,
-    const paddle::optional<DenseTensor> &intermediate_out,
+    const optional<DenseTensor> &intermediate_out,
     const DenseTensor &out_grad,
     const std::vector<std::string> &functor_list,
     int axis,

@@ -35,8 +35,7 @@
 #include "cuda.h"              // NOLINT
 #endif
 
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
-    defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
@@ -46,7 +45,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/utils/optional.h"
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
@@ -73,8 +72,7 @@ void LinearV2Kernel(const Context& dev_ctx,
   }
 
 // broadcast bias, reshape input,  run_fuse, reshape output
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION > 11060 && \
-    !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (!FLAGS_use_legacy_linear) {
     VLOG(10) << "Use LinearV2Kernel with cublaslt";
     const auto out_dim_original = out->dims();

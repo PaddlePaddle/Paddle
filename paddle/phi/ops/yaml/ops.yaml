@@ -5335,6 +5335,17 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
 
+- op : std
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false, bool unbiased=true, double correction=1)
+  output : Tensor(out)
+  infer_meta :
+    func : StdInferMeta
+  kernel :
+    func : std
+    data_type : x
+  backward : std_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : stft
   args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
   output: Tensor (out)
@@ -5843,6 +5854,17 @@
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : var
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false, bool unbiased=true, double correction=1)
+  output : Tensor(out)
+  infer_meta :
+    func : VarInferMeta
+  kernel :
+    func : var
+    data_type : x
+  backward : var_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : variance
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)

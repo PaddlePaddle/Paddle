@@ -36,7 +36,7 @@ class CudaGraphInstruction : public InstructionBase {
  public:
   CudaGraphInstruction(size_t id,
                        const phi::Place& place,
-                       ::pir::Operation* op,
+                       pir::Operation* op,
                        uint8_t* cuda_graph_state_ref,
                        int64_t cuda_graph_capture_pool_id,
                        ValueExecutionInfo* value_exe_info,
@@ -48,7 +48,7 @@ class CudaGraphInstruction : public InstructionBase {
 
   const std::string& Name() const override { return name_; }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   PirInterpreter* interpreter() const { return interpreter_; }
 

@@ -17,7 +17,7 @@ namespace phi {
 template <typename T, typename Context>
 void SequenceMaskKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& max_len_tensor,
+                        const optional<DenseTensor>& max_len_tensor,
                         int maxlen,
                         DataType out_dtype,
                         DenseTensor* y);

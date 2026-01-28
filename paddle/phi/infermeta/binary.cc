@@ -671,17 +671,16 @@ void ConvInferMeta(const MetaTensor& input,
 
   DDim in_data_dims;
   if (channel_last) {
-    in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
-    in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   }
 
   DDim filter_data_dims;
   if (channel_last && FLAGS_manually_trans_conv_filter) {
-    filter_data_dims =
-        common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+    filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   } else {
-    filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
+    filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   }
 
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
@@ -763,7 +762,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
 
   const DataLayout data_layout = config.is_run_onednn_kernel
                                      ? DataLayout::NCHW
-                                     : common::StringToDataLayout(data_format);
+                                     : StringToDataLayout(data_format);
 
   PADDLE_ENFORCE_EQ(
       x_dims.size() == 4 || x_dims.size() == 5,
@@ -1061,8 +1060,8 @@ void CrossEntropyInferMeta(const MetaTensor& x,
 
   if (check) {
     PADDLE_ENFORCE_EQ(
-        common::slice_ddim(x_dims, 0, rank - 1),
-        common::slice_ddim(label_dims, 0, rank - 1),
+        slice_ddim(x_dims, 0, rank - 1),
+        slice_ddim(label_dims, 0, rank - 1),
         common::errors::InvalidArgument(
             "Input(X) and Input(Label) shall have the same shape "
             "except the last dimension. But received: the shape of Input(X) "
@@ -1891,7 +1890,7 @@ void FastRMSNormInfermeta(const MetaTensor& x,
   auto x_dim = x.dims();
   auto x_ndim = x_dim.size();
 
-  auto matrix_dim = common::flatten_to_2d(x_dim, x_ndim - 1);
+  auto matrix_dim = flatten_to_2d(x_dim, x_ndim - 1);
 
   int64_t right = matrix_dim[1];
   if (scale) {
@@ -2882,7 +2881,7 @@ void LookupTableDequantInferMeta(const MetaTensor& w,
           ids_dims[ids_rank - 1],
           ids_dims));
 
-  auto output_dims = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  auto output_dims = vectorize(slice_ddim(ids_dims, 0, ids_rank - 1));
   PADDLE_ENFORCE_GE(table_dims[1],
                     2,
                     common::errors::InvalidArgument(
@@ -2978,7 +2977,7 @@ void LookupTableInferMeta(const MetaTensor& w,
           ids_dims[ids_rank - 1],
           ids_dims));
 
-  auto output_dims = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  auto output_dims = vectorize(slice_ddim(ids_dims, 0, ids_rank - 1));
   output_dims.push_back(table_dims[1]);
   out->set_dims(make_ddim(output_dims));
   out->set_dtype(w.dtype());
@@ -3185,8 +3184,8 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
           y_dims,
           y_num_col_dims));
 
-  auto x_mat_dims = common::flatten_to_2d(x_dims, x_num_col_dims);
-  auto y_mat_dims = common::flatten_to_2d(y_dims, y_num_col_dims);
+  auto x_mat_dims = flatten_to_2d(x_dims, x_num_col_dims);
+  auto y_mat_dims = flatten_to_2d(y_dims, y_num_col_dims);
 
   PADDLE_ENFORCE_EQ(
       x_mat_dims[1],
@@ -3581,7 +3580,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
                           "Shape error in %lu id, the last dimension of the "
                           "'Ids' tensor must be 1.",
                           i));
-    auto out_dim = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+    auto out_dim = vectorize(slice_ddim(ids_dims, 0, ids_rank - 1));
     out_dim.push_back(embedding_size);
     outs_dims[i] = make_ddim(out_dim);
   }
@@ -3812,7 +3811,7 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
                           "Shape error in %lu id, the last dimension of the "
                           "'Ids' tensor must be 1.",
                           i));
-    auto out_dim = vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+    auto out_dim = vectorize(slice_ddim(ids_dims, 0, ids_rank - 1));
     out_dim.push_back(hidden_size);
     output->set_dims(make_ddim(out_dim));
     output->share_lod(*ids[i]);
@@ -3939,7 +3938,6 @@ void RmsNormInferMeta(const MetaTensor& x,
     }
   }
 
-  auto matrix_dim = common::flatten_to_2d(x_dim, begin_norm_axis);
   auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
 
   PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
