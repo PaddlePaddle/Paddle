@@ -24,7 +24,7 @@ namespace paddle::framework {
 
 SelectInputInstruction::SelectInputInstruction(
     size_t id,
-    const phi::Place &place,
+    const Place &place,
     pir::Operation *op,
     ValueExecutionInfo *value_exe_info)
     : InstructionBase(id, place),

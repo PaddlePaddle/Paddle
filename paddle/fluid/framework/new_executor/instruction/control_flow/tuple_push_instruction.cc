@@ -56,7 +56,7 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
 }
 
 TuplePushInstruction::TuplePushInstruction(size_t id,
-                                           const phi::Place& place,
+                                           const Place& place,
                                            pir::Operation* op,
                                            ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {

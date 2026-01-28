@@ -35,11 +35,11 @@ std::vector<int> GetValueIds(pir::Value value,
 
 phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                                        phi::DeviceContext* origin_dev_ctx,
-                                       const phi::Place& place,
+                                       const Place& place,
                                        const std::string& execution_stream,
                                        const int stream_priority);
 
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place);
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place);
 
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
