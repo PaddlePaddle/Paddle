@@ -2165,7 +2165,6 @@ class TestIfftn_ZeroSize(unittest.TestCase):
 class TestIhfft2_ZeroSize(unittest.TestCase):
     def test_ihfft2(self):
         with paddle.base.dygraph.guard(self.place):
-            print(self.x)
             np.testing.assert_allclose(
                 scipy.fft.ihfft2(self.x, self.n, self.axis, self.norm),
                 paddle.fft.ihfft2(

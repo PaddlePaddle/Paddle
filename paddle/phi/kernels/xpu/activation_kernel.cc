@@ -439,6 +439,10 @@ void SwishKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+
   int r = xpu::swish(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(x.data<T>()),
                      reinterpret_cast<XPUType*>(out->data<T>()),

@@ -1517,6 +1517,22 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [2, 3])
         np.testing.assert_array_equal(out.numpy()[1], [1.0, 2.0, 3.0])
 
+    def test_scatter_grad_xpu_index_empty(self):
+        x = paddle.randn([100, 1], dtype='float32')
+        x.stop_gradient = False
+        index = paddle.to_tensor([], dtype='int64')
+        updates = paddle.randn([0, 1], dtype='float32')
+        updates.stop_gradient = False
+        out = paddle.scatter(x, index, updates)
+        out.backward()
+
+        self.assertEqual(x.shape, [100, 1])
+        self.assertEqual(index.shape, [0])
+        self.assertEqual(updates.shape, [0, 1])
+        self.assertEqual(out.shape, [100, 1])
+        self.assertEqual(x.grad.shape, [100, 1])
+        self.assertEqual(updates.grad.shape, [0, 1])
+
     def test_diagflat(self):
         x1 = paddle.rand([])
         x2 = paddle.rand([])
@@ -2217,6 +2233,22 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
         self.assertEqual(x2.grad.numpy(), 0.25)
 
+    def test_prelu_grad_xpu_zero_batch(self):
+        x = paddle.full([0, 128, 28, 28], 1.0, 'float32')
+        x.stop_gradient = False
+        w = paddle.full([128], 0.25, dtype='float32')
+        w.stop_gradient = False
+
+        out = paddle.nn.functional.prelu(x, w, data_format="NCHW")
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(out.shape, [0, 128, 28, 28])
+        self.assertEqual(x.grad.shape, [0, 128, 28, 28])
+        self.assertEqual(out.grad.shape, [0, 128, 28, 28])
+        self.assertEqual(w.grad.shape, [128])
+        self.assertEqual(w.grad.numpy().sum(), 0.0)
+
     def test_while_loop(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -2797,6 +2829,13 @@ class TestNoBackwardAPI(unittest.TestCase):
         d = paddle.eye(10)
         out_d = paddle.linalg.matrix_rank(d, tol=tol_2)
         self.assertEqual(out_d.shape, [2])
+
+
+class TestSwishZeroSizeXPU(unittest.TestCase):
+    def test_swish_zero_size(self):
+        x = paddle.randn([0, 10, 1, 1], dtype='float16')
+        out = F.swish(x)
+        self.assertEqual(out.shape, [0, 10, 1, 1])
 
 
 if __name__ == "__main__":
