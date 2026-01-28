@@ -57,6 +57,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'is_sparse',
         'is_sparse_coo',
         'is_sparse_csr',
+        'is_pinned',
         'layout',
         'nnz',
         'num_shard',
