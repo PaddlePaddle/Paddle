@@ -722,9 +722,9 @@ void Compiler::CompileCustomDeviceModule(const Module& module,
       SplitDeviceAndHostModule(module);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
-  VLOG(3) << "[CustomDevice] host module:\n" << host_module;
+  VLOG(1) << "[CustomDevice] host module:\n" << host_module;
 
-  VLOG(3) << "[CustomDevice] device module:\n" << device_module;
+  VLOG(1) << "[CustomDevice] device module:\n" << device_module;
   std::string source_code;
 
   if (!FLAGS_cinn_debug_custom_code_path.empty()) {
@@ -741,7 +741,7 @@ void Compiler::CompileCustomDeviceModule(const Module& module,
                     true,
                     ::common::errors::InvalidArgument(
                         "Compile CustomDevice code failed from device module"));
-  VLOG(3) << "[CustomDevice] Source:\n" << source_code;
+  VLOG(1) << "[CustomDevice] Source:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
   device_fn_code_ += source_code;
 
