@@ -310,11 +310,7 @@ def real(x: Tensor, name: str | None = None) -> Tensor:
             >>> x = paddle.to_tensor(
             ...     [
             ...         [1 + 6j, 2 + 5j, 3 + 4j],
-            ...         [
-            ...             4 + 3j,
-            ...             5 + 2j,
-            ...             6 + 1j,
-            ...         ],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
             ...     ]
             ... )
             >>> print(x)
