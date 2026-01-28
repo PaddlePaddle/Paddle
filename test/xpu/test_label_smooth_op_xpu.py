@@ -102,7 +102,7 @@ class XPUTestLabelSmoothOp_ZeroSize(XPUOpTest):
     def test_check_output(self):
         if not paddle.is_compiled_with_xpu():
             return
-        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-6)
+        self.check_output_with_place(paddle.XPUPlace(0))
 
     def test_check_grad(self):
         return
