@@ -4008,10 +4008,14 @@ def geometric_(
 ) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
+    .. note::
+        Alias Support: The parameter name ``p`` can be used as an alias for ``probs``.
+        For example, ``geometric_(x, p=0.3)`` is equivalent to ``geometric_(x, probs=0.3)``.
+
     Args:
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (float|Tensor): Probability parameter.
-            Alias for ``probs``.
+            alias: ``p``.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
