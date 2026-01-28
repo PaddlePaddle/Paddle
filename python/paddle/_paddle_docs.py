@@ -4266,7 +4266,7 @@ add_doc_and_signature(
 
     .. note::
 
-        ``paddle.bitwise_left_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+        ``paddle.bitwise_left_shift`` supports broadcasting. If you want to know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
 
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
