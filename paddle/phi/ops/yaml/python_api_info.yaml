@@ -399,11 +399,6 @@
   args_alias :
     use_default_mapping : True
 
-- op : squeeze_
-  name : [paddle.squeeze_, paddle.Tensor.squeeze_]
-  args_alias :
-    use_default_mapping : True
-
 - op : sum
   name : [paddle.sum, paddle.Tensor.sum]
   args_alias :
