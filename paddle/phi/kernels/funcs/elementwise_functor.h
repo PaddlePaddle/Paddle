@@ -25,6 +25,14 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/type_safe_sign_math.h"
 
+#ifdef PADDLE_WITH_SLEEF
+#include <sleef.h>
+// Sleef precision control option
+#ifndef PADDLE_SLEEF_POW_PRECISION
+#define PADDLE_SLEEF_POW_PRECISION 10  // Default to use u10 precision
+#endif
+#endif
+
 namespace phi {
 namespace funcs {
 
@@ -1413,6 +1421,34 @@ struct InverseTruncDivideFunctor<dtype::bfloat16> {
     return static_cast<dtype::bfloat16>(std::trunc(b_float / a_float));
   }
 };
+
+#ifdef PADDLE_WITH_SLEEF
+template <typename T>
+inline HOSTDEVICE
+    typename std::enable_if<std::is_same<T, float>::value, T>::type
+    compute_pow_sleef(const T a, const T b) {
+#if PADDLE_SLEEF_POW_PRECISION == 15
+  return Sleef_powf1_u15(a, b);
+#elif PADDLE_SLEEF_POW_PRECISION == 10
+  return Sleef_powf1_u10(a, b);
+#else
+  return Sleef_powf1_u35(a, b);
+#endif
+}
+
+template <typename T>
+inline HOSTDEVICE
+    typename std::enable_if<std::is_same<T, double>::value, T>::type
+    compute_pow_sleef(const T a, const T b) {
+#if PADDLE_SLEEF_POW_PRECISION == 15
+  return Sleef_powd1_u15(a, b);
+#elif PADDLE_SLEEF_POW_PRECISION == 10
+  return Sleef_powd1_u10(a, b);
+#else
+  return Sleef_powd1_u35(a, b);
+#endif
+}
+#endif
 
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
 template <typename T, typename MPType>
