@@ -56,7 +56,7 @@ void AffineChannelCUDAKernel(const Context& dev_ctx,
   auto* y = out;
   dev_ctx.template Alloc<T>(y);
 
-  const DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   const int64_t num = x->numel();

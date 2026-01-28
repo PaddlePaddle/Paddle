@@ -873,7 +873,7 @@ def get_device_properties(
             >>> # paddle.device.get_device_properties('npu')
             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
     """
-    device = _device_to_paddle(device)
+    device = device_to_place(device)
     return _get_device_properties(device)
 
 
@@ -1516,8 +1516,8 @@ def _device_to_paddle(
     elif isinstance(dev, str):
         cleaned_device = dev.strip()
         return (
-            cleaned_device.replace("cuda:", "gpu:")
-            if "cuda:" in cleaned_device
+            cleaned_device.replace("cuda", "gpu")
+            if "cuda" in cleaned_device
             else cleaned_device
         )
     elif dev is None:
@@ -2138,7 +2138,7 @@ class Device(str):
                     dev_index = int(idx)
                 else:
                     dev_type = t
-                    dev_index = 0 if t != "cpu" else None
+                    dev_index = None
 
         elif isinstance(type, int):
             dev_type = "cuda"
@@ -2149,8 +2149,10 @@ class Device(str):
 
         else:
             raise TypeError(f"Unsupported type for Device: {type}")
-
-        s = f"{dev_type}:{dev_index}" if dev_type != "cpu" else "cpu"
+        cond = None
+        s = f"{dev_type}:{dev_index}" if dev_index != cond else dev_type
+        if dev_type == 'cpu':
+            s = 'cpu'
         obj = str.__new__(cls, s)
         obj._dev_type = dev_type
         obj._index = dev_index
@@ -2173,6 +2175,11 @@ class Device(str):
             return core.XPUPlace(self.index)
         else:
             raise ValueError(f"Unsupported device type: {self.type}")
+
+    def __repr__(self) -> str:
+        if self.type == "cpu" or self.index is None:
+            return f"device(type='{self.type}')"
+        return f"device(type='{self.type}', index={self.index})"
 
     def __dlpack_device__(self) -> tuple[int, int]:
         return self._to_place().__dlpack_device__()

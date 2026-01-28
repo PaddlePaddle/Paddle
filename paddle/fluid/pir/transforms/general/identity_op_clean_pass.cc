@@ -25,7 +25,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class RemoveUselessScalePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -130,8 +130,8 @@ class RemoveUselessCastPattern : public paddle::drr::DrrPatternBase {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd_op.cast")(pat.Tensor("arg0"));
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto ret_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("ret"));
-      auto arg0_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("arg0"));
+      auto ret_dtype = GetDataTypeFromValue(match_ctx.Tensor("ret"));
+      auto arg0_dtype = GetDataTypeFromValue(match_ctx.Tensor("arg0"));
       return ret_dtype == arg0_dtype;
     });
     auto res = pat.ResultPattern();
@@ -145,14 +145,14 @@ class RemoveUselessConcatPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
-    const auto &combine = pat.Op(pir::CombineOp::name());
+    const auto &combine = pat.Op(CombineOp::name());
     combine({&pat.Tensor("x")}, {&pat.Tensor("combine_out")});
     pat.Tensor("out") = pat.Op(paddle::dialect::ConcatOp::name())(
         pat.Tensor("combine_out"), pat.Tensor("axis"));
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto combine_out = match_ctx.Tensor("combine_out");
-      return combine_out.type().isa<pir::VectorType>() &&
-             combine_out.type().dyn_cast<pir::VectorType>().size() == 1;
+      return combine_out.type().isa<VectorType>() &&
+             combine_out.type().dyn_cast<VectorType>().size() == 1;
     });
     auto res = pat.ResultPattern();
     res.Tensor("out").Assign(res.Tensor("x"));
@@ -269,13 +269,12 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class IdentityOpCleanPass : public pir::PatternRewritePass {
+class IdentityOpCleanPass : public PatternRewritePass {
  public:
-  IdentityOpCleanPass()
-      : pir::PatternRewritePass("identity_op_clean_pass", 2) {}
+  IdentityOpCleanPass() : PatternRewritePass("identity_op_clean_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<RemoveUselessScalePattern>(context));
     ps.Add(paddle::drr::Create<RemoveRedundantScalePattern>(context));
     ps.Add(paddle::drr::Create<RemoveUselessCastPattern>(context));
@@ -287,13 +286,9 @@ class IdentityOpCleanPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateIdentityOpCleanPass() {
   return std::make_unique<IdentityOpCleanPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(identity_op_clean_pass, IdentityOpCleanPass);
+REGISTER_IR_PASS(identity_op_clean_pass, pir::IdentityOpCleanPass);

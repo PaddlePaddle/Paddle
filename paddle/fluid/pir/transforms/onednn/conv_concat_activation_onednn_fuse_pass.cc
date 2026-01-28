@@ -23,7 +23,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -125,7 +125,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
 
       combine_in.push_back(&pat.Tensor("conv2d_out_" + std::to_string(i)));
     }
-    const auto &combine_op = pat.Op(pir::CombineOp::name());
+    const auto &combine_op = pat.Op(CombineOp::name());
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -265,7 +265,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
       combine_result_in.push_back(&res.Tensor("act_out_" + std::to_string(i)));
     }
 
-    const auto &combine = res.Op(pir::CombineOp::name());
+    const auto &combine = res.Op(CombineOp::name());
 
     combine(combine_result_in, {&res.Tensor("combine_result_out")});
 
@@ -384,7 +384,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
 
       combine_in.push_back(&pat.Tensor("conv2d_out_" + std::to_string(i)));
     }
-    const auto &combine_op = pat.Op(pir::CombineOp::name());
+    const auto &combine_op = pat.Op(CombineOp::name());
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -490,7 +490,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
       combine_result_in.push_back(&res.Tensor("act_out_" + std::to_string(i)));
     }
 
-    const auto &combine = res.Op(pir::CombineOp::name());
+    const auto &combine = res.Op(CombineOp::name());
 
     combine(combine_result_in, {&res.Tensor("combine_result_out")});
 
@@ -609,7 +609,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
 
       combine_in.push_back(&pat.Tensor("conv2d_out_" + std::to_string(i)));
     }
-    const auto &combine_op = pat.Op(pir::CombineOp::name());
+    const auto &combine_op = pat.Op(CombineOp::name());
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -721,7 +721,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
       combine_result_in.push_back(&res.Tensor("act_out_" + std::to_string(i)));
     }
 
-    const auto &combine = res.Op(pir::CombineOp::name());
+    const auto &combine = res.Op(CombineOp::name());
 
     combine(combine_result_in, {&res.Tensor("combine_result_out")});
 
@@ -841,7 +841,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
 
       combine_in.push_back(&pat.Tensor("conv2d_out_" + std::to_string(i)));
     }
-    const auto &combine_op = pat.Op(pir::CombineOp::name());
+    const auto &combine_op = pat.Op(CombineOp::name());
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -963,7 +963,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
       combine_result_in.push_back(&res.Tensor("act_out_" + std::to_string(i)));
     }
 
-    const auto &combine = res.Op(pir::CombineOp::name());
+    const auto &combine = res.Op(CombineOp::name());
 
     combine(combine_result_in, {&res.Tensor("combine_result_out")});
 
@@ -983,13 +983,13 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class ConvConcatActFusePass : public pir::PatternRewritePass {
+class ConvConcatActFusePass : public PatternRewritePass {
  public:
   ConvConcatActFusePass()
-      : pir::PatternRewritePass("conv_concat_activation_mkldnn_fuse_pass", 2) {}
+      : PatternRewritePass("conv_concat_activation_mkldnn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     std::vector<std::string> supported_activations_name = {"abs",
                                                            "sqrt",
                                                            "mish",
@@ -1048,10 +1048,6 @@ class ConvConcatActFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateConv2dConcatActFusePass() {
   // /**
   //  * This pass must execution before conv_activation_mkldnn_fuse_pass
@@ -1069,4 +1065,4 @@ std::unique_ptr<Pass> CreateConv2dConcatActFusePass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(conv_concat_activation_onednn_fuse_pass,
-                 ConvConcatActFusePass);
+                 pir::ConvConcatActFusePass);

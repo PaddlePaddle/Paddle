@@ -191,5 +191,60 @@ class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
         ) == (1,)
 
 
+@unittest.skipIf(
+    not (
+        (core.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+    )
+    and not core.is_compiled_with_xpu(),
+    "Only support XPU or GPU in CUDA mode.",
+)
+class TestBlhaGetMaxLenOp_ZeroSize_BatchSizeEmptyTensor(unittest.TestCase):
+    def setUp(self):
+        self.name = "TestBlhaGetMaxLenOpDynamic_ZeroSize_BatchSizeEmptyTensor"
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        self.place = place
+        self.batch_size = 10
+        self.test_encoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+        self.test_decoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+
+    @unittest.skipIf(
+        not paddle.device.is_compiled_with_xpu(),
+        "This testcase targets XPU empty batch_size tensor behavior.",
+    )
+    def test_dynamic_api_batch_size_empty_tensor(self):
+        paddle.disable_static()
+        seq_lens_encoder = paddle.to_tensor(
+            self.test_encoder_data,
+            "int32",
+            place=self.place,
+        )
+        seq_lens_decoder = paddle.to_tensor(
+            self.test_decoder_data,
+            "int32",
+            place=self.place,
+        )
+        batch_size_tensor = paddle.to_tensor(
+            np.array([], dtype="float32"), place=self.place
+        )
+        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+            seq_lens_encoder,
+            seq_lens_decoder,
+            batch_size_tensor,
+        )
+        assert (
+            int(max_enc_len_this_time) == 0 and int(max_dec_len_this_time) == 0
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

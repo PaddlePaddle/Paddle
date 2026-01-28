@@ -19,9 +19,7 @@ std::vector<Type> VectorType::data() const { return storage()->GetAsKey(); }
 
 pir::Type DenseTensorType::dtype() const { return storage()->dtype_; }
 
-const DenseTensorType::Dim& DenseTensorType::dims() const {
-  return storage()->dims_;
-}
+const DDim& DenseTensorType::dims() const { return storage()->dims_; }
 
 DataLayout DenseTensorType::data_layout() const { return storage()->layout_; }
 

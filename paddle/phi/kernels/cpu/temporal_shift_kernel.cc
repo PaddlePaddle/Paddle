@@ -96,7 +96,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* output = out;
   int t = seg_num;
-  const DataLayout data_layout = common::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = StringToDataLayout(data_format_str);
 
   const int nt = static_cast<int>(input->dims()[0]);
   const int c = static_cast<int>(

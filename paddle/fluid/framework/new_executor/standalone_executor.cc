@@ -64,7 +64,7 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
-    std::shared_ptr<::pir::Program> ir_program = nullptr;
+    std::shared_ptr<pir::Program> ir_program = nullptr;
     if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {  // NOLINT
       ir_program = plan_.IrProgram(job_type);
       RunFeedHooks(*ir_program, *scope);
@@ -94,7 +94,7 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
 
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_pir_in_executor) {
-      std::shared_ptr<::pir::Program> base_program = ir_program;
+      std::shared_ptr<pir::Program> base_program = ir_program;
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
         if (it->isa<paddle::dialect::FetchOp>()) {
@@ -129,7 +129,7 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
           VLOG(4) << "Add CustomEngine pass : " << pass;
         }
 
-        ::pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+        pir::PassManager pass_pm(pir::IrContext::Instance(), 3);
         for (std::string custom_pass : passes) {
           pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
           pass_pm.Run(base_program.get());
