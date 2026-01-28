@@ -24,10 +24,9 @@ limitations under the License. */
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 
-// Forward declaration of BLAS and DNN types.
+// Forward declaration of BLAS types.
 using cublasHandle_t = struct cublasContext*;
 using cublasLtHandle_t = struct cublasLtContext*;
-using dnnHandle_t = struct cudnnContext*;
 
 namespace Eigen {
 struct GpuDevice;

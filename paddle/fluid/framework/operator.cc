@@ -1581,7 +1581,8 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (this->CanCUDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
@@ -1606,25 +1607,16 @@ bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         phi::DataType data_type) const {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
-                   phi::is_custom_place(ctx.GetPlace());
+                   (phi::is_gpu_place(ctx.GetPlace()) ||
+                    phi::is_custom_place(ctx.GetPlace()));
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<phi::CustomContext>();
+    const auto& dev_ctx = ctx.device_context<phi::DeviceContext>();
     use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
   }
-
-#else
-  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
-                   phi::is_gpu_place(ctx.GetPlace());
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
-    use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
-  }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #if defined(PADDLE_WITH_CUDA)
   if (use_cudnn && data_type == phi::DataType::BFLOAT16) {
@@ -1635,8 +1627,8 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
   }
 #endif  // PADDLE_WITH_CUDA
-#endif
   return use_cudnn && this->SupportsCUDNN(data_type);
+#endif
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
