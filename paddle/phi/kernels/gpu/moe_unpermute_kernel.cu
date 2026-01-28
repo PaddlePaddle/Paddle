@@ -88,7 +88,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
 
 #pragma unroll
     for (int expert = 0; expert < num_experts; ++expert) {
-      const float weight;
+      float weight;
       const int fetch_row = local_row_fetchlist[expert];
       if (fetch_row < 0) continue;
       // Get weight of current copy of token.
