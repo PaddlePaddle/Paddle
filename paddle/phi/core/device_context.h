@@ -25,9 +25,6 @@ limitations under the License. */
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
-struct cudnnContext;
-struct miopenHandle;
-
 namespace phi {
 class TensorBase;
 
