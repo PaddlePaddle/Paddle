@@ -730,9 +730,8 @@ class OpsYamlBaseAPI:
         python_api_info: dict[str, list[str]],
     ):
         if name in python_api_info:
-            return self.make_python_api_function(
-                name, python_api_info[raw_name]
-            )
+            api_names = python_api_info.get(raw_name, python_api_info[name])
+            return self.make_python_api_function(name, api_names)
         else:
             return self.make_op_function(
                 raw_name, inputs, attrs, output_type_list
