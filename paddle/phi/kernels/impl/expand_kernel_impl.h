@@ -82,7 +82,7 @@ void Expand(const Context& dev_ctx,
     bcast_dims[i] = repeat_times[i];
   }
 
-  DDim new_in_dims = common::make_ddim(vec_in_dims);
+  DDim new_in_dims = make_ddim(vec_in_dims);
   DDim out_dims(new_in_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     if (repeat_times[i] == 0) {

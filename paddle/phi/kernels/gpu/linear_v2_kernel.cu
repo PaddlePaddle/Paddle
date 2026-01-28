@@ -80,9 +80,9 @@ void LinearV2Kernel(const Context& dev_ctx,
     VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
-    input_processed.Resize(common::make_ddim({M, K}));
-    weight_processed.Resize(common::make_ddim({K, N}));
-    out->Resize(common::make_ddim({M, N}));
+    input_processed.Resize(make_ddim({M, K}));
+    weight_processed.Resize(make_ddim({K, N}));
+    out->Resize(make_ddim({M, N}));
     VLOG(10) << "input_processed: " << input_processed.dims()
              << ", weight_processed: " << weight_processed.dims()
              << ", output_processed: " << out->dims();
@@ -113,7 +113,7 @@ void LinearV2Kernel(const Context& dev_ctx,
     } else {
       DenseTensor bias_processed = bias;
       if (bias.numel() != (M * N)) {
-        bias_processed.Resize(common::make_ddim({1, bias.numel()}));
+        bias_processed.Resize(make_ddim({1, bias.numel()}));
         VLOG(10) << "bias.dim(): " << bias.dims();
         VLOG(10) << "M*N: " << M * N;
         VLOG(10) << "bias tiling and addmm calculating";
