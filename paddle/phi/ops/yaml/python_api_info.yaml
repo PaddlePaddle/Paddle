@@ -428,7 +428,8 @@
   args_alias :
     use_default_mapping : True
 
-- op : unsqueeze
-  name : [paddle.Tensor.unsqueeze_]
+- op : unsqueeze_
+  name : [paddle.unsqueeze_, paddle.Tensor.unsqueeze_]
   args_alias :
+    axis : [dim]
     use_default_mapping : True
