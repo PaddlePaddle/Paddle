@@ -45,7 +45,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
       reinterpret_cast<__nv_bfloat16 *>(zipped_tokens_out);
 
   __shared__ int local_row_fetchlist[MAX_NUM_EXPERTS];
-  __shared__ int local_row_weight[MAX_NUM_EXPERTS];
+  __shared__ float local_row_weight[MAX_NUM_EXPERTS];
 
   if (threadIdx.x < num_experts) {
     const int fetch_row =
@@ -53,7 +53,7 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
     local_row_fetchlist[threadIdx.x] = fetch_row;
     if constexpr (WEIGHTED_TOKEN) {
       local_row_weight[threadIdx.x] =
-          static_cast<int>(unzipped_token_probs[fetch_row]);
+          ((fetch_row == -1) ? 0.0f : unzipped_token_probs[fetch_row]);
     }
   }
 

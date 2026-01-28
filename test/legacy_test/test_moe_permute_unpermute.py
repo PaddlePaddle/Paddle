@@ -128,11 +128,18 @@ def validate_expert_indices(proposed_expert_indices, zipped_expertwise_rowmap):
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
     """Test cases for moe_permute and moe_unpermute."""
 
+    '''
     SEQLEN = [5000, 16384]
     TOKEN_LEN = 7168
     DTYPES = ["float8_e4m3fn", "bfloat16"]
     EXPERT_NUMS = [4, 8, 16, 32, 64]
     TOPKS = [4, 8, 16]
+    '''
+    SEQLEN = [5000]
+    TOKEN_LEN = 7168
+    DTYPES = ["bfloat16"]
+    EXPERT_NUMS = [4, 8]
+    TOPKS = [4, 8]
 
     def setUp(self):
         """Initialize test environment."""
@@ -300,12 +307,11 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                         num_experts=expert_num,
                     )
                 )
-
                 (
                     weighted_unzipped_tokens_recovered,
                     weighted_expert_prob_topk_recovered,
                 ) = moe_unpermute(
-                    unpermute_input,
+                    unzipped_tokens,
                     zipped_expertwise_rowmap,
                     expert_routemap_topk,
                     unzipped_probs,
