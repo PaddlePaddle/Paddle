@@ -97,6 +97,34 @@ def tensor_max_abs_rel_err(a, b, eps=1e-8):
     return max_abs_err, max_rel_err
 
 
+def gen_golden_expert_indices(
+    baseline_zipped_expertwise_rowmap,
+    permute_rows,  # = baseline_hidden_states_unzipped.shape[0]
+):
+    num_rows, num_experts = baseline_zipped_expertwise_rowmap.shape
+    # 初始化为 -1（padding）
+    m_indices = paddle.full(
+        [permute_rows],
+        -1,
+        dtype=baseline_zipped_expertwise_rowmap.dtype,
+    )
+    # rowmap[t, e] = r  ==>  m_indices[r] = e
+    for e in range(num_experts):
+        rows = baseline_zipped_expertwise_rowmap[:, e]
+        valid_mask = rows >= 0
+        valid_rows = rows[valid_mask]
+        m_indices[valid_rows] = e
+    return m_indices
+
+
+# Asserting m_indices == expert_indices
+def validate_expert_indices(proposed_expert_indices, zipped_expertwise_rowmap):
+    gold = gen_golden_expert_indices(
+        zipped_expertwise_rowmap, permute_rows=proposed_expert_indices.shape[0]
+    )
+    np.testing.assert_array_equal(proposed_expert_indices, gold)
+
+
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
     """Test cases for moe_permute and moe_unpermute."""
 
@@ -210,6 +238,104 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     unzipped_probs_no_gather._md5sum(),
                     unzipped_probs._md5sum(),
                     err_msg="no_gather's unzipped_probs do not match",
+                )
+
+    def test_inference_specific_functions(self):
+        """Test that permute + unpermute recovers original tensors."""
+        for seq_len, dt, expert_num, topk in itertools.product(
+            self.SEQLEN, self.DTYPES, self.EXPERT_NUMS, self.TOPKS
+        ):
+            with self.subTest(
+                seq_len=seq_len, dtype=dt, expert_num=expert_num, topk=topk
+            ):
+                (
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
+                    tokens_per_expert,
+                ) = fabricate_dispatch_result(
+                    seq_len,
+                    self.TOKEN_LEN,
+                    topk,
+                    expert_num,
+                    data_type=dt,
+                    broadcast_ratio=0.5,
+                )
+                if dt == "bfloat16":
+                    scale = None
+
+                # Permute step
+                (
+                    unzipped_tokens,
+                    zipped_expertwise_rowmap,
+                    unzipped_probs,
+                    unzipped_scales,
+                    expert_indices,
+                ) = moe_permute(
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
+                    num_experts=expert_num,
+                    tokens_per_expert=tokens_per_expert,
+                    padding_alignment=128,
+                    return_expert_indices=True,
+                )
+                validate_expert_indices(
+                    expert_indices, zipped_expertwise_rowmap
+                )
+                unpermute_input = (
+                    unzipped_tokens.astype("float32")
+                    * unzipped_probs.unsqueeze(-1)
+                ).astype("bfloat16")
+
+                unzipped_tokens_recovered, expert_prob_topk_recovered = (
+                    moe_unpermute(
+                        unpermute_input,
+                        zipped_expertwise_rowmap,
+                        expert_routemap_topk,
+                        unzipped_probs,
+                        total_zipped_tokens=seq_len,
+                        num_experts=expert_num,
+                    )
+                )
+
+                (
+                    weighted_unzipped_tokens_recovered,
+                    weighted_expert_prob_topk_recovered,
+                ) = moe_unpermute(
+                    unpermute_input,
+                    zipped_expertwise_rowmap,
+                    expert_routemap_topk,
+                    unzipped_probs,
+                    total_zipped_tokens=seq_len,
+                    num_experts=expert_num,
+                    using_weighted_combine=True,
+                )
+                np.testing.assert_allclose(
+                    weighted_unzipped_tokens_recovered.numpy(),
+                    unzipped_tokens_recovered.numpy(),
+                    atol=1e-3,
+                    rtol=1e-3,
+                )
+
+                # Check tensor recovery
+                max_abs_err, max_rel_err = tensor_max_abs_rel_err(
+                    hidden_states.astype("float32"),
+                    unzipped_tokens_recovered.astype("float32"),
+                )
+
+                self.assertLess(
+                    max_rel_err,
+                    1e-1 if dt == "float8_e4m3fn" else 1e-2,
+                    f"Tokens relative error too large, permute-unpermute tokens max relative error: {max_rel_err}",
+                )
+
+                np.testing.assert_equal(
+                    expert_prob_topk._md5sum(),
+                    expert_prob_topk_recovered._md5sum(),
+                    err_msg="moe_permute_unpermute probs do not match",
                 )
 
     def test_permute_unpermute_consistency_for_ue8m0_scale(self):
