@@ -54,5 +54,13 @@ class TestGetDevice(unittest.TestCase):
         self.assertEqual(y.get_device(), y.place.gpu_device_id())
 
 
+class TestIsPinned(unittest.TestCase):
+    def test_gpu_tensor(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPinnedPlace())
+        self.assertEqual(y.is_pinned(), True)
+
+
 if __name__ == "__main__":
     unittest.main()

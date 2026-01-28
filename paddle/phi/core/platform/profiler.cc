@@ -99,7 +99,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_gpu_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -182,7 +182,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_gpu_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -264,7 +264,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
     uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_gpu_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(
@@ -346,7 +346,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
     uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place)) {
+    if (phi::is_cpu_place(place) || phi::is_gpu_pinned_place(place)) {
       if (RecordMemEvent::has_initialized["cpu"][place.GetDeviceId()] ==
           false) {
         RecordMemEvent::size_cache["cpu"][place.GetDeviceId()].push_back(

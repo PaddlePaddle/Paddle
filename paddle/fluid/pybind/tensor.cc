@@ -741,6 +741,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_set_complex128_element", TensorSetElement<paddle::complex128>)
       .def("_get_complex128_element", TensorGetElement<paddle::complex128>)
       .def("_place", [](DenseTensor &self) { return self.place(); })
+      .def("is_pinned",
+           [](DenseTensor &self) { return phi::is_pinned_place(self.place()); })
 #ifdef PADDLE_WITH_XPU
       .def("get_xpu_scale_value",
            [](DenseTensor &self) {
@@ -1269,7 +1271,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              auto holder = self.Holder();
              PADDLE_ENFORCE_EQ(
                  phi::is_cpu_place(holder->place()) ||
-                     phi::is_cuda_pinned_place(holder->place()),
+                     phi::is_gpu_pinned_place(holder->place()),
                  true, common::errors::InvalidArgument(
                            "Tensor is not on CPU. share_filename only "
                            "support CPU Tensor."));
@@ -1305,7 +1307,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                        handle, shared_fd, flags, data_size, find_id);
 
                // copy data & reset holder
-               if (phi::is_cuda_pinned_place(holder->place())) {
+               if (phi::is_gpu_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
                  memory::Copy(CPUPlace(), shared_holder->ptr(),
                               phi::GPUPinnedPlace(), data_ptr, data_size);
