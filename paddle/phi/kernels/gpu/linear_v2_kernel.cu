@@ -133,22 +133,13 @@ void LinearV2Kernel(const Context& dev_ctx,
       } else {
         bias_processed = bias;
       }
-      const T alpha = static_cast<T>(1.0f);
-      const T beta = static_cast<T>(1.0f);
-      blas.GEMM(false,
-                is_receiving_transposed_weight,
-                M,
-                N,
-                K,
-                alpha,
-                input_processed.data<T>(),
-                K,
-                weight_processed.data<T>(),
-                is_receiving_transposed_weight ? K : N,
-                beta,
-                bias_processed.data<T>(),
-                N);
-      *out = bias_processed;  // inplace update
+      phi::AddmmKernel<T>(dev_ctx,
+                          bias_processed,
+                          input_processed,
+                          weight_processed,
+                          1.0f,
+                          1.0f,
+                          out);
     }
     out->Resize(out_dim_original);
   } else  // NOLINT

@@ -2081,8 +2081,8 @@
     skip_transform : out_size, size_tensor, scale_tensor
 
 - backward_op : linear_v2_double_grad
-  forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out, bool is_receiving_transposed_weight) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
-  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad, bool is_receiving_transposed_weight)
+  forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out, bool is_receiving_transposed_weight=false) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
+  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad, bool is_receiving_transposed_weight=false)
   output: Tensor(input_grad), Tensor(weight_grad), Tensor(grad_out_grad)
   optional: grad_input_grad, grad_weight_grad, grad_bias_grad
   infer_meta :
