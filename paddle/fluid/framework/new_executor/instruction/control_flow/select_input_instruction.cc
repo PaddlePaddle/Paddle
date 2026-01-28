@@ -64,7 +64,7 @@ inline int GetBranchNumber(const DenseTensor &mask) {
     return mask.data<int>()[0];
   }
   // when phi::is_gpu_place(mask.place()) is true
-  std::unique_ptr<DenseTensor> cpu_mask{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_mask{new DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   framework::TensorCopySync(mask, CPUPlace(), cpu_mask.get());

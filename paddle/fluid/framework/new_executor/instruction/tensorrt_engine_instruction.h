@@ -45,13 +45,13 @@ class TensorRTEngineInstruction : public InstructionBase {
   void InputsCheck();
   void RunTrt();
   void BindInputTensor(const std::string& input_name,
-                       const phi::DenseTensor& input_tensor,
+                       const DenseTensor& input_tensor,
                        const Scope& scope,
                        std::vector<void*>& buffers,  // NOLINT
                        std::vector<int>& shape_v,    // NOLINT
                        int* runtime_batch);
   void BindOutputTensor(std::string output_name,
-                        phi::DenseTensor* output_tensor,
+                        DenseTensor* output_tensor,
                         int output_index,
                         std::vector<void*>& buffers,  // NOLINT
                         int* runtime_batch);
