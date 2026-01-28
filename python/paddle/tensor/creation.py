@@ -17,6 +17,7 @@ from __future__ import annotations
 import builtins
 import math
 import numbers
+import os
 import re
 import warnings
 from typing import TYPE_CHECKING, overload
@@ -837,7 +838,13 @@ def _to_tensor_non_static(
             data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
-        if core.is_compiled_with_custom_device("iluvatar_gpu"):
+        if core.is_compiled_with_custom_device(
+            "iluvatar_gpu"
+        ) and os.environ.get('FLAG_FORCE_FLOAT32', '').lower() in [
+            '1',
+            'true',
+            'on',
+        ]:
             import logging
 
             if data.dtype == np.float64:

@@ -157,7 +157,9 @@ def data(
     if dtype is None:
         dtype = paddle.get_default_dtype()
 
-    if core.is_compiled_with_custom_device("iluvatar_gpu"):
+    if core.is_compiled_with_custom_device("iluvatar_gpu") and os.environ.get(
+        'FLAG_FORCE_FLOAT32', ''
+    ).lower() in ['1', 'true', 'on']:
         dtype_str = dtype if isinstance(dtype, str) else str(dtype)
         if dtype_str in ('float64', np.float64, 'f8'):
             import warnings
