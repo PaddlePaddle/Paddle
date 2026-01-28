@@ -93,6 +93,7 @@ void FloorDivideRawKernel(const Context& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_SLEEF
 template <typename T, typename Context>
 void ElementwisePowSameDimsHelper(const Context& dev_ctx,
                                   const DenseTensor& x,
@@ -140,6 +141,7 @@ void ElementwisePowSameDimsHelper(const Context& dev_ctx,
         dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
   }
 }
+#endif
 
 template <typename T, typename Context>
 void ElementwisePowRawKernel(const Context& dev_ctx,
@@ -151,9 +153,13 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
-  if (x_dims == y_dims) {
-    ElementwisePowSameDimsHelper<T>(dev_ctx, x, y, axis, out);
-  } else if (x_dims.size() > y_dims.size()) {
+  if (x_dims.size() >= y_dims.size()) {
+#ifdef PADDLE_WITH_SLEEF
+    if (x_dims == y_dims) {
+      ElementwisePowSameDimsHelper<T>(dev_ctx, x, y, axis, out);
+      return;
+    }
+#endif
     funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
         dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
   } else {
