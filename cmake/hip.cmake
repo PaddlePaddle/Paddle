@@ -185,15 +185,9 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # Ask hcc to generate device code during compilation so we can use
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906) # MI50/MI60
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx908) # MI100
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx90a) # MI200
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx942) # MI300
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx950) # MI350X
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906) # MI50/MI60
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx908) # MI100
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx90a) # MI200
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx942) # MI300
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx950) # MI350X
 
