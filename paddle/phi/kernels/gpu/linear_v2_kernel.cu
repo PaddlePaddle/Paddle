@@ -132,7 +132,6 @@ void LinearV2Kernel(const Context& dev_ctx,
                           weight_processed,
                           1.0f,
                           1.0f,
-                          out_dtype,
                           out);
     }
     VLOG(10) << "linear calculate complete";
