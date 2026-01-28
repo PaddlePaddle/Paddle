@@ -424,7 +424,7 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
 
@@ -472,7 +472,7 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
 
@@ -753,7 +753,7 @@ def monkey_patch_tensor():
             Tensor: self
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3])
