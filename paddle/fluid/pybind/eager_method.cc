@@ -3775,6 +3775,18 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_pinned(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
+  return ToPyObject(self->tensor.is_gpu_pinned() ||
+                    self->tensor.is_xpu_pinned());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
@@ -4099,6 +4111,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif
+    {"is_pinned",
+     (PyCFunction)(void (*)())tensor_method_is_pinned,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor

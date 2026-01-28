@@ -741,8 +741,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_set_complex128_element", TensorSetElement<paddle::complex128>)
       .def("_get_complex128_element", TensorGetElement<paddle::complex128>)
       .def("_place", [](DenseTensor &self) { return self.place(); })
-      .def("is_pinned",
-           [](DenseTensor &self) { return phi::is_pinned_place(self.place()); })
 #ifdef PADDLE_WITH_XPU
       .def("get_xpu_scale_value",
            [](DenseTensor &self) {
