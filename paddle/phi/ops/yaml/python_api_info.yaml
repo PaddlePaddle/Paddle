@@ -427,9 +427,3 @@
   name : [paddle.triu, paddle.Tensor.triu]
   args_alias :
     use_default_mapping : True
-
-- op : unsqueeze_
-  name : [paddle.unsqueeze_, paddle.Tensor.unsqueeze_]
-  args_alias :
-    axis : [dim]
-    use_default_mapping : True
