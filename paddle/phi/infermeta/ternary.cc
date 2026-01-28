@@ -150,12 +150,14 @@ void BaddbmmInferMeta(const MetaTensor& input,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
 
+  auto ndim_input = input_dims.size();
   auto ndim_x = x_dims.size();
   auto ndim_y = y_dims.size();
 
   VLOG(3) << "baddbmm operator input.shape=" << input_dims
           << " x.shape=" << x_dims << " y.shape=" << y_dims << " beta=" << beta
-          << " alpha=" << alpha << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
+          << " alpha=" << alpha << " ndim_input=" << ndim_input
+          << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
 
   std::vector<int64_t> output_dims;
   output_dims.push_back(x_dims[0]);
@@ -181,7 +183,7 @@ void AffineChannelInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
   const auto& scale_dims = scale.dims();
   const auto& b_dims = bias.dims();
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_in);
+  const DataLayout data_layout = StringToDataLayout(data_layout_in);
 
   const int64_t C =
       (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
@@ -562,7 +564,7 @@ void FastLayerNormInfermeta(const MetaTensor& x,
   auto x_dim = x.dims();
   auto x_ndim = x_dim.size();
 
-  auto matrix_dim = common::flatten_to_2d(x_dim, x_ndim - 1);
+  auto matrix_dim = flatten_to_2d(x_dim, x_ndim - 1);
 
   int64_t right = matrix_dim[1];
   if (scale) {
@@ -1118,7 +1120,7 @@ void AddGroupNormSiluInferMeta(const MetaTensor& x,
           x_dim.size(),
           x_dim));
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const int64_t channel_num =
       (data_layout == DataLayout::NCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
   auto batch_size = x_dim[0];
@@ -1251,7 +1253,7 @@ void GroupNormInferMeta(const MetaTensor& x,
           x_dim.size(),
           x_dim));
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const int64_t channel_num =
       (data_layout == DataLayout::NCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
   auto batch_size = x_dim[0];
@@ -1392,7 +1394,7 @@ void LayerNormInferMeta(const MetaTensor& x,
           begin_norm_axis,
           x_dim.size()));
 
-  auto matrix_dim = common::flatten_to_2d(x_dim, begin_norm_axis);
+  auto matrix_dim = flatten_to_2d(x_dim, begin_norm_axis);
 
   // keep the axis size before normalization for shape of variance and mean
   auto before_norm_dims = slice_ddim(x_dim, 0, begin_norm_axis);
@@ -1543,8 +1545,7 @@ void LinearV2InferMeta(const MetaTensor& input,
     return;
   }
 
-  auto input_mat_dims =
-      common::flatten_to_2d(input_dims, input_dims.size() - 1);
+  auto input_mat_dims = flatten_to_2d(input_dims, input_dims.size() - 1);
 
   auto input_rank = input_dims.size();
   int64_t K_from_input = input_mat_dims[1];
@@ -3006,7 +3007,7 @@ void QuantLinearInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> output_dims;
 
-  auto in_mat_dims = common::flatten_to_2d(in_dims, in_num_col_dims);
+  auto in_mat_dims = flatten_to_2d(in_dims, in_num_col_dims);
   auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
   auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
   PADDLE_ENFORCE_EQ(

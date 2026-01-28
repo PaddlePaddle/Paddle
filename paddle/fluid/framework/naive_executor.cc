@@ -67,7 +67,7 @@ void NaiveExecutor::PrepareInterpreterCore(
 
 void NaiveExecutor::PrepareInterpreterCore(
     Scope *scope,
-    const ::pir::Program &pir_program,
+    const pir::Program &pir_program,
     const framework::interpreter::ExecutionConfig &execution_config) {
   interpreter_core_ =
       std::make_unique<framework::InterpreterCore>(place_,

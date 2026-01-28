@@ -36,6 +36,10 @@ constexpr char kStopGradientAttrName[] = "stop_gradient";  // NOLINT
 static void ValidateBroadcastDim(int64_t actual,
                                  int64_t expected,
                                  const std::string& error_msg) {
+  // In static graph, unknown dimensions are often represented as -1.
+  if (actual < 0 || expected < 0) {
+    return;
+  }
   PADDLE_ENFORCE_EQ(actual == expected || actual == 1,
                     true,
                     phi::errors::InvalidArgument(
@@ -59,8 +63,8 @@ static void CheckDataType(const std::string& op_name,
       phi::DataTypeToString(expect_dtype),
       phi::DataTypeToString(var_dtype)));
 }
-void ExpandAsPreProcess(paddle::Tensor* x,
-                        paddle::optional<paddle::Tensor>* y,
+void ExpandAsPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* y,
                         std::vector<int64_t>* target_shape) {
   if (target_shape->empty() && y->get_ptr() == nullptr) {
     PADDLE_THROW(common::errors::InvalidArgument(

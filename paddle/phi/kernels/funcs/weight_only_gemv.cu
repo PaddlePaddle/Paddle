@@ -1344,7 +1344,7 @@ template <typename T, typename Context>
 void WeightOnlyGemvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& weight,
-                          const paddle::optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& bias,
                           const DenseTensor& weight_scale,
                           int group_size,
                           const std::string& weight_only_quant_type,

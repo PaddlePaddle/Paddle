@@ -60,78 +60,6 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-def _logical_op(
-    op_name: str,
-    x: Tensor,
-    y: Tensor | None,
-    out: Tensor | None = None,
-    name: str | None = None,
-    binary_op: bool = True,
-) -> Tensor:
-    if in_dynamic_mode():
-        op = getattr(_C_ops, op_name)
-        if binary_op:
-            return op(x, y)
-        else:
-            return op(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            [
-                "bool",
-                "int8",
-                "int16",
-                "int32",
-                "int64",
-                "float16",
-                "float32",
-                "float64",
-                "uint16",
-                "complex64",
-                "complex128",
-            ],
-            op_name,
-        )
-        if y is not None:
-            check_variable_and_dtype(
-                y,
-                "y",
-                [
-                    "bool",
-                    "int8",
-                    "int16",
-                    "int32",
-                    "int64",
-                    "float16",
-                    "float32",
-                    "float64",
-                    "uint16",
-                    "complex64",
-                    "complex128",
-                ],
-                op_name,
-            )
-        if out is not None:
-            check_type(out, "out", Variable, op_name)
-
-        helper = LayerHelper(op_name, **locals())
-
-        if out is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        if binary_op:
-            helper.append_op(
-                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-            )
-        else:
-            helper.append_op(
-                type=op_name, inputs={"X": x}, outputs={"Out": out}
-            )
-
-        return out
-
-
 @inplace_apis_in_dygraph_only
 def logical_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -904,56 +832,6 @@ def is_tensor(x: Any) -> TypeGuard[Tensor]:
         return isinstance(x, (paddle.Tensor, paddle.pir.Value))
     else:
         return isinstance(x, Variable)
-
-
-def _bitwise_op(
-    op_name: str,
-    x: Tensor,
-    y: Tensor | None,
-    out: Tensor | None = None,
-    name: str | None = None,
-    binary_op: bool = True,
-) -> Tensor:
-    if in_dynamic_mode():
-        op = getattr(_C_ops, op_name)
-        if binary_op:
-            return op(x, y)
-        else:
-            return op(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["bool", "uint8", "int8", "int16", "int32", "int64"],
-            op_name,
-        )
-        if y is not None:
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "uint8", "int8", "int16", "int32", "int64"],
-                op_name,
-            )
-        if out is not None:
-            check_type(out, "out", Variable, op_name)
-
-        helper = LayerHelper(op_name, **locals())
-        if binary_op:
-            assert x.dtype == y.dtype
-
-        if out is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        if binary_op:
-            helper.append_op(
-                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-            )
-        else:
-            helper.append_op(
-                type=op_name, inputs={"X": x}, outputs={"Out": out}
-            )
-
-        return out
 
 
 def __rand__(x: Tensor, y: int | bool):

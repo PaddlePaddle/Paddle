@@ -1213,12 +1213,13 @@ def norm(
                 x=x, p=p, axis=axis, keepdim=keepdim, name=name
             )
     else:
-        p = 2.0 if p is None else p
         if isinstance(axis, list) and len(axis) == 2:
+            p = "fro" if p is None else p
             output = matrix_norm(
                 x=x, p=p, axis=axis, keepdim=keepdim, name=name
             )
         else:
+            p = 2.0 if p is None else p
             output = vector_norm(
                 x,
                 p=p,

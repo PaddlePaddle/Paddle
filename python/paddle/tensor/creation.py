@@ -4062,12 +4062,10 @@ def set_(
             ``complex128``. Default: None, which means to set ``x`` with an empty source tensor.
         shape (list|tuple|None, optional): Define the target shape. Each element of it should be integer. Default: None,
             which means it will use the specified ``source``'s shape as default value.
-            Alias: ``size``.
         stride (list|tuple|None, optional): Define the target stride. Each element of it should be integer. Default: None,
             and when ``shape`` is also None, it will use the specified ``source``'s stride as default value; when ``shape``
             is specified, it will use the default stride corresponding to the specified ``shape``.
         offset (int, optional): Define the target offset from x's holder in bytes. Default: 0.
-            Alias: ``storage_offset`` (PyTorch uses element count, which will be automatically converted to bytes).
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

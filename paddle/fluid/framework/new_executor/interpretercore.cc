@@ -50,7 +50,7 @@ InterpreterCore::InterpreterCore(const phi::Place& place,
 InterpreterCore::InterpreterCore(
     const phi::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    const ::pir::Block* ir_block,
+    const pir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : impl_(nullptr), fetch_var_names_() {

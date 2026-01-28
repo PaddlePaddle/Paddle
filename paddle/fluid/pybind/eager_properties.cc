@@ -232,7 +232,7 @@ Examples:
 )DOC");
 PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
   EAGER_TRY
-  paddle::Tensor new_tensor(self->tensor.impl());
+  Tensor new_tensor(self->tensor.impl());
   return ToPyObject(new_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -296,7 +296,7 @@ int tensor_properties_set_grad(TensorObject* self,
   PADDLE_ENFORCE(egr::EagerUtils::IsLeafTensor(self->tensor),
                  common::errors::Fatal("Only leaf Tensor can be set grad."));
 
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(
       grad != nullptr,
       common::errors::Fatal("Detected NULL grad. "
@@ -353,7 +353,7 @@ int tensor_properties_set_grad_(TensorObject* self,
   PADDLE_ENFORCE(egr::EagerUtils::IsLeafTensor(self->tensor),
                  common::errors::Fatal("Only leaf Tensor can be set grad."));
 
-  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(
       grad != nullptr,
       common::errors::Fatal("Detected NULL grad. "

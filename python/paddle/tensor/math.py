@@ -41,6 +41,8 @@ from paddle._C_ops import (  # noqa: F401
     fmax,
     fmin,
     heaviside,
+    i0,
+    i0e,
     i1,
     i1e,
     isfinite,
@@ -66,7 +68,6 @@ from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    floor_divide_decorator,
     param_one_alias,
     param_two_alias,
 )
@@ -1138,7 +1139,7 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-@floor_divide_decorator()
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def floor_divide(
     x: Tensor,
     y: Number | Tensor,
@@ -1164,7 +1165,7 @@ def floor_divide(
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``input``.
-        y (Tensor｜Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+        y (Tensor|Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output tensor. Default: None.
@@ -1174,7 +1175,7 @@ def floor_divide(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1187,10 +1188,17 @@ def floor_divide(
 
             >>> x = paddle.to_tensor([2, 3, 8, 7])
             >>> y = paddle.to_tensor([1, -5, -3, -3])
-            >>> z = paddle.floor_divide(x, y)
+            >>> z = paddle.floor_divide(x=x, y=y)
             >>> print(z)
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [2, -1, -3, -3])
+
+            >>> x = paddle.to_tensor([2, -3, 8, -7])
+            >>> y = paddle.to_tensor([1, -5, -3, 3])
+            >>> z = paddle.floor_divide(input=x, other=y)  # type: ignore[call-arg]
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 0, -3, -3])
     """
     if in_dynamic_or_pir_mode():
         if isinstance(y, numbers.Number):
@@ -5965,50 +5973,6 @@ def vander(
     return res
 
 
-def i0(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    The function used to calculate modified bessel function of order 0.
-
-    Equation:
-        ..  math::
-
-            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> paddle.i0(x)
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i0(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i0",
-        )
-
-        helper = LayerHelper("i0", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='i0', inputs={'x': x}, outputs={'out': out})
-    return out
-
-
 @inplace_apis_in_dygraph_only
 def i0_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -6018,51 +5982,6 @@ def i0_(x: Tensor, name: str | None = None) -> Tensor:
 
     if in_dynamic_mode():
         return _C_ops.i0_(x)
-
-
-def i0e(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    The function used to calculate exponentially scaled modified Bessel function of order 0.
-
-    Equation:
-        ..  math::
-
-            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
-            I_{0e}(x) = e^{-|x|}I_0(x)
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
-            >>> print(paddle.i0e(x))
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.i0e(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["float32", "float64", "uint8", "int8", "int16", "int32", "int64"],
-            "i0e",
-        )
-
-        helper = LayerHelper("i0e", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='i0e', inputs={'x': x}, outputs={'out': out})
-    return out
 
 
 def polygamma(x: Tensor, n: int, name: str | None = None) -> Tensor:
@@ -6229,39 +6148,6 @@ def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return paddle.multiply_(x, paddle.pow(two, y))
 
 
-def _bitwise_op(op_name, x, y, is_arithmetic, out=None, name=None):
-    check_variable_and_dtype(
-        x,
-        "x",
-        ["uint8", "int8", "int16", "int32", "int64"],
-        op_name,
-    )
-    if y is not None:
-        check_variable_and_dtype(
-            y,
-            "y",
-            ["uint8", "int8", "int16", "int32", "int64"],
-            op_name,
-        )
-
-    helper = LayerHelper(op_name, **locals())
-    assert x.dtype == y.dtype
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type=op_name,
-        inputs={"x": x, "y": y},
-        outputs={"out": out},
-        attrs={'is_arithmetic': is_arithmetic},
-    )
-
-    return out
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bitwise_right_shift_(x, y, is_arithmetic)
-
-
 def __lshift__(
     x: Tensor,
     y: Tensor | int,
@@ -6273,7 +6159,7 @@ def __lshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'Tensor' and 'float'"
         )
-    return bitwise_left_shift(x, y, is_arithmetic, None, None)
+    return bitwise_left_shift(x, y, is_arithmetic)
 
 
 def __rshift__(
@@ -6287,7 +6173,7 @@ def __rshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'Tensor' and 'float'"
         )
-    return bitwise_right_shift(x, y, is_arithmetic, None, None)
+    return bitwise_right_shift(x, y, is_arithmetic)
 
 
 def __rlshift__(
@@ -6301,7 +6187,7 @@ def __rlshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'float' and 'Tensor'"
         )
-    return bitwise_left_shift(y, x, is_arithmetic, None, None)
+    return bitwise_left_shift(y, x, is_arithmetic)
 
 
 def __rrshift__(
@@ -6315,7 +6201,7 @@ def __rrshift__(
         raise TypeError(
             "unsupported operand type(s) for <<: 'float' and 'Tensor'"
         )
-    return bitwise_right_shift(y, x, is_arithmetic, None, None)
+    return bitwise_right_shift(y, x, is_arithmetic)
 
 
 def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:

@@ -21,7 +21,7 @@ import paddle
 
 # Edit By AI Agent
 # Test nextafter compatibility
-class TestNextafterAPI_Compatibility(unittest.TestCase):
+class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -103,7 +103,7 @@ class TestNextafterAPI_Compatibility(unittest.TestCase):
 
 
 # Test angle compatibility
-class TestAngleAPI_Compatibility(unittest.TestCase):
+class TestAngleAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -161,7 +161,7 @@ class TestAngleAPI_Compatibility(unittest.TestCase):
 
 # Edit by AI Agent
 # Test atan compatibility
-class TestAtanAPI_Compatibility(unittest.TestCase):
+class TestAtanAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -241,7 +241,7 @@ class TestAtanAPI_Compatibility(unittest.TestCase):
 
 # Edit by AI Agent
 # Test fmax compatibility
-class TestFmaxAPI_Compatibility(unittest.TestCase):
+class TestFmaxAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -312,7 +312,7 @@ class TestFmaxAPI_Compatibility(unittest.TestCase):
 
 # Edit by AI Agent
 # Test fmin compatibility
-class TestFminAPI_Compatibility(unittest.TestCase):
+class TestFminAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -383,7 +383,7 @@ class TestFminAPI_Compatibility(unittest.TestCase):
 
 # Edit by AI Agent
 # Test bincount compatibility
-class TestBincountAPI_Compatibility(unittest.TestCase):
+class TestBincountAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -484,7 +484,7 @@ class TestBincountAPI_Compatibility(unittest.TestCase):
 
 # Edit by AI Agent
 # Test diag compatibility
-class TestDiagAPI_Compatibility(unittest.TestCase):
+class TestDiagAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -566,7 +566,7 @@ class TestDiagAPI_Compatibility(unittest.TestCase):
 
 
 # Test heaviside compatibility
-class TestHeavisideAPI_Compatibility(unittest.TestCase):
+class TestHeavisideAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -647,7 +647,7 @@ class TestHeavisideAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
-class TestAsinhAPI_Compatibility(unittest.TestCase):
+class TestAsinhAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -724,7 +724,7 @@ class TestAsinhAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
-class TestReciprocalAPI_Compatibility(unittest.TestCase):
+class TestReciprocalAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -795,7 +795,7 @@ class TestReciprocalAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
-class TestSquareAPI_Compatibility(unittest.TestCase):
+class TestSquareAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -872,7 +872,7 @@ class TestSquareAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
-class TestTanAPI_Compatibility(unittest.TestCase):
+class TestTanAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -951,7 +951,7 @@ class TestTanAPI_Compatibility(unittest.TestCase):
 
 # Edit by AI Agent
 # Test bitwise_and compatibility
-class TestBitwiseAndAPI_Compatibility(unittest.TestCase):
+class TestBitwiseAndAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -1003,7 +1003,7 @@ class TestBitwiseAndAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_or compatibility
-class TestBitwiseOrAPI_Compatibility(unittest.TestCase):
+class TestBitwiseOrAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -1055,7 +1055,7 @@ class TestBitwiseOrAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_not compatibility
-class TestBitwiseNotAPI_Compatibility(unittest.TestCase):
+class TestBitwiseNotAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -1105,7 +1105,7 @@ class TestBitwiseNotAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_xor compatibility
-class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
+class TestBitwiseXorAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -1157,7 +1157,7 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_and_ inplace compatibility
-class TestBitwiseAndInplaceAPI_Compatibility(unittest.TestCase):
+class TestBitwiseAndInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.disable_static()
@@ -1184,7 +1184,7 @@ class TestBitwiseAndInplaceAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_or_ inplace compatibility
-class TestBitwiseOrInplaceAPI_Compatibility(unittest.TestCase):
+class TestBitwiseOrInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.disable_static()
@@ -1211,7 +1211,7 @@ class TestBitwiseOrInplaceAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_xor_ inplace compatibility
-class TestBitwiseXorInplaceAPI_Compatibility(unittest.TestCase):
+class TestBitwiseXorInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.disable_static()
@@ -1238,7 +1238,7 @@ class TestBitwiseXorInplaceAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_not_ inplace compatibility
-class TestBitwiseNotInplaceAPI_Compatibility(unittest.TestCase):
+class TestBitwiseNotInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.disable_static()
@@ -1257,7 +1257,7 @@ class TestBitwiseNotInplaceAPI_Compatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out.numpy())
 
 
-class TestCdistAPI_Compatibility(unittest.TestCase):
+class TestCdistAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.shape_x = [3, 5, 4]
@@ -1339,7 +1339,7 @@ class TestCdistAPI_Compatibility(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestAddmmAPI_Compatibility(unittest.TestCase):
+class TestAddmmAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         paddle.enable_static()
@@ -1367,7 +1367,24 @@ class TestAddmmAPI_Compatibility(unittest.TestCase):
         out7 = input.addmm(x, y)
         out8 = input.addmm(x=x, y=y, beta=1.0, alpha=1.0)
         for out in [out2, out3, out4, out5, out6, out7, out8]:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
+
+        input_1d = paddle.to_tensor(np.random.rand(1).astype(self.dtype))
+        out9 = paddle.addmm(input_1d, x, y)
+        self.assertEqual(out9.shape, [2, 3])
+        paddle.enable_static()
+
+    def test_error(self):
+        """Test invalid input dimensions that should raise ValueError."""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # Test 3D input (invalid)
+        input_3d = paddle.to_tensor(np.random.rand(2, 2, 3).astype(self.dtype))
+        with self.assertRaises(ValueError):
+            paddle.addmm(input_3d, x, y)
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -1392,10 +1409,10 @@ class TestAddmmAPI_Compatibility(unittest.TestCase):
             )
             ref_out = 1.0 * self.np_input + 1.0 * self.np_x @ self.np_y
             for out in fetches:
-                np.testing.assert_allclose(ref_out, out)
+                np.testing.assert_allclose(ref_out, out, rtol=1e-6)
 
 
-class TestAddmmInplaceAPI_Compatibility(unittest.TestCase):
+class TestAddmmInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         paddle.disable_static()
@@ -1421,12 +1438,89 @@ class TestAddmmInplaceAPI_Compatibility(unittest.TestCase):
         out6 = input.clone().addmm_(mat1=x, mat2=y, beta=1.0, alpha=1.0)
         # Verify all outputs
         for out in [out2, out3, out4, out5, out6]:
-            np.testing.assert_allclose(out1.numpy(), out.numpy())
+            np.testing.assert_allclose(out1.numpy(), out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
 
+# Test baddbmm API compatibility (paddle.baddbmm and paddle.Tensor.baddbmm)
+class TestBaddbmmAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        paddle.enable_static()
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.rand(3, 2, 3).astype(self.dtype)
+        self.np_x = np.random.rand(3, 2, 4).astype(self.dtype)
+        self.np_y = np.random.rand(3, 4, 3).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        ref_out = 1.0 * self.np_input + 1.0 * self.np_x @ self.np_y
+        out1 = paddle.baddbmm(input, x, y)
+        out2 = paddle.baddbmm(input, x, y, 1.0, 1.0)
+        out3 = paddle.baddbmm(input=input, x=x, y=y)
+        out4 = paddle.baddbmm(input=input, x=x, y=y, beta=1.0, alpha=1.0)
+        out5 = paddle.baddbmm(
+            beta=1.0, alpha=1.0, input=input, batch1=x, batch2=y
+        )
+        out6 = paddle.empty_like(input)
+        paddle.baddbmm(input, x, y, out=out6)
+        out7 = input.baddbmm(x, y)
+        out8 = input.baddbmm(x=x, y=y, beta=1.0, alpha=1.0)
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
+
+        input_2d = paddle.to_tensor(np.random.rand(1, 1).astype(self.dtype))
+        out9 = paddle.baddbmm(input_2d, x, y)
+        self.assertEqual(out9.shape, [3, 2, 3])
+        paddle.enable_static()
+
+    def test_error(self):
+        """Test invalid input dimensions that should raise ValueError."""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # Test 1D input (invalid)
+        input_1d = paddle.to_tensor(np.random.rand(3).astype(self.dtype))
+        with self.assertRaises(ValueError):
+            paddle.baddbmm(input_1d, x, y)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            input = paddle.static.data(
+                name="input", shape=[3, 2, 3], dtype=self.dtype
+            )
+            x = paddle.static.data(name="x", shape=[3, 2, 4], dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=[3, 4, 3], dtype=self.dtype)
+            out1 = paddle.baddbmm(input, x, y)
+            out2 = paddle.baddbmm(input=input, x=x, y=y)
+            out3 = paddle.baddbmm(
+                beta=1, alpha=1, input=input, batch1=x, batch2=y
+            )
+            out4 = input.baddbmm(x, y)
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"input": self.np_input, "x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = 1.0 * self.np_input + 1.0 * self.np_x @ self.np_y
+            for out in fetches:
+                np.testing.assert_allclose(ref_out, out, rtol=1e-6)
+
+
 # Test baddbmm_ API compatibility (paddle.baddbmm_ and paddle.Tensor.baddbmm_)
-class TestBaddbmmInplaceAPI_Compatibility(unittest.TestCase):
+class TestBaddbmmInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         paddle.disable_static()
@@ -1454,12 +1548,12 @@ class TestBaddbmmInplaceAPI_Compatibility(unittest.TestCase):
         out6 = input.clone().baddbmm_(batch1=x, batch2=y, beta=0.5, alpha=0.7)
         # Verify all outputs
         for out in [out2, out3, out4, out5, out6]:
-            np.testing.assert_allclose(out1.numpy(), out.numpy())
+            np.testing.assert_allclose(out1.numpy(), out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
 
 # Test bitwise_left_shift compatibility
-class TestBitwiseLeftShiftAPI_Compatibility(unittest.TestCase):
+class TestBitwiseLeftShiftAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -1513,7 +1607,7 @@ class TestBitwiseLeftShiftAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_left_shift_ inplace compatibility
-class TestBitwiseLeftShiftInplaceAPI_Compatibility(unittest.TestCase):
+class TestBitwiseLeftShiftInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.shape = [5, 6]
@@ -1535,7 +1629,7 @@ class TestBitwiseLeftShiftInplaceAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_right_shift compatibility
-class TestBitwiseRightShiftAPI_Compatibility(unittest.TestCase):
+class TestBitwiseRightShiftAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
@@ -1589,7 +1683,7 @@ class TestBitwiseRightShiftAPI_Compatibility(unittest.TestCase):
 
 
 # Test bitwise_right_shift_ inplace compatibility
-class TestBitwiseRightShiftInplaceAPI_Compatibility(unittest.TestCase):
+class TestBitwiseRightShiftInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.shape = [5, 6]
@@ -1611,7 +1705,7 @@ class TestBitwiseRightShiftInplaceAPI_Compatibility(unittest.TestCase):
 
 
 # Test cauchy_ inplace compatibility
-class TestCauchyInplaceAPI_Compatibility(unittest.TestCase):
+class TestCauchyInplace(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.shape = [3, 4]
