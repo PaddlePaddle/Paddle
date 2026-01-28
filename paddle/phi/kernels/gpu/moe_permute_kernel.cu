@@ -908,9 +908,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);
-  if (return_expert_indices) {
-    dev_ctx.template Alloc<int>(expert_indices);
-  }
+  dev_ctx.template Alloc<int>(expert_indices);
   auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
   auto token_prob_unzipped_ptr =
       reinterpret_cast<void *>(token_prob_unzipped->data<float>());
