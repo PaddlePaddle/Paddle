@@ -2036,8 +2036,20 @@ def cross(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]])
-            >>> y = paddle.to_tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 1.0, 1.0],
+            ...         [2.0, 2.0, 2.0],
+            ...         [3.0, 3.0, 3.0],
+            ...     ]
+            ... )
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 1.0, 1.0],
+            ...         [1.0, 1.0, 1.0],
+            ...         [1.0, 1.0, 1.0],
+            ...     ]
+            ... )
             >>> z1 = paddle.cross(x, y)
             >>> print(z1)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -3067,7 +3079,14 @@ def matrix_power(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1, 2, 3], [1, 4, 9], [1, 8, 27]], dtype='float64')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1, 2, 3],
+            ...         [1, 4, 9],
+            ...         [1, 8, 27],
+            ...     ],
+            ...     dtype='float64',
+            ... )
             >>> print(paddle.linalg.matrix_power(x, 2))
             Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[6.  , 34. , 102.],
@@ -3555,7 +3574,11 @@ def eig(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
             >>> import paddle
 
             >>> x = paddle.to_tensor(
-            ...     [[1.6707249, 7.2249975, 6.5045543], [9.956216, 8.749598, 6.066444], [4.4251957, 1.7983172, 0.370647]]
+            ...     [
+            ...         [1.6707249, 7.2249975, 6.5045543],
+            ...         [9.956216, 8.749598, 6.066444],
+            ...         [4.4251957, 1.7983172, 0.370647],
+            ...     ]
             ... )
             >>> w, v = paddle.linalg.eig(x)
             >>> print(v)
@@ -4231,7 +4254,14 @@ def triangular_solve(
             >>> #               -x3 = 5
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1, 1, 1], [0, 2, 1], [0, 0, -1]], dtype="float64")
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1, 1, 1],
+            ...         [0, 2, 1],
+            ...         [0, 0, -1],
+            ...     ],
+            ...     dtype="float64",
+            ... )
             >>> y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
             >>> out = paddle.linalg.triangular_solve(x, y, upper=True)
 
@@ -4299,7 +4329,14 @@ def cholesky_solve(
 
             >>> import paddle
 
-            >>> u = paddle.to_tensor([[1, 1, 1], [0, 2, 1], [0, 0, -1]], dtype="float64")
+            >>> u = paddle.to_tensor(
+            ...     [
+            ...         [1, 1, 1],
+            ...         [0, 2, 1],
+            ...         [0, 0, -1],
+            ...     ],
+            ...     dtype="float64",
+            ... )
             >>> b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
             >>> out = paddle.linalg.cholesky_solve(b, u, upper=True)
 
@@ -4814,7 +4851,12 @@ def householder_product(
 
             >>> import paddle
             >>> x = paddle.to_tensor(
-            ...     [[-1.1280, 0.9012, -0.0190], [0.3699, 2.2133, -1.4792], [0.0308, 0.3361, -3.1761], [-0.0726, 0.8245, -0.3812]]
+            ...     [
+            ...         [-1.1280, 0.9012, -0.0190],
+            ...         [0.3699, 2.2133, -1.4792],
+            ...         [0.0308, 0.3361, -3.1761],
+            ...         [-0.0726, 0.8245, -0.3812],
+            ...     ]
             ... )
             >>> tau = paddle.to_tensor([1.7497, 1.1156, 1.7462])
             >>> Q = paddle.linalg.householder_product(x, tau)
@@ -5569,15 +5611,27 @@ def ormqr(
             >>> import numpy as np
             >>> from paddle import linalg
 
-            >>> input = paddle.to_tensor([[-114.6, 10.9, 1.1], [-0.304, 38.07, 69.38], [-0.45, -0.17, 62]])
+            >>> input = paddle.to_tensor(
+            ...     [
+            ...         [-114.6, 10.9, 1.1],
+            ...         [-0.304, 38.07, 69.38],
+            ...         [-0.45, -0.17, 62],
+            ...     ]
+            ... )
             >>> tau = paddle.to_tensor([1.55, 1.94, 3.0])
-            >>> y = paddle.to_tensor([[-114.6, 10.9, 1.1], [-0.304, 38.07, 69.38], [-0.45, -0.17, 62]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [-114.6, 10.9, 1.1],
+            ...         [-0.304, 38.07, 69.38],
+            ...         [-0.45, -0.17, 62],
+            ...     ]
+            ... )
             >>> output = linalg.ormqr(input, tau, y)
             >>> print(output)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[ 63.82712936 , -13.82312489 , -116.28614807],
-                [-53.65926361 , -28.15783501 , -70.42701721 ],
-                [-79.54292297 ,  24.00182915 , -41.34253311 ]])
+                 [-53.65926361 , -28.15783501 , -70.42701721 ],
+                 [-79.54292297 ,  24.00182915 , -41.34253311 ]])
     '''
 
     check_dtype(

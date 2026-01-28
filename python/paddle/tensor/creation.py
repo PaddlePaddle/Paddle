@@ -1023,7 +1023,7 @@ def tensor(
             >>> paddle.tensor([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64')
             Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
             [[(1.00000000+1.00000000j), (2.00000000+0.00000000j)],
-                [(3.00000000+2.00000000j), (4.00000000+0.00000000j)]])
+             [(3.00000000+2.00000000j), (4.00000000+0.00000000j)]])
     """
     stop_gradient = not requires_grad
     place = _get_paddle_place(device)
@@ -1233,7 +1233,7 @@ def asarray(
         Tensor: A Tensor constructed from ``data`` .
 
     Examples:
-        .. code-block:: pyco
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -307,7 +307,16 @@ def real(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [
+            ...             4 + 3j,
+            ...             5 + 2j,
+            ...             6 + 1j,
+            ...         ],
+            ...     ]
+            ... )
             >>> print(x)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
              [[(1.00000000+6.00000000j), (2.00000000+5.00000000j),
@@ -356,13 +365,16 @@ def imag(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
+            ...     ]
+            ... )
             >>> print(x)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1.00000000+6.00000000j), (2.00000000+5.00000000j),
-                (3.00000000+4.00000000j)],
-                [(4.00000000+3.00000000j), (5.00000000+2.00000000j),
-                (6.00000000+1.00000000j)]])
+            [[(1.00000000+6.00000000j), (2.00000000+5.00000000j), (3.00000000+4.00000000j)],
+             [(4.00000000+3.00000000j), (5.00000000+2.00000000j), (6.00000000+1.00000000j)]])
 
             >>> imag_res = paddle.imag(x)
             >>> print(imag_res)

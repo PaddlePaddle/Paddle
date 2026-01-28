@@ -997,7 +997,7 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
             >>> import numpy as np
 
             >>> format = "coo"
-            >>> np_x = np.asarray([[[0.0, 0], [1.0, 2.0]], [[0.0, 0], [3.0, float('nan')]]])
+            >>> np_x = np.asarray([[[0.0, 0.0], [1.0, 2.0]], [[0.0, 0.0], [3.0, float('nan')]]])
             >>> dense_x = paddle.to_tensor(np_x)
 
             >>> if format == "coo":
