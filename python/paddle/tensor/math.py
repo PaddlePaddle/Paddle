@@ -1202,6 +1202,7 @@ def floor_divide(
 
 
 @inplace_apis_in_dygraph_only
+@param_two_alias(["x", "input"], ["y", "other"])
 def floor_divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.

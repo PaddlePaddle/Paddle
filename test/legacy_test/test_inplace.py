@@ -1717,6 +1717,33 @@ class TestDygraphInplaceFloorDivide(TestDygraphInplace):
         y = paddle.randn([20, 1])
         self.assertRaises(ValueError, paddle.floor_divide_, x, y)
 
+    def test_floor_divide_inplace_with_y_parameter(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([2, 3, 8, 7]).astype('int32')
+        y = paddle.to_tensor([1, 5, 3, 3]).astype('int32')
+        x_clone = x.clone()
+        out = paddle.floor_divide_(x_clone, y)
+        self.assertEqual((out == np.floor_divide([2, 3, 8, 7], [1, 5, 3, 3])).all(), True)
+        paddle.enable_static()
+
+    def test_floor_divide_inplace_with_other_parameter(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([2, 3, 8, 7]).astype('int32')
+        other = paddle.to_tensor([1, 5, 3, 3]).astype('int32')
+        x_clone = x.clone()
+        out = paddle.floor_divide_(x_clone, other=other)
+        self.assertEqual((out == np.floor_divide([2, 3, 8, 7], [1, 5, 3, 3])).all(), True)
+        paddle.enable_static()
+
+    def test_floor_divide_inplace_with_both_parameters_error(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([2, 3, 8, 7]).astype('int32')
+        y = paddle.to_tensor([1, 5, 3, 3]).astype('int32')
+        other = paddle.to_tensor([1, 5, 3, 3]).astype('int32')
+        x_clone = x.clone()
+        with self.assertRaises(TypeError):
+            out = paddle.floor_divide_(x_clone, y, other=other)
+        paddle.enable_static()
 
 class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
