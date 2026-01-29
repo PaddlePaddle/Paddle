@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .tensor import inverse as inv
 from .tensor.linalg import (
     cholesky,
     cholesky_inverse,
@@ -54,15 +55,6 @@ from .tensor.linalg import (
     vector_norm,
 )
 
-
-def __getattr__(name):
-    if name == 'inv':
-        import paddle.tensor
-
-        return paddle.tensor.inverse
-    raise AttributeError(f"module 'paddle.linalg' has no attribute '{name}'")
-
-
 __all__ = [
     'cholesky',
     'cholesky_inverse',
@@ -74,6 +66,7 @@ __all__ = [
     'cov',
     'corrcoef',
     'cross',
+    'inv',
     'eig',
     'eigvals',
     'multi_dot',

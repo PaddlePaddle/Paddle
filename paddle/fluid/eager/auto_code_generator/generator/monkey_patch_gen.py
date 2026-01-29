@@ -52,6 +52,19 @@ nn_funcs_map = [
 
 """
 
+# Template for generic module path mappings (e.g., paddle.linalg.inv)
+GENERIC_FUNCS_MAP_TEMPLATE = """
+generic_funcs_map = [
+{}
+]
+
+"""
+
+# Template entry format: ('module.path', 'method_name', _op_name)
+GENERIC_NAME_METHOD_MAPPING_TEMPLATE = (
+    """  ('{module_path}', '{method_name}', _{op_name})"""
+)
+
 METHOD_TEMPLATE = """
 def _{name}(*args, **kwargs):
     return _C_ops.{name}(*args, **kwargs)
@@ -82,6 +95,17 @@ SET_NN_FUNCTION_TEMPLATE = """
     # set functions for paddle.nn.functional
     for method_name, method in nn_funcs_map:
         setattr(paddle.nn.functional, method_name, method)
+
+"""
+
+SET_GENERIC_FUNCTION_TEMPLATE = """
+    # set functions for generic module paths (e.g., paddle.linalg.inv)
+    for module_path, method_name, method in generic_funcs_map:
+        parts = module_path.split('.')
+        module = paddle
+        for part in parts[1:]:  # Skip 'paddle' prefix
+            module = getattr(module, part)
+        setattr(module, method_name, method)
 """
 # The pair of name and func which should be added to paddle
 paddle_func_map = []
@@ -89,6 +113,8 @@ paddle_func_map = []
 tensor_method_map = []
 # The pair of name and func which should be added to paddle.nn.functional
 nn_func_map = []
+# The tuple of (module_path, method_name, func) for generic module paths
+generic_func_map = []
 # The python api info which not in ops.yaml
 python_api_info_from_yaml = {}
 
@@ -126,12 +152,25 @@ def ClassifyAPIByPrefix(python_api_info, op_name):
     name_func_mapping = NAME_METHOD_MAPPING_TEMPLATE.format(op_name=op_name)
     for name in python_api_names:
         prefix = ExtractPrefix(name)
+        method_name = name.split(".")[
+            -1
+        ]  # Extract the method name from full path
         if prefix == "paddle.":
             paddle_func_map.append(name_func_mapping)
         elif prefix == "paddle.Tensor.":
             tensor_method_map.append(name_func_mapping)
         elif prefix == "paddle.nn.functional.":
             nn_func_map.append(name_func_mapping)
+        elif prefix.startswith("paddle."):
+            # Handle generic module paths like paddle.linalg.inv
+            # prefix includes trailing dot, remove it for module_path
+            module_path = prefix.rstrip('.')
+            generic_mapping = GENERIC_NAME_METHOD_MAPPING_TEMPLATE.format(
+                module_path=module_path,
+                method_name=method_name,
+                op_name=op_name,
+            )
+            generic_func_map.append(generic_mapping)
         else:
             raise Exception("Unsupported Prefix " + prefix, "API : " + name)
 
@@ -174,12 +213,17 @@ class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
         self.MonkeyPatchTensorMethods_str += NN_FUNCTIONS_MAP_TEMPLATE.format(
             result
         )
+        result = ',\n '.join(generic_func_map)
+        self.MonkeyPatchTensorMethods_str += GENERIC_FUNCS_MAP_TEMPLATE.format(
+            result
+        )
         self.MonkeyPatchTensorMethods_str += FUNCTION_NAME_TEMPLATE.format(
             func_name="monkey_patch_generated_methods_for_tensor"
         )
         self.MonkeyPatchTensorMethods_str += SET_METHOD_TEMPLATE
         self.MonkeyPatchTensorMethods_str += SET_FUNCTION_TEMPLATE
         self.MonkeyPatchTensorMethods_str += SET_NN_FUNCTION_TEMPLATE
+        self.MonkeyPatchTensorMethods_str += SET_GENERIC_FUNCTION_TEMPLATE
 
     def run(self):
         # Read Yaml file
