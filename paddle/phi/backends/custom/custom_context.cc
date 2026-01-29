@@ -25,6 +25,39 @@ limitations under the License. */
 
 namespace phi {
 
+void DnnWorkspaceHandle::RunFuncSync(
+    const std::function<void(void*)>& cudnn_func,
+    size_t required_workspace_bytes,
+    bool use_cached_allocation) {
+  bool need_realloc = required_workspace_bytes > WorkspaceSize();
+  if (need_realloc && !use_cached_allocation) {
+    void* workspace_ptr = nullptr;
+    size_t size = ((required_workspace_bytes + 255) >> 8) << 8;
+    std::lock_guard<std::mutex> guard(*mtx_);
+
+    workspace_ptr = device_->MemoryAllocate(size);
+    cudnn_func(workspace_ptr);
+    device_->SynchronizeStream(stream_);
+    device_->MemoryDeallocate(workspace_ptr, 1);
+    return;
+  }
+
+  RunFunc(cudnn_func, required_workspace_bytes);
+  if (need_realloc) {
+    // Release the workspace allocated in this running.
+    ResetWorkspace();
+  }
+}
+
+void DnnWorkspaceHandle::ResetWorkspace() { allocation_ = nullptr; }
+
+void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) return;
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = allocator_->Allocate(required_workspace_bytes);
+}
+
 struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
 
@@ -51,6 +84,10 @@ struct CustomContext::Impl {
       DeviceManager::DestroyBlasLtHandle(
           place_, reinterpret_cast<void*>(blaslt_handle_));
     }
+    if (dnn_handle_) {
+      DeviceManager::DestroyDnnHandle(place_,
+                                      reinterpret_cast<void*>(dnn_handle_));
+    }
   }
 
   void Init() {
@@ -66,6 +103,7 @@ struct CustomContext::Impl {
     eigen_device_ =
         reinterpret_cast<Eigen::GpuDevice*>(DeviceManager::InitEigenDevice(
             place_, stream_->raw_stream(), allocator_));
+    InitDnnWorkspace();
 
     stream_.reset(new stream::Stream());
     stream_->Init(place_);
@@ -91,6 +129,7 @@ struct CustomContext::Impl {
     owned_ = true;
     stream_owned_ = true;
     phi::DeviceGuard guard(place_);
+    InitDnnWorkspace();
   }
 
   const Place& GetPlace() const { return place_; }
@@ -338,6 +377,60 @@ struct CustomContext::Impl {
     }
   }
 
+  void InitDnnWorkspace() {
+    PADDLE_ENFORCE_NOT_NULL(allocator_,
+                            common::errors::InvalidArgument(
+                                "The device allocator for Custom context is "
+                                "nullptr. It must not be null."));
+    workspace_ = new DnnWorkspaceHandle(allocator_, stream(), place_);
+  }
+
+  void DestroyInternalWorkspace() {
+    if (owned_ && workspace_ != nullptr) {
+      delete workspace_;
+      workspace_ = nullptr;
+    }
+  }
+
+  DnnWorkspaceHandle GetDnnWorkspace() {
+    PADDLE_ENFORCE_NOT_NULL(allocator_,
+                            common::errors::InvalidArgument(
+                                "The device allocator for Custom context is "
+                                "nullptr. It must not be null."));
+    return DnnWorkspaceHandle(allocator_, stream(), place_);
+  }
+
+  dnnHandle_t GetDnnHandle() {
+    std::call_once(flag_dnn_, [&]() {
+      if (!dnn_handle_) {
+        if (!dnn_handle_creator_) {
+          phi::DeviceManager::InitDnnHandle(
+              place_, reinterpret_cast<void**>(&dnn_handle_), stream());
+        } else {
+          dnn_handle_ = dnn_handle_creator_();
+        }
+      }
+    });
+    PADDLE_ENFORCE_NOT_NULL(
+        dnn_handle_,
+        common::errors::InvalidArgument(
+            "The Custom dnn handle is nullptr. It must not be null."));
+    return dnn_handle_;
+  }
+
+  void DestroyInternalDnnHandle() {
+    if (owned_ && dnn_handle_ != nullptr) {
+      phi::DeviceManager::DestroyDnnHandle(place_, dnn_handle_);
+      dnn_handle_ = nullptr;
+    }
+  }
+
+  void SetDnnHandle(dnnHandle_t handle) { dnn_handle_ = handle; }
+
+  void SetDnnHandle(std::function<dnnHandle_t()>&& handle_creator) {
+    dnn_handle_creator_ = std::move(handle_creator);
+  }
+
   bool HasDnnAttr(const std::string& attr_name) const {
     return dnn_attrs_.count(attr_name) != 0UL;
   }
@@ -387,6 +480,11 @@ struct CustomContext::Impl {
       nullptr};
   cublasLtHandle_t blaslt_handle_{nullptr};
   std::function<cublasLtHandle_t()> blaslt_handle_creator_{nullptr};
+
+  dnnHandle_t dnn_handle_{nullptr};
+  std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
+
+  DnnWorkspaceHandle* workspace_{nullptr};
 
   static thread_local AttributeMap dnn_attrs_;
 
@@ -580,6 +678,26 @@ void CustomContext::CublasCall(
 void CustomContext::TensorCoreCublasCallIfAvailable(
     const std::function<void(cublasHandle_t)>& callback) const {
   impl_->TensorCoreCublasCallIfAvailable(callback);
+}
+
+dnnHandle_t CustomContext::cudnn_handle() const {
+  return impl_->GetDnnHandle();
+}
+
+DnnWorkspaceHandle CustomContext::cudnn_workspace_handle() const {
+  return impl_->GetDnnWorkspace();
+}
+
+void CustomContext::SetDnnHandle(dnnHandle_t handle) {
+  impl_->SetDnnHandle(handle);
+}
+
+void CustomContext::SetDnnHandle(std::function<dnnHandle_t()>&& func) {
+  impl_->SetDnnHandle(std::move(func));
+}
+
+void CustomContext::SetDnnWorkspaceHandle(DnnWorkspaceHandle* handle) {
+  impl_->workspace_ = handle;
 }
 
 bool CustomContext::HasDnnAttr(const std::string& attr_name) const {
