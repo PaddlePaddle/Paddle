@@ -334,6 +334,12 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle);
 
+  virtual void InitDnnHandle(size_t dev_id,
+                             void** dnn_handle,
+                             phi::stream::stream_t stream);
+
+  virtual void DestroyDnnHandle(size_t dev_id, void* dnn_handle);
+
   // CudaGraph
   virtual void CUDAStreamBeginCapture(size_t dev_id,
                                       stream::stream_t stream,
