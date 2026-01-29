@@ -135,6 +135,69 @@ class Tensor : public TensorBase {
     return TensorBase::to(options, non_blocking, copy, memory_format);
   }
 
+  Tensor meta() const {
+    PD_THROW("`meta()` is not supported in this Paddle build.");
+  }
+
+  at::Scalar item() const {
+    if (tensor_.numel() != 1) {
+      PD_THROW("only one element tensors can be converted to Python scalars");
+    }
+
+    // Move to CPU if necessary (for compatibility with PyTorch behavior)
+    PaddleTensor cpu_tensor = tensor_;
+    if (!phi::is_cpu_place(tensor_.place())) {
+      PaddlePlace place(phi::AllocationType::CPU);
+      cpu_tensor = tensor_.copy_to(place, true);
+    }
+
+    auto dtype = cpu_tensor.dtype();
+    if (dtype == phi::DataType::FLOAT32) {
+      return at::Scalar(*(cpu_tensor.data<float>()));
+    } else if (dtype == phi::DataType::FLOAT64) {
+      return at::Scalar(*(cpu_tensor.data<double>()));
+    } else if (dtype == phi::DataType::FLOAT16) {
+      return at::Scalar(
+          static_cast<float>(*(cpu_tensor.data<phi::dtype::float16>())));
+    } else if (dtype == phi::DataType::BFLOAT16) {
+      return at::Scalar(
+          static_cast<float>(*(cpu_tensor.data<phi::dtype::bfloat16>())));
+    } else if (dtype == phi::DataType::INT8) {
+      return at::Scalar(*(cpu_tensor.data<int8_t>()));
+    } else if (dtype == phi::DataType::INT16) {
+      return at::Scalar(*(cpu_tensor.data<int16_t>()));
+    } else if (dtype == phi::DataType::INT32) {
+      return at::Scalar(*(cpu_tensor.data<int32_t>()));
+    } else if (dtype == phi::DataType::INT64) {
+      return at::Scalar(*(cpu_tensor.data<int64_t>()));
+    } else if (dtype == phi::DataType::UINT8) {
+      return at::Scalar(*(cpu_tensor.data<uint8_t>()));
+    } else if (dtype == phi::DataType::BOOL) {
+      return at::Scalar(*(cpu_tensor.data<bool>()));
+    } else if (dtype == phi::DataType::COMPLEX64) {
+      return at::Scalar(*(cpu_tensor.data<phi::dtype::complex<float>>()));
+    } else if (dtype == phi::DataType::COMPLEX128) {
+      return at::Scalar(*(cpu_tensor.data<phi::dtype::complex<double>>()));
+    }
+    PD_THROW("item(): Unsupported data type");
+  }
+
+  template <typename T>
+  T item() const {
+    if (tensor_.numel() != 1) {
+      PD_THROW("only one element tensors can be converted to Python scalars");
+    }
+
+    // Move to CPU if necessary (for compatibility with PyTorch behavior)
+    PaddleTensor cpu_tensor = tensor_;
+    if (!phi::is_cpu_place(tensor_.place())) {
+      PaddlePlace place(phi::AllocationType::CPU);
+      cpu_tensor = tensor_.copy_to(place, true);
+    }
+
+    return *(cpu_tensor.data<T>());
+  }
+
   at::Tensor to(
       at::ScalarType dtype,
       bool non_blocking = false,

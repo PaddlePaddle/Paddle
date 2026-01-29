@@ -38,10 +38,9 @@ Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
   }
 }
 
-Plan::Plan(
-    const std::vector<std::shared_ptr<Job>>& job_list,
-    const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
-        type_to_ir_program)
+Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
+           const std::unordered_map<std::string, std::shared_ptr<pir::Program>>&
+               type_to_ir_program)
     : job_list_(job_list),
       type_to_ir_program_(type_to_ir_program),
       micro_batch_num_(1) {
@@ -78,13 +77,13 @@ const std::shared_ptr<ProgramDesc> Plan::Program(
   return type_to_program_.at(job_type);
 }
 
-std::shared_ptr<::pir::Program> Plan::IrProgram(
+std::shared_ptr<pir::Program> Plan::IrProgram(
     const std::string& job_type) const {
   return type_to_ir_program_.at(job_type);
 }
 
 void Plan::SetIrProgram(const std::string& job_type,
-                        std::shared_ptr<::pir::Program> ir_prog) {
+                        std::shared_ptr<pir::Program> ir_prog) {
   type_to_ir_program_[job_type] = ir_prog;
 }
 

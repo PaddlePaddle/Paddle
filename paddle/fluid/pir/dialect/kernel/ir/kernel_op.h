@@ -109,6 +109,10 @@ class OneDNNLegacyKernelOp : public pir::Op<OneDNNLegacyKernelOp> {
 }  // namespace dialect
 }  // namespace paddle
 
+namespace pir {
+using paddle::dialect::PhiKernelOp;
+}
+
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelOp)

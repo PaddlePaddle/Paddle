@@ -23,6 +23,7 @@
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/fluid/primitive/base/lazy_tensor.h"
+#include "paddle/fluid/primitive/decomp_rule/decomp_rule/composite.h"
 #include "paddle/fluid/primitive/decomp_utils/decomp_utils.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
@@ -3891,6 +3892,68 @@ void angle_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
     }
 
     set_output<T>(ConvertToOrig<T>(zero_tensor, x.dtype()), x_grad);
+  }
+}
+
+template <typename T>
+void var_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool unbiased,
+              double correction,
+              Tensor* x_grad) {
+  if (x_grad) {
+    auto axis_vec = axis.GetData();
+    auto x_dims = x.dims();
+    int64_t x_rank = x_dims.size();
+    if (axis_vec.empty()) {
+      for (int64_t i = 0; i < x_rank; ++i) {
+        axis_vec.push_back(i);
+      }
+    }
+    for (size_t i = 0; i < axis_vec.size(); ++i) {
+      if (axis_vec[i] < 0) {
+        axis_vec[i] += x_rank;
+      }
+    }
+
+    Tensor n_tensor;
+    if (has_dynamic_shape(x.shape())) {
+      Tensor x_shape = shape64<T>(x);
+      n_tensor = full<T>({1}, 1.0, x.dtype(), x.place());
+      for (int64_t i : axis_vec) {
+        n_tensor = n_tensor * cast<T>(get_slice<T>(x_shape, i), x.dtype());
+      }
+    } else {
+      int64_t n = 1;
+      for (int64_t i : axis_vec) {
+        n *= x_dims[i];
+      }
+      n_tensor = full<T>({1}, static_cast<double>(n), x.dtype(), x.place());
+    }
+
+    Tensor correction_tensor = full<T>({1}, correction, x.dtype(), x.place());
+    Tensor divisor = n_tensor - correction_tensor;
+
+    auto mean_val = paddle::primitive::details::mean_decomp<T>(x, axis, true);
+    auto diff = x - mean_val;
+    auto two = full<T>({1}, 2.0, x.dtype(), x.place());
+
+    Tensor out_grad_broadcast = out_grad;
+    if (!keepdim) {
+      if (has_dynamic_shape(x.shape())) {
+        Tensor out_grad_shape =
+            get_unsqueeze_dims<T>(shape64<T>(out_grad), axis_vec);
+        out_grad_broadcast = backend::reshape<T>(out_grad, out_grad_shape);
+      } else {
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_vec);
+        out_grad_broadcast = reshape<T>(out_grad, out_grad_shape);
+      }
+    }
+
+    auto res = out_grad_broadcast * diff * two / divisor;
+    set_output<T>(res, x_grad);
   }
 }
 

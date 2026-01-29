@@ -453,9 +453,28 @@ void matmul_double_grad(const Tensor& x,
   }
   Tensor dx, dy, ddout_1, ddout_2, ddout;
   if (!grad_x_grad && !grad_y_grad) {
+    if (x_grad) {
+      set_output<T>(
+          full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place()),
+          x_grad);
+    }
+    if (y_grad) {
+      set_output<T>(
+          full<T>(common::vectorize(y.dims()), 0.0, y.dtype(), y.place()),
+          y_grad);
+    }
+    if (grad_out_grad) {
+      set_output<T>(full<T>(common::vectorize(grad_out.dims()),
+                            0.0,
+                            grad_out.dtype(),
+                            grad_out.place()),
+                    grad_out_grad);
+    }
     return;
-
   } else if (!grad_x_grad) {
+    if (y_grad) {
+      dy = full<T>(common::vectorize(y.dims()), 0, y.dtype(), y.place());
+    }
     if (!transpose_x && !transpose_y) {
       if (x_grad) {
         dx = matmul<T>(out_help, yg_help, false, true);
@@ -487,6 +506,9 @@ void matmul_double_grad(const Tensor& x,
     }
 
   } else if (!grad_y_grad) {
+    if (x_grad) {
+      dx = full<T>(common::vectorize(x.dims()), 0, x.dtype(), x.place());
+    }
     if (!transpose_x && !transpose_y) {
       if (y_grad) {
         dy = matmul<T>(xg_help, out_help, true, false);
@@ -852,14 +874,12 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
 template <typename T>
 void linear_v2_double_grad(const Tensor& input,
                            const Tensor& weight,
-                           const Tensor& bias,
                            const Tensor& grad_out,
                            const paddle::optional<Tensor>& grad_input_grad,
                            const paddle::optional<Tensor>& grad_weight_grad,
                            const paddle::optional<Tensor>& grad_bias_grad,
                            Tensor* input_grad,
                            Tensor* weight_grad,
-                           Tensor* bias_grad,
                            Tensor* grad_out_grad) {
   matmul_double_grad<T>(input,
                         weight,
@@ -871,8 +891,9 @@ void linear_v2_double_grad(const Tensor& input,
                         input_grad,
                         weight_grad,
                         grad_out_grad);
-  if (bias_grad) {
-    add_double_grad<T>(bias, grad_out, nullptr, grad_bias_grad, -1, bias_grad);
+  if (grad_bias_grad && grad_out_grad) {
+    auto tmp = grad_out_grad + grad_bias_grad.get();
+    set_output<T>(tmp, grad_out_grad);
   }
 }
 

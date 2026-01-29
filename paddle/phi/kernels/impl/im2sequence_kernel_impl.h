@@ -34,7 +34,7 @@ inline int Im2SeqOutputSize(
 template <typename T, typename Context>
 void Im2SequenceKernel(const Context& dev_ctx,
                        const DenseTensor& x_in,
-                       const paddle::optional<DenseTensor>& y,
+                       const optional<DenseTensor>& y,
                        const std::vector<int>& kernels,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
@@ -146,7 +146,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void Im2SequenceGradKernel(const Context& dev_ctx,
                            const DenseTensor& x_in,
-                           const paddle::optional<DenseTensor>& y,
+                           const optional<DenseTensor>& y,
                            const DenseTensor& out_grad,
                            const std::vector<int>& kernels,
                            const std::vector<int>& strides,

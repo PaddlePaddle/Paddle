@@ -433,10 +433,10 @@ class MulPrimitiveFactory {
   }
 
   const engine &engine_;
-  paddle::optional<memory> x_input_;
-  paddle::optional<memory> y_input_;
-  paddle::optional<memory> output_;
-  paddle::optional<inner_product_forward> mul_;
+  optional<memory> x_input_;
+  optional<memory> y_input_;
+  optional<memory> output_;
+  optional<inner_product_forward> mul_;
   static constexpr bool is_int8_ = funcs::is_int8<XT>();
   dnnl::memory scales_mem_;
 };

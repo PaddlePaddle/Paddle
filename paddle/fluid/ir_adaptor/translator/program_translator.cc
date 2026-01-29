@@ -758,7 +758,7 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   VLOG(10) << "[undefined variable]" << var_name;
   auto var_desc = block.FindVarRecursive(var_name);
   pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
-  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto dtype = phi::TransToPhiDataType(var_desc->GetDataType());
   auto val = pir::Value(nullptr);
   if (var_desc->GetType() ==
       paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY) {

@@ -14,6 +14,8 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/prod_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
@@ -25,13 +27,22 @@
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#include "paddle/phi/kernels/stride/reduce_stride_base.cu.h"
-
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
+
+inline void PrepareStridedOut(DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "should not be called!"));
+  }
+  auto meta = out->meta();
+  meta.strides = meta.calc_strides(out->dims());
+  out->set_meta(meta);
+}
 
 template <typename T, typename Context>
 void AMaxStrideKernel(const Context& dev_ctx,
@@ -39,57 +50,9 @@ void AMaxStrideKernel(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
+  PrepareStridedOut(out);
 
-  int64_t max_stride = 0;
-  for (int i = 0; i < x.dims().size(); i++) {
-    max_stride += x.dims()[i] * x.strides()[i];
-  }
-  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
-                       !funcs::IsInUint32Range(x.numel());
-
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
-      is_big_tensor) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-  } else {
-    x_ = x;
-  }
-
-  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::AMaxKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
-    return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-
-  if (FLAGS_force_stride_compute_contig_out) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-  }
-
-  T ident = std::numeric_limits<T>::lowest();
-  ReduceStrideImpl<T, Context, kps::MaxFunctor>(
-      dev_ctx, x_, dims, keep_dim, ident, out);
-  return;
+  phi::AMaxKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 template <typename T, typename Context>
@@ -98,56 +61,9 @@ void AMinStrideKernel(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
+  PrepareStridedOut(out);
 
-  int64_t max_stride = 0;
-  for (int i = 0; i < x.dims().size(); i++) {
-    max_stride += x.dims()[i] * x.strides()[i];
-  }
-  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
-                       !funcs::IsInUint32Range(x.numel());
-
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
-      is_big_tensor) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-  } else {
-    x_ = x;
-  }
-  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::AMinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
-    return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-
-  if (FLAGS_force_stride_compute_contig_out) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-  }
-
-  T ident = std::numeric_limits<T>::max();
-  ReduceStrideImpl<T, Context, kps::MinFunctor>(
-      dev_ctx, x_, dims, keep_dim, ident, out);
-  return;
+  phi::AMinKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 template <typename T, typename Context>
@@ -156,57 +72,9 @@ void MaxStrideKernel(const Context& dev_ctx,
                      const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
+  PrepareStridedOut(out);
 
-  int64_t max_stride = 0;
-  for (int i = 0; i < x.dims().size(); i++) {
-    max_stride += x.dims()[i] * x.strides()[i];
-  }
-  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
-                       !funcs::IsInUint32Range(x.numel());
-
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
-      is_big_tensor) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-  } else {
-    x_ = x;
-  }
-
-  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::MaxKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
-    return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-
-  if (FLAGS_force_stride_compute_contig_out) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-  }
-
-  T ident = std::numeric_limits<T>::lowest();
-  ReduceStrideImpl<T, Context, kps::MaxFunctor>(
-      dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
-  return;
+  phi::MaxKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 template <typename T, typename Context>
@@ -215,56 +83,9 @@ void MinStrideKernel(const Context& dev_ctx,
                      const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
+  PrepareStridedOut(out);
 
-  int64_t max_stride = 0;
-  for (int i = 0; i < x.dims().size(); i++) {
-    max_stride += x.dims()[i] * x.strides()[i];
-  }
-  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
-                       !funcs::IsInUint32Range(x.numel());
-
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
-      is_big_tensor) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-  } else {
-    x_ = x;
-  }
-  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::MinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
-    return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-
-  if (FLAGS_force_stride_compute_contig_out) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-  }
-
-  T ident = std::numeric_limits<T>::max();
-  ReduceStrideImpl<T, Context, kps::MinFunctor>(
-      dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
-  return;
+  phi::MinKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 template <typename T, typename Context>
@@ -274,19 +95,9 @@ void ProdStrideKernel(const Context& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* out) {
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
-
-  auto meta = out->meta();
-  meta.strides = meta.calc_strides(out->dims());
-  out->set_meta(meta);
+  PrepareStridedOut(out);
 
   phi::ProdKernel<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out);
-
-  return;
 }
 
 template <typename T, typename Context>
@@ -295,82 +106,9 @@ void AllStrideKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
+  PrepareStridedOut(out);
 
-  int64_t max_stride = 0;
-  for (int i = 0; i < x.dims().size(); i++) {
-    max_stride += x.dims()[i] * x.strides()[i];
-  }
-  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
-                       !funcs::IsInUint32Range(x.numel());
-
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
-      is_big_tensor) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-  } else {
-    x_ = x;
-  }
-  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::AllKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
-    return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-
-  if (FLAGS_force_stride_compute_contig_out) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-  }
-
-  if (x_.numel() == 0) {
-    dev_ctx.template Alloc<bool>(out);
-    if (out->numel() > 0) {
-      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
-      phi::Full<bool, Context>(dev_ctx, phi::IntArray(vec_dims), 0, out);
-    }
-    return;
-  }
-
-  auto out_dtype = phi::DataType::BOOL;
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
-    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
-        phi::DataType::INT32,
-        phi::DataType::INT64,
-        phi::DataType::FLOAT16,
-        phi::DataType::BFLOAT16,
-        out_dtype,
-        "ReduceStrideImpl",
-        ([&] {
-          data_t ident = data_t(1);
-          ReduceStrideImpl<data_t, Context, kps::LogicalAndFunctor>(
-              dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
-        }));
-  } else {
-    T ident = T(1);
-    ReduceStrideImpl<T, Context, kps::LogicalAndFunctor>(
-        dev_ctx, x_, dims, keep_dim, ident, out);
-  }
-  return;
+  phi::AllKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 template <typename T, typename Context>
@@ -379,73 +117,9 @@ void AnyStrideKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
+  PrepareStridedOut(out);
 
-  int64_t max_stride = 0;
-  for (int i = 0; i < x.dims().size(); i++) {
-    max_stride += x.dims()[i] * x.strides()[i];
-  }
-  bool is_big_tensor = !funcs::IsInUint32Range(max_stride * sizeof(T)) ||
-                       !funcs::IsInUint32Range(x.numel());
-
-  DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || (out->dims().size() > 0) ||
-      is_big_tensor) {
-    if (!x.meta().is_contiguous()) {
-      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
-    } else {
-      x_ = x;
-    }
-  } else {
-    x_ = x;
-  }
-  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-    phi::AnyKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
-    return;
-  }
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-
-  if (FLAGS_force_stride_compute_contig_out) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-  }
-
-  auto out_dtype = phi::DataType::BOOL;
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
-    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
-        phi::DataType::INT32,
-        phi::DataType::INT64,
-        phi::DataType::FLOAT16,
-        phi::DataType::BFLOAT16,
-        out_dtype,
-        "ReduceStrideImpl",
-        ([&] {
-          data_t ident = static_cast<data_t>(0);
-          ReduceStrideImpl<data_t, Context, kps::LogicalOrFunctor>(
-              dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
-        }));
-  } else {
-    T ident = 0;
-    ReduceStrideImpl<T, Context, kps::LogicalOrFunctor>(
-        dev_ctx, x_, dims, keep_dim, ident, out);
-  }
-  return;
+  phi::AnyKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 template <typename T, typename Context>
@@ -455,18 +129,9 @@ void SumStrideKernel(const Context& dev_ctx,
                      DataType out_dtype,
                      bool keep_dim,
                      DenseTensor* out) {
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
-
-  auto meta = out->meta();
-  meta.strides = meta.calc_strides(out->dims());
-  out->set_meta(meta);
+  PrepareStridedOut(out);
 
   phi::SumKernel<T, Context>(dev_ctx, x, dims, out_dtype, keep_dim, out);
-  return;
 }
 
 template <typename T, typename Context>
@@ -475,18 +140,9 @@ void MeanStrideKernel(const Context& dev_ctx,
                       const IntArray& dims,
                       bool keep_dim,
                       DenseTensor* out) {
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
-
-  auto meta = out->meta();
-  meta.strides = meta.calc_strides(out->dims());
-  out->set_meta(meta);
+  PrepareStridedOut(out);
 
   phi::MeanKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
-  return;
 }
 
 }  // namespace phi
