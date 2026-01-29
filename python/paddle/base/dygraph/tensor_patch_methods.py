@@ -451,7 +451,7 @@ def monkey_patch_tensor():
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> x.apply_(f)
 
-
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
@@ -769,6 +769,7 @@ def monkey_patch_tensor():
                 >>> print(x.dtype)
                 paddle.float32
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> x = x.to("gpu", "int16")
                 >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
