@@ -27,9 +27,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_SLEEF
 #include <sleef.h>
-// Sleef precision control option
-#ifndef PADDLE_SLEEF_POW_PRECISION
-#define PADDLE_SLEEF_POW_PRECISION 10  // Default to use u10 precision
+#if defined(__AVX512F__)
+#include <immintrin.h>
 #endif
 #endif
 
@@ -1427,27 +1426,25 @@ template <typename T>
 inline HOSTDEVICE
     typename std::enable_if<std::is_same<T, float>::value, T>::type
     compute_pow_sleef(const T a, const T b) {
-#if PADDLE_SLEEF_POW_PRECISION == 15
-  return Sleef_powf1_u15(a, b);
-#elif PADDLE_SLEEF_POW_PRECISION == 10
   return Sleef_powf1_u10(a, b);
-#else
-  return Sleef_powf1_u35(a, b);
-#endif
 }
 
 template <typename T>
 inline HOSTDEVICE
     typename std::enable_if<std::is_same<T, double>::value, T>::type
     compute_pow_sleef(const T a, const T b) {
-#if PADDLE_SLEEF_POW_PRECISION == 15
-  return Sleef_powd1_u15(a, b);
-#elif PADDLE_SLEEF_POW_PRECISION == 10
   return Sleef_powd1_u10(a, b);
-#else
-  return Sleef_powd1_u35(a, b);
-#endif
 }
+
+#if defined(__AVX512F__)
+inline HOSTDEVICE __m512 compute_pow_sleef_vec(__m512 a, __m512 b) {
+  return Sleef_powf16_u10(a, b);
+}
+
+inline HOSTDEVICE __m512d compute_pow_sleef_vec(__m512d a, __m512d b) {
+  return Sleef_powd8_u10(a, b);
+}
+#endif
 #endif
 
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
