@@ -2082,12 +2082,14 @@
 
 - backward_op : linear_v2_double_grad
   forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
-  args : (Tensor input, Tensor weight, Tensor bias, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad)
-  output: Tensor(input_grad), Tensor(weight_grad), Tensor(bias_grad), Tensor(grad_out_grad)
+  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad)
+  output: Tensor(input_grad), Tensor(weight_grad), Tensor(grad_out_grad)
+  optional: grad_input_grad, grad_weight_grad, grad_bias_grad
   infer_meta :
-    func : GeneralQuaternaryGradInferMeta
-    param : [input, weight, bias, grad_out]
-  composite: linear_v2_double_grad(input, weight, bias, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, bias_grad, grad_out_grad)
+      func : GeneralTernaryGradInferMeta
+      param : [input, weight, grad_out]
+  no_need_buffer: input
+  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, grad_out_grad)
 
 - backward_op : linear_v2_grad
   forward : linear_v2 (Tensor input, Tensor weight, Tensor bias) -> Tensor(out)
@@ -3705,6 +3707,17 @@
   kernel :
     func : stanh_grad
 
+- backward_op : std_grad
+  forward : std (Tensor x, int64_t[] axis, bool keepdim, bool unbiased, double correction) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis, bool keepdim, bool unbiased, double correction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : std_grad
+    data_type : x
+
 - backward_op : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides)
@@ -4070,6 +4083,18 @@
     func : UnStackGradInferMeta
   kernel :
     func : unstack_grad
+
+- backward_op : var_grad
+  forward : var (Tensor x, int64_t[] axis, bool keepdim, bool unbiased, double correction) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int64_t[] axis, bool keepdim, bool unbiased, double correction)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : var_grad
+    data_type : x
+  composite: var_grad(x, out_grad, axis, keepdim, unbiased, correction, x_grad)
 
 - backward_op : view_dtype_grad
   forward : view_dtype (Tensor input, DataType dtype) -> Tensor(out)

@@ -56,7 +56,7 @@ class AmpOperators {
   std::shared_ptr<std::unordered_set<std::string>> GetMutableBlockOps();
 
   std::shared_ptr<std::unordered_set<std::string>> GetMutableUnsupportedOps(
-      const phi::DataType& data_type);
+      const DataType& data_type);
 
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();
@@ -94,12 +94,12 @@ class AmpAttrs {
   void SetAmpLevel(AmpLevel level);
   std::string GetAmpDtype() const;
   void SetAmpDtype(std::string amp_dtype);
-  phi::DataType GetAmpPhiDtype() const;
+  DataType GetAmpPhiDtype() const;
 
  private:
   static thread_local bool use_promote_;
   static thread_local AmpLevel amp_level_;
-  static thread_local phi::DataType amp_dtype_;
+  static thread_local DataType amp_dtype_;
 };
 
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
