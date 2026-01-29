@@ -267,8 +267,8 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: steps.check-approval.outputs.can-skip != 'true'
+        if: ${{ always() && steps.check-approval.outputs.can-skip != 'true' }}
         run: |
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}
