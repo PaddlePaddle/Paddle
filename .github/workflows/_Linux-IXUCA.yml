@@ -43,12 +43,18 @@ jobs:
           set -euo pipefail
 
           SKIP_FLAG_FILE=/data/geyuqiang/skip-ci.txt
+          PR_NUMBER="${{ github.event.pull_request.number }}"
           if [ -f "${SKIP_FLAG_FILE}" ]; then
             flag_value=$(head -n 1 "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
             if [ "${flag_value}" = "true" ]; then
-              echo "Found skip flag file ${SKIP_FLAG_FILE} with value true, skipping IXUCA CI"
-              echo "can-skip=true" >> "$GITHUB_OUTPUT"
-              exit 0
+              second_line=$(sed -n '2p' "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+              if [ -n "${second_line}" ] && [ "${second_line}" = "${PR_NUMBER}" ]; then
+                echo "Skip flag is true but second line matches PR ${PR_NUMBER}; not skipping IXUCA CI"
+              else
+                echo "Found skip flag file ${SKIP_FLAG_FILE} with value true and PR number mismatch/empty; skipping IXUCA CI"
+                echo "can-skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
             fi
           fi
 
