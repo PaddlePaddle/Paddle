@@ -379,7 +379,7 @@ class ProgBarLogger(Callback):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(120)
+            >>> # doctest: +TIMEOUT(90)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
