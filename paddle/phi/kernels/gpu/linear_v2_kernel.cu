@@ -79,8 +79,7 @@ void LinearV2Kernel(const Context& dev_ctx,
   if (!FLAGS_use_legacy_linear) {
     VLOG(10) << "Use LinearV2Kernel with cublaslt";
     const auto out_dim_original = out->dims();
-    const auto [M, N, K] =
-        canonicalize_dims(input, weight, transpose_weight);
+    const auto [M, N, K] = canonicalize_dims(input, weight, transpose_weight);
     VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
