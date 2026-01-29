@@ -151,12 +151,47 @@ jobs:
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
 
+      - name: Get PaddleCustomDevice PR number from Paddle PR description
+        if: steps.check-approval.outputs.can-skip != 'true'
+        id: get-pcd-pr
+        run: |
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+
+          # Get Paddle PR description
+          PR_BODY=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
+            | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('body', ''))")
+
+          # Extract [PaddleCustomDevice PR] XXXX from description
+          PCD_PR_NUM=$(echo "$PR_BODY" | grep -oP '\[PaddleCustomDevice PR\]\s*\K\d+' || echo "")
+
+          if [ -n "$PCD_PR_NUM" ]; then
+            echo "Found PaddleCustomDevice PR: $PCD_PR_NUM"
+            echo "pcd_pr_num=$PCD_PR_NUM" >> "$GITHUB_OUTPUT"
+          else
+            echo "No PaddleCustomDevice PR found in PR description"
+            echo "pcd_pr_num=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Clone PaddleCustomDevice repository
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           # Clone PaddleCustomDevice
           git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git
           cd PaddleCustomDevice
+
+          # If PaddleCustomDevice PR number exists, fetch and merge it
+          PCD_PR_NUM="${{ steps.get-pcd-pr.outputs.pcd_pr_num }}"
+          if [ -n "$PCD_PR_NUM" ]; then
+            echo "Fetching and merging PaddleCustomDevice PR #$PCD_PR_NUM"
+            git fetch origin pull/$PCD_PR_NUM/head:pr-$PCD_PR_NUM
+            git merge pr-$PCD_PR_NUM --no-edit
+            echo "Successfully merged PaddleCustomDevice PR #$PCD_PR_NUM"
+          fi
+
           cp -r ../Paddle .
           git add Paddle
           git commit -m "add Paddle submodule"

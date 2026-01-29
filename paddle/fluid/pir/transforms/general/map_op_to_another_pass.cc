@@ -20,7 +20,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -61,24 +61,20 @@ class DepthWiseConv2d2Conv2dPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class MapOpToAnotherPass : public pir::PatternRewritePass {
+class MapOpToAnotherPass : public PatternRewritePass {
  public:
-  MapOpToAnotherPass() : pir::PatternRewritePass("map_op_to_another_pass", 2) {}
+  MapOpToAnotherPass() : PatternRewritePass("map_op_to_another_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<DepthWiseConv2d2Conv2dPattern>(context));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateMapOpToAnotherPass() {
   return std::make_unique<MapOpToAnotherPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(map_op_to_another_pass, MapOpToAnotherPass);
+REGISTER_IR_PASS(map_op_to_another_pass, pir::MapOpToAnotherPass);

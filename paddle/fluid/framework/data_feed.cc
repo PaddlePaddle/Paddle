@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_feed.h"
 
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
 #include <sys/mman.h>

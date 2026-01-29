@@ -733,9 +733,8 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   // update paddings and dilations according to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
-  DDim in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
-  DDim filter_data_dims =
-      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
@@ -1949,8 +1948,7 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                         bias_dims,
                         y_dims));
 
-  auto x_mat_dims =
-      common::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+  auto x_mat_dims = flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
   auto x_rank = x_dims.size();
   int64_t K_from_x = trans_x ? x_dims[x_rank - 2] : x_mat_dims[1];
@@ -2053,7 +2051,7 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
           dout_dims.size(),
           x_dims.size()));
 
-  auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  auto dout_mat_dims = flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
   PADDLE_ENFORCE_EQ(
       dout_mat_dims[1],
@@ -3007,7 +3005,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
             x_dims));
   }
 
-  const DataLayout data_layout_str = common::StringToDataLayout(data_layout);
+  const DataLayout data_layout_str = StringToDataLayout(data_layout);
 
   PADDLE_ENFORCE_GE(
       x_dims.size(),
@@ -3203,9 +3201,8 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   // get "HW" from "NHWC"
-  DDim in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
-  DDim filter_data_dims =
-      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
@@ -3640,7 +3637,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims));
 
-  auto x_mat_dims = common::flatten_to_2d(x_dims, x_num_col_dims);
+  auto x_mat_dims = flatten_to_2d(x_dims, x_num_col_dims);
   PADDLE_ENFORCE_EQ(
       x_mat_dims[1],
       w_dims[0],
@@ -3682,7 +3679,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
           y_dims.size(),
           y_dims));
 
-  auto y_mat_dim = common::flatten_to_2d(y_dims, begin_norm_axis);
+  auto y_mat_dim = flatten_to_2d(y_dims, begin_norm_axis);
   int64_t dim_0 = y_mat_dim[0];
   int64_t dim_1 = y_mat_dim[1];
   if (scale) {
@@ -3997,7 +3994,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
                         MetaTensor* hidden) {
   DDim x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? common::flatten_to_2d(x_dims, 1)
+                        ? flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(),
@@ -4926,7 +4923,7 @@ void MultiGruInferMeta(
     MetaTensor* hidden) {
   auto x_dims = x.dims();
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? common::flatten_to_2d(x_dims, 1)
+                        ? flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(),
