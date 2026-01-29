@@ -3934,7 +3934,7 @@ add_doc_and_signature(
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
 
-    """,
+""",
     """
 def atan2(
     x: Tensor,
