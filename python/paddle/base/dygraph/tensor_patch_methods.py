@@ -499,7 +499,7 @@ def monkey_patch_tensor():
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> y = x.apply(f)
 
-
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
