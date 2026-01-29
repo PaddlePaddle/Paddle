@@ -16,6 +16,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#if defined(__AVX512F__)
+#include <immintrin.h>
+#endif
 
 namespace phi {
 
@@ -101,7 +104,8 @@ void ElementwisePowSameDimsHelper(const Context& dev_ctx,
                                   int axis,
                                   DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  if constexpr (std::is_floating_point<MPType>::value) {
+  if constexpr (std::is_same<MPType, float>::value ||
+                std::is_same<MPType, double>::value) {
     bool is_contiguous = true;
     auto x_strides = x.strides();
     auto y_strides = y.strides();
@@ -121,7 +125,58 @@ void ElementwisePowSameDimsHelper(const Context& dev_ctx,
       T* out_data = out->data<T>();
       int64_t numel = x.numel();
 
-      int vec_size = 32;
+#if defined(__AVX512F__)
+      if constexpr (std::is_same<T, float>::value) {
+        int vec_size = 16;
+        int64_t aligned_n = (numel / vec_size) * vec_size;
+        for (int64_t i = 0; i < aligned_n; i += vec_size) {
+          _mm512_storeu_ps(
+              out_data + i,
+              funcs::compute_pow_sleef_vec(_mm512_loadu_ps(x_data + i),
+                                           _mm512_loadu_ps(y_data + i)));
+        }
+        for (int64_t i = aligned_n; i < numel; ++i) {
+          out_data[i] = static_cast<T>(std::pow(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i])));
+        }
+      } else if constexpr (std::is_same<T, double>::value) {
+        int vec_size = 8;
+        int64_t aligned_n = (numel / vec_size) * vec_size;
+        for (int64_t i = 0; i < aligned_n; i += vec_size) {
+          _mm512_storeu_pd(
+              out_data + i,
+              funcs::compute_pow_sleef_vec(_mm512_loadu_pd(x_data + i),
+                                           _mm512_loadu_pd(y_data + i)));
+        }
+        for (int64_t i = aligned_n; i < numel; ++i) {
+          out_data[i] = static_cast<T>(std::pow(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i])));
+        }
+      } else {
+        int vec_size;
+        if constexpr (std::is_same<MPType, float>::value) {
+          vec_size = 32;
+        } else if constexpr (std::is_same<MPType, double>::value) {
+          vec_size = 16;
+        }
+        int64_t aligned_n = (numel / vec_size) * vec_size;
+
+        for (int64_t i = 0; i < aligned_n; ++i) {
+          out_data[i] = funcs::compute_pow_sleef<MPType>(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i]));
+        }
+        for (int64_t i = aligned_n; i < numel; ++i) {
+          out_data[i] = static_cast<T>(std::pow(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i])));
+        }
+      }
+#else
+      int vec_size;
+      if constexpr (std::is_same<MPType, float>::value) {
+        vec_size = 32;
+      } else if constexpr (std::is_same<MPType, double>::value) {
+        vec_size = 16;
+      }
       int64_t aligned_n = (numel / vec_size) * vec_size;
 
       for (int64_t i = 0; i < aligned_n; ++i) {
@@ -132,6 +187,7 @@ void ElementwisePowSameDimsHelper(const Context& dev_ctx,
         out_data[i] = static_cast<T>(std::pow(static_cast<MPType>(x_data[i]),
                                               static_cast<MPType>(y_data[i])));
       }
+#endif
     } else {
       funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
           dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
