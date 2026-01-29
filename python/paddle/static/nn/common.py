@@ -1012,23 +1012,24 @@ def conv3d(
         convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
 
-            >>> np.random.seed(1107)
-            >>> paddle.seed(1107)
-            >>> paddle.enable_static()
-            >>> data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-            >>> param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
-            >>> res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
-            >>> place = paddle.CPUPlace()
-            >>> exe = paddle.static.Executor(place)
-            >>> exe.run(paddle.static.default_startup_program())
-            >>> x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
-            >>> output,  = exe.run(feed={"data": x}, fetch_list=[res])
-            >>> print(output.shape)
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     paddle.enable_static()
+            ...     np.random.seed(1107)
+            ...     _ = paddle.seed(1107)
+            ...     data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+            ...     param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+            ...     res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+            ...     place = paddle.CPUPlace()
+            ...     exe = paddle.static.Executor(place)
+            ...     _ = exe.run(paddle.static.default_startup_program())
+            ...     x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+            ...     (output,) = exe.run(feed={"data": x}, fetch_list=[res])
+            ...     print(output.shape)
             (1, 2, 10, 30, 30)
     """
 
