@@ -1414,22 +1414,67 @@ struct InverseTruncDivideFunctor<dtype::bfloat16> {
   }
 };
 
+// Binary exponentiation for unsigned integers - PyTorch-style exact algorithm
+// This avoids floating-point conversion and guarantees mathematical correctness
+template <typename T>
+inline HOSTDEVICE typename std::
+    enable_if<std::is_integral<T>::value && !std::is_signed<T>::value, T>::type
+    powi_impl(T a, T b) {
+  T result = static_cast<T>(1);
+  while (b > static_cast<T>(0)) {
+    if (b & static_cast<T>(1)) {
+      result *= a;
+    }
+    a *= a;
+    b >>= 1;
+  }
+  return result;
+}
+
+// Binary exponentiation for signed integers with negative exponent handling
+template <typename T>
+inline HOSTDEVICE typename std::
+    enable_if<std::is_integral<T>::value && std::is_signed<T>::value, T>::type
+    powi_impl(T a, T b) {
+  // Handle negative exponents for signed integers
+  if (b < static_cast<T>(0)) {
+    if (a == static_cast<T>(1)) {
+      return static_cast<T>(1);
+    } else if (a == static_cast<T>(-1)) {
+      // (-1)^|b| = -1 if |b| is odd, 1 if |b| is even
+      T abs_b = -b;
+      return (abs_b & static_cast<T>(1)) ? static_cast<T>(-1)
+                                         : static_cast<T>(1);
+    } else {
+      // For |a| > 1, a^(-b) truncates to 0 for integer division
+      return static_cast<T>(0);
+    }
+  }
+  // Non-negative exponent: use binary exponentiation
+  T result = static_cast<T>(1);
+  while (b > static_cast<T>(0)) {
+    if (b & static_cast<T>(1)) {
+      result *= a;
+    }
+    a *= a;
+    b >>= 1;
+  }
+  return result;
+}
+
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+// CUDA/HIP path for integer types - use exact binary exponentiation
 template <typename T, typename MPType>
 inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
-  // TODO(wujionghao): A potential speed improvement is supporting different
-  // types in C++.
-  // On CUDAPlace, pow(3, 1) calls pow(float, float), and
-  // it will return a float number like 2.99... , which floor to 2
-  // when cast to int by default and it is wrong.
-  // Use llrint to cast it to the nearest integer, which is 3.
-  T zero = static_cast<T>(0);
-  if (a == zero && b < zero) {
-    return zero;
+  // Handle zero base with negative exponent
+  if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
+    return static_cast<T>(0);
   }
-  return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
+  return powi_impl(a, b);
 }
+
+// CUDA/HIP path for floating-point types - use pow()
 template <typename T, typename MPType>
 inline HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
@@ -1438,13 +1483,21 @@ compute_pow(const T a, const T b) {
   return static_cast<T>(pow(a_val, b_val));
 }
 #else
+// CPU path for integer types - use exact binary exponentiation
 template <typename T, typename MPType>
-inline HOSTDEVICE T compute_pow(const T a, const T b) {
-  if constexpr (std::is_integral<T>::value) {
-    if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
-      return static_cast<T>(0);
-    }
+inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
+compute_pow(const T a, const T b) {
+  // Handle zero base with negative exponent
+  if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
+    return static_cast<T>(0);
   }
+  return powi_impl(a, b);
+}
+
+// CPU path for floating-point types - use std::pow()
+template <typename T, typename MPType>
+inline HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
+compute_pow(const T a, const T b) {
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
 #ifdef PADDLE_WITH_XPU_KP
