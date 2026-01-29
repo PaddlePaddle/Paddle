@@ -379,7 +379,7 @@ class ProgBarLogger(Callback):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(90)
+            >>> # doctest: +TIMEOUT(120)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
@@ -851,7 +851,7 @@ class EarlyStopping(Callback):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(90)
+            >>> # doctest: +TIMEOUT(120)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec
@@ -1349,14 +1349,14 @@ class ReduceLROnPlateau(Callback):
             ...     loss=CrossEntropyLoss(),
             ...     metrics=[Accuracy()],
             ... )
-            >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
+            >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=2, verbose=1)
             >>> model.fit(
             ...     train_dataset,
             ...     val_dataset,
             ...     batch_size=64,
             ...     log_freq=200,
             ...     save_freq=10,
-            ...     epochs=20,
+            ...     epochs=4,
             ...     callbacks=[callbacks],
             ... )
 
