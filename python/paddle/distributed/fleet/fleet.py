@@ -1568,8 +1568,7 @@ class Fleet:
         Examples:
             .. code-block:: pycon
 
-                >>> # doctest: +TIMEOUT(90)
-                >>> # doctest: +REQUIRES(env:GPU)
+                >>> # doctest: +SKIP("In PIR, AMP is unified in dynamic and static graph")
                 >>> import paddle
                 >>> import paddle.nn.functional as F
                 >>> paddle.enable_static()
