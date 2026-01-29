@@ -3516,6 +3516,8 @@ def cumsum(
         return _cum_sum_(**kwargs)
 
 
+# Edit by AI Agent
+@param_one_alias(["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def cumsum_(
     x: Tensor,
@@ -3526,6 +3528,9 @@ def cumsum_(
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
+
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
     """
     if axis is None:
         flatten = True
