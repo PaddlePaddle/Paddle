@@ -180,6 +180,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : floor_divide_
+  name : [paddle.floor_divide_, paddle.Tensor.floor_divide_]
+  args_alias :
+    use_default_mapping : True
+
 - op : fmax
   name : [paddle.fmax, paddle.Tensor.fmax]
   args_alias :
