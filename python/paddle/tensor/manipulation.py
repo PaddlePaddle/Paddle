@@ -8139,8 +8139,9 @@ def index_fill_(
     Please refer to :ref:`api_paddle_index_fill`.
 
     .. note::
-        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``index_fill_(x, index, dim=0, value=-1)`` is equivalent to ``index_fill_(x, index, axis=0, value=-1)``.
+        Alias: ``dim``.
+        Positional Argument Support: ``x.index_fill_(dim, index, value)`` is equivalent to
+        ``x.index_fill_(index=index, axis=dim, value=value)``.
     """
     if isinstance(index, (int, np.integer)) and isinstance(
         axis, (Variable, paddle.pir.Value)
