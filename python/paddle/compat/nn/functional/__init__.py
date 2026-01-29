@@ -267,7 +267,7 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
     if (
         paddle.get_flags("FLAGS_use_legacy_linear")["FLAGS_use_legacy_linear"]
         or not paddle.is_compiled_with_cuda()
-        or not in_dynamic_or_pir_mode()
+        or not paddle.framework.in_dynamic_or_pir_mode()
     ):
         # Fallback to old logic when in non-cuda or legacy mode.
         out = _C_ops.matmul(input, weight, False, True)
