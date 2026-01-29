@@ -8142,6 +8142,10 @@ def index_fill_(
         Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
         For example, ``index_fill_(x, index, dim=0, value=-1)`` is equivalent to ``index_fill_(x, index, axis=0, value=-1)``.
     """
+    if isinstance(index, (int, np.integer)) and isinstance(
+        axis, (Variable, paddle.pir.Value)
+    ):
+        index, axis = axis, index
     return _index_fill_impl(x, index, axis, value, True)
 
 

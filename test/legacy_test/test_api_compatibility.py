@@ -1193,5 +1193,31 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_array_equal(out, ref_out)
 
 
+class TestTensorIndexFillInplaceCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.x = np.eye(3, 4).astype('float32')
+        self.indices = np.array([0, 2]).astype('int64')
+        self.value = -1.0
+
+    def test_tensor_index_fill_inplace_dim_positional(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        idx = paddle.to_tensor(self.indices)
+        out = x.index_fill_(1, idx, self.value)
+        expected = self.x.copy()
+        expected[:, self.indices] = self.value
+        np.testing.assert_allclose(expected, out.numpy())
+        paddle.enable_static()
+
+    def test_tensor_index_fill_inplace_dim_keyword(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        idx = paddle.to_tensor(self.indices)
+        out = x.index_fill_(dim=0, index=idx, value=self.value)
+        expected = self.x.copy()
+        expected[self.indices, :] = self.value
+        np.testing.assert_allclose(expected, out.numpy())
+        paddle.enable_static()
+
 if __name__ == '__main__':
     unittest.main()
