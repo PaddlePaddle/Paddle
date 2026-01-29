@@ -311,6 +311,23 @@ class TestFillDiagonalAlias(unittest.TestCase):
         with self.assertRaises((ValueError, TypeError)):
             x.fill_diagonal_(value=1.0, fill_value=2.0)
 
+    def test_positional_wrap_bool(self):
+        expected_np = np.array(
+            [
+                [1, 2, 2],
+                [2, 1, 2],
+                [2, 2, 1],
+                [2, 2, 2],
+                [1, 2, 2],
+                [2, 1, 2],
+                [2, 2, 1],
+            ]
+        ).astype('float32')
+        x = paddle.ones((7, 3), dtype='float32')
+        y = x * 2
+        y.fill_diagonal_(1, True)
+        self.assertTrue((y.numpy() == expected_np).all())
+
 
 if __name__ == '__main__':
     unittest.main()

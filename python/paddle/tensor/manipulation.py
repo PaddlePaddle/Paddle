@@ -1232,6 +1232,9 @@ def fill_diagonal_(
             >>> print(x.tolist())
             [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
     """
+    if isinstance(offset, bool) and wrap is False:
+        wrap = offset
+        offset = 0
     if in_dynamic_mode():
         if len(x.shape) == 2:
             return _C_ops.fill_diagonal_(x, value, offset, wrap)
