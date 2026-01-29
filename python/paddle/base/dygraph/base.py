@@ -742,7 +742,12 @@ def grad(
             ...     y = x * x
             ...
             ...     # Since y = x * x, dx = 2 * x
-            ...     dx = paddle.grad(outputs=[y], inputs=[x], create_graph=create_graph, retain_graph=True)[0]
+            ...     dx = paddle.grad(
+            ...         outputs=[y],
+            ...         inputs=[x],
+            ...         create_graph=create_graph,
+            ...         retain_graph=True,
+            ...     )[0]
             ...
             ...     z = y + dx
             ...
@@ -786,7 +791,11 @@ def grad(
             ...     # Therefore, the final result would be:
             ...     # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
             ...
-            ...     dx = paddle.grad(outputs=[y1, y2], inputs=[x], grad_outputs=grad_outputs)[0]
+            ...     dx = paddle.grad(
+            ...         outputs=[y1, y2],
+            ...         inputs=[x],
+            ...         grad_outputs=grad_outputs,
+            ...     )[0]
             ...
             ...     return dx.numpy()
             >>> grad_value = paddle.to_tensor(4.0)
