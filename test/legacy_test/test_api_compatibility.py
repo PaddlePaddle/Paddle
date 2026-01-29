@@ -904,6 +904,10 @@ class TestSqueezeInplaceAPI_Compatibility(unittest.TestCase):
         out4 = x4.squeeze_(dim=2)
         paddle_dygraph_out.append(out4)
 
+        x5 = paddle.to_tensor(self.np_input)
+        out5 = x5.squeeze_(axis=(2,))
+        paddle_dygraph_out.append(out5)
+
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
@@ -917,12 +921,13 @@ class TestSqueezeInplaceAPI_Compatibility(unittest.TestCase):
             out1 = paddle.squeeze_(x, axis=2)
             out2 = paddle.squeeze_(x, dim=2)
             out3 = x.squeeze_(dim=2)
+            out4 = x.squeeze_(axis=(2,))
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input},
-                fetch_list=[out1, out2, out3],
+                fetch_list=[out1, out2, out3, out4],
             )
             ref_out = np.squeeze(self.np_input, axis=2)
             for out in fetches:
