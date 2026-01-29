@@ -105,7 +105,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
