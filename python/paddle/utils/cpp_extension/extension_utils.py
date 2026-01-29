@@ -872,7 +872,7 @@ def find_cuda_includes():
     cuda_home = find_cuda_home()
     if cuda_home is None:
         raise ValueError(
-            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specify it."
         )
     base_include = os.path.join(cuda_home, 'include')
 
@@ -889,7 +889,7 @@ def find_rocm_includes():
     rocm_home = find_rocm_home()
     if rocm_home is None:
         raise ValueError(
-            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
+            "Not found ROCM runtime, please use `export ROCM_PATH=XXX` to specify it."
         )
 
     return [os.path.join(rocm_home, 'include')]
@@ -961,7 +961,7 @@ def find_paddle_custom_device_includes():
                 include_dirs.append(include_dir)
         else:
             raise ValueError(
-                "Not found CUSTOM_DEVICE_ROOT, please use `export CUSTOM_DEVICE_ROOT=XXX` to specific it."
+                "Not found CUSTOM_DEVICE_ROOT, please use `export CUSTOM_DEVICE_ROOT=XXX` to specify it."
             )
         return include_dirs
     return include_dirs
@@ -1011,7 +1011,7 @@ def find_cuda_libraries():
     cuda_home = find_cuda_home()
     if cuda_home is None:
         raise ValueError(
-            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specify it."
         )
     if IS_WINDOWS:
         cuda_lib_dir = [os.path.join(cuda_home, 'lib', 'x64')]
@@ -1028,7 +1028,7 @@ def find_rocm_libraries():
     rocm_home = find_rocm_home()
     if rocm_home is None:
         raise ValueError(
-            "Not found ROCM runtime, please use `export ROCM_PATH=XXX` to specific it."
+            "Not found ROCM runtime, please use `export ROCM_PATH=XXX` to specify it."
         )
     rocm_lib_dir = [os.path.join(rocm_home, 'lib')]
 
