@@ -28,11 +28,9 @@ inline std::tuple<int64_t, int64_t, int64_t> canonicalize_dims(
   const auto weight_dims = weight.dims();
   // We assume weight to be [K, N] if not tranasposed, [N, K] if transposed, [K]
   // if 1D
-  const int64_t N =
-      weight_dims.size() < 2 ? 1 : weight_dims[!transpose_weight];
-  const int64_t K = weight_dims.size() < 2
-                        ? weight_dims[0]
-                        : weight_dims[transpose_weight];
+  const int64_t N = weight_dims.size() < 2 ? 1 : weight_dims[!transpose_weight];
+  const int64_t K =
+      weight_dims.size() < 2 ? weight_dims[0] : weight_dims[transpose_weight];
 
   int64_t M = input_dims.size() >= 2 ? input_dims[input_dims.size() - 2] : 1;
   if (input_dims.size() > 2) {
