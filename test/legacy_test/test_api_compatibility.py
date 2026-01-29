@@ -1279,9 +1279,7 @@ class TestBernoulliOldStaticOut(unittest.TestCase):
         from paddle.pir_utils import OldIrGuard
 
         paddle.enable_static()
-        np_x = np.array(
-            [[0.0, 1.0, 0.0], [1.0, 0.0, 1.0]], dtype='float32'
-        )
+        np_x = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 1.0]], dtype='float32')
         with OldIrGuard():
             main = paddle.static.Program()
             startup = paddle.static.Program()
@@ -1300,9 +1298,7 @@ class TestBernoulliOldStaticOut(unittest.TestCase):
                 self.assertEqual(out1.name, out_holder.name)
 
             exe = paddle.base.Executor(paddle.CPUPlace())
-            fetches = exe.run(
-                main, feed={"x": np_x}, fetch_list=[out1, out2]
-            )
+            fetches = exe.run(main, feed={"x": np_x}, fetch_list=[out1, out2])
             for out in fetches:
                 np.testing.assert_allclose(out, np_x)
         paddle.disable_static()
