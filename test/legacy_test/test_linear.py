@@ -153,6 +153,8 @@ class TestAccuracyCompatible(unittest.TestCase):
             # legacy_linear or non-cuda device does not support array equal.
             return
         else:
+            # Assume that functional linear with FLAGS_use_legacy_linear=True
+            # is array equal to compat linear with transposed weight
             compat_linear_result = paddle.compat.nn.functional.linear(
                 self.input, self.weight.T.contiguous(), self.bias
             )
