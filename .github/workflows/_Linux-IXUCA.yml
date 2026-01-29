@@ -42,6 +42,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          SKIP_FLAG_FILE=/data/geyuqiang/skip-ci.txt
+          if [ -f "${SKIP_FLAG_FILE}" ]; then
+            flag_value=$(head -n 1 "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+            if [ "${flag_value}" = "true" ]; then
+              echo "Found skip flag file ${SKIP_FLAG_FILE} with value true, skipping IXUCA CI"
+              echo "can-skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
           export https_proxy=http://oversea-website-proxy.aistudio.public:8888
           export http_proxy=http://oversea-website-proxy.aistudio.public:8888
 
