@@ -26,38 +26,29 @@ namespace distributed {
 class NCCLConfig {
  public:
   static std::shared_ptr<NCCLConfig> CreateNCCLConfig(
-      const std::string& commName = "",
-      const int ll_buffsize = -1,
-      const int ll128_buffsize = -1,
-      const int simple_buffsize = -1,
-      const int buffsize_align = -1,
-      const int nchannels = -1,
-      const std::string& algoStr = "",
-      const std::string& protoStr = "");
-  ncclConfig_t* GetOrigin();
-  ncclMemOptConfig_t* GetMemOpt();
+#ifdef NCCL_HAS_CONFIG
+      const int blocking,
+      const int cga_cluster_size,
+      const int min_ctas,
+      const int max_ctas
+#endif
+  );
 
-  NCCLConfig(const std::string& commName,
-             const int ll_buffsize,
-             const int ll128_buffsize,
-             const int simple_buffsize,
-             const int buffsize_align,
-             const int nchannels,
-             const std::string& algoStr,
-             const std::string& protoStr);
+  NCCLConfig(
+#ifdef NCCL_HAS_CONFIG
+      const int blocking,
+      const int cga_cluster_size,
+      const int min_ctas,
+      const int max_ctas
+#endif
+  );
   ~NCCLConfig();
 
- private:
-  const std::string commName_;
-  const int ll_buffsize_;
-  const int ll128_buffsize_;
-  const int simple_buffsize_;
-  const int buffsize_align_;
-  const int nchannels_;
-  const std::string algoStr_;
-  const std::string protoStr_;
+ public:
+  ncclConfig_t* GetOrigin();
 
-  ncclMemOptConfig_t* nccl_memopt_config_ptr{nullptr};
+ private:
+  ncclConfig_t* nccl_config_ptr{nullptr};
 };
 
 }  // namespace distributed

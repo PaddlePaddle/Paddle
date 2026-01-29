@@ -19,6 +19,16 @@ endif()
 
 include(ExternalProject)
 
+# Check if NCCL is available and set NCCL include path
+if(WITH_NCCL AND NCCL_INCLUDE_DIR)
+  set(DGC_NCCL_INCLUDE_FLAGS "-I${NCCL_INCLUDE_DIR}")
+  set(DGC_NCCL_INCLUDE "${NCCL_INCLUDE_DIR}")
+  message(STATUS "DGC will use NCCL include path: ${NCCL_INCLUDE_DIR}")
+else()
+  set(DGC_NCCL_INCLUDE_FLAGS "")
+  set(DGC_NCCL_INCLUDE "")
+endif()
+
 set(DGC_DOWNLOAD_DIR ${PADDLE_SOURCE_DIR}/third_party/dgc/${CMAKE_SYSTEM_NAME})
 set(DGC_PREFIX_DIR "${THIRD_PARTY_PATH}/dgc")
 set(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc/src/extern_dgc")
@@ -76,7 +86,8 @@ ExternalProject_Add(
   URL_MD5 ${DGC_URL_MD5}
   PREFIX "${DGC_PREFIX_DIR}"
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND make -j${NPROC}
+  BUILD_COMMAND env NCCL_INCLUDE="${DGC_NCCL_INCLUDE}"
+                CXXFLAGS="${DGC_NCCL_INCLUDE_FLAGS}" make -j${NPROC}
   DOWNLOAD_DIR ${DGC_DOWNLOAD_DIR}
   SOURCE_DIR ${DGC_SOURCES_DIR}
   INSTALL_COMMAND

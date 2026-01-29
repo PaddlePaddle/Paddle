@@ -19,62 +19,45 @@
 namespace phi::distributed {
 
 std::shared_ptr<NCCLConfig> NCCLConfig::CreateNCCLConfig(
-    const std::string& commName,
-    const int ll_buffsize,
-    const int ll128_buffsize,
-    const int simple_buffsize,
-    const int buffsize_align,
-    const int nchannels,
-    const std::string& algoStr,
-    const std::string& protoStr) {
-  return std::make_shared<NCCLConfig>(commName,
-                                      ll_buffsize,
-                                      ll128_buffsize,
-                                      simple_buffsize,
-                                      buffsize_align,
-                                      nchannels,
-                                      algoStr,
-                                      protoStr);
+#ifdef NCCL_HAS_CONFIG
+    const int blocking,
+    const int cga_cluster_size,
+    const int min_ctas,
+    const int max_ctas
+#endif
+) {
+  return std::make_shared<NCCLConfig>(
+#ifdef NCCL_HAS_CONFIG
+      blocking, cga_cluster_size, min_ctas, max_ctas
+#endif
+  );
 }
 
-NCCLConfig::NCCLConfig(const std::string& commName,
-                       const int ll_buffsize,
-                       const int ll128_buffsize,
-                       const int simple_buffsize,
-                       const int buffsize_align,
-                       const int nchannels,
-                       const std::string& algoStr,
-                       const std::string& protoStr)
-    : commName_(commName),
-      ll_buffsize_(ll_buffsize),
-      ll128_buffsize_(ll128_buffsize),
-      simple_buffsize_(simple_buffsize),
-      buffsize_align_(buffsize_align),
-      nchannels_(nchannels),
-      algoStr_(algoStr),
-      protoStr_(protoStr),
-      nccl_memopt_config_ptr(nullptr) {
-  if (phi::dynload::ncclCommGenMemOptConfig.IsValid()) {
-    nccl_memopt_config_ptr = phi::dynload::ncclCommGenMemOptConfig(
-        commName_.empty() ? nullptr : commName_.c_str(),
-        ll_buffsize_ >= 0 ? ll_buffsize_ : -1,
-        ll128_buffsize_ >= 0 ? ll128_buffsize_ : -1,
-        simple_buffsize_ >= 0 ? simple_buffsize_ : -1,
-        buffsize_align_ >= 0 ? buffsize_align_ : -1,
-        nchannels_ >= 0 ? nchannels_ : -1,
-        algoStr_.empty() ? nullptr : algoStr_.c_str(),
-        protoStr_.empty() ? nullptr : protoStr_.c_str());
-  }
+NCCLConfig::NCCLConfig(
+#ifdef NCCL_HAS_CONFIG
+    const int blocking,
+    const int cga_cluster_size,
+    const int min_ctas,
+    const int max_ctas
+#endif
+    )
+    : nccl_config_ptr(nullptr) {
+
+#ifdef NCCL_HAS_CONFIG
+  nccl_config_ptr = new ncclConfig_t;
+  *nccl_config_ptr = NCCL_CONFIG_INITIALIZER;
+  nccl_config_ptr->blocking = blocking;
+  nccl_config_ptr->cgaClusterSize = cga_cluster_size;
+  nccl_config_ptr->minCTAs = min_ctas;
+  nccl_config_ptr->maxCTAs = max_ctas;
+#endif
 }
 
-ncclConfig_t* NCCLConfig::GetOrigin() { return nullptr; }
-
-ncclMemOptConfig_t* NCCLConfig::GetMemOpt() { return nccl_memopt_config_ptr; }
+ncclConfig_t* NCCLConfig::GetOrigin() { return nccl_config_ptr; }
 
 NCCLConfig::~NCCLConfig() {
-  if (phi::dynload::ncclCommFreeMemOptConfig.IsValid() &&
-      nccl_memopt_config_ptr != nullptr) {
-    phi::dynload::ncclCommFreeMemOptConfig(nccl_memopt_config_ptr);
+  if (nccl_config_ptr) {
+    delete nccl_config_ptr;
   }
 }
 

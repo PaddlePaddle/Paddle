@@ -136,6 +136,11 @@ if(WITH_GPU)
   include_directories(${CUDNN_INCLUDE_DIR})
   include_directories(${CUDA_TOOLKIT_INCLUDE})
 
+  # Include NCCL
+  if(NCCL_INCLUDE_DIR)
+    include_directories(${NCCL_INCLUDE_DIR})
+  endif()
+
   if(TENSORRT_FOUND)
     if(${TENSORRT_MAJOR_VERSION} VERSION_LESS 8)
       message(FATAL_ERROR "Paddle needs TensorRT >= 8.0 to compile")

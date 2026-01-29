@@ -203,6 +203,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::CUDAStream GetStream(const Place& place);
   void SetOuterEventWait(bool outer_wait);
 
+  void EagerConnectRingExchange();
+
   void EagerConnectRingExchange(
       std::shared_ptr<phi::distributed::NCCLConfig> nccl_config);
 
@@ -263,8 +265,6 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
           tasks_opt = std::nullopt);
 
   void EagerConnect();
-
-  void EagerConnectRingExchange();
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;

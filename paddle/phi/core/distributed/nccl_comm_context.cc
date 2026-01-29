@@ -56,19 +56,20 @@ void NCCLCommContext::CreateNCCLComm(
     if (param > 0) {
       LOG(WARNING) << "ncclCommInitRank2 is not supported.";
     }
-    if (nccl_config_ptr != nullptr &&
-        phi::dynload::ncclCommInitRankConfigMemOpt.IsValid()) {
-      NCCL_CHECK(phi::dynload::ncclCommInitRankConfigMemOpt(
-          &nccl_comm_,
-          nranks,
-          nccl_id,
-          myrank,
-          nccl_config_ptr->GetOrigin(),
-          nccl_config_ptr->GetMemOpt()));
+#ifdef NCCL_HAS_CONFIG
+    if (nccl_config_ptr != nullptr) {
+      auto nccl_config = nccl_config_ptr->GetOrigin();
+      LOG(INFO) << "create NCCL comm via ncclCommInitRankConfig."
+                << "\nnccl_config blocking: " << nccl_config->blocking
+                << "\nnccl_config cgaClusterSize: "
+                << nccl_config->cgaClusterSize
+                << "\nnccl_config maxCTAs: " << nccl_config->maxCTAs
+                << ", nccl_config minCTAs: " << nccl_config->minCTAs;
+      NCCL_CHECK(phi::dynload::ncclCommInitRankConfig(
+          &nccl_comm_, nranks, nccl_id, myrank, nccl_config));
     } else {
-      if (nccl_config_ptr != nullptr) {
-        LOG(WARNING) << "ncclCommInitRankConfigMemOpt is not supported.";
-      }
+#endif
+      LOG(INFO) << "create NCCL comm via ncclCommInitRank.";
       NCCL_CHECK(
           phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
     }

@@ -32,26 +32,6 @@ ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
 #if NCCL_VERSION_CODE < 21400
 typedef struct ncclConfig_v21400 ncclConfig_t;
 #endif
-
-typedef struct ncclMemOptConfig ncclMemOptConfig_t;
-
-ncclResult_t ncclCommInitRankConfigMemOpt(ncclComm_t* comm,
-                                          int nranks,
-                                          ncclUniqueId commId,
-                                          int myrank,
-                                          ncclConfig_t* config,
-                                          ncclMemOptConfig_t* memopt_config);
-
-ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
-                                            int ll_buffsize,
-                                            int ll128_buffsize,
-                                            int simple_buffsize,
-                                            int buffsize_align,
-                                            int nchannels,
-                                            const char* algoStr,
-                                            const char* protoStr);
-
-ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
 #ifdef __cplusplus
 }
 #endif

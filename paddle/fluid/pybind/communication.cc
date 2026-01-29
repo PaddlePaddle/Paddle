@@ -147,14 +147,12 @@ void BindNCCLConfig(py::module *m) {
              std::shared_ptr<phi::distributed::NCCLConfig>>(*m, "NCCLConfig")
       .def_static("create",
                   &phi::distributed::NCCLConfig::CreateNCCLConfig,
-                  py::arg("commName") = "",
-                  py::arg("ll_buffsize") = -1,
-                  py::arg("ll128_buffsize") = -1,
-                  py::arg("simple_buffsize") = -1,
-                  py::arg("buffsize_align") = -1,
-                  py::arg("nchannels") = -1,
-                  py::arg("algoStr") = "",
-                  py::arg("protoStr") = "",
+#ifdef NCCL_HAS_CONFIG
+                  py::arg("blocking") = "",
+                  py::arg("cga_cluster_size") = -1,
+                  py::arg("min_ctas") = -1,
+                  py::arg("max_ctas") = -1,
+#endif
                   py::call_guard<py::gil_scoped_release>());
 }
 #endif
