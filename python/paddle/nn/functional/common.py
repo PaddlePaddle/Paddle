@@ -2536,12 +2536,6 @@ def linear(
         or not paddle.is_compiled_with_cuda()
         or not in_dynamic_or_pir_mode()
     ):
-        if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
-            "FLAGS_use_accuracy_compatible_kernel"
-        ]:
-            raise ValueError(
-                "Legacy linear op is not capable for accuracy compatible kernel mode, please use cuda capable device or check your environment configuration 'FLAGS_use_legacy_linear'."
-            )
         if in_dynamic_mode():
             return _C_ops.linear(x, weight, bias)
 
