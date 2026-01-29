@@ -1219,5 +1219,6 @@ class TestTensorIndexFillInplaceCompatibility(unittest.TestCase):
         np.testing.assert_allclose(expected, out.numpy())
         paddle.enable_static()
 
+
 if __name__ == '__main__':
     unittest.main()
