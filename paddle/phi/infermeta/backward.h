@@ -187,7 +187,7 @@ PADDLE_API void LinearV2GradInferMeta(const MetaTensor& input,
                                       const MetaTensor& weight,
                                       const MetaTensor& bias,
                                       const MetaTensor& out_grad,
-                                      const bool is_receiving_transposed_weight,
+                                      const bool transpose_weight,
                                       MetaTensor* input_grad,
                                       MetaTensor* weight_grad,
                                       MetaTensor* bias_grad);

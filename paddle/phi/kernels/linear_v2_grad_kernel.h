@@ -35,7 +35,7 @@ void LinearV2GradKernel(const Context& dev_ctx,
                         const DenseTensor& weight,
                         const DenseTensor& bias,
                         const DenseTensor& out_grad,
-                        const bool is_receiving_transposed_weight,
+                        const bool transpose_weight,
                         DenseTensor* input_grad,
                         DenseTensor* weight_grad,
                         DenseTensor* bias_grad) {
@@ -44,7 +44,7 @@ void LinearV2GradKernel(const Context& dev_ctx,
                                     weight,
                                     out_grad,
                                     false,
-                                    is_receiving_transposed_weight,
+                                    transpose_weight,
                                     input_grad,
                                     weight_grad);
 

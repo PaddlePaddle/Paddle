@@ -278,7 +278,7 @@ PADDLE_API void LerpInferMeta(const MetaTensor& x,
 PADDLE_API void LinearV2InferMeta(const MetaTensor& input,
                                   const MetaTensor& weight,
                                   const MetaTensor& bias,
-                                  const bool is_receiving_transposed_weight,
+                                  const bool transpose_weight,
                                   MetaTensor* out,
                                   MetaConfig config = MetaConfig());
 

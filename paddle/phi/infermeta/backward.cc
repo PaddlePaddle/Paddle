@@ -496,7 +496,7 @@ void LinearV2GradInferMeta(const MetaTensor& input,
                            const MetaTensor& weight,
                            const MetaTensor& bias,
                            const MetaTensor& out_grad,
-                           const bool is_receiving_transposed_weight,
+                           const bool transpose_weight,
                            MetaTensor* input_grad,
                            MetaTensor* weight_grad,
                            MetaTensor* bias_grad) {
@@ -507,9 +507,9 @@ void LinearV2GradInferMeta(const MetaTensor& input,
 
   // Assume weight to be [K, N] if not tranasposed, [N, K] if transposed
   const int64_t weight_elewise_dim =
-      is_receiving_transposed_weight ? weight_dims[0] : weight_dims[1];
+      transpose_weight ? weight_dims[0] : weight_dims[1];
   const int64_t weight_reduce_dim =
-      is_receiving_transposed_weight ? weight_dims[1] : weight_dims[0];
+      transpose_weight ? weight_dims[1] : weight_dims[0];
 
   auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 

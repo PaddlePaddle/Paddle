@@ -66,7 +66,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                     const DenseTensor& input,
                     const DenseTensor& weight,
                     const DenseTensor& bias,
-                    const bool is_receiving_transposed_weight,
+                    const bool transpose_weight,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
@@ -80,12 +80,12 @@ void LinearV2Kernel(const Context& dev_ctx,
     VLOG(10) << "Use LinearV2Kernel with cublaslt";
     const auto out_dim_original = out->dims();
     const auto [M, N, K] =
-        canonicalize_dims(input, weight, is_receiving_transposed_weight);
+        canonicalize_dims(input, weight, transpose_weight);
     VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
     input_processed.Resize(common::make_ddim({M, K}));
-    if (is_receiving_transposed_weight) {
+    if (transpose_weight) {
       weight_processed.Resize(common::make_ddim({N, K}));
     } else {
       weight_processed.Resize(common::make_ddim({K, N}));
@@ -116,7 +116,7 @@ void LinearV2Kernel(const Context& dev_ctx,
           N,
           K,
           false,
-          is_receiving_transposed_weight,
+          transpose_weight,
           phi::funcs::MatmulFusedType::kMatmulBias);
     } else {
       DenseTensor bias_processed = bias;
@@ -159,7 +159,7 @@ void LinearV2Kernel(const Context& dev_ctx,
                                weight_dims_vec,
                                out,
                                false,
-                               is_receiving_transposed_weight);
+                               transpose_weight);
     AddKernel<T, Context>(dev_ctx, *out, bias, out);
   }
 }

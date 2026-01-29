@@ -2301,7 +2301,7 @@ bool LinearV2OpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const auto &bias_dims = bias_shape_or_data.shape();
   const bool transpose_y_attr =
-      GetBoolAttr(op, "is_receiving_transposed_weight");
+      GetBoolAttr(op, "transpose_weight");
 
   size_t x_rank = x_dims.size();
   size_t y_rank = y_dims.size();

@@ -260,9 +260,9 @@ template <typename T>
 Tensor linear_v2_decomp(const Tensor& input,
                         const Tensor& weight,
                         const Tensor& bias,
-                        bool is_receiving_transposed_weight) {
+                        bool transpose_weight) {
   Tensor result =
-      matmul<T>(input, weight, false, is_receiving_transposed_weight);
+      matmul<T>(input, weight, false, transpose_weight);
   result = result + bias;
   return result;
 }
