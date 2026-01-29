@@ -96,12 +96,6 @@ add_custom_target(
     "--phi_ops_map_path=${phi_ops_map_path}"
   VERBATIM)
 
-# NOTE(zhiqiu): WHY?
-# In `setup.py.in`, some dynamic libraries (eg, libxpuapi.so) are modified using
-# patchelf. In rare cases, if the a linker is linking that dynamic library for
-# some executables at the same time, a `file not recognized, file truncated`
-# error may occur, result in the compilation error.
-# So, add dependency to force the cpp tests built before running `setup.py.in`.
 if(WITH_TESTING)
   add_dependencies(copy_libpaddle build_tests)
 endif()
