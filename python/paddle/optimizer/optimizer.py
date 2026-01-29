@@ -1692,6 +1692,10 @@ class Optimizer:
                     new_params_grads = []
                     for group in buffer_manager.buffer_groups:
                         if not group["params_buffer"].data_buffer.stop_gradient:
+                            # if enable comm overlap, check grad_comm_task complete before optimizer execute
+                            if group["grads_buffer"].comm_task:
+                                group["grads_buffer"].wait_and_clear_comm_task()
+
                             new_params_grads.append(
                                 (
                                     group["params_buffer"].data_buffer,
