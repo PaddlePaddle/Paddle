@@ -64,56 +64,59 @@ bool AccuracyOpInferSymbolicShape(
 
 bool AddcmulOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
+  const auto &input_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &y_shape_or_data =
+  const auto &tensor1_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const auto &z_shape_or_data =
+  const auto &tensor2_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
-  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
-  std::vector<symbol::DimExpr> z_shape = z_shape_or_data.shape();
+  std::vector<symbol::DimExpr> input_shape = input_shape_or_data.shape();
+  std::vector<symbol::DimExpr> tensor1_shape = tensor1_shape_or_data.shape();
+  std::vector<symbol::DimExpr> tensor2_shape = tensor2_shape_or_data.shape();
 
   // NOTE(large-tensor): tensor dimensions are small integers
-  int x_ndims = static_cast<int>(x_shape.size());
-  int y_ndims = static_cast<int>(y_shape.size());
-  int z_ndims = static_cast<int>(z_shape.size());
-  std::vector<symbol::DimExpr> out1_shape;
-  std::vector<symbol::DimExpr> out2_shape;
-  int diffxy = x_ndims - y_ndims;
-  if (diffxy > 0) {
-    for (int i = 0; i < diffxy; ++i) {
-      y_shape.emplace(y_shape.begin(), 1);
+  int input_ndims = static_cast<int>(input_shape.size());
+  int tensor1_ndims = static_cast<int>(tensor1_shape.size());
+  int tensor2_ndims = static_cast<int>(tensor2_shape.size());
+  std::vector<symbol::DimExpr> intermediate_shape;
+  std::vector<symbol::DimExpr> output_shape;
+  int diff_input_tensor1 = input_ndims - tensor1_ndims;
+  if (diff_input_tensor1 > 0) {
+    for (int i = 0; i < diff_input_tensor1; ++i) {
+      tensor1_shape.emplace(tensor1_shape.begin(), 1);
     }
   } else {
-    for (int i = 0; i < -diffxy; ++i) {
-      x_shape.emplace(x_shape.begin(), 1);
+    for (int i = 0; i < -diff_input_tensor1; ++i) {
+      input_shape.emplace(input_shape.begin(), 1);
     }
   }
   symbol::DimExprBuilder builder;
-  for (size_t i = 0; i < x_shape.size(); ++i) {
-    out1_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
-    infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+  for (size_t i = 0; i < input_shape.size(); ++i) {
+    intermediate_shape.emplace_back(
+        builder.Broadcast(input_shape[i], tensor1_shape[i]));
+    infer_context->AddBroadcastableCstr(input_shape[i], tensor1_shape[i]);
   }
-  int out1_ndims = out1_shape.size();
-  int diffxyz = z_ndims - out1_ndims;
-  if (diffxyz > 0) {
-    for (int i = 0; i < diffxyz; ++i) {
-      out1_shape.emplace(out1_shape.begin(), 1);
+  int intermediate_ndims = intermediate_shape.size();
+  int diff_tensor2_intermediate = tensor2_ndims - intermediate_ndims;
+  if (diff_tensor2_intermediate > 0) {
+    for (int i = 0; i < diff_tensor2_intermediate; ++i) {
+      intermediate_shape.emplace(intermediate_shape.begin(), 1);
     }
   } else {
-    for (int i = 0; i < -diffxyz; ++i) {
-      z_shape.emplace(z_shape.begin(), 1);
+    for (int i = 0; i < -diff_tensor2_intermediate; ++i) {
+      tensor2_shape.emplace(tensor2_shape.begin(), 1);
     }
   }
-  for (size_t i = 0; i < z_shape.size(); ++i) {
-    out2_shape.emplace_back(builder.Broadcast(z_shape[i], out1_shape[i]));
-    infer_context->AddBroadcastableCstr(z_shape[i], out1_shape[i]);
+  for (size_t i = 0; i < tensor2_shape.size(); ++i) {
+    output_shape.emplace_back(
+        builder.Broadcast(tensor2_shape[i], intermediate_shape[i]));
+    infer_context->AddBroadcastableCstr(tensor2_shape[i],
+                                        intermediate_shape[i]);
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out2_shape)});
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
   return true;
 }
 

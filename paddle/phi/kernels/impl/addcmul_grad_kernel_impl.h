@@ -115,63 +115,83 @@ static void AddcmulGradImpl(const Context& dev_ctx,
 
   // d(tensor1) = reduce_sum(dout * value * tensor2)
   if (tensor1_grad) {
-    DenseTensor temp;
-    temp.Resize(out_grad.dims());
-    dev_ctx.template Alloc<T>(&temp);
-
     auto ext_t2 = extend_dims(tensor2.dims());
     auto t2_bcast = compute_bcast(ext_t2);
     auto eigen_t2 =
         EigenTensor<T, Dims>::From(tensor2, common::make_ddim(ext_t2));
     auto eigen_dout = EigenTensor<T, Dims>::From(out_grad);
-    auto eigen_temp = EigenTensor<T, Dims>::From(temp);
-    eigen_temp.device(place) =
-        (eigen_dout.template cast<MPType>() * val *
-         eigen_t2.broadcast(t2_bcast).template cast<MPType>())
-            .template cast<T>();
 
     if (tensor1_grad->dims() == out_grad.dims()) {
+      // No reduction needed - compute directly into tensor1_grad
       dev_ctx.template Alloc<T>(tensor1_grad);
-      phi::Copy(dev_ctx, temp, dev_ctx.GetPlace(), false, tensor1_grad);
+      auto eigen_tensor1_grad = EigenTensor<T, Dims>::From(*tensor1_grad);
+      eigen_tensor1_grad.device(place) =
+          (eigen_dout.template cast<MPType>() * val *
+           eigen_t2.broadcast(t2_bcast).template cast<MPType>())
+              .template cast<T>();
     } else {
+      // Reduction needed - allocate intermediate tensor for broadcast result
+      DenseTensor tensor1_grad_broadcast;
+      tensor1_grad_broadcast.Resize(out_grad.dims());
+      dev_ctx.template Alloc<T>(&tensor1_grad_broadcast);
+      auto eigen_tensor1_grad_broadcast =
+          EigenTensor<T, Dims>::From(tensor1_grad_broadcast);
+      eigen_tensor1_grad_broadcast.device(place) =
+          (eigen_dout.template cast<MPType>() * val *
+           eigen_t2.broadcast(t2_bcast).template cast<MPType>())
+              .template cast<T>();
+
       std::vector<int> reshape_vec, reduce_vec;
       ComputeBroadcastGradDims(common::vectorize<int64_t>(tensor1_grad->dims()),
                                out_dims,
                                &reshape_vec,
                                &reduce_vec);
-      ReduceGrad<Context, T, Dims>(
-          dev_ctx, temp, reshape_vec, reduce_vec, tensor1_grad);
+      ReduceGrad<Context, T, Dims>(dev_ctx,
+                                   tensor1_grad_broadcast,
+                                   reshape_vec,
+                                   reduce_vec,
+                                   tensor1_grad);
     }
   }
 
   // d(tensor2) = reduce_sum(dout * value * tensor1)
   if (tensor2_grad) {
-    DenseTensor temp;
-    temp.Resize(out_grad.dims());
-    dev_ctx.template Alloc<T>(&temp);
-
     auto ext_t1 = extend_dims(tensor1.dims());
     auto t1_bcast = compute_bcast(ext_t1);
     auto eigen_t1 =
         EigenTensor<T, Dims>::From(tensor1, common::make_ddim(ext_t1));
     auto eigen_dout = EigenTensor<T, Dims>::From(out_grad);
-    auto eigen_temp = EigenTensor<T, Dims>::From(temp);
-    eigen_temp.device(place) =
-        (eigen_dout.template cast<MPType>() * val *
-         eigen_t1.broadcast(t1_bcast).template cast<MPType>())
-            .template cast<T>();
 
     if (tensor2_grad->dims() == out_grad.dims()) {
+      // No reduction needed - compute directly into tensor2_grad
       dev_ctx.template Alloc<T>(tensor2_grad);
-      phi::Copy(dev_ctx, temp, dev_ctx.GetPlace(), false, tensor2_grad);
+      auto eigen_tensor2_grad = EigenTensor<T, Dims>::From(*tensor2_grad);
+      eigen_tensor2_grad.device(place) =
+          (eigen_dout.template cast<MPType>() * val *
+           eigen_t1.broadcast(t1_bcast).template cast<MPType>())
+              .template cast<T>();
     } else {
+      // Reduction needed - allocate intermediate tensor for broadcast result
+      DenseTensor tensor2_grad_broadcast;
+      tensor2_grad_broadcast.Resize(out_grad.dims());
+      dev_ctx.template Alloc<T>(&tensor2_grad_broadcast);
+      auto eigen_tensor2_grad_broadcast =
+          EigenTensor<T, Dims>::From(tensor2_grad_broadcast);
+      eigen_tensor2_grad_broadcast.device(place) =
+          (eigen_dout.template cast<MPType>() * val *
+           eigen_t1.broadcast(t1_bcast).template cast<MPType>())
+              .template cast<T>();
+
       std::vector<int> reshape_vec, reduce_vec;
       ComputeBroadcastGradDims(common::vectorize<int64_t>(tensor2_grad->dims()),
                                out_dims,
                                &reshape_vec,
                                &reduce_vec);
-      ReduceGrad<Context, T, Dims>(
-          dev_ctx, temp, reshape_vec, reduce_vec, tensor2_grad);
+      ReduceGrad<Context, T, Dims>(dev_ctx,
+                                   tensor2_grad_broadcast,
+                                   reshape_vec,
+                                   reduce_vec,
+                                   tensor2_grad);
     }
   }
 }
