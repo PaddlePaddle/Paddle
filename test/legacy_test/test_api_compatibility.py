@@ -1225,18 +1225,28 @@ class TestBernoulliAPI_Compatibility(unittest.TestCase):
         # Mixed args + out parameter
         out4 = paddle.empty_like(x)
         out5 = paddle.bernoulli(x, out=out4)
+        self.assertIs(out5, out4)
         paddle_dygraph_out.append(out4)
         paddle_dygraph_out.append(out5)
 
         # Torch keyword args + out parameter
         out6 = paddle.empty_like(x)
         out7 = paddle.bernoulli(input=x, out=out6)
+        self.assertIs(out7, out6)
         paddle_dygraph_out.append(out6)
         paddle_dygraph_out.append(out7)
 
         ref_out = self.np_x
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy())
+
+        # p override: deterministic outputs
+        out8 = paddle.bernoulli(x, p=0.0)
+        np.testing.assert_allclose(np.zeros_like(self.np_x), out8.numpy())
+        out9 = paddle.empty_like(x)
+        out10 = paddle.bernoulli(input=x, p=1.0, out=out9)
+        self.assertIs(out10, out9)
+        np.testing.assert_allclose(np.ones_like(self.np_x), out10.numpy())
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -1262,6 +1272,40 @@ class TestBernoulliAPI_Compatibility(unittest.TestCase):
             ref_out = self.np_x
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out)
+
+
+class TestBernoulliOldStaticOut(unittest.TestCase):
+    def test_out_and_out_none_old_static(self):
+        from paddle.pir_utils import OldIrGuard
+
+        paddle.enable_static()
+        np_x = np.array(
+            [[0.0, 1.0, 0.0], [1.0, 0.0, 1.0]], dtype='float32'
+        )
+        with OldIrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.base.program_guard(main, startup):
+                x = paddle.static.data(
+                    name="x", shape=np_x.shape, dtype='float32'
+                )
+                out_holder = paddle.static.create_global_var(
+                    shape=np_x.shape,
+                    value=0.0,
+                    dtype='float32',
+                    persistable=False,
+                )
+                out1 = paddle.bernoulli(x, out=out_holder)
+                out2 = paddle.bernoulli(x)
+                self.assertEqual(out1.name, out_holder.name)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed={"x": np_x}, fetch_list=[out1, out2]
+            )
+            for out in fetches:
+                np.testing.assert_allclose(out, np_x)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
