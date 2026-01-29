@@ -35,7 +35,6 @@ from paddle._C_ops import (  # noqa: F401
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
 )
@@ -1044,7 +1043,7 @@ def __ror__(
 
 
 @inplace_apis_in_dygraph_only
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def bitwise_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.

@@ -27,6 +27,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_one_alias,
     param_two_alias,
     transpose_decorator,
 )
@@ -363,7 +364,7 @@ def fp8_fp8_half_gemm_fused(
             return out
 
 
-@ParamAliasDecorator({"p": ["ord"], "axis": ["dim"]})
+@param_two_alias(["p", "ord"], ["axis", "dim"])
 def vector_norm(
     x: Tensor,
     p: float = 2.0,
@@ -378,6 +379,9 @@ def vector_norm(
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
     Returns the vector norm (the 1-norm, the Euclidean or 2-norm, and in general the p-norm)
     of a given tensor.
+
+    .. note::
+        Alias Support: The parameter name ``ord`` can be used as an alias for ``p``, and ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (Tensor): Tensor, data type float32, float64.
@@ -394,7 +398,7 @@ def vector_norm(
         it's data type is the same as input's Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -407,19 +411,19 @@ def vector_norm(
              [[ 0. ,  1. ,  2. ,  3. ],
               [ 4. ,  5. ,  6. ,  7. ],
               [ 8. ,  9. ,  10.,  11.]]])
-            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=2,axis=None,keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x, p=2, axis=None, keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             34.)
-            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x, p=0, axis=[0, 1], keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5., 6., 6., 6.])
-            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=float("inf"),axis=[1,2],keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x, p=float("inf"), axis=[1, 2], keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [12., 11.])
-            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=1,axis=1,keepdim=False)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x, p=1, axis=1, keepdim=False)
             >>> print(out_vector_norm)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[24., 21., 18., 15.],
@@ -2009,7 +2013,7 @@ def t_(input, name=None):
         return out
 
 
-@ParamAliasDecorator({"axis": ["dim"]})
+@param_one_alias(["axis", "dim"])
 def cross(
     x: Tensor,
     y: Tensor,
@@ -2022,6 +2026,9 @@ def cross(
     Inputs must have the same shape, and the length of their axes should be equal to 3.
     If `axis` is not given, it defaults to the first axis found with the length 3.
 
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
+
     Args:
         x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
         y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
@@ -2032,17 +2039,12 @@ def cross(
         Tensor. A Tensor with same data type as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1.0, 1.0, 1.0],
-            ...                         [2.0, 2.0, 2.0],
-            ...                         [3.0, 3.0, 3.0]])
-            >>> y = paddle.to_tensor([[1.0, 1.0, 1.0],
-            ...                         [1.0, 1.0, 1.0],
-            ...                         [1.0, 1.0, 1.0]])
-            ...
+            >>> x = paddle.to_tensor([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]])
+            >>> y = paddle.to_tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
             >>> z1 = paddle.cross(x, y)
             >>> print(z1)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,

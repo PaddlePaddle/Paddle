@@ -1963,7 +1963,7 @@ def feature_alpha_dropout(
     )
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def pad(
     x: Tensor,
     pad: ShapeLike,
@@ -2107,7 +2107,7 @@ def pad(
                 Out.shape = [1, 1, 1, 4, 7]
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F

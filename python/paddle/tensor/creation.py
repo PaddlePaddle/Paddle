@@ -28,7 +28,6 @@ from paddle import _C_ops
 from paddle._C_ops import diag, tril, triu  # noqa: F401
 from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
     size_args_decorator,
@@ -1655,7 +1654,7 @@ def ones(
     )
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def ones_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -1692,11 +1691,11 @@ def ones_like(
         data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([1,2,3])
+            >>> x = paddle.to_tensor([1, 2, 3])
             >>> out1 = paddle.ones_like(x)
             >>> print(out1.numpy())
             [1 1 1]
@@ -1796,7 +1795,7 @@ def zeros(
     )
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def zeros_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -1834,7 +1833,7 @@ def zeros_like(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2006,7 +2005,7 @@ def eye(
     return out
 
 
-@ParamAliasDecorator({"shape": ["size"]})
+@param_one_alias(["shape", "size"])
 def full(
     shape: ShapeLike,
     fill_value: Numeric | str,
@@ -2048,12 +2047,12 @@ def full(
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # shape is a list/tuple
-            >>> data1 = paddle.full(shape=[3, 2], fill_value=1.)
+            >>> data1 = paddle.full(shape=[3, 2], fill_value=1.0)
             >>> print(data1.numpy())
             [[1. 1.]
              [1. 1.]
@@ -2061,7 +2060,7 @@ def full(
 
             >>> # shape is a Tensor
             >>> shape = paddle.to_tensor([3, 2])
-            >>> data2 = paddle.full(shape=shape, fill_value=2.)
+            >>> data2 = paddle.full(shape=shape, fill_value=2.0)
             >>> print(data2.numpy())
             [[2. 2.]
              [2. 2.]
@@ -2069,7 +2068,7 @@ def full(
 
             >>> # shape is a Tensor List
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
-            >>> data3 = paddle.full(shape=shape, fill_value=3.)
+            >>> data3 = paddle.full(shape=shape, fill_value=3.0)
             >>> print(data3.numpy())
             [[3. 3.]
              [3. 3.]
@@ -3196,7 +3195,7 @@ def empty(
         return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def empty_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -3230,7 +3229,7 @@ def empty_like(
         Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
