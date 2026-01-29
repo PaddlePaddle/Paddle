@@ -1160,7 +1160,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<FeedOp>() || op->isa<FetchOp>() || op->isa<ArrayLengthOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
-    VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";
+    VLOG(6) << "Set FeedOp kernel directly. Backend: CPU, DataLayout: ANY";
     pir::Type dtype;
     if (op->result(0).type().isa<paddle::dialect::DenseTensorArrayType>()) {
       dtype = op->result(0)
@@ -1183,7 +1183,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<DataOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
-    VLOG(6) << "DataOp doesn't need a kernel";
+    VLOG(6) << "Set DataOp kernel directly";
     auto data_place =
         op->attributes().at("place").dyn_cast<PlaceAttribute>().data();
 
@@ -1201,12 +1201,13 @@ phi::KernelKey GetKernelKey(
   }
 
   if (op->isa<SeedOp>()) {
-    VLOG(6) << "SeedOp doesn't need a kernel";
+    VLOG(6) << "Set SeedOp kernel directly";
     auto backend = paddle::experimental::ParseBackend(place);
     return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<FullWithTensorOp>()) {
+    VLOG(6) << "Set FullWithTensorOp kernel directly";
     auto backend = paddle::experimental::ParseBackend(place);
     auto dtype =
         op->attributes().at("dtype").dyn_cast<DataTypeAttribute>().data();
@@ -1219,7 +1220,7 @@ phi::KernelKey GetKernelKey(
   }
 
   if (op->isa<CreateArrayOp>()) {
-    VLOG(6) << "CreateArrayOp doesn't need a kernel";
+    VLOG(6) << "Set CreateArrayOp kernel directly";
     auto backend = paddle::experimental::ParseBackend(place);
     auto dtype = op->result(0)
                      .type()
