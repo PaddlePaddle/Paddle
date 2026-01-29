@@ -851,7 +851,7 @@ class EarlyStopping(Callback):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(120)
+            >>> # doctest: +TIMEOUT(90)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec
@@ -1321,7 +1321,7 @@ class ReduceLROnPlateau(Callback):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +TIMEOUT(90)
+            >>> # doctest: +TIMEOUT(120)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec
