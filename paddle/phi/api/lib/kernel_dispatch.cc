@@ -69,12 +69,11 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
     VLOG(10) << "update BackendSet by tensor: add [" << backend_key << "]";
-    if ((backend_key == Backend::GPU || backend_key == Backend::CUSTOM) &&
-        phi::DenseTensor::classof(&t) &&
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if ((backend_key != Backend::CPU) && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
-    } else if ((backend_key == Backend::GPU ||
-                backend_key == Backend::CUSTOM) &&
+    } else if ((backend_key != Backend::CPU) &&
                phi::distributed::DistTensor::classof(&t) &&
                static_cast<const phi::distributed::DistTensor&>(t)
                    .value()
@@ -82,6 +81,19 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
                    .use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
+#else
+    if ((backend_key == Backend::GPU) && phi::DenseTensor::classof(&t) &&
+        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    } else if ((backend_key == Backend::GPU) &&
+               phi::distributed::DistTensor::classof(&t) &&
+               static_cast<const phi::distributed::DistTensor&>(t)
+                   .value()
+                   .meta()
+                   .use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    }
+#endif
     return backend_set;
   }
   return BackendSet(Backend::UNDEFINED);
@@ -164,11 +176,20 @@ Backend ParseBackend(const Place& place) {
 }
 Backend ParseBackend(const Tensor& tensor) {
   Backend backend_key = phi::TransToPhiBackend(tensor.place());
-  if ((backend_key == Backend::GPU || backend_key == Backend::CUSTOM) &&
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if ((backend_key != Backend::CPU) &&
       phi::DenseTensor::classof(tensor.impl().get()) &&
       static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
     return Backend::GPUDNN;
   }
+#else
+  if ((backend_key == Backend::GPU) &&
+      phi::DenseTensor::classof(tensor.impl().get()) &&
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
+    return Backend::GPUDNN;
+  }
+#endif
+  VLOG(8) << "[ParseBackend] Select Backend::" << backend_key;
   return backend_key;
 }
 

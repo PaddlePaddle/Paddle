@@ -233,6 +233,17 @@ def var(
         actual_correction = 1.0 if unbiased else 0.0
     else:
         actual_correction = float(correction)
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.var(
+            x,
+            axis if axis is not None else [],
+            keepdim,
+            unbiased,
+            actual_correction,
+            out=out,
+        )
+
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -379,6 +390,25 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             1.6329932
 
     """
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
+        axis = (
+            args[1]
+            if len(args) > 1
+            else kwargs.get('axis', kwargs.get('dim', None))
+        )
+        unbiased = args[2] if len(args) > 2 else kwargs.get('unbiased', None)
+        keepdim = args[3] if len(args) > 3 else kwargs.get('keepdim', False)
+        correction = kwargs.get('correction', 1.0)
+        out = kwargs.get('out', None)
+
+        axis = axis if axis is not None else []
+        if unbiased is not None:
+            correction = 1.0 if unbiased else 0.0
+        else:
+            correction = float(correction)
+        return _C_ops.std(x, axis, keepdim, unbiased, correction, out=out)
+
     variance = var(*args, **kwargs)
     if 'out' in kwargs:
         return paddle.sqrt(variance, out=kwargs['out'])

@@ -987,6 +987,21 @@ void CorrelationInferMeta(const MetaTensor& input1,
                         "Input(Y) of CorrelationOp must be 4 dims."
                         "But received dims is %d.",
                         in2_dims.size()));
+
+  PADDLE_ENFORCE_GT(stride1,
+                    0,
+                    common::errors::InvalidArgument(
+                        "stride1 of CorrelationOp must be greater than 0. "
+                        "But received stride1 = %d.",
+                        stride1));
+
+  PADDLE_ENFORCE_GT(stride2,
+                    0,
+                    common::errors::InvalidArgument(
+                        "stride2 of CorrelationOp must be greater than 0. "
+                        "But received stride2 = %d.",
+                        stride2));
+
   std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
                                                             in_dims[2],
                                                             in_dims[3],
