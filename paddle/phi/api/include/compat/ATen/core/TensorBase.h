@@ -63,6 +63,53 @@ class PADDLE_API TensorBase {
   TensorBase& operator=(const TensorBase&) && = delete;
   TensorBase& operator=(TensorBase&&) && noexcept = delete;
 
+  bool is_same(const TensorBase& other) const {
+    return tensor_.impl().get() == other.tensor_.impl().get();
+  }
+  size_t use_count() const { return tensor_.impl().use_count(); }
+  size_t weak_use_count() const {
+    // TODO(youge325) : In PyTorch, weak pointer is defined and
+    // implemented in c10/util/intrusive_ptr.h, namely c10::intrusive_ptr;
+    // but in Paddle, we use std::shared_ptr, so here we just return 0
+    // temporarily.
+    return 0;
+  }
+
+  void print() const {
+    if (defined()) {
+      std::cerr << '[' << toString() << ' ' << sizes() << ']' << '\n';
+    } else {
+      std::cerr << "[UndefinedTensor]" << '\n';
+    }
+  }
+
+  std::string toString() const {
+    if (!tensor_.defined()) {
+      return "UndefinedType";
+    }
+
+    std::string backend_str;
+    const auto& place = tensor_.place();
+
+    // Convert place to backend string
+    if (phi::is_cpu_place(place)) {
+      backend_str = "CPU";
+    } else if (phi::is_gpu_place(place)) {
+      backend_str = "CUDA";
+    } else if (phi::is_xpu_place(place)) {
+      backend_str = "XPU";
+    } else if (phi::is_ipu_place(place)) {
+      backend_str = "IPU";
+    } else {
+      backend_str = "Undefined";
+    }
+
+    // Get scalar type string
+    std::string scalar_type_str = at::toString(scalar_type());
+
+    return backend_str + scalar_type_str + "Type";
+  }
+
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
   T* data_ptr() const {
@@ -194,6 +241,14 @@ class PADDLE_API TensorBase {
       expected_stride *= sizes_vec[dim_idx];
     }
     return true;
+  }
+
+  bool is_contiguous_or_false(
+      at::MemoryFormat memory_format = at::MemoryFormat::Contiguous) const {
+    PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
+             "`MemoryFormat` other than Contiguous");
+
+    return tensor_.is_contiguous();
   }
 
   c10::ScalarType scalar_type() const {
