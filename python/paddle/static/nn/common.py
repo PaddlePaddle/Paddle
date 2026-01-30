@@ -1026,7 +1026,7 @@ def conv3d(
             ...     res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
             ...     place = paddle.CPUPlace()
             ...     exe = paddle.static.Executor(place)
-            ...     _ = exe.run(paddle.static.default_startup_program())
+            ...     exe.run(paddle.static.default_startup_program())
             ...     x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
             ...     (output,) = exe.run(feed={"data": x}, fetch_list=[res])
             ...     print(output.shape)
