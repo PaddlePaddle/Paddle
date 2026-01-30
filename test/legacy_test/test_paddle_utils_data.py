@@ -85,5 +85,11 @@ class TestDefaultCollateAlias(TestAlias):
         self.utilsObject = paddle.utils.data.default_collate
 
 
+class TestDataloaderDefaultCollateAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.dataloader.collate.default_collate_fn
+        self.utilsObject = paddle.utils.data.dataloader.default_collate
+
+
 if __name__ == "__main__":
     unittest.main()

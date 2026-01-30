@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.io import (
-    ChainDataset as ChainDataset,
-    ConcatDataset as ConcatDataset,
-    Dataset as Dataset,
-    IterableDataset as IterableDataset,
-    Sampler as Sampler,
-    SequenceSampler as SequentialSampler,  # noqa: F401
-    Subset as Subset,
-    get_worker_info as get_worker_info,
-    random_split as random_split,
-)
 from paddle.io.dataloader.collate import (
     default_collate_fn as default_collate,  # noqa: F401
 )
-
-from . import dataloader as dataloader
