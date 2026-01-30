@@ -38,6 +38,7 @@ from paddle._C_ops import (  # noqa: F401
     i0e,
     i1,
     i1e,
+    inverse,
     isfinite,
     isinf,
     isnan,
@@ -2652,63 +2653,6 @@ def outer(
         return out
 
 
-def inverse(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Takes the inverse of the square matrix. A square matrix is a matrix with
-    the same number of rows and columns. The input can be a square matrix
-    (2-D Tensor) or batches of square matrices.
-
-    Args:
-        x (Tensor): The input tensor. The last two
-            dimensions should be equal. When the number of dimensions is
-            greater than 2, it is treated as batches of square matrix. The data
-            type can be float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A Tensor holds the inverse of x. The shape and data type
-                        is the same as x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
-            >>> inv = paddle.inverse(mat)
-            >>> print(inv)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.50000000, 0.        ],
-             [0.        , 0.50000000]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.inverse(x)
-    else:
-
-        def _check_input(x):
-            check_variable_and_dtype(
-                x,
-                'x',
-                ['float32', 'float64', 'complex64', 'complex128'],
-                'inverse',
-            )
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "The input of inverse is expected to be a Tensor whose number "
-                    f"of dimensions is no less than 2. But received: {len(x.shape)}, "
-                    f"x's shape: {x.shape}."
-                )
-
-        _check_input(x)
-        helper = LayerHelper('inverse', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
-        )
-        return out
-
-
 @ForbidKeywordsDecorator(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
@@ -3516,6 +3460,8 @@ def cumsum(
         return _cum_sum_(**kwargs)
 
 
+# Edit by AI Agent
+@param_one_alias(["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def cumsum_(
     x: Tensor,
@@ -3526,6 +3472,9 @@ def cumsum_(
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
+
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
     """
     if axis is None:
         flatten = True
