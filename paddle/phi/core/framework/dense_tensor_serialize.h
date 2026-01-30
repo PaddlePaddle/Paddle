@@ -15,10 +15,7 @@
 #pragma once
 
 #include <memory>
-#include <string>
 #include <utility>
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -36,13 +33,13 @@ namespace phi {
  */
 PADDLE_API void SerializeToStream(std::ostream& os,
                                   const DenseTensor& tensor,
-                                  const phi::DeviceContext& dev_ctx);
+                                  const DeviceContext& dev_ctx);
 PADDLE_API void DeserializeFromStream(std::istream& is,
                                       DenseTensor* tensor,
-                                      const phi::DeviceContext& dev_ctx);
+                                      const DeviceContext& dev_ctx);
 PADDLE_API void DeserializeFromStream(std::istream& is,
                                       DenseTensor* tensor,
-                                      const phi::DeviceContext& dev_ctx,
+                                      const DeviceContext& dev_ctx,
                                       const size_t& seek,
                                       const std::vector<int64_t>& shape);
 

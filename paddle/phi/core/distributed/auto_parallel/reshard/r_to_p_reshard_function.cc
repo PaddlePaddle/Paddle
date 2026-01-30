@@ -43,7 +43,7 @@ bool RToPReshardFunction::IsSuitable(const DistTensor& in,
   return true;
 }
 
-void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void RToPReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
@@ -96,7 +96,7 @@ bool RToPReshardFunctionCrossMesh::IsSuitable(
   return true;
 }
 
-void RToPReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
+void RToPReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {

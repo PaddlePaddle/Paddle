@@ -22,6 +22,10 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
+#endif
+
 #if SOT_IS_SUPPORTED
 #define END_OF_STRING '\0'
 #if PY_3_14_PLUS
@@ -290,6 +294,18 @@ PyObject* skip_file_prefix(PyObject* filepath_tuple) {
     skip_info.add_skip_file_prefix(code);
   }
   return Py_None;
+}
+
+void nvtx_push(const char* name) {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  paddle::platform::CudaNvtxRangePush(name,
+                                      paddle::platform::NvtxRangeColor::Green);
+#endif
+}
+void nvtx_pop() {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  paddle::platform::CudaNvtxRangePop();
+#endif
 }
 
 #endif

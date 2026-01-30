@@ -1193,6 +1193,7 @@ def zero_(x: Tensor) -> Tensor:
 
 
 @dygraph_only
+@param_one_alias(["value", "fill_value"])
 def fill_diagonal_(
     x: Tensor,
     value: float,
@@ -1208,7 +1209,8 @@ def fill_diagonal_(
 
     Args:
         x(Tensor): ``x`` is the original Tensor
-        value(int|float): ``value`` is the value to filled in x
+        value(int|float): ``value`` is the value to filled in x.
+            alias: ``fill_value``.
         offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
         wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
         name(str|None,optional): Name for the operation (optional, default is None)
@@ -1217,13 +1219,18 @@ def fill_diagonal_(
         Tensor, Tensor with diagonal filled with value.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.ones((4, 3)) * 2
             >>> x.fill_diagonal_(1.0)
             >>> print(x.tolist())
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+            >>> # Use 'fill_value' alias (PyTorch compatible)
+            >>> x.fill_diagonal_(fill_value=0.0)  # type: ignore
+            >>> print(x.tolist())
+            [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
     """
     if in_dynamic_mode():
         if len(x.shape) == 2:
@@ -7805,6 +7812,13 @@ def unflatten(
     return x
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "shape": ["size"],
+        "offset": ["storage_offset"],
+    }
+)
 @dygraph_only
 def as_strided(
     x: Tensor,
@@ -7826,10 +7840,10 @@ def as_strided(
          :alt: Legend
 
     Args:
-        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
-        shape (list|tuple): Define the target shape. Each element of it should be integer.
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``. Alias: ``input``.
+        shape (list|tuple): Define the target shape. Each element of it should be integer. Alias: ``size``.
         stride (list|tuple): Define the target stride. Each element of it should be integer.
-        offset (int, optional): Define the target Tensor's offset from x's holder. Default: 0.
+        offset (int, optional): Define the target Tensor's offset from x's holder. Default: 0. Alias: ``storage_offset``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

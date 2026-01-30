@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string fusable_ops_;
@@ -177,13 +177,13 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class OperatorUnsqueezeFusePass : public pir::PatternRewritePass {
+class OperatorUnsqueezeFusePass : public PatternRewritePass {
  public:
   OperatorUnsqueezeFusePass()
-      : pir::PatternRewritePass("operator_unsqueeze_onednn_fuse_pass", 2) {}
+      : PatternRewritePass("operator_unsqueeze_onednn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     const std::vector<std::string> fusable_ops{
         paddle::onednn::dialect::FusedTransposeOp::name(),
         paddle::dialect::TransposeOp::name(),
@@ -209,14 +209,10 @@ class OperatorUnsqueezeFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateOperatorUnsqueezeFusePass() {
   return std::make_unique<OperatorUnsqueezeFusePass>();
 }
 }  // namespace pir
 
 REGISTER_IR_PASS(operator_unsqueeze_onednn_fuse_pass,
-                 OperatorUnsqueezeFusePass);
+                 pir::OperatorUnsqueezeFusePass);

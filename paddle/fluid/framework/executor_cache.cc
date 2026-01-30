@@ -137,7 +137,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
 }
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
-    std::unique_ptr<::pir::Program> ir_program,
+    std::unique_ptr<pir::Program> ir_program,
     const phi::Place &place,
     framework::Scope *scope,
     const InterpreterCoreInfoCacheKey &key,
@@ -168,8 +168,8 @@ bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
   return t1.name() < t2.name();
 }
 
-std::unique_ptr<::pir::Program> ApplyIrPass(
-    ::pir::Program *program,
+std::unique_ptr<pir::Program> ApplyIrPass(
+    pir::Program *program,
     phi::Place place,
     const std::set<std::string> &no_need_buffer_names) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -184,7 +184,7 @@ std::unique_ptr<::pir::Program> ApplyIrPass(
       VLOG(4) << "Add CustomEngine pass : " << pass;
     }
 
-    ::pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+    pir::PassManager pass_pm(pir::IrContext::Instance(), 3);
     for (std::string custom_pass : passes) {
       pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
       pass_pm.Run(program);
@@ -194,8 +194,8 @@ std::unique_ptr<::pir::Program> ApplyIrPass(
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
 
   if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass(no_need_buffer_names));
+    pir::PassManager pm(pir::IrContext::Instance(), 3);
+    pm.AddPass(pir::CreateInplacePass(no_need_buffer_names));
     pm.Run(ir_res.get());
 
     if (FLAGS_print_ir) {
@@ -207,13 +207,13 @@ std::unique_ptr<::pir::Program> ApplyIrPass(
   return ir_res;
 }
 
-std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
-    std::unique_ptr<::pir::Program> program,
+std::unique_ptr<pir::Program> ApplyRemoveShadowFeedPass(
+    std::unique_ptr<pir::Program> program,
     const pir::Block *block,
     const phi::Place &place,
     const paddle::framework::Scope *scope) {
-  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-  auto pass = ::pir::CreateRemoveShadowFeedPass();
+  pir::PassManager pm(pir::IrContext::Instance(), 3);
+  auto pass = pir::CreateRemoveShadowFeedPass();
   pass->SetNotOwned("top_block", block);
   pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
   pass->SetNotOwned(pir::Pass::kParamScopeAttr, scope);
@@ -229,7 +229,7 @@ std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
   return program;
 }
 
-std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
+std::unique_ptr<pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> &output_names,
@@ -334,7 +334,7 @@ std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
   return ApplyIrPass(program.get(), place, {});
 }
 
-std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
+std::unique_ptr<pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor *> &x_grad,
@@ -408,8 +408,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass());
+    pir::PassManager pm(pir::IrContext::Instance(), 3);
+    pm.AddPass(pir::CreateInplacePass());
     if (VLOG_IS_ON(6)) {
       pm.EnableIRPrinting();
       pm.EnablePrintStatistics();

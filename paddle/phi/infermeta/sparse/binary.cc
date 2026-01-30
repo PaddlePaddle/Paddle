@@ -201,7 +201,7 @@ void SparseCooTensorInferMeta(const MetaTensor& values,
                               const MetaTensor& indices,
                               const std::vector<int64_t>& shape,
                               MetaTensor* out) {
-  out->set_dims(common::make_ddim(shape));
+  out->set_dims(make_ddim(shape));
   out->set_dtype(values.dtype());
   out->set_layout(values.layout());
 }

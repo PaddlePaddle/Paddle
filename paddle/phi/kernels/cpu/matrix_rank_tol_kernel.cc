@@ -202,7 +202,7 @@ template <typename T, typename Context>
 void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& atol,
-                              const paddle::optional<DenseTensor>& rtol,
+                              const optional<DenseTensor>& rtol,
                               bool hermitian,
                               DenseTensor* out) {
   using RealType = phi::dtype::Real<T>;

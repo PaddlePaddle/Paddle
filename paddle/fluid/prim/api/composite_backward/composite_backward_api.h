@@ -2164,5 +2164,54 @@ void p_norm_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void var_grad(const Tensor& x,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool unbiased,
+              double correction,
+              Tensor* x_grad) {
+  if (x_grad) {
+    auto axis_vec = axis.GetData();
+    auto x_dims = common::vectorize<int64_t>(x.dims());
+    int64_t x_rank = x_dims.size();
+    if (axis_vec.empty()) {
+      for (int64_t i = 0; i < x_rank; ++i) {
+        axis_vec.push_back(i);
+      }
+    }
+    for (size_t i = 0; i < axis_vec.size(); ++i) {
+      if (axis_vec[i] < 0) {
+        axis_vec[i] += x_rank;
+      }
+    }
+
+    auto ones_x =
+        full<T>(common::vectorize(x.dims()), 1.0, x.dtype(), x.place());
+    auto n_tensor = sum<T>(ones_x, axis, x.dtype(), true);
+
+    auto correction_tensor = full<T>(
+        common::vectorize(n_tensor.dims()), correction, x.dtype(), x.place());
+    auto divisor = n_tensor - correction_tensor;
+
+    auto sum_val = sum<T>(x, axis, x.dtype(), true);
+    auto mean_val = sum_val / n_tensor;
+
+    auto diff = x - mean_val;
+
+    Tensor out_grad_broadcast = out_grad;
+    if (!keepdim) {
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_vec);
+      out_grad_broadcast = reshape<T>(out_grad, out_grad_shape);
+    }
+
+    auto two = full<T>(common::vectorize(x.dims()), 2.0, x.dtype(), x.place());
+    auto res = two * out_grad_broadcast * diff / divisor;
+
+    set_output<T>(res, x_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
