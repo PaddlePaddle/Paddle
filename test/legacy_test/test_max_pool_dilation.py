@@ -1449,6 +1449,16 @@ class TestMaxPool2DWithIndexDilationOp5(TestMaxPool2DWithIndexDilationOp):
         self.dilations = [2, 3]
 
 
+class TestMaxPool2DWithIndexDilationOp6(TestMaxPool2DWithIndexDilationOp):
+    """Coverage with cpu branch."""
+
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CPUPlace())
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CPUPlace(), {'X'}, ['Out'])
+
+
 # ===================== OpTest for max_pool3d_with_index with dilation =====================
 
 
@@ -1544,6 +1554,16 @@ class TestMaxPool3DWithIndexDilationOp3(TestMaxPool3DWithIndexDilationOp):
         self.strides = [2, 2, 2]
         self.paddings = [0, 0, 0]
         self.dilations = [2, 2, 3]
+
+
+class TestMaxPool3DWithIndexDilationOp4(TestMaxPool3DWithIndexDilationOp):
+    """Coverage with cpu branch."""
+
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CPUPlace())
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CPUPlace(), {'X'}, ['Out'])
 
 
 if __name__ == '__main__':
