@@ -16,8 +16,10 @@ import unittest
 
 from test_case_base import TestCaseBase
 
-from paddle.jit.sot import symbolic_translate
+from paddle.jit.sot import psdb, symbolic_translate  # noqa: F401
 from paddle.jit.sot.psdb import check_no_breakgraph  # noqa: F401
+from paddle.jit.sot.utils.envs import strict_mode_guard
+from paddle.jit.sot.utils.exceptions import InnerError
 
 try:
     from string.templatelib import Interpolation, Template
@@ -37,7 +39,9 @@ def _tstring_supported():
 
 
 def _tstring_skip(*_args, **_kwargs):
-    pass
+    raise unittest.SkipTest(
+        "Template strings are not supported by this interpreter."
+    )
 
 
 if _tstring_supported():
@@ -95,6 +99,31 @@ def test_t_with_format_spec_expression():
 def test_t_with_ascii_conversion():
     text = "中文"
     return t"ascii={text!a}"
+
+
+@check_no_breakgraph
+def test_t_with_str_conversion():
+    value = "hello"
+    return t"str={value!s}"
+
+
+def test_t_with_fallback_not_recursive():
+    psdb.fallback(recursive=False)
+    value = "hello"
+    return t"fallback={value!s}"
+
+
+def test_t_with_fallback_recursive():
+    psdb.fallback(recursive=True)
+    value = "hello"
+    return t"fallback={value!s}"
+
+
+@psdb.check_no_fallback
+def test_t_with_forbidden_fallback():
+    psdb.fallback(recursive=False)
+    value = "hello"
+    return t"fallback={value!s}"
 """,
         globals(),
         _tstring_ns,
@@ -113,6 +142,16 @@ def test_t_with_ascii_conversion():
         "test_t_with_format_spec_expression"
     ]
     test_t_with_ascii_conversion = _tstring_ns["test_t_with_ascii_conversion"]
+    test_t_with_str_conversion = _tstring_ns["test_t_with_str_conversion"]
+    test_t_with_fallback_not_recursive = _tstring_ns[
+        "test_t_with_fallback_not_recursive"
+    ]
+    test_t_with_fallback_recursive = _tstring_ns[
+        "test_t_with_fallback_recursive"
+    ]
+    test_t_with_forbidden_fallback = _tstring_ns[
+        "test_t_with_forbidden_fallback"
+    ]
 else:
     test_t_literal = _tstring_skip
     test_t_with_expression = _tstring_skip
@@ -122,6 +161,10 @@ else:
     test_t_multiple_interpolations = _tstring_skip
     test_t_with_format_spec_expression = _tstring_skip
     test_t_with_ascii_conversion = _tstring_skip
+    test_t_with_str_conversion = _tstring_skip
+    test_t_with_fallback_not_recursive = _tstring_skip
+    test_t_with_fallback_recursive = _tstring_skip
+    test_t_with_forbidden_fallback = _tstring_skip
 
 
 class TestTString(TestCaseBase):
@@ -184,6 +227,19 @@ class TestTString(TestCaseBase):
         self.assert_tstring_results(test_t_multiple_interpolations)
         self.assert_tstring_results(test_t_with_format_spec_expression)
         self.assert_tstring_results(test_t_with_ascii_conversion)
+        self.assert_tstring_results(test_t_with_str_conversion)
+
+    @strict_mode_guard(False)
+    def test_tstring_fallback_not_recursive(self):
+        self.assert_tstring_results(test_t_with_fallback_not_recursive)
+
+    @strict_mode_guard(False)
+    def test_tstring_fallback_recursive(self):
+        self.assert_tstring_results(test_t_with_fallback_recursive)
+
+    def test_tstring_check_no_fallback(self):
+        with self.assertRaises(InnerError):
+            symbolic_translate(test_t_with_forbidden_fallback)()
 
 
 if __name__ == "__main__":

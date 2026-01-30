@@ -2629,13 +2629,16 @@ class InterpolationVariable(VariableBase):
         value_var = VariableFactory.from_value(
             value.value, graph, DanglingTracker()
         )
+        format_spec_var = VariableFactory.from_value(
+            value.format_spec, graph, DanglingTracker()
+        )
         var = InterpolationVariable(
-            value_var,
-            graph,
-            tracker,
-            expression_var,
-            value.conversion,
-            value.format_spec,
+            value=value_var,
+            graph=graph,
+            tracker=tracker,
+            expression=expression_var,
+            format_spec=format_spec_var,
+            conversion=value.conversion,
         )
         return var
 
