@@ -26,7 +26,6 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
 )
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_two_alias,
     param_two_alias_one_default,
     use_first_signature,
@@ -175,7 +174,7 @@ def mean(
         return out_tensor
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def var(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
