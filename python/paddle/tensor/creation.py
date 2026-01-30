@@ -295,7 +295,7 @@ def create_tensor(
         Variable: The tensor to be created according to dtype.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> tensor = paddle.tensor.create_tensor(dtype='float32')
@@ -368,7 +368,7 @@ def linspace(
           For example, ``linspace(start=0, stop=10, steps=5)`` is equivalent to ``linspace(start=0, stop=10, num=5)``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> data = paddle.linspace(0, 10, 5, 'float32')
@@ -582,7 +582,7 @@ def logspace(
         just has the value with exponential of :attr:`start` with base :attr:`base`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> data = paddle.logspace(0, 10, 5, 2, 'float32')
@@ -1011,7 +1011,7 @@ def tensor(
         Tensor: A Tensor constructed from ``data`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # type: ignore
             >>> import paddle
@@ -1037,13 +1037,13 @@ def tensor(
             [[0.10000000, 0.20000000],
              [0.30000001, 0.40000001]])
 
-            >>> type(paddle.tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+            >>> type(paddle.tensor([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64'))
             <class 'paddle.Tensor'>
 
-            >>> paddle.tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+            >>> paddle.tensor([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64')
             Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1+1j), (2+0j)],
-             [(3+2j), (4+0j)]])
+            [[(1.00000000+1.00000000j), (2.00000000+0.00000000j)],
+             [(3.00000000+2.00000000j), (4.00000000+0.00000000j)]])
     """
     stop_gradient = not requires_grad
     place = _get_paddle_place(device)
@@ -1136,7 +1136,7 @@ def to_tensor(
         Tensor: A Tensor constructed from ``data`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1161,13 +1161,13 @@ def to_tensor(
             [[0.10000000, 0.20000000],
              [0.30000001, 0.40000001]])
 
-            >>> type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+            >>> type(paddle.to_tensor([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64'))
             <class 'paddle.Tensor'>
 
-            >>> paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+            >>> paddle.to_tensor([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64')
             Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1+1j), (2+0j)],
-             [(3+2j), (4+0j)]])
+            [[(1.00000000+1.00000000j), (2.00000000+0.00000000j)],
+             [(3.00000000+2.00000000j), (4.00000000+0.00000000j)]])
     """
     return tensor(
         data, dtype=dtype, device=place, requires_grad=not stop_gradient
@@ -1188,7 +1188,7 @@ def from_numpy(ndarray: NDArray[Any]) -> paddle.Tensor:
         Tensor: A Tensor that shares the same memory with the input ``ndarray``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -1253,7 +1253,7 @@ def asarray(
         Tensor: A Tensor constructed from ``data`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1278,13 +1278,13 @@ def asarray(
             [[0.10000000, 0.20000000],
              [0.30000001, 0.40000001]])
 
-            >>> type(paddle.asarray([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+            >>> type(paddle.asarray([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64'))
             <class 'paddle.Tensor'>
 
-            >>> paddle.asarray([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+            >>> paddle.asarray([[1 + 1j, 2], [3 + 2j, 4]], dtype='complex64')
             Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1+1j), (2+0j)],
-             [(3+2j), (4+0j)]])
+            [[(1.00000000+1.00000000j), (2.00000000+0.00000000j)],
+             [(3.00000000+2.00000000j), (4.00000000+0.00000000j)]])
     """
     return tensor(
         data=obj, dtype=dtype, device=device, requires_grad=requires_grad
@@ -1300,16 +1300,16 @@ class MmapStorage(paddle.base.core.MmapStorage):
         nbytes(int): number of bytes to map into memory.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> shape = [4,5]
+            >>> shape = [4, 5]
             >>> dtype = paddle.float32
-            >>> a = paddle.arange(4*5).reshape(shape).astype(dtype)
+            >>> a = paddle.arange(4 * 5).reshape(shape).astype(dtype)
             >>> a.numpy().tofile("test.pp")
             >>> size = a.size * a.element_size()
             >>> t = paddle.MmapStorage("test.pp", size)
-            >>> t.get_slice(dtype = dtype, start = 0, stop = a.size).reshape(shape)
+            >>> t.get_slice(dtype=dtype, start=0, stop=a.size).reshape(shape)
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0. , 1. , 2. , 3. , 4. ],
                     [5. , 6. , 7. , 8. , 9. ],
@@ -1382,7 +1382,7 @@ def full_like(
         Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1393,7 +1393,7 @@ def full_like(
              [2. 2. 2.]]
     """
     # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
-    # The compatible method for fliud operators, may be it can be removed in the future.
+    # The compatible method for fluid operators, may be it can be removed in the future.
     if not isinstance(
         fill_value,
         (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
@@ -1636,7 +1636,7 @@ def ones(
         Tensor: A Tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements are 1.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1712,11 +1712,11 @@ def ones_like(
         data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([1,2,3])
+            >>> x = paddle.to_tensor([1, 2, 3])
             >>> out1 = paddle.ones_like(x)
             >>> print(out1.numpy())
             [1 1 1]
@@ -1777,7 +1777,7 @@ def zeros(
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1854,7 +1854,7 @@ def zeros_like(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1918,7 +1918,7 @@ def eye(
         Tensor: An identity Tensor or DenseTensor of shape [num_rows, num_columns].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2068,12 +2068,12 @@ def full(
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # shape is a list/tuple
-            >>> data1 = paddle.full(shape=[3, 2], fill_value=1.)
+            >>> data1 = paddle.full(shape=[3, 2], fill_value=1.0)
             >>> print(data1.numpy())
             [[1. 1.]
              [1. 1.]
@@ -2081,7 +2081,7 @@ def full(
 
             >>> # shape is a Tensor
             >>> shape = paddle.to_tensor([3, 2])
-            >>> data2 = paddle.full(shape=shape, fill_value=2.)
+            >>> data2 = paddle.full(shape=shape, fill_value=2.0)
             >>> print(data2.numpy())
             [[2. 2.]
              [2. 2.]
@@ -2089,7 +2089,7 @@ def full(
 
             >>> # shape is a Tensor List
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
-            >>> data3 = paddle.full(shape=shape, fill_value=3.)
+            >>> data3 = paddle.full(shape=shape, fill_value=3.0)
             >>> print(data3.numpy())
             [[3. 3.]
              [3. 3.]
@@ -2104,7 +2104,7 @@ def full(
              [2. 2.]]
     """
     # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
-    # The compatible method for fliud operators, may be it can be removed in the future.
+    # The compatible method for fluid operators, may be it can be removed in the future.
     if not isinstance(
         fill_value,
         (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
@@ -2216,7 +2216,7 @@ def arange(
         data type is set by ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2449,13 +2449,13 @@ def range(
         data type is set by ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> out1 = paddle.range(5)
             >>> print(out1.numpy())
-            [0 1 2 3 4 5]
+            [0. 1. 2. 3. 4. 5.]
 
             >>> out2 = paddle.range(3, 9, 2.0)
             >>> print(out2.numpy())
@@ -2469,7 +2469,7 @@ def range(
             >>> start_var = paddle.to_tensor(3)
             >>> out4 = paddle.range(start_var, 7)
             >>> print(out4.numpy())
-            [3 4 5 6 7]
+            [3. 4. 5. 6. 7.]
 
     """
     if end is None:
@@ -2741,13 +2741,17 @@ def split_with_sizes(
         along the specified dimension.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
             >>> # Split into two parts along the first dimension, of sizes 1 and 2
             >>> splits = paddle.Tensor.split_with_sizes(x, [1, 2], dim=0)
             >>> print(splits)
+            [Tensor(shape=[1, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 3, 4]]), Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])]
     """
     for size in split_sizes:
         if size < 0:
@@ -2796,7 +2800,7 @@ def diag_embed(
         Tensor, the output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2812,7 +2816,7 @@ def diag_embed(
              [0, 0, 0, 0, 4, 0],
              [0, 0, 0, 0, 0, 5]])
 
-            >>> diag_embed_output2 = paddle.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
+            >>> diag_embed_output2 = paddle.diag_embed(diag_embed_input, offset=-1, dim1=0, dim2=1)
             >>> print(diag_embed_output2)
             Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0, 0, 0, 0, 0, 0],
@@ -2823,12 +2827,12 @@ def diag_embed(
              [0, 0, 0, 0, 4, 0, 0],
              [0, 0, 0, 0, 0, 5, 0]])
 
-            >>> diag_embed_input_2dim = paddle.reshape(diag_embed_input,[2,3])
+            >>> diag_embed_input_2dim = paddle.reshape(diag_embed_input, [2, 3])
             >>> print(diag_embed_input_2dim)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 2],
             [3, 4, 5]])
-            >>> diag_embed_output3 = paddle.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
+            >>> diag_embed_output3 = paddle.diag_embed(diag_embed_input_2dim, offset=0, dim1=0, dim2=2)
             >>> print(diag_embed_output3)
             Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[[0, 0, 0],
@@ -2917,7 +2921,7 @@ def diagflat(
         Tensor, a square matrix. The output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: diagflat-example-1
 
             >>> import paddle
@@ -2946,7 +2950,7 @@ def diagflat(
              [0, 2, 0, 0],
              [0, 0, 3, 0]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: diagflat-example-2
 
             >>> import paddle
@@ -3061,7 +3065,7 @@ def empty(
         Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3250,7 +3254,7 @@ def empty_like(
         Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3386,7 +3390,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
         Tensor: A Tensor with the same shape, data type and value as :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -3395,9 +3399,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
             [[2.5 2.5]
              [2.5 2.5]
              [2.5 2.5]]
-            >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(
-            ...     np.int64
-            ... )
+            >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(np.int64)
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
@@ -3595,7 +3597,7 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
         Tensor, A Tensor copied from ``input``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -3633,7 +3635,7 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
         Tensor, A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3877,21 +3879,21 @@ def triu_indices(
         where the first row contains row coordinates of and the second row contains column coordinates.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # example 1, default offset value
-            >>> data1 = paddle.triu_indices(4,4,0)
+            >>> data1 = paddle.triu_indices(4, 4, 0)
             >>> print(data1.numpy())
             [[0 0 0 0 1 1 1 2 2 3]
              [0 1 2 3 1 2 3 2 3 3]]
             >>> # example 2, positive offset value
-            >>> data2 = paddle.triu_indices(4,4,2)
+            >>> data2 = paddle.triu_indices(4, 4, 2)
             >>> print(data2.numpy())
             [[0 0 1]
              [2 3 3]]
             >>> # example 3, negative offset value
-            >>> data3 = paddle.triu_indices(4,4,-1)
+            >>> data3 = paddle.triu_indices(4, 4, -1)
             >>> print(data3.numpy())
             [[0 0 0 0 1 1 1 1 2 2 2 3 3]
              [0 1 2 3 0 1 2 3 1 2 3 2 3]]
@@ -3957,7 +3959,7 @@ def polar(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -3967,8 +3969,7 @@ def polar(
             >>> out = paddle.polar(abs, angle)
             >>> print(out)
             Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
-            [ (6.123233995736766e-17+1j)             ,
-             (-1.4142135623730954-1.414213562373095j)])
+             [ (0.00000000+1.00000000j), (-1.41421356-1.41421356j)])
     """
     check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
     check_variable_and_dtype(
@@ -3999,7 +4000,7 @@ def cauchy_(
         Tensor: input tensor with numbers drawn from the Cauchy distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.randn([3, 4])
@@ -4037,7 +4038,7 @@ def geometric_(
         Tensor: input tensor with numbers drawn from the Geometric distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.randn([3, 4])
@@ -4089,20 +4090,20 @@ def set_(
         Tensor, the Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> src = paddle.to_tensor([[11., 22., 33.]])
-            >>> src2 = paddle.to_tensor([11., 22., 33., 44., 55., 66.])
+            >>> src = paddle.to_tensor([[11.0, 22.0, 33.0]])
+            >>> src2 = paddle.to_tensor([11.0, 22.0, 33.0, 44.0, 55.0, 66.0])
 
-            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
             >>> x.set_()
             >>> print(x)
             Tensor(shape=[0], dtype=float32, place=Place(cpu), stop_gradient=True,
             [])
 
-            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
             >>> x.set_(src)
             >>> print(x)
             Tensor(shape=[1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -4111,20 +4112,20 @@ def set_(
             >>> print(x._is_shared_buffer_with(src))
             True
 
-            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
             >>> x.set_(src, shape=[2, 1])
             >>> print(x)
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[11.],
              [22.]])
 
-            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
             >>> x.set_(src2, shape=[3], stride=[2])
             >>> print(x)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [11., 33., 55.])
 
-            >>> x = paddle.to_tensor([1., 2., 3., 4., 5.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
             >>> x.set_(src2, shape=[5], offset=4)
             >>> print(x)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -4202,18 +4203,18 @@ def resize_(
         Tensor, the resized Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([1., 2., 3.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> x.resize_([2, 1])
             >>> print(x)
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1.],
              [2.]])
 
-            >>> x = paddle.to_tensor([1., 2., 3.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> x.resize_([2, 3], fill_zero=True)
             >>> print(x)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
