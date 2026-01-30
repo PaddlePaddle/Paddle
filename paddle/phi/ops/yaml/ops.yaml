@@ -1252,7 +1252,7 @@
 
 - op : cross
   args : (Tensor x, Tensor y, int axis = 9)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CrossInferMeta
   kernel :
@@ -3207,7 +3207,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : linear_v2
-  args : (Tensor input, Tensor weight, Tensor bias, bool transpose_weight=false)
+  args : (Tensor input, Tensor weight, Tensor bias)
   output : Tensor(out)
   infer_meta :
     func : LinearV2InferMeta

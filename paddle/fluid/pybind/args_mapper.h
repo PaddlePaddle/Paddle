@@ -59,6 +59,14 @@ void ArgSumMapper(PyObject* args,
                   pir::Value* axis,
                   phi::DataType* dtype,
                   bool* keepdim);
+
+void CrossMapper(PyObject* args,
+                 PyObject* kwargs,
+                 Tensor** x_ptr_ptr,
+                 Tensor** y_ptr_ptr,
+                 int* axis);
+void CrossMapper(
+    PyObject* args, PyObject* kwargs, pir::Value* x, pir::Value* y, int* axis);
 }  // namespace pybind
 
 }  // namespace paddle

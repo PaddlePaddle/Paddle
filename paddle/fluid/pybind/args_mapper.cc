@@ -368,5 +368,80 @@ void GeluMapper(PyObject* args,
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 
+void CrossMapper(PyObject* args,
+                 PyObject* kwargs,
+                 Tensor** x_ptr_ptr,
+                 Tensor** y_ptr_ptr,
+                 int* axis) {
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 3;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  auto& x = GetTensorFromArgsOrKWArgs("cross",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"x", "input"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
+
+  auto& y = GetTensorFromArgsOrKWArgs("cross",
+                                      "y",
+                                      args,
+                                      1,
+                                      kwargs,
+                                      {"y", "other"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *y_ptr_ptr = &y;
+
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+  if (axis_obj == nullptr || axis_obj == Py_None) {
+    *axis = 9;
+  } else {
+    *axis = CastPyArg2Int(axis_obj, "cross", 2);
+  }
+
+  // Consume out if present
+  GetItemFromArgsOrKWArgs(nullptr, 0, kwargs, {"out"}, 0, &remaining_kwargs);
+
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
+void CrossMapper(
+    PyObject* args, PyObject* kwargs, pir::Value* x, pir::Value* y, int* axis) {
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 3;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  PyObject* x_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"x", "input"}, nargs, &remaining_kwargs);
+  *x = CastPyArg2Value(x_obj, "cross", 0, false);
+
+  PyObject* y_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"y", "other"}, nargs, &remaining_kwargs);
+  *y = CastPyArg2Value(y_obj, "cross", 1, false);
+
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+  if (axis_obj == nullptr || axis_obj == Py_None) {
+    *axis = 9;
+  } else {
+    *axis = CastPyArg2Int(axis_obj, "cross", 2);
+  }
+
+  // Consume out if present
+  GetItemFromArgsOrKWArgs(nullptr, 0, kwargs, {"out"}, 0, &remaining_kwargs);
+
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
 }  // namespace pybind
 }  // namespace paddle

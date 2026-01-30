@@ -139,6 +139,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : cross
+  name : [paddle.cross, paddle.Tensor.cross]
+  args_mapper :
+    func : CrossMapper
+
 - op : diag
   name : [paddle.diag, paddle.Tensor.diag]
   args_alias :
@@ -267,11 +272,6 @@
 - op : isnan
   name : [paddle.isnan, paddle.Tensor.isnan]
   args_alias :
-    use_default_mapping : True
-
-- op : inverse
-  name : [paddle.inverse, paddle.Tensor.inverse, paddle.linalg.inv]
-  args_alias:
     use_default_mapping : True
 
 - op : log
