@@ -18,53 +18,47 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class AddShadowOutputAfterDeadParameterPattern
-    : public pir::OpRewritePattern<pir::ParameterOp> {
+    : public OpRewritePattern<ParameterOp> {
  public:
-  using pir::OpRewritePattern<pir::ParameterOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      pir::ParameterOp op,
-      pir::PatternRewriter& rewriter) const override {  // NOLINT
+  using OpRewritePattern<ParameterOp>::OpRewritePattern;
+  bool MatchAndRewrite(ParameterOp op,
+                       PatternRewriter& rewriter) const override {  // NOLINT
     if (!op->use_empty()) {
       return false;
     }
     rewriter.SetInsertionPointToBlockEnd(op->GetParent());
-    rewriter.Build<pir::ShadowOutputOp>(op->result(0), op.param_name());
+    rewriter.Build<ShadowOutputOp>(op->result(0), op.param_name());
     return true;
   }
 };
 
-class AddShadowOutputAfterDeadParameterPass : public pir::PatternRewritePass {
+class AddShadowOutputAfterDeadParameterPass : public PatternRewritePass {
  public:
   AddShadowOutputAfterDeadParameterPass()
-      : pir::PatternRewritePass("add_shadow_output_after_dead_parameter_pass",
-                                0) {}
+      : PatternRewritePass("add_shadow_output_after_dead_parameter_pass", 0) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext* context) override {
+    RewritePatternSet ps(context);
     ps.Add<AddShadowOutputAfterDeadParameterPattern>(context);
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(Operation* op) const override {
+    return op->isa<ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
-  pir::FrozenRewritePatternSet patterns_;
+  FrozenRewritePatternSet patterns_;
 };
 
-}  // namespace
-
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateAddShadowOutputAfterDeadParameterPass() {
+std::unique_ptr<Pass> CreateAddShadowOutputAfterDeadParameterPass() {
   return std::make_unique<AddShadowOutputAfterDeadParameterPass>();
 }
 
 }  // namespace pir
 
 REGISTER_IR_PASS(add_shadow_output_after_dead_parameter_pass,
-                 AddShadowOutputAfterDeadParameterPass);
+                 pir::AddShadowOutputAfterDeadParameterPass);

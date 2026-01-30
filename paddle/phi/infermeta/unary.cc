@@ -6839,6 +6839,34 @@ void IntBincountInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void VarInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  bool keepdim,
+                  bool unbiased,
+                  double correction,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceInferMetaBase(x, axis, keepdim, reduce_all, out);
+}
+
+void StdInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  bool keepdim,
+                  bool unbiased,
+                  double correction,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceInferMetaBase(x, axis, keepdim, reduce_all, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

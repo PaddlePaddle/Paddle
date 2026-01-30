@@ -1156,5 +1156,3 @@ class BoxHelper {
 
 }  // namespace framework
 }  // namespace paddle
-
-#include "paddle/fluid/framework/fleet/box_wrapper_impl.h"
