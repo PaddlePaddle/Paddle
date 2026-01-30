@@ -2081,19 +2081,19 @@
     skip_transform : out_size, size_tensor, scale_tensor
 
 - backward_op : linear_v2_double_grad
-  forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
-  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad)
+  forward: linear_v2_grad (Tensor input, Tensor weight, Tensor bias, Tensor grad_out, bool transpose_weight=false) -> Tensor(grad_input), Tensor(grad_weight), Tensor(grad_bias)
+  args : (Tensor input, Tensor weight, Tensor grad_out, Tensor grad_input_grad, Tensor grad_weight_grad, Tensor grad_bias_grad, bool transpose_weight=false)
   output: Tensor(input_grad), Tensor(weight_grad), Tensor(grad_out_grad)
   optional: grad_input_grad, grad_weight_grad, grad_bias_grad
   infer_meta :
       func : GeneralTernaryGradInferMeta
       param : [input, weight, grad_out]
   no_need_buffer: input
-  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, input_grad, weight_grad, grad_out_grad)
+  composite: linear_v2_double_grad(input, weight, grad_out, grad_input_grad, grad_weight_grad, grad_bias_grad, transpose_weight,input_grad, weight_grad, grad_out_grad)
 
 - backward_op : linear_v2_grad
-  forward : linear_v2 (Tensor input, Tensor weight, Tensor bias) -> Tensor(out)
-  args: (Tensor input, Tensor weight, Tensor bias, Tensor out_grad)
+  forward : linear_v2 (Tensor input, Tensor weight, Tensor bias, bool transpose_weight=false) -> Tensor(out)
+  args: (Tensor input, Tensor weight, Tensor bias, Tensor out_grad, bool transpose_weight=false)
   output: Tensor(input_grad), Tensor(weight_grad), Tensor(bias_grad)
   infer_meta :
     func : LinearV2GradInferMeta
