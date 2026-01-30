@@ -106,7 +106,7 @@ def acos(
 add_doc_and_signature(
     "acosh",
     r"""
-Acosh Activation Operator.
+    Acosh Activation Operator.
 
     .. math::
        out = acosh(x)
@@ -3878,6 +3878,49 @@ add_doc_and_signature(
 def asin(
     x: Tensor,
     name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "inverse",
+    r"""
+    Takes the inverse of the square matrix. A square matrix is a matrix with
+    the same number of rows and columns. The input can be a square matrix
+    (2-D Tensor) or batches of square matrices.
+
+    Args:
+        x (Tensor): The input tensor. The last two
+            dimensions should be equal. When the number of dimensions is
+            greater than 2, it is treated as batches of square matrix. The data
+            type can be float32, float64, complex64, complex128.
+            Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: A Tensor holds the inverse of x. The shape and data type
+                        is the same as x.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
+            >>> inv = paddle.inverse(mat)
+            >>> print(inv)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.50000000, 0.        ],
+             [0.        , 0.50000000]])
+
+""",
+    """
+def inverse(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
