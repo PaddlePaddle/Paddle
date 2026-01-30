@@ -3207,7 +3207,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : linear_v2
-  args : (Tensor input, Tensor weight, Tensor bias)
+  args : (Tensor input, Tensor weight, Tensor bias, bool transpose_weight=false)
   output : Tensor(out)
   infer_meta :
     func : LinearV2InferMeta

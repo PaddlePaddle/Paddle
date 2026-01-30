@@ -1193,5 +1193,25 @@ class TestBitwiseXorAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_array_equal(out, ref_out)
 
 
+class TestTensorCumsumInplaceCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.data = np.random.randint(1, 5, size=(3, 4)).astype('int64')
+
+    def test_dygraph_dim_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.data)
+        y = x.cumsum_(dim=1)
+        np.testing.assert_allclose(np.cumsum(self.data, axis=1), y.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_axis(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.data)
+        y = x.cumsum_(axis=0)
+        np.testing.assert_allclose(np.cumsum(self.data, axis=0), y.numpy())
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
