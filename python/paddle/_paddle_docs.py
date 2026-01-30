@@ -55,8 +55,7 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
             elif inspect.ismethod(func):
                 func.__self__.__doc__ = docstr
             elif inspect.isbuiltin(func):
-                # _add_docstr expects 4 args: func, docstr, sig, annotations
-                _add_docstr(func, docstr, str(python_api_sig), {})
+                _add_docstr(func, docstr)
     methods_dict = dict(methods_map)
     funcs_dict = dict(funcs_map)
     nn_funcs_dict = dict(nn_funcs_map)
