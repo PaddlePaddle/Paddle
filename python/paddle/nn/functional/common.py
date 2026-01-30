@@ -2580,10 +2580,19 @@ def linear(
                 res = tmp
             return res
     else:
-        if bias is not None:
-            return _C_ops.linear_v2(x, weight, bias)
+        if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
+            "FLAGS_use_accuracy_compatible_kernel"
+        ]:
+            # Note(Pan Zhaowu): In accuracy compatible kernel mode, we use linear_v2 op that receives transposed weight, aligning with torch. Note that this will incurs a real transpose op, which might cause performance degradation.
+            if bias is not None:
+                return _C_ops.linear_v2(x, weight.T.contiguous(), bias, True)
+            else:
+                return _C_ops.matmul(x, weight.T.contiguous(), False, True)
         else:
-            return _C_ops.matmul(x, weight)
+            if bias is not None:
+                return _C_ops.linear_v2(x, weight, bias, False)
+            else:
+                return _C_ops.matmul(x, weight)
 
 
 def label_smooth(

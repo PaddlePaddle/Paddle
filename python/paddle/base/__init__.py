@@ -198,6 +198,7 @@ def __bootstrap__():
     # don't init_p2p when in unittest to save time.
     core.init_memory_method()
     core.init_devices()
+    core.init_gflags_from_env()
     core.init_tensor_operants()
     core.init_default_kernel_signatures()
 

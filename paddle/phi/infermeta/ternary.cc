@@ -1627,27 +1627,35 @@ void LerpInferMeta(const MetaTensor& x,
 void LinearV2InferMeta(const MetaTensor& input,
                        const MetaTensor& weight,
                        const MetaTensor& bias,
+                       const bool transpose_weight,
                        MetaTensor* out,
                        MetaConfig config) {
   const auto& input_dims = input.dims();
   const auto& weight_dims = weight.dims();
   const int64_t weight_ndim = weight.dims().size();
-  const bool is_bias_need_broadcast = bias.numel() == 1;
-  const bool is_valid_bias =
-      is_bias_need_broadcast || bias.numel() == weight.dims()[weight_ndim - 1];
-
-  PADDLE_ENFORCE_EQ(weight_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The Input tensor Y's dimension of FusedGemmEpilogueOp "
-                        " should be 2, but got %d.",
-                        weight_dims.size()));
   PADDLE_ENFORCE_GE(input_dims.size(),
                     1,
                     common::errors::InvalidArgument(
-                        "The Input tensor X's dimension of FusedGemmEpilogueOp "
+                        "The Input tensor X's dimension of linear_v2 op"
                         " should be >= 1, but got %d.",
                         input_dims.size()));
+  PADDLE_ENFORCE_EQ(weight_ndim,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The Input tensor Y's dimension of linear_v2 op"
+                        " should be 2, but got %d.",
+                        weight_ndim));
+  // Assume weight to be [K, N] if not tranasposed, [N, K] if transposed
+  const int64_t weight_elewise_dim =
+      transpose_weight ? weight_dims[0] : weight_dims[1];
+  const int64_t weight_reduce_dim =
+      transpose_weight ? weight_dims[1] : weight_dims[0];
+  // Assume bias to be [N] or [1]
+  const bool is_bias_need_broadcast =
+      ((bias.numel() == 1) && (weight_elewise_dim != 1));
+  const bool is_valid_bias =
+      is_bias_need_broadcast || bias.numel() == weight_elewise_dim;
+
   PADDLE_ENFORCE_LE(
       bias.dims().size(),
       1,
@@ -1661,7 +1669,7 @@ void LinearV2InferMeta(const MetaTensor& input,
 
   // regard [k] x [k, n] -> [n]
   if (input_dims.size() == 1) {
-    out->set_dims(make_ddim({weight_dims[1]}));
+    out->set_dims(make_ddim({weight_elewise_dim}));
     out->set_dtype(input.dtype());
     return;
   }
@@ -1670,7 +1678,7 @@ void LinearV2InferMeta(const MetaTensor& input,
 
   auto input_rank = input_dims.size();
   int64_t K_from_input = input_mat_dims[1];
-  int64_t K_from_weight = weight_dims[0];
+  int64_t K_from_weight = weight_reduce_dim;
   const bool check_dim =
       (!config.is_runtime && K_from_input != -1) || config.is_runtime;
   if (check_dim) {
@@ -1691,7 +1699,7 @@ void LinearV2InferMeta(const MetaTensor& input,
   }
   out_dims.push_back(input_dims[input_rank - 2]);
 
-  out_dims.push_back(weight_dims[1]);
+  out_dims.push_back(weight_elewise_dim);
   out->set_dims(make_ddim(out_dims));
   out->set_dtype(input.dtype());
 }
