@@ -20,6 +20,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.base import core
 from paddle.nn import functional as F
 
 
@@ -229,6 +230,10 @@ def max_pool3d_dilation_forward_naive(
 # ===================== Functional API Tests =====================
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool1DDilation(unittest.TestCase):
     """Test MaxPool1D with dilation parameter."""
 
@@ -377,6 +382,10 @@ class TestMaxPool1DDilation(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DDilation(unittest.TestCase):
     """Test MaxPool2D with dilation parameter."""
 
@@ -556,6 +565,10 @@ class TestMaxPool2DDilation(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool3DDilation(unittest.TestCase):
     """Test MaxPool3D with dilation parameter."""
 
@@ -712,6 +725,10 @@ class TestMaxPool3DDilation(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPoolDilationValidation(unittest.TestCase):
     """Test parameter validation for dilation in MaxPool operations."""
 
@@ -784,6 +801,10 @@ class TestMaxPoolDilationValidation(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPoolDilationGradient(unittest.TestCase):
     """Test gradient computation for dilated max pooling."""
 
@@ -836,6 +857,10 @@ class TestMaxPoolDilationGradient(unittest.TestCase):
         self.assertEqual(list(input_tensor.grad.shape), [2, 3, 8, 8, 8])
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPoolExtraRepr(unittest.TestCase):
     """Test extra_repr includes dilation for MaxPool layers."""
 
@@ -867,6 +892,10 @@ class TestMaxPoolExtraRepr(unittest.TestCase):
         self.assertIn('2', repr_str)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool1DLayerDilation(unittest.TestCase):
     """Test paddle.nn.MaxPool1D layer with dilation parameter."""
 
@@ -997,6 +1026,10 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DLayerDilation(unittest.TestCase):
     """Test paddle.nn.MaxPool2D layer with dilation parameter."""
 
@@ -1166,6 +1199,10 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool3DLayerDilation(unittest.TestCase):
     """Test paddle.nn.MaxPool3D layer with dilation parameter."""
 
@@ -1355,6 +1392,10 @@ def max_pool2d_with_index_dilation_wrapper(
     )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DWithIndexDilationOp(OpTest):
     """OpTest for max_pool2d_with_index with dilation parameter."""
 
@@ -1405,6 +1446,10 @@ class TestMaxPool2DWithIndexDilationOp(OpTest):
         self.check_grad({'X'}, ['Out'])
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DWithIndexDilationOp2(TestMaxPool2DWithIndexDilationOp):
     """Test with different dilation values."""
 
@@ -1416,6 +1461,10 @@ class TestMaxPool2DWithIndexDilationOp2(TestMaxPool2DWithIndexDilationOp):
         self.dilations = [3, 3]
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DWithIndexDilationOp3(TestMaxPool2DWithIndexDilationOp):
     """Test with asymmetric dilation."""
 
@@ -1427,6 +1476,10 @@ class TestMaxPool2DWithIndexDilationOp3(TestMaxPool2DWithIndexDilationOp):
         self.dilations = [2, 3]
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DWithIndexDilationOp4(TestMaxPool2DWithIndexDilationOp):
     """Test with larger kernel and dilation."""
 
@@ -1438,6 +1491,10 @@ class TestMaxPool2DWithIndexDilationOp4(TestMaxPool2DWithIndexDilationOp):
         self.dilations = [2, 2]
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DWithIndexDilationOp5(TestMaxPool2DWithIndexDilationOp):
     """Test with asymmetric dilation."""
 
@@ -1449,6 +1506,10 @@ class TestMaxPool2DWithIndexDilationOp5(TestMaxPool2DWithIndexDilationOp):
         self.dilations = [2, 3]
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool2DWithIndexDilationOp6(TestMaxPool2DWithIndexDilationOp):
     """Coverage with cpu branch."""
 
@@ -1484,6 +1545,10 @@ def max_pool3d_with_index_dilation_wrapper(
     )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool3DWithIndexDilationOp(OpTest):
     """OpTest for max_pool3d_with_index with dilation parameter."""
 
@@ -1534,6 +1599,10 @@ class TestMaxPool3DWithIndexDilationOp(OpTest):
         self.check_grad({'X'}, ['Out'])
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool3DWithIndexDilationOp2(TestMaxPool3DWithIndexDilationOp):
     """Test with different dilation values."""
 
@@ -1545,6 +1614,10 @@ class TestMaxPool3DWithIndexDilationOp2(TestMaxPool3DWithIndexDilationOp):
         self.dilations = [2, 2, 2]
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool3DWithIndexDilationOp3(TestMaxPool3DWithIndexDilationOp):
     """Test with asymmetric dilation."""
 
@@ -1556,6 +1629,10 @@ class TestMaxPool3DWithIndexDilationOp3(TestMaxPool3DWithIndexDilationOp):
         self.dilations = [2, 2, 3]
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    'xpu does not support `dilation`',
+)
 class TestMaxPool3DWithIndexDilationOp4(TestMaxPool3DWithIndexDilationOp):
     """Coverage with cpu branch."""
 
