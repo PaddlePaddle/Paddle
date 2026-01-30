@@ -35,11 +35,18 @@ void LinearV2GradKernel(const Context& dev_ctx,
                         const DenseTensor& weight,
                         const DenseTensor& bias,
                         const DenseTensor& out_grad,
+                        const bool transpose_weight,
                         DenseTensor* input_grad,
                         DenseTensor* weight_grad,
                         DenseTensor* bias_grad) {
-  phi::MatmulGradKernel<T, Context>(
-      dev_ctx, input, weight, out_grad, false, false, input_grad, weight_grad);
+  phi::MatmulGradKernel<T, Context>(dev_ctx,
+                                    input,
+                                    weight,
+                                    out_grad,
+                                    false,
+                                    transpose_weight,
+                                    input_grad,
+                                    weight_grad);
 
   if (bias_grad && bias.numel() != 0) {
     if (out_grad.numel() != bias_grad->numel()) {
