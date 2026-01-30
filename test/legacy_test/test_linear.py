@@ -123,5 +123,51 @@ class TestLinearAPI_ZeroSize(unittest.TestCase):
             run(place)
 
 
+class TestAccuracyCompatible(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+    def setUp(self):
+        self.init_dtype()
+        batch = 128
+        input_features = 512
+        output_features = 256
+        paddle.set_flags({"FLAGS_use_accuracy_compatible_kernel": True})
+        self.input = np.random.random((batch, input_features)).astype(
+            self.dtype
+        )
+        self.weight = np.random.random(
+            (input_features, output_features)
+        ).astype(self.dtype)
+        self.bias = np.random.random(output_features).astype(self.dtype)
+
+    # test dynamic graph api.
+    def test_compat(self):
+        if (
+            paddle.get_flags("FLAGS_use_legacy_linear")[
+                "FLAGS_use_legacy_linear"
+            ]
+            or not paddle.is_compiled_with_cuda()
+            or not paddle.framework.in_dynamic_or_pir_mode()
+        ):
+            # legacy_linear or non-cuda device does not support array equal.
+            return
+        else:
+            input = paddle.to_tensor(self.input)
+            weight = paddle.to_tensor(self.weight)
+            bias = paddle.to_tensor(self.bias)
+            # Assume that functional linear with FLAGS_use_legacy_linear=True
+            # is array equal to compat linear with transposed weight
+            compat_linear_result = paddle.compat.nn.functional.linear(
+                input, weight.T.contiguous(), bias
+            )
+            func_linear_w_flag_result = paddle.nn.functional.linear(
+                input, weight, bias
+            )
+            np.testing.assert_array_equal(
+                compat_linear_result, func_linear_w_flag_result
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
