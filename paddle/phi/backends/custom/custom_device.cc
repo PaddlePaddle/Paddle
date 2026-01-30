@@ -1104,6 +1104,26 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
+  void InitDnnHandle(size_t dev_id,
+                     void** dnn_handle,
+                     phi::stream::stream_t stream) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->init_dnn_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->init_dnn_handle(device,
+                                  reinterpret_cast<C_DNNHandle*>(dnn_handle),
+                                  reinterpret_cast<C_Stream>(stream)));
+    }
+  }
+
+  void DestroyDnnHandle(size_t dev_id, void* dnn_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_dnn_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_dnn_handle(
+          device, reinterpret_cast<C_DNNHandle>(dnn_handle)));
+    }
+  }
+
   void CUDAStreamBeginCapture(size_t dev_id,
                               stream::stream_t stream,
                               graph::streamCaptureMode mode) {
@@ -1358,6 +1378,14 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(profiler_start_tracing, false);
   CHECK_INTERFACE(profiler_stop_tracing, false);
   CHECK_INTERFACE(profiler_collect_trace_data, false);
+
+  CHECK_INTERFACE(init_blas_handle, false);
+  CHECK_INTERFACE(destroy_blas_handle, false);
+  CHECK_INTERFACE(blas_set_math_mode, false);
+  CHECK_INTERFACE(init_blaslt_handle, false);
+  CHECK_INTERFACE(destroy_blaslt_handle, false);
+  CHECK_INTERFACE(init_dnn_handle, false);
+  CHECK_INTERFACE(destroy_dnn_handle, false);
 
   CHECK_INTERFACE(cuda_stream_begin_capture, false);
   CHECK_INTERFACE(cuda_stream_end_captrue, false);

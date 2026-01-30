@@ -7,8 +7,7 @@ set(PYBIND_DEPS
     standalone_executor
     executor
     fleet_wrapper
-    box_wrapper
-    metrics
+    gloo_wrapper
     prune
     feed_fetch_method
     pass
@@ -27,9 +26,7 @@ set(PYBIND_DEPS
     device_context
     gloo_wrapper
     infer_io_utils
-    heter_wrapper
     op_version_registry
-    ps_gpu_wrapper
     custom_operator
     cost_model
     global_utils
@@ -126,7 +123,6 @@ set(PYBIND_SRCS
     fleet_wrapper_py.cc
     gloo_wrapper_py.cc
     box_helper_py.cc
-    metrics_py.cc
     data_set_py.cc
     bind_cost_model.cc
     compatible.cc
