@@ -21,6 +21,9 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
+
+# NOTE(Pan Zhaowu): Using decomp rules to fulfill promise of high-level grad,
+paddle.core._set_prim_all_enabled(True)
 from paddle.nn import BatchNorm, Linear
 
 
