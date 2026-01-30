@@ -8,7 +8,7 @@ on:
         required: false
 
 env:
-  docker_image: paddle-ixuca-py39:v0
+  docker_image: paddle-ixuca-py39:3.3.0
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -41,6 +41,22 @@ jobs:
         id: check-approval
         run: |
           set -euo pipefail
+
+          SKIP_FLAG_FILE=/data/geyuqiang/skip-ci.txt
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -f "${SKIP_FLAG_FILE}" ]; then
+            flag_value=$(head -n 1 "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+            if [ "${flag_value}" = "true" ]; then
+              second_line=$(sed -n '2p' "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+              if [ -n "${second_line}" ] && [ "${second_line}" = "${PR_NUMBER}" ]; then
+                echo "Skip flag is true but second line matches PR ${PR_NUMBER}; not skipping IXUCA CI"
+              else
+                echo "Found skip flag file ${SKIP_FLAG_FILE} with value true and PR number mismatch/empty; skipping IXUCA CI"
+                echo "can-skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+          fi
 
           export https_proxy=http://oversea-website-proxy.aistudio.public:8888
           export http_proxy=http://oversea-website-proxy.aistudio.public:8888
@@ -235,6 +251,7 @@ jobs:
             -e AGILE_REVISION \
             -e GIT_PR_ID \
             -e PYTHON_VERSION \
+            -e PYTHONPATH= \
             -e no_proxy \
             -e PADDLE_BRANCH \
             -e CI_name \
@@ -246,15 +263,13 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
           source ~/.bashrc
+          source /root/miniconda3/etc/profile.d/conda.sh
+          conda activate base
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          unset PYTHONPATH
           #wget -q https://sys-p0.bj.bcebos.com/libstdc%2B%2B6_13.1.0-8ubuntu1_20.04.2_amd64.deb
           #dpkg -i *deb
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
-          PATH=/usr/local/bin:${PATH}
-          echo "export PATH=$PATH" >> ~/.bashrc
-          ln -sf $(which python3.9) /usr/local/bin/python
-          ln -sf $(which pip3.9) /usr/local/bin/pip
-          ln -sf $(which python3.9) /usr/bin/python
-          ln -sf $(which pip3.9) /usr/bin/pip
           echo "::group::Install Paddle"
           pip install paddlepaddle-*.whl && rm -rf paddlepaddle-*.whl
           python -c "import paddle; print(paddle.__version__)"
@@ -267,6 +282,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
+          source /root/miniconda3/etc/profile.d/conda.sh
+          conda activate
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          unset PYTHONPATH
           set -x
           set -euo pipefail
 
@@ -302,8 +321,8 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: steps.check-approval.outputs.can-skip != 'true'
+        if: ${{ always() && steps.check-approval.outputs.can-skip != 'true' }}
         run: |
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

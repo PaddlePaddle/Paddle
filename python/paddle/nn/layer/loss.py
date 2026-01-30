@@ -20,9 +20,9 @@ import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     legacy_reduction_decorator,
     legacy_reduction_special_decorator,
+    param_one_alias,
 )
 
 from .. import functional as F
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
 
     from ..functional.loss import _ReduceMode
 
-from paddle.utils.decorator_utils import param_one_alias
 
 __all__ = []
 
@@ -445,7 +444,7 @@ class CrossEntropyLoss(Layer):
         self.label_smoothing = label_smoothing
         self.name = name
 
-    @ParamAliasDecorator({"label": ["target"]})
+    @param_one_alias(["label", "target"])
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         ret = paddle.nn.functional.cross_entropy(
             input,
