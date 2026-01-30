@@ -232,6 +232,17 @@ def var(
         actual_correction = 1.0 if unbiased else 0.0
     else:
         actual_correction = float(correction)
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.var(
+            x,
+            axis if axis is not None else [],
+            keepdim,
+            unbiased,
+            actual_correction,
+            out=out,
+        )
+
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -345,6 +356,15 @@ def std(
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        axis = axis if axis is not None else []
+        if unbiased is not None:
+            correction = 1.0 if unbiased else 0.0
+        else:
+            correction = float(correction)
+        return _C_ops.std(x, axis, keepdim, unbiased, correction)
+
     out = var(**locals())
     return paddle.sqrt(out)
 
