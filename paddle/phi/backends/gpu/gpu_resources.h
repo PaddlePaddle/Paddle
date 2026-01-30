@@ -17,6 +17,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
