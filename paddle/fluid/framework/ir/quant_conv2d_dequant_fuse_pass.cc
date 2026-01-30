@@ -285,8 +285,8 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
         scope,
         common::errors::InvalidArgument(
             "Scope in QuantDequantFuse pass should not be null."));
-    const phi::DenseTensor& input_scale_tensor =
-        scope->FindVar(input_scale_var_name)->Get<phi::DenseTensor>();
+    const DenseTensor& input_scale_tensor =
+        scope->FindVar(input_scale_var_name)->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
                       common::errors::InvalidArgument(
@@ -408,8 +408,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
           common::errors::InvalidArgument(
               "Scales size in channel-wise dequantize op should be 2, got %d.",
               scales_name.size()));
-      const phi::DenseTensor& channel_scale_tensor =
-          scope->FindVar(scales_name[0])->Get<phi::DenseTensor>();
+      const DenseTensor& channel_scale_tensor =
+          scope->FindVar(scales_name[0])->Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(phi::is_cpu_place(channel_scale_tensor.place()),
                         true,
                         common::errors::InvalidArgument(
@@ -428,11 +428,11 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     }
 
     // Convert weight to fp32 range
-    auto* weight_tensor = scope->Var(quantized_op_weight_node->Name())
-                              ->GetMutable<phi::DenseTensor>();
+    auto* weight_tensor =
+        scope->Var(quantized_op_weight_node->Name())->GetMutable<DenseTensor>();
     const auto& w_dims = weight_tensor->dims();
     float* quantized_weight_data =
-        weight_tensor->mutable_data<float>(phi::CPUPlace());
+        weight_tensor->mutable_data<float>(CPUPlace());
     //  Determine whether this weight tensor has been re-written, avoiding
     //  re-write it again when this weight tensor is shared among many ops.
     if (!quantized_op_weight_node_set.count(quantized_op_weight_node)) {

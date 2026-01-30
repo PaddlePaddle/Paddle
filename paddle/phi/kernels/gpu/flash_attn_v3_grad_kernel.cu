@@ -53,19 +53,18 @@ void FlashAttnV3GradBaseKernel(
         &out,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
     const DenseTensor
         &softmax_lse,  // (b, h, s_q) or (h, total_q) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dq_,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dk_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
-    const paddle::optional<DenseTensor>
-        &dv_,  // (b, s_k, h_k, dv) or (total_k, h_k, dv) if there is
-               // cu_seqlens_k
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,  // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &dv_,  // (b, s_k, h_k, dv) or (total_k, h_k,
+                                       // dv) if there is cu_seqlens_k
+    const optional<DenseTensor> &cu_seqlens_q_,  // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
     int max_seqlen_q_,
@@ -338,7 +337,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+    *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -357,7 +356,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+    *dk = EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -376,7 +375,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size_v);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+    *dv = EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -507,13 +506,13 @@ void FlashAttnV3GradBaseKernel(
   // opts.dtype(torch::kInt32)); params.tile_count_semaphore =
   // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
   // preprocess kernel
-  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+  DenseTensor dq_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::fa3_bwd_params_set_dq_semaphore(params_handle,
                                            dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+  DenseTensor dk_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
@@ -701,8 +700,8 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  const DenseTensor &softmax_lse,
                                  const DenseTensor &cu_seqlens_q,
                                  const DenseTensor &cu_seqlens_k,
-                                 const paddle::optional<DenseTensor> &seqused_q,
-                                 const paddle::optional<DenseTensor> &seqused_k,
+                                 const optional<DenseTensor> &seqused_q,
+                                 const optional<DenseTensor> &seqused_k,
                                  const DenseTensor &out_grad,
                                  float const softmax_scale,
                                  const Scalar &max_seqlen_q,
@@ -828,22 +827,22 @@ void FlashMaskV2GradBaseKernel(
         &out,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
     const DenseTensor
         &softmax_lse,  // (b, h, s_q) or (h, total_q) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dq_,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dk_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dv_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,  // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &cu_seqlens_q_,  // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
-    const paddle::optional<DenseTensor> &startend_row_indices_,
-    const paddle::optional<DenseTensor> &block_mask_,  // （(b,h,s//128,s//128)
+    const optional<DenseTensor> &startend_row_indices_,
+    const optional<DenseTensor> &block_mask_,  // （(b,h,s//128,s//128)
     int max_seqlen_q_,
     int max_seqlen_k_,
     float const softmax_scale,
@@ -1250,7 +1249,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+    *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -1269,7 +1268,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+    *dk = EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -1288,7 +1287,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+    *dv = EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -1426,13 +1425,13 @@ void FlashMaskV2GradBaseKernel(
                                                                   nullptr);
   }
 
-  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+  DenseTensor dq_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+  DenseTensor dk_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
@@ -1548,7 +1547,7 @@ void FlashMaskV2GradKernel(
     const DenseTensor &out,
     const DenseTensor &softmax_lse,
     const DenseTensor &startend_row_indices,  // TODO(xiehaoyang): remove this
-    const paddle::optional<DenseTensor> &block_mask,
+    const optional<DenseTensor> &block_mask,
     const DenseTensor &out_grad,
     float const softmax_scale,
     bool is_causal,

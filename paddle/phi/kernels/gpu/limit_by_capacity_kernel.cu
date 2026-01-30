@@ -54,7 +54,7 @@ void LimitByCapacityKernel(const Context& dev_ctx,
   const T* ec_data = expert_count_ptr->data<T>();
 
   DenseTensor capacity_copy;
-  phi::Copy(dev_ctx, capacity, dev_ctx.GetPlace(), false, &capacity_copy);
+  Copy(dev_ctx, capacity, dev_ctx.GetPlace(), false, &capacity_copy);
   T* cap_data = dev_ctx.template Alloc<T>(&capacity_copy);
 
   limit_by_capacity_impl<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(

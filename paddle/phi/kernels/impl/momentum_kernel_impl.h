@@ -409,7 +409,7 @@ void MomentumDenseImpl(const Context& dev_ctx,
                        const DenseTensor& grad,
                        const DenseTensor& velocity,
                        const DenseTensor& learning_rate,
-                       const paddle::optional<DenseTensor>& master_param_opt,
+                       const optional<DenseTensor>& master_param_opt,
                        float mu_t,
                        bool use_nesterov,
                        const std::string& regularization_method,
@@ -445,7 +445,7 @@ void MomentumDenseImpl(const Context& dev_ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
             &grad,
@@ -457,8 +457,8 @@ void MomentumDenseImpl(const Context& dev_ctx,
             regularization_coeff,
             param_out,
             velocity_out);
-  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
-             dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
+  } else if (dev_ctx.GetPlace().GetType() == AllocationType::GPU ||
+             dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM) {
     funcs::ForRange<Context> for_range(dev_ctx, param.numel());
     const auto grad_type = grad.dtype();
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)     \
@@ -520,7 +520,7 @@ void MomentumSparseImpl(const Context& dev_ctx,
                         const SelectedRows& grad,
                         const DenseTensor& velocity,
                         const DenseTensor& learning_rate,
-                        const paddle::optional<DenseTensor>& master_param_opt,
+                        const optional<DenseTensor>& master_param_opt,
                         float mu_t,
                         bool use_nesterov,
                         const std::string& regularization_method,
@@ -566,8 +566,8 @@ void MomentumSparseImpl(const Context& dev_ctx,
     return;
   }
 
-  phi::SelectedRows tmp_merged_grad;
-  phi::SelectedRows* merged_grad = &tmp_merged_grad;
+  SelectedRows tmp_merged_grad;
+  SelectedRows* merged_grad = &tmp_merged_grad;
   funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, grad, merged_grad);
 
@@ -622,7 +622,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                          const DenseTensor& grad,
                          const DenseTensor& velocity,
                          const DenseTensor& learning_rate,
-                         const paddle::optional<DenseTensor>& master_param,
+                         const optional<DenseTensor>& master_param,
                          float mu,
                          bool use_nesterov,
                          const std::string& regularization_method,
@@ -674,7 +674,7 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           const SelectedRows& grad,
                           const DenseTensor& velocity,
                           const DenseTensor& learning_rate,
-                          const paddle::optional<DenseTensor>& master_param,
+                          const optional<DenseTensor>& master_param,
                           float mu,
                           bool use_nesterov,
                           const std::string& regularization_method,

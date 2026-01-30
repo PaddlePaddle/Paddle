@@ -9,6 +9,7 @@ echo    ========================================
 
 cd %BUILD_DIR%
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
+call %ACTION_DIR%\proxy.bat
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!

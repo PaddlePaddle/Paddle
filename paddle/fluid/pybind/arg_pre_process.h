@@ -25,19 +25,26 @@
 namespace paddle {
 
 namespace pybind {
-using Tensor = paddle::Tensor;
 using Value = pir::Value;
 using IntArray = paddle::experimental::IntArray;
+using Scalar = paddle::experimental::Scalar;
 using IntVector = std::vector<int64_t>;
 
-void ExpandAsPreProcess(paddle::Tensor* x,
-                        paddle::optional<paddle::Tensor>* y,
+void ExpandAsPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* y,
                         std::vector<int64_t>* target_shape);
 void ExpandAsPreProcess(Value* x,
                         paddle::optional<pir::Value>* y,
                         std::vector<int64_t>* target_shape);
 void RollPreProcess(Tensor* x, IntArray* shifts, IntVector* axis);
 void RollPreProcess(Value* x, Value* shifts, IntVector* axis);
+
+void BinCountPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* weights,
+                        Scalar* minlength);
+void BinCountPreProcess(Value* x,
+                        paddle::optional<Value>* weights,
+                        Value* minlength);
 
 void LogsumexpPreProcess(Tensor* x, std::vector<int>* axis, bool* reduce_all);
 void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);

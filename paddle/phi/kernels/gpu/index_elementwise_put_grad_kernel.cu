@@ -61,8 +61,8 @@ void GPUIndexElementwisePutGradKernel(
   // default value_ele_size when value_grad is nullptr
   int64_t value_ele_size = 4;
   if (value_grad) {
-    value_dims = common::vectorize<int64_t>(value_grad->dims());
-    value_strides = common::vectorize<int64_t>(value_grad->strides());
+    value_dims = vectorize<int64_t>(value_grad->dims());
+    value_strides = vectorize<int64_t>(value_grad->strides());
     value_ele_size = phi::SizeOf(value_grad->dtype());
   }
 
@@ -199,7 +199,7 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
   if (x_grad && !value_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     GPUIndexElementwisePutGradKernel<T, int64_t, OffsetT>(dev_ctx,
                                                           out_grad,
@@ -213,7 +213,7 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
                                                           value_grad);
   } else if (value_grad) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
@@ -268,9 +268,8 @@ void LaunchIndexElementwisePutWithTensorGradCudaKernel(
                                                             x_grad,
                                                             &tmp_value_grad);
 
-      std::vector<int64_t> after_dims =
-          common::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims = vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
 
@@ -303,7 +302,7 @@ void LaunchIndexElementwisePutGradCudaKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
                                out_grad.numel() * sizeof(T))) {
       GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
@@ -356,7 +355,7 @@ void IndexElementwisePutGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     return;
   }
@@ -398,19 +397,15 @@ void IndexElementwisePutWithTensorGradKernel(
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
-                             0.0f,
-                             value_grad->dtype(),
-                             value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
     }
     return;
   }
-  if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
-                             out_grad.numel() * sizeof(T))) {
+  if (x_grad && funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
+                                       out_grad.numel() * sizeof(T))) {
     LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
                                                                   indices,
                                                                   out_grad,

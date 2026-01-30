@@ -25,27 +25,26 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void SyncBatchNormCooGradKernel(
-    const Context& dev_ctx,
-    const SparseCooTensor& x,
-    const DenseTensor& scale,
-    const DenseTensor& bias,
-    const DenseTensor& saved_mean,
-    const DenseTensor& saved_variance,
-    const paddle::optional<DenseTensor>& reserve_space,
-    const SparseCooTensor& y_grad,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    SparseCooTensor* x_grad,
-    DenseTensor* scale_grad,
-    DenseTensor* bias_grad) {
+void SyncBatchNormCooGradKernel(const Context& dev_ctx,
+                                const SparseCooTensor& x,
+                                const DenseTensor& scale,
+                                const DenseTensor& bias,
+                                const DenseTensor& saved_mean,
+                                const DenseTensor& saved_variance,
+                                const optional<DenseTensor>& reserve_space,
+                                const SparseCooTensor& y_grad,
+                                float momentum,
+                                float epsilon,
+                                const std::string& data_layout,
+                                bool is_test,
+                                bool use_global_stats,
+                                bool trainable_statistics,
+                                SparseCooTensor* x_grad,
+                                DenseTensor* scale_grad,
+                                DenseTensor* bias_grad) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, x_grad);
-  *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
-  *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
+  *scale_grad = EmptyLike<T, Context>(dev_ctx, scale);
+  *bias_grad = EmptyLike<T, Context>(dev_ctx, bias);
   phi::SyncBatchNormGradKernel<T, Context>(dev_ctx,
                                            x.values(),
                                            scale,

@@ -184,23 +184,22 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
 bool NeedComputationClipForPP(
     const std::shared_ptr<phi::TensorBase>& tensor_impl) {
   PADDLE_ENFORCE_EQ(
-      phi::distributed::DistTensor::classof(tensor_impl.get()),
+      DistTensor::classof(tensor_impl.get()),
       true,
       common::errors::InvalidArgument(
           "The input tensor of NeedComputationClipForPP should be "
-          "``phi::distributed::DistTensor``. "
+          "``DistTensor``. "
           "However it's %s",
           typeid(tensor_impl.get()).name()));
-  return !IsCurRankInMesh(
-      std::static_pointer_cast<phi::distributed::DistTensor>(tensor_impl)
-          ->dist_attr()
-          .process_mesh());
+  return !IsCurRankInMesh(std::static_pointer_cast<DistTensor>(tensor_impl)
+                              ->dist_attr()
+                              .process_mesh());
 }
 
 Place GetDefaultPlace() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  if (phi::DeviceManager::GetDeviceCount(dev_types[0]) >= 0) {
+  if (phi::DeviceManager::GetDeviceCount(dev_types[0]) > 0) {
     return paddle::DefaultCustomPlace();
   }
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -215,8 +214,7 @@ Place GetDefaultPlace() {
   return paddle::CPUPlace();
 }
 
-phi::DeviceContext* GetDistTensorDeviceContext(
-    phi::distributed::DistTensor* input) {
+DeviceContext* GetDistTensorDeviceContext(DistTensor* input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
   auto place =
@@ -224,10 +222,10 @@ phi::DeviceContext* GetDistTensorDeviceContext(
   return phi::DeviceContextPool::Instance().Get(place);
 }
 
-phi::DDim InferShapeForReshardFromReplicate(
-    const std::shared_ptr<phi::DenseTensor>& global_value,
+DDim InferShapeForReshardFromReplicate(
+    const std::shared_ptr<DenseTensor>& global_value,
     const TensorDistAttr& dist_attr) {
-  phi::DDim out_dim = global_value->dims();
+  DDim out_dim = global_value->dims();
   auto coord_id = GetCurRankCoordInMesh(dist_attr.process_mesh());
   for (int tensor_axis = 0; tensor_axis < global_value->dims().size();
        ++tensor_axis) {

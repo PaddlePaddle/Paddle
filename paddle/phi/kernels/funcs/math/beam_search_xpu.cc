@@ -30,7 +30,7 @@ int CopyData(const T *x, T **y, int len, const Place &place) {
 
   *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
 
-  phi::memory_utils::Copy(phi::CPUPlace(), *y, place, x, len * sizeof(T));
+  phi::memory_utils::Copy(CPUPlace(), *y, place, x, len * sizeof(T));
   return xpu::Error_t::SUCCESS;
 }
 

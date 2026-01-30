@@ -117,7 +117,7 @@ void CooToDenseKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor CooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
   DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
-  DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
+  DenseTensor dense = Empty(dev_ctx, std::move(meta));
   CooToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
 }
@@ -138,7 +138,7 @@ void CsrToDenseKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor CsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
   DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
-  DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
+  DenseTensor dense = Empty(dev_ctx, std::move(meta));
   CsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
 }

@@ -44,7 +44,7 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
     default:
       PADDLE_THROW(
           errors::InvalidArgument("Fail to convert layout %s to oneDNN format.",
-                                  ::common::DataLayoutToString(layout)));
+                                  DataLayoutToString(layout)));
   }
 }
 
@@ -87,7 +87,7 @@ TEST_API void* GetDataFromTensor(const DenseTensor& tensor,
                                  OneDNNDataType type);
 
 PADDLE_API dnnl::memory::desc make_memory_desc(const DenseTensor& ref_tensor,
-                                               phi::DataLayout target_layout);
+                                               DataLayout target_layout);
 
 #endif
 

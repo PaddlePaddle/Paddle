@@ -119,11 +119,7 @@ void PReluGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   if (x_grad->numel() == 0) {
     if (alpha_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(alpha_grad->dims())),
-          0,
-          alpha_grad);
+      Full<T, Context>(dev_ctx, alpha_grad->dims(), 0, alpha_grad);
     }
     return;
   }
@@ -148,7 +144,7 @@ void PReluGradKernel(const Context& dev_ctx,
   } else {
     DenseTensorMeta alpha_grad_meta(
         alpha_grad->dtype(), dim, alpha_grad->layout());
-    alpha_grad_tmp = phi::Empty(dev_ctx, std::move(alpha_grad_meta));
+    alpha_grad_tmp = Empty(dev_ctx, std::move(alpha_grad_meta));
     alpha_grad_tmp_ptr = alpha_grad_tmp.data<T>();
   }
 

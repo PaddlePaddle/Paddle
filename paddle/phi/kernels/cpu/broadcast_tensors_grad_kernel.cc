@@ -69,9 +69,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
   size_t num_ins = in_tensors.size();
   if (dout[0] && dout[0]->numel() == 0) {
     for (auto dx : out_tensors) {
-      if (dx)
-        Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      if (dx) Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     return;
   }
@@ -127,8 +125,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy
-      phi::Copy(
-          dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, output_tensor);
+      Copy(dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, output_tensor);
     } else {
       PADDLE_ENFORCE_GE(
           reduce_dims_vec.size(),

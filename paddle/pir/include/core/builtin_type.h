@@ -59,11 +59,10 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
                                                      ShapedTypeInterface> {
  public:
   using Base::Base;
-  using Dim = DenseTensorTypeStorage::Dim;
   using LegacyLoD = DenseTensorTypeStorage::LegacyLoD;
 
   Type dtype() const;
-  const Dim &dims() const;
+  const DDim &dims() const;
   DataLayout data_layout() const;
   const LegacyLoD &lod() const;
   size_t offset() const;
@@ -78,7 +77,7 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
 
   static DenseTensorType get(IrContext *ctx,
                              Type dtype,
-                             const Dim &dims,
+                             const DDim &dims,
                              DataLayout layout = DataLayout::kNCHW,
                              const LegacyLoD &lod = {},
                              size_t offset = 0u) {

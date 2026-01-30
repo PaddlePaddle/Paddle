@@ -23,24 +23,23 @@
 namespace phi {
 namespace fusion {
 template <typename T, typename Context>
-void FusedBiasDropoutResidualLnKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& residual,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& ln_scale,
-    const paddle::optional<DenseTensor>& ln_bias,
-    const float dropout_rate,
-    const bool is_test,
-    const bool dropout_fix_seed,
-    const int dropout_seed,
-    const std::string& dropout_implementation,
-    const float ln_epsilon,
-    DenseTensor* y,
-    DenseTensor* bias_dropout_residual_out,
-    DenseTensor* dropout_mask_out,
-    DenseTensor* ln_mean,
-    DenseTensor* ln_variance) {
+void FusedBiasDropoutResidualLnKernel(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      const DenseTensor& residual,
+                                      const optional<DenseTensor>& bias,
+                                      const optional<DenseTensor>& ln_scale,
+                                      const optional<DenseTensor>& ln_bias,
+                                      const float dropout_rate,
+                                      const bool is_test,
+                                      const bool dropout_fix_seed,
+                                      const int dropout_seed,
+                                      const std::string& dropout_implementation,
+                                      const float ln_epsilon,
+                                      DenseTensor* y,
+                                      DenseTensor* bias_dropout_residual_out,
+                                      DenseTensor* dropout_mask_out,
+                                      DenseTensor* ln_mean,
+                                      DenseTensor* ln_variance) {
   using U = funcs::LayerNormParamType<T>;
   auto* x_data = x.data<T>();
   auto* bias_data = (bias.get_ptr() == nullptr) ? nullptr : bias->data<T>();

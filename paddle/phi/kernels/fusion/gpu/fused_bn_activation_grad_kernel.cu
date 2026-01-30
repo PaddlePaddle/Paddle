@@ -68,7 +68,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                     common::errors::PreconditionNotMet(
                         "The Input dim size should be between 2 and 5"));
   int N, C, H, W, D;
-  const phi::DataLayout data_layout = phi::DataLayout::NHWC;
+  const DataLayout data_layout = DataLayout::NHWC;
   funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output
@@ -96,10 +96,10 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   if ((N * H * W * D) == 1) {
     if (act_type == "relu") {
-      auto x_v = phi::EigenVector<T>::Flatten(x);
-      auto y_v = phi::EigenVector<T>::Flatten(y);
-      auto dx_v = phi::EigenVector<T>::Flatten(*d_x);
-      auto dy_v = phi::EigenVector<T>::Flatten(*d_y);
+      auto x_v = EigenVector<T>::Flatten(x);
+      auto y_v = EigenVector<T>::Flatten(y);
+      auto dx_v = EigenVector<T>::Flatten(*d_x);
+      auto dy_v = EigenVector<T>::Flatten(*d_y);
       auto &dev = *dev_ctx.eigen_device();
       funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
     } else {

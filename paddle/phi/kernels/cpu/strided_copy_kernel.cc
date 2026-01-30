@@ -38,8 +38,8 @@ void StridedCopyKernel(const Context& dev_ctx,
 // not support Windows
 #if !defined(_WIN32)
   if (FLAGS_use_stride_kernel &&
-      input.place().GetType() == phi::AllocationType::CPU &&
-      out->place().GetType() == phi::AllocationType::GPU &&
+      input.place().GetType() == AllocationType::CPU &&
+      out->place().GetType() == AllocationType::GPU &&
       input.dtype() == out->dtype() &&
       (!input.meta().is_contiguous() || !out->meta().is_contiguous())) {
     DenseTensor dst_gpu;
@@ -92,8 +92,8 @@ void StridedCopyKernel(const Context& dev_ctx,
             phi::StridedCopyKernel<data_t, phi::GPUContext>(
                 reinterpret_cast<const phi::GPUContext&>(*gpu_dev_ctx),
                 dst_gpu,
-                common::vectorize<int64_t>(out->dims()),
-                common::vectorize<int64_t>(out->strides()),
+                vectorize<int64_t>(out->dims()),
+                vectorize<int64_t>(out->strides()),
                 out->offset(),
                 out);
           }));

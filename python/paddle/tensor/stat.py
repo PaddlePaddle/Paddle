@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import TypeAlias, overload
 
@@ -29,6 +29,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_two_alias,
     param_two_alias_one_default,
+    use_first_signature,
 )
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -232,6 +233,17 @@ def var(
         actual_correction = 1.0 if unbiased else 0.0
     else:
         actual_correction = float(correction)
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.var(
+            x,
+            axis if axis is not None else [],
+            keepdim,
+            unbiased,
+            actual_correction,
+            out=out,
+        )
+
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -285,15 +297,39 @@ def var(
     return result
 
 
+@overload
 def std(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
-    unbiased: bool = True,
+    unbiased: bool | None = None,
     keepdim: bool = False,
     name: str | None = None,
-) -> Tensor:
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def std(
+    input: Tensor,
+    dim: int | Sequence[int] | None = None,
+    *,
+    correction: float = 1,
+    keepdim: bool = False,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@use_first_signature
+def std(*args: Any, **kwargs: Any) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
@@ -319,13 +355,16 @@ def std(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of standard-deviation along ``axis`` of ``x``, with the
         same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -333,20 +372,47 @@ def std(
             >>> out1 = paddle.std(x)
             >>> print(out1.numpy())
             1.6329932
+
             >>> out2 = paddle.std(x, unbiased=False)
             >>> print(out2.numpy())
             1.490712
+
             >>> out3 = paddle.std(x, axis=1)
             >>> print(out3.numpy())
             [1.       2.081666]
 
+            >>> out4 = paddle.std(x=x, keepdim=True, correction=1.5)
+            >>> print(out4.numpy())
+            [[1.721326]]
+
+            >>> out5 = paddle.std(input=x, dim=[0, 1])
+            >>> print(out5.numpy())
+            1.6329932
+
     """
-    if not in_dynamic_or_pir_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'std'
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
+        axis = (
+            args[1]
+            if len(args) > 1
+            else kwargs.get('axis', kwargs.get('dim', None))
         )
-    out = var(**locals())
-    return paddle.sqrt(out)
+        unbiased = args[2] if len(args) > 2 else kwargs.get('unbiased', None)
+        keepdim = args[3] if len(args) > 3 else kwargs.get('keepdim', False)
+        correction = kwargs.get('correction', 1.0)
+        out = kwargs.get('out', None)
+
+        axis = axis if axis is not None else []
+        if unbiased is not None:
+            correction = 1.0 if unbiased else 0.0
+        else:
+            correction = float(correction)
+        return _C_ops.std(x, axis, keepdim, unbiased, correction, out=out)
+
+    variance = var(*args, **kwargs)
+    if 'out' in kwargs:
+        return paddle.sqrt(variance, out=kwargs['out'])
+    return paddle.sqrt(variance)
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:

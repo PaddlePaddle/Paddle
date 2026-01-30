@@ -135,10 +135,10 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
                             const std::vector<int>& dims,
                             bool reduce_all = false) {
   if (reduce_all) {
-    auto x = phi::EigenVector<T>::Flatten(*input0);
-    auto x_reduce = phi::EigenVector<T>::Flatten(*input1);
-    auto x_reduce_grad = phi::EigenVector<T>::Flatten(*input2);
-    auto x_grad = phi::EigenVector<T>::Flatten(*output);
+    auto x = EigenVector<T>::Flatten(*input0);
+    auto x_reduce = EigenVector<T>::Flatten(*input1);
+    auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
+    auto x_grad = EigenVector<T>::Flatten(*output);
     auto& place = *dev_ctx.eigen_device();
     // *dev_ctx.eigen_device();
     auto broadcast_dim =

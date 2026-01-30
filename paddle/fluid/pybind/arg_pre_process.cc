@@ -44,8 +44,8 @@ static void CheckDataType(const std::string& op_name,
       phi::DataTypeToString(expect_dtype),
       phi::DataTypeToString(var_dtype)));
 }
-void ExpandAsPreProcess(paddle::Tensor* x,
-                        paddle::optional<paddle::Tensor>* y,
+void ExpandAsPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* y,
                         std::vector<int64_t>* target_shape) {
   if (target_shape->empty() && y->get_ptr() == nullptr) {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -153,6 +153,25 @@ void LogsumexpPreProcess(pir::Value* x,
 void SumPreProcess(Value* x, Value* axis) {
   paddle::dialect::SetStopGradient(axis);
 }
+
+void BinCountPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* weights,
+                        Scalar* minlength) {
+  CheckDataType("bincount",
+                "x",
+                x->dtype(),
+                {phi::DataType::INT32, phi::DataType::INT64});
+}
+
+void BinCountPreProcess(Value* x,
+                        paddle::optional<Value>* weights,
+                        Value* minlength) {
+  CheckDataType("bincount",
+                "x",
+                pir::GetValueDtype(*x),
+                {phi::DataType::INT32, phi::DataType::INT64});
+}
+
 void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
   /*
   if in_pir_mode():

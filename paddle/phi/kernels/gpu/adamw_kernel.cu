@@ -139,36 +139,35 @@ __global__ void UpdateBetaPowKernel(MT beta1,
 }
 
 template <typename T, typename Context>
-PADDLE_API void AdamwDenseKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    float lr_ratio,
-    float coeff,
-    bool with_decay,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
+                                 const DenseTensor& param,
+                                 const DenseTensor& grad,
+                                 const DenseTensor& learning_rate,
+                                 const DenseTensor& moment1,
+                                 const DenseTensor& moment2,
+                                 const optional<DenseTensor>& moment2_max,
+                                 const DenseTensor& beta1_pow,
+                                 const DenseTensor& beta2_pow,
+                                 const optional<DenseTensor>& master_param,
+                                 const optional<DenseTensor>& skip_update,
+                                 const Scalar& beta1,
+                                 const Scalar& beta2,
+                                 const Scalar& epsilon,
+                                 float lr_ratio,
+                                 float coeff,
+                                 bool with_decay,
+                                 bool lazy_mode,
+                                 int64_t min_row_size_to_use_multithread,
+                                 bool multi_precision,
+                                 bool use_global_beta_pow,
+                                 bool amsgrad,
+                                 DenseTensor* param_out,
+                                 DenseTensor* moment1_out,
+                                 DenseTensor* moment2_out,
+                                 DenseTensor* moment2_max_out,
+                                 DenseTensor* beta1_pow_out,
+                                 DenseTensor* beta2_pow_out,
+                                 DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPDType coeff_ = static_cast<MPDType>(coeff);
   MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
@@ -189,19 +188,19 @@ PADDLE_API void AdamwDenseKernel(
   // mutable_data
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
-    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
-    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
     if (amsgrad) {
-      phi::Copy(dev_ctx,
-                moment2_max.get(),
-                dev_ctx.GetPlace(),
-                false,
-                moment2_max_out);
+      Copy(dev_ctx,
+           moment2_max.get(),
+           dev_ctx.GetPlace(),
+           false,
+           moment2_max_out);
     }
     if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+      Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     }
     return;
   }

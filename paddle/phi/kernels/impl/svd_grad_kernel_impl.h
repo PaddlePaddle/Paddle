@@ -72,7 +72,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
 
 template <typename T, typename Context>
 DenseTensor Hermitian(const Context& dev_ctx, const DenseTensor& x) {
-  return ::phi::TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, x));
+  return TransposeLast2Dim<T>(dev_ctx, Conj<T, Context>(dev_ctx, x));
 }
 
 template <typename T, typename Context>
@@ -81,9 +81,9 @@ struct SvdGradFunctor {
                   const DenseTensor& u,
                   const DenseTensor& vh,
                   const DenseTensor& s,
-                  const paddle::optional<DenseTensor>& u_grad,
-                  const paddle::optional<DenseTensor>& vh_grad,
-                  const paddle::optional<DenseTensor>& s_grad,
+                  const optional<DenseTensor>& u_grad,
+                  const optional<DenseTensor>& vh_grad,
+                  const optional<DenseTensor>& s_grad,
                   bool full_matrices,
                   DenseTensor* x_grad) {
     const auto& dX = *x_grad;
@@ -194,9 +194,9 @@ struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
                   const DenseTensor& u,
                   const DenseTensor& vh,
                   const DenseTensor& s,
-                  const paddle::optional<DenseTensor>& u_grad,
-                  const paddle::optional<DenseTensor>& vh_grad,
-                  const paddle::optional<DenseTensor>& s_grad,
+                  const optional<DenseTensor>& u_grad,
+                  const optional<DenseTensor>& vh_grad,
+                  const optional<DenseTensor>& s_grad,
                   bool full_matrices,
                   DenseTensor* x_grad) {
     using C = phi::dtype::complex<T>;
@@ -331,9 +331,9 @@ void SvdGradKernel(const Context& dev_ctx,
                    const DenseTensor& u,
                    const DenseTensor& vh,
                    const DenseTensor& s,
-                   const paddle::optional<DenseTensor>& u_grad,
-                   const paddle::optional<DenseTensor>& vh_grad,
-                   const paddle::optional<DenseTensor>& s_grad,
+                   const optional<DenseTensor>& u_grad,
+                   const optional<DenseTensor>& vh_grad,
+                   const optional<DenseTensor>& s_grad,
                    bool full_matrices,
                    DenseTensor* x_grad) {
   SvdGradFunctor<T, Context>()(

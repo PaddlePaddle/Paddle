@@ -34,7 +34,7 @@ void ExpandAs(const Context& dev_ctx,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());
   if (Rank == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
@@ -96,7 +96,7 @@ void ExpandAs(const Context& dev_ctx,
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& y,
+                    const optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
   if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {

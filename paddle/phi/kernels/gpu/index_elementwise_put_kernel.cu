@@ -40,7 +40,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   T* output_ = dev_ctx.template Alloc<T>(output);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
   int64_t numel = 0;
   int64_t num_indices = 0;
@@ -74,7 +74,11 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
 
@@ -145,7 +149,7 @@ void GPUIndexElementwisePutWithTensorKernel(
   T* output_ = dev_ctx.template Alloc<T>(output);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t numel = 0;
@@ -169,8 +173,8 @@ void GPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -179,6 +183,11 @@ void GPUIndexElementwisePutWithTensorKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
 
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);

@@ -26,9 +26,9 @@ template <typename T, typename Context>
 void InterpolateGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_d,
@@ -43,7 +43,7 @@ void InterpolateGradKernel(
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -128,7 +128,7 @@ void InterpolateGradKernel(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 
@@ -158,9 +158,9 @@ template <typename T, typename Context>
 void BilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -192,9 +192,9 @@ template <typename T, typename Context>
 void NearestInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,

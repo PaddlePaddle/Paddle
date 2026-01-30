@@ -85,7 +85,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
   }
 
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (!accumulate) {
       T* x_grad_data = x_grad->data<T>();
 
@@ -150,9 +150,8 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                                out_grad_dims,
                                tmp_value_grad_data);
 
-      std::vector<int64_t> after_dims =
-          common::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims = vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
 
@@ -186,11 +185,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     // Fill value_grad with 0.
     if (value_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(value_grad->dims())),
-          0,
-          value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0, value_grad);
     }
     return;
   }
@@ -205,14 +200,10 @@ void IndexPutGradKernel(const Context& dev_ctx,
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
   if (int_indices_v.empty()) {
     if (x_grad) {
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
-                             0.0f,
-                             value_grad->dtype(),
-                             value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
     }
     return;
   }

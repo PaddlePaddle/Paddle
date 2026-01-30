@@ -238,7 +238,7 @@ void InnerCompute(const Context& dev_ctx,
                   const DenseTensor& velocity_in,
                   const DenseTensor& index_in,
                   const DenseTensor& learning_rate_in,
-                  const paddle::optional<DenseTensor>& master_param_in,
+                  const optional<DenseTensor>& master_param_in,
                   float mu_in,
                   const Scalar& axis_in,
                   bool use_nesterov,
@@ -335,7 +335,7 @@ void InnerCompute(const Context& dev_ctx,
   auto sorted_index_ptr = dev_ctx.template Alloc<IndexT>(&sorted_index);
   auto grad_index_ptr = dev_ctx.template Alloc<IndexT>(&grad_index);
 
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
     sort_value.Resize({num_index});
     auto sort_value_ptr = dev_ctx.template Alloc<IndexT>(&sort_value);
@@ -367,7 +367,7 @@ void InnerCompute(const Context& dev_ctx,
         sizeof(IndexT) * 8,
         dev_ctx.stream())));
 #endif
-  } else if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+  } else if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
     std::vector<std::pair<IndexT, IndexT>> vec_tosort;
     auto index_ptr = index->data<IndexT>();
     for (IndexT i = 0; i < num_index; i++) {
@@ -418,7 +418,7 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
                             const DenseTensor& velocity,
                             const DenseTensor& index_in,
                             const DenseTensor& learning_rate,
-                            const paddle::optional<DenseTensor>& master_param,
+                            const optional<DenseTensor>& master_param,
                             float mu,
                             const Scalar& axis,
                             bool use_nesterov,

@@ -38,7 +38,7 @@ void AddNKernel(const Context &dev_ctx,
     return;
   }
 
-  std::vector<const phi::SelectedRows *> inputs;
+  std::vector<const SelectedRows *> inputs;
   SelectedRows temp_in0;
 
   if (in_place) {

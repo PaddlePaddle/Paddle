@@ -242,7 +242,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
 
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(loss);
 
-  auto s_out_shape = phi::vectorize(softmax_out.dims());
+  auto s_out_shape = vectorize(softmax_out.dims());
   int s_out_ndim = s_out_shape.size();
   TensorDistAttr s_out_dist_attr_src = softmax_out.dist_attr();
   std::vector<int64_t> s_out_dims_mapping_src =
@@ -265,9 +265,9 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
           s_out_dims_mapping_src.size()));
 
   // Step1: Build Einsum Notation
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto label_shape = phi::vectorize(label.dims());
+  auto label_shape = vectorize(label.dims());
 
   // normalize axis
   if (axis < 0) {

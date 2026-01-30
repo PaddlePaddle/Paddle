@@ -29,7 +29,7 @@ class OneDNNMixedPhiKernelInstruction : public OneDNNPhiKernelInstruction {
  public:
   OneDNNMixedPhiKernelInstruction(size_t id,
                                   const phi::Place& place,
-                                  ::pir::Operation* op,
+                                  pir::Operation* op,
                                   const ValueExecutionInfo* value_exec_info);
 
   void Run() override;

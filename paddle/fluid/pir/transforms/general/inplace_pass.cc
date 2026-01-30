@@ -39,7 +39,7 @@
 
 COMMON_DECLARE_string(ir_inplace_kernel_blacklist);
 
-namespace {
+namespace pir {
 
 using TensorType = paddle::dialect::AllocatedDenseTensorType;
 
@@ -57,7 +57,7 @@ std::unordered_set<std::string> RelaxShapeCheckOps = {
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
 // AllocatedSelectedRowsType; (2) Value's is not persistable.
-bool CanBeDeleted(pir::Value value) {
+bool CanBeDeleted(Value value) {
   if (!value.type()) {
     return false;
   }
@@ -65,13 +65,13 @@ bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+  auto persist_attr = value.attribute<BoolAttribute>(kAttrIsPersistable);
   return !(persist_attr && persist_attr.data());
 }
 
-bool IsLastUser(const pir::Value& value,
-                const std::unordered_map<pir::Value, size_t>& use_count_map,
-                const std::unordered_map<pir::Value, pir::Value>& inplace_map) {
+bool IsLastUser(const Value& value,
+                const std::unordered_map<Value, size_t>& use_count_map,
+                const std::unordered_map<Value, Value>& inplace_map) {
   auto current_value = value;
   while (use_count_map.at(current_value) == 0) {
     if (inplace_map.count(current_value) == 0) {
@@ -82,24 +82,24 @@ bool IsLastUser(const pir::Value& value,
   return false;
 }
 
-bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
-                  pir::Value input,
-                  pir::Value output,
+bool CanDoInplace(const std::unordered_set<Value>& eager_dels,
+                  Value input,
+                  Value output,
                   const std::string& op_name) {
-  if (!input.type() || !output.type() || input.isa<pir::BlockArgument>()) {
+  if (!input.type() || !output.type() || input.isa<BlockArgument>()) {
     return false;
   }
 
   if (input.defining_op()->num_regions() > 0) {
     auto cf_op = input.defining_op();
-    std::vector<pir::Value> related_values;
+    std::vector<Value> related_values;
     for (size_t i = 0; i < cf_op->num_operands(); i++) {
       related_values.push_back(cf_op->operand_source(i));
     }
     for (size_t i = 0; i < cf_op->num_regions(); i++) {
       auto& region = cf_op->region(i);
       for (auto& block : region)
-        if (!block.empty() && block.back().isa<pir::YieldOp>()) {
+        if (!block.empty() && block.back().isa<YieldOp>()) {
           auto& yield_op = block.back();
           for (size_t i = 0; i < yield_op.num_operands(); i++) {
             related_values.push_back(yield_op.operand_source(i));
@@ -108,8 +108,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     }
 
     for (auto& value : related_values) {
-      auto persist_attr =
-          value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+      auto persist_attr = value.attribute<BoolAttribute>(kAttrIsPersistable);
       if (persist_attr && persist_attr.data()) {
         VLOG(9) << "     -- input tensor is shared with a persistable tensor, "
                    "can't do inplace";
@@ -208,16 +207,15 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
   return true;
 }
 
-bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
+bool IsNoNeedBuffer(Operation* op, Value value) {
   if (op->dialect()->name() != paddle::dialect::KernelDialect::name()) {
     VLOG(8) << op->name()
             << "is not a kernel_dialect op, no need buffer is false";
     return false;
   }
   auto op_name =
-      op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  pir::OpInfo op_info =
-      pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+      op->attributes().at("op_name").dyn_cast<StrAttribute>().AsString();
+  OpInfo op_info = IrContext::Instance()->GetRegisteredOpInfo(op_name);
   if (op_info) {
     auto info_interface =
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
@@ -238,15 +236,14 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 
 // NOTE(zhangbo): pd_op.feed's output and pd_op.fetch's input can not be eager
 // deleted.
-std::unordered_set<pir::Value> GetSkipDeletionValues(
-    const pir::Block& block,
-    const std::set<std::string>& no_need_buffer_values) {
-  std::unordered_set<pir::Value> skip_dels;
+std::unordered_set<Value> GetSkipDeletionValues(
+    const Block& block, const std::set<std::string>& no_need_buffer_values) {
+  std::unordered_set<Value> skip_dels;
   for (auto& op : block) {
     if (op.name() == "builtin.shadow_output" &&
         no_need_buffer_values.count(op.attributes()
                                         .at("output_name")
-                                        .dyn_cast<pir::StrAttribute>()
+                                        .dyn_cast<StrAttribute>()
                                         .AsString()) == 0) {
       skip_dels.insert(op.operand_source(0));
       continue;
@@ -260,7 +257,7 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(
         common::errors::InvalidArgument(
             "kernel_dialect op should own an 'op_name' attribute."));
     auto upper_op_name =
-        op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+        op.attributes().at("op_name").dyn_cast<StrAttribute>().AsString();
 
     if (upper_op_name == "pd_op.feed" || upper_op_name == "pd_op.data" ||
         upper_op_name == "pd_op.shadow_feed") {
@@ -280,9 +277,9 @@ std::unordered_set<pir::Value> GetSkipDeletionValues(
 // is supported. Therefore, this function only returns the values in the
 // kernel_dialect operator that can be eager deleted.
 void GetEagerDelValueOfOp(
-    const pir::Block& block,
-    const std::unordered_set<pir::Value>& skip_dels,
-    std::unordered_map<pir::Value, pir::Operation*>* del_value_2_op) {
+    const Block& block,
+    const std::unordered_set<Value>& skip_dels,
+    std::unordered_map<Value, Operation*>* del_value_2_op) {
   for (auto& op : block) {
     std::string upper_op_name = op.name();
     if (op.dialect()->name() == paddle::dialect::KernelDialect::name()) {
@@ -291,10 +288,8 @@ void GetEagerDelValueOfOp(
           0UL,
           common::errors::InvalidArgument(
               "kernel_dialect op should own an 'op_name' attribute."));
-      upper_op_name = op.attributes()
-                          .at("op_name")
-                          .dyn_cast<pir::StrAttribute>()
-                          .AsString();
+      upper_op_name =
+          op.attributes().at("op_name").dyn_cast<StrAttribute>().AsString();
     }
 
     if (upper_op_name == "builtin.shadow_output") {
@@ -317,7 +312,7 @@ void GetEagerDelValueOfOp(
     }
 
     for (auto& result : op.results()) {
-      pir::Value output = result;
+      Value output = result;
       if (output && CanBeDeleted(output)) {
         (*del_value_2_op)[output] = &op;
       }
@@ -334,40 +329,38 @@ void GetEagerDelValueOfOp(
   }
 }
 
-std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
-GetEagerDeletionValues(const pir::Block& block,
+std::unordered_map<Operation*, std::unordered_set<Value>>
+GetEagerDeletionValues(const Block& block,
                        const std::set<std::string>& no_need_buffer_values) {
-  std::unordered_set<pir::Value> skip_dels =
+  std::unordered_set<Value> skip_dels =
       GetSkipDeletionValues(block, no_need_buffer_values);
-  std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
+  std::unordered_map<Value, Operation*> del_value_2_op;
   GetEagerDelValueOfOp(block, skip_dels, &del_value_2_op);
-  std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
-      eager_dels;
+  std::unordered_map<Operation*, std::unordered_set<Value>> eager_dels;
   for (auto& kv : del_value_2_op) {
     eager_dels[kv.second].insert(kv.first);
   }
   return eager_dels;
 }
 
-std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
-    const pir::Block& block,
-    const std::set<std::string>& no_need_buffer_values) {
+std::unordered_map<Operation*, std::string> GetInplaceOps(
+    const Block& block, const std::set<std::string>& no_need_buffer_values) {
   const auto eager_dels = GetEagerDeletionValues(block, no_need_buffer_values);
 
-  auto is_no_need_buffer = [&no_need_buffer_values](pir::Operation* op,
-                                                    pir::Value value) {
-    if (auto shadow_output_op = op->dyn_cast<pir::ShadowOutputOp>()) {
+  auto is_no_need_buffer = [&no_need_buffer_values](Operation* op,
+                                                    Value value) {
+    if (auto shadow_output_op = op->dyn_cast<ShadowOutputOp>()) {
       if (no_need_buffer_values.count(shadow_output_op.attributes()
                                           .at("output_name")
-                                          .dyn_cast<pir::StrAttribute>()
+                                          .dyn_cast<StrAttribute>()
                                           .AsString())) {
         return true;
       }
     }
     return IsNoNeedBuffer(op, value);
   };
-  auto use_count_map = [&is_no_need_buffer](const pir::Block& block) {
-    std::unordered_map<pir::Value, size_t> use_count_map;
+  auto use_count_map = [&is_no_need_buffer](const Block& block) {
+    std::unordered_map<Value, size_t> use_count_map;
     for (auto& op : block) {
       for (auto value : op.results()) {
         size_t use_count = 0;
@@ -379,11 +372,11 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
     return use_count_map;
   }(block);
-  std::unordered_map<pir::Value, pir::Value> inplace_map;
+  std::unordered_map<Value, Value> inplace_map;
 
-  std::unordered_map<pir::Operation*, std::string> inplace_ops;
+  std::unordered_map<Operation*, std::string> inplace_ops;
 
-  std::unordered_set<pir::Value> visited_values;
+  std::unordered_set<Value> visited_values;
 
   for (auto& op : block) {
     for (size_t i = 0; i < op.num_operands(); ++i) {
@@ -403,7 +396,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
     auto upper_op_attrs = op.attributes();
     auto upper_op_name =
-        upper_op_attrs.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+        upper_op_attrs.at("op_name").dyn_cast<StrAttribute>().AsString();
     VLOG(6) << "analyse op: " << upper_op_name;
 
     // NOTE(zhangbo): add_grad cpu kernel can't do inplace, for the reason shown
@@ -422,10 +415,9 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     }
 
     if (upper_op_attrs.count("is_inplace") != 0 &&
-        upper_op_attrs.at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
+        upper_op_attrs.at("is_inplace").dyn_cast<BoolAttribute>().data()) {
       VLOG(6) << upper_op_name << " is already an inplace op.";
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(upper_op_name);
       auto op_yaml_interface =
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
       paddle::dialect::OpYamlInfoParser op_info_parser(
@@ -441,8 +433,8 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       continue;
     }
 
-    pir::OpInfo upper_inplace_op_info =
-        pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
+    OpInfo upper_inplace_op_info =
+        IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
     std::regex reg(",");
     std::unordered_set<std::string> elems{
@@ -552,18 +544,17 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
   }
   return inplace_ops;
 }
-}  // namespace
 
-class InplacePass : public pir::Pass {
+class InplacePass : public Pass {
  public:
-  InplacePass() : pir::Pass("inplace_pass", 3) {}
+  InplacePass() : Pass("inplace_pass", 3) {}
 
   explicit InplacePass(const std::set<std::string>& no_need_buffer_values)
-      : pir::Pass("inplace_pass", 3) {
+      : Pass("inplace_pass", 3) {
     no_need_buffer_values_ = no_need_buffer_values;
   }
 
-  void Run(pir::Operation* op) override {
+  void Run(Operation* op) override {
     int64_t num_rewrites_{0};
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
@@ -574,9 +565,9 @@ class InplacePass : public pir::Pass {
           VLOG(6) << "Do inplace for: "
                   << kv.first->attributes()
                          .at("op_name")
-                         .dyn_cast<pir::StrAttribute>()
+                         .dyn_cast<StrAttribute>()
                          .AsString();
-          pir::Block::Iterator insert_pos =
+          Block::Iterator insert_pos =
               std::find(block.begin(), block.end(), *kv.first);
           PADDLE_ENFORCE_NE(
               insert_pos,
@@ -585,11 +576,9 @@ class InplacePass : public pir::Pass {
                                               kv.first->name()));
 
           kv.first->set_attribute(
-              "op_name",
-              pir::StrAttribute::get(pir::IrContext::Instance(), kv.second));
+              "op_name", StrAttribute::get(IrContext::Instance(), kv.second));
           kv.first->set_attribute(
-              "is_inplace",
-              pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+              "is_inplace", BoolAttribute::get(IrContext::Instance(), true));
           num_rewrites_++;
         }
       }
@@ -601,13 +590,11 @@ class InplacePass : public pir::Pass {
   std::set<std::string> no_need_buffer_values_;
 };
 
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateInplacePass(
+std::unique_ptr<Pass> CreateInplacePass(
     const std::set<std::string>& no_need_buffer_values) {
   return std::make_unique<InplacePass>(no_need_buffer_values);
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(inplace_pass, InplacePass);
+REGISTER_IR_PASS(inplace_pass, pir::InplacePass);

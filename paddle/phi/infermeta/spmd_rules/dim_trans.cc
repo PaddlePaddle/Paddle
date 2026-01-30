@@ -428,7 +428,7 @@ void GetUsedInputDim(const std::shared_ptr<DimTrans> dim_trans,
 std::tuple<std::vector<std::vector<int64_t>>, std::vector<std::vector<int64_t>>>
 InferFromDimTrans(const DistMetaTensor& input_spec,
                   const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
-  auto input_shape = phi::vectorize(input_spec.dims());
+  auto input_shape = vectorize(input_spec.dims());
   // deal with reshape xshape in dynamic
   if (input_shape[0] == 0 &&
       input_shape.size() != input_spec.dist_attr().dims_mapping().size()) {
@@ -448,7 +448,7 @@ std::tuple<std::vector<std::vector<int64_t>>, std::vector<std::vector<int64_t>>>
 InferFromDimTransCoShard(
     const DistMetaTensor& input_spec,
     const std::vector<std::shared_ptr<DimTrans>>& dim_trans) {
-  auto input_shape = phi::vectorize(input_spec.dims());
+  auto input_shape = vectorize(input_spec.dims());
   // deal with reshape xshape in dynamic
   if (input_shape[0] == 0 &&
       input_shape.size() !=

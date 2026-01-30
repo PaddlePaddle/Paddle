@@ -52,8 +52,7 @@ void GPUCollectFpnProposalsOpKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& multi_level_rois,
     const std::vector<const DenseTensor*>& multi_level_scores,
-    const paddle::optional<std::vector<const DenseTensor*>>&
-        multi_level_rois_num,
+    const optional<std::vector<const DenseTensor*>>& multi_level_rois_num,
     int post_nms_topn,
     DenseTensor* fpn_rois_out,
     DenseTensor* rois_num_out) {
@@ -95,7 +94,7 @@ void GPUCollectFpnProposalsOpKernel(
     auto score_in = score_ins[i];
     if (multi_rois_num.size() > 0) {
       DenseTensor temp;
-      phi::Copy(dev_ctx, *multi_rois_num[i], phi::CPUPlace(), true, &temp);
+      Copy(dev_ctx, *multi_rois_num[i], CPUPlace(), true, &temp);
       const int* length_in = temp.data<int>();
       lod_size = multi_rois_num[i]->numel();
       for (size_t n = 0; n < lod_size; ++n) {
@@ -131,11 +130,11 @@ void GPUCollectFpnProposalsOpKernel(
 
   // copy batch id list to GPU
   DenseTensor roi_batch_id_list_gpu;
-  phi::Copy(dev_ctx,
-            roi_batch_id_list,
-            dev_ctx.GetPlace(),
-            false,
-            &roi_batch_id_list_gpu);
+  Copy(dev_ctx,
+       roi_batch_id_list,
+       dev_ctx.GetPlace(),
+       false,
+       &roi_batch_id_list_gpu);
 
   DenseTensor index_in_t;
   index_in_t.Resize({total_roi_num});
@@ -240,7 +239,7 @@ void GPUCollectFpnProposalsOpKernel(
   GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
       real_post_num, out_id_data, length_lod_data);
   std::vector<int> length_lod_cpu(lod_size);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           length_lod_cpu.data(),
                           place,
                           length_lod_data,

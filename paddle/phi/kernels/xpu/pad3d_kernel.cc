@@ -53,8 +53,7 @@ void Pad3dKernel(const Context& dev_ctx,
 
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    Full<T, Context>(dev_ctx, out->dims(), pad_value, out);
     return;
   }
 

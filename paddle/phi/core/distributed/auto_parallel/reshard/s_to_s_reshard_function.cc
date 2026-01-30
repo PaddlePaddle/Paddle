@@ -47,7 +47,7 @@ bool SToSReshardFunction::IsSuitable(const DistTensor& in,
   return true;
 }
 
-void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void SToSReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
