@@ -214,7 +214,7 @@ def enabled() -> bool:
         bool: Whether the program is running in dynamic graph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
 
@@ -246,7 +246,7 @@ def enable_dygraph(place: PlaceLike | None = None) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> print(paddle.in_dynamic_mode())
@@ -284,7 +284,7 @@ def disable_dygraph() -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> print(paddle.in_dynamic_mode())
@@ -340,7 +340,7 @@ def no_grad(func=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle.base as base
@@ -354,12 +354,12 @@ def no_grad(func=None):
             ...     with base.dygraph.no_grad():
             ...         # l1.weight.stop_gradient is False
             ...         tmp = l1.weight * 2  # tmp.stop_gradient is True
-            ...     x = base.dygraph.to_variable(data)
+            ...     x = paddle.to_tensor(data)
             ...     y = l0(x) + tmp
             ...     o = l1(y)
             ...     o.backward()
-            ...     print(tmp.gradient() is None)
-            ...     print(l0.weight.gradient() is None)
+            ...     print(tmp.grad is None)
+            ...     print(l0.weight.grad is None)
             True
             False
 
@@ -367,12 +367,11 @@ def no_grad(func=None):
             >>> def test_layer():
             ...     with base.dygraph.guard():
             ...         inp = np.ones([3, 1024], dtype='float32')
-            ...         t = base.dygraph.base.to_variable(inp)
+            ...         t = paddle.to_tensor(inp)
             ...         linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
             ...         linear2 = paddle.nn.Linear(4, 4)
             ...         ret = linear1(t)
             ...         dy_ret = linear2(ret)
-            ...
             >>> test_layer()
 
     """
@@ -483,10 +482,10 @@ class set_grad_enabled(_DecoratorContextManager):
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([1.], stop_gradient=False)
+            >>> x = paddle.to_tensor([1.0], stop_gradient=False)
             >>> is_train = False
             >>> with paddle.set_grad_enabled(is_train):
             ...     y = x * 2
@@ -530,7 +529,7 @@ class no_grad_(_DecoratorContextManager):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -547,9 +546,9 @@ class no_grad_(_DecoratorContextManager):
             >>> y = l0(x) + tmp
             >>> o = l1(y)
             >>> o.backward()
-            >>> print(tmp.gradient() is None)
+            >>> print(tmp.grad is None)
             True
-            >>> print(l0.weight.gradient() is None)
+            >>> print(l0.weight.grad is None)
             False
 
             >>> # use as decorator
@@ -562,7 +561,6 @@ class no_grad_(_DecoratorContextManager):
             ...     linear2 = paddle.nn.Linear(4, 4)
             ...     ret = linear1(t)
             ...     dy_ret = linear2(ret)
-            ...
             >>> test_layer()
     """
 
@@ -588,30 +586,28 @@ class enable_grad(_DecoratorContextManager):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # use as generator
 
-            >>> x = paddle.to_tensor([1.], stop_gradient=False)
+            >>> x = paddle.to_tensor([1.0], stop_gradient=False)
             >>> with paddle.no_grad():
             ...     with paddle.enable_grad():
             ...         y = x * 2
-            >>> assert(y.stop_gradient == False)
+            >>> assert y.stop_gradient == False
             >>> y.backward()
-            >>> assert(x.grad is not None)
+            >>> assert x.grad is not None
 
             >>> # use as decorator
 
             >>> @paddle.enable_grad()
             >>> def double(x):
             ...     return x * 2
-            ...
             >>> with paddle.no_grad():
             ...     z = double(x)
-            ...
-            >>> assert(z.stop_gradient == False)
+            >>> assert z.stop_gradient == False
     """
 
     def __enter__(self) -> None:
@@ -640,19 +636,18 @@ def guard(place: PlaceLike | None = None) -> Generator[None, None, None]:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle.base as base
 
             >>> with base.dygraph.guard():
             ...     inp = np.ones([3, 1024], dtype='float32')
-            ...     t = base.dygraph.base.to_variable(inp)
+            ...     t = paddle.to_tensor(inp)
             ...     linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
             ...     linear2 = paddle.nn.Linear(4, 4)
             ...     ret = linear1(t)
             ...     dy_ret = linear2(ret)
-            ...
     """
     train = framework.Program()
     startup = framework.Program()
@@ -736,7 +731,7 @@ def grad(
         `outputs` with respect to the i-th `inputs`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             >>> import paddle
@@ -751,7 +746,7 @@ def grad(
             ...         outputs=[y],
             ...         inputs=[x],
             ...         create_graph=create_graph,
-            ...         retain_graph=True
+            ...         retain_graph=True,
             ...     )[0]
             ...
             ...     z = y + dx
@@ -766,14 +761,15 @@ def grad(
             ...     # x.gradient() = 2 * x + 2 = 4.0
             ...
             ...     z.backward()
-            ...     return x.gradient()
-            ...
+            ...     return x.grad
             >>> print(test_dygraph_grad(create_graph=False))
-            [2.]
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+             [2.])
             >>> print(test_dygraph_grad(create_graph=True))
-            [4.]
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+             [4.])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-2
 
             >>> import paddle
@@ -798,27 +794,27 @@ def grad(
             ...     dx = paddle.grad(
             ...         outputs=[y1, y2],
             ...         inputs=[x],
-            ...         grad_outputs=grad_outputs)[0]
+            ...         grad_outputs=grad_outputs,
+            ...     )[0]
             ...
             ...     return dx.numpy()
-            ...
             >>> grad_value = paddle.to_tensor(4.0)
             >>> # dy1 = [1], dy2 = [1]
             >>> print(test_dygraph_grad(None))
-            7.
+            7.0
 
             >>> # dy1 = [1], dy2 = [4]
             >>> print(test_dygraph_grad([None, grad_value]))
-            16.
+            16.0
 
             >>> # dy1 = [4], dy2 = [1]
             >>> print(test_dygraph_grad([grad_value, None]))
-            19.
+            19.0
 
             >>> # dy1 = [3], dy2 = [4]
             >>> grad_y1 = paddle.to_tensor(3.0)
             >>> print(test_dygraph_grad([grad_y1, grad_value]))
-            24.
+            24.0
     '''
     if in_to_static_mode():
         # In dy2static context, we call static interface `gradients`

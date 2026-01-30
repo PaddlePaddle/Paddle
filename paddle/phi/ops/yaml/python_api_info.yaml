@@ -269,6 +269,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : inverse
+  name : [paddle.inverse, paddle.Tensor.inverse, paddle.linalg.inv]
+  args_alias:
+    use_default_mapping : True
+
 - op : log
   name : [paddle.log, paddle.Tensor.log]
   args_alias :
