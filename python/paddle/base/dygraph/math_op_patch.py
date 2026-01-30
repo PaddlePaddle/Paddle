@@ -153,7 +153,7 @@ def monkey_patch_math_tensor():
             Tensor: a new Tensor with target dtype
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -361,7 +361,7 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with `fill_value`.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
@@ -458,7 +458,7 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with ones.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.zeros([2, 2])
@@ -542,7 +542,7 @@ def monkey_patch_math_tensor():
         Setting requires_grad=True is equivalent to setting stop_gradient=False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.randn([2, 3])
@@ -587,10 +587,10 @@ def monkey_patch_math_tensor():
         Returns the number of bytes allocated on the machine for a single element of the Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
-                >>> x = paddle.randn((2,3),dtype=paddle.float64)
+                >>> x = paddle.randn((2, 3), dtype=paddle.float64)
                 >>> x.itemsize
                 8
         """

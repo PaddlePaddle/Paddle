@@ -109,7 +109,7 @@ def monkey_patch_tensor():
                                  be converted into framework.Variable. Default False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -196,7 +196,7 @@ def monkey_patch_tensor():
             value (Variable|np.ndarray): the new value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -315,10 +315,10 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> x = paddle.to_tensor(5.0, stop_gradient=False)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
@@ -333,7 +333,7 @@ def monkey_patch_tensor():
                 >>> print("{}".format(x.grad))
                 0.0
 
-                >>> grad_tensor=paddle.to_tensor(2.)
+                >>> grad_tensor = paddle.to_tensor(2.0)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
@@ -398,11 +398,11 @@ def monkey_patch_tensor():
             ndarray: Numpy value of the gradient of current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> x = paddle.to_tensor(5.0, stop_gradient=False)
                 >>> y = paddle.pow(x, 4.0)
                 >>> y.backward()
                 >>> print("grad of x: {}".format(x.gradient()))
@@ -426,12 +426,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
 
                 >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
-                >>> f = lambda x: 3*x+2
+                >>> f = lambda x: 3 * x + 2
                 >>> x.apply_(f)
                 >>> print(x)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -450,7 +451,6 @@ def monkey_patch_tensor():
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> x.apply_(f)
-
 
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
@@ -474,12 +474,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
 
                 >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
-                >>> f = lambda x: 3*x+2
+                >>> f = lambda x: 3 * x + 2
                 >>> y = x.apply(f)
                 >>> print(y)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -498,7 +499,6 @@ def monkey_patch_tensor():
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> y = x.apply(f)
-
 
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
@@ -536,22 +536,20 @@ def monkey_patch_tensor():
             TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> # hook function return None
                 >>> def print_hook_fn(grad):
                 ...     print(grad)
-                ...
                 >>> # hook function return Tensor
                 >>> def double_hook_fn(grad):
                 ...     grad = grad * 2
                 ...     return grad
-                ...
-                >>> x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
-                >>> y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
-                >>> z = paddle.to_tensor([1., 2., 3., 4.])
+                >>> x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0], stop_gradient=False)
+                >>> y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0], stop_gradient=False)
+                >>> z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
 
                 >>> # one Tensor can register multiple hooks
                 >>> h = x.register_hook(print_hook_fn)
@@ -757,8 +755,9 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
-                >>> x = paddle.to_tensor([1,2,3])
+                >>> x = paddle.to_tensor([1, 2, 3])
                 >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
@@ -775,7 +774,7 @@ def monkey_patch_tensor():
                 >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> y = paddle.to_tensor([4,5,6])
+                >>> y = paddle.to_tensor([4, 5, 6])
                 >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
@@ -896,7 +895,7 @@ def monkey_patch_tensor():
             ValueError: If the Tensor has more than one element, there must be coordinates.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -918,7 +917,7 @@ def monkey_patch_tensor():
                 >>> print(type(x.item()))
                 <class 'bool'>
 
-                >>> x = paddle.to_tensor(1+1j)
+                >>> x = paddle.to_tensor(1 + 1j)
                 >>> print(x.item())
                 (1+1j)
                 >>> print(type(x.item()))
@@ -950,7 +949,7 @@ def monkey_patch_tensor():
         **Notes: This is a read-only property**
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> var = paddle.ones(shape=[4, 2, 3], dtype="float32")
@@ -971,7 +970,7 @@ def monkey_patch_tensor():
         Returns(str): A readable string.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -996,11 +995,11 @@ def monkey_patch_tensor():
         Deep copy Tensor, it will always performs Tensor copy.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import copy
-                >>> x = paddle.to_tensor(2.)
+                >>> x = paddle.to_tensor(2.0)
                 >>> y = copy.deepcopy(x)
                 >>> print(x)
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1053,7 +1052,7 @@ def monkey_patch_tensor():
             ndarray: dtype is same as current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1222,13 +1221,15 @@ def monkey_patch_tensor():
             Tensor: A DenseTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                 >>> values = [1, 2, 3, 4, 5]
                 >>> dense_shape = [3, 4]
-                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(
+                ...     paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape
+                ... )
                 >>> print(sparse_x.values())
                 Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1., 2., 3., 4., 5.])
@@ -1247,13 +1248,15 @@ def monkey_patch_tensor():
             Tensor: A DenseTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                 >>> values = [1, 2, 3, 4, 5]
                 >>> dense_shape = [3, 4]
-                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(
+                ...     paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape
+                ... )
                 >>> dense_x = sparse_x.to_dense()
                 >>> print(dense_x)
                 Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1278,7 +1281,7 @@ def monkey_patch_tensor():
             Tensor: A SparseCooTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
@@ -1308,7 +1311,7 @@ def monkey_patch_tensor():
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3])
@@ -1336,7 +1339,7 @@ def monkey_patch_tensor():
             Tensor: return the SparseCooTensor after coalesced.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1401,7 +1404,7 @@ def monkey_patch_tensor():
                  - '{device_type}:{device_id}' for custom device tensors
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1592,7 +1595,7 @@ def monkey_patch_tensor():
                  returns the CUDA device id (e.g., 0 for `gpu:0`).
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())

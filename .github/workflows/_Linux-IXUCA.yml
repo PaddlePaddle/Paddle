@@ -43,12 +43,18 @@ jobs:
           set -euo pipefail
 
           SKIP_FLAG_FILE=/data/geyuqiang/skip-ci.txt
+          PR_NUMBER="${{ github.event.pull_request.number }}"
           if [ -f "${SKIP_FLAG_FILE}" ]; then
             flag_value=$(head -n 1 "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
             if [ "${flag_value}" = "true" ]; then
-              echo "Found skip flag file ${SKIP_FLAG_FILE} with value true, skipping IXUCA CI"
-              echo "can-skip=true" >> "$GITHUB_OUTPUT"
-              exit 0
+              second_line=$(sed -n '2p' "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+              if [ -n "${second_line}" ] && [ "${second_line}" = "${PR_NUMBER}" ]; then
+                echo "Skip flag is true but second line matches PR ${PR_NUMBER}; not skipping IXUCA CI"
+              else
+                echo "Found skip flag file ${SKIP_FLAG_FILE} with value true and PR number mismatch/empty; skipping IXUCA CI"
+                echo "can-skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
             fi
           fi
 
@@ -257,11 +263,13 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
           source ~/.bashrc
+          source /root/miniconda3/etc/profile.d/conda.sh
+          conda activate base
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          unset PYTHONPATH
           #wget -q https://sys-p0.bj.bcebos.com/libstdc%2B%2B6_13.1.0-8ubuntu1_20.04.2_amd64.deb
           #dpkg -i *deb
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
-          PATH=/usr/local/bin:${PATH}
-          echo "export PATH=$PATH" >> ~/.bashrc
           echo "::group::Install Paddle"
           pip install paddlepaddle-*.whl && rm -rf paddlepaddle-*.whl
           python -c "import paddle; print(paddle.__version__)"
@@ -274,6 +282,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
+          source /root/miniconda3/etc/profile.d/conda.sh
+          conda activate
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          unset PYTHONPATH
           set -x
           set -euo pipefail
 
