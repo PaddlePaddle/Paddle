@@ -249,6 +249,12 @@ class PADDLE_API TensorBase {
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
+  bool is_sparse() const {
+    return tensor_.is_sparse_coo_tensor() || tensor_.is_sparse_csr_tensor();
+  }
+
+  bool is_sparse_csr() const { return tensor_.is_sparse_csr_tensor(); }
+
   at::TensorBase reshape(at::IntArrayRef shape) const {
     return TensorBase(
         paddle::experimental::reshape(tensor_, shape._PD_ToPaddleIntArray()));

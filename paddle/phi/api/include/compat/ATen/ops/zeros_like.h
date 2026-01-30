@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include <ATen/Utils.h>
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <optional>
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/sparse_api.h"
 
 namespace at {
 
@@ -31,10 +33,26 @@ inline at::Tensor zeros_like(
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
-  return paddle::experimental::zeros_like(
-      self._PD_GetInner(),
-      compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+  auto layout = options.layout();
+  if (layout == c10::kStrided && (self.is_sparse() || self.is_sparse_csr())) {
+    layout = self.layout();
+  }
+
+  auto dtype = options.dtype();
+  if (dtype == c10::ScalarType::Undefined) {
+    dtype = self.scalar_type();
+  }
+
+  paddle::Tensor base = self._PD_GetInner();
+  if (self.is_sparse() || self.is_sparse_csr()) {
+    base = paddle::experimental::sparse::to_dense(base);
+  }
+
+  auto dense = paddle::experimental::zeros_like(
+      base,
+      compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       options._PD_GetPlace());
+  return detail::_PD_ConvertToSparseIfNeeded(dense, layout);
 }
 
 inline at::Tensor zeros_like(const at::Tensor& self,
@@ -43,18 +61,28 @@ inline at::Tensor zeros_like(const at::Tensor& self,
                              ::std::optional<at::Device> device,
                              ::std::optional<bool> pin_memory,
                              ::std::optional<at::MemoryFormat> memory_format) {
-  PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
   PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
            "`pin_memory` other than False is not supported now.");
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
-  return paddle::experimental::zeros_like(
-      self._PD_GetInner(),
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
-      device.value_or(at::kCPU)._PD_GetInner());
+  auto resolved_layout = layout.value_or(
+      (self.is_sparse() || self.is_sparse_csr()) ? self.layout()
+                                                 : c10::kStrided);
+  auto resolved_dtype = dtype.value_or(self.scalar_type());
+  auto resolved_device = device.value_or(self.device());
+
+  paddle::Tensor base = self._PD_GetInner();
+  if (self.is_sparse() || self.is_sparse_csr()) {
+    base = paddle::experimental::sparse::to_dense(base);
+  }
+
+  auto dense = paddle::experimental::zeros_like(
+      base,
+      compat::_PD_AtenScalarTypeToPhiDataType(resolved_dtype),
+      resolved_device._PD_GetInner());
+  return detail::_PD_ConvertToSparseIfNeeded(dense, resolved_layout);
 }
 
 }  // namespace at
