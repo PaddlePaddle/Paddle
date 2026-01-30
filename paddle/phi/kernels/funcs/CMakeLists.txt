@@ -24,4 +24,10 @@ if(WITH_ROCM)
   list(REMOVE_ITEM func_cu_srcs "weight_only_gemv.cu")
 endif()
 
+# Remove fast_ln_v2 kernels on HIP and Windows platforms
+if(WITH_ROCM OR WIN32)
+  list(REMOVE_ITEM func_cu_srcs "fast_ln_v2_bwd_kernel.cu")
+  list(REMOVE_ITEM func_cu_srcs "fast_ln_v2_fwd_kernel.cu")
+endif()
+
 collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})
