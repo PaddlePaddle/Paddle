@@ -2370,7 +2370,7 @@ PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
 /**
  * Legacy gemm related FLAG
  * Name: FLAGS_use_legacy_gemm
- * Since Version: 3.3.0
+ * Since Version: 3.2.2
  * Value Range: bool, default=false
  * Example:
  * Note: Whether use legacy gemm kernel.
@@ -2378,6 +2378,18 @@ PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
 PHI_DEFINE_EXPORTED_bool(use_legacy_gemm,
                          false,
                          "Whether use legacy gemm dispatch logics.");
+
+/**
+ * Legacy gemm related FLAG
+ * Name: FLAGS_use_legacy_linear
+ * Since Version: 3.3.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use legacy linear kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_legacy_linear,
+                         false,
+                         "Whether use legacy linear dispatch logics.");
 
 /**
  * Allocator Compact related FLAG

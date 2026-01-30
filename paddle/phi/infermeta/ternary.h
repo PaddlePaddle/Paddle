@@ -274,6 +274,13 @@ PADDLE_API void LerpInferMeta(const MetaTensor& x,
                               const MetaTensor& weight,
                               MetaTensor* out);
 
+PADDLE_API void LinearV2InferMeta(const MetaTensor& input,
+                                  const MetaTensor& weight,
+                                  const MetaTensor& bias,
+                                  const bool transpose_weight,
+                                  MetaTensor* out,
+                                  MetaConfig config = MetaConfig());
+
 PADDLE_API void LinspaceRawInferMeta(const MetaTensor& start,
                                      const MetaTensor& stop,
                                      const MetaTensor& number,

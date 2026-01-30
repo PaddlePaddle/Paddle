@@ -1439,6 +1439,27 @@ void matmul_grad(const Tensor& x,
 }
 
 template <typename T>
+void linear_v2_grad(const Tensor& input,
+                    const Tensor& weight,
+                    const Tensor& bias,
+                    const Tensor& out_grad,
+                    const bool transpose_weight,
+                    Tensor* input_grad,
+                    Tensor* weight_grad,
+                    Tensor* bias_grad) {
+  matmul_grad<T>(input,
+                 weight,
+                 out_grad,
+                 false,
+                 transpose_weight,
+                 input_grad,
+                 weight_grad);
+  if (bias_grad) {
+    add_grad<T>(bias, bias, out_grad, -1, nullptr, bias_grad);
+  }
+}
+
+template <typename T>
 void maximum_grad(const Tensor& x,
                   const Tensor& y,
                   const Tensor& out_grad,
