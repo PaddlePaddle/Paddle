@@ -202,12 +202,12 @@ __global__ void KeLstmBackward(Op op,
   if (is_batch) {
     if (value.prev_state_value) {
       if (grad.check_ig_grad)
-        phi::CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
+        CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
       if (grad.check_fg_grad)
-        phi::CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
+        CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
     }
     if (grad.check_og_grad)
-      phi::CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
+      CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
   } else {
     if (value.prev_state_value) {
       if (grad.check_ig_grad) grad.check_ig_grad[frame_idx] += r_checkIGrad;

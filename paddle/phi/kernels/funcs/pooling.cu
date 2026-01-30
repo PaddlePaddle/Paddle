@@ -486,7 +486,7 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
 
     if (maxIndex != -1) {
       // atomic add
-      phi::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+      CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
     }
   }
 }
@@ -1480,7 +1480,7 @@ __global__ void KernelMaxPool3DGrad(const IndexT nthreads,
     }
     if (maxIdx != -1) {
       // atomic add
-      phi::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
+      CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
     }
   }
 }
@@ -2552,7 +2552,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
             w_offset;
         IndexT max_index = mask[output_index];
         if (max_index != -1) {
-          phi::CudaAtomicAdd(
+          CudaAtomicAdd(
               &input_grad[nc_offset * input_depth * input_height * input_width +
                           max_index],
               output_grad[output_index]);
@@ -2928,7 +2928,7 @@ __global__ void FractionalKernelMaxPool2dGrad(
 
       IndexT max_index = mask_data[output_index];
       if (max_index != -1) {
-        phi::CudaAtomicAdd(
+        CudaAtomicAdd(
             &input_grad[nc_offset * input_height * input_width + max_index],
             output_grad[output_index]);
       }
@@ -3306,7 +3306,7 @@ __global__ void FractionalKernelMaxPool3dGrad(
             w_offset;
         IndexT max_index = mask[output_index];
         if (max_index != -1) {
-          phi::CudaAtomicAdd(
+          CudaAtomicAdd(
               &input_grad[nc_offset * input_depth * input_height * input_width +
                           max_index],
               output_grad[output_index]);

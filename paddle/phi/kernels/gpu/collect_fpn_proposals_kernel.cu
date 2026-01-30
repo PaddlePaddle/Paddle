@@ -42,9 +42,7 @@ static inline int NumBlocks(const int N) {
 static __global__ void GetLengthLoD(const int nthreads,
                                     const int* batch_ids,
                                     int* length_lod) {
-  CUDA_KERNEL_LOOP(i, nthreads) {
-    phi::CudaAtomicAdd(length_lod + batch_ids[i], 1);
-  }
+  CUDA_KERNEL_LOOP(i, nthreads) { CudaAtomicAdd(length_lod + batch_ids[i], 1); }
 }
 
 template <typename T, typename Context>

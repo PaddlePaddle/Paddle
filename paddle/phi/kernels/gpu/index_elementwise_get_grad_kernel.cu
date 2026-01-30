@@ -57,8 +57,8 @@ __global__ void IndexEleGetGradAccKernel(
         offset += index * strides[i];
       }
 
-      phi::CudaAtomicAdd(reinterpret_cast<T*>(out_data + offset),
-                         *reinterpret_cast<const T*>(in_data));
+      CudaAtomicAdd(reinterpret_cast<T*>(out_data + offset),
+                    *reinterpret_cast<const T*>(in_data));
       idx += nt;
     }
   }
