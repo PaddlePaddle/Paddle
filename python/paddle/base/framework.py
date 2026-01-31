@@ -1056,8 +1056,8 @@ def cuda_places(
         list of paddle.CUDAPlace: Created GPU place list.
 
     Examples:
-        .. code-block:: pycon
 
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -1134,8 +1134,8 @@ def cpu_places(device_count: int | None = None) -> list[core.CPUPlace]:
         list of paddle.CPUPlace: Created list of CPU places.
 
     Examples:
-        .. code-block:: pycon
 
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -1262,40 +1262,40 @@ def name_scope(prefix: str | None = None) -> Generator[None, None, None]:
         prefix(str, optional): prefix. Default is none.
 
     Examples:
+
         .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
-            >>> with paddle.pir_utils.OldIrGuard():
-            ...     with paddle.static.name_scope("s1"):
-            ...         a = paddle.static.data(name="data", shape=[None, 1], dtype="int32")
-            ...         b = a + paddle.to_tensor(1)
-            ...         with paddle.static.name_scope("s2"):
-            ...             c = b * paddle.to_tensor(1)
-            ...         with paddle.static.name_scope("s3"):
-            ...             d = c / paddle.to_tensor(1)
-            ...     with paddle.static.name_scope("s1"):
-            ...         f = paddle.tensor.pow(d, paddle.to_tensor(2.0))
-            ...     with paddle.static.name_scope("s4"):
-            ...         g = f - paddle.to_tensor(1)
-            ...
-            ...     # Op are created in the default main program.
-            ...     for op in paddle.static.default_main_program().block(0).ops:
-            ...         # elementwise_add is created in /s1/
-            ...         if op.type == "elementwise_add":
-            ...             assert op.desc.attr("op_namescope") == "/s1/"
-            ...         # elementwise_mul is created in "/s1/s2"
-            ...         elif op.type == "elementwise_mul":
-            ...             assert op.desc.attr("op_namescope") == "/s1/s2/"
-            ...         # elementwise_div is created in "/s1/s3"
-            ...         elif op.type == "elementwise_div":
-            ...             assert op.desc.attr("op_namescope") == "/s1/s3/"
-            ...         # elementwise_sum is created in "/s4"
-            ...         elif op.type == "elementwise_sub":
-            ...             assert op.desc.attr("op_namescope") == "/s4/"
-            ...         # pow is created in /s1_1/
-            ...         elif op.type == "pow":
-            ...             assert op.desc.attr("op_namescope") == "/s1_1/"
+            >>> with paddle.static.name_scope("s1"):
+            ...     a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            ...     b = a + paddle.to_tensor(1)
+            ...     with paddle.static.name_scope("s2"):
+            ...         c = b * paddle.to_tensor(1)
+            ...     with paddle.static.name_scope("s3"):
+            ...         d = c / paddle.to_tensor(1)
+            >>> with paddle.static.name_scope("s1"):
+            ...     f = paddle.tensor.pow(d, paddle.to_tensor(2.0))
+            >>> with paddle.static.name_scope("s4"):
+            ...     g = f - paddle.to_tensor(1)
+
+            >>> # Op are created in the default main program.
+            >>> for op in paddle.static.default_main_program().block(0).ops:
+            ...     # elementwise_add is created in /s1/
+            ...     if op.type == 'elementwise_add':
+            ...         assert op.desc.attr("op_namescope") == '/s1/'
+            ...     # elementwise_mul is created in '/s1/s2'
+            ...     elif op.type == 'elementwise_mul':
+            ...         assert op.desc.attr("op_namescope") == '/s1/s2/'
+            ...     # elementwise_div is created in '/s1/s3'
+            ...     elif op.type == 'elementwise_div':
+            ...         assert op.desc.attr("op_namescope") == '/s1/s3/'
+            ...     # elementwise_sum is created in '/s4'
+            ...     elif op.type == 'elementwise_sub':
+            ...         assert op.desc.attr("op_namescope") == '/s4/'
+            ...     # pow is created in /s1_1/
+            ...     elif op.type == 'pow':
+            ...         assert op.desc.attr("op_namescope") == '/s1_1/'
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
@@ -1742,31 +1742,31 @@ class Variable(metaclass=VariableMetaClass):
     Examples:
         In Static Graph Mode:
 
-            .. code-block:: pycon
-                :name: code-example-1
+        .. code-block:: pycon
+            :name: code-example-1
 
-                >>> import paddle
-                >>> import paddle.base as base
-                >>> with paddle.pir_utils.OldIrGuard():
-                ...     cur_program = base.Program()
-                ...     cur_block = cur_program.current_block()
-                ...     new_variable = cur_block.create_var(
-                ...         name="X",
-                ...         shape=[-1, 23, 48],
-                ...         dtype="float32",
-                ...     )
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     cur_program = base.Program()
+            ...     cur_block = cur_program.current_block()
+            ...     new_variable = cur_block.create_var(
+            ...         name="X",
+            ...         shape=[-1, 23, 48],
+            ...         dtype="float32",
+            ...     )
 
         In Dygraph  Mode:
 
-            .. code-block:: pycon
-                :name: code-example-2
+        .. code-block:: pycon
+            :name: code-example-2
 
-                >>> import paddle.base as base
-                >>> import numpy as np
-                >>> import paddle
+            >>> import paddle.base as base
+            >>> import numpy as np
+            >>> import paddle
 
-                >>> with base.dygraph.guard():
-                ...     new_variable = paddle.to_tensor(np.arange(10))
+            >>> with base.dygraph.guard():
+            ...     new_variable = paddle.to_tensor(np.arange(10))
 
     """
 
@@ -2648,7 +2648,6 @@ class Variable(metaclass=VariableMetaClass):
         """
 
         Set the error_clip.
-
         Args:
             error_clip(BaseErrorClipAttr) : The new error_clip.
 
@@ -6602,25 +6601,24 @@ class Program:
                 print Program Descs inorder to make sure you have same print result
                 after :code:`clone`:
 
-                .. code-block:: pycon
-                    :name: code-example-2
+            .. code-block:: pycon
+                :name: code-example-2
 
-                    >>> import paddle
+                >>> import paddle
 
-                    >>> def print_prog(prog):
-                    ...     for name, value in sorted(prog.block(0).vars.items()):
-                    ...         print(value)
-                    ...     for op in prog.block(0).ops:
-                    ...         print("op type is {}".format(op.type))
-                    ...         print("op inputs are {}".format(op.input_arg_names))
-                    ...         print("op outputs are {}".format(op.output_arg_names))
-                    ...         for key, value in sorted(op.all_attrs().items()):
-                    ...             if key not in ['op_callstack', 'op_role_var']:
-                    ...                 print(" [ attrs: {}:   {} ]".format(key, value))
+                >>> def print_prog(prog):
+                ...     for name, value in sorted(prog.block(0).vars.items()):
+                ...         print(value)
+                ...     for op in prog.block(0).ops:
+                ...         print("op type is {}".format(op.type))
+                ...         print("op inputs are {}".format(op.input_arg_names))
+                ...         print("op outputs are {}".format(op.output_arg_names))
+                ...         for key, value in sorted(op.all_attrs().items()):
+                ...             if key not in ['op_callstack', 'op_role_var']:
+                ...                 print(" [ attrs: {}:   {} ]".format(key, value))
 
 
             1. To clone a test program, the sample code is:
-
                 .. code-block:: pycon
                     :name: code-example-3
 
