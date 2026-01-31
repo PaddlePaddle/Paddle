@@ -1264,7 +1264,6 @@ def name_scope(prefix: str | None = None) -> Generator[None, None, None]:
     Examples:
         .. code-block:: pycon
 
-
             >>> import paddle
             >>> paddle.enable_static()
             >>> with paddle.pir_utils.OldIrGuard():
@@ -1741,32 +1740,33 @@ class Variable(metaclass=VariableMetaClass):
     it is not available or will be specified later.
 
     Examples:
-        .. code-block:: pycon
         In Static Graph Mode:
 
-            :name: code-example-1
+            .. code-block:: pycon
+                :name: code-example-1
 
-            >>> import paddle
-            >>> import paddle.base as base
-            >>> with paddle.pir_utils.OldIrGuard():
-            ...     cur_program = base.Program()
-            ...     cur_block = cur_program.current_block()
-            ...     new_variable = cur_block.create_var(
-            ...         name="X",
-            ...         shape=[-1, 23, 48],
-            ...         dtype="float32",
-            ...     )
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> with paddle.pir_utils.OldIrGuard():
+                ...     cur_program = base.Program()
+                ...     cur_block = cur_program.current_block()
+                ...     new_variable = cur_block.create_var(
+                ...         name="X",
+                ...         shape=[-1, 23, 48],
+                ...         dtype="float32",
+                ...     )
 
         In Dygraph  Mode:
 
-            :name: code-example-2
+            .. code-block:: pycon
+                :name: code-example-2
 
-            >>> import paddle.base as base
-            >>> import numpy as np
-            >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
+                >>> import paddle
 
-            >>> with base.dygraph.guard():
-            ...     new_variable = paddle.to_tensor(np.arange(10))
+                >>> with base.dygraph.guard():
+                ...     new_variable = paddle.to_tensor(np.arange(10))
 
     """
 
@@ -6525,23 +6525,26 @@ class Program:
                 print Program Descs inorder to make sure you have same print result
                 after :code:`clone`:
 
-                :name: code-example-2
+                .. code-block:: pycon
+                    :name: code-example-2
 
-                >>> import paddle
+                    >>> import paddle
 
-                >>> def print_prog(prog):
-                ...     for name, value in sorted(prog.block(0).vars.items()):
-                ...         print(value)
-                ...     for op in prog.block(0).ops:
-                ...         print("op type is {}".format(op.type))
-                ...         print("op inputs are {}".format(op.input_arg_names))
-                ...         print("op outputs are {}".format(op.output_arg_names))
-                ...         for key, value in sorted(op.all_attrs().items()):
-                ...             if key not in ['op_callstack', 'op_role_var']:
-                ...                 print(" [ attrs: {}:   {} ]".format(key, value))
+                    >>> def print_prog(prog):
+                    ...     for name, value in sorted(prog.block(0).vars.items()):
+                    ...         print(value)
+                    ...     for op in prog.block(0).ops:
+                    ...         print("op type is {}".format(op.type))
+                    ...         print("op inputs are {}".format(op.input_arg_names))
+                    ...         print("op outputs are {}".format(op.output_arg_names))
+                    ...         for key, value in sorted(op.all_attrs().items()):
+                    ...             if key not in ['op_callstack', 'op_role_var']:
+                    ...                 print(" [ attrs: {}:   {} ]".format(key, value))
 
 
             1. To clone a test program, the sample code is:
+
+                .. code-block:: pycon
                     :name: code-example-3
 
                     >>> import paddle
