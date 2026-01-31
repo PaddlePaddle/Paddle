@@ -139,7 +139,6 @@ def set_flags(flags: dict[str, bool | str | float]) -> None:
         flags (dict): A dict contains flags and its value.
 
     Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
@@ -172,7 +171,6 @@ def get_flags(flags: str | Sequence[str]) -> dict[str, bool | str | float]:
         flag's value in Paddle.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -347,7 +345,6 @@ def in_dygraph_mode() -> bool:
         bool: Whether paddle runs in dynamic graph mode.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> print(paddle.in_dynamic_mode())  # dynamic mode is turn ON by default since paddle 2.0.
@@ -374,7 +371,6 @@ def in_pir_mode() -> bool:
         bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -403,7 +399,6 @@ def in_dynamic_or_pir_mode() -> bool:
         bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -488,7 +483,6 @@ def ipu_shard_guard(
         duplicated index.
 
     Examples:
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:IPU)
             >>> import paddle
@@ -553,7 +547,6 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
         The wrapped call function.
 
     Examples:
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:IPU)
             >>> import paddle
@@ -615,7 +608,6 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
         Exception: if the installed version is lower than ``min_version`` or higher than ``max_version``.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -929,7 +921,6 @@ def is_compiled_with_xpu() -> bool:
     Returns (bool): support xpu or not.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> support_xpu = base.is_compiled_with_xpu()
@@ -955,7 +946,6 @@ def disable_signal_handler() -> None:
         None
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.disable_signal_handler()
@@ -971,7 +961,6 @@ def is_compiled_with_cinn() -> bool:
         Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> support_cinn = paddle.device.is_compiled_with_cinn()
@@ -987,7 +976,6 @@ def is_compiled_with_cuda() -> bool:
         Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> support_gpu = paddle.device.is_compiled_with_cuda()
@@ -1003,7 +991,6 @@ def is_compiled_with_distribute() -> bool:
         Bool: `True` if distribute is currently available, otherwise `False`.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> support_distribute = paddle.device.is_compiled_with_distribute()
@@ -1019,7 +1006,6 @@ def is_compiled_with_rocm() -> bool:
         Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> support_gpu = paddle.device.is_compiled_with_rocm()
@@ -1057,7 +1043,6 @@ def cuda_places(
 
     Examples:
 
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -1098,7 +1083,6 @@ def xpu_places(device_ids: Sequence[int] | None = None) -> list[core.XPUPlace]:
     Returns:
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -1135,7 +1119,6 @@ def cpu_places(device_count: int | None = None) -> list[core.CPUPlace]:
 
     Examples:
 
-        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -1170,7 +1153,6 @@ def cuda_pinned_places(
         list of base.CUDAPinnedPlace: Created list of CUDA pinned places.
 
     Examples:
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle.base as base
@@ -1205,7 +1187,6 @@ def xpu_pinned_places(
         list of base.XPUPinnedPlace: Created list of XPU pinned places.
 
     Examples:
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle.base as base
@@ -1263,39 +1244,39 @@ def name_scope(prefix: str | None = None) -> Generator[None, None, None]:
 
     Examples:
 
-        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
-            >>> with paddle.static.name_scope("s1"):
-            ...     a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-            ...     b = a + paddle.to_tensor(1)
-            ...     with paddle.static.name_scope("s2"):
-            ...         c = b * paddle.to_tensor(1)
-            ...     with paddle.static.name_scope("s3"):
-            ...         d = c / paddle.to_tensor(1)
-            >>> with paddle.static.name_scope("s1"):
-            ...     f = paddle.tensor.pow(d, paddle.to_tensor(2.0))
-            >>> with paddle.static.name_scope("s4"):
-            ...     g = f - paddle.to_tensor(1)
-
-            >>> # Op are created in the default main program.
-            >>> for op in paddle.static.default_main_program().block(0).ops:
-            ...     # elementwise_add is created in /s1/
-            ...     if op.type == 'elementwise_add':
-            ...         assert op.desc.attr("op_namescope") == '/s1/'
-            ...     # elementwise_mul is created in '/s1/s2'
-            ...     elif op.type == 'elementwise_mul':
-            ...         assert op.desc.attr("op_namescope") == '/s1/s2/'
-            ...     # elementwise_div is created in '/s1/s3'
-            ...     elif op.type == 'elementwise_div':
-            ...         assert op.desc.attr("op_namescope") == '/s1/s3/'
-            ...     # elementwise_sum is created in '/s4'
-            ...     elif op.type == 'elementwise_sub':
-            ...         assert op.desc.attr("op_namescope") == '/s4/'
-            ...     # pow is created in /s1_1/
-            ...     elif op.type == 'pow':
-            ...         assert op.desc.attr("op_namescope") == '/s1_1/'
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     with paddle.static.name_scope("s1"):
+            ...         a = paddle.static.data(name="data", shape=[None, 1], dtype="int32")
+            ...         b = a + paddle.to_tensor(1)
+            ...         with paddle.static.name_scope("s2"):
+            ...             c = b * paddle.to_tensor(1)
+            ...         with paddle.static.name_scope("s3"):
+            ...             d = c / paddle.to_tensor(1)
+            ...     with paddle.static.name_scope("s1"):
+            ...         f = paddle.tensor.pow(d, paddle.to_tensor(2.0))
+            ...     with paddle.static.name_scope("s4"):
+            ...         g = f - paddle.to_tensor(1)
+            ...
+            ...     # Op are created in the default main program.
+            ...     for op in paddle.static.default_main_program().block(0).ops:
+            ...         # elementwise_add is created in /s1/
+            ...         if op.type == "elementwise_add":
+            ...             assert op.desc.attr("op_namescope") == "/s1/"
+            ...         # elementwise_mul is created in "/s1/s2"
+            ...         elif op.type == "elementwise_mul":
+            ...             assert op.desc.attr("op_namescope") == "/s1/s2/"
+            ...         # elementwise_div is created in "/s1/s3"
+            ...         elif op.type == "elementwise_div":
+            ...             assert op.desc.attr("op_namescope") == "/s1/s3/"
+            ...         # elementwise_sum is created in "/s4"
+            ...         elif op.type == "elementwise_sub":
+            ...             assert op.desc.attr("op_namescope") == "/s4/"
+            ...         # pow is created in /s1_1/
+            ...         elif op.type == "pow":
+            ...             assert op.desc.attr("op_namescope") == "/s1_1/"
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
@@ -1742,17 +1723,21 @@ class Variable(metaclass=VariableMetaClass):
     Examples:
         In Static Graph Mode:
 
-        .. code-block:: pycon
             :name: code-example-1
 
+            >>> import paddle
             >>> import paddle.base as base
-            >>> cur_program = base.Program()
-            >>> cur_block = cur_program.current_block()
-            >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     cur_program = base.Program()
+            ...     cur_block = cur_program.current_block()
+            ...     new_variable = cur_block.create_var(
+            ...         name="X",
+            ...         shape=[-1, 23, 48],
+            ...         dtype="float32",
+            ...     )
 
         In Dygraph  Mode:
 
-        .. code-block:: pycon
             :name: code-example-2
 
             >>> import paddle.base as base
@@ -1893,7 +1878,6 @@ class Variable(metaclass=VariableMetaClass):
              ( :ref:`api_guide_Variable_en` | dtype is same as current Variable), The detached Variable.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1947,7 +1931,6 @@ class Variable(metaclass=VariableMetaClass):
             ndarray: dtype is same as current Variable
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -1982,7 +1965,6 @@ class Variable(metaclass=VariableMetaClass):
             NoneType: None
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -2025,7 +2007,6 @@ class Variable(metaclass=VariableMetaClass):
             ndarray or tuple of ndarray: if Variable's type is DenseTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -2071,7 +2052,6 @@ class Variable(metaclass=VariableMetaClass):
         Returns:  None
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -2139,7 +2119,6 @@ class Variable(metaclass=VariableMetaClass):
             string: The formatted Variable string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle
@@ -2202,7 +2181,6 @@ class Variable(metaclass=VariableMetaClass):
             str: The debug string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle.base as base
@@ -2250,7 +2228,6 @@ class Variable(metaclass=VariableMetaClass):
         Returns the size in bytes of an element in the Tensor.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2285,7 +2262,6 @@ class Variable(metaclass=VariableMetaClass):
         **Notes: This Property has default value as** ``True`` **in** Dygraph **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -2327,7 +2303,6 @@ class Variable(metaclass=VariableMetaClass):
             **2. In** Dygraph **mode, this property should not be changed**
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
@@ -2348,7 +2323,6 @@ class Variable(metaclass=VariableMetaClass):
         Indicating if current Variable is a Parameter
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2373,7 +2347,6 @@ class Variable(metaclass=VariableMetaClass):
         **Notes: If it has two or more Variable share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
@@ -2394,7 +2367,6 @@ class Variable(metaclass=VariableMetaClass):
         the gradient exists.**
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2417,7 +2389,6 @@ class Variable(metaclass=VariableMetaClass):
         **Notes: This is a read-only property**
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
@@ -2437,7 +2408,6 @@ class Variable(metaclass=VariableMetaClass):
         **Notes: This is a read-only property**
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
@@ -2461,7 +2431,6 @@ class Variable(metaclass=VariableMetaClass):
             **2. Don't support this property in** Dygraph **mode, it's value should be** ``0(int)``
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -2487,7 +2456,6 @@ class Variable(metaclass=VariableMetaClass):
         **Notes: This is a read-only property**
 
         Examples:
-            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle.base as base
@@ -2508,7 +2476,6 @@ class Variable(metaclass=VariableMetaClass):
         If `n` is the dimensions of `x` , `x.T` is equivalent to `x.transpose([n-1, n-2, ..., 0])`.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2567,7 +2534,6 @@ class Variable(metaclass=VariableMetaClass):
             Variable, The cloned Variable.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2830,39 +2796,35 @@ class Variable(metaclass=VariableMetaClass):
             Tensor, the value in given scope.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
                 >>> import numpy as np
 
                 >>> paddle.enable_static()
+                >>> with paddle.pir_utils.OldIrGuard():
+                ...     x = static.data(name="x", shape=[10, 10], dtype="float32")
+                ...     y = static.nn.fc(x, 10, name="fc")
+                ...     place = paddle.CPUPlace()
+                ...     exe = static.Executor(place)
+                ...     prog = paddle.static.default_main_program()
+                ...     exe.run(static.default_startup_program())
+                ...     inputs = np.ones((10, 10), dtype="float32")
+                ...     exe.run(
+                ...         prog,
+                ...         feed={"x": inputs},
+                ...         fetch_list=[y],
+                ...     )
+                ...     path = "temp/tensor_"
+                ...     for var in prog.list_vars():
+                ...         if var.persistable:
+                ...             t = var.get_value()
+                ...             paddle.save(t, path + var.name + ".pdtensor")
 
-                >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-
-                >>> y = static.nn.fc(x, 10, name='fc')
-                >>> place = paddle.CPUPlace()
-                >>> exe = static.Executor(place)
-                >>> prog = paddle.static.default_main_program()
-                >>> exe.run(static.default_startup_program())
-                >>> inputs = np.ones((10, 10), dtype='float32')
-                >>> exe.run(
-                ...     prog,
-                ...     feed={'x': inputs},
-                ...     fetch_list=[
-                ...         y,
-                ...     ],
-                ... )
-                >>> path = 'temp/tensor_'
-                >>> for var in prog.list_vars():
-                ...     if var.persistable:
-                ...         t = var.get_value()
-                ...         paddle.save(t, path + var.name + '.pdtensor')
-
-                >>> for var in prog.list_vars():
-                ...     if var.persistable:
-                ...         t_load = paddle.load(path + var.name + '.pdtensor')
-                ...         var.set_value(t_load)
+                ...     for var in prog.list_vars():
+                ...         if var.persistable:
+                ...             t_load = paddle.load(path + var.name + ".pdtensor")
+                ...             var.set_value(t_load)
         """
         # The 'framework' is a low-level module, and 'executor'
         # can not be imported at the beginning of this file.
@@ -2899,39 +2861,35 @@ class Variable(metaclass=VariableMetaClass):
             None
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
                 >>> import numpy as np
 
                 >>> paddle.enable_static()
+                >>> with paddle.pir_utils.OldIrGuard():
+                ...     x = static.data(name="x", shape=[10, 10], dtype="float32")
+                ...     y = static.nn.fc(x, 10, name="fc")
+                ...     place = paddle.CPUPlace()
+                ...     exe = static.Executor(place)
+                ...     prog = paddle.static.default_main_program()
+                ...     exe.run(static.default_startup_program())
+                ...     inputs = np.ones((10, 10), dtype="float32")
+                ...     exe.run(
+                ...         prog,
+                ...         feed={"x": inputs},
+                ...         fetch_list=[y],
+                ...     )
+                ...     path = "temp/tensor_"
+                ...     for var in prog.list_vars():
+                ...         if var.persistable:
+                ...             t = var.get_value()
+                ...             paddle.save(t, path + var.name + ".pdtensor")
 
-                >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-
-                >>> y = static.nn.fc(x, 10, name='fc')
-                >>> place = paddle.CPUPlace()
-                >>> exe = static.Executor(place)
-                >>> prog = paddle.static.default_main_program()
-                >>> exe.run(static.default_startup_program())
-                >>> inputs = np.ones((10, 10), dtype='float32')
-                >>> exe.run(
-                ...     prog,
-                ...     feed={'x': inputs},
-                ...     fetch_list=[
-                ...         y,
-                ...     ],
-                ... )
-                >>> path = 'temp/tensor_'
-                >>> for var in prog.list_vars():
-                ...     if var.persistable:
-                ...         t = var.get_value()
-                ...         paddle.save(t, path + var.name + '.pdtensor')
-
-                >>> for var in prog.list_vars():
-                ...     if var.persistable:
-                ...         t_load = paddle.load(path + var.name + '.pdtensor')
-                ...         var.set_value(t_load)
+                ...     for var in prog.list_vars():
+                ...         if var.persistable:
+                ...             t_load = paddle.load(path + var.name + ".pdtensor")
+                ...             var.set_value(t_load)
 
         """
 
@@ -3004,7 +2962,6 @@ class Variable(metaclass=VariableMetaClass):
             Variable, the number of elements for current Variable
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -3210,7 +3167,6 @@ class Operator:
         Block.append_op or Block._prepend_op instead.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3550,7 +3506,6 @@ class Operator:
             string: The formatted Operator string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -4301,7 +4256,6 @@ class Block:
         use `Program._create_block()` to create a block.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4337,7 +4291,6 @@ class Block:
             string: The formatted Block string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -5973,7 +5926,6 @@ class Program:
         Program: An empty Program.
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -6204,7 +6156,6 @@ class Program:
             None.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -6367,7 +6318,6 @@ class Program:
             string: The formatted Program string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -6406,7 +6356,6 @@ class Program:
             ValueError: If any of required fields is not set and throw_on_error is True.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -6489,7 +6438,6 @@ class Program:
           recommend you to use :code:`clone` before using :code:`Optimizer.minimize`.
 
         Examples:
-            .. code-block:: pycon
                 :name: code-example-1
 
                 >>> import paddle
@@ -6523,7 +6471,6 @@ class Program:
                 print Program Descs inorder to make sure you have same print result
                 after :code:`clone`:
 
-            .. code-block:: pycon
                 :name: code-example-2
 
                 >>> import paddle
@@ -6541,7 +6488,6 @@ class Program:
 
 
             1. To clone a test program, the sample code is:
-                .. code-block:: pycon
                     :name: code-example-3
 
                     >>> import paddle
@@ -6595,7 +6541,6 @@ class Program:
 
 
             2. The clone method can be avoid if you create program for training and program for testing individually.
-                .. code-block:: pycon
                     :name: code-example-4
 
                     >>> import paddle
@@ -7016,7 +6961,6 @@ class Program:
             Program: A deserialized Program.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7071,7 +7015,6 @@ class Program:
 
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7109,7 +7052,6 @@ class Program:
 
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7146,7 +7088,6 @@ class Program:
 
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7174,7 +7115,6 @@ class Program:
             :ref:`api_guide_Block_en`: The :code:`index` block
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7199,7 +7139,6 @@ class Program:
              :ref:`api_guide_Block_en`: The :code:`index`  :ref:`api_guide_Block_en`
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7370,7 +7309,6 @@ class Program:
             iterable Tensors: The Generator will yield every Tensor in this program.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle
@@ -7398,7 +7336,6 @@ class Program:
             list[ :ref:`api_guide_parameter_en` ]: The list contains all parameters in this program.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle
@@ -7452,7 +7389,6 @@ class Program:
             dict: a dict contains the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7551,7 +7487,6 @@ class Program:
             None
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.static as static
@@ -7685,7 +7620,6 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         Returns(str): The debug string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -7896,7 +7830,6 @@ class EagerParamBase(core.eager.Tensor):
         Returns(str): A readable string.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(3, 3)
@@ -7915,7 +7848,6 @@ class EagerParamBase(core.eager.Tensor):
         Deep copy parameter, it will always performs Tensor copy.
 
         Examples:
-            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import copy
@@ -7988,7 +7920,6 @@ def default_startup_program() -> Program:
     Returns type:
 
     Examples:
-        .. code-block:: pycon
 
             >>> import paddle
 
@@ -8019,7 +7950,7 @@ def default_main_program() -> Program:
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
     Examples:
-        ..  code-block:: pycon
+        ..  code-block:: python
 
             >>> import paddle
 
@@ -8088,7 +8019,6 @@ def program_guard(
             Default: None.
 
     Examples:
-        .. code-block:: pycon
             :name: code-example-1
 
             >>> import paddle
@@ -8104,7 +8034,6 @@ def program_guard(
     to construct either of startup program or main program.
 
     Examples:
-        .. code-block:: pycon
             :name: code-example-2
 
             >>> import paddle
@@ -8225,7 +8154,6 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
 
     Examples:
 
-        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
