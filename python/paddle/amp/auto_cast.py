@@ -883,7 +883,7 @@ def amp_decorate(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: single model and optimizer:
