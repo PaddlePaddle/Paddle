@@ -236,6 +236,10 @@ class TestTString(TestCaseBase):
         self.assert_tstring_results(test_t_with_fallback_recursive)
 
     def test_tstring_check_no_fallback(self):
+        if not _tstring_supported():
+            self.skipTest(
+                "Template strings are not supported by this interpreter."
+            )
         with self.assertRaises(InnerError):
             symbolic_translate(test_t_with_forbidden_fallback)()
 
