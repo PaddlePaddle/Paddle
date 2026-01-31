@@ -29,6 +29,8 @@ constexpr int UINT8 = phi::DataType::UINT8;
 constexpr int INT16 = phi::DataType::INT16;
 constexpr int INT8 = phi::DataType::INT8;
 constexpr int BOOL = phi::DataType::BOOL;
+constexpr int COMPLEX64 = phi::DataType::COMPLEX64;
+constexpr int COMPLEX128 = phi::DataType::COMPLEX128;
 using XPUKernelSet = std::unordered_set<phi::DataType>;
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
