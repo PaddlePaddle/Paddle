@@ -158,8 +158,7 @@ void AffineGridGradCUDAKernel(const Context& dev_ctx,
   auto theta_size = theta->dims().size();
   if (output->numel() == 0 || input.numel() == 0) {
     dev_ctx.template Alloc<T>(output);
-    funcs::SetConstant<phi::GPUContext, T>()(
-        dev_ctx, output, static_cast<T>(0));
+    funcs::SetConstant<GPUContext, T>()(dev_ctx, output, static_cast<T>(0));
     return;
   }
   if (theta_size == 4) {

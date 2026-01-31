@@ -122,7 +122,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
-  funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
+  funcs::SetConstant<GPUContext, T> index_select_grad_init;
   index_select_grad_init(dev_ctx, x_grad, static_cast<T>(0));
 
   if (FLAGS_cudnn_deterministic) {

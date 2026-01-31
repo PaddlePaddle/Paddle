@@ -37,7 +37,7 @@ inline int getBlockSize(int64_t col) {
 }
 
 template <typename T>
-bool SortKthvalue(const phi::GPUContext& dev_ctx,
+bool SortKthvalue(const GPUContext& dev_ctx,
                   const DenseTensor* input_tensor,
                   const int64_t num_cols,
                   const int64_t num_rows,
@@ -255,8 +255,7 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_input.Resize(trans_dims);
     T* tran_input_data = dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
-    funcs::TransCompute<phi::GPUContext, T>(
-        ndims, dev_ctx, x, &trans_input, trans);
+    funcs::TransCompute<GPUContext, T>(ndims, dev_ctx, x, &trans_input, trans);
     DenseTensor trans_ind, trans_out;
     trans_ind.Resize(trans_out_dims);
     trans_out.Resize(trans_out_dims);
@@ -297,9 +296,9 @@ void KthvalueKernel(const Context& dev_ctx,
         true,
         common::errors::External("KthvalueOP: Error when use cub sorting"));
 #endif
-    funcs::TransCompute<phi::GPUContext, int64_t>(
+    funcs::TransCompute<GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
-    funcs::TransCompute<phi::GPUContext, T>(
+    funcs::TransCompute<GPUContext, T>(
         ndims, dev_ctx, trans_out, output, trans);
     if (!keepdim) {
       output->Resize(out_dims);

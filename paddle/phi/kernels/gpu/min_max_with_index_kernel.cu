@@ -82,7 +82,7 @@ __global__ void MinMaxWithIndexKernel(const int64_t height,     // n * h
 }
 
 template <typename T, typename IndType, class Reducer, typename IndexType>
-void ComputeMinMaxWithIndex(const phi::GPUContext& dev_ctx,
+void ComputeMinMaxWithIndex(const GPUContext& dev_ctx,
                             const DenseTensor& input,
                             DenseTensor* values,
                             DenseTensor* indices,
