@@ -81,12 +81,7 @@ XPUOpMap& get_kl1_ops() {
       {"gaussian_random", XPUKernelSet({FLOAT32})},
       {"gelu_grad", XPUKernelSet({FLOAT32})},
       {"gelu", XPUKernelSet({FLOAT32})},
-      {"generate_sequence_xpu",
-       XPUKernelSet({
-           FLOAT32,
-           INT32,
-           INT64,
-       })},
+      {"generate_sequence_xpu", XPUKernelSet({FLOAT32, INT32, INT64})},
       {"greater_than", XPUKernelSet({INT64, INT32, FLOAT32})},
       {"group_norm_silu_xpu", XPUKernelSet({FLOAT32})},
       {"hard_switch_grad", XPUKernelSet({FLOAT32})},
