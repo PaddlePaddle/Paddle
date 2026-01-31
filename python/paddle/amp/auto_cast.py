@@ -504,7 +504,6 @@ def amp_guard(
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             paddle.float16
             >>> # doctest: -SKIP
-            ...
             >>> with paddle.amp.amp_guard(enable=False):
             ...     conv = conv2d(data)
             ...     print(conv.dtype)
@@ -1258,7 +1257,7 @@ def decorate(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: single model and optimizer:
