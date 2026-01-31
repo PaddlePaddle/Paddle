@@ -96,10 +96,6 @@ class PADDLE_API TensorBase {
       backend_str = "CPU";
     } else if (phi::is_gpu_place(place)) {
       backend_str = "CUDA";
-    } else if (phi::is_xpu_place(place)) {
-      backend_str = "XPU";
-    } else if (phi::is_ipu_place(place)) {
-      backend_str = "IPU";
     } else {
       backend_str = "Undefined";
     }

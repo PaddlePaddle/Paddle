@@ -71,46 +71,4 @@ TEST(TensorBaseTest, ToStringAPI) {
   std::string cuda_double_str = cuda_double_tensor.toString();
   ASSERT_EQ(cuda_double_str, "CUDADoubleType");
 #endif
-
-#if defined(PADDLE_WITH_XPU)
-  // Test XPU tensor if available
-  at::TensorBase xpu_float_tensor = at::ones(
-      {2, 3},
-      at::TensorOptions().dtype(at::kFloat).device(at::Device(at::kXPU, 0)));
-  std::string xpu_float_str = xpu_float_tensor.toString();
-  ASSERT_EQ(xpu_float_str, "XPUFloatType");
-
-  at::TensorBase xpu_double_tensor = at::ones(
-      {2, 3},
-      at::TensorOptions().dtype(at::kDouble).device(at::Device(at::kXPU, 0)));
-  std::string xpu_double_str = xpu_double_tensor.toString();
-  ASSERT_EQ(xpu_double_str, "XPUDoubleType");
-
-  at::TensorBase xpu_int_tensor = at::ones(
-      {2, 3},
-      at::TensorOptions().dtype(at::kInt).device(at::Device(at::kXPU, 0)));
-  std::string xpu_int_str = xpu_int_tensor.toString();
-  ASSERT_EQ(xpu_int_str, "XPUIntType");
-#endif
-
-#if defined(PADDLE_WITH_IPU)
-  // Test IPU tensor if available
-  at::TensorBase ipu_float_tensor = at::ones(
-      {2, 3},
-      at::TensorOptions().dtype(at::kFloat).device(at::Device(at::kIPU, 0)));
-  std::string ipu_float_str = ipu_float_tensor.toString();
-  ASSERT_EQ(ipu_float_str, "IPUFloatType");
-
-  at::TensorBase ipu_double_tensor = at::ones(
-      {2, 3},
-      at::TensorOptions().dtype(at::kDouble).device(at::Device(at::kIPU, 0)));
-  std::string ipu_double_str = ipu_double_tensor.toString();
-  ASSERT_EQ(ipu_double_str, "IPUDoubleType");
-
-  at::TensorBase ipu_int_tensor = at::ones(
-      {2, 3},
-      at::TensorOptions().dtype(at::kInt).device(at::Device(at::kIPU, 0)));
-  std::string ipu_int_str = ipu_int_tensor.toString();
-  ASSERT_EQ(ipu_int_str, "IPUIntType");
-#endif
 }
