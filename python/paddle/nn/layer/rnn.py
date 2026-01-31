@@ -1045,78 +1045,81 @@ class LSTMCell(RNNCellBase):
         if proj_size >= hidden_size:
             raise ValueError("proj_size must be smaller than hidden_size")
 
-        original_device = None
-        if device is not None:
-            if isinstance(device, str) and device.startswith('cuda'):
-                device = device.replace('cuda', 'gpu')
-            original_device = paddle.device.get_device()
-            paddle.device.set_device(device)
+        # Normalize device string (cuda -> gpu)
+        device = (
+            device.replace('cuda', 'gpu')
+            if isinstance(device, str) and device.startswith('cuda')
+            else device
+        )
 
-        try:
-            std = 1.0 / math.sqrt(hidden_size)
-            if weight_ih_attr is not False:
-                self.weight_ih = self.create_parameter(
-                    (4 * hidden_size, input_size),
-                    weight_ih_attr,
-                    default_initializer=I.Uniform(-std, std),
-                    dtype=dtype,
-                )
-            else:
-                self.weight_ih = self.create_parameter(
-                    (4 * hidden_size, input_size),
-                    None,
-                    default_initializer=I.Constant(1.0),
-                    dtype=dtype,
-                )
-                self.weight_ih.stop_gradient = True
-            if weight_hh_attr is not False:
-                self.weight_hh = self.create_parameter(
-                    (4 * hidden_size, proj_size or hidden_size),
-                    weight_hh_attr,
-                    default_initializer=I.Uniform(-std, std),
-                    dtype=dtype,
-                )
-            else:
-                self.weight_hh = self.create_parameter(
-                    (4 * hidden_size, proj_size or hidden_size),
-                    None,
-                    default_initializer=I.Constant(1.0),
-                    dtype=dtype,
-                )
-                self.weight_hh.stop_gradient = True
-            if bias_ih_attr is not False:
-                self.bias_ih = self.create_parameter(
-                    (4 * hidden_size,),
-                    bias_ih_attr,
-                    is_bias=True,
-                    default_initializer=I.Uniform(-std, std),
-                    dtype=dtype,
-                )
-            if bias_hh_attr is not False:
-                self.bias_hh = self.create_parameter(
-                    (4 * hidden_size,),
-                    bias_hh_attr,
-                    is_bias=True,
-                    default_initializer=I.Uniform(-std, std),
-                    dtype=dtype,
-                )
+        std = 1.0 / math.sqrt(hidden_size)
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+                dtype=dtype,
+                device=device,
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, proj_size or hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, proj_size or hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+                dtype=dtype,
+                device=device,
+            )
+            self.weight_hh.stop_gradient = True
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
 
-            self.proj_size = proj_size
-            if proj_size > 0:
-                self.weight_ho = self.create_parameter(
-                    (hidden_size, proj_size),
-                    weight_hh_attr,
-                    default_initializer=I.Uniform(-std, std),
-                    dtype=dtype,
-                )
+        self.proj_size = proj_size
+        if proj_size > 0:
+            self.weight_ho = self.create_parameter(
+                (hidden_size, proj_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+                dtype=dtype,
+                device=device,
+            )
 
-            self.hidden_size = hidden_size
-            self.input_size = input_size
-            self._gate_activation = F.sigmoid
-            self._activation = paddle.tanh
-        finally:
-            if original_device is not None:
-                paddle.device.set_device(original_device)
+        self.hidden_size = hidden_size
+        self.input_size = input_size
+        self._gate_activation = F.sigmoid
+        self._activation = paddle.tanh
 
     def forward(self, inputs: Tensor, states: Sequence[Tensor] | None = None):
         if states is None:
