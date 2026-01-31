@@ -682,7 +682,7 @@ class GradScaler(AmpScaler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -696,7 +696,7 @@ class GradScaler(AmpScaler):
             ...     loss = paddle.mean(conv)
 
             >>> scaled = scaler.scale(loss)  # scale the loss
-            >>> scaled.backward()            # do backward
+            >>> scaled.backward()  # do backward
             >>> scaler.minimize(optimizer, scaled)  # update parameters
             >>> optimizer.clear_grad()
     """
@@ -733,7 +733,7 @@ class GradScaler(AmpScaler):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -747,7 +747,7 @@ class GradScaler(AmpScaler):
                 ...     loss = paddle.mean(conv)
 
                 >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()            # do backward
+                >>> scaled.backward()  # do backward
                 >>> scaler.minimize(optimizer, scaled)  # update parameters
                 >>> optimizer.clear_grad()
         """
@@ -774,7 +774,7 @@ class GradScaler(AmpScaler):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -788,7 +788,7 @@ class GradScaler(AmpScaler):
                 ...     loss = paddle.mean(conv)
 
                 >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()            # do backward
+                >>> scaled.backward()  # do backward
                 >>> scaler.minimize(optimizer, scaled)  # update parameters
                 >>> optimizer.clear_grad()
         """
@@ -860,7 +860,7 @@ class GradScaler(AmpScaler):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
@@ -873,10 +873,10 @@ class GradScaler(AmpScaler):
                 >>> with paddle.amp.auto_cast():
                 ...     conv = model(data)
                 ...     loss = paddle.mean(conv)
-                >>> scaled = scaler.scale(loss)     # scale the loss
-                >>> scaled.backward()               # do backward
-                >>> scaler.step(optimizer)          # update parameters
-                >>> scaler.update()                 # update the loss scaling ratio
+                >>> scaled = scaler.scale(loss)  # scale the loss
+                >>> scaled.backward()  # do backward
+                >>> scaler.step(optimizer)  # update parameters
+                >>> scaler.update()  # update the loss scaling ratio
                 >>> optimizer.clear_grad()
         """
         if not self._enable:
@@ -899,7 +899,7 @@ class GradScaler(AmpScaler):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
@@ -913,8 +913,8 @@ class GradScaler(AmpScaler):
                 ...     conv = model(data)
                 ...     loss = paddle.mean(conv)
                 >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()            # do backward
-                >>> scaler.unscale_(optimizer)    # unscale the parameter
+                >>> scaled.backward()  # do backward
+                >>> scaler.unscale_(optimizer)  # unscale the parameter
                 >>> scaler.step(optimizer)
                 >>> scaler.update()
                 >>> optimizer.clear_grad()
@@ -1277,25 +1277,6 @@ class GradScaler(AmpScaler):
             incr_count(int): The number of recent consecutive unskipped steps.
             decr_count(int): The number of recent consecutive skipped steps.
             use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamically. Default is True.
-
-
-        Examples:
-
-            .. code-block:: python
-
-                >>> # doctest: +REQUIRES(env:GPU, env:XPU)
-                >>> import paddle
-
-                >>> scaler = paddle.amp.GradScaler(
-                ...     enable=True,
-                ...     init_loss_scaling=1024,
-                ...     incr_ratio=2.0,
-                ...     decr_ratio=0.5,
-                ...     incr_every_n_steps=1000,
-                ...     decr_every_n_nan_or_inf=2,
-                ...     use_dynamic_loss_scaling=True
-                ... )
-                >>> scaler_state = scaler.state_dict()
         """
         return super().state_dict()
 
@@ -1304,25 +1285,6 @@ class GradScaler(AmpScaler):
         Loads the scaler state.
 
         Args:
-            state_dict(dict): scaler state. Should be an object returned from a call to `GradScaler.state_dict()`.
-
-        Examples:
-
-            .. code-block:: pycon
-
-                >>> # doctest: +REQUIRES(env:GPU, env:XPU)
-                >>> import paddle
-
-                >>> scaler = paddle.amp.GradScaler(
-                ...     enable=True,
-                ...     init_loss_scaling=1024,
-                ...     incr_ratio=2.0,
-                ...     decr_ratio=0.5,
-                ...     incr_every_n_steps=1000,
-                ...     decr_every_n_nan_or_inf=2,
-                ...     use_dynamic_loss_scaling=True,
-                ... )
-                >>> scaler_state = scaler.state_dict()
-                >>> scaler.load_state_dict(scaler_state)
+           state_dict(dict): scaler state. Should be an object returned from a call to `AmpScaler.state_dict()`.
         """
         super().load_state_dict(state_dict)
