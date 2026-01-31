@@ -2051,7 +2051,7 @@ def append_backward(
         AssertionError: If ``loss`` is not an instance of Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
