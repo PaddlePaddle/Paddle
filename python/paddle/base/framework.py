@@ -1294,9 +1294,9 @@ def name_scope(prefix: str | None = None) -> Generator[None, None, None]:
             ...         # elementwise_sum is created in '/s4'
             ...         elif op.type == 'elementwise_sub':
             ...             assert op.desc.attr("op_namescope") == '/s4/'
-            ...     # pow is created in /s1_1/
-            ...     elif op.type == 'pow':
-            ...         assert op.desc.attr("op_namescope") == '/s1_1/'
+            ...         # pow is created in /s1_1/
+            ...         elif op.type == 'pow':
+            ...             assert op.desc.attr("op_namescope") == '/s1_1/'
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
