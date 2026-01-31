@@ -8304,7 +8304,6 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
     Examples:
         .. code-block:: pycon
 
-
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
