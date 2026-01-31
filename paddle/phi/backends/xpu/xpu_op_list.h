@@ -19,18 +19,18 @@ limitations under the License. */
 namespace phi {
 namespace backends {
 namespace xpu {
-constexpr int FLOAT32 = phi::DataType::FLOAT32;
-constexpr int FLOAT64 = phi::DataType::FLOAT64;
-constexpr int FLOAT16 = phi::DataType::FLOAT16;
-constexpr int BFLOAT16 = phi::DataType::BFLOAT16;
-constexpr int INT32 = phi::DataType::INT32;
-constexpr int INT64 = phi::DataType::INT64;
-constexpr int UINT8 = phi::DataType::UINT8;
-constexpr int INT16 = phi::DataType::INT16;
-constexpr int INT8 = phi::DataType::INT8;
-constexpr int BOOL = phi::DataType::BOOL;
-constexpr int COMPLEX64 = phi::DataType::COMPLEX64;
-constexpr int COMPLEX128 = phi::DataType::COMPLEX128;
+constexpr DataType FLOAT32 = DataType::FLOAT32;
+constexpr DataType FLOAT64 = DataType::FLOAT64;
+constexpr DataType FLOAT16 = DataType::FLOAT16;
+constexpr DataType BFLOAT16 = DataType::BFLOAT16;
+constexpr DataType INT32 = DataType::INT32;
+constexpr DataType INT64 = DataType::INT64;
+constexpr DataType UINT8 = DataType::UINT8;
+constexpr DataType INT16 = DataType::INT16;
+constexpr DataType INT8 = DataType::INT8;
+constexpr DataType BOOL = DataType::BOOL;
+constexpr DataType COMPLEX64 = DataType::COMPLEX64;
+constexpr DataType COMPLEX128 = DataType::COMPLEX128;
 using XPUKernelSet = std::unordered_set<phi::DataType>;
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
