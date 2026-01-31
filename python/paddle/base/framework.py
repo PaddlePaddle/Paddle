@@ -2053,7 +2053,12 @@ class Variable(metaclass=VariableMetaClass):
 
                 >>> # example2: return tuple of ndarray
                 >>> with base.dygraph.guard():
-                ...     embedding = paddle.nn.Embedding(20, 32, weight_attr='emb.w', sparse=True)
+                ...     embedding = paddle.nn.Embedding(
+                ...         20,
+                ...         32,
+                ...         weight_attr="emb.w",
+                ...         sparse=True,
+                ...     )
                 ...     x_data = np.arange(12).reshape(4, 3).astype('int64')
                 ...     x_data = x_data.reshape((-1, 3, 1))
                 ...     x_tensor = paddle.to_tensor(x_data)
@@ -2155,7 +2160,11 @@ class Variable(metaclass=VariableMetaClass):
 
                 >>> cur_program = static.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print(new_variable._to_readable_code())
                 var X : DENSE_TENSOR.shape(-1, 23, 48).dtype(float32).stop_gradient(False)
         """
@@ -2217,7 +2226,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> paddle.enable_static()
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print(new_variable.to_string(True))
                 >>> print("=============with detail===============")
                 >>> print(new_variable.to_string(True, True))
@@ -2338,7 +2351,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print("persistable of current Var is: {}".format(new_variable.persistable))
                 persistable of current Var is: False
         """
@@ -2358,7 +2375,11 @@ class Variable(metaclass=VariableMetaClass):
 
                 >>> import paddle
                 >>> paddle.enable_static()
-                >>> new_parameter = paddle.static.create_parameter(name="X", shape=[10, 23, 48], dtype='float32')
+                >>> new_parameter = paddle.static.create_parameter(
+                ...     name="X",
+                ...     shape=[10, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> if new_parameter.is_parameter:
                 ...     print("Current var is a Parameter")
                 ... else:
@@ -2384,7 +2405,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print("name of current Var is: {}".format(new_variable.name))
                 name of current Var is: X
         """
@@ -2428,7 +2453,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print("shape of current Var is: {}".format(new_variable.shape))
                 shape of current Var is: [-1, 23, 48]
         """
@@ -2448,7 +2477,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print("Dtype of current Var is: {}".format(new_variable.dtype))
                 Dtype of current Var is: paddle.float32
         """
@@ -2475,7 +2508,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> paddle.enable_static()
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print("LoD Level of current Var is: {}".format(new_variable.lod_level))
                 LoD Level of current Var is: 0
         """
@@ -2499,7 +2536,11 @@ class Variable(metaclass=VariableMetaClass):
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_variable = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
+                >>> new_variable = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
                 >>> print("Type of current Var is: {}".format(new_variable.type))
                 Type of current Var is: VarType.DENSE_TENSOR
         """
@@ -3221,7 +3262,11 @@ class Operator:
             >>> var2 = cur_block.create_var(name="var2", shape=[-1, 23, 48], dtype='float32')
             >>> var3 = cur_block.create_var(name="var3", shape=[-1, 23, 48], dtype='float32')
             >>> var1 += var2 + var3
-            >>> cur_block.append_op(type="sum", inputs={"X": [var1, var2, var3]}, outputs={"Out": [var1]})
+            >>> cur_block.append_op(
+            ...     type="sum",
+            ...     inputs={"X": [var1, var2, var3]},
+            ...     outputs={"Out": [var1]},
+            ... )
     """
 
     OP_WITHOUT_KERNEL_SET = {
@@ -3557,8 +3602,16 @@ class Operator:
                 >>> paddle.enable_static()
                 >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> var = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
-                >>> new_op = cur_block.append_op(type="abs", inputs={"X": [var]}, outputs={"Out": [var]})
+                >>> var = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
+                >>> new_op = cur_block.append_op(
+                ...     type="abs",
+                ...     inputs={"X": [var]},
+                ...     outputs={"Out": [var]},
+                ... )
                 >>> print(new_op._to_readable_code())
         """
         assert isinstance(skip_op_callstack, bool), (
@@ -4308,8 +4361,16 @@ class Block:
             >>> paddle.enable_static()
             >>> cur_program = paddle.static.Program()
             >>> cur_block = cur_program.current_block()
-            >>> var = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
-            >>> cur_block.append_op(type="abs", inputs={"X": [var]}, outputs={"Out": [var]})
+            >>> var = cur_block.create_var(
+            ...     name="X",
+            ...     shape=[-1, 23, 48],
+            ...     dtype="float32",
+            ... )
+            >>> cur_block.append_op(
+            ...     type="abs",
+            ...     inputs={"X": [var]},
+            ...     outputs={"Out": [var]},
+            ... )
     """
 
     def __init__(self, program, idx):
@@ -4344,8 +4405,16 @@ class Block:
                 >>> paddle.enable_static()
                 >>> cur_program = paddle.static.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_var = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
-                >>> new_op = cur_block.append_op(type="abs", inputs={"X": [new_var]}, outputs={"Out": [new_var]})
+                >>> new_var = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
+                >>> new_op = cur_block.append_op(
+                ...     type="abs",
+                ...     inputs={"X": [new_var]},
+                ...     outputs={"Out": [new_var]},
+                ... )
                 >>> print(cur_block._to_readable_code())
         """
         assert isinstance(skip_op_callstack, bool), (
@@ -6378,8 +6447,16 @@ class Program:
 
                 >>> cur_program = static.Program()
                 >>> cur_block = cur_program.current_block()
-                >>> new_var = cur_block.create_var(name="X", shape=[-1, 23, 48], dtype='float32')
-                >>> new_op = cur_block.append_op(type="abs", inputs={"X": [new_var]}, outputs={"Out": [new_var]})
+                >>> new_var = cur_block.create_var(
+                ...     name="X",
+                ...     shape=[-1, 23, 48],
+                ...     dtype="float32",
+                ... )
+                >>> new_op = cur_block.append_op(
+                ...     type="abs",
+                ...     inputs={"X": [new_var]},
+                ...     outputs={"Out": [new_var]},
+                ... )
                 >>> print(cur_program._to_readable_code())
         """
         assert isinstance(skip_op_callstack, bool), (
@@ -8021,7 +8098,7 @@ def default_main_program() -> Program:
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
     Examples:
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
