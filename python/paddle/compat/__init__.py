@@ -101,6 +101,7 @@ def allclose(
         .. code-block:: pycon
 
             >>> import paddle
+
             >>> x = paddle.to_tensor([10000.0, 1e-07])
             >>> y = paddle.to_tensor([10000.1, 1e-08])
             >>> result1 = paddle.compat.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
@@ -489,7 +490,11 @@ def min(
 
             >>> # data_x is a Tensor with shape [2, 4]
             >>> # the axis is a int element
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]], dtype='float64', stop_gradient=False)
+            >>> x = paddle.to_tensor(
+            ...     [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> # Case 1: reduce over all dims
             >>> result1 = paddle.compat.min(x)
             >>> result1
@@ -511,7 +516,11 @@ def min(
 
             >>> # Case 3: equivalent to `paddle.minimum`
             >>> x.clear_grad()
-            >>> y = paddle.to_tensor([[0.5, 0.4, 0.1, 0.2], [0.3, 0.1, 0.6, 0.7]], dtype='float64', stop_gradient=False)
+            >>> y = paddle.to_tensor(
+            ...     [[0.5, 0.4, 0.1, 0.2], [0.3, 0.1, 0.6, 0.7]],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> result3 = paddle.compat.min(x, y)
             >>> result3
             Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=False,
@@ -639,7 +648,11 @@ def max(
 
             >>> # data_x is a Tensor with shape [2, 4]
             >>> # the axis is a int element
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]], dtype='float64', stop_gradient=False)
+            >>> x = paddle.to_tensor(
+            ...     [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> # Case 1: reduce over all dims
             >>> result1 = paddle.compat.max(x)
             >>> result1
@@ -661,7 +674,11 @@ def max(
 
             >>> # Case 3: equivalent to `paddle.maximum`
             >>> x.clear_grad()
-            >>> y = paddle.to_tensor([[0.5, 0.4, 0.1, 0.2], [0.3, 0.1, 0.6, 0.7]], dtype='float64', stop_gradient=False)
+            >>> y = paddle.to_tensor(
+            ...     [[0.5, 0.4, 0.1, 0.2], [0.3, 0.1, 0.6, 0.7]],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> result3 = paddle.compat.max(x, y)
             >>> result3
             Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=False,
@@ -821,7 +838,10 @@ def sort(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]], dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+            ...     dtype='float32',
+            ... )
             >>> out1 = paddle.compat.sort(input=x, dim=-1)
             >>> out2 = paddle.compat.sort(x, 1, descending=True)
             >>> out1

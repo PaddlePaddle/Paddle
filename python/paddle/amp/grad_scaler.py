@@ -96,7 +96,10 @@ class AmpScaler:
 
             >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             >>> model = paddle.nn.Conv2D(3, 2, 3)
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+            >>> optimizer = paddle.optimizer.SGD(
+            ...     learning_rate=0.01,
+            ...     parameters=model.parameters(),
+            ... )
             >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             >>> data = paddle.to_tensor(data)
             >>> with paddle.amp.amp_guard():
@@ -185,32 +188,35 @@ class AmpScaler:
 
     def scale(self, var: Tensor) -> Tensor:
         """
-        Multiplies a Tensor by the scale factor and returns scaled outputs.
-        If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
+                Multiplies a Tensor by the scale factor and returns scaled outputs.
+                If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
 
-        Args:
-            var (Tensor):  The Tensor to scale.
-        Returns:
-            The scaled Tensor or original Tensor.
+                Args:
+                    var (Tensor):  The Tensor to scale.
+                Returns:
+                    The scaled Tensor or original Tensor.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> import numpy as np
-                >>> import paddle
+                        >>> import numpy as np
+                        >>> import paddle
 
-                >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-                >>> model = paddle.nn.Conv2D(3, 2, 3)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-                >>> data = paddle.to_tensor(data)
-                >>> with paddle.amp.amp_guard():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
-                ...     scaled = scaler.scale(loss)
-                ...     scaled.backward()
-                ...     scaler.minimize(optimizer, scaled)
+                        >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+                        >>> model = paddle.nn.Conv2D(3, 2, 3)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+                        >>> data = paddle.to_tensor(data)
+                        >>> with paddle.amp.amp_guard():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
+                        ...     scaled = scaler.scale(loss)
+                        ...     scaled.backward()
+                        ...     scaler.minimize(optimizer, scaled)
         """
         check_type(
             var,
@@ -263,36 +269,39 @@ class AmpScaler:
         **kwargs: Any,
     ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
-        This function is similar as `Optimizer.minimize()`, which performs parameters updating.
+                This function is similar as `Optimizer.minimize()`, which performs parameters updating.
 
-        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
+                If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
+                Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
-        Finally, the loss scaling ratio is updated.
+                Finally, the loss scaling ratio is updated.
 
-        Args:
-            optimizer(Optimizer):  The optimizer used to update parameters.
-            args:  Arguments, which will be forward to `Optimizer.minimize()`.
-            kwargs: Keyword arguments, which will be forward to `Optimizer.minimize()`.
+                Args:
+                    optimizer(Optimizer):  The optimizer used to update parameters.
+                    args:  Arguments, which will be forward to `Optimizer.minimize()`.
+                    kwargs: Keyword arguments, which will be forward to `Optimizer.minimize()`.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> import numpy as np
-                >>> import paddle
+                        >>> import numpy as np
+                        >>> import paddle
 
-                >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-                >>> model = paddle.nn.Conv2D(3, 2, 3)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-                >>> data = paddle.to_tensor(data)
-                >>> with paddle.amp.amp_guard():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
-                ...     scaled = scaler.scale(loss)
-                ...     scaled.backward()
-                ...     scaler.minimize(optimizer, scaled)
+                        >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+                        >>> model = paddle.nn.Conv2D(3, 2, 3)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+                        >>> data = paddle.to_tensor(data)
+                        >>> with paddle.amp.amp_guard():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
+                        ...     scaled = scaler.scale(loss)
+                        ...     scaled.backward()
+                        ...     scaler.minimize(optimizer, scaled)
         """
 
         if in_pir_mode():
@@ -687,7 +696,10 @@ class GradScaler(AmpScaler):
             >>> import paddle
 
             >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+            >>> optimizer = paddle.optimizer.SGD(
+            ...     learning_rate=0.01,
+            ...     parameters=model.parameters(),
+            ... )
             >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             >>> data = paddle.rand([10, 3, 32, 32])
 
@@ -723,33 +735,36 @@ class GradScaler(AmpScaler):
 
     def scale(self, var: Tensor) -> Tensor:
         """
-        Multiplies a Tensor by the scale factor and returns scaled outputs.
-        If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
+                Multiplies a Tensor by the scale factor and returns scaled outputs.
+                If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
 
-        Args:
-            var (Tensor):  The tensor to scale.
-        Returns:
-            The scaled tensor or original tensor.
+                Args:
+                    var (Tensor):  The tensor to scale.
+                Returns:
+                    The scaled tensor or original tensor.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> import paddle
+                        >>> import paddle
 
-                >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> data = paddle.rand([10, 3, 32, 32])
+                        >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                        >>> data = paddle.rand([10, 3, 32, 32])
 
-                >>> with paddle.amp.auto_cast():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
+                        >>> with paddle.amp.auto_cast():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
 
-                >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()  # do backward
-                >>> scaler.minimize(optimizer, scaled)  # update parameters
-                >>> optimizer.clear_grad()
+                        >>> scaled = scaler.scale(loss)  # scale the loss
+                        >>> scaled.backward()  # do backward
+                        >>> scaler.minimize(optimizer, scaled)  # update parameters
+                        >>> optimizer.clear_grad()
         """
         return super().scale(var)
 
@@ -760,70 +775,76 @@ class GradScaler(AmpScaler):
         **kwargs: Any,
     ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
-        This function is similar as `optimizer.minimize()`, which performs parameters updating.
+                This function is similar as `optimizer.minimize()`, which performs parameters updating.
 
-        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
+                If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
+                Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
-        Finally, the loss scaling ratio is updated.
+                Finally, the loss scaling ratio is updated.
 
-        Args:
-            optimizer(Optimizer):  The optimizer used to update parameters.
-            args:  Arguments, which will be forward to `optimizer.minimize()`.
-            kwargs: Keyword arguments, which will be forward to `optimizer.minimize()`.
+                Args:
+                    optimizer(Optimizer):  The optimizer used to update parameters.
+                    args:  Arguments, which will be forward to `optimizer.minimize()`.
+                    kwargs: Keyword arguments, which will be forward to `optimizer.minimize()`.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> import paddle
+                        >>> import paddle
 
-                >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> data = paddle.rand([10, 3, 32, 32])
+                        >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                        >>> data = paddle.rand([10, 3, 32, 32])
 
-                >>> with paddle.amp.auto_cast():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
+                        >>> with paddle.amp.auto_cast():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
 
-                >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()  # do backward
-                >>> scaler.minimize(optimizer, scaled)  # update parameters
-                >>> optimizer.clear_grad()
+                        >>> scaled = scaler.scale(loss)  # scale the loss
+                        >>> scaled.backward()  # do backward
+                        >>> scaler.minimize(optimizer, scaled)  # update parameters
+                        >>> optimizer.clear_grad()
         """
         return super().minimize(optimizer, *args, **kwargs)
 
     def step(self, optimizer: Optimizer) -> None:
         """
-        This function is similar as `optimizer.step()`, which performs parameters updating.
+                This function is similar as `optimizer.step()`, which performs parameters updating.
 
-        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
+                If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
+                Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
-        Args:
-            optimizer(Optimizer):  The optimizer used to update parameters.
+                Args:
+                    optimizer(Optimizer):  The optimizer used to update parameters.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> # doctest: +REQUIRES(env:GPU)
-                >>> import paddle
-                >>> paddle.device.set_device('gpu')
+                        >>> # doctest: +REQUIRES(env:GPU)
+                        >>> import paddle
+                        >>> paddle.device.set_device('gpu')
 
-                >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> data = paddle.rand([10, 3, 32, 32])
-                >>> with paddle.amp.auto_cast():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
-                >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()  # do backward
-                >>> scaler.step(optimizer)  # update parameters
-                >>> scaler.update()  # update the loss scaling ratio
-                >>> optimizer.clear_grad()
+                        >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                        >>> data = paddle.rand([10, 3, 32, 32])
+                        >>> with paddle.amp.auto_cast():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
+                        >>> scaled = scaler.scale(loss)  # scale the loss
+                        >>> scaled.backward()  # do backward
+                        >>> scaler.step(optimizer)  # update parameters
+                        >>> scaler.update()  # update the loss scaling ratio
+                        >>> optimizer.clear_grad()
         """
         if not self._enable:
             return optimizer.step()
@@ -856,28 +877,31 @@ class GradScaler(AmpScaler):
 
     def update(self) -> None:
         """
-        Updates the loss_scaling.
+                Updates the loss_scaling.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> # doctest: +REQUIRES(env:GPU)
-                >>> import paddle
+                        >>> # doctest: +REQUIRES(env:GPU)
+                        >>> import paddle
 
-                >>> paddle.device.set_device('gpu')
-                >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> data = paddle.rand([10, 3, 32, 32])
-                >>> with paddle.amp.auto_cast():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
-                >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()  # do backward
-                >>> scaler.step(optimizer)  # update parameters
-                >>> scaler.update()  # update the loss scaling ratio
-                >>> optimizer.clear_grad()
+                        >>> paddle.device.set_device('gpu')
+                        >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                        >>> data = paddle.rand([10, 3, 32, 32])
+                        >>> with paddle.amp.auto_cast():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
+                        >>> scaled = scaler.scale(loss)  # scale the loss
+                        >>> scaled.backward()  # do backward
+                        >>> scaler.step(optimizer)  # update parameters
+                        >>> scaler.update()  # update the loss scaling ratio
+                        >>> optimizer.clear_grad()
         """
         if not self._enable:
             return
@@ -888,36 +912,39 @@ class GradScaler(AmpScaler):
 
     def unscale_(self, optimizer):
         """
-        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).
-        If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
+                Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).
+                If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
 
-        Args:
-            optimizer(Optimizer):  The optimizer used to update parameters.
+                Args:
+                    optimizer(Optimizer):  The optimizer used to update parameters.
 
-        Returns:
-            The unscaled parameters or original parameters.
+                Returns:
+                    The unscaled parameters or original parameters.
 
-        Examples:
+                Examples:
 
-            .. code-block:: pycon
+                    .. code-block:: pycon
 
-                >>> # doctest: +REQUIRES(env:GPU)
-                >>> import paddle
+                        >>> # doctest: +REQUIRES(env:GPU)
+                        >>> import paddle
 
-                >>> paddle.device.set_device('gpu')
-                >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
-                >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> data = paddle.rand([10, 3, 32, 32])
-                >>> with paddle.amp.auto_cast():
-                ...     conv = model(data)
-                ...     loss = paddle.mean(conv)
-                >>> scaled = scaler.scale(loss)  # scale the loss
-                >>> scaled.backward()  # do backward
-                >>> scaler.unscale_(optimizer)  # unscale the parameter
-                >>> scaler.step(optimizer)
-                >>> scaler.update()
-                >>> optimizer.clear_grad()
+                        >>> paddle.device.set_device('gpu')
+                        >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+                        >>> optimizer = paddle.optimizer.SGD(
+        ...     learning_rate=0.01,
+        ...     parameters=model.parameters(),
+        ... )
+                        >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+                        >>> data = paddle.rand([10, 3, 32, 32])
+                        >>> with paddle.amp.auto_cast():
+                        ...     conv = model(data)
+                        ...     loss = paddle.mean(conv)
+                        >>> scaled = scaler.scale(loss)  # scale the loss
+                        >>> scaled.backward()  # do backward
+                        >>> scaler.unscale_(optimizer)  # unscale the parameter
+                        >>> scaler.step(optimizer)
+                        >>> scaler.update()
+                        >>> optimizer.clear_grad()
         """
         return super()._unscale(optimizer)
 
@@ -1277,6 +1304,24 @@ class GradScaler(AmpScaler):
             incr_count(int): The number of recent consecutive unskipped steps.
             decr_count(int): The number of recent consecutive skipped steps.
             use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamically. Default is True.
+
+        Examples:
+
+            .. code-block:: pycon
+
+                >>> # doctest: +REQUIRES(env:GPU, env:XPU)
+                >>> import paddle
+
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True,
+                ... )
+                >>> scaler_state = scaler.state_dict()
         """
         return super().state_dict()
 
@@ -1285,6 +1330,25 @@ class GradScaler(AmpScaler):
         Loads the scaler state.
 
         Args:
-           state_dict(dict): scaler state. Should be an object returned from a call to `AmpScaler.state_dict()`.
+            state_dict(dict): scaler state. Should be an object returned from a call to `GradScaler.state_dict()`.
+
+        Examples:
+
+            .. code-block:: pycon
+
+                >>> # doctest: +REQUIRES(env:GPU, env:XPU)
+                >>> import paddle
+
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True,
+                ... )
+                >>> scaler_state = scaler.state_dict()
+                >>> scaler.load_state_dict(scaler_state)
         """
         super().load_state_dict(state_dict)
