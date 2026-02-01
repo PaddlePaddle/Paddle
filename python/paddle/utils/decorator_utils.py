@@ -215,7 +215,7 @@ def lp_pool_layer_decorator(
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if len(args) == 5 and isinstance(args[4], bool):
             warnings.warn(
-                "The 4th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
+                "The 5th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
                 category=Warning,
                 stacklevel=2,
             )
