@@ -491,7 +491,10 @@ def min(
             >>> # data_x is a Tensor with shape [2, 4]
             >>> # the axis is a int element
             >>> x = paddle.to_tensor(
-            ...     [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]],
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ],
             ...     dtype='float64',
             ...     stop_gradient=False,
             ... )
@@ -517,7 +520,10 @@ def min(
             >>> # Case 3: equivalent to `paddle.minimum`
             >>> x.clear_grad()
             >>> y = paddle.to_tensor(
-            ...     [[0.5, 0.4, 0.1, 0.2], [0.3, 0.1, 0.6, 0.7]],
+            ...     [
+            ...         [0.5, 0.4, 0.1, 0.2],
+            ...         [0.3, 0.1, 0.6, 0.7],
+            ...     ],
             ...     dtype='float64',
             ...     stop_gradient=False,
             ... )
@@ -649,7 +655,10 @@ def max(
             >>> # data_x is a Tensor with shape [2, 4]
             >>> # the axis is a int element
             >>> x = paddle.to_tensor(
-            ...     [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]],
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ],
             ...     dtype='float64',
             ...     stop_gradient=False,
             ... )
@@ -675,7 +684,10 @@ def max(
             >>> # Case 3: equivalent to `paddle.maximum`
             >>> x.clear_grad()
             >>> y = paddle.to_tensor(
-            ...     [[0.5, 0.4, 0.1, 0.2], [0.3, 0.1, 0.6, 0.7]],
+            ...     [
+            ...         [0.5, 0.4, 0.1, 0.2],
+            ...         [0.3, 0.1, 0.6, 0.7],
+            ...     ],
             ...     dtype='float64',
             ...     stop_gradient=False,
             ... )
@@ -839,7 +851,11 @@ def sort(
             >>> import paddle
 
             >>> x = paddle.to_tensor(
-            ...     [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+            ...     [
+            ...         [5, 8, 9, 5],
+            ...         [0, 0, 1, 7],
+            ...         [6, 9, 2, 4],
+            ...     ],
             ...     dtype='float32',
             ... )
             >>> out1 = paddle.compat.sort(input=x, dim=-1)
