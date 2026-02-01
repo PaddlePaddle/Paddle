@@ -3888,8 +3888,9 @@ class ExponentialMovingAverage:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP('ExponentialMovingAverage does not support PIR')
             >>> import numpy
             >>> import paddle
             >>> import paddle.static as static
@@ -3915,9 +3916,7 @@ class ExponentialMovingAverage:
             >>> for pass_id in range(3):
             ...     for batch_id in range(6):
             ...         feed_data = numpy.random.random(size=(10, 5)).astype('float32')
-            ...         exe.run(program=static.default_main_program(),
-            ...         feed={'x': feed_data},
-            ...         fetch_list=[cost.name])
+            ...         exe.run(program=static.default_main_program(), feed={'x': feed_data}, fetch_list=[cost.name],)
 
             ...     # usage 1
             ...     with ema.apply(exe):
