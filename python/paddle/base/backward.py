@@ -2068,9 +2068,7 @@ def append_backward(
             ...         avg_loss = paddle.mean(loss)
             ...
             ...         # Get all weights in main_program, not include bias.
-            ...         all_weights = [
-            ...             param for param in main_program.block(0).all_parameters() if 'w_' in param.name
-            ...         ]
+            ...         all_weights = [param for param in main_program.block(0).all_parameters() if 'w_' in param.name]
             ...         all_weights_name = [w.name for w in all_weights]
             ...
             ...         # return all param_grads needed to be updated if parameter_list set default None.
