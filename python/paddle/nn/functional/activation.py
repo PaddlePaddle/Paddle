@@ -22,7 +22,6 @@ from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
-    softmax_param_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1145,7 +1144,7 @@ def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         return out
 
 
-@softmax_param_alias
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def softmax(
     x: Tensor,
     axis: int = -1,
@@ -1231,10 +1230,12 @@ def softmax(
 
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+            Alias: ``input``.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
+            Alias: ``dim``.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         out (Tensor, optional): The output Tensor.
@@ -1244,21 +1245,22 @@ def softmax(
         specified) as x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            ...                        [3.0, 4.0, 5.0, 6.0],
-            ...                        [7.0, 8.0, 8.0, 9.0]],
-            ...                       [[1.0, 2.0, 3.0, 4.0],
-            ...                        [5.0, 6.0, 7.0, 8.0],
-            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [[2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 8.0, 9.0]],
+            ...         [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [6.0, 7.0, 8.0, 9.0]],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = F.softmax(x)
             >>> out2 = F.softmax(x, dtype='float64')
-            >>> #out1's data type is float32; out2's data type is float64
-            >>> #out1 and out2's value is as follows:
+            >>> # out1's data type is float32; out2's data type is float64
+            >>> # out1 and out2's value is as follows:
             >>> print(out1)
             >>> print(out2)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,

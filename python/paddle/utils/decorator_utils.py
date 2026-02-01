@@ -170,22 +170,6 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def softmax_param_alias(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    @functools.wraps(func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # Process parameters to handle alias mapping
-        if "input" in kwargs:
-            kwargs["x"] = kwargs.pop("input")
-        if "dim" in kwargs:
-            kwargs["axis"] = kwargs.pop("dim")
-        return func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(func)
-    return cast("Callable[_InputT, _RetT]", wrapper)
-
-
 def param_one_alias(
     alias_list,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
