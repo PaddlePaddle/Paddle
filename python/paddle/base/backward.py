@@ -2056,7 +2056,7 @@ def append_backward(
             >>> import paddle
             >>> import paddle.nn.functional as F
             >>> paddle.enable_static()
-            >>> with paddle.pir_utils.IrGuard():
+            >>> with paddle.pir_utils.OldIrGuard():
             ...     main_program = paddle.static.Program()
             ...     startup_program = paddle.static.Program()
             ...     with paddle.static.program_guard(main_program, startup_program):
