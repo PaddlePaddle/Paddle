@@ -129,7 +129,7 @@ void fused_attn_arbitrary_seqlen_fwd_impl(int64_t b,
                                           cudnn_frontend::DataType_t tensorType,
                                           void* workspace,
                                           size_t* workspace_size,
-                                          const GPUContext& dev_ctx);
+                                          const phi::GPUContext& dev_ctx);
 
 void fused_attn_arbitrary_seqlen_bwd_impl(int64_t b,
                                           int64_t h,
@@ -163,6 +163,6 @@ void fused_attn_arbitrary_seqlen_bwd_impl(int64_t b,
                                           cudnn_frontend::DataType_t tensorType,
                                           void* workspace,
                                           size_t* workspace_size,
-                                          const GPUContext& dev_ctx);
+                                          const phi::GPUContext& dev_ctx);
 
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
