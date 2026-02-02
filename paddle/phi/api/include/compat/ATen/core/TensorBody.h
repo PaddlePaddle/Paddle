@@ -18,6 +18,7 @@
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <optional>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
