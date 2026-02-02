@@ -322,11 +322,7 @@ def standard_gamma(x: Tensor, name: str | None = None) -> Tensor:
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
 
-            >>> x = paddle.uniform(
-            ...     [2, 3],
-            ...     min=1.0,
-            ...     max=5.0,
-            ... )
+            >>> x = paddle.uniform([2, 3], min=1.0, max=5.0)
             >>> out = paddle.standard_gamma(x)
             >>> print(out)
             >>> # doctest: +SKIP("Random output")
