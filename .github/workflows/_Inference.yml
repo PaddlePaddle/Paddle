@@ -44,6 +44,7 @@ jobs:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_build
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
 
     steps:
       - name: Check docker image and run container
@@ -116,6 +117,7 @@ jobs:
           -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${container_name} /bin/bash -c '
           rm -rf * .[^.]*
@@ -192,6 +194,7 @@ jobs:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_test
     runs-on:
       group: Inference-P4
+    timeout-minutes: 120
 
     steps:
       - name: Check docker image and run container
@@ -266,6 +269,7 @@ jobs:
           -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
