@@ -20,6 +20,9 @@
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
+#include <c10/core/Storage.h>
+#include <c10/core/SymInt.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
 #include <utils/scalar_type_conversion.h>
@@ -27,6 +30,7 @@
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -83,8 +87,17 @@ class PADDLE_API TensorBase {
     }
     return tensor_.strides()[static_cast<int>(dim)];
   }
+
+  c10::SymInt sym_stride(int64_t dim) const {
+    return static_cast<c10::SymInt>(stride(dim));
+  }
+
   c10::IntArrayRef strides() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.strides());
+  }
+
+  c10::SymIntArrayRef sym_strides() const {
+    return c10::SymIntArrayRef(strides());
   }
 
   int64_t size(int64_t dim) const {
@@ -94,13 +107,21 @@ class PADDLE_API TensorBase {
     return tensor_.dims()[static_cast<int>(dim)];
   }
 
+  c10::SymInt sym_size(int64_t dim) const {
+    return static_cast<c10::SymInt>(size(dim));
+  }
+
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
   }
 
+  c10::SymIntArrayRef sym_sizes() const { return c10::SymIntArrayRef(sizes()); }
+
   int64_t numel() const { return tensor_.numel(); }
 
-  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
+  c10::SymInt sym_numel() const { return static_cast<c10::SymInt>(numel()); }
+
+  c10::ScalarType dtype() const {  // Should we use `caffe2::TypeMeta` here?
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
@@ -163,6 +184,14 @@ class PADDLE_API TensorBase {
     return paddle::experimental::cast(
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()));
   }
+
+  bool is_complex() const { return at::isComplexType(this->scalar_type()); }
+
+  bool is_floating_point() const {
+    return at::isFloatingType(this->scalar_type());
+  }
+
+  bool is_signed() const { return at::isSignedType(this->scalar_type()); }
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
@@ -228,6 +257,35 @@ class PADDLE_API TensorBase {
   }
 
   void reset() { tensor_.reset(); }
+
+  int64_t storage_offset() const {
+    // Paddle DenseTensor stores offset in meta_.offset (in bytes)
+    // We need to convert to element offset
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+    if (dense_tensor) {
+      size_t byte_offset = dense_tensor->meta().offset;
+      size_t element_size = SizeOf(tensor_.dtype());
+      return element_size > 0 ? static_cast<int64_t>(byte_offset / element_size)
+                              : 0;
+    }
+    return 0;
+  }
+
+  c10::SymInt sym_storage_offset() const {
+    return c10::SymInt(storage_offset());
+  }
+
+  bool has_storage() const { return tensor_.defined(); }
+
+  const Storage storage() const {
+    return Storage(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder());
+  }
+
+  bool is_alias_of(const at::TensorBase& other) const {
+    return this->storage().allocation() == other.storage().allocation();
+  }
 
   // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
   // type and

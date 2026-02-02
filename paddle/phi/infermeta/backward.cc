@@ -242,8 +242,8 @@ void CrossEntropyGradInferMeta(const MetaTensor& x,
   bool check = config.is_runtime || !contain_unknown_dim;
 
   if (check) {
-    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
-                      common::slice_ddim(dy_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(slice_ddim(x_dims, 0, rank - 1),
+                      slice_ddim(dy_dims, 0, rank - 1),
                       common::errors::InvalidArgument(
                           "The Input(X) and Input(Y@GRAD) should have the same "
                           "shape except the last dimension. but received: "
@@ -284,8 +284,8 @@ void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
   bool check = config.is_runtime || !contain_unknown_dim;
 
   if (check) {
-    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
-                      common::slice_ddim(dy_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(slice_ddim(x_dims, 0, rank - 1),
+                      slice_ddim(dy_dims, 0, rank - 1),
                       common::errors::InvalidArgument(
                           "The Input(X) and Input(Y@GRAD) should have the same "
                           "shape except the last dimension. but received: "
@@ -388,7 +388,7 @@ void Flatten2GradInferMeta(const MetaTensor& x,
                            int axis,
                            MetaTensor* x_grad) {
   const auto& xshape_dims = x_shape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
   x_grad->set_dims(x_dims);
   x_grad->share_lod(x_shape);
   x_grad->set_dtype(out_grad.dtype());
@@ -496,6 +496,7 @@ void LinearV2GradInferMeta(const MetaTensor& input,
                            const MetaTensor& weight,
                            const MetaTensor& bias,
                            const MetaTensor& out_grad,
+                           const bool transpose_weight,
                            MetaTensor* input_grad,
                            MetaTensor* weight_grad,
                            MetaTensor* bias_grad) {
@@ -503,6 +504,12 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   auto weight_dims = weight.dims();
   auto bias_dims = bias.dims();
   auto dout_dims = out_grad.dims();
+
+  // Assume weight to be [K, N] if not tranasposed, [N, K] if transposed
+  const int64_t weight_elewise_dim =
+      transpose_weight ? weight_dims[0] : weight_dims[1];
+  const int64_t weight_reduce_dim =
+      transpose_weight ? weight_dims[1] : weight_dims[0];
 
   auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
@@ -516,12 +523,12 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   if (check_k) {
     PADDLE_ENFORCE_EQ(
         dout_mat_dims[1],
-        weight_dims[1],
+        weight_elewise_dim,
         common::errors::InvalidArgument(
             "The last dimension of DOut should be equal with Y's last "
             "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
             dout_mat_dims[1],
-            weight_dims[1]));
+            weight_elewise_dim));
   }
 
   for (int32_t i = 0; i + 2 < input_dims.size(); ++i) {
@@ -539,17 +546,17 @@ void LinearV2GradInferMeta(const MetaTensor& input,
     }
   }
 
-  if (input_grad) {
+  if (input_grad && input) {
     input_grad->set_dims(input_dims);
     input_grad->set_dtype(input.dtype());
   }
 
-  if (weight_grad) {
+  if (weight_grad && weight) {
     weight_grad->set_dims(weight_dims);
     weight_grad->set_dtype(weight.dtype());
   }
 
-  if (bias_grad) {
+  if (bias_grad && bias) {
     bias_grad->set_dims(bias_dims);
     bias_grad->set_dtype(bias.dtype());
   }
@@ -1075,7 +1082,7 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape,
                                const MetaTensor& out,
                                MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
   dx->set_dims(x_dims);
   dx->set_dtype(out.dtype());
   dx->share_lod(xshape);

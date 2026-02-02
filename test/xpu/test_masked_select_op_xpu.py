@@ -151,6 +151,14 @@ class TestMaskedSelectGradAPI(unittest.TestCase):
         np.testing.assert_array_equal(x_grad.numpy(), dout_np)
         paddle.enable_static()
 
+    def test_broadcast_zerosize_input(self):
+        paddle.disable_static(paddle.XPUPlace(0))
+        x = paddle.empty([0, 1], dtype='float32')
+        mask = paddle.ones([1, 1], dtype='bool')
+        out = paddle.masked_select(x, mask)
+        np.testing.assert_equal(list(out.shape), [0])
+        paddle.enable_static()
+
     def test_getitem_bool_mask_int64_grad_empty_out(self):
         paddle.disable_static(paddle.XPUPlace(0))
         x_np = np.array([1, 2], dtype=np.int64)

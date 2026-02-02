@@ -39,7 +39,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                                        const std::string& execution_stream,
                                        const int stream_priority);
 
-OpFuncType AnalyseOpFuncType(::pir::Operation* op, const phi::Place& place);
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place);
 
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,

@@ -429,7 +429,7 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
 }
 
 size_t VirtualMemoryAutoGrowthBestFitAllocator::CompactImpl(
-    const phi::Place &place) {
+    const Place &place) {
   VLOG(1) << "Do Memory Compact Manual";
   size_t compact_free_size = memory_compactor_->Compact(
       all_blocks_, all_blocks_.front().ptr_, all_blocks_.back().ptr_);
@@ -583,7 +583,7 @@ void VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::PreAlloc() {
 }
 
 size_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::CompactImpl(
-    const phi::Place &place) {
+    const Place &place) {
   auto large_allocator =
       std::dynamic_pointer_cast<VirtualMemoryAutoGrowthBestFitAllocator>(
           GetLargeAllocator());

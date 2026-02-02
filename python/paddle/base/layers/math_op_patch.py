@@ -206,12 +206,12 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> x = paddle.static.data(name="x", shape=[2, 2], dtype='float32')
                 >>> y = x.cpu()
         """
         block = current_block(self)
@@ -253,12 +253,12 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> x = paddle.static.data(name="x", shape=[2, 2], dtype='float32')
                 >>> y = x.cpu()
                 >>> z = y.cuda()
         """
@@ -342,7 +342,7 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -350,15 +350,14 @@ def monkey_patch_variable():
                 >>> startup_prog = paddle.static.Program()
                 >>> main_prog = paddle.static.Program()
                 >>> with base.program_guard(startup_prog, main_prog):
-                ...     original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
+                ...     original_variable = paddle.static.data(name="new_variable", shape=[2, 2], dtype='float32')
                 ...     new_variable = original_variable.astype('int64')
                 ...     print("new var's dtype is: {}".format(new_variable.dtype))
-                ...
                 new var's dtype is: paddle.int64
 
             In Dygraph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -367,10 +366,13 @@ def monkey_patch_variable():
                 >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
                 ...     original_variable = paddle.to_tensor(x)
-                ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
+                ...     print(
+                ...         "original var's dtype is: {}, numpy dtype is {}".format(
+                ...             original_variable.dtype, original_variable.numpy().dtype
+                ...         )
+                ...     )
                 ...     new_variable = original_variable.astype('int64')
                 ...     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
-                ...
                 original var's dtype is: paddle.float32, numpy dtype is float32
                 new var's dtype is: paddle.int64, numpy dtype is int64
         """
@@ -512,7 +514,7 @@ def monkey_patch_variable():
             the dimension
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -534,7 +536,7 @@ def monkey_patch_variable():
             the dimension
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -556,7 +558,7 @@ def monkey_patch_variable():
             the dimension
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -579,7 +581,7 @@ def monkey_patch_variable():
         Setting requires_grad=True is equivalent to setting stop_gradient=False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.randn([2, 3])

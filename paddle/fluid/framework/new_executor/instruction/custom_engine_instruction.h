@@ -33,11 +33,11 @@ class CustomEngineInstruction : public InstructionBase {
   CustomEngineInstruction(
       size_t id,
       const phi::Place& place,
-      ::pir::Operation* op,
+      pir::Operation* op,
       ValueExecutionInfo* value_exec_info,
       paddle::framework::interpreter::ExecutionConfig execution_config);
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
   const ValueExecutionInfo* GetValueExecutionInfo() const {
     return value_exec_info_;
   }
@@ -85,7 +85,7 @@ class CustomEngineInstruction : public InstructionBase {
  private:
   phi::Place place_;
   std::string op_name_ = "custom_engine.group_op";
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   phi::KernelContext kernel_context_;
 
