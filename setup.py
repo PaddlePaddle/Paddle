@@ -699,6 +699,7 @@ def xpu() -> str:
 
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+
     Examples:
         .. code-block:: pycon
             >>> import paddle
