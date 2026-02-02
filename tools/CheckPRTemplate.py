@@ -149,14 +149,13 @@ def check_precision_change_approval(body, pr_number, pr_user):
 
     # Check if involves precision change
     # print(body)
-    precision_pattern = r'### 是否引起精度变化\s*(.*?)(?:\s*###|$)'
-    match = re.search(precision_pattern, body, re.DOTALL)
-    # print(match)
+    accuracy_start = body.find('### 是否引起精度变化')
+    if accuracy_start != -1:
+        precision_text = body[accuracy_start + len('### 是否引起精度变化') :]
+    else:
+        precision_text = ''
+        return False, '必须填写是否引起精度变化'
 
-    if not match:
-        return False, "Precision change field not found"
-
-    precision_text = match.group(1).strip()
     print(f'Extracted precision text: "{precision_text}"')
     has_precision_change = '引起精度变化' in precision_text
 
