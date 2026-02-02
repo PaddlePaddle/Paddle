@@ -148,7 +148,7 @@ def check_precision_change_approval(body, pr_number, pr_user):
         return True, "Not develop branch, skip precision change approval check"
 
     # Check if involves precision change
-    precision_pattern = r'### Precision Change Impact\s*(.*?)\s*###'
+    precision_pattern = r'### 是否引起精度变化\s*(.*?)\s*###'
     match = re.search(precision_pattern, body, re.DOTALL)
 
     if not match:
