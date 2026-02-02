@@ -161,9 +161,8 @@ def check_precision_change_approval(body, pr_number, pr_user):
     
     if not has_precision_change:
         return True, "No precision change, no special approval required"
-    REQUIRED_APPROVERS = ['From00', 'lugimzzz', 'risemeup1', 'qingqing01']
+    REQUIRED_APPROVERS = ['From00', 'lugimzzz', 'Jiang-Jia-Jun', 'wanghuancoder']
     REQUIRED_APPROVERS_LOWER = [user.lower() for user in REQUIRED_APPROVERS]
-    # review_group = ['From00', 'lugimzzz', 'risemeup1']
     print(f"PR {pr_number} involves precision change, checking approvals from required approvers: {REQUIRED_APPROVERS}")
     
     # If has precision change, check approval status
