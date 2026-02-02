@@ -56,7 +56,7 @@ def check_link_accessible(url):
         return False
 
 
-def parameter_accuracy(body, pr_number):
+def parameter_accuracy(body):
     PR_dic = {}
     PR_Category = [
         'User Experience',
@@ -141,17 +141,9 @@ def parameter_accuracy(body, pr_number):
                     break
             if not found_valid:
                 message += f'Precision Change Impact must be in {Accuracy_Change}. but now is {accuracy_value}.'
-            if 'Has precision change' in accuracy_value:
-                approval_ok, approval_msg = check_precision_change_approval(body, pr_number)
-                print(f"Approval check result: {approval_ok}, message: {approval_msg}")
-                if not approval_ok:
-                    check_pr_template = False
-                    check_pr_template_message = approval_msg
-                    print("ERROR MESSAGE:", check_pr_template_message)
-                    message += approval_msg + '\n'
     return message
 
-def check_precision_change_approval(body, pr_number):
+def check_precision_change_approval(body, pr_number, pr_user):
     """Check if PR with precision change has sufficient approval"""
     # Only check for develop branch
     if not BRANCH.startswith("develop"):
@@ -169,7 +161,7 @@ def check_precision_change_approval(body, pr_number):
     
     if not has_precision_change:
         return True, "No precision change, no special approval required"
-    REQUIRED_APPROVERS = ['swgu98', 'risemeup1', 'tianlef']
+    REQUIRED_APPROVERS = ['swgu98', 'tianlef']
     REQUIRED_APPROVERS_LOWER = [user.lower() for user in REQUIRED_APPROVERS]
     # review_group = ['From00', 'lugimzzz', 'risemeup1']
     print(f"PR {pr_number} involves precision change, checking approvals from required approvers: {REQUIRED_APPROVERS}")
@@ -189,10 +181,13 @@ def check_precision_change_approval(body, pr_number):
         reviews = response.json()
         
         # Check for approved reviews
-
         approved_by = {}
         for approver in REQUIRED_APPROVERS:
             approved_by[approver] = False
+        
+        if pr_user.lower() in REQUIRED_APPROVERS_LOWER:
+            approved_by[pr_user] = True
+            print(f"  ✓ Approved by PR author {pr_user}")
 
         # Check all reviews
         for review in reviews:
@@ -232,7 +227,7 @@ def checkComments(url):
     return response
 
 
-def checkPRTemplate(repo, body, CHECK_TEMPLATE, pr_number):
+def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     """
     Check if PR's description meet the standard of template
     Args:
@@ -251,11 +246,11 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE, pr_number):
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:
         res = False
     elif result is not None:
-        message = parameter_accuracy(body, pr_number)
+        message = parameter_accuracy(body)
         res = True if message == '' else False
     elif result is None:
         res = False
-        message = parameter_accuracy(body, pr_number)
+        message = parameter_accuracy(body)
         if BRANCH.startswith("fleety_") and len(message) == 0:
             message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return res, message
@@ -275,13 +270,20 @@ def pull_request_event_template(event, repo, *args, **kwargs):
         global check_pr_template
         global check_pr_template_message
         check_pr_template, check_pr_template_message = checkPRTemplate(
-            repo, BODY, CHECK_TEMPLATE, pr_num
+            repo, BODY, CHECK_TEMPLATE
         )
         print(f"check_pr_template: {check_pr_template} pr: {pr_num}")
         if check_pr_template is False:
             print("ERROR MESSAGE:", check_pr_template_message)
             sys.exit(7)
         else:
+            print("check approve")
+            approval_ok, approval_msg = check_precision_change_approval(BODY, pr_num, pr_user)
+            print(f"Approval check result: {approval_ok}, message: {approval_msg}")
+            if not approval_ok:
+                check_pr_template_message = approval_msg
+                print("ERROR MESSAGE:", check_pr_template_message)
+                sys.exit(8)
             sys.exit(0)
 
 
