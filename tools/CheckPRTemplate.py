@@ -24,7 +24,7 @@ PR_checkTemplate = ['Paddle']
 BRANCH = os.environ['BRANCH']
 if BRANCH.startswith("develop"):
     REPO_TEMPLATE = {
-        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Precision Change Impact(.*[^\s].*)### Description(.*[^\s].*)'''
+        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)### 是否引起精度变化(.*[^\s].*)'''
     }
 elif BRANCH.startswith("fleety_"):
     REPO_TEMPLATE = {
@@ -86,12 +86,12 @@ def parameter_accuracy(body):
     ]
 
     Accuracy_Change = [
-        'Has precision change',
-        'No precision change',
+        '引起精度变化',
+        '不引起精度变化',
     ]
     body = re.sub("\r\n", "", body)
     type_end = body.find('### PR Types')
-    changes_end = body.find('### Precision Change Impact')
+    changes_end = body.find('### Description')
     PR_dic['PR Category'] = body[len('### PR Category') : type_end]
     PR_dic['PR Types'] = body[type_end + len('### PR Types') : changes_end]
     message = ''
@@ -118,14 +118,12 @@ def parameter_accuracy(body):
             message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
 
     if BRANCH.startswith("develop"):
-        accuracy_start = body.find('### Precision Change Impact')
+        accuracy_start = body.find('### 是否引起精度变化')
         description_start = body.find('### Description')
         if accuracy_start != -1 and description_start != -1:
             # 确保description_start在accuracy_start之后
             if description_start > accuracy_start:
-                content_start = accuracy_start + len(
-                    '### Precision Change Impact'
-                )
+                content_start = accuracy_start + len('### 是否引起精度变化')
                 PR_dic['Precision Change Impact'] = body[
                     content_start:description_start
                 ].strip()
@@ -135,7 +133,7 @@ def parameter_accuracy(body):
             PR_dic['Precision Change Impact'] = ''
         accuracy_value = PR_dic.get('Precision Change Impact', '').strip()
         if not accuracy_value:
-            message += 'Must fill in the "Precision Change Impact" field.\nn'
+            message += '必须填写是否引起精度变化'
         else:
             found_valid = False
             for option in Accuracy_Change:
@@ -143,7 +141,7 @@ def parameter_accuracy(body):
                     found_valid = True
                     break
             if not found_valid:
-                message += f'Precision Change Impact must be in {Accuracy_Change}. but now is {accuracy_value}.'
+                message += f'精度变化必须填写为：{Accuracy_Change}. 现在是 {accuracy_value}.'
     return message
 
 
@@ -161,10 +159,10 @@ def check_precision_change_approval(body, pr_number, pr_user):
         return False, "Precision change field not found"
 
     precision_text = match.group(1).strip()
-    has_precision_change = 'Has precision change' in precision_text
+    has_precision_change = '引起精度变化' in precision_text
 
     if not has_precision_change:
-        return True, "No precision change, no special approval required"
+        return True, "不涉及精度变化，无需检查"
     REQUIRED_APPROVERS = [
         'From00',
         'lugimzzz',
