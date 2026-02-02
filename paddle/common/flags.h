@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #ifdef PADDLE_WITH_GFLAGS
 #include "gflags/gflags.h"
@@ -106,6 +107,9 @@
 
 namespace paddle {
 namespace flags {
+
+PADDLE_API void SetFlagsFromEnv(const std::vector<std::string>& flags,
+                                bool error_fatal);
 
 /**
  * @brief Parse commandline flags.

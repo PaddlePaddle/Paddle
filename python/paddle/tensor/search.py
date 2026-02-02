@@ -24,7 +24,6 @@ from paddle import _C_ops
 from paddle._C_ops import argmax, argmin  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     index_select_decorator,
     param_one_alias,
     param_two_alias,
@@ -52,7 +51,7 @@ from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 __all__ = []
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def argsort(
     x: Tensor,
     axis: int = -1,
@@ -89,17 +88,13 @@ def argsort(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]],
-            ...                       [[5,2,4,2],
-            ...                        [4,7,7,9],
-            ...                        [1,7,0,6]]],
-            ...                      dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]], [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]], dtype='float32'
+            ... )
             >>> out1 = paddle.argsort(x, axis=-1)
             >>> out2 = paddle.argsort(x, axis=0)
             >>> out3 = paddle.argsort(x, axis=1)
@@ -131,7 +126,7 @@ def argsort(
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
 
-            >>> x = paddle.to_tensor([1, 0]*40, dtype='float32')
+            >>> x = paddle.to_tensor([1, 0] * 40, dtype='float32')
             >>> out1 = paddle.argsort(x, stable=False)
             >>> out2 = paddle.argsort(x, stable=True)
 
@@ -660,7 +655,7 @@ def mode(
         return values, indices
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def where(
     condition: Tensor,
     x: Tensor | float | None = None,
@@ -701,7 +696,7 @@ def where(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
