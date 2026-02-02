@@ -121,7 +121,7 @@ def parameter_accuracy(body):
     if BRANCH.startswith("develop"):
         types_end = body.find('### Precision Change Impact')
         accuracy_end = body.find('### Description')
-        PR_dic['Precision Change Impact'] = body[types_end:accuracy_end]
+        PR_dic['Precision Change Impact'] = body[types_end + len('### Precision Change Impact') : accuracy_end]
         accuracy_value = PR_dic.get('Precision Change Impact', '').strip()
         if not accuracy_value:
             message += 'Must fill in the "Precision Change Impact" field.\nn'
