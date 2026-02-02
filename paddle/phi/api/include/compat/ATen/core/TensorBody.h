@@ -18,7 +18,6 @@
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
 #include <c10/util/OptionalArrayRef.h>
-#include <c10/core/SymIntArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
