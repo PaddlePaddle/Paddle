@@ -612,7 +612,7 @@ def get_device_properties(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
 
@@ -679,7 +679,7 @@ def get_device_name(device: _CudaPlaceLike | None = None) -> str:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -710,7 +710,7 @@ def get_device_capability(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
 

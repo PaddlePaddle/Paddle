@@ -364,6 +364,70 @@ class TestFusedFFNOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_dropout_mode)
 
 
+class TestFusedFFNOpZeroSize(unittest.TestCase):
+    """Test fused_feedforward with zero-size input (e.g., shape [0, 2, 2])"""
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.set_device('xpu')
+
+    def test_zero_size_input(self):
+        """Test that zero-size input doesn't crash"""
+        dtype = "float32"
+        batch_size = 0  # Zero-size first dimension
+        seq_len = 2
+        d_model = 2
+        dim_feedforward = 2
+
+        # Create zero-size input
+        x = paddle.randn([batch_size, seq_len, d_model], dtype=dtype)
+        linear1_weight = paddle.randn([d_model, dim_feedforward], dtype=dtype)
+        linear2_weight = paddle.randn([dim_feedforward, d_model], dtype=dtype)
+
+        # Should not crash
+        out = incubate_f.fused_feedforward(
+            x,
+            linear1_weight,
+            linear2_weight,
+            activation="gelu",
+            dropout1_rate=0,
+            dropout2_rate=0,
+        )
+
+        # Output should have same shape as input (except possibly batch dim)
+        self.assertEqual(out.shape[1:], x.shape[1:])
+        self.assertEqual(out.dtype, x.dtype)
+
+    def test_zero_size_with_pre_layer_norm(self):
+        """Test zero-size input with pre_layer_norm=True"""
+        dtype = "float32"
+        batch_size = 0
+        seq_len = 2
+        d_model = 2
+        dim_feedforward = 2
+
+        x = paddle.randn([batch_size, seq_len, d_model], dtype=dtype)
+        linear1_weight = paddle.randn([d_model, dim_feedforward], dtype=dtype)
+        linear2_weight = paddle.randn([dim_feedforward, d_model], dtype=dtype)
+        ln1_scale = paddle.ones([d_model], dtype="float32")
+        ln1_bias = paddle.zeros([d_model], dtype="float32")
+
+        out = incubate_f.fused_feedforward(
+            x,
+            linear1_weight,
+            linear2_weight,
+            ln1_scale=ln1_scale,
+            ln1_bias=ln1_bias,
+            activation="gelu",
+            dropout1_rate=0,
+            dropout2_rate=0,
+            pre_layer_norm=True,
+        )
+
+        self.assertEqual(out.shape[1:], x.shape[1:])
+        self.assertEqual(out.dtype, x.dtype)
+
+
 support_types = {"float32"}  # get_xpu_op_support_types('fused_feedforward')
 for stype in support_types:
     create_test_class(globals(), XPUTestFusedFFNOp, stype)

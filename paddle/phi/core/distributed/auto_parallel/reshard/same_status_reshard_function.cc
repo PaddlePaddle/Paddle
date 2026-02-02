@@ -44,7 +44,7 @@ bool SameStatusReshardFunction::IsSuitable(
   return true;
 }
 
-void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void SameStatusReshardFunction::Eval(DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {

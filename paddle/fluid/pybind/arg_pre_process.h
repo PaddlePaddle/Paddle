@@ -25,14 +25,13 @@
 namespace paddle {
 
 namespace pybind {
-using Tensor = paddle::Tensor;
 using Value = pir::Value;
 using IntArray = paddle::experimental::IntArray;
 using Scalar = paddle::experimental::Scalar;
 using IntVector = std::vector<int64_t>;
 
-void ExpandAsPreProcess(paddle::Tensor* x,
-                        paddle::optional<paddle::Tensor>* y,
+void ExpandAsPreProcess(Tensor* x,
+                        paddle::optional<Tensor>* y,
                         std::vector<int64_t>* target_shape);
 void ExpandAsPreProcess(Value* x,
                         paddle::optional<pir::Value>* y,
@@ -64,6 +63,19 @@ void GridSamplePreProcess(Value* x,
                           std::string* mode,
                           std::string* padding_mode,
                           bool* align_corners);
+
+// Addmm broadcast validation for dygraph
+void AddmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
+
+// Addmm broadcast validation for static graph
+void AddmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
+
+// Baddbmm broadcast validation for dygraph
+void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
+
+// Baddbmm broadcast validation for static graph
+void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
+
 }  // namespace pybind
 
 }  // namespace paddle

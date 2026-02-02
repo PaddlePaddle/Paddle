@@ -77,18 +77,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                             static_cast<AccT>(d_var_data));
 
       if (flags & kHasScale) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#else
-        CudaAtomicAddWithWarp(&(d_scale[ccid]), static_cast<T>(d_scale_data));
-#endif
+        CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
       }
       if (flags & kHasBias) {
-#if CUDA_VERSION >= 11070
-        phi::CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#else
-        CudaAtomicAddWithWarp(&(d_bias[ccid]), static_cast<T>(d_bias_data));
-#endif
+        CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
       }
     }
   }
@@ -289,8 +281,8 @@ __global__ void GetXGradientCUDAKernel(int64_t N,
 template <typename T, typename Context>
 void GroupNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& scale,
+                         const optional<DenseTensor>& bias,
                          const DenseTensor& y,
                          const DenseTensor& mean,
                          const DenseTensor& var,
@@ -318,7 +310,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
     return;
   }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

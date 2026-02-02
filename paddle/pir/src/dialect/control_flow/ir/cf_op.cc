@@ -170,10 +170,8 @@ void TuplePopOp::VerifyRegion() {
       auto CheckType = [](const pir::Type &type1,
                           const pir::Type &type2) -> bool {
         if (type1.isa<DenseTensorType>() && type2.isa<DenseTensorType>()) {
-          DenseTensorType::Dim input_dims =
-              type1.dyn_cast<pir::DenseTensorType>().dims();
-          DenseTensorType::Dim output_dims =
-              type2.dyn_cast<pir::DenseTensorType>().dims();
+          DDim input_dims = type1.dyn_cast<pir::DenseTensorType>().dims();
+          DDim output_dims = type2.dyn_cast<pir::DenseTensorType>().dims();
           PADDLE_ENFORCE_EQ(
               input_dims.size(),
               output_dims.size(),

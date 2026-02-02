@@ -33,7 +33,6 @@ using SparseCooTensorType = paddle::dialect::SparseCooTensorType;
 using SparseCooTensorTypeStorage = paddle::dialect::SparseCooTensorTypeStorage;
 using SparseCsrTensorType = paddle::dialect::SparseCsrTensorType;
 using SparseCsrTensorTypeStorage = paddle::dialect::SparseCsrTensorTypeStorage;
-using DataLayout = DenseTensorTypeStorage::DataLayout;
 using LegacyLoD = DenseTensorTypeStorage::LegacyLoD;
 
 TypeTranslator::TypeTranslator() {

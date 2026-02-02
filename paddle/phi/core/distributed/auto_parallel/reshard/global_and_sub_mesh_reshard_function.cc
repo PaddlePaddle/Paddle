@@ -43,7 +43,7 @@ bool GlobalToSubMeshReshardFunction::IsSuitable(
   return true;
 }
 
-void GlobalToSubMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void GlobalToSubMeshReshardFunction::Eval(DeviceContext* dev_ctx,
                                           const DistTensor& in,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {
@@ -74,7 +74,7 @@ bool SubMeshToGlobalReshardFunction::IsSuitable(
   return true;
 }
 
-void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void SubMeshToGlobalReshardFunction::Eval(DeviceContext* dev_ctx,
                                           const DistTensor& in,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {

@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& weights,
+                    const optional<DenseTensor>& weights,
                     const Scalar& minlength,
                     DenseTensor* out);
 

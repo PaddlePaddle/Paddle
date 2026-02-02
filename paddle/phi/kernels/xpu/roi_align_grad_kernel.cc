@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void RoiAlignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& boxes,
-                        const paddle::optional<DenseTensor>& boxes_num,
+                        const optional<DenseTensor>& boxes_num,
                         const DenseTensor& out_grad,
                         int pooled_height,
                         int pooled_width,
@@ -43,8 +43,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     return;
   }
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
   DenseTensor roi_batch_id_list;

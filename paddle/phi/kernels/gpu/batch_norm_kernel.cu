@@ -541,8 +541,8 @@ void BatchNormKernel(const Context &dev_ctx,
                      const DenseTensor &x,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
-                     const paddle::optional<DenseTensor> &scale,
-                     const paddle::optional<DenseTensor> &bias,
+                     const optional<DenseTensor> &scale,
+                     const optional<DenseTensor> &bias,
                      bool is_test,
                      float momentum,
                      float epsilon_f,
@@ -570,7 +570,7 @@ void BatchNormKernel(const Context &dev_ctx,
   }
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.

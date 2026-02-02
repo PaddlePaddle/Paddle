@@ -296,19 +296,14 @@ struct SlogDeterminantV2Functor {
     if (input.numel() == 0) {
       dev_ctx.template Alloc<T>(sign);
       if (sign->numel() > 0) {
-        FullKernel<T, Context>(dev_ctx,
-                               vectorize(sign->dims()),
-                               static_cast<T>(1),
-                               sign->dtype(),
-                               sign);
+        Full<T, Context>(dev_ctx, sign->dims(), static_cast<T>(1), sign);
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        FullKernel<T, Context>(dev_ctx,
-                               vectorize(logdet->dims()),
-                               static_cast<phi::dtype::complex<T>>(0),
-                               logdet->dtype(),
-                               logdet);
+        Full<T, Context>(dev_ctx,
+                         logdet->dims(),
+                         static_cast<phi::dtype::complex<T>>(0),
+                         logdet);
       }
       return;
     }
@@ -446,20 +441,18 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     if (input.numel() == 0) {
       dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
       if (sign->numel() > 0) {
-        FullKernel<phi::dtype::complex<T>, Context>(
+        Full<phi::dtype::complex<T>, Context>(
             dev_ctx,
-            vectorize(sign->dims()),
+            sign->dims(),
             static_cast<phi::dtype::complex<T>>(1),
-            sign->dtype(),
             sign);
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        FullKernel<T, Context>(dev_ctx,
-                               vectorize(logdet->dims()),
-                               static_cast<phi::dtype::complex<T>>(0),
-                               logdet->dtype(),
-                               logdet);
+        Full<T, Context>(dev_ctx,
+                         logdet->dims(),
+                         static_cast<phi::dtype::complex<T>>(0),
+                         logdet);
       }
       return;
     }

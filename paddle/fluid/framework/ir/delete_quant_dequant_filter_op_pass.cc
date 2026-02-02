@@ -148,7 +148,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                             "Scales size in channel-wise quant dequantize op "
                             "should be 1, got %d.",
                             scales_name.size()));
-      const phi::DenseTensor& channel_scale_tensor =
+      const DenseTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<DenseTensor>();
       PADDLE_ENFORCE(
           phi::is_cpu_place(channel_scale_tensor.place()),
