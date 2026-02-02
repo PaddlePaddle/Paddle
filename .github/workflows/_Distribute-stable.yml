@@ -61,8 +61,9 @@ jobs:
           WITH_CUDNN_FRONTEND: "ON"
           FLAGS_enable_cudnn_frontend: 1
           CACHE_DIR: /root/.cache/build
-          CCACHE_DIR: /root/.ccache/gpubox
-          CCACHE_MAXSIZE: 150G
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+          CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: 0.8
           CCACHE_STATSLOG: /paddle/build/.stats.log
           CCACHE_SLOPPINESS: clang_index_store,time_macros,include_file_mtime
@@ -72,7 +73,7 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache/:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/home/data/shared:/home/data/shared" \
             -v "/dev/shm:/dev/shm"  \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
@@ -98,6 +99,7 @@ jobs:
             -e WITH_PYTHON \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e CCACHE_STATSLOG \
             -e CCACHE_SLOPPINESS \
             -e FLAGS_fraction_of_gpu_memory_to_use \

@@ -110,7 +110,7 @@ void PartialConcatGradOpCUDAKernel(const Context &dev_ctx,
 
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           tmp_out_array->ptr(),
-                          phi::CPUPlace(),
+                          CPUPlace(),
                           reinterpret_cast<void *>(out_data.data()),
                           out_data.size() * sizeof(T *),
                           dev_ctx.stream());

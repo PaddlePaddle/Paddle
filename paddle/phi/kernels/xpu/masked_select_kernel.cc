@@ -20,6 +20,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 
@@ -29,17 +31,34 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& mask,
                         DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto input = &x;
-  auto* mask_data = mask.data<bool>();
-  auto* input_data = reinterpret_cast<const XPUType*>(input->data<T>());
-  auto input_dim = input->dims();
-  auto mask_dim = mask.dims();
-  auto numel = mask.numel();
-  if (numel == 0) {
+  if (x.numel() == 0 || mask.numel() == 0) {
     out->Resize(common::make_ddim({0}));
     dev_ctx.template Alloc<T>(out);
     return;
   }
+
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x.dims()), vectorize(mask.dims()));
+  DDim expand_dims = common::make_ddim(expanded_size);
+  DenseTensor mask_expand;
+  DenseTensor x_expand;
+  if (mask.dims() != expand_dims) {
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
+
+  if (x.dims() != expand_dims) {
+    ExpandKernel<T, Context>(dev_ctx, x, IntArray(expanded_size), &x_expand);
+  } else {
+    x_expand = x;
+  }
+
+  auto* mask_data = mask_expand.data<bool>();
+  auto* input_data = reinterpret_cast<const XPUType*>(x_expand.data<T>());
+  auto input_dim = x_expand.dims();
+  auto mask_dim = mask_expand.dims();
 
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
@@ -58,7 +77,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
       xpu::nonzero_count(
           dev_ctx.x_context(), mask_data, out_size, mask.numel()),
       "nonzero_count ");
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      static_cast<void*>(&out_size_cpu),
                      mask.place(),
                      static_cast<void*>(out_size),
@@ -74,8 +93,8 @@ void MaskedSelectKernel(const Context& dev_ctx,
   out->Resize(out_dim);
   auto out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  auto input_shape = common::vectorize<int64_t>(input_dim);
-  auto mask_shape = common::vectorize<int64_t>(mask_dim);
+  auto input_shape = vectorize<int64_t>(input_dim);
+  auto mask_shape = vectorize<int64_t>(mask_dim);
   if (input_dim.size() == 0) {
     input_shape = std::vector<int64_t>({1});
   }

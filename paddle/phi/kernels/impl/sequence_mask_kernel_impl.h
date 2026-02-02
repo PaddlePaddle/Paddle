@@ -70,7 +70,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SequenceMaskKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& max_len_tensor,
+                        const optional<DenseTensor>& max_len_tensor,
                         int maxlen,
                         DataType out_dtype,
                         DenseTensor* y) {
@@ -78,7 +78,7 @@ void SequenceMaskKernel(const Context& dev_ctx,
     bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
     if (is_gpu_place) {
       DenseTensor temp;
-      Copy(dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
+      Copy(dev_ctx, *max_len_tensor.get_ptr(), CPUPlace(), false, &temp);
       maxlen = *temp.data<int32_t>();
     } else {
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();

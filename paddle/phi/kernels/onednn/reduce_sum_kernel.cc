@@ -30,11 +30,7 @@ void SumRawKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(dev_ctx,
-                           phi::IntArray(common::vectorize(out->dims())),
-                           0,
-                           out_dtype,
-                           out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   ReduceKernel<T, Context>(dev_ctx,

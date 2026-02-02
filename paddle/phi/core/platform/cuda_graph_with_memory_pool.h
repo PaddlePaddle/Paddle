@@ -17,6 +17,7 @@
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/c_cuda_graph_lib.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/backends/xpu/cuda_graph.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
@@ -83,6 +84,16 @@ class SkipCUDAGraphCaptureGuard {
 #endif
   }
 };
+
+#if defined(PADDLE_WITH_XPU)
+using CUDAGraph = phi::backends::xpu::CUDAGraph;
+
+PADDLE_API void BeginCUDAGraphCapture(
+    phi::XPUPlace place,
+    phi::backends::xpu::xpuStreamCaptureMode mode,
+    int64_t pool_id = CUDAGraph::kInvalidPoolID);
+PADDLE_API std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
+#endif
 
 }  // namespace platform
 }  // namespace paddle

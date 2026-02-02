@@ -26,7 +26,7 @@ namespace phi {
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& y,
+                    const optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape_t,
                     DenseTensor* out) {
   if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
@@ -41,7 +41,7 @@ void ExpandAsKernel(const Context& dev_ctx,
 
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
-  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
+  auto vec_in_dims = vectorize<int64_t>(x.dims());
 
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);

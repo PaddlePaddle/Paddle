@@ -40,11 +40,11 @@ void TransposeKernel(const Context& dev_ctx,
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
-  std::vector<int64_t> x_dim_vec = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> x_dim_vec = vectorize<int64_t>(x.dims());
   int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(out->data<T>()),
@@ -73,7 +73,7 @@ void TransposeKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<XPUContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<XPUContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
@@ -87,7 +87,7 @@ void TransposeKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   dev_ctx.template Alloc<float>(&imag_out);
   const DenseTensor real = Real<T, XPUContext>(dev_ctx, x);
   const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, x);
-  std::vector<int64_t> x_dim_vec = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> x_dim_vec = vectorize<int64_t>(x.dims());
   int r = xpu::transpose<float>(dev_ctx.x_context(),
                                 real.data<float>(),
                                 real_out.data<float>(),

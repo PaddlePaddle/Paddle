@@ -43,10 +43,11 @@ class RemovePaddingPlugin : public DynamicPluginTensorRT {
 
   int initialize() TRT_NOEXCEPT { return 0; }
   void terminate() TRT_NOEXCEPT;
-  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nbInputs,
-                                          nvinfer1::IExprBuilder& exprBuilder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,

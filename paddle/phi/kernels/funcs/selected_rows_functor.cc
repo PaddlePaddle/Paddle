@@ -698,12 +698,12 @@ struct MergeAdd<phi::XPUContext, T> {
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        y_rows_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        merge_rows.data(),
                        ym * sizeof(int64_t));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        x_rows_data,
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        input_rows.data(),
                        xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(dev_ctx.x_context(),
@@ -796,12 +796,12 @@ struct MergeAdd<phi::XPUContext, T> {
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          y_rows_data,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          merge_rows.data(),
                          ym * sizeof(int64_t));
       memory_utils::Copy(dev_ctx.GetPlace(),
                          x_rows_data,
-                         phi::CPUPlace(),
+                         CPUPlace(),
                          input_rows.data(),
                          xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(dev_ctx.x_context(),
