@@ -119,19 +119,15 @@ def parameter_accuracy(body):
 
     if BRANCH.startswith("develop"):
         accuracy_start = body.find('### 是否引起精度变化')
-        description_start = body.find('### Description')
-        if accuracy_start != -1 and description_start != -1:
+        if accuracy_start != -1:
             # 确保description_start在accuracy_start之后
-            if description_start > accuracy_start:
-                content_start = accuracy_start + len('### 是否引起精度变化')
-                PR_dic['Precision Change Impact'] = body[
-                    content_start:description_start
-                ].strip()
-            else:
-                PR_dic['Precision Change Impact'] = ''
+            PR_dic['Precision Change Impact'] = body[
+                accuracy_start + len('### 是否引起精度变化') :
+            ]
         else:
             PR_dic['Precision Change Impact'] = ''
         accuracy_value = PR_dic.get('Precision Change Impact', '').strip()
+        print(f'Extracted Precision Change Impact: "{accuracy_value}"')
         if not accuracy_value:
             message += '必须填写是否引起精度变化'
         else:
