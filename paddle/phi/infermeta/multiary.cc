@@ -6186,6 +6186,14 @@ void MoePermuteInferMeta(const MetaTensor& X,
                     true,
                     common::errors::InvalidArgument(
                         "Input expert_prob_topk's dtype should be FLOAT32"));
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.dims()[1];
+  int64_t output_rows = 0;
+  for (int i = 0; i < num_experts; ++i) {
+    const int64_t tokens = tokens_per_expert[i];
+    output_rows += ((tokens + padding_alignment - 1) / padding_alignment) *
+                   padding_alignment;
+  }
   if (XScale && do_gather) {
     if (using_ue8m0_scale) {
       PADDLE_ENFORCE_EQ(XScale.dtype(),
@@ -6200,17 +6208,15 @@ void MoePermuteInferMeta(const MetaTensor& X,
                             "Input XScale's dtype should be FLOAT32"));
     }
     const int64_t quanted_cols = XScale.dims()[1];
-    XScale_unzipped->set_dims({-1, quanted_cols});
+    XScale_unzipped->set_dims({output_rows, quanted_cols});
     XScale_unzipped->set_dtype(XScale.dtype());
   } else {
     XScale_unzipped->set_dims({0});
     XScale_unzipped->set_dtype(DataType::FLOAT32);
   }
-  const int64_t rows = X.dims()[0];
-  const int64_t cols = X.dims()[1];
 
   if (do_gather) {
-    X_unzipped->set_dims({-1, cols});
+    X_unzipped->set_dims({output_rows, cols});
     X_unzipped->set_dtype(X.dtype());
   } else {
     // Meta only, not
@@ -6220,7 +6226,7 @@ void MoePermuteInferMeta(const MetaTensor& X,
 
   zipped_expertwise_rowmap->set_dims({rows, num_experts});
   zipped_expertwise_rowmap->set_dtype(DataType::INT32);
-  token_prob_unzipped->set_dims({-1});
+  token_prob_unzipped->set_dims({output_rows});
   token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
 }
 
