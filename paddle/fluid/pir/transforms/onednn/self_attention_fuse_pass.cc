@@ -23,7 +23,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string self_attn_name_;
@@ -112,9 +112,9 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("transpose_2_out") = transpose_2(pat.Tensor("matmul_0_out"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto input_shape = pir::GetShapeFromValue(match_ctx.Tensor("input"));
+      auto input_shape = GetShapeFromValue(match_ctx.Tensor("input"));
       auto transpose_0_outshape =
-          pir::GetShapeFromValue(match_ctx.Tensor("transpose_0_out"));
+          GetShapeFromValue(match_ctx.Tensor("transpose_0_out"));
       // input_shape should be [batch_size, seq_len, 3, num_heads, head_size]
       if (input_shape.size() != 5 || input_shape[2] != 3 ||
           transpose_0_outshape.size() != 5 || transpose_0_outshape[0] != 3 ||
@@ -142,8 +142,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
 
     const auto &head_number_attr =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
-          auto shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("transpose_0_out"));
+          auto shape = GetShapeFromValue(match_ctx.Tensor("transpose_0_out"));
           return shape[2];
         });
 
@@ -155,13 +154,12 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class SelfAttentionFusePass : public pir::PatternRewritePass {
+class SelfAttentionFusePass : public PatternRewritePass {
  public:
-  SelfAttentionFusePass()
-      : pir::PatternRewritePass("self_attention_fuse_pass", 2) {}
+  SelfAttentionFusePass() : PatternRewritePass("self_attention_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
 
     ps.Add(paddle::drr::Create<SelfAttentionFusePattern>(
         context, paddle::dialect::SelfDpAttentionOp::name(), 1));
@@ -169,7 +167,7 @@ class SelfAttentionFusePass : public pir::PatternRewritePass {
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation *op) const override {
+  bool CanApplyOn(Operation *op) const override {
 #if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
     !defined(PADDLE_WITH_DNNL)
     LOG(WARNING) << "No-avx512 or MKL or oneDNN supported!";
@@ -183,14 +181,10 @@ class SelfAttentionFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateSelfAttentionFusePass() {
   // specific fusion for self_attention
   return std::make_unique<SelfAttentionFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(self_attention_fuse_pass, SelfAttentionFusePass);
+REGISTER_IR_PASS(self_attention_fuse_pass, pir::SelfAttentionFusePass);

@@ -39,6 +39,7 @@ from paddle._C_ops import (  # noqa: F401
     i0e,
     i1,
     i1e,
+    inverse,
     isfinite,
     isinf,
     isnan,
@@ -61,8 +62,6 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
-    floor_divide_decorator,
     param_one_alias,
     param_two_alias,
 )
@@ -503,7 +502,7 @@ def scale_(
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["exponent"]})
+@param_two_alias(["x", "input"], ["y", "exponent"])
 def pow(
     x: Tensor,
     y: float | Tensor,
@@ -523,8 +522,8 @@ def pow(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     .. note::
-            Alias Support: The parameter name ``input`` can be used as an alias for ``x``, The parameter name ``exponent`` can be used as an alias for ``y``.
-            For example, ``pow(input=2, exponent=1.1)`` is equivalent to ``pow(x=2, y=1.1)``.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, The parameter name ``exponent`` can be used as an alias for ``y``.
+        For example, ``pow(input=2, exponent=1.1)`` is equivalent to ``pow(x=2, y=1.1)``.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
@@ -539,7 +538,7 @@ def pow(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1134,7 +1133,7 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-@floor_divide_decorator()
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def floor_divide(
     x: Tensor,
     y: Number | Tensor,
@@ -1160,7 +1159,7 @@ def floor_divide(
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``input``.
-        y (Tensor｜Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+        y (Tensor|Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output tensor. Default: None.
@@ -1170,7 +1169,7 @@ def floor_divide(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1183,10 +1182,17 @@ def floor_divide(
 
             >>> x = paddle.to_tensor([2, 3, 8, 7])
             >>> y = paddle.to_tensor([1, -5, -3, -3])
-            >>> z = paddle.floor_divide(x, y)
+            >>> z = paddle.floor_divide(x=x, y=y)
             >>> print(z)
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [2, -1, -3, -3])
+
+            >>> x = paddle.to_tensor([2, -3, 8, -7])
+            >>> y = paddle.to_tensor([1, -5, -3, 3])
+            >>> z = paddle.floor_divide(input=x, other=y)  # type: ignore[call-arg]
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 0, -3, -3])
     """
     if in_dynamic_or_pir_mode():
         if isinstance(y, numbers.Number):
@@ -2475,7 +2481,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             return out.reshape(dstshape)
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["vec2"]})
+@param_two_alias(["x", "input"], ["y", "vec2"])
 def outer(
     x: Tensor,
     y: Tensor,
@@ -2505,7 +2511,7 @@ def outer(
         Tensor: The outer-product Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(1, 4).astype('float32')
@@ -2537,63 +2543,6 @@ def outer(
         out = helper.create_variable_for_type_inference(dtype=nx.dtype)
         helper.append_op(
             type='matmul_v2', inputs={'X': nx, 'Y': ny}, outputs={'Out': out}
-        )
-        return out
-
-
-def inverse(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Takes the inverse of the square matrix. A square matrix is a matrix with
-    the same number of rows and columns. The input can be a square matrix
-    (2-D Tensor) or batches of square matrices.
-
-    Args:
-        x (Tensor): The input tensor. The last two
-            dimensions should be equal. When the number of dimensions is
-            greater than 2, it is treated as batches of square matrix. The data
-            type can be float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A Tensor holds the inverse of x. The shape and data type
-                        is the same as x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
-            >>> inv = paddle.inverse(mat)
-            >>> print(inv)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.50000000, 0.        ],
-             [0.        , 0.50000000]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.inverse(x)
-    else:
-
-        def _check_input(x):
-            check_variable_and_dtype(
-                x,
-                'x',
-                ['float32', 'float64', 'complex64', 'complex128'],
-                'inverse',
-            )
-            if len(x.shape) < 2:
-                raise ValueError(
-                    "The input of inverse is expected to be a Tensor whose number "
-                    f"of dimensions is no less than 2. But received: {len(x.shape)}, "
-                    f"x's shape: {x.shape}."
-                )
-
-        _check_input(x)
-        helper = LayerHelper('inverse', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
         )
         return out
 
@@ -3405,6 +3354,8 @@ def cumsum(
         return _cum_sum_(**kwargs)
 
 
+# Edit by AI Agent
+@param_one_alias(["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def cumsum_(
     x: Tensor,
@@ -3415,6 +3366,9 @@ def cumsum_(
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
+
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
     """
     if axis is None:
         flatten = True
@@ -5219,7 +5173,7 @@ def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def diff(
     x: Tensor,
     n: int = 1,
@@ -5265,7 +5219,7 @@ def diff(
         Tensor: The output tensor with same dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

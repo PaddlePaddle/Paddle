@@ -187,11 +187,6 @@ cc_test(
   DEPS dlpack_tensor glog)
 
 cc_test(
-  op_compatible_info_test
-  SRCS op_compatible_info_test.cc
-  DEPS op_compatible_info proto_desc string_helper glog)
-
-cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc
   DEPS operator phi)

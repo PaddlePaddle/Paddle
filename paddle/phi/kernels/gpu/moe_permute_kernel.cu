@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cooperative_groups.h>
-#include <cooperative_groups/memcpy_async.h>
-#include <cuda/barrier>
-#include <cuda/pipeline>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 #include "paddle/utils/optional.h"
 
+#if CUDA_VERSION >= 12080
+#include <cooperative_groups.h>
+#include <cooperative_groups/memcpy_async.h>
+#include <cuda/barrier>
+#include <cuda/pipeline>
 namespace cg = cooperative_groups;
+#endif
 
 namespace phi {
 
@@ -199,11 +201,26 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     const int scale_length,
     const int num_experts,
     const int topk) {
+// This kernel need TMA support, so it only be compiled on Hopper or above
+// architecture
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
   using expert_infos_t = expert_infos<probs_T>;
   int local_cumsum = 0;
   int local_expert_offsets;
   int local_expert_end_offsets;
-  const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
+  // clang-format off
+  // The task allocation for each block is as follows:
+  //blockIdx.x    0   2  4   6  ..   5    3    1      // NOLINT
+  // X          ｜X0｜X1｜X2｜X3|...|Xn-2|Xn-1| Xn |   // NOLINT
+  // clang-format on
+  const bool use_cumsum = blockIdx.x % 2 == 0;
+  int block_index_in_X = 0;
+  if (use_cumsum) {
+    block_index_in_X = blockIdx.x / 2;
+  } else {
+    block_index_in_X = gridDim.x - 1 - blockIdx.x / 2;
+  }
+  const int block_row_base = block_index_in_X * CUMSUM_BLOCK_SIZE;
   const int block_row_end =
       min(block_row_base + CUMSUM_BLOCK_SIZE, total_zipped_tokens_num);
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
@@ -282,8 +299,6 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     const int expert_id = threadIdx.x;
     local_expert_offsets = expert_base_offset[expert_id];
     local_expert_end_offsets = expert_base_offset_end[expert_id];
-
-    const bool use_cumsum = blockIdx.x % 2 == 0;
     // clang-format off
     // If blockid.x is even, we will use cumsum to compute the position in X_unzipped,          // NOLINT
     // the dependency relationship between blocks is here:                                      // NOLINT
@@ -461,6 +476,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       pipe.consumer_release();
     }
   }
+#endif
 }
 
 template <typename T, typename Context>
@@ -493,6 +509,7 @@ void dispatch_permute_kernel(const Context &dev_ctx,
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
 #define MAX_NUM_EXPERTS_FOR_OPT_KERNEL 32
 
+#if CUDA_VERSION >= 12080
 #define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)   \
   if (capability >= 100 && num_experts <= MAX_NUM_EXPERTS_FOR_OPT_KERNEL &&    \
       is_aligned_in_bytes(token_length * sizeof(TOKEN_T)) &&                   \
@@ -502,6 +519,11 @@ void dispatch_permute_kernel(const Context &dev_ctx,
     DISPATCH_GENERIC_KERNEL(                                                   \
         TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)                 \
   }
+#else
+#define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER) \
+  DISPATCH_GENERIC_KERNEL(TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)
+
+#endif
 
 #define DISPATCH_OPT_KERNEL(                                        \
     TOKEN_T, PROB_T, INT_T, SCALE_T, HAS_SCALE, DO_GATHER)          \

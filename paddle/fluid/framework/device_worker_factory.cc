@@ -67,21 +67,6 @@ REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
 
-#if defined(PADDLE_WITH_PSCORE)
-REGISTER_DEVICE_WORKER_CLASS(DownpourLiteWorker);
-REGISTER_DEVICE_WORKER_CLASS(HeterSectionWorker);
-#endif
-
-#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
-REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
-#endif
-
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
-     defined PADDLE_WITH_XPU_BKCL) &&                        \
-    (defined PADDLE_WITH_PSLIB)
-REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
-#endif
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif
