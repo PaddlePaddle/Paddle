@@ -150,8 +150,58 @@ class PADDLE_API TensorBase {
     return tensor_.is_contiguous();
   }
 
+  bool is_non_overlapping_and_dense() const {
+    // Empty or scalar tensors are always non-overlapping and dense
+    if (numel() <= 1) {
+      return true;
+    }
+
+    // If the tensor is contiguous, it is non-overlapping and dense
+    if (tensor_.is_contiguous()) {
+      return true;
+    }
+
+    // For non-contiguous tensors, check if sorted strides form a valid dense
+    // layout
+    auto sizes_vec = sizes();
+    auto strides_vec = strides();
+    int64_t ndim = dim();
+
+    // Create a permutation sorted by strides (ascending order)
+    std::vector<int64_t> perm(ndim);
+    for (int64_t i = 0; i < ndim; ++i) {
+      perm[i] = i;
+    }
+    std::sort(perm.begin(), perm.end(), [&](int64_t a, int64_t b) {
+      return strides_vec[a] < strides_vec[b];
+    });
+
+    // Check if sorted strides form a valid dense layout without gaps/overlaps
+    int64_t expected_stride = 1;
+    for (int64_t i = 0; i < ndim; ++i) {
+      int64_t dim_idx = perm[i];
+      if (sizes_vec[dim_idx] == 0) {
+        return true;  // Empty tensor
+      }
+      if (sizes_vec[dim_idx] == 1) {
+        continue;  // Size-1 dimensions don't affect density
+      }
+      if (strides_vec[dim_idx] != expected_stride) {
+        return false;
+      }
+      expected_stride *= sizes_vec[dim_idx];
+    }
+    return true;
+  }
+
   c10::ScalarType scalar_type() const {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  }
+
+  bool has_names() const {
+    // In PyTorch, has_names() is used to check if any dimension has names.
+    // In Paddle, we don't support named dimension yet, so always return false.
+    return false;
   }
 
   c10::TensorOptions options() const {

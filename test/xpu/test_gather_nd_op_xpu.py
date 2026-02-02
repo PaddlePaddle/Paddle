@@ -202,5 +202,24 @@ class TestZeroDimIndex(unittest.TestCase):
         self.assertEqual(output.shape, [2, 0, 3, 2])
 
 
+class TestGatherNdEmptyXPU(unittest.TestCase):
+    def test_gather_nd_with_empty_index(self):
+        paddle.disable_static()
+        try:
+            paddle.set_device('xpu')
+            x = paddle.rand([1, 20, 0], dtype='float32')
+            x.stop_gradient = False
+            index = paddle.to_tensor([[1, 2]], dtype='int64')
+            out = paddle.gather_nd(
+                x,
+                index,
+            )
+            self.assertEqual(list(out.shape), [1, 0])
+            loss = out.sum()
+            loss.backward()
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
