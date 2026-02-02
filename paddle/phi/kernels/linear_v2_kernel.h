@@ -32,7 +32,7 @@ inline std::tuple<int64_t, int64_t, int64_t> canonicalize_dims(
   const int64_t K =
       weight_dims.size() < 2 ? weight_dims[0] : weight_dims[transpose_weight];
   const int64_t K_from_input = input_dims[input_dims.size() - 1];
-  PADDLE_ENFOECE_EQ(K_from_input,
+  PADDLE_ENFORCE_EQ(K_from_input,
                     K,
                     phi::errors::InvalidArgument(
                         "The last dimension of input should be equal to the %d "
