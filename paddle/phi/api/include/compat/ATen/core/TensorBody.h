@@ -20,7 +20,6 @@
 #include <c10/util/ArrayRef.h>
 #include <limits>
 #include <vector>
-#include <c10/core/SymIntArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
