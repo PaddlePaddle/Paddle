@@ -50,7 +50,7 @@ void AffineChannelGradKernel(const Context& dev_ctx,
   auto* dscale = scale_grad;
   auto* dbias = bias_grad;
 
-  const DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int N = static_cast<int>(dims[0]);

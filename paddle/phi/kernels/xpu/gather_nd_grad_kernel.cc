@@ -87,8 +87,8 @@ void GatherNdGradKernel(const Context &dev_ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  auto x_shape = common::vectorize<int64_t>(x_grad->dims());
-  auto index_shape = common::vectorize<int64_t>(index.dims());
+  auto x_shape = vectorize<int64_t>(x_grad->dims());
+  auto index_shape = vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }

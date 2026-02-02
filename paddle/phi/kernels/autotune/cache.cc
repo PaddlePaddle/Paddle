@@ -22,7 +22,7 @@ namespace phi::autotune {
 
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
-                    phi::DataType dtype) {
+                    DataType dtype) {
   const auto rank = perm.size();
   return GenKey(x_dims, perm, rank, static_cast<int>(dtype));
 }

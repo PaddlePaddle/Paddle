@@ -28,7 +28,7 @@ void ExpandKernel(const Context& dev_ctx,
   auto in_dims = x.dims();
   auto numel = x.numel();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
+  auto vec_in_dims = vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   auto final_expand_shape = vec_in_dims;
@@ -98,7 +98,7 @@ void ExpandKernel(const Context& dev_ctx,
     return;
   }
   auto& x_shape = vec_in_dims;
-  auto out_shape = common::vectorize<int64_t>(out_dims);
+  auto out_shape = vectorize<int64_t>(out_dims);
   if (shape_size == 0) {
     x_shape = {1};
     out_shape = {1};

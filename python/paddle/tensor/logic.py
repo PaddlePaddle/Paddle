@@ -22,6 +22,14 @@ import paddle
 from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
     allclose,
+    bitwise_and,
+    bitwise_and_,
+    bitwise_not,
+    bitwise_not_,
+    bitwise_or,
+    bitwise_or_,
+    bitwise_xor,
+    bitwise_xor_,
     greater_than,
     isclose,
     logical_and,
@@ -32,7 +40,6 @@ from paddle._C_ops import (  # noqa: F401
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
 )
@@ -51,78 +58,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 __all__ = []
-
-
-def _logical_op(
-    op_name: str,
-    x: Tensor,
-    y: Tensor | None,
-    out: Tensor | None = None,
-    name: str | None = None,
-    binary_op: bool = True,
-) -> Tensor:
-    if in_dynamic_mode():
-        op = getattr(_C_ops, op_name)
-        if binary_op:
-            return op(x, y)
-        else:
-            return op(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            [
-                "bool",
-                "int8",
-                "int16",
-                "int32",
-                "int64",
-                "float16",
-                "float32",
-                "float64",
-                "uint16",
-                "complex64",
-                "complex128",
-            ],
-            op_name,
-        )
-        if y is not None:
-            check_variable_and_dtype(
-                y,
-                "y",
-                [
-                    "bool",
-                    "int8",
-                    "int16",
-                    "int32",
-                    "int64",
-                    "float16",
-                    "float32",
-                    "float64",
-                    "uint16",
-                    "complex64",
-                    "complex128",
-                ],
-                op_name,
-            )
-        if out is not None:
-            check_type(out, "out", Variable, op_name)
-
-        helper = LayerHelper(op_name, **locals())
-
-        if out is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        if binary_op:
-            helper.append_op(
-                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-            )
-        else:
-            helper.append_op(
-                type=op_name, inputs={"X": x}, outputs={"Out": out}
-            )
-
-        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -193,7 +128,7 @@ def is_empty(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -240,7 +175,7 @@ def equal_all(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         Tensor: output Tensor, data type is bool, value is [False] or [True].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -294,7 +229,7 @@ def equal(
         and the data type is bool. The result of this op is stop_gradient.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -411,7 +346,7 @@ def gt(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -452,7 +387,7 @@ def greater_equal(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -568,7 +503,7 @@ def less_equal(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -669,7 +604,7 @@ def less_than(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -782,7 +717,7 @@ def not_equal(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -878,7 +813,7 @@ def is_tensor(x: Any) -> TypeGuard[Tensor]:
         A boolean value. True if ``x`` is a paddle.Tensor, otherwise False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -899,173 +834,14 @@ def is_tensor(x: Any) -> TypeGuard[Tensor]:
         return isinstance(x, Variable)
 
 
-def _bitwise_op(
-    op_name: str,
-    x: Tensor,
-    y: Tensor | None,
-    out: Tensor | None = None,
-    name: str | None = None,
-    binary_op: bool = True,
-) -> Tensor:
-    if in_dynamic_mode():
-        op = getattr(_C_ops, op_name)
-        if binary_op:
-            return op(x, y)
-        else:
-            return op(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            ["bool", "uint8", "int8", "int16", "int32", "int64"],
-            op_name,
-        )
-        if y is not None:
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "uint8", "int8", "int16", "int32", "int64"],
-                op_name,
-            )
-        if out is not None:
-            check_type(out, "out", Variable, op_name)
-
-        helper = LayerHelper(op_name, **locals())
-        if binary_op:
-            assert x.dtype == y.dtype
-
-        if out is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        if binary_op:
-            helper.append_op(
-                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-            )
-        else:
-            helper.append_op(
-                type=op_name, inputs={"X": x}, outputs={"Out": out}
-            )
-
-        return out
-
-
-def bitwise_and(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
-) -> Tensor:
-    r"""
-
-    Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
-
-    .. math::
-        Out = X \& Y
-
-    Note:
-        ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor|None, optional): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
-            >>> res = paddle.bitwise_and(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [0, 2, 1])
-    """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_and(x, y)
-    return _bitwise_op(
-        op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
 def __rand__(x: Tensor, y: int | bool):
     if isinstance(y, (int, bool)):
         y_tensor = paddle.to_tensor(y, dtype=x.dtype)
-        return bitwise_and(y_tensor, x, None, None)
+        return bitwise_and(y_tensor, x)
     else:
         raise TypeError(
             f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
         )
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_and`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bitwise_and_(x, y)
-
-
-@param_two_alias(["x", "input"], ["y", "other"])
-def bitwise_or(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
-) -> Tensor:
-    r"""
-
-    Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
-
-    .. math::
-        Out = X | Y
-
-    Note:
-        ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
-        For example, ``bitwise_or(input=tensor_x, other=tensor_y, ...)`` is equivalent to ``bitwise_or(x=tensor_x, y=tensor_y, ...)``.
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            alias: ``input``.
-        y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            alias: ``oth``.
-        out (Tensor|None, optional): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
-            >>> res = paddle.bitwise_or(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [-1, -1, -3])
-    """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_or(x, y)
-
-    return _bitwise_op(
-        op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True
-    )
 
 
 def __ror__(
@@ -1083,65 +859,6 @@ def __ror__(
         )
 
 
-@inplace_apis_in_dygraph_only
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
-def bitwise_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_or`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_mode():
-        return _C_ops.bitwise_or_(x, y)
-
-
-def bitwise_xor(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
-) -> Tensor:
-    r"""
-
-    Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
-
-    .. math::
-        Out = X ^\wedge Y
-
-    Note:
-        ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor|None, optional): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
-            >>> res = paddle.bitwise_xor(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [-1, -3, -4])
-    """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_xor(x, y)
-    return _bitwise_op(
-        op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
 def __rxor__(
     x: Tensor,
     y: int | bool,
@@ -1155,73 +872,6 @@ def __rxor__(
         raise TypeError(
             f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
         )
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_xor_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_xor`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    if in_dynamic_mode():
-        return _C_ops.bitwise_xor_(x, y)
-
-
-def bitwise_not(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
-) -> Tensor:
-    r"""
-
-    Apply ``bitwise_not`` on Tensor ``X``.
-
-    .. math::
-        Out = \sim X
-
-    Note:
-        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor|None, optional): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
-        name (str|None, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> res = paddle.bitwise_not(x)
-            >>> print(res)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [ 4,  0, -2])
-    """
-    if in_dynamic_or_pir_mode() and out is None:
-        return _C_ops.bitwise_not(x)
-
-    return _bitwise_op(
-        op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False
-    )
-
-
-@inplace_apis_in_dygraph_only
-def bitwise_not_(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_not`.
-    """
-    if in_dynamic_mode():
-        return _C_ops.bitwise_not_(x)
 
 
 def bitwise_invert(
@@ -1248,7 +898,7 @@ def bitwise_invert(
         Tensor: Result of ``bitwise_invert``. It is a N-D Tensor with the same data type as the input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])

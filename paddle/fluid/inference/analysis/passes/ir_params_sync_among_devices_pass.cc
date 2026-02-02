@@ -53,7 +53,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
                     true,
                     common::errors::PreconditionNotMet(
                         "The gpu_device_id field should be valid"));
-  phi::Place place = phi::GPUPlace(argument->gpu_device_id());
+  phi::Place place = GPUPlace(argument->gpu_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -130,7 +130,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       dst_ptr = dev_ctx->Alloc(t, t->dtype());
       phi::memory_utils::Copy(place,
                               dst_ptr,
-                              phi::CPUPlace(),
+                              CPUPlace(),
                               src_ptr,
                               t->numel() * phi::SizeOf(t->dtype()),
                               stream);
@@ -269,7 +269,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
     CopyParamsToXpu(argument);
   }
 #endif
-  paddle::memory::Release(phi::CPUPlace());
+  paddle::memory::Release(CPUPlace());
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {

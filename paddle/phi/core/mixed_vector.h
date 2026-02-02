@@ -191,10 +191,6 @@ class MixVector {
       return OptionalCUDAPlace(gpu_);
     }
 
-    paddle::optional<phi::CustomPlace> CustomPlace() const {
-      return OptionalCustomPlace(gpu_);
-    }
-
     void MutableCPU() {
       if (IsInCUDA() && IsDirty()) {
         CopyToCPU();

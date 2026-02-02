@@ -196,7 +196,7 @@ struct GetMaxValue {
                                                   out_data.data<int64_t>()));
     }
     DenseTensor max_value_tensor;
-    Copy(dev_ctx, out_data, phi::CPUPlace(), false, &max_value_tensor);
+    Copy(dev_ctx, out_data, CPUPlace(), false, &max_value_tensor);
     *max_value = max_value_tensor.data<T>()[0];
   }
 };

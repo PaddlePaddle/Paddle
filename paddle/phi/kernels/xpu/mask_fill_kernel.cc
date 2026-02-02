@@ -61,8 +61,8 @@ void MaskedFillKernel(const Context& dev_ctx,
   const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   XPUType* out_xpu = reinterpret_cast<XPUType*>(out_data);
 
-  auto cond_vec = common::vectorize<int64_t>(mask_dims_ex);
-  auto x_vec = common::vectorize<int64_t>(x_dims_ex);
+  auto cond_vec = vectorize<int64_t>(mask_dims_ex);
+  auto x_vec = vectorize<int64_t>(x_dims_ex);
 
   auto* ctx = dev_ctx.x_context();
   int r = xpu::SUCCESS;
@@ -70,7 +70,7 @@ void MaskedFillKernel(const Context& dev_ctx,
   DenseTensor value_expand;
   const DenseTensor* value_tensor = &value;
   if (value.dims() != x_dims) {
-    auto target = common::vectorize(x_dims);
+    auto target = vectorize(x_dims);
     phi::ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(target), &value_expand);
     value_tensor = &value_expand;

@@ -34,20 +34,19 @@ static void ConvertEnum(const void* in, void* out) {
   *reinterpret_cast<int*>(out) = value;
 }
 
+namespace phi {
+
 inline void ConvertCToCpp(C_GraphHookManager* c_mgr,
-                          phi::graph::GraphHookManager* cpp_mgr) {
+                          graph::GraphHookManager* cpp_mgr) {
   for (size_t i = 0; i < c_mgr->size; i++) {
     auto fn_c = c_mgr->hooks[i];
     void* userdata = c_mgr->user_data[i];
 
-    cpp_mgr->hooks.emplace_back(
-        ([fn_c, userdata](phi::graph::CUDAGraphExec_t exec) {
-          fn_c(reinterpret_cast<C_GraphExec>(exec), userdata);
-        }));
+    cpp_mgr->hooks.emplace_back(([fn_c, userdata](graph::CUDAGraphExec_t exec) {
+      fn_c(reinterpret_cast<C_GraphExec>(exec), userdata);
+    }));
   }
 }
-
-namespace phi {
 
 #define INTERFACE_UNIMPLEMENT                 \
   PADDLE_THROW(common::errors::Unimplemented( \
@@ -677,7 +676,7 @@ class CustomDevice : public DeviceInterface {
   }
 
   void* InitEigenDevice(const Place& place,
-                        phi::stream::stream_t stream,
+                        stream::stream_t stream,
                         phi::Allocator* allocator) override {
     void* eigen_device = nullptr;
     Place place_t = place;
@@ -970,8 +969,8 @@ class CustomDevice : public DeviceInterface {
                                 reinterpret_cast<C_Stream>(stream)));
         }
       }
-      const phi::stream::Stream stream_wrapper(
-          Place(AllocationType::CUSTOM, Type()), stream);
+      const stream::Stream stream_wrapper(Place(AllocationType::CUSTOM, Type()),
+                                          stream);
 
       int current_device_id = GetDevice();
       MemoryCopyD2D(current_device_id,
@@ -1061,7 +1060,7 @@ class CustomDevice : public DeviceInterface {
 
   void InitBlasHandle(size_t dev_id,
                       void** blas_handle,
-                      phi::stream::stream_t stream) override {
+                      stream::stream_t stream) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->init_blas_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
@@ -1102,6 +1101,26 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->destroy_blaslt_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blaslt_handle(
           device, reinterpret_cast<C_BLASLtHandle>(blaslt_handle)));
+    }
+  }
+
+  void InitDnnHandle(size_t dev_id,
+                     void** dnn_handle,
+                     phi::stream::stream_t stream) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->init_dnn_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->init_dnn_handle(device,
+                                  reinterpret_cast<C_DNNHandle*>(dnn_handle),
+                                  reinterpret_cast<C_Stream>(stream)));
+    }
+  }
+
+  void DestroyDnnHandle(size_t dev_id, void* dnn_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_dnn_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_dnn_handle(
+          device, reinterpret_cast<C_DNNHandle>(dnn_handle)));
     }
   }
 
@@ -1229,6 +1248,7 @@ class CustomDevice : public DeviceInterface {
   void CudaThreadExchangeStreamCaptureMode(graph::streamCaptureMode* mode) {
     if (pimpl_->cuda_thread_exchange_stream_capthure_mode) {
       C_StreamCaptureMode c_mode = C_StreamCaptureModeGlobal;
+      ConvertEnum(mode, &c_mode);
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->cuda_thread_exchange_stream_capthure_mode(&c_mode));
       ConvertEnum(&c_mode, mode);
@@ -1358,6 +1378,14 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(profiler_start_tracing, false);
   CHECK_INTERFACE(profiler_stop_tracing, false);
   CHECK_INTERFACE(profiler_collect_trace_data, false);
+
+  CHECK_INTERFACE(init_blas_handle, false);
+  CHECK_INTERFACE(destroy_blas_handle, false);
+  CHECK_INTERFACE(blas_set_math_mode, false);
+  CHECK_INTERFACE(init_blaslt_handle, false);
+  CHECK_INTERFACE(destroy_blaslt_handle, false);
+  CHECK_INTERFACE(init_dnn_handle, false);
+  CHECK_INTERFACE(destroy_dnn_handle, false);
 
   CHECK_INTERFACE(cuda_stream_begin_capture, false);
   CHECK_INTERFACE(cuda_stream_end_captrue, false);
