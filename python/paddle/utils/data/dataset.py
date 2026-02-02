@@ -12,33 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import dataloader as dataloader
-from .dataloader import (
-    default_collate,
-    get_worker_info,
+from paddle.io import (
+    ChainDataset as ChainDataset,
+    ConcatDataset as ConcatDataset,
+    Dataset as Dataset,
+    IterableDataset as IterableDataset,
+    Subset as Subset,
+    random_split as random_split,
 )
-from .dataset import (
-    ChainDataset,
-    ConcatDataset,
-    Dataset,
-    IterableDataset,
-    Subset,
-    random_split,
-)
-from .sampler import (
-    Sampler,
-    SequentialSampler,
-)
-
-__all__ = [
-    'default_collate',
-    'get_worker_info',
-    'ChainDataset',
-    'ConcatDataset',
-    'Dataset',
-    'IterableDataset',
-    'Subset',
-    'random_split',
-    'Sampler',
-    'SequentialSampler',
-]

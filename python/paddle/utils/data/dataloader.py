@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.io import (
+    get_worker_info as get_worker_info,
+)
 from paddle.io.dataloader.collate import (
     default_collate_fn as default_collate,  # noqa: F401
 )
