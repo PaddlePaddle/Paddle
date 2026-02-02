@@ -2980,6 +2980,14 @@ def split(
         return outs
 
 
+@overload
+def tensor_split(
+    input: Tensor,
+    indices_or_sections: int | Sequence[int],
+    dim: int | Tensor = 0,
+) -> list[Tensor]: ...
+
+
 @tensor_split_decorator
 def tensor_split(
     x: Tensor,
@@ -3010,7 +3018,7 @@ def tensor_split(
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split along ``axis`` at each of the indices. For instance,
             ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
-            alias: ``indices`` or ``sections``
+            alias: ``indices`` , ``sections`` , ``indices_or_sections``
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.

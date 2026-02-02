@@ -1583,6 +1583,17 @@ def fill_constant(
         return out
 
 
+@overload
+def ones(
+    size: ShapeLike,
+    *,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+) -> paddle.Tensor: ...
+
+
 @size_args_decorator
 def ones(
     shape: ShapeLike,
@@ -1713,6 +1724,17 @@ def ones_like(
         pin_memory=pin_memory,
         requires_grad=requires_grad,
     )
+
+
+@overload
+def zeros(
+    size: ShapeLike,
+    *,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+) -> paddle.Tensor: ...
 
 
 @size_args_decorator
@@ -3008,6 +3030,18 @@ def diagflat(
             )
         out2.stop_gradient = True
         return out2
+
+
+@overload
+def empty(
+    size: ShapeLike,
+    *,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
 
 
 @size_args_decorator

@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops
@@ -968,6 +968,18 @@ def standard_normal(
             device=device,
             requires_grad=requires_grad,
         )
+
+
+@overload
+def randn(
+    size: ShapeLike,
+    *,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
 
 
 @size_args_decorator
@@ -2265,6 +2277,18 @@ def randperm(
         )
         out.stop_gradient = True
         return out
+
+
+@overload
+def rand(
+    size: ShapeLike,
+    *,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
 
 
 @size_args_decorator
