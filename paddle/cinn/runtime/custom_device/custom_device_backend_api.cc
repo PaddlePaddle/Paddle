@@ -23,10 +23,10 @@
 namespace cinn {
 namespace runtime {
 namespace custom_device {
-  void ForceRegisterCinnCustomDeviceHostAPI();
-  void ForceRegisterCinnCustomDeviceIntrinsics(); 
-  void ForceRegisterCustomDeviceIntrinsicsReduce();
-  void ForceRegisterCustomDeviceIntrinsicsFloat16();
+void ForceRegisterCinnCustomDeviceHostAPI();
+void ForceRegisterCinnCustomDeviceIntrinsics();
+void ForceRegisterCustomDeviceIntrinsicsReduce();
+void ForceRegisterCustomDeviceIntrinsicsFloat16();
 
 // ============================================================
 // 匿名命名空间：定义具体的默认实现类 (不对外暴露)
@@ -407,22 +407,23 @@ std::array<int, 3> CustomBackendAPI::get_max_block_dims(
 }
 
 namespace {
-    struct CinnCustomDeviceStaticInitializer {
-        CinnCustomDeviceStaticInitializer() {
-            // 这一行日志非常关键，证明库被加载了
-            VLOG(0) << "!!! STATIC INIT: Triggering CINN Custom Device Registration !!!";
-            
-            // 强制执行注册
-            ForceRegisterCinnCustomDeviceHostAPI();
-            ForceRegisterCinnCustomDeviceIntrinsics();
-            ForceRegisterCustomDeviceIntrinsicsReduce();
-            ForceRegisterCustomDeviceIntrinsicsFloat16();
-        }
-    };
+struct CinnCustomDeviceStaticInitializer {
+  CinnCustomDeviceStaticInitializer() {
+    // 这一行日志非常关键，证明库被加载了
+    VLOG(0)
+        << "!!! STATIC INIT: Triggering CINN Custom Device Registration !!!";
 
-    // 定义一个静态实例，让它在库加载时自动构造
-    static CinnCustomDeviceStaticInitializer __global_initializer_instance;
-}
+    // 强制执行注册
+    ForceRegisterCinnCustomDeviceHostAPI();
+    ForceRegisterCinnCustomDeviceIntrinsics();
+    ForceRegisterCustomDeviceIntrinsicsReduce();
+    ForceRegisterCustomDeviceIntrinsicsFloat16();
+  }
+};
+
+// 定义一个静态实例，让它在库加载时自动构造
+static CinnCustomDeviceStaticInitializer __global_initializer_instance;
+}  // namespace
 
 }  // namespace custom_device
 }  // namespace runtime
