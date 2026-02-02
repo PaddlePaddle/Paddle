@@ -1705,7 +1705,12 @@ def nansum(
             >>> #      [[[1, nan], [3, 4]],
             >>> #       [[5, 6], [-nan, 8]]]
             >>> # Each example is followed by the corresponding output tensor.
-            >>> y = paddle.to_tensor([[[1, float('nan')], [3, 4]], [[5, 6], [float('-nan'), 8]]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [[1, float('nan')], [3, 4]],
+            ...         [[5, 6], [float('-nan'), 8]],
+            ...     ]
+            ... )
             >>> out5 = paddle.nansum(y, axis=[1, 2])
             >>> out5
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1765,7 +1770,12 @@ def nanmean(
 
             >>> import paddle
             >>> # x is a 2-D Tensor:
-            >>> x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [float('nan'), 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, float('-nan'), 0.7],
+            ...     ]
+            ... )
             >>> out1 = paddle.nanmean(x)
             >>> out1
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1789,7 +1799,12 @@ def nanmean(
              [0.33333334]])
 
             >>> # y is a 3-D Tensor:
-            >>> y = paddle.to_tensor([[[1, float('nan')], [3, 4]], [[5, 6], [float('-nan'), 8]]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [[1, float('nan')], [3, 4]],
+            ...         [[5, 6], [float('-nan'), 8]],
+            ...     ]
+            ... )
             >>> out6 = paddle.nanmean(y, axis=[1, 2])
             >>> out6
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1845,7 +1860,13 @@ def count_nonzero(
 
             >>> import paddle
             >>> # x is a 2-D Tensor:
-            >>> x = paddle.to_tensor([[0.0, 1.1, 1.2], [0.0, 0.0, 1.3], [0.0, 0.0, 0.0]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.0, 1.1, 1.2],
+            ...         [0.0, 0.0, 1.3],
+            ...         [0.0, 0.0, 0.0],
+            ...     ]
+            ... )
             >>> out1 = paddle.count_nonzero(x)
             >>> out1
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1871,7 +1892,10 @@ def count_nonzero(
 
             >>> # y is a 3-D Tensor:
             >>> y = paddle.to_tensor(
-            ...     [[[0.0, 1.1, 1.2], [0.0, 0.0, 1.3], [0.0, 0.0, 0.0]], [[0.0, 2.5, 2.6], [0.0, 0.0, 2.4], [2.1, 2.2, 2.3]]]
+            ...     [
+            ...         [[0.0, 1.1, 1.2], [0.0, 0.0, 1.3], [0.0, 0.0, 0.0]],
+            ...         [[0.0, 2.5, 2.6], [0.0, 0.0, 2.4], [2.1, 2.2, 2.3]],
+            ...     ]
             ... )
             >>> out6 = paddle.count_nonzero(y, axis=[1, 2])
             >>> out6
@@ -2438,7 +2462,10 @@ def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
         .. code-block:: pycon
 
             >>> import paddle
-            >>> input = [[[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]], [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]]]
+            >>> input = [
+            ...     [[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]],
+            ...     [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]],
+            ... ]
             >>> x = paddle.to_tensor(input, dtype='float32')
             >>> y = paddle.renorm(x, 1.0, 2, 2.05)
             >>> print(y)
@@ -2798,7 +2825,14 @@ def max(
 
             >>> # data_y is a Tensor with shape [2, 2, 2]
             >>> # the axis is list
-            >>> y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]], dtype='float64', stop_gradient=False)
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [[1.0, 2.0], [3.0, 4.0]],
+            ...         [[5.0, 6.0], [7.0, 8.0]],
+            ...     ],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> result5 = paddle.max(y, axis=[1, 2])
             >>> result5.backward()
             >>> result5
@@ -2911,7 +2945,14 @@ def min(
 
             >>> # data_x is a Tensor with shape [2, 4]
             >>> # the axis is a int element
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]], dtype='float64', stop_gradient=False)
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> result1 = paddle.min(x)
             >>> result1.backward()
             >>> result1
@@ -2958,7 +2999,14 @@ def min(
 
             >>> # data_y is a Tensor with shape [2, 2, 2]
             >>> # the axis is list
-            >>> y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]], dtype='float64', stop_gradient=False)
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [[1.0, 2.0], [3.0, 4.0]],
+            ...         [[5.0, 6.0], [7.0, 8.0]],
+            ...     ],
+            ...     dtype='float64',
+            ...     stop_gradient=False,
+            ... )
             >>> result5 = paddle.min(y, axis=[1, 2])
             >>> result5.backward()
             >>> result5
@@ -3988,7 +4036,12 @@ def prod(
             >>> import paddle
 
             >>> # the axis is a int element
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ]
+            ... )
             >>> out1 = paddle.prod(x)
             >>> out1
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -4015,7 +4068,12 @@ def prod(
             [0, 0, 0, 0])
 
             >>> # the axis is list
-            >>> y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [[1.0, 2.0], [3.0, 4.0]],
+            ...         [[5.0, 6.0], [7.0, 8.0]],
+            ...     ]
+            ... )
             >>> out6 = paddle.prod(y, [0, 1])
             >>> out6
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -4240,7 +4298,7 @@ def gammaln(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [-0.12078223,  0.        ,  0.28468287,  0.69314718,  1.20097363,
-                    1.79175949])
+                 1.79175949])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.gammaln(x)
@@ -4351,7 +4409,7 @@ def gammaincc(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             >>> out = paddle.gammaincc(x, y)
             >>> print(out)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [1.        , 0.15729916, 0.00000774, 0.00000000, 0.        ])
+            [1.        , 0.15729916, 0.00000774, 0.00000000, 0.        ])
     """
     if not isinstance(x, Value) and not paddle.all(
         paddle.greater_equal(x, paddle.zeros_like(x))
@@ -4412,7 +4470,7 @@ def gammainc(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             >>> out = paddle.gammainc(x, y)
             >>> print(out)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
+            [0.        , 0.84270084, 0.99999225, 1.        , 1.        ])
     """
     return 1 - paddle.gammaincc(x, y)
 
@@ -4515,8 +4573,8 @@ def multigammaln(x: Tensor, p: int, name: str | None = None) -> Tensor:
             >>> out = paddle.multigammaln(x, p)
             >>> print(out)
             Tensor(shape=[7], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497738 ,
-                    26.09257889 , 170.68318176])
+            [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497738 ,
+             26.09257889 , 170.68318176])
     """
     assert p >= 1, (
         f"The p must be greater than or equal to 1, But received p is {p}.\n"
@@ -5580,7 +5638,12 @@ def frac(
 
             >>> import paddle
 
-            >>> input = paddle.to_tensor([[12.22000003, -1.02999997], [-0.54999995, 0.66000003]])
+            >>> input = paddle.to_tensor(
+            ...     [
+            ...         [12.22000003, -1.02999997],
+            ...         [-0.54999995, 0.66000003],
+            ...     ]
+            ... )
             >>> output = paddle.frac(input)
             >>> output
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -5661,7 +5724,12 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [3 + 4j, 7 - 24j, 0, 1 + 2j],
+            ...         [6 + 8j, 3, 0, -2],
+            ...     ]
+            ... )
             >>> paddle.sgn(x)
             Tensor(shape=[2, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
             [[ (0.60000002+0.80000001j),  (0.28000000-0.95999998j),
@@ -6428,43 +6496,43 @@ def bitwise_left_shift(
             :name: bitwise_left_shift_example1
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1, 2, 4, 8], [16, 17, 32, 65]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1, 2, 4, 8],
+            ...         [16, 17, 32, 65],
+            ...     ]
+            ... )
             >>> y = paddle.to_tensor(
             ...     [
-            ...         [
-            ...             1,
-            ...             2,
-            ...             3,
-            ...             4,
-            ...         ],
+            ...         [1, 2, 3, 4],
             ...         [2, 3, 2, 1],
             ...     ]
             ... )
             >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
             Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-                   [[2  , 8  , 32 , 128],
-                    [64 , 136, 128, 130]])
+            [[2  , 8  , 32 , 128],
+             [64 , 136, 128, 130]])
 
         .. code-block:: pycon
             :name: bitwise_left_shift_example2
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1, 2, 4, 8], [16, 17, 32, 65]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1, 2, 4, 8],
+            ...         [16, 17, 32, 65],
+            ...     ]
+            ... )
             >>> y = paddle.to_tensor(
             ...     [
-            ...         [
-            ...             1,
-            ...             2,
-            ...             3,
-            ...             4,
-            ...         ],
+            ...         [1, 2, 3, 4],
             ...         [2, 3, 2, 1],
             ...     ]
             ... )
             >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
             Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-                [[2  , 8  , 32 , 128],
-                    [64 , 136, 128, 130]])
+            [[2  , 8  , 32 , 128],
+             [64 , 136, 128, 130]])
     """
     if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
@@ -6535,44 +6603,45 @@ def bitwise_right_shift(
             :name: bitwise_right_shift_example1
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[10, 20, 40, 80], [16, 17, 32, 65]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [10, 20, 40, 80],
+            ...         [16, 17, 32, 65],
+            ...     ]
+            ... )
             >>> y = paddle.to_tensor(
             ...     [
-            ...         [
-            ...             1,
-            ...             2,
-            ...             3,
-            ...             4,
-            ...         ],
+            ...         [1, 2, 3, 4],
             ...         [2, 3, 2, 1],
             ...     ]
             ... )
             >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
             Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-                   [[5 , 5 , 5 , 5 ],
-                    [4 , 2 , 8 , 32]])
+            [[5 , 5 , 5 , 5 ],
+             [4 , 2 , 8 , 32]])
 
         .. code-block:: pycon
             :name: bitwise_right_shift_example2
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[-10, -20, -40, -80], [-16, -17, -32, -65]], dtype=paddle.int8)
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [-10, -20, -40, -80],
+            ...         [-16, -17, -32, -65],
+            ...     ],
+            ...     dtype=paddle.int8,
+            ... )
             >>> y = paddle.to_tensor(
             ...     [
-            ...         [
-            ...             1,
-            ...             2,
-            ...             3,
-            ...             4,
-            ...         ],
+            ...         [1, 2, 3, 4],
             ...         [2, 3, 2, 1],
             ...     ],
             ...     dtype=paddle.int8,
             ... )
             >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)  # logic shift
             Tensor(shape=[2, 4], dtype=int8, place=Place(cpu), stop_gradient=True,
-                [[123, 59 , 27 , 11 ],
-                    [60 , 29 , 56 , 95 ]])
+            [[123, 59 , 27 , 11 ],
+             [60 , 29 , 56 , 95 ]])
     """
     if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
@@ -6706,7 +6775,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
             >>> res = paddle.copysign(x, y)
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                   [-1.,  -2.,  -3.])
+            [-1.,  -2.,  -3.])
 
         .. code-block:: pycon
             :name: example_zero1
@@ -6717,7 +6786,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
             >>> out = paddle.copysign(x, y)
             >>> print(out)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                [1., 2., 3.])
+            [1., 2., 3.])
 
         .. code-block:: pycon
             :name: example_zero2
@@ -6728,7 +6797,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
             >>> out = paddle.copysign(x, y)
             >>> print(out)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                [-1., -2., -3.])
+            [-1., -2., -3.])
     """
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
@@ -6846,9 +6915,9 @@ def combinations(
             >>> res = paddle.combinations(x)
             >>> print(res)
             Tensor(shape=[3, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
-                   [[1, 2],
-                    [1, 3],
-                    [2, 3]])
+            [[1, 2],
+             [1, 3],
+             [2, 3]])
 
     """
     if len(x.shape) != 1:

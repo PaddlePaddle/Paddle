@@ -843,7 +843,12 @@ def shard_index(
 
             >>> import paddle
             >>> label = paddle.to_tensor([[16], [1]], "int64")
-            >>> shard_label = paddle.shard_index(input=label, index_num=20, nshards=2, shard_id=0)
+            >>> shard_label = paddle.shard_index(
+            ...     input=label,
+            ...     index_num=20,
+            ...     nshards=2,
+            ...     shard_id=0,
+            ... )
             >>> print(shard_label.numpy())
             [[-1]
              [ 1]]
@@ -3550,7 +3555,7 @@ def unique_consecutive(
             >>> import paddle
 
             >>> x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
-            >>> output = paddle.unique_consecutive(x)  #
+            >>> output = paddle.unique_consecutive(x)
             >>> print(output)
             Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 2, 3, 1, 2])
@@ -3564,7 +3569,7 @@ def unique_consecutive(
              [2, 2, 1, 2, 1])
 
             >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            >>> output = paddle.unique_consecutive(x, axis=0)  #
+            >>> output = paddle.unique_consecutive(x, axis=0)
             >>> print(output)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2, 1, 3],
@@ -3572,7 +3577,7 @@ def unique_consecutive(
              [2, 1, 3]])
 
             >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            >>> output = paddle.unique_consecutive(x, axis=0)  #
+            >>> output = paddle.unique_consecutive(x, axis=0)
             >>> print(output)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2, 1, 3],
@@ -5127,9 +5132,9 @@ def repeat(
             >>> print(out)
             Tensor(shape=[4, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4],
-            [1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4]])
+             [3, 4, 3, 4, 3, 4],
+             [1, 2, 1, 2, 1, 2],
+             [3, 4, 3, 4, 3, 4]])
 
             >>> # Example 4: 3D tensor - mixed repeats
             >>> x = paddle.to_tensor([[[1, 2], [3, 4]]])
@@ -5137,9 +5142,9 @@ def repeat(
             >>> print(out)
             Tensor(shape=[2, 2, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[[1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4]],
-            [[1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4]]])
+              [3, 4, 3, 4, 3, 4]],
+             [[1, 2, 1, 2, 1, 2],
+              [3, 4, 3, 4, 3, 4]]])
     """
     return tile(input, repeat_times=repeats)
 
@@ -5593,18 +5598,12 @@ def masked_scatter(
             >>> x = paddle.randn([2, 2])
             >>> print(x)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[-1.24725831,  0.03843464],
-                [-0.31660911,  0.04793844]])
+            [[-1.24725831,  0.03843464],
+             [-0.31660911,  0.04793844]])
 
             >>> mask = paddle.to_tensor([[True, True], [False, False]])
             >>> value = paddle.to_tensor(
-            ...     [
-            ...         1,
-            ...         2,
-            ...         3,
-            ...         4,
-            ...         5,
-            ...     ],
+            ...     [1, 2, 3, 4, 5],
             ...     dtype="float32",
             ... )
 
@@ -6043,7 +6042,12 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [[1, 2], [3, 4], [5, 6]],
+            ...         [[7, 8], [9, 10], [11, 12]],
+            ...     ]
+            ... )
             >>> index = paddle.to_tensor([[0, 1]])
 
             >>> output = paddle.gather_nd(x, index)
@@ -6689,9 +6693,9 @@ def view_as_complex(input: Tensor) -> Tensor:
             >>> y = paddle.as_complex(x)
             >>> print(y)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(0.00000000+1.00000000j)  , (2.00000000+3.00000000j)  ,
-              (4.00000000+5.00000000j)  ],
-             [(6.00000000+7.00000000j)  , (8.00000000+9.00000000j)  ,
+            [[(0.00000000+1.00000000j), (2.00000000+3.00000000j),
+              (4.00000000+5.00000000j)],
+             [(6.00000000+7.00000000j), (8.00000000+9.00000000j),
               (10.00000000+11.00000000j)]])
     """
 
@@ -7003,13 +7007,13 @@ def masked_fill(
             >>> mask = paddle.to_tensor([[True, True, False]])
             >>> print(mask)
             Tensor(shape=[1, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
-                   [[True , True , False]])
+            [[True , True , False]])
             >>> out = paddle.masked_fill(x, mask, 2)
             >>> print(out)
             Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[2., 2., 1.],
-                    [2., 2., 1.],
-                    [2., 2., 1.]])
+            [[2., 2., 1.],
+             [2., 2., 1.],
+             [2., 2., 1.]])
     """
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
@@ -8118,14 +8122,14 @@ def index_fill(
             >>> res = paddle.index_fill(input_tensor, index, 0, value)
             >>> print(input_tensor)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-                   [[1, 2, 3],
-                    [4, 5, 6],
-                    [7, 8, 9]])
+            [[1, 2, 3],
+             [4, 5, 6],
+             [7, 8, 9]])
             >>> print(res)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-                   [[-1, -1, -1],
-                    [ 4,  5,  6],
-                    [-1, -1, -1]])
+            [[-1, -1, -1],
+             [ 4,  5,  6],
+             [-1, -1, -1]])
 
     """
     return _index_fill_impl(x, index, axis, value, False)
@@ -8224,12 +8228,12 @@ def select_scatter(
             >>> res = paddle.select_scatter(x, values, 1, 1)
             >>> print(res)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [[[0., 0., 0., 0.],
-                     [1., 1., 1., 1.],
-                     [0., 0., 0., 0.]],
-                    [[0., 0., 0., 0.],
-                     [1., 1., 1., 1.],
-                     [0., 0., 0., 0.]]])
+            [[[0., 0., 0., 0.],
+              [1., 1., 1., 1.],
+              [0., 0., 0., 0.]],
+             [[0., 0., 0., 0.],
+              [1., 1., 1., 1.],
+              [0., 0., 0., 0.]]])
 
     """
     x_shape = x.shape
@@ -8442,15 +8446,15 @@ def block_diag(inputs: Sequence[Tensor], name: str | None = None) -> Tensor:
             >>> out = paddle.block_diag([A, B, C, D, E])
             >>> print(out)
             Tensor(shape=[9, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
-                [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 7, 6, 5, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 5, 4, 3, 0, 0],
-                [0, 0, 0, 0, 0, 2, 1, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 8, 7],
-                [0, 0, 0, 0, 0, 0, 0, 0, 7, 8]])
+            [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 7, 6, 5, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 5, 4, 3, 0, 0],
+             [0, 0, 0, 0, 0, 2, 1, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 8, 7],
+             [0, 0, 0, 0, 0, 0, 0, 0, 7, 8]])
     """
 
     def to_col_block(arys, i, a):
