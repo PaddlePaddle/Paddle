@@ -23,7 +23,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 namespace paddle::framework {
 AssertInstruction::AssertInstruction(size_t id,
                                      const phi::Place& place,
-                                     ::pir::Operation* op,
+                                     pir::Operation* op,
                                      ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place),
       op_(op),
@@ -77,12 +77,12 @@ void AssertInstruction::Run() {
 
   phi::funcs::TensorFormatter formatter;
   formatter.SetSummarize(
-      op_->attribute<::pir::Int64Attribute>("summarize").data());
+      op_->attribute<pir::Int64Attribute>("summarize").data());
 
   const std::vector<pir::Value>& inputs_data_val =
       op_->dyn_cast<paddle::dialect::AssertOp>()
           .data()
-          .defining_op<::pir::CombineOp>()
+          .defining_op<pir::CombineOp>()
           .inputs();
   for (pir::Value val : inputs_data_val) {
     const std::string& name = value_exe_info_->GetVarName(val);

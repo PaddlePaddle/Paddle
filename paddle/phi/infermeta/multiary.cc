@@ -944,7 +944,7 @@ void BatchNormInferMeta(const MetaTensor& x,
             x_dims));
   }
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_GE(
       x_dims.size(),
@@ -3283,7 +3283,7 @@ static void Interpolate1DInferShapeCheck(
                         "Interpolation method can only be \"linear\" when "
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   for (int i = 2; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
@@ -3414,7 +3414,7 @@ static void Interpolate2DInferShapeCheck(
           "Interpolation method can only be \"bilinear\" or \"nearest\" when "
           "Input(X) dimension is 4, but got method = %s.",
           interp_method));
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   for (int i = 2; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
@@ -3567,7 +3567,7 @@ static void Interpolate3DInferShapeCheck(
           "\"nearest\" when Input(X) "
           "dimension is 5, but got method = %s .",
           interp_method));
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   for (int i = 2; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
@@ -5306,8 +5306,8 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
 
   if (check) {
     PADDLE_ENFORCE_EQ(
-        common::slice_ddim(x_dims, 0, rank),
-        common::slice_ddim(labels_dims, 0, rank),
+        slice_ddim(x_dims, 0, rank),
+        slice_ddim(labels_dims, 0, rank),
         common::errors::InvalidArgument(
             "Input(X) and Input(Label) shall have the same shape "
             "except the last dimension. But received: the shape of "
@@ -5318,8 +5318,8 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
     if (pos_weight) {
       auto weight_dims = pos_weight.dims();
       PADDLE_ENFORCE_EQ(
-          common::slice_ddim(weight_dims, 0, rank),
-          common::slice_ddim(labels_dims, 0, rank),
+          slice_ddim(weight_dims, 0, rank),
+          slice_ddim(labels_dims, 0, rank),
           common::errors::InvalidArgument(
               "Input(pos_weight) and Input(Label) shall have the same shape "
               "But received: the shape of Input(PosWeight) is [%s], "

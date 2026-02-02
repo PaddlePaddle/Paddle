@@ -442,8 +442,12 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias(["x", "input"])
 def leaky_relu(
-    x: Tensor, negative_slope: float = 0.01, name: str | None = None
+    x: Tensor,
+    negative_slope: float = 0.01,
+    inplace: bool = False,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     leaky_relu activation. The calculation formula is:
@@ -459,8 +463,10 @@ def leaky_relu(
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         negative_slope (float, optional): Slope of the activation function at
             :math:`x < 0` . Default is 0.01.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -480,7 +486,11 @@ def leaky_relu(
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.leaky_relu(x, negative_slope)
+        return (
+            _C_ops.leaky_relu_(x, negative_slope)
+            if inplace
+            else _C_ops.leaky_relu(x, negative_slope)
+        )
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'leaky_relu'
@@ -497,6 +507,7 @@ def leaky_relu(
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def leaky_relu_(
     x: Tensor, negative_slope: float = 0.01, name: str | None = None
 ) -> Tensor:
@@ -504,8 +515,7 @@ def leaky_relu_(
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
-    if in_dynamic_mode():
-        return _C_ops.leaky_relu_(x, negative_slope)
+    return _C_ops.leaky_relu_(x, negative_slope)
 
 
 def prelu(
@@ -750,7 +760,8 @@ def rrelu(
         return out
 
 
-def relu(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def relu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     """
     relu activation. The calculation formula is follows:
 
@@ -762,6 +773,8 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -781,7 +794,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.relu(x)
+        return _C_ops.relu_(x) if inplace else _C_ops.relu(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
@@ -793,6 +806,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def relu_(x: Tensor, name: str | None = None) -> Tensor:
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
