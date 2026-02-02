@@ -20,7 +20,6 @@
 #include <c10/core/Scalar.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
-#include <c10/core/SymIntArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
