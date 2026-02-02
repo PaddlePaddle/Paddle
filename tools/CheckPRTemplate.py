@@ -141,6 +141,14 @@ def parameter_accuracy(body):
                     break
             if not found_valid:
                 message += f'Precision Change Impact must be in {Accuracy_Change}. but now is {accuracy_value}.'
+            if 'Has precision change' in accuracy_value:
+                approval_ok, approval_msg = check_precision_change_approval(BODY, pr_num)
+                print(f"Approval check result: {approval_ok}, message: {approval_msg}")
+                if not approval_ok:
+                    check_pr_template = False
+                    check_pr_template_message = approval_msg
+                    print("ERROR MESSAGE:", check_pr_template_message)
+                    message += approval_msg + '\n'
     return message
 
 def check_precision_change_approval(body, pr_number):
@@ -273,15 +281,6 @@ def pull_request_event_template(event, repo, *args, **kwargs):
         if check_pr_template is False:
             print("ERROR MESSAGE:", check_pr_template_message)
             sys.exit(7)
-        if check_pr_template and BRANCH.startswith("develop"):
-            print("Checking precision change approval requirements...")
-            approval_ok, approval_msg = check_precision_change_approval(BODY, pr_num)
-            print(f"Approval check result: {approval_ok}, message: {approval_msg}")
-            if not approval_ok:
-                check_pr_template = False
-                check_pr_template_message = approval_msg
-                print("ERROR MESSAGE:", check_pr_template_message)
-                sys.exit(7)
         else:
             sys.exit(0)
 
