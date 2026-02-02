@@ -108,8 +108,6 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
 };
 
 struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
-  using DataLayout = DataLayout;
-  using DDim = DDim;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
