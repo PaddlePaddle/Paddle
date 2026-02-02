@@ -129,12 +129,26 @@ def create_global_var(
         Variable: The created Variable
 
     Examples:
-        .. code-block:: python
+    .. code-block:: pycon
 
-            >>> import paddle
-            >>> paddle.enable_static()
-            >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-            ...                                persistable=True, force_cpu=True, name='new_var')
+        >>> # doctest: +SKIP('Cannot be executed reliably due to dtype mismatch in constant initializer')
+        >>> import paddle
+        >>> paddle.device.set_device("cpu")
+        >>> paddle.enable_static()
+        >>> main_program = paddle.static.Program()
+        >>> startup_program = paddle.static.Program()
+        >>> with paddle.static.program_guard(main_program, startup_program):
+        ...     var = paddle.static.create_global_var(
+        ...         shape=[2, 3],
+        ...         value=1.0,
+        ...         dtype="float32",
+        ...         persistable=True,
+        ...         force_cpu=True,
+        ...     )
+        >>> var.shape
+        (2, 3)
+        >>> paddle.disable_static()
+
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
