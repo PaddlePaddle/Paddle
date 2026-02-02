@@ -37,11 +37,8 @@ else:
 
 
 def re_rule(body, CHECK_TEMPLATE):
-    print(body, "===body===")
-    print(CHECK_TEMPLATE, "===CHECK_TEMPLATE===")
     PR_RE = re.compile(CHECK_TEMPLATE, re.DOTALL)
     result = PR_RE.search(body)
-    print(result)
     return result
 
 
