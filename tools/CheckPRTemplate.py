@@ -86,8 +86,8 @@ def parameter_accuracy(body):
     ]
 
     Accuracy_Change = [
-        '引起精度变化',
-        '不引起精度变化',
+        '是',
+        '否',
     ]
     body = re.sub("\r\n", "", body)
     type_end = body.find('### PR Types')
@@ -156,11 +156,11 @@ def check_precision_change_approval(body, pr_number, pr_user):
         ]
     else:
         precision_text = ''
-        return False, '必须填写是否引起精度变化'
+        return False, '未匹配到是否引起精度变化字段，无法判断是否涉及精度变化'
     precision_text = precision_text.strip()
 
     print(f'Extracted precision text: "{precision_text}"')
-    has_precision_change = '引起精度变化' in precision_text
+    has_precision_change = '是' in precision_text
 
     if not has_precision_change:
         return True, "不涉及精度变化，无需检查"
