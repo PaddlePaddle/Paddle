@@ -34,7 +34,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "deepmd"
