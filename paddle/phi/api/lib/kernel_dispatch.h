@@ -57,10 +57,18 @@ struct KernelKeySet {
 
   // TODO(chenweihang): iterate all kernel key for kernel selection
   phi::KernelKey GetHighestPriorityKernelKey() {
-    return phi::KernelKey(static_cast<Backend>(32 - detail::CountLeadingZeros(
-                                                        backend_set.bitset())),
-                          layout,
-                          dtype);
+    uint32_t bitset_value = backend_set.bitset();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (backend_set.Has(Backend(4))) {
+      return phi::KernelKey(Backend(4), layout, dtype);
+    }
+#endif
+    std::size_t leading_zeros = detail::CountLeadingZeros(bitset_value);
+    Backend selected_backend = static_cast<Backend>(32 - leading_zeros);
+    VLOG(8) << "GetHighestPriorityKernelKey: selected_backend = "
+            << selected_backend;
+
+    return phi::KernelKey(selected_backend, layout, dtype);
   }
 };
 
@@ -101,8 +109,9 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
-    if (tensor_backend_set == BackendSet(Backend::GPU) ||
-        tensor_backend_set == BackendSet(Backend::CUSTOM) || disable_gpudnn) {
+    if (tensor_backend_set ==
+            BackendSet(paddle::experimental::get_accelerat_backend()) ||
+        disable_gpudnn) {
       disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
       VLOG(8) << "Disable kernel backend: GPUDNN";

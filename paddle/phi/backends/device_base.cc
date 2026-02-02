@@ -490,6 +490,16 @@ void DeviceInterface::DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) {
   INTERFACE_UNIMPLEMENT;
 }
 
+void DeviceInterface::InitDnnHandle(size_t dev_id,
+                                    void** dnn_handle,
+                                    phi::stream::stream_t stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyDnnHandle(size_t dev_id, void* dnn_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 // CudaGraph
 void DeviceInterface::CUDAStreamBeginCapture(size_t dev_id,
                                              stream::stream_t stream,
