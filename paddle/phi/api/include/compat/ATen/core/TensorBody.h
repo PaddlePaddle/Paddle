@@ -103,8 +103,18 @@ class Tensor : public TensorBase {
   }
 
   Tensor cuda() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     PaddlePlace place(phi::AllocationType::GPU);
     return tensor_.copy_to(place, true);
+#elif defined(PADDLE_WITH_XPU)
+    return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    return tensor_.copy_to(paddle::DefaultCustomPlace(), true);
+#else
+    PD_THROW(
+        "cuda() is not supported: no GPU/XPU/Custom device enabled in this "
+        "build.");
+#endif
   }
 
   const void* const_data_ptr() const {
