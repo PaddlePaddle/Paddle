@@ -29,7 +29,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
   DenseTensor x_expand;
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      common::vectorize(x.dims()), common::vectorize(mask.dims()));
+      vectorize(x.dims()), vectorize(mask.dims()));
 
   DDim expand_dims = common::make_ddim(expanded_size);
   if (mask.dims() != expand_dims) {

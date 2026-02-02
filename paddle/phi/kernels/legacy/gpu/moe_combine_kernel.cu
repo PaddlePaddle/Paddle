@@ -109,8 +109,7 @@ void MoeCombineKernel(const Context& dev_ctx,
                       DenseTensor* y) {
   dev_ctx.template Alloc<T>(y);  // T cannot support phi::dtype::float8 very
                                  // well, maybe replaced with x.dtype();
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
   auto combine_weights_shape = combine_weights.dims();
   auto x_shape = x.dims();
   moe_combine_fwd<T, Context>(dev_ctx,

@@ -28,14 +28,23 @@ def fabricate_dispatch_result(
     num_experts,
     data_type="bfloat16",
     broadcast_ratio=0.5,
+    using_ue8m0_scale=False,
 ):
     """Helper function to generate test data."""
     hidden_states = paddle.randn([seqlen, token_length]).astype(data_type)
 
     scale = paddle.empty([0])
     if data_type == "float8_e4m3fn":
-        scale_cols = (token_length + 127) // 128
-        scale = paddle.randn([seqlen, scale_cols], dtype="float32")
+        if using_ue8m0_scale:
+            scale_cols = (token_length + 127) // 128
+            # if using_ue8m0_scale, four ue8m0 scales will be packed into one int32
+            scale_cols = (scale_cols + 3) // 4
+            scale = paddle.randn([seqlen, scale_cols], dtype="float32").astype(
+                paddle.int32
+            )
+        else:
+            scale_cols = (token_length + 127) // 128
+            scale = paddle.randn([seqlen, scale_cols], dtype="float32")
 
     # Calculate expert counts with normal distribution
     expected_experts = max(1, min(broadcast_ratio * num_experts, topk))
@@ -91,7 +100,7 @@ def tensor_max_abs_rel_err(a, b, eps=1e-8):
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
     """Test cases for moe_permute and moe_unpermute."""
 
-    SEQLEN = 16384
+    SEQLEN = [5000, 16384]
     TOKEN_LEN = 7168
     DTYPES = ["float8_e4m3fn", "bfloat16"]
     EXPERT_NUMS = [4, 8, 16, 32, 64]
@@ -103,10 +112,12 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
     def test_permute_unpermute_consistency(self):
         """Test that permute + unpermute recovers original tensors."""
-        for dt, expert_num, topk in itertools.product(
-            self.DTYPES, self.EXPERT_NUMS, self.TOPKS
+        for seq_len, dt, expert_num, topk in itertools.product(
+            self.SEQLEN, self.DTYPES, self.EXPERT_NUMS, self.TOPKS
         ):
-            with self.subTest(dtype=dt, expert_num=expert_num, topk=topk):
+            with self.subTest(
+                seq_len=seq_len, dtype=dt, expert_num=expert_num, topk=topk
+            ):
                 (
                     hidden_states,
                     scale,
@@ -114,7 +125,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     expert_prob_topk,
                     tokens_per_expert,
                 ) = fabricate_dispatch_result(
-                    self.SEQLEN,
+                    seq_len,
                     self.TOKEN_LEN,
                     topk,
                     expert_num,
@@ -167,7 +178,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                         zipped_expertwise_rowmap,
                         expert_routemap_topk,
                         unzipped_probs,
-                        total_zipped_tokens=self.SEQLEN,
+                        total_zipped_tokens=seq_len,
                         num_experts=expert_num,
                     )
                 )
@@ -200,6 +211,67 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     unzipped_probs._md5sum(),
                     err_msg="no_gather's unzipped_probs do not match",
                 )
+
+    def test_permute_unpermute_consistency_for_ue8m0_scale(self):
+        """Test that permute + unpermute recovers original tensors for ue8m0 scale."""
+        DTYPES = ["float8_e4m3fn"]
+        EXPERT_NUMS = [4, 8, 16]
+        TOPKS = [4, 8, 16]
+        for seq_len, dt, expert_num, topk in itertools.product(
+            self.SEQLEN, DTYPES, EXPERT_NUMS, TOPKS
+        ):
+            with self.subTest(
+                seq_len=seq_len, dtype=dt, expert_num=expert_num, topk=topk
+            ):
+                (
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
+                    tokens_per_expert,
+                ) = fabricate_dispatch_result(
+                    seq_len,
+                    self.TOKEN_LEN,
+                    topk,
+                    expert_num,
+                    data_type=dt,
+                    broadcast_ratio=0.5,
+                    using_ue8m0_scale=True,
+                )
+                if dt == "bfloat16":
+                    scale = None
+
+                # Permute step
+                (
+                    unzipped_tokens,
+                    zipped_expertwise_rowmap,
+                    unzipped_probs,
+                    unzipped_scales,
+                ) = moe_permute(
+                    hidden_states,
+                    scale,
+                    expert_routemap_topk,
+                    expert_prob_topk,
+                    num_experts=expert_num,
+                    tokens_per_expert=tokens_per_expert,
+                    padding_alignment=128,
+                    using_ue8m0_scale=True,
+                )
+                # test the unzipped_scales is correct or not
+                zipped_expertwise_rowmap_np = zipped_expertwise_rowmap.numpy()
+                scale_np = scale.numpy()
+                unzipped_scales_np = unzipped_scales.numpy()
+                assert zipped_expertwise_rowmap_np.ndim == 2
+                for i in range(zipped_expertwise_rowmap_np.shape[0]):
+                    valid_indices = zipped_expertwise_rowmap_np[i][
+                        zipped_expertwise_rowmap_np[i] != -1
+                    ]
+                    for index in valid_indices:
+                        np.testing.assert_equal(
+                            scale_np[i],
+                            unzipped_scales_np[index],
+                            err_msg="unzipped_scales[{i}] is not correct",
+                        )
 
 
 if __name__ == "__main__":

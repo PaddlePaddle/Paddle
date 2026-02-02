@@ -107,8 +107,8 @@ void TensorToVector(const phi::DenseTensor& src,
 template <typename T>
 void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
-TEST_API phi::DenseTensor TensorFromDLPack(DLManagedTensor* src);
-TEST_API phi::DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src);
+TEST_API DenseTensor TensorFromDLPack(DLManagedTensor* src);
+TEST_API DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src);
 
 // The implementation of template functions.
 //
@@ -120,7 +120,7 @@ void TensorFromArray(const T* src,
                      phi::DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src);
-  phi::CPUPlace src_place;
+  CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(array_size)});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = array_size * sizeof(T);
@@ -165,7 +165,7 @@ void TensorFromVector(const std::vector<T>& src,
                       phi::DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
-  phi::CPUPlace src_place;
+  CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = src.size() * sizeof(T);
@@ -220,7 +220,7 @@ inline void TensorFromVector(const std::vector<bool>& src,
 
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(array);
-  phi::CPUPlace src_place;
+  CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<bool>(dst_place));
   auto size = src.size() * sizeof(bool);
@@ -258,9 +258,9 @@ inline void TensorFromVector(const std::vector<bool>& src,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src, phi::DenseTensor* dst) {
-  phi::CPUPlace dst_place = phi::CPUPlace();
+  CPUPlace dst_place = CPUPlace();
   auto src_ptr = static_cast<const void*>(src.data());
-  phi::CPUPlace src_place;
+  CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = src.size() * sizeof(T);
@@ -275,9 +275,9 @@ inline void TensorFromVector(const std::vector<bool>& src,
   for (unsigned int i = 0; i < src.size(); i++) {
     array[i] = static_cast<bool>(src[i]);
   }
-  phi::CPUPlace dst_place = phi::CPUPlace();
+  CPUPlace dst_place = CPUPlace();
   auto src_ptr = static_cast<const void*>(array);
-  phi::CPUPlace src_place;
+  CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<bool>(dst_place));
   auto size = src.size() * sizeof(bool);
@@ -293,7 +293,7 @@ void TensorToVector(const phi::DenseTensor& src,
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
 
-  phi::CPUPlace dst_place;
+  CPUPlace dst_place;
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
@@ -335,7 +335,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
 
   bool* array = new bool[src.numel()];
 
-  phi::CPUPlace dst_place;
+  CPUPlace dst_place;
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(array);
 
@@ -362,7 +362,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
-  for (unsigned int i = 0; i < src.numel(); i++) {
+  for (int64_t i = 0; i < src.numel(); i++) {
     (*dst)[i] = static_cast<bool>(array[i]);
   }
   delete[] array;
@@ -373,7 +373,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
 
-  phi::CPUPlace dst_place;
+  CPUPlace dst_place;
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
@@ -395,7 +395,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
 
   bool* array = new bool[src.numel()];
 
-  phi::CPUPlace dst_place;
+  CPUPlace dst_place;
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(array);
 
@@ -408,7 +408,7 @@ inline void TensorToVector(const phi::DenseTensor& src,
 
   memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
 
-  for (unsigned int i = 0; i < src.numel(); i++) {
+  for (int64_t i = 0; i < src.numel(); i++) {
     (*dst)[i] = static_cast<bool>(array[i]);
   }
   delete[] array;
@@ -420,8 +420,8 @@ template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
   if (!phi::is_cpu_place(x->place())) {
-    phi::DenseTensor cpu_x;
-    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
+    DenseTensor cpu_x;
+    framework::TensorCopy(*x, CPUPlace(), &cpu_x);
     value = cpu_x.data<T>()[0];
   } else {
     value = x->data<T>()[0];

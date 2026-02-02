@@ -63,12 +63,12 @@ class CinnJitInstruction::FnPtrImpl {
           const auto& tensor = [&]() -> phi::DenseTensor {
             phi::DenseTensor new_tensor =
                 *(kernel_tensor_args[binding_info.arg_idx]);
-            if (new_tensor.place() == phi::CPUPlace()) {
+            if (new_tensor.place() == CPUPlace()) {
               return new_tensor;
             }
             framework::TensorCopySync(
                 *(kernel_tensor_args[binding_info.arg_idx]),
-                phi::CPUPlace(),
+                CPUPlace(),
                 &new_tensor);
             return new_tensor;
           }();

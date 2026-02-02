@@ -154,8 +154,9 @@ void exec_fft(const phi::XPUContext& dev_ctx,
   DenseTensor workspace_tensor = Empty<uint8_t>(dev_ctx, {workspace_size});
 
   // prepare cufft for execution
-  PADDLE_ENFORCE_FFT_SUCCESS(
-      phi::dynload::cufftSetStream(config->plan(), nullptr));
+  PADDLE_ENFORCE_FFT_SUCCESS(phi::dynload::cufftSetStream(
+      config->plan(),
+      reinterpret_cast<cudaStream_t>(dev_ctx.x_context()->xpu_stream)));
   PADDLE_ENFORCE_FFT_SUCCESS(
       phi::dynload::cufftSetWorkArea(config->plan(), workspace_tensor.data()));
 

@@ -27,6 +27,7 @@ limitations under the License. */
 #include <functional>
 #include <mutex>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
@@ -304,6 +305,11 @@ class GPUPinnedContext
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "GPUPinnedContext does not support cudnn_handle()."));
+  }
 
   static const char* name() { return "GPUPinnedContext"; }
 

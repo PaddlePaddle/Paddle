@@ -14,12 +14,13 @@
 
 #pragma once
 
-// CUDA and HIP use same api
+// CUDA and HIP use ReduceGpuKernel API, XPU use ReduceKernel API.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
 
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/reduce_gpu_kernel.h"
 
 namespace phi {
 
@@ -33,7 +34,7 @@ void Reduce(const KPDevice& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
-            bool keep_dim,
+            bool keep_dim,  // unused
             DataType out_dtype,
             DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
@@ -44,7 +45,11 @@ void Reduce(const KPDevice& dev_ctx,
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
   }
-#ifndef PADDLE_WITH_XPU_KP
+#ifdef PADDLE_WITH_XPU_KP
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+      dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
+#else
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
@@ -71,12 +76,59 @@ void Reduce(const KPDevice& dev_ctx,
     funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
         dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
   }
-#else
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
-      dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
 #endif
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename T, template <typename, typename, typename> class ReduceOp>
+void Reduce(const KPDevice& dev_ctx,
+            const DenseTensor& x,
+            bool reduce_all,
+            const std::vector<int64_t>& dims,
+            DataType out_dtype,
+            DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
+
+  int64_t reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (x.dims())[i];
+  }
+
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    if (x.dtype() == phi::DataType::BFLOAT16 &&
+        out_dtype == phi::DataType::FLOAT32) {
+      phi::funcs::ReduceGpuKernel<phi::bfloat16, float, ReduceOp>(
+          dev_ctx, x, out, reduce_dims);
+    } else if (x.dtype() == phi::DataType::FLOAT16 &&
+               out_dtype == phi::DataType::FLOAT32) {
+      phi::funcs::ReduceGpuKernel<phi::float16, float, ReduceOp>(
+          dev_ctx, x, out, reduce_dims);
+    } else {
+      auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+      tmp_tensor.set_strides(x.strides());
+
+      PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
+          phi::DataType::INT32,
+          phi::DataType::INT64,
+          phi::DataType::FLOAT16,
+          phi::DataType::BFLOAT16,
+          out_dtype,
+          "ReduceGpuKernel",
+          ([&] {
+            using MPType = typename phi::dtype::MPTypeTrait<data_t>::Type;
+            phi::funcs::ReduceGpuKernel<data_t, data_t, ReduceOp>(
+                dev_ctx, tmp_tensor, out, reduce_dims);
+          }));
+    }
+  } else {
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    phi::funcs::ReduceGpuKernel<T, T, ReduceOp>(dev_ctx, x, out, reduce_dims);
+  }
+}
+#endif
+
 }  // namespace phi
 
 #endif

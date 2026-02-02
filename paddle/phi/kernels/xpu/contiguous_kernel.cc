@@ -49,20 +49,20 @@ void ContiguousKernel(const Context& dev_ctx,
     r = xpu::as_strided<XPUType>(dev_ctx.x_context(),
                                  input_data,
                                  output_data,
-                                 common::vectorize<int64_t>(input.dims()),
-                                 common::vectorize<int64_t>(input.strides()),
+                                 vectorize<int64_t>(input.dims()),
+                                 vectorize<int64_t>(input.strides()),
                                  0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
 }
 
 #ifdef PADDLE_WITH_XPU_FFT
-template <>
-void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
-                                                  const DenseTensor& input,
-                                                  DenseTensor* out) {
-  using T = phi::complex64;
-
+template <typename T>
+typename std::enable_if<std::is_same<T, phi::complex64>::value ||
+                        std::is_same<T, phi::complex128>::value>::type
+ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
+                            const DenseTensor& input,
+                            DenseTensor* out) {
   DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
   meta.offset = 0;
@@ -78,8 +78,8 @@ void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   // as_strided<int8_t> to preserve both real/imag parts and handle large
   // strides safely.
   dev_ctx.template Alloc<T>(out);
-  auto bytes_shape = common::vectorize<int64_t>(input.dims());
-  auto bytes_strides = common::vectorize<int64_t>(input.strides());
+  auto bytes_shape = vectorize<int64_t>(input.dims());
+  auto bytes_strides = vectorize<int64_t>(input.strides());
   const int64_t bytes_per_elem = static_cast<int64_t>(sizeof(T));
   for (auto& s : bytes_strides) {
     s *= bytes_per_elem;
@@ -105,6 +105,19 @@ void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
 }
+template <>
+void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                  const DenseTensor& input,
+                                                  DenseTensor* out) {
+  ComplexContiguousKernelImpl<phi::complex64>(dev_ctx, input, out);
+}
+
+template <>
+void ContiguousKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                                   const DenseTensor& input,
+                                                   DenseTensor* out) {
+  ComplexContiguousKernelImpl<phi::complex128>(dev_ctx, input, out);
+}
 #endif
 
 }  // namespace phi
@@ -123,6 +136,7 @@ PD_REGISTER_KERNEL(contiguous,
                    double,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::complex64,
+                   phi::complex128,
 #endif
                    phi::float16,
                    phi::bfloat16) {

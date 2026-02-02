@@ -2218,8 +2218,8 @@ def generate_proposals(
             num_anchors is the box count of each position. Each anchor is
             in (xmin, ymin, xmax, ymax) format an unnormalized. The data type must be float32.
         variances (Tensor): A 4-D Tensor. The expanded variances of anchors with a layout of
-            [H, W, num_priors, 4]. Each variance is in
-            (xcenter, ycenter, w, h) format. The data type must be float32.
+            [H, W, A, 4]. Each variance is in (xcenter, ycenter, w, h) format.
+            The data type must be float32.
         pre_nms_top_n (float, optional): Number of total bboxes to be kept per
             image before NMS. `6000` by default.
         post_nms_top_n (float, optional): Number of total bboxes to be kept per
@@ -2242,18 +2242,19 @@ def generate_proposals(
         - rpn_rois_num (Tensor): Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
 
-            >>> scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
+            >>> scores = paddle.rand((2, 4, 5, 5), dtype=paddle.float32)
             >>> bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
             >>> img_size = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
-            >>> anchors = paddle.rand((2,5,4,4), dtype=paddle.float32)
-            >>> variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
-            >>> rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(scores, bbox_deltas,
-            ...                 img_size, anchors, variances, return_rois_num=True)
+            >>> anchors = paddle.rand((5, 5, 4, 4), dtype=paddle.float32)
+            >>> variances = paddle.rand((5, 5, 4, 4), dtype=paddle.float32)
+            >>> rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(
+            ...     scores, bbox_deltas, img_size, anchors, variances, return_rois_num=True
+            ... )
             >>> # doctest: +SKIP('random sample')
             >>> print(rois, roi_probs, roi_nums)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,

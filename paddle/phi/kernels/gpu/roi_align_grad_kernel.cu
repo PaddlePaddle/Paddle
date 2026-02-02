@@ -170,7 +170,7 @@ template <typename T, typename Context>
 void RoiAlignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& boxes,
-                        const paddle::optional<DenseTensor>& boxes_num,
+                        const optional<DenseTensor>& boxes_num,
                         const DenseTensor& out_grad,
                         int pooled_height,
                         int pooled_width,
@@ -180,9 +180,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         DenseTensor* dx) {
   if (x.numel() == 0 || boxes.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
-
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(dx->dims()), 0.0, dx->dtype(), dx);
+    Full<T>(dev_ctx, dx->dims(), 0.0, dx);
     return;
   }
 
@@ -205,7 +203,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   box_batch_id_list.Resize({rois_num});
   int* box_batch_size = dev_ctx.template HostAlloc<int>(&box_batch_id_list);
 
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();

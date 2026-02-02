@@ -377,8 +377,9 @@ class ProgBarLogger(Callback):
             Default: 2.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(90)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
@@ -387,23 +388,34 @@ class ProgBarLogger(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ],
+            ... )
             >>> train_dataset = MNIST(mode='train', transform=transform)
 
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet,
-            ...     inputs, labels)
+            >>> model = paddle.Model(
+            ...     lenet,
+            ...     inputs,
+            ...     labels,
+            ... )
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> callback = paddle.callbacks.ProgBarLogger(log_freq=10)
-            >>> model.fit(train_dataset, batch_size=64, callbacks=callback)
+            >>> model.fit(
+            ...     train_dataset,
+            ...     batch_size=64,
+            ...     callbacks=callback,
+            ... )
     """
 
     epochs: int | None
@@ -647,8 +659,9 @@ class ModelCheckpoint(Callback):
             If None, will not save checkpoint. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(100)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
@@ -657,23 +670,33 @@ class ModelCheckpoint(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ]
+            ... )
+
             >>> train_dataset = MNIST(mode='train', transform=transform)
 
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet,
-            ...     inputs, labels)
+            >>> model = paddle.Model(lenet, inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> callback = paddle.callbacks.ModelCheckpoint(save_dir='./temp')
-            >>> model.fit(train_dataset, batch_size=64, callbacks=callback)
+            >>> model.fit(
+            ...     train_dataset,
+            ...     batch_size=2,
+            ...     epochs=1,
+            ...     callbacks=callback,
+            ...     verbose=0,
+            ... )
     """
 
     def __init__(self, save_freq: int = 1, save_dir: str | None = None) -> None:
@@ -837,8 +860,9 @@ class EarlyStopping(Callback):
         save_best_model(bool): Whether to save best model. Default: True.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(90)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec
@@ -852,12 +876,15 @@ class EarlyStopping(Callback):
             >>> sample_num = 200
             >>> save_dir = './best_model_checkpoint'
             >>> transform = T.Compose(
-            ...     [T.Transpose(), T.Normalize([127.5], [127.5])])
+            ...     [T.Transpose(), T.Normalize([127.5], [127.5])],
+            ... )
             >>> train_dataset = MNIST(mode='train', transform=transform)
             >>> val_dataset = MNIST(mode='test', transform=transform)
             >>> net = LeNet()
             >>> optim = paddle.optimizer.Adam(
-            ...     learning_rate=0.001, parameters=net.parameters())
+            ...     learning_rate=0.001,
+            ...     parameters=net.parameters(),
+            ... )
 
             >>> inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
@@ -866,7 +893,8 @@ class EarlyStopping(Callback):
             >>> model.prepare(
             ...     optim,
             ...     loss=CrossEntropyLoss(reduction="sum"),
-            ...     metrics=[Accuracy()])
+            ...     metrics=[Accuracy()],
+            ... )
             >>> callbacks = paddle.callbacks.EarlyStopping(
             ...     'loss',
             ...     mode='min',
@@ -874,15 +902,18 @@ class EarlyStopping(Callback):
             ...     verbose=1,
             ...     min_delta=0,
             ...     baseline=None,
-            ...     save_best_model=True)
-            >>> model.fit(train_dataset,
-            ...           val_dataset,
-            ...           batch_size=64,
-            ...           log_freq=200,
-            ...           save_freq=10,
-            ...           save_dir=save_dir,
-            ...           epochs=20,
-            ...           callbacks=[callbacks])
+            ...     save_best_model=True,
+            ... )
+            >>> model.fit(
+            ...     train_dataset,
+            ...     val_dataset,
+            ...     batch_size=64,
+            ...     log_freq=200,
+            ...     save_freq=10,
+            ...     save_dir=save_dir,
+            ...     epochs=20,
+            ...     callbacks=[callbacks],
+            ... )
     """
 
     def __init__(
@@ -1299,8 +1330,9 @@ class ReduceLROnPlateau(Callback):
         min_lr(float, optional): lower bound on the learning rate. Default: 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(120)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec
@@ -1311,27 +1343,33 @@ class ReduceLROnPlateau(Callback):
             >>> import paddle.vision.transforms as T
             >>> sample_num = 200
             >>> transform = T.Compose(
-            ...      [T.Transpose(), T.Normalize([127.5], [127.5])])
+            ...     [T.Transpose(), T.Normalize([127.5], [127.5])],
+            ... )
             >>> train_dataset = MNIST(mode='train', transform=transform)
             >>> val_dataset = MNIST(mode='test', transform=transform)
             >>> net = LeNet()
             >>> optim = paddle.optimizer.Adam(
-            ...     learning_rate=0.001, parameters=net.parameters())
+            ...     learning_rate=0.001,
+            ...     parameters=net.parameters(),
+            ... )
             >>> inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
             >>> model = Model(net, inputs=inputs, labels=labels)
             >>> model.prepare(
             ...     optim,
             ...     loss=CrossEntropyLoss(),
-            ...     metrics=[Accuracy()])
-            >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
-            >>> model.fit(train_dataset,
-            ...             val_dataset,
-            ...             batch_size=64,
-            ...             log_freq=200,
-            ...             save_freq=10,
-            ...             epochs=20,
-            ...             callbacks=[callbacks])
+            ...     metrics=[Accuracy()],
+            ... )
+            >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=2, verbose=1)
+            >>> model.fit(
+            ...     train_dataset,
+            ...     val_dataset,
+            ...     batch_size=64,
+            ...     log_freq=200,
+            ...     save_freq=10,
+            ...     epochs=4,
+            ...     callbacks=[callbacks],
+            ... )
 
     """
 

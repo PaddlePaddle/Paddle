@@ -48,6 +48,12 @@ class TestLayerPrint(unittest.TestCase):
             'PReLU(num_parameters=1, data_format=NCHW, init=0.25, dtype=float32, name=PReLU)',
         )
 
+        module = nn.RReLU(lower=0.1, upper=0.3, inplace=True)
+        self.assertEqual(
+            str(module),
+            'RReLU(lower=0.1, upper=0.3, training=True, dtype=float32, inplace=True)',
+        )
+
         module = nn.ReLU()
         self.assertEqual(str(module), 'ReLU()')
 
@@ -57,7 +63,7 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.SELU()
         self.assertEqual(
             str(module),
-            'SELU(scale=1.0507009873554805, alpha=1.6732632423543772)',
+            'SELU(scale=1.0507009873554805, alpha=1.6732632423543772, inplace=False)',
         )
 
         module = nn.LeakyReLU()
@@ -67,7 +73,7 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Sigmoid()')
 
         module = nn.Hardsigmoid()
-        self.assertEqual(str(module), 'Hardsigmoid()')
+        self.assertEqual(str(module), 'Hardsigmoid(inplace=False)')
 
         module = nn.Softplus()
         self.assertEqual(str(module), 'Softplus(beta=1, threshold=20)')
@@ -79,7 +85,10 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Softsign()')
 
         module = nn.Swish()
-        self.assertEqual(str(module), 'Swish()')
+        self.assertEqual(str(module), 'Swish(inplace=False)')
+
+        module = nn.Mish()
+        self.assertEqual(str(module), 'Mish(inplace=False)')
 
         module = nn.Tanhshrink()
         self.assertEqual(str(module), 'Tanhshrink()')

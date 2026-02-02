@@ -59,7 +59,7 @@ class GarbageCollector {
 
 class CPUGarbageCollector : public GarbageCollector {
  public:
-  CPUGarbageCollector(const phi::CPUPlace &place, size_t max_memory_size);
+  CPUGarbageCollector(const CPUPlace &place, size_t max_memory_size);
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;

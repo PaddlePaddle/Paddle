@@ -8,7 +8,7 @@ on:
         required: false
 
 env:
-  docker_image: paddle-ixuca-py39:v0
+  docker_image: paddle-ixuca-py39:3.3.0
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -30,16 +30,105 @@ jobs:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   test:
-    name: Test
+    name: Build and Test
     needs: check-bypass
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: test2
 
     steps:
+      - name: Check approval
+        id: check-approval
+        run: |
+          set -euo pipefail
+
+          SKIP_FLAG_FILE=/data/geyuqiang/skip-ci.txt
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          if [ -f "${SKIP_FLAG_FILE}" ]; then
+            flag_value=$(head -n 1 "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+            if [ "${flag_value}" = "true" ]; then
+              second_line=$(sed -n '2p' "${SKIP_FLAG_FILE}" | tr -d '\r\n[:space:]')
+              if [ -n "${second_line}" ] && [ "${second_line}" = "${PR_NUMBER}" ]; then
+                echo "Skip flag is true but second line matches PR ${PR_NUMBER}; not skipping IXUCA CI"
+              else
+                echo "Found skip flag file ${SKIP_FLAG_FILE} with value true and PR number mismatch/empty; skipping IXUCA CI"
+                echo "can-skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+          fi
+
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+
+          AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
+
+          echo "Authorized reviewers: ${AUTHORIZED_REVIEWERS[*]}"
+          echo "Repository: ${{ github.repository }}"
+          echo "PR number: ${{ github.event.pull_request.number }}"
+
+          response=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews")
+
+          echo "Response length: ${#response}"
+
+          can_skip=$(python3 -c '
+          import json, sys
+
+          def debug(msg):
+              print(msg, file=sys.stderr)
+
+          debug("=== Review Check Debug Info ===")
+          debug(f"Authorized reviewers: {sys.argv[1:]}")
+          AUTHORIZED = set(sys.argv[1:])
+
+          try:
+              input_data = sys.stdin.read()
+              debug(f"Raw input data length: {len(input_data)}")
+              data = json.loads(input_data)
+              debug(f"Parsed {len(data)} reviews")
+          except Exception as e:
+              debug(f"JSON parse error: {str(e)}")
+              print("false")
+              sys.exit(0)
+
+          latest_state = {}
+          debug("\n=== Review States ===")
+          for r in data:
+              user = r.get("user", {}).get("login")
+              if not user:
+                  continue
+              state = r.get("state")
+              latest_state[user] = state
+              commit_id = r.get("commit_id") or ""
+              debug(f"- {user}: {state} (commit: {commit_id[:8]})")
+
+          debug("\n=== Final Check ===")
+          for user, state in latest_state.items():
+              if user in AUTHORIZED and state == "APPROVED":
+                  debug(f"Found APPROVED review from authorized user: {user}")
+                  print("true")
+                  sys.exit(0)
+
+          debug("No APPROVED review found from authorized users")
+          print("false")
+          ' "${AUTHORIZED_REVIEWERS[@]}" <<< "$response")
+
+          echo "can-skip=$can_skip" >> "$GITHUB_OUTPUT"
+
+          if [ "$can_skip" = "true" ]; then
+            echo "Found valid approval from authorized reviewer, skipping IXUCA CI"
+          else
+            echo "No valid approval found, running full CI"
+          fi
+
       - name: Download paddle.tar.gz and update test branch
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker run -i --rm \
+          --network host \
           -v ${{ github.workspace }}:/paddle \
           -e PR_ID \
           -e COMMIT_ID \
@@ -56,30 +145,75 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           git config pull.rebase false
           git checkout test
-          echo "Pull upstream develop"
-          # source ${{ github.workspace }}/../../../proxy
-          # bash ci/git_pull.sh $BRANCH
+          echo "Fetching upstream develop branch"
+          git config --global --unset-all http.proxy || true
+          git config --global --unset-all https.proxy || true
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+          git config --global http.proxy "$http_proxy"
+          git config --global https.proxy "$https_proxy"
+          git fetch upstream develop
+          echo "Rebasing test branch onto upstream/develop"
+          git rebase upstream/develop || {
+            echo "Rebase failed, attempting to continue with current state"
+            git rebase --abort || true
+          }
+          echo "Latest 5 commits after rebase:"
+          git log --oneline -5
 
       - name: Determine the runner
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          # source ${{ github.workspace }}/Paddle/ci/utils.sh
-          # determine_npu_runner ${runner_name}
-          # echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
+
+      - name: Get PaddleCustomDevice PR number from Paddle PR description
+        if: steps.check-approval.outputs.can-skip != 'true'
+        id: get-pcd-pr
+        run: |
+          export https_proxy=http://oversea-website-proxy.aistudio.public:8888
+          export http_proxy=http://oversea-website-proxy.aistudio.public:8888
+
+          # Get Paddle PR description
+          PR_BODY=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
+            | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('body', ''))")
+
+          # Extract [PaddleCustomDevice PR] XXXX from description
+          PCD_PR_NUM=$(echo "$PR_BODY" | grep -oP '\[PaddleCustomDevice PR\]\s*\K\d+' || echo "")
+
+          if [ -n "$PCD_PR_NUM" ]; then
+            echo "Found PaddleCustomDevice PR: $PCD_PR_NUM"
+            echo "pcd_pr_num=$PCD_PR_NUM" >> "$GITHUB_OUTPUT"
+          else
+            echo "No PaddleCustomDevice PR found in PR description"
+            echo "pcd_pr_num=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Clone PaddleCustomDevice repository
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
-          # source ~/.bashrc
-          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleCustomDevice/PaddleCustomDevice-develop.tar.gz
-          tar -zxf PaddleCustomDevice-develop.tar.gz
-          mv PaddleCustomDevice-develop PaddleCustomDevice
+          # Clone PaddleCustomDevice
+          git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git
           cd PaddleCustomDevice
+
+          # If PaddleCustomDevice PR number exists, fetch and merge it
+          PCD_PR_NUM="${{ steps.get-pcd-pr.outputs.pcd_pr_num }}"
+          if [ -n "$PCD_PR_NUM" ]; then
+            echo "Fetching and merging PaddleCustomDevice PR #$PCD_PR_NUM"
+            git fetch origin pull/$PCD_PR_NUM/head:pr-$PCD_PR_NUM
+            git merge pr-$PCD_PR_NUM --no-edit
+            echo "Successfully merged PaddleCustomDevice PR #$PCD_PR_NUM"
+          fi
+
           cp -r ../Paddle .
           git add Paddle
-          git commit -m "add Paddle to nightly"
+          git commit -m "add Paddle submodule"
 
       - name: Check docker image and run container
+        if: steps.check-approval.outputs.can-skip != 'true'
         env:
           PADDLE_VERSION: 0.0.0
           WITH_COVERAGE: "OFF"
@@ -89,23 +223,9 @@ jobs:
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PYTHON_VERSION: 3.9
           no_proxy: bcebos.com
-          # USE_910B: 1
-          # FLAGS_set_to_1d: "False"
-          # NVIDIA_TF32_OVERRIDE: 0
-          # paddle_submodule: "ON"
-          # MC2: 1
-          # HCCL_OP_BASE_FFTS_MODE_ENABLE: "TRUE"
-          # PADDLE_XCCL_BACKEND: npu
-          # HCCL_SOCKET_IFNAME: =xgbe0
-          # FLAGS_eager_communication_connection: 1
-          # FLAGS_use_stride_kernel: 0
-          # FLAGS_allocator_strategy: naive_best_fit
-          # FLAGS_npu_storage_format: 0
-          # TEST_IMPORTANT: "ON"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
-          # home_dir: ${{ github.workspace }}/../../../..
+
         run: |
-          # echo ${ASCEND_RT_VISIBLE_DEVICES}
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run --network host --privileged --cap-add=ALL --pid=host --shm-size=128G -d -t --name ${container_name} \
@@ -131,25 +251,25 @@ jobs:
             -e AGILE_REVISION \
             -e GIT_PR_ID \
             -e PYTHON_VERSION \
+            -e PYTHONPATH= \
             -e no_proxy \
             -e PADDLE_BRANCH \
             -e CI_name \
             -w /paddle ${docker_image} /bin/bash
 
       - name: Install Paddle-CPU
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
           source ~/.bashrc
+          source /root/miniconda3/etc/profile.d/conda.sh
+          conda activate base
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          unset PYTHONPATH
           #wget -q https://sys-p0.bj.bcebos.com/libstdc%2B%2B6_13.1.0-8ubuntu1_20.04.2_amd64.deb
           #dpkg -i *deb
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
-          PATH=/usr/local/bin:${PATH}
-          echo "export PATH=$PATH" >> ~/.bashrc
-          ln -sf $(which python3.9) /usr/local/bin/python
-          ln -sf $(which pip3.9) /usr/local/bin/pip
-          ln -sf $(which python3.9) /usr/bin/python
-          ln -sf $(which pip3.9) /usr/bin/pip
           echo "::group::Install Paddle"
           pip install paddlepaddle-*.whl && rm -rf paddlepaddle-*.whl
           python -c "import paddle; print(paddle.__version__)"
@@ -158,10 +278,28 @@ jobs:
           '
 
       - name: Build and test
+        if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
+          source /root/miniconda3/etc/profile.d/conda.sh
+          conda activate
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+          unset PYTHONPATH
           set -x
+          set -euo pipefail
+
+          trap '\''{
+            ret=$?
+            echo "============================================================"
+            echo "IXUCA CI TEST FAILED"
+            echo "Please contact the following maintainers for help:"
+            echo "  - YqGe585"
+            echo "  - yongqiangma"
+            echo "============================================================"
+            exit $ret
+          }'\'' ERR
+
           echo "::group::Install dependencies"
           python -m pip install PyGithub
           python -m pip install wheel
@@ -172,7 +310,7 @@ jobs:
           pwd
           ls
           cd Paddle
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          git config --global --add safe.directory "*"
           cd ..
           cd backends/iluvatar_gpu/
           bash build_paddle.sh
@@ -183,8 +321,8 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: always()
+        if: ${{ always() && steps.check-approval.outputs.can-skip != 'true' }}
         run: |
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${container_name}
-          docker rm ${container_name}
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

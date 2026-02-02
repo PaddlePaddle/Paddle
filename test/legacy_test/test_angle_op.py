@@ -192,5 +192,70 @@ class TestZeroSize(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
+class TestAngleAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.x = np.random.randn(2, 3) + 1j * np.random.randn(2, 3)
+        self.out = np.angle(self.x)
+        self.dtype = "complex128"
+        self.place = get_device_place()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.angle(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.angle(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.angle(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out4 = paddle.empty([])
+        out5 = x.angle(x, out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.angle()
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.angle(x, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.angle(self.x)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = static.data("x", shape=[2, 3], dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.angle(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.angle(x=x)
+            # Key words args for torch
+            out3 = paddle.angle(input=x)
+            # Tensor method args
+            out4 = x.angle()
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={"x": self.x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.angle(self.x)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == "__main__":
     unittest.main()

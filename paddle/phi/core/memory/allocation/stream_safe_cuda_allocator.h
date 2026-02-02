@@ -72,7 +72,7 @@ class StreamSafeCUDAAllocator
       public std::enable_shared_from_this<StreamSafeCUDAAllocator> {
  public:
   StreamSafeCUDAAllocator(std::shared_ptr<Allocator> underlying_allocator,
-                          phi::GPUPlace place,
+                          GPUPlace place,
                           gpuStream_t default_stream,
                           bool in_cuda_graph_capturing = false);
   ~StreamSafeCUDAAllocator();
@@ -91,19 +91,18 @@ class StreamSafeCUDAAllocator
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
-  uint64_t ReleaseImpl(const phi::Place &place) override;
-  size_t CompactImpl(const phi::Place &place) override;
+  uint64_t ReleaseImpl(const Place &place) override;
+  size_t CompactImpl(const Place &place) override;
 
  private:
   void ProcessUnfreedAllocations();
   uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<phi::Place, std::vector<StreamSafeCUDAAllocator *>>
-      allocator_map_;
+  static std::map<Place, std::vector<StreamSafeCUDAAllocator *>> allocator_map_;
   static SpinLock allocator_map_lock_;
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  phi::GPUPlace place_;
+  GPUPlace place_;
   gpuStream_t default_stream_;
   std::list<StreamSafeCUDAAllocation *> unfreed_allocations_;
   SpinLock unfreed_allocation_lock_;
