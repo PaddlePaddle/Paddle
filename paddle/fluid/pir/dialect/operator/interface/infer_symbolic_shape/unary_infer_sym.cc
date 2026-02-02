@@ -4798,4 +4798,24 @@ bool WeightQuantizeOpInferSymbolicShape(
   return true;
 }
 
+bool VarOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
+bool StdOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
 }  // namespace paddle::dialect

@@ -1,6 +1,8 @@
 if(NOT WIN32)
   if(WITH_GPU)
     nv_test(compat_basic_test SRCS compat_basic_test.cc)
+    nv_test(ATen_narrow_test SRCS ATen_narrow_test.cc)
+    nv_test(ATen_flatten_test SRCS ATen_flatten_test.cc)
     nv_test(compat_squeeze_test SRCS compat_squeeze_test.cc)
     nv_test(c10_ScalarType_test SRCS c10_ScalarType_test.cc)
     nv_test(c10_storage_test SRCS c10_storage_test.cc)

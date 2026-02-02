@@ -1040,7 +1040,7 @@ def einsum(equation: str, *operands: Tensor) -> Tensor | None:
         result (`Tensor`), the result tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(102)
@@ -1055,7 +1055,7 @@ def einsum(equation: str, *operands: Tensor) -> Tensor | None:
             >>> # dot
             >>> print(paddle.einsum('i,i->', x, x))
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            1.13530672)
+            1.13530684)
 
             >>> # outer
             >>> print(paddle.einsum("i,j->ij", x, y))
@@ -1079,7 +1079,7 @@ def einsum(equation: str, *operands: Tensor) -> Tensor | None:
                      [0.84636718, 0.67521429]]])
 
             >>> # batch matrix multiplication
-            >>> print(paddle.einsum('ijk, ikl->ijl', A,B))
+            >>> print(paddle.einsum('ijk, ikl->ijl', A, B))
             Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[[0.36321065, 0.42009076, 0.40849245],
                      [0.74353045, 0.79189068, 0.81345987],
@@ -1097,7 +1097,7 @@ def einsum(equation: str, *operands: Tensor) -> Tensor | None:
                      [0.73811269, 0.28137168, 0.67521429]]])
 
             >>> # Ellipsis batch matrix multiplication
-            >>> print(paddle.einsum('...jk, ...kl->...jl', A,B))
+            >>> print(paddle.einsum('...jk, ...kl->...jl', A, B))
             Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[[0.36321065, 0.42009076, 0.40849245],
                      [0.74353045, 0.79189068, 0.81345987],
