@@ -5210,6 +5210,13 @@ def broadcast_to(
     return expand(x, shape, name)
 
 
+@overload
+def expand(
+    input: Tensor,
+    size: ShapeLike,
+) -> Tensor: ...
+
+
 @expand_decorator()
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
@@ -5354,6 +5361,10 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs
         )
         return out
+
+
+@overload
+def reshape(input: Tensor, shape: ShapeLike) -> Tensor: ...
 
 
 @reshape_decorator()
@@ -7872,6 +7883,24 @@ def as_strided(
             >>> # the stride is [6, 1].
     """
     return _C_ops.as_strided(x, shape, stride, offset)
+
+
+@dygraph_only
+@overload
+def view(
+    x: Tensor,
+    dtype: DTypeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@dygraph_only
+@overload
+def view(
+    x: Tensor,
+    size: Sequence[int],
+    name: str | None = None,
+) -> Tensor: ...
 
 
 @dygraph_only

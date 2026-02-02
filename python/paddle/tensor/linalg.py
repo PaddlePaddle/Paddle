@@ -62,6 +62,14 @@ if TYPE_CHECKING:
 K_DEFAULT_DIM = 9
 
 
+@overload
+def transpose(
+    input: Tensor,
+    dim0: int,
+    dim1: int,
+) -> Tensor: ...
+
+
 @transpose_decorator()
 def transpose(
     x: Tensor, perm: Sequence[int], name: str | None = None
