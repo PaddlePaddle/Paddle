@@ -28,7 +28,6 @@ namespace dialect {
 using DenseTensorTypeStorage = pir::DenseTensorTypeStorage;
 
 struct SelectedRowsTypeStorage : public pir::TypeStorage {
-  using DataLayout = DataLayout;
   using Dim = DDim;
   using LegacyLoD = std::vector<std::vector<size_t>>;
   ///
