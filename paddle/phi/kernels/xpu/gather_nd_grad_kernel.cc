@@ -28,7 +28,9 @@ void GatherNdGradKernel(const Context &dev_ctx,
                         DenseTensor *x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
-
+  if (x_grad->numel() == 0) {
+    return;
+  }
   int r = 0;
   XPUType *dx_data = reinterpret_cast<XPUType *>(x_grad->data<T>());
   r = xpu::constant<XPUType>(

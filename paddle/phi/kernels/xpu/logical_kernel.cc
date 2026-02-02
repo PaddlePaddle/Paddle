@@ -40,12 +40,16 @@ void LogicalBinaryKernel(
         xpu::Context*, const XPUType*, const XPUType*, bool*, int64_t)> func,
     std::string funcname = "logical") {
   dev_ctx.template Alloc<bool>(out);
-
+  if (out->numel() == 0) {
+    return;
+  }
   int r = 0;
   const auto* x_data = x.data<T>();
   const auto* y_data = y.data<T>();
   auto* out_data = out->data<T>();
-
+  if (x.numel() == 0 || y.numel() == 0) {
+    return;
+  }
   if (x.numel() == out->numel() && y.numel() == out->numel()) {
     r = func(dev_ctx.x_context(),
              reinterpret_cast<const XPUType*>(x_data),
