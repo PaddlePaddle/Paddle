@@ -24,7 +24,8 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 COMMON_DECLARE_bool(share_tensor_for_grad_tensor_holder);
-
+COMMON_DECLARE_bool(grad_in_dtype_consistent);
+COMMON_DECLARE_string(dump_dtype_not_consistent_grad_node_forward_stack_path);
 namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
@@ -245,6 +246,9 @@ paddle::Tensor GradTensorHolder::ValidateGradient(
   if (!grad_tensor.defined() || !grad_tensor.has_allocation()) {
     return grad_tensor;
   }
+  if (!FLAGS_grad_in_dtype_consistent) {
+    return grad_tensor;
+  }
   if (slot_id >= input_dtypes_.size() ||
       rank >= input_dtypes_[slot_id].size()) {
     VLOG(7) << "GradTensorHolder: No input dtype available for slot " << slot_id
@@ -267,6 +271,20 @@ paddle::Tensor GradTensorHolder::ValidateGradient(
   VLOG(6) << "GradTensorHolder: Converting gradient dtype from " << grad_dtype
           << " to " << expected_dtype << " for slot " << slot_id << ", rank "
           << rank;
+  if (!FLAGS_dump_dtype_not_consistent_grad_node_forward_stack_path.empty() &&
+      gradnode_) {
+    std::ostringstream debug_stream;
+    debug_stream << "Cast dtype happens in  Gradnode:" << gradnode_->name()
+                 << "(" << gradnode_ << ") 's GradTensorHolder"
+                 << " Gradnode forward call stack"
+                 << gradnode_->GetForwardTrace() << " expect dtype "
+                 << expected_dtype << " grad_dtype " << grad_dtype << "\n";
+    SaveStringToFileWithPID(
+        FLAGS_dump_dtype_not_consistent_grad_node_forward_stack_path,
+        debug_stream.str(),
+        "append");
+  }
+
   return grad_tensor.cast(expected_dtype);
 }
 

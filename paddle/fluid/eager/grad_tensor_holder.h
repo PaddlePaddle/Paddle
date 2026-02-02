@@ -16,6 +16,7 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/utils.h"
 
 namespace egr {
 
@@ -30,7 +31,9 @@ class GradTensorHolder {
   explicit GradTensorHolder(
       const paddle::small_vector<std::vector<GradSlotMeta>,
                                  kSlotSmallVectorSize>& metas,
+      GradNodeBase* gradnode = nullptr,
       bool record_input_dtypes = true) {
+    gradnode_ = gradnode;
     VLOG(7) << "Init GradTensorHolder with meta size: " << metas.size();
     buffer_.resize(metas.size());
     input_dtypes_.resize(metas.size());
@@ -99,6 +102,7 @@ class GradTensorHolder {
   // input_metas_ instead
   paddle::small_vector<std::vector<phi::DataType>, kSlotSmallVectorSize>
       input_dtypes_;
+  GradNodeBase* gradnode_ = nullptr;
 };
 
 }  // namespace egr

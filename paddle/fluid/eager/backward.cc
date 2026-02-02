@@ -328,10 +328,12 @@ std::vector<paddle::Tensor> RunBackward(
       if (typeid(*grad_node) == typeid(GradNodePyLayer)) {
         auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(grad_node);
         node_input_buffers_dict[grad_node] = std::make_unique<GradTensorHolder>(
-            grad_node->InputMeta(), pylayer_gradnode->GradInDtypeConsistent());
+            grad_node->InputMeta(),
+            grad_node,
+            pylayer_gradnode->GradInDtypeConsistent());
       } else {
-        node_input_buffers_dict[grad_node] =
-            std::make_unique<GradTensorHolder>(grad_node->InputMeta());
+        node_input_buffers_dict[grad_node] = std::make_unique<GradTensorHolder>(
+            grad_node->InputMeta(), grad_node);
       }
     }
 
@@ -608,12 +610,13 @@ std::vector<paddle::Tensor> RunBackward(
               auto pylayer_gradnode = dynamic_cast<GradNodePyLayer*>(next_node);
               auto grad_tensor_holder = std::make_unique<GradTensorHolder>(
                   next_node->InputMeta(),
+                  next_node,
                   pylayer_gradnode->GradInDtypeConsistent());
               node_input_buffers_dict[next_node] =
                   std::move(grad_tensor_holder);
             } else {
               auto grad_tensor_holder =
-                  std::make_unique<GradTensorHolder>(input_meta);
+                  std::make_unique<GradTensorHolder>(input_meta, next_node);
               node_input_buffers_dict[next_node] =
                   std::move(grad_tensor_holder);
             }

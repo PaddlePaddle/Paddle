@@ -748,6 +748,21 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
                            "",
                            "Dump grad node forward call stack to the dir path");
+
+/**
+ * Debug related FLAG
+ * Name: dump_dtype_not_consistent_grad_node_forward_stack_path
+ * Since Version: 3.4
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump grad node forward call stack to the dir path, which grad input's
+ * dtype is not consistent with forward out dtype.
+ */
+PHI_DEFINE_EXPORTED_string(
+    dump_dtype_not_consistent_grad_node_forward_stack_path,
+    "",
+    "Dump grad node forward call stack to the dir path, which grad input's "
+    "dtype is not consistent with forward out dtype");
 /**
  * Debug related FLAG
  * Name: dump_api_python_stack_path
@@ -1114,6 +1129,20 @@ PHI_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
 PHI_DEFINE_EXPORTED_bool(run_kp_kernel,
                          false,
                          "It controls whether to run PaddlePaddle using KP");
+
+/**
+ * Dygraph related FLAG
+ * Name: FLAGS_grad_in_dtype_consistent
+ * Since Version: 3.4.0
+ * Value Range: bool, default=true
+ * Example: FLAGS_grad_in_dtype_consistent=true，The input gradient of the
+ * gradnode  will be consistent with the type of the forward output Op. Note:
+ */
+PHI_DEFINE_EXPORTED_bool(
+    grad_in_dtype_consistent,
+    true,
+    "It controls whether the type of the forward output and the input gradient "
+    "of the gradnode tensor consistent");
 
 /**
  * Distributed related FLAG
