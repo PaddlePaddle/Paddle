@@ -813,7 +813,7 @@ def load_from_file(path: str) -> bytes:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
