@@ -1045,13 +1045,6 @@ class LSTMCell(RNNCellBase):
         if proj_size >= hidden_size:
             raise ValueError("proj_size must be smaller than hidden_size")
 
-        # Normalize device string (cuda -> gpu)
-        device = (
-            device.replace('cuda', 'gpu')
-            if isinstance(device, str) and device.startswith('cuda')
-            else device
-        )
-
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
             self.weight_ih = self.create_parameter(
