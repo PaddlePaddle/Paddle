@@ -20,7 +20,6 @@
 #include <optional>
 #include <vector>
 #include "paddle/common/ddim.h"
-#include <c10/core/SymIntArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
