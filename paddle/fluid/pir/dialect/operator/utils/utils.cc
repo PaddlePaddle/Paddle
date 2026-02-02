@@ -468,7 +468,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
   } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim shape_dim =
+    DDim shape_dim =
         shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     size_t shape_size = common::product(shape_dim);
     if (common::contain_unknown_dim(shape_dim)) {
@@ -601,7 +601,7 @@ bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
       continue;
     }
 
-    phi::DDim in_dims;
+    DDim in_dims;
 
     if (auto type_info =
             tmp_in.type()

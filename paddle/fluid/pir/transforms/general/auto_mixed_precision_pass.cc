@@ -735,7 +735,7 @@ class AutoMixedPrecisionPass : public Pass {
     }
   }
 
-  std::vector<int64_t> ConvertDDimToVector(const common::DDim& ddim) {
+  std::vector<int64_t> ConvertDDimToVector(const DDim& ddim) {
     std::vector<int64_t> dims;
     for (int i = 0; i < ddim.size(); ++i) {
       dims.push_back(ddim[i]);

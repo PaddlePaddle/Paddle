@@ -39,7 +39,7 @@ class AllocatedDenseTensorType
   static AllocatedDenseTensorType get(pir::IrContext *ctx,
                                       const phi::Place &place,
                                       const pir::Type &dtype,
-                                      const phi::DDim &dims,
+                                      const DDim &dims,
                                       const phi::DataLayout &layout,
                                       const phi::LegacyLoD &lod,
                                       size_t offset) {
@@ -56,7 +56,7 @@ class AllocatedDenseTensorType
 
   pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
   phi::DataLayout data_layout() const;
 
@@ -83,7 +83,7 @@ class AllocatedSelectedRowsType
   static AllocatedSelectedRowsType get(pir::IrContext *ctx,
                                        const phi::Place &place,
                                        const pir::Type &dtype,
-                                       const phi::DDim &dims,
+                                       const DDim &dims,
                                        const phi::DataLayout &layout,
                                        const phi::LegacyLoD &lod,
                                        size_t offset) {
@@ -100,7 +100,7 @@ class AllocatedSelectedRowsType
 
   pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
   phi::DataLayout data_layout() const;
 
@@ -128,8 +128,8 @@ class AllocatedSparseCooTensorType
       pir::IrContext *ctx,
       const phi::Place &place,
       const pir::Type &dtype,
-      const phi::DDim &dims,
-      const phi::DDim &non_zero_dims,
+      const DDim &dims,
+      const DDim &non_zero_dims,
       const phi::DataLayout &layout,
       pir::DenseTensorType non_zero_indices,
       pir::DenseTensorType non_zero_elements,
@@ -154,9 +154,9 @@ class AllocatedSparseCooTensorType
 
   const pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  const phi::DDim &non_zero_dims() const;
+  const DDim &non_zero_dims() const;
 
   phi::DataLayout data_layout() const;
 
@@ -186,7 +186,7 @@ class AllocatedSparseCsrTensorType
       pir::IrContext *ctx,
       const phi::Place &place,
       const pir::Type &dtype,
-      const phi::DDim &dims,
+      const DDim &dims,
       const phi::DataLayout &layout,
       pir::DenseTensorType non_zero_crows,
       pir::DenseTensorType non_zero_cols,
@@ -210,7 +210,7 @@ class AllocatedSparseCsrTensorType
 
   pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
   phi::DataLayout data_layout() const;
 
@@ -239,7 +239,7 @@ class AllocatedDenseTensorArrayType
   static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
                                            const phi::Place &place,
                                            const pir::Type &dtype,
-                                           const phi::DDim &dims,
+                                           const DDim &dims,
                                            const phi::DataLayout &layout) {
     dialect::DenseTensorArrayType type =
         dialect::DenseTensorArrayType::get(ctx, dtype, dims, layout);

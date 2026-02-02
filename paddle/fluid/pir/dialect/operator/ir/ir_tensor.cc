@@ -20,7 +20,7 @@
 
 namespace paddle::dialect {
 IrTensor::IrTensor(phi::DataType dtype,
-                   const phi::DDim& dims,
+                   const DDim& dims,
                    phi::DataLayout layout,
                    LegacyLoD lod,
                    size_t offset)

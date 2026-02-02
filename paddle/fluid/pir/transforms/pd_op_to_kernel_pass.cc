@@ -2383,7 +2383,7 @@ void PushBackOutputTypes(pir::IrContext* ctx,
       } else {
         // NOTE(phlrain), kernel not support a nullptr in output
         pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-        phi::DDim dims = {};
+        DDim dims = {};
         phi::DataLayout data_layout = phi::DataLayout::NCHW;
 #ifdef PADDLE_WITH_DNNL
         if (kernel_key.backend() == phi::Backend::ONEDNN) {

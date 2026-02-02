@@ -30,7 +30,7 @@ int64_t IrMetaTensor::numel() const {
   return tensor_->numel();
 }
 
-phi::DDim IrMetaTensor::dims() const {
+DDim IrMetaTensor::dims() const {
   ValidCheck(*this);
   return tensor_->dims();
 }
@@ -50,7 +50,7 @@ const phi::LegacyLoD& IrMetaTensor::lod() const {
   return static_cast<paddle::dialect::IrTensor*>(tensor_)->lod();
 }
 
-void IrMetaTensor::set_dims(const phi::DDim& dims) {
+void IrMetaTensor::set_dims(const DDim& dims) {
   if (paddle::dialect::IrTensor::classof(tensor_)) {
     static_cast<paddle::dialect::IrTensor*>(tensor_)->SetDims(dims);
   } else if (paddle::dialect::IrSelectedRows::classof(tensor_)) {

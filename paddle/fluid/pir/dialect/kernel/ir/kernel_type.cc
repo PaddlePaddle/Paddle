@@ -28,7 +28,7 @@ pir::Type AllocatedDenseTensorType::dtype() const {
   return storage()->dense_tensor_type_.dtype();
 }
 
-const phi::DDim& AllocatedDenseTensorType::dims() const {
+const DDim& AllocatedDenseTensorType::dims() const {
   return storage()->dense_tensor_type_.dims();
 }
 
@@ -56,7 +56,7 @@ pir::Type AllocatedSelectedRowsType::dtype() const {
   return storage()->selected_rows_type_.dtype();
 }
 
-const phi::DDim& AllocatedSelectedRowsType::dims() const {
+const DDim& AllocatedSelectedRowsType::dims() const {
   return storage()->selected_rows_type_.dims();
 }
 
@@ -85,10 +85,10 @@ const pir::Type AllocatedSparseCooTensorType::dtype() const {
   return storage()->sparsecoo_tensor_type_.dtype();
 }
 
-const phi::DDim& AllocatedSparseCooTensorType::dims() const {
+const DDim& AllocatedSparseCooTensorType::dims() const {
   return storage()->sparsecoo_tensor_type_.dims();
 }
-const phi::DDim& AllocatedSparseCooTensorType::non_zero_dims() const {
+const DDim& AllocatedSparseCooTensorType::non_zero_dims() const {
   return storage()->sparsecoo_tensor_type_.non_zero_dims();
 }
 phi::DataLayout AllocatedSparseCooTensorType::data_layout() const {
@@ -120,7 +120,7 @@ pir::Type AllocatedSparseCsrTensorType::dtype() const {
   return storage()->sparsecsr_tensor_type_.dtype();
 }
 
-const phi::DDim& AllocatedSparseCsrTensorType::dims() const {
+const DDim& AllocatedSparseCsrTensorType::dims() const {
   return storage()->sparsecsr_tensor_type_.dims();
 }
 

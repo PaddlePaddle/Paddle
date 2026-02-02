@@ -38,7 +38,7 @@ class TEST_API SelectedRowsType
 
   const pir::Type &dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
   const phi::DataLayout &data_layout() const;
 
@@ -56,7 +56,7 @@ class TEST_API SelectedRowsType
 
   static SelectedRowsType get(pir::IrContext *ctx,
                               Type dtype,
-                              const phi::DDim &dims,
+                              const DDim &dims,
                               DataLayout layout = DataLayout::NCHW,
                               const phi::LegacyLoD &lod = {},
                               size_t offset = 0u) {
@@ -75,7 +75,7 @@ class IR_API DenseTensorArrayType
 
   const pir::Type &dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
   const phi::DataLayout &data_layout() const;
 
@@ -89,7 +89,7 @@ class IR_API DenseTensorArrayType
 
   static DenseTensorArrayType get(pir::IrContext *ctx,
                                   Type dtype,
-                                  const phi::DDim &dims,
+                                  const DDim &dims,
                                   DataLayout layout = DataLayout::NCHW) {
     return Base::get(ctx, dtype, dims, layout);
   }
@@ -106,8 +106,8 @@ class IR_API SparseCooTensorType
   static std::string name() { return "t_sparse_coo_tensor"; }
 
   pir::Type dtype() const;
-  const common::DDim &dims() const;
-  const common::DDim &non_zero_dims() const;
+  const DDim &dims() const;
+  const DDim &non_zero_dims() const;
   common::DataLayout data_layout() const;
   pir::DenseTensorType non_zero_indices() const;
   pir::DenseTensorType non_zero_elements() const;
@@ -123,8 +123,8 @@ class IR_API SparseCooTensorType
 
   static SparseCooTensorType get(pir::IrContext *ctx,
                                  pir::Type dtype,
-                                 const common::DDim &dims,
-                                 const common::DDim &non_zero_dims,
+                                 const DDim &dims,
+                                 const DDim &non_zero_dims,
                                  common::DataLayout layout,
                                  pir::DenseTensorType non_zero_indices,
                                  pir::DenseTensorType non_zero_elements,
@@ -151,7 +151,7 @@ class IR_API SparseCsrTensorType
   static std::string name() { return "t_sparse_csr_tensor"; }
 
   pir::Type dtype() const;
-  const common::DDim &dims() const;
+  const DDim &dims() const;
   common::DataLayout data_layout() const;
   pir::DenseTensorType non_zero_crows() const;
   pir::DenseTensorType non_zero_cols() const;
@@ -167,7 +167,7 @@ class IR_API SparseCsrTensorType
 
   static SparseCsrTensorType get(pir::IrContext *ctx,
                                  pir::Type dtype,
-                                 const common::DDim &dims,
+                                 const DDim &dims,
                                  common::DataLayout layout,
                                  pir::DenseTensorType non_zero_crows,
                                  pir::DenseTensorType non_zero_cols,

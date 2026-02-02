@@ -25,7 +25,7 @@ class IrMetaTensor : public phi::MetaTensor {
 
   int64_t numel() const override;
 
-  phi::DDim dims() const override;
+  DDim dims() const override;
 
   phi::DataType dtype() const override;
 
@@ -33,7 +33,7 @@ class IrMetaTensor : public phi::MetaTensor {
 
   const phi::LegacyLoD& lod() const;
 
-  void set_dims(const phi::DDim& dims) override;
+  void set_dims(const DDim& dims) override;
 
   void set_dtype(phi::DataType dtype) override;
 

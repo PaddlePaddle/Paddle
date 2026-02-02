@@ -17,7 +17,7 @@
 namespace paddle::dialect {
 const pir::Type& SelectedRowsType::dtype() const { return storage()->dtype_; }
 
-const phi::DDim& SelectedRowsType::dims() const { return storage()->dims_; }
+const DDim& SelectedRowsType::dims() const { return storage()->dims_; }
 
 const phi::DataLayout& SelectedRowsType::data_layout() const {
   return storage()->layout_;
@@ -50,7 +50,7 @@ SelectedRowsType SelectedRowsType::dyn_cast_impl(Type type) {
 const pir::Type& DenseTensorArrayType::dtype() const {
   return storage()->dtype_;
 }
-const phi::DDim& DenseTensorArrayType::dims() const { return storage()->dims_; }
+const DDim& DenseTensorArrayType::dims() const { return storage()->dims_; }
 
 const phi::DataLayout& DenseTensorArrayType::data_layout() const {
   return storage()->layout_;
@@ -79,11 +79,9 @@ DenseTensorArrayType DenseTensorArrayType::dyn_cast_impl(Type type) {
 
 pir::Type SparseCooTensorType::dtype() const { return storage()->dtype_; }
 
-const common::DDim& SparseCooTensorType::dims() const {
-  return storage()->dims_;
-}
+const DDim& SparseCooTensorType::dims() const { return storage()->dims_; }
 
-const common::DDim& SparseCooTensorType::non_zero_dims() const {
+const DDim& SparseCooTensorType::non_zero_dims() const {
   return storage()->non_zero_dims_;
 }
 
@@ -123,9 +121,7 @@ SparseCooTensorType SparseCooTensorType::dyn_cast_impl(Type type) {
 
 pir::Type SparseCsrTensorType::dtype() const { return storage()->dtype_; }
 
-const common::DDim& SparseCsrTensorType::dims() const {
-  return storage()->dims_;
-}
+const DDim& SparseCsrTensorType::dims() const { return storage()->dims_; }
 
 common::DataLayout SparseCsrTensorType::data_layout() const {
   return storage()->layout_;

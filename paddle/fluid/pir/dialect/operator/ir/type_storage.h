@@ -29,16 +29,16 @@ using DenseTensorTypeStorage = pir::DenseTensorTypeStorage;
 
 struct SelectedRowsTypeStorage : public pir::TypeStorage {
   using DataLayout = phi::DataLayout;
-  using Dim = phi::DDim;
+  using Dim = DDim;
   using LegacyLoD = std::vector<std::vector<size_t>>;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey =
-      std::tuple<pir::Type, phi::DDim, phi::DataLayout, phi::LegacyLoD, size_t>;
+      std::tuple<pir::Type, DDim, phi::DataLayout, phi::LegacyLoD, size_t>;
 
   SelectedRowsTypeStorage(const pir::Type& dtype,
-                          const phi::DDim& dims,
+                          const DDim& dims,
                           const phi::DataLayout& layout,
                           const phi::LegacyLoD& lod,
                           size_t offset)
@@ -69,8 +69,8 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
     hash_value = pir::detail::hash_combine(
         hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = pir::detail::hash_combine(
-        hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(hash_value,
+                                           std::hash<DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
@@ -102,7 +102,7 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
   /// layout, lod, offset.
   ///
   pir::Type dtype_;
-  phi::DDim dims_;
+  DDim dims_;
   phi::DataLayout layout_;
   phi::LegacyLoD lod_;
   size_t offset_;
@@ -110,14 +110,14 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
 
 struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   using DataLayout = phi::DataLayout;
-  using DDim = phi::DDim;
+  using DDim = DDim;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey = std::tuple<pir::Type, phi::DDim, phi::DataLayout>;
+  using ParamKey = std::tuple<pir::Type, DDim, phi::DataLayout>;
 
   DenseTensorArrayTypeStorage(const pir::Type& dtype,
-                              const phi::DDim& dims,
+                              const DDim& dims,
                               const phi::DataLayout& layout)
       : dtype_(dtype), dims_(dims), layout_(layout) {}
 
@@ -139,8 +139,8 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
     hash_value = pir::detail::hash_combine(
         hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = pir::detail::hash_combine(
-        hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(hash_value,
+                                           std::hash<DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
@@ -163,7 +163,7 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   /// \brief DenseTensorTypeStorage include five parameters: dtype, layout
   ///
   pir::Type dtype_;
-  phi::DDim dims_;
+  DDim dims_;
   phi::DataLayout layout_;
 };
 
@@ -172,15 +172,15 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey = std::tuple<pir::Type,
-                              common::DDim,
-                              common::DDim,
+                              DDim,
+                              DDim,
                               common::DataLayout,
                               pir::DenseTensorType,
                               pir::DenseTensorType,
                               bool>;
   SparseCooTensorTypeStorage(pir::Type dtype,
-                             common::DDim dims,
-                             common::DDim non_zero_dims,
+                             DDim dims,
+                             DDim non_zero_dims,
                              common::DataLayout layout,
                              pir::DenseTensorType non_zero_indices,
                              pir::DenseTensorType non_zero_elements,
@@ -216,11 +216,11 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
     hash_value = pir::detail::hash_combine(
         hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = pir::detail::hash_combine(
-        hash_value, std::hash<common::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(hash_value,
+                                           std::hash<DDim>()(std::get<1>(key)));
     // hash non_zero_dims
-    hash_value = pir::detail::hash_combine(
-        hash_value, std::hash<common::DDim>()(std::get<2>(key)));
+    hash_value = pir::detail::hash_combine(hash_value,
+                                           std::hash<DDim>()(std::get<2>(key)));
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
@@ -279,8 +279,8 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   ///
 
   pir::Type dtype_;
-  common::DDim dims_;
-  common::DDim non_zero_dims_;
+  DDim dims_;
+  DDim non_zero_dims_;
   common::DataLayout layout_{DataLayout::NCHW};
   pir::DenseTensorType non_zero_indices_;
   pir::DenseTensorType non_zero_elements_;
@@ -292,13 +292,13 @@ struct SparseCsrTensorTypeStorage : public pir::TypeStorage {
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey = std::tuple<pir::Type,
-                              common::DDim,
+                              DDim,
                               common::DataLayout,
                               pir::DenseTensorType,
                               pir::DenseTensorType,
                               pir::DenseTensorType>;
   SparseCsrTensorTypeStorage(pir::Type dtype,
-                             common::DDim dims,
+                             DDim dims,
                              common::DataLayout layout,
                              pir::DenseTensorType non_zero_crows,
                              pir::DenseTensorType non_zero_cols,
@@ -332,8 +332,8 @@ struct SparseCsrTensorTypeStorage : public pir::TypeStorage {
     hash_value = pir::detail::hash_combine(
         hash_value, std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = pir::detail::hash_combine(
-        hash_value, std::hash<common::DDim>()(std::get<1>(key)));
+    hash_value = pir::detail::hash_combine(hash_value,
+                                           std::hash<DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
@@ -394,7 +394,7 @@ struct SparseCsrTensorTypeStorage : public pir::TypeStorage {
   ///
 
   pir::Type dtype_;
-  common::DDim dims_;
+  DDim dims_;
   common::DataLayout layout_;
   pir::DenseTensorType non_zero_crows_;
   pir::DenseTensorType non_zero_cols_;

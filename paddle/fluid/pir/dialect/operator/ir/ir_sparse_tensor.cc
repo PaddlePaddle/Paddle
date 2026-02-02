@@ -18,8 +18,8 @@
 namespace paddle {
 namespace dialect {
 IrSparseCooTensor::IrSparseCooTensor(phi::DataType dtype,
-                                     const common::DDim& dims,
-                                     common::DDim non_zero_dims,
+                                     const DDim& dims,
+                                     DDim non_zero_dims,
                                      common::DataLayout layout,
                                      bool coalesced)
     : dims_(dims),
@@ -52,7 +52,7 @@ void* IrSparseCooTensor::AllocateFrom(phi::Allocator* allocator,
 }
 
 IrSparseCsrTensor::IrSparseCsrTensor(phi::DataType dtype,
-                                     const common::DDim& dims,
+                                     const DDim& dims,
                                      const common::DataLayout layout,
                                      pir::DenseTensorType non_zero_crows,
                                      pir::DenseTensorType non_zero_cols,
