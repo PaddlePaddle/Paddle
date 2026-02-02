@@ -57,7 +57,7 @@ void UnfoldGradKernel(const Context& dev_ctx,
   DDim out_matrix_shape = common::make_ddim(
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
-  funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+  funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
 
   funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));

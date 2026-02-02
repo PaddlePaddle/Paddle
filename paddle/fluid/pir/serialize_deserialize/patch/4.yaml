@@ -82,3 +82,9 @@ op_patches:
           - type: pir::DoubleAttribute
           - type: pir::DoubleAttribute
           - type: pir::DoubleAttribute
+  - op_name : pd_op.moe_permute
+    actions:
+      - action : add_attr
+        object : using_ue8m0_scale
+        type : pir::BoolAttribute
+        data : "false"

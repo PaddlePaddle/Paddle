@@ -72,7 +72,7 @@ void DGCMomentumKernel(const Context& dev_ctx,
   if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
     VLOG(10) << " so use momentum optimizer";
 
-    paddle::optional<DenseTensor> master_param_opt(paddle::none);
+    optional<DenseTensor> master_param_opt(paddle::none);
 
     phi::MomentumDenseKernel<T>(dev_ctx,
                                 param,
@@ -95,7 +95,7 @@ void DGCMomentumKernel(const Context& dev_ctx,
 
   VLOG(10) << " so use sgd optimizer";
 
-  paddle::optional<DenseTensor> master_param_opt(paddle::none);
+  optional<DenseTensor> master_param_opt(paddle::none);
   if (multi_precision) {
     master_param_opt = master_param;
   }

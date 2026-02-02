@@ -73,12 +73,21 @@ struct alignas(16) VectorType<uint8_t, 16> {
   uint8_t data[16];
 };
 
-// Helper function to perform vectorized memory copy
 template <typename T>
+__device__ __forceinline__ void unrolled_memcpy(const T* src,
+                                                T* dst,
+                                                const int num_elements) {
+#pragma unroll
+  for (int idx = threadIdx.x; idx < num_elements; idx += blockDim.x) {
+    dst[idx] = src[idx];
+  }
+}
+// Helper function to perform vectorized memory copy
+template <typename T, int VecSizeInBytes = 16>
 __device__ __forceinline__ void vectorized_memcpy(const T* src,
                                                   T* dst,
-                                                  int num_elements) {
-  constexpr int vector_size_in_bytes = 16;
+                                                  const int num_elements) {
+  constexpr int vector_size_in_bytes = VecSizeInBytes;
   const int elements_per_vector = vector_size_in_bytes / sizeof(T);
 
   int num_vectors = num_elements / elements_per_vector;
@@ -97,6 +106,62 @@ __device__ __forceinline__ void vectorized_memcpy(const T* src,
     int offset = num_vectors * elements_per_vector;
     for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
       dst[offset + i] = src[offset + i];
+    }
+  }
+}
+static inline bool is_aligned_in_bytes(std::size_t offset,
+                                       std::size_t alignment = 16) {
+  return (offset & (alignment - 1)) == 0;
+}
+template <typename T>
+__device__ __forceinline__ void try_vectorized_memcpy(const T* src,
+                                                      T* dst,
+                                                      const int num_elements) {
+  bool is_aligned_128bit =
+      ((uintptr_t)src & 0xF) == 0 && ((uintptr_t)dst & 0xF) == 0;
+  if (is_aligned_128bit) {
+    vectorized_memcpy(src, dst, num_elements);
+  } else {
+    unrolled_memcpy(src, dst, num_elements);
+  }
+}
+template <typename T>
+__device__ __forceinline__ void unrolled_memset(T* ptr,
+                                                T value,
+                                                int num_elements) {
+#pragma unroll
+  for (int i = threadIdx.x; i < num_elements; i += blockDim.x) {
+    ptr[i] = value;
+  }
+}
+
+template <typename T, int VecSizeInBytes = 16>
+__device__ __forceinline__ void vectorized_memset(T* ptr,
+                                                  const T value,
+                                                  const int num_elements) {
+  constexpr int vector_size_in_bytes = VecSizeInBytes;
+  const int elements_per_vector = vector_size_in_bytes / sizeof(T);
+
+  int num_vectors = num_elements / elements_per_vector;
+  int remaining_elements = num_elements % elements_per_vector;
+
+  using VecType = VectorType<T, elements_per_vector>;
+  VecType vec_value;
+#pragma unroll
+  for (int i = 0; i < elements_per_vector; i++) {
+    vec_value.data[i] = value;
+  }
+  VecType* ptr_vec = reinterpret_cast<VecType*>(ptr);
+
+#pragma unroll
+  for (int idx = threadIdx.x; idx < num_vectors; idx += blockDim.x) {
+    ptr_vec[idx] = vec_value;
+  }
+
+  if (remaining_elements > 0) {
+    int offset = num_vectors * elements_per_vector;
+    for (int i = threadIdx.x; i < remaining_elements; i += blockDim.x) {
+      ptr[offset + i] = value;
     }
   }
 }

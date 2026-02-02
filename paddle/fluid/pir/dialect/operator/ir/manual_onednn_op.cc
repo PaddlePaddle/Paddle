@@ -98,7 +98,7 @@ void ExpandOp::Build(pir::Builder& builder,
   // Generate int_array mutable attribute: shape
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
-          shape, phi::DataType::INT64, phi::CPUPlace());
+          shape, phi::DataType::INT64, CPUPlace());
   pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
@@ -146,7 +146,7 @@ void ExpandOp::Build(pir::Builder& builder,
   // Generate int_array mutable attribute: shape
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
-          shape, phi::DataType::INT64, phi::CPUPlace());
+          shape, phi::DataType::INT64, CPUPlace());
   pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";

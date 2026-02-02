@@ -15,10 +15,7 @@
 #pragma once
 
 #include <memory>
-#include <string>
 #include <utility>
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -30,26 +27,24 @@
 namespace phi {
 
 /*
- * Serialize/Deserialize phi::DenseTensor to std::ostream
+ * Serialize/Deserialize DenseTensor to std::ostream
  * You can pass ofstream or ostringstream to serialize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 PADDLE_API void SerializeToStream(std::ostream& os,
-                                  const phi::DenseTensor& tensor,
-                                  const phi::DeviceContext& dev_ctx);
+                                  const DenseTensor& tensor,
+                                  const DeviceContext& dev_ctx);
 PADDLE_API void DeserializeFromStream(std::istream& is,
-                                      phi::DenseTensor* tensor,
-                                      const phi::DeviceContext& dev_ctx);
+                                      DenseTensor* tensor,
+                                      const DeviceContext& dev_ctx);
 PADDLE_API void DeserializeFromStream(std::istream& is,
-                                      phi::DenseTensor* tensor,
-                                      const phi::DeviceContext& dev_ctx,
+                                      DenseTensor* tensor,
+                                      const DeviceContext& dev_ctx,
                                       const size_t& seek,
                                       const std::vector<int64_t>& shape);
 
-PADDLE_API void SerializeToStream(std::ostream& os,
-                                  const phi::DenseTensor& tensor);
+PADDLE_API void SerializeToStream(std::ostream& os, const DenseTensor& tensor);
 
-PADDLE_API void DeserializeFromStream(std::istream& os,
-                                      phi::DenseTensor* tensor);
+PADDLE_API void DeserializeFromStream(std::istream& os, DenseTensor* tensor);
 
 }  // namespace phi

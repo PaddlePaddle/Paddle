@@ -24,7 +24,7 @@ namespace framework {
 HasElementsInstruction::HasElementsInstruction(
     size_t id,
     const phi::Place& place,
-    ::pir::Operation* op,
+    pir::Operation* op,
     ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   auto has_elements_op = op->dyn_cast<paddle::dialect::HasElementsOp>();
@@ -44,8 +44,8 @@ HasElementsInstruction::HasElementsInstruction(
 
   type_ = OpFuncType::kCpuSync;
 
-  bool_tensor_ = value_exe_info_->GetVarByValue(op_->result(0))
-                     ->GetMutable<phi::DenseTensor>();
+  bool_tensor_ =
+      value_exe_info_->GetVarByValue(op_->result(0))->GetMutable<DenseTensor>();
   bool_tensor_->Resize(phi::make_ddim({1}));
 
   auto stack_value =
@@ -61,7 +61,7 @@ void HasElementsInstruction::Run() {
   }
 
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  bool* has_elements = pool.Get(phi::CPUPlace())->Alloc<bool>(bool_tensor_);
+  bool* has_elements = pool.Get(CPUPlace())->Alloc<bool>(bool_tensor_);
   *has_elements = !stack_element_var_array_->empty();
 
   if (FLAGS_check_cuda_error) [[unlikely]] {

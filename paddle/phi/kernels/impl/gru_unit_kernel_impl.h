@@ -35,7 +35,7 @@ void ActCompute(
   } else if (act_type == tanh) {
     funcs::TanhFunctor<T>()(d, x, y);
   } else if (act_type == relu) {
-    if (place == phi::CPUPlace())
+    if (place == CPUPlace())
       funcs::ReluCPUFunctor<T>()(d, x, y);
     else
       funcs::ReluCUDAFunctor<T>()(d, x, y);
@@ -53,7 +53,7 @@ void GRUUnitKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& hidden_prev,
                    const DenseTensor& weight,
-                   const paddle::optional<DenseTensor>& bias,
+                   const optional<DenseTensor>& bias,
                    int activation,
                    int gate_activation,
                    bool origin_mode,
@@ -182,7 +182,7 @@ void GRUUnitGradKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const DenseTensor& hidden_prev,
                        const DenseTensor& weight,
-                       const paddle::optional<DenseTensor>& bias,
+                       const optional<DenseTensor>& bias,
                        const DenseTensor& gate,
                        const DenseTensor& reset_hidden_prev,
                        const DenseTensor& hidden_grad,

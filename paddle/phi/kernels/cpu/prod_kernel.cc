@@ -30,8 +30,7 @@ void ProdKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   if (x.numel() == 0) {
     // fill with 1.
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
+    Full<T, Context>(dev_ctx, out->dims(), 1, out);
     return;
   }
 

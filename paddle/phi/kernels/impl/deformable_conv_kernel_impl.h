@@ -30,7 +30,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& offset,
                           const DenseTensor& filter,
-                          const paddle::optional<DenseTensor>& mask,
+                          const optional<DenseTensor>& mask,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
                           const std::vector<int>& dilations,
@@ -39,8 +39,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 

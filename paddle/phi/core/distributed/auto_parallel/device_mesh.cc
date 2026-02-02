@@ -70,8 +70,7 @@ void Device::to_proto(DeviceProto *proto) const {
   proto->set_local_id(local_id_);
   proto->set_machine_id(machine_id_);
   proto->set_type(type_);
-  proto->mutable_capability()->CopyFrom(
-      phi::distributed::to_proto(capability_));
+  proto->mutable_capability()->CopyFrom(distributed::to_proto(capability_));
 }
 
 bool operator==(const Device &lhs, const Device &rhs) {
@@ -130,8 +129,7 @@ void Link::to_proto(LinkProto *proto) const {
   proto->set_source_id(source_id_);
   proto->set_target_id(target_id_);
   proto->set_type(type_);
-  proto->mutable_capability()->CopyFrom(
-      phi::distributed::to_proto(capability_));
+  proto->mutable_capability()->CopyFrom(distributed::to_proto(capability_));
 }
 
 bool operator==(const Link &lhs, const Link &rhs) {
@@ -364,13 +362,13 @@ void DeviceMesh::to_proto(DeviceMeshProto *proto) const {
 
   for (const auto &device : devices_) {
     proto->mutable_devices()->Add()->CopyFrom(
-        phi::distributed::to_proto(device.second));
+        distributed::to_proto(device.second));
   }
 
   for (const auto &neighbors : links_) {
     for (const auto &link : neighbors.second) {
       proto->mutable_links()->Add()->CopyFrom(
-          phi::distributed::to_proto(link.second));
+          distributed::to_proto(link.second));
     }
   }
 }

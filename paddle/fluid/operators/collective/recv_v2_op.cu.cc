@@ -48,7 +48,7 @@ phi::DDim recv_shape_info(const phi::Place &place,
   phi::DataType shape_dtype = phi::DataType::INT32;
 
   // step1: recv the shape size
-  phi::DenseTensor gpu_shape_size_tensor(shape_dtype);
+  DenseTensor gpu_shape_size_tensor(shape_dtype);
   if (!group) {
     gpu_shape_size_tensor.Resize({1});
     gpu_shape_size_tensor.mutable_data(place, shape_dtype);
@@ -57,11 +57,11 @@ phi::DDim recv_shape_info(const phi::Place &place,
   }
 
   // copy the shape size tensor to cpu
-  phi::DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
+  DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_size_tensor->Resize({1});
   cpu_shape_size_tensor->mutable_data(phi::CPUPlace(), shape_dtype);
   if (group) {
-    std::vector<phi::DenseTensor> shape_size_tensor;
+    std::vector<DenseTensor> shape_size_tensor;
     shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
     auto shape_size_task = group->Recv(shape_size_tensor, peer);
   } else {
@@ -73,7 +73,7 @@ phi::DDim recv_shape_info(const phi::Place &place,
   VLOG(3) << "recv the shape size: " << shape_size << " from peer";
 
   // step2: recv the shape
-  phi::DenseTensor gpu_shape_tensor(shape_dtype);
+  DenseTensor gpu_shape_tensor(shape_dtype);
   if (!group) {
     gpu_shape_tensor.Resize({shape_size});
     gpu_shape_tensor.mutable_data(place, shape_dtype);
@@ -81,11 +81,11 @@ phi::DDim recv_shape_info(const phi::Place &place,
   }
 
   // copy the shape tensor to cpu
-  phi::DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
+  DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_tensor->Resize({shape_size});
   cpu_shape_tensor->mutable_data(phi::CPUPlace(), shape_dtype);
   if (group) {
-    std::vector<phi::DenseTensor> shape_tensor;
+    std::vector<DenseTensor> shape_tensor;
     shape_tensor.emplace_back(*cpu_shape_tensor);
     auto shape_task = group->Recv(shape_tensor, peer);
   } else {
@@ -132,9 +132,9 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup *pg = map->get(rid);
-      std::vector<phi::DenseTensor> out_tensor;
+      std::vector<DenseTensor> out_tensor;
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-      auto out = ctx.Output<phi::DenseTensor>("Out");
+      auto out = ctx.Output<DenseTensor>("Out");
       // auto out_dims = out->dims();
 
       if (dynamic_shape) {
@@ -185,7 +185,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto out = ctx.Output<DenseTensor>("Out");
     // auto out_dims = out->dims();
     auto numel = out->numel();
 

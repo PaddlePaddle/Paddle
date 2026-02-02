@@ -43,23 +43,13 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* rank,
                  DenseTensor* singular_values) {
   if (x.numel() == 0 || y.numel() == 0) {
-    if (solution)
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(solution->dims())),
-                       0,
-                       solution);
-    if (rank)
-      Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (solution) Full<T, Context>(dev_ctx, solution->dims(), 0, solution);
+    if (rank) Full<int64_t, Context>(dev_ctx, rank->dims(), 0, rank);
     if (residuals)
       GetResidualsTensor<Context, T>(
           dev_ctx, x, y, driver_string, solution, residuals, rank);
     if (singular_values)
-      Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(singular_values->dims())),
-          0,
-          singular_values);
+      Full<T, Context>(dev_ctx, singular_values->dims(), 0, singular_values);
     return;
   }
 
@@ -94,7 +84,7 @@ void LstsqKernel(const Context& dev_ctx,
   Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, &new_y);
 
   // Prepare tau
-  auto tau_dims_vec = common::vectorize<int>(x_dims);
+  auto tau_dims_vec = vectorize<int>(x_dims);
   tau_dims_vec.pop_back();
   tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
 

@@ -65,7 +65,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
       // not be CUDAPlace in practice. This case would only happen in Python
       // op_test framework.
       DenseTensor tmp_tensor;
-      Copy(dev_ctx, seed, phi::CPUPlace(), false, &tmp_tensor);
+      Copy(dev_ctx, seed, CPUPlace(), false, &tmp_tensor);
       seed_int = *(tmp_tensor.data<int64_t>());
     } else {
       seed_int = *(seed.data<int64_t>());

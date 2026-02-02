@@ -238,7 +238,7 @@ bool CumprodGradCompatible(const Context &dev_ctx,
   bool has_zero = false;
 #ifdef PADDLE_WITH_CUDA
   DenseTensor any_zero_cpu;
-  phi::Copy(dev_ctx, any_zero, phi::CPUPlace(), true, &any_zero_cpu);
+  phi::Copy(dev_ctx, any_zero, CPUPlace(), true, &any_zero_cpu);
   has_zero = *any_zero_cpu.data<bool>();
 #else
   has_zero = *any_zero.data<bool>();

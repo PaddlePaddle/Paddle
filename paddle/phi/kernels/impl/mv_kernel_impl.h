@@ -34,10 +34,7 @@ void MvKernel(const Context& dev_ctx,
   }
   // x.shape [10, 0], vec.shape [0], out.shape [10]
   if (vec.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(0),
-                          out);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(0), out);
     return;
   }
 

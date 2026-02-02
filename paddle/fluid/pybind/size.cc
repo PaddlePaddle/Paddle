@@ -96,7 +96,6 @@ static int Paddle_Size_init(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject* number = PyNumber_Index(item);
     if (number && PyLong_Check(number)) {
       if (PyList_SetItem(self, i, number) < 0) {
-        Py_DECREF(number);
         return -1;
       }
       continue;

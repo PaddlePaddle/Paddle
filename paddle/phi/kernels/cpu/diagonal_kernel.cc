@@ -28,19 +28,18 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis2,
                     DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 
   auto* input = &x;
   const T* input_data = input->data<T>();
-  auto input_dim = common::vectorize(input->dims());
+  auto input_dim = vectorize(input->dims());
   auto input_dim_size = input_dim.size();
 
   auto* output = out;
   T* output_data = dev_ctx.template Alloc<T>(output);
-  auto output_dim = common::vectorize(output->dims());
+  auto output_dim = vectorize(output->dims());
   auto output_dim_size = output_dim.size();
 
   const int64_t offset_ = offset;

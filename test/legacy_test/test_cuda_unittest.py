@@ -202,7 +202,9 @@ class TestCudaCompat(unittest.TestCase):
         default_device = paddle.get_default_device()
         self.assertIsInstance(default_device, str)
         if paddle.is_compiled_with_cuda():
-            self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
+            self.assertEqual(
+                paddle.get_default_device(), paddle.device('cuda:0')
+            )
 
     def test_get_device(self):
         x_cpu = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
@@ -218,12 +220,16 @@ class TestCudaCompat(unittest.TestCase):
 
     def test_set_default_device(self):
         if paddle.is_compiled_with_cuda():
-            paddle.set_default_device("gpu")
-            self.assertEqual(paddle.get_default_device(), paddle.device('cuda'))
+            paddle.set_default_device("gpu:0")
+            self.assertEqual(
+                paddle.get_default_device(), paddle.device('cuda:0')
+            )
 
         if paddle.is_compiled_with_xpu():
             paddle.set_default_device("xpu")
-            self.assertEqual(paddle.get_default_device(), paddle.device('xpu'))
+            self.assertEqual(
+                paddle.get_default_device(), paddle.device('xpu:0')
+            )
 
     @unittest.skipIf(
         (

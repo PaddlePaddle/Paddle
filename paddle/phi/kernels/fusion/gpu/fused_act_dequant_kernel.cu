@@ -23,8 +23,22 @@ struct alignas(16) VectorType {
   T data[N];
 };
 
+template <typename ScaleT, bool using_ue8m0_scale>
+__device__ __forceinline__ float LoadScale(const ScaleT* ptr, int64_t idx) {
+  if constexpr (using_ue8m0_scale) {
+    int packed_scale = reinterpret_cast<const int*>(ptr)[idx / 4];
+    int scale_offset = idx % 4;
+    uint8_t scale_u8 = (packed_scale >> (scale_offset * 8)) & 0xFF;
+    int val_as_int = static_cast<int>(scale_u8) << 23;
+    return __int_as_float(val_as_int);
+  } else {
+    return ptr[idx];
+  }
+}
+
+template <typename ScaleT, bool using_ue8m0_scale>
 __global__ void FusedActDequant(const phi::float8_e4m3fn* __restrict__ Xin,
-                                const float* __restrict__ Xscale,
+                                const ScaleT* __restrict__ Xscale,
                                 phi::bfloat16* __restrict__ out,
                                 const int rows,
                                 const int cols) {
@@ -51,7 +65,7 @@ __global__ void FusedActDequant(const phi::float8_e4m3fn* __restrict__ Xin,
 
     int64_t scale_idx =
         (int64_t)this_row_idx * (int64_t)Xscale_stride + (x_offset / 128);
-    float this_scale = Xscale[scale_idx];
+    float this_scale = LoadScale<ScaleT, using_ue8m0_scale>(Xscale, scale_idx);
 
     VectorType<__nv_bfloat16, vector_size> out_vec;
 
@@ -73,8 +87,12 @@ __global__ void FusedActDequant(const phi::float8_e4m3fn* __restrict__ Xin,
     int64_t idx = X_idx + tid;
     if (tid < remaining_elements) {
       float X_value = static_cast<float>(Xin[idx]);
-      X_value *= Xscale[(int64_t)this_row_idx * (int64_t)Xscale_stride +
-                        (x_offset / 128)];
+
+      int64_t scale_idx =
+          (int64_t)this_row_idx * (int64_t)Xscale_stride + (x_offset / 128);
+      float this_scale =
+          LoadScale<ScaleT, using_ue8m0_scale>(Xscale, scale_idx);
+      X_value *= this_scale;
       out[idx] = __float2bfloat16(X_value);
     }
   }
@@ -97,12 +115,21 @@ void FusedActDequantKernel(const Context& dev_ctx,
   dim3 grid(rows);
   dim3 block(256);
 
-  FusedActDequant<<<grid, block, 0, dev_ctx.stream()>>>(
-      x.data<phi::float8_e4m3fn>(),
-      x_scale.data<float>(),
-      out->data<phi::bfloat16>(),
-      rows,
-      cols);
+  if (x_scale.dtype() == phi::DataType::FLOAT32) {
+    FusedActDequant<float, false>
+        <<<grid, block, 0, dev_ctx.stream()>>>(x.data<phi::float8_e4m3fn>(),
+                                               x_scale.data<float>(),
+                                               out->data<phi::bfloat16>(),
+                                               rows,
+                                               cols);
+  } else if (x_scale.dtype() == phi::DataType::INT32) {
+    FusedActDequant<int, true>
+        <<<grid, block, 0, dev_ctx.stream()>>>(x.data<phi::float8_e4m3fn>(),
+                                               x_scale.data<int>(),
+                                               out->data<phi::bfloat16>(),
+                                               rows,
+                                               cols);
+  }
 
 #ifdef PADDLE_WITH_CUDA_CHECK
   auto cuda_error = cudaGetLastError();

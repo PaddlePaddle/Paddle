@@ -39,8 +39,7 @@ KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
     // op previously) then we also need to rotate shape NHWC -> NCWH
     if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
         (tensor.layout() != DataLayout::ONEDNN) &&
-        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-            DataLayout::NHWC) {
+        OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC) {
       return phi::KernelKey(
           tensor.place(), DataLayout::NHWC, expected_kernel_type.dtype());
     }
@@ -434,10 +433,10 @@ class MulPrimitiveFactory {
   }
 
   const engine &engine_;
-  paddle::optional<memory> x_input_;
-  paddle::optional<memory> y_input_;
-  paddle::optional<memory> output_;
-  paddle::optional<inner_product_forward> mul_;
+  optional<memory> x_input_;
+  optional<memory> y_input_;
+  optional<memory> output_;
+  optional<inner_product_forward> mul_;
   static constexpr bool is_int8_ = funcs::is_int8<XT>();
   dnnl::memory scales_mem_;
 };
