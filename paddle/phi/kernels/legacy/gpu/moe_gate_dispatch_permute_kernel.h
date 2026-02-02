@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void MoEDispatchPermuteKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& gate_logits,
-                              const paddle::optional<DenseTensor>& corr_bias,
+                              const optional<DenseTensor>& corr_bias,
                               int64_t k,
                               int64_t capacity,
                               int64_t world_size,

@@ -151,7 +151,7 @@ def weight_dequantize(
         out (Tensor): The Tensor which is the dequantitative results, the data type is float16 or bfloat16, the shape is transposition of x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No testing required')
             >>> import paddle
@@ -368,7 +368,7 @@ def apply_per_channel_scale(x: Tensor, scales: Tensor) -> Tensor:
         out (Tensor): The Tensor which is the pre-quant results, the data type is compatible with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No testing required')
             >>> import paddle

@@ -126,7 +126,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
-#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -271,7 +270,6 @@ DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
-DECLARE_FILE_SYMBOLS(op_compatible_info);
 DECLARE_FILE_SYMBOLS(sub_graph_detector);
 DECLARE_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::pybind {
@@ -770,7 +768,7 @@ int DLPackDLTensorFromPyObjectNoSync(void *py_obj, DLTensor *out) {
   try {
     // Use handle (non-owning) to avoid unnecessary refcount operations
     py::handle handle(static_cast<PyObject *>(py_obj));
-    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+    Tensor tensor = handle.cast<Tensor>();
     std::shared_ptr<DenseTensor> dense_tensor =
         std::static_pointer_cast<DenseTensor>(tensor.impl());
     paddle::framework::ToDLPackNonOwningImpl(*dense_tensor, out);
@@ -785,7 +783,7 @@ int DLPackManagedTensorFromPyObjectNoSync(void *py_obj,
                                           DLManagedTensorVersioned **out) {
   try {
     py::handle handle(static_cast<PyObject *>(py_obj));
-    paddle::Tensor tensor = handle.cast<paddle::Tensor>();
+    Tensor tensor = handle.cast<Tensor>();
     std::shared_ptr<DenseTensor> dense_tensor =
         std::static_pointer_cast<DenseTensor>(tensor.impl());
     *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
@@ -800,7 +798,7 @@ int DLPackManagedTensorToPyObjectNoSync(DLManagedTensorVersioned *src,
                                         void **py_obj_out) {
   try {
     DenseTensor dense_tensor = paddle::framework::FromDLPackVersioned(src);
-    paddle::Tensor tensor(std::make_shared<DenseTensor>(dense_tensor));
+    Tensor tensor(std::make_shared<DenseTensor>(dense_tensor));
     egr::EagerUtils::autograd_meta(&tensor)->SetPersistable(false);
     *py_obj_out = ToPyObject(tensor);
     return 0;
@@ -821,7 +819,7 @@ int DLPackManagedTensorAllocator(::DLTensor *prototype,
     phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
     phi::DataType dtype =
         paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
-    paddle::Tensor tensor = paddle::empty(shape, dtype, place);
+    Tensor tensor = paddle::empty(shape, dtype, place);
     std::shared_ptr<DenseTensor> dense_tensor =
         std::static_pointer_cast<DenseTensor>(tensor.impl());
     *out = paddle::framework::ToDLPackVersioned(*dense_tensor);
@@ -3290,6 +3288,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("init_gflags", framework::InitGflags);
+  m.def("init_gflags_from_env", framework::InitGflagsFromEnv);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
@@ -3497,7 +3496,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("set_skip_offload_callback_tensors",
-        [](const std::vector<paddle::Tensor> &tensors) {
+        [](const std::vector<Tensor> &tensors) {
           egr::ActivationOffloader::Instance()->SetSkipTensors(tensors);
         });
   m.def("register_offload_callback", [] {

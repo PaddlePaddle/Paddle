@@ -68,7 +68,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param,
+                    const optional<DenseTensor>& master_param,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
@@ -112,15 +112,14 @@ void SGDDenseKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SGDDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param,
-    bool multi_precision,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out) {
+void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& param,
+                                   const DenseTensor& learning_rate,
+                                   const SelectedRows& grad,
+                                   const optional<DenseTensor>& master_param,
+                                   bool multi_precision,
+                                   DenseTensor* param_out,
+                                   DenseTensor* master_param_out) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
@@ -181,15 +180,14 @@ void SGDDenseParamSparseGradKernel(
 }
 
 template <typename T, typename Context>
-void SGDSparseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const SelectedRows& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<SelectedRows>& master_param,
-    bool multi_precision,
-    SelectedRows* param_out,
-    SelectedRows* master_param_out) {
+void SGDSparseParamSparseGradKernel(const Context& dev_ctx,
+                                    const SelectedRows& param,
+                                    const DenseTensor& learning_rate,
+                                    const SelectedRows& grad,
+                                    const optional<SelectedRows>& master_param,
+                                    bool multi_precision,
+                                    SelectedRows* param_out,
+                                    SelectedRows* master_param_out) {
   PADDLE_THROW("not impl");
 }
 

@@ -22,7 +22,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -42,7 +42,7 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
        {&pat.Tensor("Out")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto input_shape = pir::GetShapeFromValue(match_ctx.Tensor("input"));
+      auto input_shape = GetShapeFromValue(match_ctx.Tensor("input"));
       auto input_dims = input_shape.size();
       bool support_dims = (input_dims >= 2 || input_shape.size() <= 4);
       constexpr size_t height_axis = 2;
@@ -87,20 +87,16 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FcOneDNNEnablePass : public pir::PatternRewritePass {
+class FcOneDNNEnablePass : public PatternRewritePass {
  public:
-  FcOneDNNEnablePass() : pir::PatternRewritePass("fc_onednn_enable_pass", 2) {}
+  FcOneDNNEnablePass() : PatternRewritePass("fc_onednn_enable_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<FcOneDNNEnablePattern>(context));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateFcOneDNNEnablePass() {
   // pd_op.fc -> onednn_op.fc
@@ -108,4 +104,4 @@ std::unique_ptr<Pass> CreateFcOneDNNEnablePass() {
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(fc_onednn_enable_pass, FcOneDNNEnablePass);
+REGISTER_IR_PASS(fc_onednn_enable_pass, pir::FcOneDNNEnablePass);

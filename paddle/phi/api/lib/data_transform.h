@@ -191,7 +191,10 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   if (target == Backend::CUSTOM) {
     ret = ret && !is_custom_place(src_place);
   } else {
-    ret = ret && phi::TransToPhiBackend(src_place) != target;
+    ret =
+        ret && phi::TransToPhiBackend(src_place) !=
+                   (target != Backend::GPUDNN ? target
+                                              : Backend::DEFAULT_CUSTOM_DEVICE);
   }
 #else
   bool ret = false;

@@ -26,7 +26,7 @@ void BilinearKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     const DenseTensor& weight,
-                    const paddle::optional<DenseTensor>& bias,
+                    const optional<DenseTensor>& bias,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 

@@ -29,12 +29,6 @@ void GridSampleGradKernel(const Context& dev_ctx,
                           bool align_corners,
                           DenseTensor* x_grad,
                           DenseTensor* grid_grad) {
-  PADDLE_ENFORCE_EQ(
-      x.dims().size(),
-      4,
-      common::errors::InvalidArgument(
-          ("XPU is only support input_dims == 4 in grid_sample_grad op.")));
-
   if (out_grad.numel() == 0) {
     if (x_grad) {
       Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
@@ -44,6 +38,11 @@ void GridSampleGradKernel(const Context& dev_ctx,
     }
     return;
   }
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(),
+      4,
+      common::errors::InvalidArgument(
+          ("XPU is only support input_dims == 4 in grid_sample_grad op.")));
   const int64_t n = grid.dims()[0];
   const int64_t out_h = grid.dims()[1];
   const int64_t out_w = grid.dims()[2];

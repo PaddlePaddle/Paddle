@@ -38,45 +38,45 @@ template <typename Context>
 DenseTensor InnerTensorContiguous(const Context& dev_ctx,
                                   const DenseTensor& tensor) {
   DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
 
   PD_VISIT_ALL_TYPES(tensor.dtype(), "InnerTensorContiguous", ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
+                       ContiguousKernel<data_t, Context>(
                            dev_ctx, tensor, &dense_out);
                      }));
   return dense_out;
 }
 
 DenseTensor InnerTensorContiguous(const DenseTensor& tensor) {
-  auto& pool = phi::DeviceContextPool::Instance();
+  auto& pool = DeviceContextPool::Instance();
 
-  if (tensor.place().GetType() == phi::AllocationType::CPU) {
-    auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
-    return InnerTensorContiguous<phi::CPUContext>(*dev_ctx, tensor);
+  if (tensor.place().GetType() == AllocationType::CPU) {
+    auto* dev_ctx = static_cast<CPUContext*>(pool.Get(tensor.place()));
+    return InnerTensorContiguous<CPUContext>(*dev_ctx, tensor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
-    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
-    return InnerTensorContiguous<phi::GPUContext>(*dev_ctx, tensor);
+  } else if (tensor.place().GetType() == AllocationType::GPU) {
+    auto* dev_ctx = static_cast<GPUContext*>(pool.Get(tensor.place()));
+    return InnerTensorContiguous<GPUContext>(*dev_ctx, tensor);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (tensor.place().GetType() == phi::AllocationType::XPU) {
-    auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(tensor.place()));
-    return InnerTensorContiguous<phi::XPUContext>(*dev_ctx, tensor);
+  } else if (tensor.place().GetType() == AllocationType::XPU) {
+    auto* dev_ctx = static_cast<XPUContext*>(pool.Get(tensor.place()));
+    return InnerTensorContiguous<XPUContext>(*dev_ctx, tensor);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
-    auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
+  } else if (tensor.place().GetType() == AllocationType::CUSTOM) {
+    auto* dev_ctx = static_cast<CustomContext*>(pool.Get(tensor.place()));
     DenseTensor dense_out;
-    phi::MetaTensor meta_input(tensor);
-    phi::MetaTensor meta_out(&dense_out);
+    MetaTensor meta_input(tensor);
+    MetaTensor meta_out(&dense_out);
     UnchangedInferMeta(meta_input, &meta_out);
-    const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(tensor.place()),
-                                        phi::DataLayout::ALL_LAYOUT,
-                                        tensor.dtype()};
+    const KernelKey& kernel_key = {TransToPhiBackend(tensor.place()),
+                                   DataLayout::ALL_LAYOUT,
+                                   tensor.dtype()};
     using kernel_signature =
-        void (*)(const phi::DeviceContext&, const DenseTensor&, DenseTensor*);
+        void (*)(const DeviceContext&, const DenseTensor&, DenseTensor*);
     PD_VISIT_KERNEL("contiguous",
                     kernel_key,
                     kernel_signature,
@@ -96,7 +96,7 @@ DenseTensor InnerTensorContiguous(const DenseTensor& tensor) {
 
 void TensorToStream(std::ostream& os,
                     const DenseTensor& tensor,
-                    const phi::DeviceContext& dev_ctx) {
+                    const DeviceContext& dev_ctx) {
   const auto ensure_contiguous = [](const DenseTensor& tensor) {
     if (tensor.meta().is_contiguous()) {
       return tensor;
@@ -125,28 +125,28 @@ void TensorToStream(std::ostream& os,
   }
   {  // the 3rd field, tensor data
     uint64_t size =
-        contiguous_tensor.numel() * phi::SizeOf(contiguous_tensor.dtype());
+        contiguous_tensor.numel() * SizeOf(contiguous_tensor.dtype());
 
     auto* data_ptr = contiguous_tensor.data();
     PADDLE_ENFORCE_LT(size,
                       (std::numeric_limits<std::streamsize>::max)(),
                       common::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
-    if (phi::is_gpu_place(contiguous_tensor.place())) {
+    if (is_gpu_place(contiguous_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
-      phi::CPUPlace cpu;
+      auto& gpu_dev_ctx = static_cast<const GPUContext&>(dev_ctx);
+      CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        phi::memory_utils::Copy(cpu,
-                                buf.get(),
-                                contiguous_tensor.place(),
-                                reinterpret_cast<const void*>(data),  // NOLINT
-                                size_to_write,
-                                gpu_dev_ctx.stream());
+        memory_utils::Copy(cpu,
+                           buf.get(),
+                           contiguous_tensor.place(),
+                           reinterpret_cast<const void*>(data),  // NOLINT
+                           size_to_write,
+                           gpu_dev_ctx.stream());
         gpu_dev_ctx.Wait();
         os.write(buf.get(), size_to_write);
         data += size_to_write;
@@ -156,20 +156,20 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(common::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
-    } else if (phi::is_xpu_place(contiguous_tensor.place())) {
+    } else if (is_xpu_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_XPU
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
-      auto& xpu_dev_ctx = static_cast<const phi::XPUContext&>(dev_ctx);
-      phi::CPUPlace cpu;
+      auto& xpu_dev_ctx = static_cast<const XPUContext&>(dev_ctx);
+      CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        phi::memory_utils::Copy(cpu,
-                                buf.get(),
-                                contiguous_tensor.place(),
-                                reinterpret_cast<const void*>(data),
-                                size_to_write);
+        memory_utils::Copy(cpu,
+                           buf.get(),
+                           contiguous_tensor.place(),
+                           reinterpret_cast<const void*>(data),
+                           size_to_write);
         xpu_dev_ctx.Wait();
         os.write(buf.get(), size_to_write);
         data += size_to_write;
@@ -179,22 +179,21 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(common::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
-    } else if (phi::is_custom_place(contiguous_tensor.place())) {
+    } else if (is_custom_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
-      auto& custom_device_context =
-          static_cast<const phi::CustomContext&>(dev_ctx);
-      phi::CPUPlace cpu;
+      auto& custom_device_context = static_cast<const CustomContext&>(dev_ctx);
+      CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        phi::memory_utils::Copy(cpu,
-                                buf.get(),
-                                contiguous_tensor.place(),
-                                reinterpret_cast<const void*>(data),
-                                size_to_write,
-                                custom_device_context.stream());
+        memory_utils::Copy(cpu,
+                           buf.get(),
+                           contiguous_tensor.place(),
+                           reinterpret_cast<const void*>(data),
+                           size_to_write,
+                           custom_device_context.stream());
         custom_device_context.Wait();
         os.write(buf.get(), size_to_write);
         data += size_to_write;
@@ -213,26 +212,24 @@ void TensorToStream(std::ostream& os,
 }
 
 struct DeserializedDataFunctor {
-  DeserializedDataFunctor(void** buf,
-                          DenseTensor* tensor,
-                          const phi::Place& place)
+  DeserializedDataFunctor(void** buf, DenseTensor* tensor, const Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
   template <typename T>
   void apply() {
-    auto& pool = phi::DeviceContextPool::Instance();
+    auto& pool = DeviceContextPool::Instance();
     auto* dev_ctx = pool.Get(place_);
     *buf_ = dev_ctx->Alloc<T>(tensor_);
   }
 
   void** buf_;
   DenseTensor* tensor_;
-  phi::Place place_;
+  Place place_;
 };
 
 void TensorFromStream(std::istream& is,
                       DenseTensor* tensor,
-                      const phi::DeviceContext& dev_ctx,
+                      const DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
   uint32_t version = 0;
@@ -263,11 +260,10 @@ void TensorFromStream(std::istream& is,
     is.seekg(seekg, is.cur);  // NOLINT
 
     void* buf = nullptr;
-    phi::CPUContext ctx;
+    CPUContext ctx;
     size_t size = tensor->numel() * SizeOfType(desc.data_type());
-    if (phi::is_gpu_place(dev_ctx.GetPlace()) ||
-        phi::is_xpu_place(dev_ctx.GetPlace()) ||
-        phi::is_custom_place(dev_ctx.GetPlace())) {
+    if (is_gpu_place(dev_ctx.GetPlace()) || is_xpu_place(dev_ctx.GetPlace()) ||
+        is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       DenseTensor cpu_tensor;
@@ -276,15 +272,15 @@ void TensorFromStream(std::istream& is,
                     DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
       is.read(static_cast<char*>(buf), size);  // NOLINT
       auto dst_place = dev_ctx.GetPlace();
-      phi::Copy(dev_ctx, cpu_tensor, dst_place, false, tensor);
-      if (phi::is_custom_place(dev_ctx.GetPlace())) {
+      Copy(dev_ctx, cpu_tensor, dst_place, false, tensor);
+      if (is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
-      if (phi::is_gpu_place(dev_ctx.GetPlace())) {
+      if (is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(common::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
-      } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
+      } else if (is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(common::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       }
@@ -299,7 +295,7 @@ void TensorFromStream(std::istream& is,
 
 void TensorFromStream(std::istream& is,
                       DenseTensor* tensor,
-                      const phi::DeviceContext& dev_ctx) {
+                      const DeviceContext& dev_ctx) {
   uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(
@@ -334,11 +330,10 @@ void TensorFromStream(std::istream& is,
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
     tensor->Resize(common::make_ddim(dims));
     void* buf = nullptr;
-    phi::CPUContext ctx;
+    CPUContext ctx;
     size_t size = tensor->numel() * SizeOfType(desc.data_type());
-    if (phi::is_gpu_place(dev_ctx.GetPlace()) ||
-        phi::is_xpu_place(dev_ctx.GetPlace()) ||
-        phi::is_custom_place(dev_ctx.GetPlace())) {
+    if (is_gpu_place(dev_ctx.GetPlace()) || is_xpu_place(dev_ctx.GetPlace()) ||
+        is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       DenseTensor cpu_tensor;
@@ -347,15 +342,15 @@ void TensorFromStream(std::istream& is,
                     DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
       is.read(static_cast<char*>(buf), size);  // NOLINT
       auto dst_place = dev_ctx.GetPlace();
-      phi::Copy(dev_ctx, cpu_tensor, dst_place, false, tensor);
-      if (phi::is_custom_place(dev_ctx.GetPlace())) {
+      Copy(dev_ctx, cpu_tensor, dst_place, false, tensor);
+      if (is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
-      if (phi::is_gpu_place(dev_ctx.GetPlace())) {
+      if (is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(common::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
-      } else if (phi::is_xpu_place(dev_ctx.GetPlace())) {
+      } else if (is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(common::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       } else {

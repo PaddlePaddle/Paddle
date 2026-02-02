@@ -152,6 +152,69 @@ class Tensor : public TensorBase {
     return TensorBase::to(options, non_blocking, copy, memory_format);
   }
 
+  Tensor meta() const {
+    PD_THROW("`meta()` is not supported in this Paddle build.");
+  }
+
+  at::Scalar item() const {
+    if (tensor_.numel() != 1) {
+      PD_THROW("only one element tensors can be converted to Python scalars");
+    }
+
+    // Move to CPU if necessary (for compatibility with PyTorch behavior)
+    PaddleTensor cpu_tensor = tensor_;
+    if (!phi::is_cpu_place(tensor_.place())) {
+      PaddlePlace place(phi::AllocationType::CPU);
+      cpu_tensor = tensor_.copy_to(place, true);
+    }
+
+    auto dtype = cpu_tensor.dtype();
+    if (dtype == phi::DataType::FLOAT32) {
+      return at::Scalar(*(cpu_tensor.data<float>()));
+    } else if (dtype == phi::DataType::FLOAT64) {
+      return at::Scalar(*(cpu_tensor.data<double>()));
+    } else if (dtype == phi::DataType::FLOAT16) {
+      return at::Scalar(
+          static_cast<float>(*(cpu_tensor.data<phi::dtype::float16>())));
+    } else if (dtype == phi::DataType::BFLOAT16) {
+      return at::Scalar(
+          static_cast<float>(*(cpu_tensor.data<phi::dtype::bfloat16>())));
+    } else if (dtype == phi::DataType::INT8) {
+      return at::Scalar(*(cpu_tensor.data<int8_t>()));
+    } else if (dtype == phi::DataType::INT16) {
+      return at::Scalar(*(cpu_tensor.data<int16_t>()));
+    } else if (dtype == phi::DataType::INT32) {
+      return at::Scalar(*(cpu_tensor.data<int32_t>()));
+    } else if (dtype == phi::DataType::INT64) {
+      return at::Scalar(*(cpu_tensor.data<int64_t>()));
+    } else if (dtype == phi::DataType::UINT8) {
+      return at::Scalar(*(cpu_tensor.data<uint8_t>()));
+    } else if (dtype == phi::DataType::BOOL) {
+      return at::Scalar(*(cpu_tensor.data<bool>()));
+    } else if (dtype == phi::DataType::COMPLEX64) {
+      return at::Scalar(*(cpu_tensor.data<phi::dtype::complex<float>>()));
+    } else if (dtype == phi::DataType::COMPLEX128) {
+      return at::Scalar(*(cpu_tensor.data<phi::dtype::complex<double>>()));
+    }
+    PD_THROW("item(): Unsupported data type");
+  }
+
+  template <typename T>
+  T item() const {
+    if (tensor_.numel() != 1) {
+      PD_THROW("only one element tensors can be converted to Python scalars");
+    }
+
+    // Move to CPU if necessary (for compatibility with PyTorch behavior)
+    PaddleTensor cpu_tensor = tensor_;
+    if (!phi::is_cpu_place(tensor_.place())) {
+      PaddlePlace place(phi::AllocationType::CPU);
+      cpu_tensor = tensor_.copy_to(place, true);
+    }
+
+    return *(cpu_tensor.data<T>());
+  }
+
   at::Tensor to(
       at::ScalarType dtype,
       bool non_blocking = false,
@@ -200,6 +263,38 @@ class Tensor : public TensorBase {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
+  // aten::flatten.using_ints(Tensor(a) self, int start_dim=0, int end_dim=-1)
+  // -> Tensor(a)
+  inline at::Tensor flatten(int64_t start_dim, int64_t end_dim) const {
+    return Tensor(paddle::experimental::flatten(
+        tensor_, static_cast<int>(start_dim), static_cast<int>(end_dim)));
+  }
+
+  // aten::unflatten.int(Tensor(a) self, int dim, SymInt[] sizes) -> Tensor(a)
+  inline at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const {
+    // Compute the new shape by replacing the dimension at 'dim' with 'sizes'
+    int64_t ndim = tensor_.dims().size();
+    int64_t actual_dim = dim < 0 ? dim + ndim : dim;
+    std::vector<int64_t> new_shape;
+    for (int64_t i = 0; i < ndim; ++i) {
+      if (i == actual_dim) {
+        for (auto s : sizes) {
+          new_shape.push_back(s);
+        }
+      } else {
+        new_shape.push_back(tensor_.dims()[i]);
+      }
+    }
+    return Tensor(paddle::experimental::reshape(tensor_, new_shape));
+  }
+
+  // aten::unflatten.int(Tensor(a) self, int dim, SymInt[] sizes) -> Tensor(a)
+  inline at::Tensor unflatten_symint(int64_t dim,
+                                     c10::SymIntArrayRef sizes) const {
+    // SymIntArrayRef is the same as IntArrayRef in this implementation
+    return unflatten(dim, sizes);
+  }
+
   Tensor& fill_(const at::Scalar& value) const {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
     return const_cast<at::Tensor&>(*this);
@@ -238,6 +333,59 @@ class Tensor : public TensorBase {
       pinned_place = phi::GetPinnedPlace(current_place);
     }
     return tensor_.copy_to(pinned_place, true);
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy(int64_t dim,
+                                int64_t start,
+                                int64_t length) const {
+    // narrow_copy returns a copy of the narrowed tensor
+    return narrow(dim, start, length).clone();
+  }
+
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy_symint(int64_t dim,
+                                       c10::SymInt start,
+                                       c10::SymInt length) const {
+    return narrow_copy(dim, start, length);
+  }
+
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const {
+    // Use slice to implement narrow: narrow(dim, start, length) is equivalent
+    // to slice(dim, start, start + length)
+    return Tensor(paddle::experimental::slice(
+        tensor_, {dim}, {start}, {start + length}, {1}, {}));
+  }
+
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  c10::SymInt start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
+
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow(int64_t dim,
+                           const at::Tensor& start,
+                           int64_t length) const {
+    // Extract scalar value from start tensor
+    PD_CHECK(start.numel() == 1,
+             "start must be a 0-dim tensor or 1-element tensor");
+    int64_t start_val =
+        static_cast<int64_t>(start._PD_GetInner().template data<int64_t>()[0]);
+    return narrow(dim, start_val, length);
+  }
+
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  const at::Tensor& start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
   }
 
   at::Tensor reshape(at::IntArrayRef shape) const {
