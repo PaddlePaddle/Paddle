@@ -56,7 +56,7 @@ def check_link_accessible(url):
         return False
 
 
-def parameter_accuracy(body):
+def parameter_accuracy(body, pr_number):
     PR_dic = {}
     PR_Category = [
         'User Experience',
@@ -142,7 +142,7 @@ def parameter_accuracy(body):
             if not found_valid:
                 message += f'Precision Change Impact must be in {Accuracy_Change}. but now is {accuracy_value}.'
             if 'Has precision change' in accuracy_value:
-                approval_ok, approval_msg = check_precision_change_approval(BODY, pr_num)
+                approval_ok, approval_msg = check_precision_change_approval(body, pr_number)
                 print(f"Approval check result: {approval_ok}, message: {approval_msg}")
                 if not approval_ok:
                     check_pr_template = False
@@ -275,7 +275,7 @@ def pull_request_event_template(event, repo, *args, **kwargs):
         global check_pr_template
         global check_pr_template_message
         check_pr_template, check_pr_template_message = checkPRTemplate(
-            repo, BODY, CHECK_TEMPLATE
+            repo, BODY, CHECK_TEMPLATE, pr_num
         )
         print(f"check_pr_template: {check_pr_template} pr: {pr_num}")
         if check_pr_template is False:
