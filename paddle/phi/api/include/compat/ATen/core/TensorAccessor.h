@@ -18,6 +18,10 @@
 
 #pragma once
 
+// TensorBody.h 中 packed_accessor() 会调用
+// generic_packed_accessor()，在此提供宏与类型别名。
+#define generic_packed_accessor accessor
+
 #include <c10/macros/Macros.h>
 #include <c10/util/ArrayRef.h>
 
@@ -103,5 +107,11 @@ class TensorAccessor<T, 1, PtrTraits, index_t>
     return this->data_[this->strides_[0] * i];
   }
 };
+
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits,
+          typename index_t = int64_t>
+using GenericPackedTensorAccessor = TensorAccessor<T, N, PtrTraits, index_t>;
 
 }  // namespace at
