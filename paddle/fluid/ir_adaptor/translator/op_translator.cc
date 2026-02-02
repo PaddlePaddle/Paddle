@@ -2296,7 +2296,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
                                           op_desc.Type(),
                                           var_name.substr(0, 1)));
       std::vector<int64_t> shape = var_desc->GetShape();
-      DenseTensorTypeStorage::Dim dim = common::make_ddim(shape);
+      common::DDim dim = common::make_ddim(shape);
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
@@ -3333,10 +3333,8 @@ struct RandIntOpTranscriber : public OpTranscriber {
         static_cast<paddle::framework::proto::VarType::Type>(dtype_attr_val);
 
     pir::Type dtype = type_translator[var_type](ctx, *var);
-    paddle::dialect::DenseTensorTypeStorage::Dim dim =
-        common::make_ddim(var->GetShape());
-    paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
+    common::DDim dim = common::make_ddim(var->GetShape());
+    DataLayout layout = DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LegacyLoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
@@ -3875,7 +3873,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   pir::Value xshape_value;
   VLOG(10) << "create data op for " << input_xshape_name;
   auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
-  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto dtype = phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
   // NOTE(dev): GraphOp depends on X instead of XShape, so we need
   // erase first element in xshape.
@@ -3912,7 +3910,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   PADDLE_ENFORCE_EQ(
       input_outgrad_value.type().isa<paddle::dialect::DenseTensorType>(),
       true,
-      ::common::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "input type must be DenseTensorType, but received: %s.",
           input_outgrad_value.type()));
 

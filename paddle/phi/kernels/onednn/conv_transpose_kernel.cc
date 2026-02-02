@@ -546,7 +546,7 @@ template <typename T, typename Context>
 void Conv2dTransposeBiasKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
-                               const paddle::optional<DenseTensor>& bias,
+                               const optional<DenseTensor>& bias,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
                                const std::vector<int>& output_padding UNUSED,

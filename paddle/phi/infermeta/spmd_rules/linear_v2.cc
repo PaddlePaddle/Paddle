@@ -26,7 +26,14 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
                                const DistMetaTensor& weight,
-                               const DistMetaTensor& bias) {
+                               const DistMetaTensor& bias,
+                               bool transpose_weight) {
+  PADDLE_ENFORCE_EQ(transpose_weight,
+                    false,
+                    common::errors::InvalidArgument(
+                        "When in SPMD mode, the transpose_weight in linear_v2 "
+                        "should be false, but got [%d].",
+                        transpose_weight));
   // Step0: verify input args based on matmul logic
   auto ori_input_shape = common::vectorize(input.dims());
   auto ori_weight_shape = common::vectorize(weight.dims());
@@ -142,7 +149,8 @@ SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
 }
 SpmdInfo LinearV2InferSpmd(const DistMetaTensor& input,
                            const DistMetaTensor& weight,
-                           const DistMetaTensor& bias) {
-  return LinearV2InferSpmdBase(input, weight, bias);
+                           const DistMetaTensor& bias,
+                           bool transpose_weight) {
+  return LinearV2InferSpmdBase(input, weight, bias, transpose_weight);
 }
 }  // namespace phi::distributed

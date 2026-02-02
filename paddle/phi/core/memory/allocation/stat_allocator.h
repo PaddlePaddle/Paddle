@@ -55,7 +55,7 @@ class StatAllocator : public Allocator {
     phi::Allocator::AllocationPtr allocation =
         underlying_allocator_->Allocate(size);
 
-    const phi::Place& place = allocation->place();
+    const Place& place = allocation->place();
     if (phi::is_cpu_place(place) || phi::is_pinned_place(place)) {
       HOST_MEMORY_STAT_UPDATE(
           Allocated, place.GetDeviceId(), allocation->size());
@@ -70,11 +70,11 @@ class StatAllocator : public Allocator {
     return allocation.release();
   }
 
-  uint64_t ReleaseImpl(const phi::Place& place) override {
+  uint64_t ReleaseImpl(const Place& place) override {
     return underlying_allocator_->Release(place);
   }
 
-  size_t CompactImpl(const phi::Place& place) override {
+  size_t CompactImpl(const Place& place) override {
     return underlying_allocator_->Compact(place);
   }
 

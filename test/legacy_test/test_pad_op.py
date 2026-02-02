@@ -655,7 +655,7 @@ class TestPadAliasSupport(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), expected)
 
     def test_both_param_name(self):
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(TypeError) as context:
             paddle.nn.functional.pad(
                 x=paddle.to_tensor(self.x),
                 input=paddle.to_tensor(self.x),
@@ -663,7 +663,7 @@ class TestPadAliasSupport(unittest.TestCase):
                 value=self.value,
             )
         self.assertIn(
-            "Cannot specify both 'x' and its alias 'input'",
+            "pad() got an unexpected keyword argument 'input'",
             str(context.exception),
         )
 

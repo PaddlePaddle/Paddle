@@ -26,7 +26,7 @@ from paddle.device import (
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -398,7 +398,7 @@ def _conv_nd(
     return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def conv1d(
     x: Tensor,
     weight: Tensor,
@@ -660,7 +660,7 @@ def conv1d(
     return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def conv2d(
     x: Tensor,
     weight: Tensor,
@@ -1516,7 +1516,7 @@ def conv2d_transpose(
     return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def conv3d(
     x: Tensor,
     weight: Tensor,
