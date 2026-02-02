@@ -2300,6 +2300,7 @@ bool LinearV2OpInferSymbolicShape(
   const auto &bias_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const auto &bias_dims = bias_shape_or_data.shape();
+  const bool transpose_y_attr = GetBoolAttr(op, "transpose_weight");
 
   size_t x_rank = x_dims.size();
   size_t y_rank = y_dims.size();
@@ -2311,14 +2312,16 @@ bool LinearV2OpInferSymbolicShape(
     out_shape.emplace_back(x_dims[i]);
   }
 
-  symbol::DimExpr out_M = x_dims[x_rank - 2];
-  symbol::DimExpr out_N = y_dims[y_rank - 1];
+  symbol::DimExpr out_M = (x_rank == 1) ? 1 : x_dims[x_rank - 2];
+  symbol::DimExpr out_N =
+      (y_rank == 1) ? 1 : y_dims[y_rank - 1 - transpose_y_attr];
 
   out_shape.emplace_back(out_M);
   out_shape.emplace_back(out_N);
 
-  symbol::DimExpr x_K = x_dims[x_rank - 1];
-  symbol::DimExpr y_K = y_dims[y_rank - 2];
+  symbol::DimExpr x_K = (x_rank == 1) ? x_dims[0] : x_dims[x_rank - 1];
+  symbol::DimExpr y_K =
+      (y_rank == 1) ? y_dims[0] : y_dims[y_rank - 2 + transpose_y_attr];
 
   infer_context->AddEqualCstr(x_K, y_K);
   // bias_dims[0] equal to out_N

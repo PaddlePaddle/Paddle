@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string fusable_ops_;
@@ -323,13 +323,9 @@ class OperatorScaleFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateOperatorScaleFusePass() {
   return std::make_unique<OperatorScaleFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(operator_scale_onednn_fuse_pass, OperatorScaleFusePass);
+REGISTER_IR_PASS(operator_scale_onednn_fuse_pass, pir::OperatorScaleFusePass);

@@ -185,6 +185,13 @@ class IR_API SparseCsrTensorType
 }  // namespace dialect
 }  // namespace paddle
 
+namespace pir {
+using SelectedRowsType = paddle::dialect::SelectedRowsType;
+using DenseTensorArrayType = paddle::dialect::DenseTensorArrayType;
+using SparseCooTensorType = paddle::dialect::SparseCooTensorType;
+using SparseCsrTensorType = paddle::dialect::SparseCsrTensorType;
+}  // namespace pir
+
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCooTensorType)

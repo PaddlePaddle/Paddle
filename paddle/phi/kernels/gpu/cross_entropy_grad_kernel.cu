@@ -277,7 +277,6 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -285,22 +284,3 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    float,
                    double,
                    phi::float16) {}
-#else
-#if CUDNN_VERSION_MIN(8, 1, 0)
-PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CrossEntropyWithSoftmaxGradKernel,
-                   float,
-                   double,
-                   phi::float16) {}
-#else
-PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CrossEntropyWithSoftmaxGradKernel,
-                   float,
-                   double,
-                   phi::float16) {}
-#endif
-#endif
