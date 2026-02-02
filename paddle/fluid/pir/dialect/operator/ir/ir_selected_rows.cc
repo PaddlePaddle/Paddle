@@ -20,7 +20,7 @@
 namespace paddle::dialect {
 IrSelectedRows::IrSelectedRows(phi::DataType dtype,
                                const DDim& dims,
-                               phi::DataLayout layout,
+                               DataLayout layout,
                                LegacyLoD lod,
                                size_t offset)
     : dims_(dims),

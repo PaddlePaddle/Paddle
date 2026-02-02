@@ -40,7 +40,7 @@ class TEST_API SelectedRowsType
 
   const DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  const DataLayout &data_layout() const;
 
   const phi::LegacyLoD &lod() const;
 
@@ -77,7 +77,7 @@ class IR_API DenseTensorArrayType
 
   const DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  const DataLayout &data_layout() const;
 
   ///
   /// \brief Implementation of 'classof' that compares the type id of

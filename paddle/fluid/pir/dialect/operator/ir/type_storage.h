@@ -28,18 +28,18 @@ namespace dialect {
 using DenseTensorTypeStorage = pir::DenseTensorTypeStorage;
 
 struct SelectedRowsTypeStorage : public pir::TypeStorage {
-  using DataLayout = phi::DataLayout;
+  using DataLayout = DataLayout;
   using Dim = DDim;
   using LegacyLoD = std::vector<std::vector<size_t>>;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey =
-      std::tuple<pir::Type, DDim, phi::DataLayout, phi::LegacyLoD, size_t>;
+      std::tuple<pir::Type, DDim, DataLayout, phi::LegacyLoD, size_t>;
 
   SelectedRowsTypeStorage(const pir::Type& dtype,
                           const DDim& dims,
-                          const phi::DataLayout& layout,
+                          const DataLayout& layout,
                           const phi::LegacyLoD& lod,
                           size_t offset)
       : dtype_(dtype),
@@ -74,8 +74,8 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
-        std::hash<std::underlying_type<phi::DataLayout>::type>()(
-            static_cast<std::underlying_type<phi::DataLayout>::type>(
+        std::hash<std::underlying_type<DataLayout>::type>()(
+            static_cast<std::underlying_type<DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
     hash_value = pir::detail::hash_combine(
@@ -103,22 +103,22 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
   ///
   pir::Type dtype_;
   DDim dims_;
-  phi::DataLayout layout_;
+  DataLayout layout_;
   phi::LegacyLoD lod_;
   size_t offset_;
 };
 
 struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
-  using DataLayout = phi::DataLayout;
+  using DataLayout = DataLayout;
   using DDim = DDim;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey = std::tuple<pir::Type, DDim, phi::DataLayout>;
+  using ParamKey = std::tuple<pir::Type, DDim, DataLayout>;
 
   DenseTensorArrayTypeStorage(const pir::Type& dtype,
                               const DDim& dims,
-                              const phi::DataLayout& layout)
+                              const DataLayout& layout)
       : dtype_(dtype), dims_(dims), layout_(layout) {}
 
   ///
@@ -144,8 +144,8 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
     // hash layout
     hash_value = pir::detail::hash_combine(
         hash_value,
-        std::hash<std::underlying_type<phi::DataLayout>::type>()(
-            static_cast<std::underlying_type<phi::DataLayout>::type>(
+        std::hash<std::underlying_type<DataLayout>::type>()(
+            static_cast<std::underlying_type<DataLayout>::type>(
                 std::get<2>(key))));
     return hash_value;
   }
@@ -164,7 +164,7 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   ///
   pir::Type dtype_;
   DDim dims_;
-  phi::DataLayout layout_;
+  DataLayout layout_;
 };
 
 struct SparseCooTensorTypeStorage : public pir::TypeStorage {

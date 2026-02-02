@@ -333,16 +333,16 @@ class TEST_API ResultPattern {
   // {"undefined", phi::Place{}}};
   Attribute PlaceAttr(const std::string& value) const;
 
-  // {"NHWC", phi::DataLayout::NHWC},
-  // {"NCHW", phi::DataLayout::NCHW},
-  // {"Undefined", phi::DataLayout::kAnyLayout},
-  // {"ONEDNN", phi::DataLayout::ONEDNN},
-  // {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
-  // {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
-  // {"NDHWC", phi::DataLayout::kNDHWC},
-  // {"NCDHW", phi::DataLayout::kNCDHW},
-  // {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
-  // {"STRIDED", phi::DataLayout::STRIDED}};
+  // {"NHWC", DataLayout::NHWC},
+  // {"NCHW", DataLayout::NCHW},
+  // {"Undefined", DataLayout::kAnyLayout},
+  // {"ONEDNN", DataLayout::ONEDNN},
+  // {"SPARSE_COO", DataLayout::SPARSE_COO},
+  // {"SPARSE_CSR", DataLayout::SPARSE_CSR},
+  // {"NDHWC", DataLayout::kNDHWC},
+  // {"NCDHW", DataLayout::kNCDHW},
+  // {"PSTRING_UNION", DataLayout::PSTRING_UNION},
+  // {"STRIDED", DataLayout::STRIDED}};
   Attribute DataLayoutAttr(const std::string& value) const;
 
   Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const;

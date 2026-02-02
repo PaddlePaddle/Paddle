@@ -178,7 +178,7 @@ inline SparseCooTensorType CvtToSparseCooTensorType(
     const IrSparseCooTensor& ir_tensor) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DataLayout data_layout = phi::DataLayout::UNDEFINED;
+  DataLayout data_layout = DataLayout::UNDEFINED;
   phi::LegacyLoD lod = {};
   DDim dims = {};
   size_t offset = 0;

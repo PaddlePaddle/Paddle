@@ -29,7 +29,7 @@ class IrMetaTensor : public phi::MetaTensor {
 
   phi::DataType dtype() const override;
 
-  phi::DataLayout layout() const override;
+  DataLayout layout() const override;
 
   const phi::LegacyLoD& lod() const;
 
@@ -37,7 +37,7 @@ class IrMetaTensor : public phi::MetaTensor {
 
   void set_dtype(phi::DataType dtype) override;
 
-  void set_layout(phi::DataLayout layout) override;
+  void set_layout(DataLayout layout) override;
 
   void share_lod(const MetaTensor& meta_tensor) override;
 

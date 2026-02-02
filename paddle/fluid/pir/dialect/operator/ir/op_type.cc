@@ -19,7 +19,7 @@ const pir::Type& SelectedRowsType::dtype() const { return storage()->dtype_; }
 
 const DDim& SelectedRowsType::dims() const { return storage()->dims_; }
 
-const phi::DataLayout& SelectedRowsType::data_layout() const {
+const DataLayout& SelectedRowsType::data_layout() const {
   return storage()->layout_;
 }
 
@@ -52,7 +52,7 @@ const pir::Type& DenseTensorArrayType::dtype() const {
 }
 const DDim& DenseTensorArrayType::dims() const { return storage()->dims_; }
 
-const phi::DataLayout& DenseTensorArrayType::data_layout() const {
+const DataLayout& DenseTensorArrayType::data_layout() const {
   return storage()->layout_;
 }
 

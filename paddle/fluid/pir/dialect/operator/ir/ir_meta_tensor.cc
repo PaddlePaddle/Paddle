@@ -40,7 +40,7 @@ phi::DataType IrMetaTensor::dtype() const {
   return tensor_->dtype();
 }
 
-phi::DataLayout IrMetaTensor::layout() const {
+DataLayout IrMetaTensor::layout() const {
   ValidCheck(*this);
   return tensor_->layout();
 }
@@ -80,7 +80,7 @@ void IrMetaTensor::set_dtype(phi::DataType dtype) {
   }
 }
 
-void IrMetaTensor::set_layout(phi::DataLayout layout) {
+void IrMetaTensor::set_layout(DataLayout layout) {
   if (paddle::dialect::IrTensor::classof(tensor_)) {
     static_cast<paddle::dialect::IrTensor*>(tensor_)->SetLayout(layout);
   } else if (paddle::dialect::IrSelectedRows::classof(tensor_)) {

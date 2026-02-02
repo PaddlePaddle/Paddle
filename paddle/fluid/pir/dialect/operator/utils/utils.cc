@@ -535,19 +535,18 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
   return place_map;
 }
 
-const std::unordered_map<std::string, phi::DataLayout>&
-StringToDataLayoutMap() {
-  static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
-      {"NHWC", phi::DataLayout::NHWC},
-      {"NCHW", phi::DataLayout::NCHW},
-      {"Undefined", phi::DataLayout::kAnyLayout},
-      {"ONEDNN", phi::DataLayout::ONEDNN},
-      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
-      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
-      {"NDHWC", phi::DataLayout::kNDHWC},
-      {"NCDHW", phi::DataLayout::kNCDHW},
-      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
-      {"STRIDED", phi::DataLayout::STRIDED}};
+const std::unordered_map<std::string, DataLayout>& StringToDataLayoutMap() {
+  static std::unordered_map<std::string, DataLayout> data_layout_map{
+      {"NHWC", DataLayout::NHWC},
+      {"NCHW", DataLayout::NCHW},
+      {"Undefined", DataLayout::kAnyLayout},
+      {"ONEDNN", DataLayout::ONEDNN},
+      {"SPARSE_COO", DataLayout::SPARSE_COO},
+      {"SPARSE_CSR", DataLayout::SPARSE_CSR},
+      {"NDHWC", DataLayout::kNDHWC},
+      {"NCDHW", DataLayout::kNCDHW},
+      {"PSTRING_UNION", DataLayout::PSTRING_UNION},
+      {"STRIDED", DataLayout::STRIDED}};
   return data_layout_map;
 }
 
