@@ -2022,11 +2022,16 @@ __global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
       hstart = h_offset * stride_height - padding_height;
       hend =
           min(hstart + dilation_height * (ksize_height - 1) + 1, input_height);
-      while (hstart < 0) hstart += dilation_height;
+      if (hstart < 0) {
+        hstart =
+            ((-hstart - 1) / dilation_height + 1) * dilation_height + hstart;
+      }
 
       wstart = w_offset * stride_width - padding_width;
       wend = min(wstart + dilation_width * (ksize_width - 1) + 1, input_width);
-      while (wstart < 0) wstart += dilation_width;
+      if (wstart < 0) {
+        wstart = ((-wstart - 1) / dilation_width + 1) * dilation_width + wstart;
+      }
     } else {
       hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
@@ -2560,9 +2565,18 @@ __global__ void KernelMaxPool3DWithIdx(
                      input_height);
           wend =
               min(wstart + dilation_width * (ksize_width - 1) + 1, input_width);
-          while (dstart < 0) dstart += dilation_depth;
-          while (hstart < 0) hstart += dilation_height;
-          while (wstart < 0) wstart += dilation_width;
+          if (dstart < 0) {
+            dstart =
+                ((-dstart - 1) / dilation_depth + 1) * dilation_depth + dstart;
+          }
+          if (hstart < 0) {
+            hstart = ((-hstart - 1) / dilation_height + 1) * dilation_height +
+                     hstart;
+          }
+          if (wstart < 0) {
+            wstart =
+                ((-wstart - 1) / dilation_width + 1) * dilation_width + wstart;
+          }
         } else {
           dstart = d_offset * stride_depth - padding_depth;
           hstart = h_offset * stride_height - padding_height;
