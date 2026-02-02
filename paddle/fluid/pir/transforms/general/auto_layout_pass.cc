@@ -127,7 +127,7 @@ class AutoLayoutPass : public Pass {
                      op.isa<paddle::dialect::FusedConv2dAddActOp>()) {
             auto layout_interface =
                 op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-            if (layout_interface.PreferLayout(&op) != common::DataLayout::NHWC)
+            if (layout_interface.PreferLayout(&op) != DataLayout::NHWC)
               continue;
             op.isa<paddle::dialect::FusedConv2dAddActOp>() ? conv_count_ += 3
                                                            : conv_count_ += 1.5;

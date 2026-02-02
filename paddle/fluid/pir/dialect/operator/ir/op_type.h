@@ -108,7 +108,7 @@ class IR_API SparseCooTensorType
   pir::Type dtype() const;
   const DDim &dims() const;
   const DDim &non_zero_dims() const;
-  common::DataLayout data_layout() const;
+  DataLayout data_layout() const;
   pir::DenseTensorType non_zero_indices() const;
   pir::DenseTensorType non_zero_elements() const;
   bool coalesced() const;
@@ -125,7 +125,7 @@ class IR_API SparseCooTensorType
                                  pir::Type dtype,
                                  const DDim &dims,
                                  const DDim &non_zero_dims,
-                                 common::DataLayout layout,
+                                 DataLayout layout,
                                  pir::DenseTensorType non_zero_indices,
                                  pir::DenseTensorType non_zero_elements,
                                  bool coalesced = false) {
@@ -152,7 +152,7 @@ class IR_API SparseCsrTensorType
 
   pir::Type dtype() const;
   const DDim &dims() const;
-  common::DataLayout data_layout() const;
+  DataLayout data_layout() const;
   pir::DenseTensorType non_zero_crows() const;
   pir::DenseTensorType non_zero_cols() const;
   pir::DenseTensorType non_zero_elements() const;
@@ -168,7 +168,7 @@ class IR_API SparseCsrTensorType
   static SparseCsrTensorType get(pir::IrContext *ctx,
                                  pir::Type dtype,
                                  const DDim &dims,
-                                 common::DataLayout layout,
+                                 DataLayout layout,
                                  pir::DenseTensorType non_zero_crows,
                                  pir::DenseTensorType non_zero_cols,
                                  pir::DenseTensorType non_zero_elements) {

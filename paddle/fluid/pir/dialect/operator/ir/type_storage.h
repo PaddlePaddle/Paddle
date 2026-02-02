@@ -174,14 +174,14 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   using ParamKey = std::tuple<pir::Type,
                               DDim,
                               DDim,
-                              common::DataLayout,
+                              DataLayout,
                               pir::DenseTensorType,
                               pir::DenseTensorType,
                               bool>;
   SparseCooTensorTypeStorage(pir::Type dtype,
                              DDim dims,
                              DDim non_zero_dims,
-                             common::DataLayout layout,
+                             DataLayout layout,
                              pir::DenseTensorType non_zero_indices,
                              pir::DenseTensorType non_zero_elements,
                              bool coalesced = false)
@@ -281,7 +281,7 @@ struct SparseCooTensorTypeStorage : public pir::TypeStorage {
   pir::Type dtype_;
   DDim dims_;
   DDim non_zero_dims_;
-  common::DataLayout layout_{DataLayout::NCHW};
+  DataLayout layout_{DataLayout::NCHW};
   pir::DenseTensorType non_zero_indices_;
   pir::DenseTensorType non_zero_elements_;
   bool coalesced_ = false;
@@ -293,13 +293,13 @@ struct SparseCsrTensorTypeStorage : public pir::TypeStorage {
   ///
   using ParamKey = std::tuple<pir::Type,
                               DDim,
-                              common::DataLayout,
+                              DataLayout,
                               pir::DenseTensorType,
                               pir::DenseTensorType,
                               pir::DenseTensorType>;
   SparseCsrTensorTypeStorage(pir::Type dtype,
                              DDim dims,
-                             common::DataLayout layout,
+                             DataLayout layout,
                              pir::DenseTensorType non_zero_crows,
                              pir::DenseTensorType non_zero_cols,
                              pir::DenseTensorType non_zero_elements)
@@ -395,7 +395,7 @@ struct SparseCsrTensorTypeStorage : public pir::TypeStorage {
 
   pir::Type dtype_;
   DDim dims_;
-  common::DataLayout layout_;
+  DataLayout layout_;
   pir::DenseTensorType non_zero_crows_;
   pir::DenseTensorType non_zero_cols_;
   pir::DenseTensorType non_zero_elements_;

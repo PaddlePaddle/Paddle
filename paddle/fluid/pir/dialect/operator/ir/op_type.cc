@@ -85,7 +85,7 @@ const DDim& SparseCooTensorType::non_zero_dims() const {
   return storage()->non_zero_dims_;
 }
 
-common::DataLayout SparseCooTensorType::data_layout() const {
+DataLayout SparseCooTensorType::data_layout() const {
   return storage()->layout_;
 }
 
@@ -123,7 +123,7 @@ pir::Type SparseCsrTensorType::dtype() const { return storage()->dtype_; }
 
 const DDim& SparseCsrTensorType::dims() const { return storage()->dims_; }
 
-common::DataLayout SparseCsrTensorType::data_layout() const {
+DataLayout SparseCsrTensorType::data_layout() const {
   return storage()->layout_;
 }
 

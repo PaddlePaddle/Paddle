@@ -32,7 +32,7 @@ class IrSparseCooTensor
   IrSparseCooTensor(phi::DataType dtype,
                     const DDim& dims,
                     DDim non_zero_dims,
-                    common::DataLayout layout,
+                    DataLayout layout,
                     bool coalesced = false);
   IrSparseCooTensor(IrSparseCooTensor&& other) = default;
 
@@ -65,9 +65,9 @@ class IrSparseCooTensor
 
   void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
 
-  common::DataLayout layout() const noexcept override { return layout_; }
+  DataLayout layout() const noexcept override { return layout_; }
 
-  void SetLayout(common::DataLayout layout) { layout_ = layout; }
+  void SetLayout(DataLayout layout) { layout_ = layout; }
 
   bool coalesced() const { return coalesced_; }
 
@@ -91,7 +91,7 @@ class IrSparseCooTensor
   DDim dims_;
   DDim non_zero_dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  common::DataLayout layout_{common::DataLayout::ANY};
+  DataLayout layout_{DataLayout::ANY};
   bool coalesced_ = false;
 };
 
@@ -103,7 +103,7 @@ class IrSparseCsrTensor
 
   IrSparseCsrTensor(phi::DataType dtype,
                     const DDim& dims,
-                    common::DataLayout layout,
+                    DataLayout layout,
                     pir::DenseTensorType non_zero_crows,
                     pir::DenseTensorType non_zero_cols,
                     pir::DenseTensorType non_zero_elements);
@@ -132,9 +132,9 @@ class IrSparseCsrTensor
 
   void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
 
-  common::DataLayout layout() const noexcept override { return layout_; }
+  DataLayout layout() const noexcept override { return layout_; }
 
-  void SetLayout(common::DataLayout layout) { layout_ = layout; }
+  void SetLayout(DataLayout layout) { layout_ = layout; }
 
   pir::DenseTensorType non_zero_crows() const { return non_zero_crows_; }
 
@@ -168,7 +168,7 @@ class IrSparseCsrTensor
  private:
   DDim dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  common::DataLayout layout_{common::DataLayout::ANY};
+  DataLayout layout_{DataLayout::ANY};
   pir::DenseTensorType non_zero_crows_;
   pir::DenseTensorType non_zero_cols_;
   pir::DenseTensorType non_zero_elements_;
