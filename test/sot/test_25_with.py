@@ -1,0 +1,202 @@
+# Copyright (c) 2025 paddlepaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+from contextlib import contextmanager
+
+from test_case_base import (
+    TestCaseBase,
+)
+
+import paddle
+from paddle import nn
+from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
+    ALREADY_SUPPORTED_EXCEPTION,
+)
+from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import strict_mode_guard
+
+
+def check_no_breakgraph_if(cond: bool):
+    def decorator(original_func):
+        if cond:
+            return check_no_breakgraph(original_func)
+        return original_func
+
+    return decorator
+
+
+class Manager:
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc, value, traceback):
+        pass
+
+
+class ManagerExitReturnFalse(Manager):
+    def __exit__(self, *args):
+        return False
+
+
+class ManagerExitReturnTrue(Manager):
+    def __exit__(self, *args):
+        return True
+
+
+TEST_WITH_STATEMENT_FLAG = False
+
+
+@contextmanager
+def my_context():
+    global TEST_WITH_STATEMENT_FLAG
+    try:
+        TEST_WITH_STATEMENT_FLAG = True
+        yield
+    finally:
+        TEST_WITH_STATEMENT_FLAG = False
+
+
+@check_no_breakgraph
+def with_manager_normal(x):
+    with Manager() as mgr:
+        x *= 2
+    return x
+
+
+@check_no_breakgraph
+def with_manager_exit_true_raise_error(x):
+    with ManagerExitReturnTrue() as mgr_true:
+        x *= 3
+        raise ValueError("test")
+        x -= 4
+    return x
+
+
+@check_no_breakgraph
+def with_manager_exit_true_zero_division(x):
+    with ManagerExitReturnTrue() as mgr_true:
+        x += 5
+        # TODO(DrRyanHuang): Division by zero (x / 0) will raise an InnerError.
+        # In the future, the actual Exception should be propagated rather than being wrapped as InnerError.
+        1 / 0  # noqa: B018
+        x *= 6
+    return x
+
+
+@check_no_breakgraph
+def with_contextmanager_flag_behavior(x):
+    global TEST_WITH_STATEMENT_FLAG
+    with my_context():
+        if TEST_WITH_STATEMENT_FLAG:
+            x /= 7
+        else:
+            x *= 7
+
+    if not TEST_WITH_STATEMENT_FLAG:
+        x += 8
+    return x
+
+
+@check_no_breakgraph
+def with_manager_exit_false(x):
+    try:
+        with ManagerExitReturnFalse() as mgr_false:
+            x *= 4
+            1 / 0  # noqa: B018
+    except ZeroDivisionError:
+        x /= 4
+    return x
+
+
+# TODO(DrRyanHuang): NoGradContextManagerVariable and UserDefinedContextManagerVariable will be implemented separately in the future.
+# The @strict_mode_guard decorator will be removed here to ensure that fallback is no longer permitted.
+@strict_mode_guard(False)
+def test_no_grad_behavior():
+    x = paddle.rand([1, 2])
+    p = paddle.rand([1, 2])
+    p.stop_gradient = False
+    x.stop_gradient = True
+    with paddle.no_grad():
+        y = (x * p).sum()
+    y.backward()
+    return x.grad, p.grad
+
+
+class TestWithStatement(TestCaseBase):
+    def test_manager_normal(self):
+        t = paddle.to_tensor(-10.0)
+        self.assert_results(with_manager_normal, t)
+
+    def test_manager_exit_true_suppresses(self):
+        t = paddle.to_tensor(-10.0)
+        self.assert_results(with_manager_exit_true_raise_error, t)
+
+    def test_manager_exit_true_zero_division(self):
+        t = paddle.to_tensor(-10.0)
+        self.assert_results(with_manager_exit_true_zero_division, t)
+
+    def test_my_context_flag_behavior(self):
+        t = paddle.to_tensor(-10.0)
+        self.assert_results(with_contextmanager_flag_behavior, t)
+
+    def test_with_manager_exit_false(self):
+        t = paddle.to_tensor(-10.0)
+        self.assert_results(with_manager_exit_false, t)
+
+    def test_no_grad(self):
+        self.assert_results(test_no_grad_behavior)
+
+
+class SimpleNet(nn.Layer):
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        self.layer = nn.Linear(input_dim, output_dim)
+
+    def forward(self, x):
+        with paddle.static.amp.fp16_guard():
+            return self._forward(x)
+
+    def _forward(self, x):
+        return self.layer(x)
+
+
+# TODO(DrRyanHuang): SOT does not support the BEFORE_WITH opcode introduced in Python 3.11+.
+# As a result, execution will fallback; when this occurs, the error is propagated and
+# eventually converted to BreakGraphError within UserDefinedFunctionVariable.call_function.
+# This conversion is necessary to prevent the entire execution from falling back to dynamic graph mode;
+# thus, FallbackError is transformed into BreakGraphError.
+# Since the @check_no_breakgraph decorator wraps the function, the error will ultimately be raised as an InnerError.
+# Therefore, we check the Python version here and conditionally apply @check_no_breakgraph using check_no_breakgraph_if.
+# If the Python version is greater than 3.11, the @check_no_breakgraph decorator is not applied.
+@check_no_breakgraph_if(ALREADY_SUPPORTED_EXCEPTION)
+def net_call(x: paddle.Tensor, net: nn.Layer):
+    return net(x)
+
+
+class TestPaddleContextManager(TestCaseBase):
+    # TODO(DrRyanHuang): Python 3.11 introduced a new opcode, BEFORE_WITH, which is not supported yet.
+    # Therefore, for versions 3.11 and above, fallback is allowed for now.
+    @strict_mode_guard(ALREADY_SUPPORTED_EXCEPTION)
+    def test_fp16_guard(self):
+        x = paddle.randn([4, 4])
+        model = SimpleNet(4, 8)
+        self.assert_results(net_call, x, model)
+
+
+if __name__ == '__main__':
+    unittest.main()

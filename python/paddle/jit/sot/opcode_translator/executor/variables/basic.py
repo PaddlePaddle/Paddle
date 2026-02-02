@@ -18,6 +18,7 @@ import dataclasses
 import operator
 import sys
 import types
+from contextlib import AbstractContextManager
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -134,6 +135,7 @@ from ..tracker import (
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
+
     import numpy.typing as npt
     from typing_extensions import TypeAlias
 
@@ -2566,5 +2568,33 @@ class DataClassInstanceVariable(VariableBase):
                 tracker=tracker,
             )
             class_var.tracker = GetAttrTracker(var, "__class__")
+            return var
+        return None
+
+
+class ContextManagerVariable(VariableBase):
+    def __init__(
+        self,
+        value: AbstractContextManager,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph=graph, tracker=tracker)
+        self.value = value
+
+    def get_py_type(self):
+        return self.value.__class__
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, AbstractContextManager):
+            var = ContextManagerVariable(
+                value,
+                graph=graph,
+                tracker=tracker,
+            )
             return var
         return None

@@ -113,6 +113,7 @@ from .variables import (
     VariableBase,
     VariableFactory,
 )
+from .virtual_frame import BlockStackItem
 
 if TYPE_CHECKING:
     from .function_graph import CompileGraphResult, FunctionGraph
@@ -120,7 +121,6 @@ if TYPE_CHECKING:
     from .virtual_frame import VirtualFrame
 
 from .exception_stack import ExceptionStack
-from .virtual_frame import BlockStackItem
 
 COMPARE_OP_NAME_TO_FN = {
     ">": operator.gt,
@@ -2083,6 +2083,45 @@ class OpcodeExecutorBase:
 
         assert self.exception_stack
         self.exception_stack.pop()
+
+    @call_break_graph_decorator(push_n=2)
+    @fallback_if_python_version_unsupported
+    def SETUP_WITH(self, instr: Instruction):
+        mgr = self.stack.pop()
+        exit = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(mgr, ConstantVariable.wrap_literal("__exit__", self._graph))
+
+        self.stack.push(exit)
+
+        enter = BuiltinVariable(
+            getattr, graph=self._graph, tracker=DanglingTracker()
+        )(mgr, ConstantVariable.wrap_literal("__enter__", self._graph))
+
+        res = enter.call_function()
+        self.vframe.block_stack.append(
+            BlockStackItem(
+                "SETUP_FINALLY", instr, instr.jump_to, len(self.stack)
+            )
+        )
+        self.stack.push(res)
+
+    @fallback_if_python_version_unsupported
+    def WITH_EXCEPT_START(self, instr: Instruction):
+        """
+        At the top of the stack are 7 values (top is last):
+        [exit_func, previous_tb, previous_val, previous_exc, tb, val, exc]
+        We call exit_func(exc, val, tb).
+        Then push exc and the __exit__ return value.
+        """
+        exc = self.stack.peek[1]
+        val = self.stack.peek[2]
+        tb = self.stack.peek[3]
+
+        exit_func = self.stack.peek[7]
+        res = exit_func.call_function(exc, val, tb)
+
+        self.stack.push(res)
 
     @staticmethod
     def _create_exception_instance(val):
