@@ -232,7 +232,7 @@ def checkComments(url):
     return response
 
 
-def checkPRTemplate(repo, body, CHECK_TEMPLATE):
+def checkPRTemplate(repo, body, CHECK_TEMPLATE, pr_number):
     """
     Check if PR's description meet the standard of template
     Args:
@@ -251,11 +251,11 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:
         res = False
     elif result is not None:
-        message = parameter_accuracy(body)
+        message = parameter_accuracy(body, pr_number)
         res = True if message == '' else False
     elif result is None:
         res = False
-        message = parameter_accuracy(body)
+        message = parameter_accuracy(body, pr_number)
         if BRANCH.startswith("fleety_") and len(message) == 0:
             message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return res, message
