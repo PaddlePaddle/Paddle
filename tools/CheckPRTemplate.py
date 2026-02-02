@@ -119,9 +119,17 @@ def parameter_accuracy(body):
             message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     
     if BRANCH.startswith("develop"):
-        types_end = body.find('### Precision Change Impact')
-        accuracy_end = body.find('### Description')
-        PR_dic['Precision Change Impact'] = body[types_end + len('### Precision Change Impact') : accuracy_end]
+        accuracy_start = body.find('### Precision Change Impact')
+        description_start = body.find('### Description')
+        if accuracy_start != -1 and description_start != -1:
+        # 确保description_start在accuracy_start之后
+            if description_start > accuracy_start:
+                content_start = accuracy_start + len('### Precision Change Impact')
+                PR_dic['Precision Change Impact'] = body[content_start:description_start].strip()
+            else:
+                PR_dic['Precision Change Impact'] = ''
+        else:
+            PR_dic['Precision Change Impact'] = ''
         accuracy_value = PR_dic.get('Precision Change Impact', '').strip()
         if not accuracy_value:
             message += 'Must fill in the "Precision Change Impact" field.\nn'
