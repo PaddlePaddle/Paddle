@@ -148,13 +148,16 @@ def check_precision_change_approval(body, pr_number, pr_user):
         return True, "Not develop branch, skip precision change approval check"
 
     # Check if involves precision change
-    # print(body)
-    accuracy_start = body.find('### 是否引起精度变化')
+    body_without_comments = re.sub(r'<!--.*?-->', '', body, flags=re.DOTALL)
+    accuracy_start = body_without_comments.find('### 是否引起精度变化')
     if accuracy_start != -1:
-        precision_text = body[accuracy_start + len('### 是否引起精度变化') :]
+        precision_text = body_without_comments[
+            accuracy_start + len('### 是否引起精度变化') :
+        ]
     else:
         precision_text = ''
         return False, '必须填写是否引起精度变化'
+    precision_text = precision_text.strip()
 
     print(f'Extracted precision text: "{precision_text}"')
     has_precision_change = '引起精度变化' in precision_text
