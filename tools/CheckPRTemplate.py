@@ -268,11 +268,13 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         body = ''
     body = comment_pattern.sub('', body)
     result = re_rule(body, CHECK_TEMPLATE)
+    print(result, "===result===")
     message = ''
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:
         res = False
     elif result is not None:
         message = parameter_accuracy(body)
+        print(f'Parameter accuracy message: "{message}"')
         res = True if message == '' else False
     elif result is None:
         res = False
