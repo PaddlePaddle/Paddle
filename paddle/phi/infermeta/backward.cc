@@ -496,6 +496,7 @@ void LinearV2GradInferMeta(const MetaTensor& input,
                            const MetaTensor& weight,
                            const MetaTensor& bias,
                            const MetaTensor& out_grad,
+                           const bool transpose_weight,
                            MetaTensor* input_grad,
                            MetaTensor* weight_grad,
                            MetaTensor* bias_grad) {
@@ -504,7 +505,13 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   auto bias_dims = bias.dims();
   auto dout_dims = out_grad.dims();
 
-  auto dout_mat_dims = flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  // Assume weight to be [K, N] if not tranasposed, [N, K] if transposed
+  const int64_t weight_elewise_dim =
+      transpose_weight ? weight_dims[0] : weight_dims[1];
+  const int64_t weight_reduce_dim =
+      transpose_weight ? weight_dims[1] : weight_dims[0];
+
+  auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
   const int64_t input_ndim = input_dims.size();
   auto k_from_dout = input_ndim >= 2 ? dout_dims[input_ndim - 2] : 1;
@@ -516,12 +523,12 @@ void LinearV2GradInferMeta(const MetaTensor& input,
   if (check_k) {
     PADDLE_ENFORCE_EQ(
         dout_mat_dims[1],
-        weight_dims[1],
+        weight_elewise_dim,
         common::errors::InvalidArgument(
             "The last dimension of DOut should be equal with Y's last "
             "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
             dout_mat_dims[1],
-            weight_dims[1]));
+            weight_elewise_dim));
   }
 
   for (int32_t i = 0; i + 2 < input_dims.size(); ++i) {

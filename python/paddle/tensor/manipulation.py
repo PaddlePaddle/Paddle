@@ -1453,7 +1453,7 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
     return x.numpy(False).tolist()
 
 
-@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
+@param_two_alias(["x", "tensors"], ["axis", "dim"])
 def concat(
     x: Sequence[Tensor],
     axis: int | Tensor = 0,
@@ -2204,7 +2204,7 @@ def flatten_(
         return _C_ops.flatten_(x, start_axis, stop_axis)
 
 
-@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
+@param_two_alias(["x", "tensors"], ["axis", "dim"])
 def stack(
     x: Sequence[Tensor],
     axis: int = 0,
@@ -2303,6 +2303,9 @@ def stack(
        :width: 1000
        :alt: Legend 1
        :align: center
+
+    .. note::
+        Alias Support: The parameter name ``tensors`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
@@ -4863,7 +4866,7 @@ def scatter_nd(
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def chunk(
     x: Tensor, chunks: int, axis: int | Tensor = 0, name: str | None = None
 ) -> list[Tensor]:
@@ -4934,7 +4937,7 @@ def chunk(
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
-@ParamAliasDecorator({"x": ["input"], "repeat_times": ["dims"]})
+@param_two_alias(["x", "input"], ["repeat_times", "dims"])
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -4950,6 +4953,7 @@ def tile(
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``repeat_times``.
         For example, ``tile(input=x, dims=repeat_times)`` is equivalent to ``tile(x=x, repeat_times=repeat_times)``.
+
     Args:
         x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32, int64, complex64 or complex128.
             alias: ``input``.
@@ -5149,7 +5153,7 @@ def repeat(
     return tile(input, repeat_times=repeats)
 
 
-@ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
+@param_two_alias(["x", "input"], ["shape", "size"])
 def broadcast_to(
     x: Tensor,
     shape: ShapeLike,
@@ -7196,7 +7200,7 @@ def scatter_add(
     )
 
 
-@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
+@param_two_alias(["arr", "input"], ["axis", "dim"])
 def take_along_axis(
     arr: Tensor,
     indices: Tensor,
