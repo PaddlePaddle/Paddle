@@ -7644,6 +7644,18 @@ def scatter_add_(
     )
 
 
+@overload
+def index_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    *,
+    alpha: Number = 1,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
 @index_add_decorator()
 def index_add(
     x: Tensor,
@@ -7728,6 +7740,18 @@ def index_add(
         attrs={'axis': axis},
     )
     return out
+
+
+@overload
+@inplace_apis_in_dygraph_only
+def index_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    *,
+    alpha: Number = 1,
+) -> Tensor: ...
 
 
 @index_add_decorator()
