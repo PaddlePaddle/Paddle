@@ -148,15 +148,16 @@ def check_precision_change_approval(body, pr_number, pr_user):
         return True, "Not develop branch, skip precision change approval check"
 
     # Check if involves precision change
-    print(body)
+    # print(body)
     precision_pattern = r'### 是否引起精度变化\s*(.*?)(?:\s*###|$)'
     match = re.search(precision_pattern, body, re.DOTALL)
-    print(match)
+    # print(match)
 
     if not match:
         return False, "Precision change field not found"
 
     precision_text = match.group(1).strip()
+    print(f'Extracted precision text: "{precision_text}"')
     has_precision_change = '引起精度变化' in precision_text
 
     if not has_precision_change:
