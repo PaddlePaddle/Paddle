@@ -22,18 +22,6 @@
 
 #include "paddle/common/flags.h"
 
-PHI_DEFINE_EXPORTED_bool(xpu_top_p_sampling_use_fp16,
-                         false,
-                         "use fp16 to improve the inference performance of "
-                         "top_p_sampling xpu kernel");
-PHI_DEFINE_EXPORTED_int32(
-    xpu_top_p_sampling_heuristic_threshold,
-    20,
-    "threshold of heuristic method used for xpu_top_p_sampling, default 20; if "
-    "heuristic_threshold = -1, xpu_top_p_sampling don't use heuristic method, "
-    "and will fallback to normal top_p_sampling; if heuristic_threshold > 0, "
-    "xpu_top_p_sampling will enable heuristic method");
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -58,99 +46,91 @@ void TopPSamplingKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   int64_t bs = x_dims[0];
   int64_t vocab_size = x_dims[1];
-  // int p_num = ps.numel();
 
-  // PADDLE_ENFORCE_EQ(
-  //     p_num,
-  //     bs,
-  //     common::errors::PreconditionNotMet(
-  //         "Expected bs == p_num, but got bs=%d, p_num=%d.", bs, p_num));
+  XPUType* topk_scores_data = nullptr;
+  int64_t* topk_ids_data = nullptr;
+  if (k > 0) {
+    topk_scores_data =
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(topk_scores));
+    topk_ids_data = dev_ctx.template Alloc<int64_t>(topk_ids);
+    int r = xpu::topk<XPUType, int64_t>(dev_ctx.x_context(),
+                                        x_ptr,
+                                        topk_scores_data,
+                                        topk_ids_data,
+                                        {bs, vocab_size},
+                                        k,
+                                        1,
+                                        true,
+                                        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::topk");
+  }
 
+  uint64_t seed_now = random_seed;
+  uint64_t offset = 0;
   std::vector<int64_t> infer_seed(bs, random_seed);
   if (topp_seed.get_ptr() != nullptr) {
     phi::TensorToVector(*topp_seed, dev_ctx, &infer_seed);
-  }
-
-  std::uniform_real_distribution<float> dist(0.0, 1.0);
-  std::vector<float> rand_coeff_cpu;
-  for (int64_t i = 0; i < bs; i++) {
-    if (infer_seed[i] == -1) {
-      std::shared_ptr<std::mt19937_64> engine =
-          dev_ctx.GetGenerator()->GetCPUEngine();
-      rand_coeff_cpu.push_back(dist(*engine));
-    } else {
-      std::mt19937_64 engine(infer_seed[i]);
-      rand_coeff_cpu.push_back(dist(engine));
+    seed_now = infer_seed[0];
+  } else {
+    if (random_seed == -1) {
+      auto gen_cuda = dev_ctx.GetGenerator();
+      uint64_t increment = bs;
+      auto seed_offset = gen_cuda->IncrementOffset(increment);
+      seed_now = seed_offset.first;
+      offset = seed_offset.second;
     }
   }
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  float* rand_coeff_xpu = RAII_GUARD.alloc<float>(rand_coeff_cpu.size());
-  int* ids_int_ptr = RAII_GUARD.alloc<int>(ids->numel());
-
-  int r = xpu::do_host2device(dev_ctx.x_context(),
-                              rand_coeff_cpu.data(),
-                              rand_coeff_xpu,
-                              rand_coeff_cpu.size() * sizeof(float));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "do_host2device");
-  int heuristic_threshold = FLAGS_xpu_top_p_sampling_heuristic_threshold;
-
-  if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
-      std::is_same<T, phi::float16>::value) {
-    r = xpu::faster_top_p_sampling<XPUType, int>(dev_ctx.x_context(),
-                                                 x_ptr,
-                                                 ps_ptr,
-                                                 rand_coeff_xpu,
-                                                 ids_int_ptr,
-                                                 bs,
-                                                 vocab_size,
-                                                 out_ptr,
-                                                 nullptr,
-                                                 heuristic_threshold);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "top_p_sampling");
+  DenseTensor k_threshold;
+  k_threshold.Resize({bs});
+  int* k_threshold_ptr = dev_ctx.template Alloc<int>(&k_threshold);
+  if (threshold.get_ptr() != nullptr) {
+    XPUType* threshold_data = reinterpret_cast<XPUType*>(
+        const_cast<T*>(threshold.get_ptr()->data<T>()));
+    // k_threshold = static_cast<int>((1 - infer_threshold[0]) * vocab_size)
+    int r = xpu::scale<XPUType, float>(dev_ctx.x_context(),
+                                       threshold_data,
+                                       threshold_data,
+                                       bs,
+                                       true,
+                                       -vocab_size,
+                                       vocab_size);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::scale");
+    r = xpu::cast<XPUType, int>(
+        dev_ctx.x_context(), threshold_data, k_threshold_ptr, bs);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
   } else {
-    using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
-    XPUTypeFP16* x_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(x.numel());
-    XPUTypeFP16* ps_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(ps.numel());
-    XPUTypeFP16* out_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(out->numel());
-
-    float fp16_scale = 32768.f;  // experience value
-    r = xpu::scale_cast_fusion<XPUType, XPUTypeFP16>(
-        dev_ctx.x_context(), x_ptr, x_fp16_ptr, x.numel(), fp16_scale);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
-    r = xpu::scale_cast_fusion<XPUType, XPUTypeFP16>(
-        dev_ctx.x_context(), ps_ptr, ps_fp16_ptr, ps.numel(), fp16_scale);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
-
-    r = xpu::faster_top_p_sampling<XPUTypeFP16, int>(dev_ctx.x_context(),
-                                                     x_fp16_ptr,
-                                                     ps_fp16_ptr,
-                                                     rand_coeff_xpu,
-                                                     ids_int_ptr,
-                                                     bs,
-                                                     vocab_size,
-                                                     out_fp16_ptr,
-                                                     nullptr,
-                                                     heuristic_threshold);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "top_p_sampling");
-
-    r = xpu::scale_cast_fusion<XPUTypeFP16, XPUType>(dev_ctx.x_context(),
-                                                     out_fp16_ptr,
-                                                     out_ptr,
-                                                     out->numel(),
-                                                     1.f / fp16_scale);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
+    int r = xpu::constant<int>(
+        dev_ctx.x_context(), k_threshold_ptr, bs, vocab_size);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::constant");
   }
-  r = xpu::cast<int, int64_t>(
-      dev_ctx.x_context(), ids_int_ptr, ids_ptr, ids->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+  DenseTensor ids_int;
+  ids_int.Resize({bs});
+  int* ids_int_ptr = dev_ctx.template Alloc<int>(&ids_int);
+  int r =
+      xpu::top_k_top_p_sampling_from_probs<XPUType, int>(dev_ctx.x_context(),
+                                                         x_ptr,
+                                                         k_threshold_ptr,
+                                                         ps_ptr,
+                                                         nullptr,
+                                                         ids_int_ptr,
+                                                         vocab_size,
+                                                         1,
+                                                         bs,
+                                                         vocab_size,
+                                                         true,
+                                                         seed_now,
+                                                         offset);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r,
+                              "xpu::top_k_top_p_sampling_from_probs<XPUType");
+  r = xpu::cast<int, int64_t>(dev_ctx.x_context(), ids_int_ptr, ids_ptr, bs);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
+  r = xpu::constant<XPUType>(dev_ctx.x_context(), out_ptr, bs, 0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::constant");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_p_sampling,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::TopPSamplingKernel,
-                   float,
-                   phi::float16) {}
+PD_REGISTER_KERNEL(
+    top_p_sampling, XPU, ALL_LAYOUT, phi::TopPSamplingKernel, float) {}
