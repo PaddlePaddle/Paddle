@@ -582,7 +582,7 @@ function run_test() {
     ========================================
 EOF
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
-            ctest -V
+            cuda-memcheck ctest -V
         else
             ctest --output-on-failure
         fi
@@ -642,7 +642,7 @@ EOF
             fi
 
             if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
-                ctest -V -R $t
+                cuda-memcheck ctest -V -R $t
             else
                 ctest --output-on-failure -R $t
             fi
@@ -650,7 +650,7 @@ EOF
         set -x
 
         if [[ ${TESTING_DEBUG_MODE:-OFF} == "ON" ]] ; then
-            ctest -V -R test_dist_*
+            cuda-memcheck ctest -V -R test_dist_*
         else
             ctest --output-on-failure -R test_dist_*
         fi
@@ -727,13 +727,13 @@ EOF
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
           ctest -E "($disable_ut_quickly|$single_list)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
-          ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 --timeout 15 | tee -a $tmpfile
+          cuda-memcheck ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 --timeout 15 | tee -a $tmpfile
         else
-            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 --timeout 15 | tee $tmpfile
+            cuda-memcheck ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 --timeout 15 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 --timeout 15 | tee -a $tmpfile
-            ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 --timeout 15 | tee -a $tmpfile
+            cuda-memcheck ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 --timeout 15 | tee -a $tmpfile
+            cuda-memcheck ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 --timeout 15 | tee -a $tmpfile
         fi
         failed_test_lists=''
         collect_failed_tests
@@ -782,7 +782,7 @@ EOF
                             done
                         rm -f $tmp_dir/*
                         failed_test_lists=''
-                        ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
+                        cuda-memcheck ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
@@ -844,8 +844,8 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            cuda-memcheck ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            cuda-memcheck ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
                 echo "Added UT should not exceed 15 seconds"
@@ -872,10 +872,10 @@ set +x
         if [[ "$on_precision" == "0" ]];then
             ctest -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
         else
-            ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            cuda-memcheck ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee -a $tmpfile
+            cuda-memcheck ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee -a $tmpfile
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
@@ -944,7 +944,7 @@ set +x
                                 fi
                             done
                         failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
+                        cuda-memcheck ctest -R "$retry_unittests_regular" --timeout 120 --output-on-failure -j 2 | tee $tmpfile
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
@@ -1680,8 +1680,8 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            env CUDA_VISIBLE_DEVICES=0 cuda-memcheck ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            cuda-memcheck ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
                 echo "Added UT should not exceed 15 seconds"
@@ -2558,7 +2558,7 @@ set +x
                             done
                         rm -f $tmp_dir/*
                         failed_test_lists=''
-                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        cuda-memcheck ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
@@ -2916,11 +2916,11 @@ set -x
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             if [ "$WITH_ROCM" == "ON" ];then
-                env HIP_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error=$?
+                env HIP_VISIBLE_DEVICES=0 cuda-memcheck ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error=$?
             else
-                env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error=$?
+                env CUDA_VISIBLE_DEVICES=0 cuda-memcheck ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error=$?
             fi
-            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error_1=$?
+            cuda-memcheck ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
                 echo "Added UT should not exceed 20 seconds"
@@ -3339,7 +3339,7 @@ function parallel_test() {
 
 function nv_test() {
     export FLAGS_enable_cudnn_frontend=1
-    ctest -R "conv" --output-on-failure --timeout 150
+    cuda-memcheck ctest -R "conv" --output-on-failure --timeout 150
 }
 
 

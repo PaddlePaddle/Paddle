@@ -2304,7 +2304,7 @@ PHI_DEFINE_EXPORTED_int32(
  * Note: Used to debug. Checking whether CUDA error occurred or not.
  */
 PHI_DEFINE_EXPORTED_bool(check_cuda_error,
-                         true,
+                         false,
                          "Checking whether CUDA error occurred or not.");
 
 /**
