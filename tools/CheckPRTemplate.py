@@ -271,7 +271,6 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         body = ''
     body = comment_pattern.sub('', body)
     result = re_rule(body, CHECK_TEMPLATE)
-    print(result, "===result===")
     message = ''
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:
         res = False
@@ -281,6 +280,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res = True if message == '' else False
     elif result is None:
         res = False
+        print("description cant be empty and must follow the template")
         message = parameter_accuracy(body)
         if BRANCH.startswith("fleety_") and len(message) == 0:
             message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
