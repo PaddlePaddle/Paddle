@@ -184,17 +184,16 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
 bool NeedComputationClipForPP(
     const std::shared_ptr<phi::TensorBase>& tensor_impl) {
   PADDLE_ENFORCE_EQ(
-      phi::distributed::DistTensor::classof(tensor_impl.get()),
+      DistTensor::classof(tensor_impl.get()),
       true,
       common::errors::InvalidArgument(
           "The input tensor of NeedComputationClipForPP should be "
-          "``phi::distributed::DistTensor``. "
+          "``DistTensor``. "
           "However it's %s",
           typeid(tensor_impl.get()).name()));
-  return !IsCurRankInMesh(
-      std::static_pointer_cast<phi::distributed::DistTensor>(tensor_impl)
-          ->dist_attr()
-          .process_mesh());
+  return !IsCurRankInMesh(std::static_pointer_cast<DistTensor>(tensor_impl)
+                              ->dist_attr()
+                              .process_mesh());
 }
 
 Place GetDefaultPlace() {
@@ -215,8 +214,7 @@ Place GetDefaultPlace() {
   return paddle::CPUPlace();
 }
 
-phi::DeviceContext* GetDistTensorDeviceContext(
-    phi::distributed::DistTensor* input) {
+DeviceContext* GetDistTensorDeviceContext(DistTensor* input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
   auto place =

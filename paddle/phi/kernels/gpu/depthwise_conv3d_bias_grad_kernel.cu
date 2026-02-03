@@ -617,7 +617,7 @@ template <typename T, typename Context>
 void DepthwiseConv3dBiasGradKernel(const Context& dev_ctx,
                                    const DenseTensor& input,
                                    const DenseTensor& filter,
-                                   const paddle::optional<DenseTensor>& bias,
+                                   const optional<DenseTensor>& bias,
                                    const DenseTensor& out_grad,
                                    const std::vector<int>& strides_t,
                                    const std::vector<int>& paddings_t,

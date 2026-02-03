@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class MatmulTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
@@ -235,13 +235,13 @@ class FusedMatmulTransposeReshapeFusePattern
   }
 };
 
-class MatmulTransposeReshapeFusePass : public pir::PatternRewritePass {
+class MatmulTransposeReshapeFusePass : public PatternRewritePass {
  public:
   MatmulTransposeReshapeFusePass()
-      : pir::PatternRewritePass("matmul_transpose_reshape_fuse_pass", 2) {}
+      : PatternRewritePass("matmul_transpose_reshape_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     int benefit_idx = 1;
     ps.Add(paddle::drr::Create<MatmulTransposeReshapeFusePattern>(
         context,
@@ -258,10 +258,6 @@ class MatmulTransposeReshapeFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateMatmulTransposeReshapeFusePass() {
   // pd_op.matmul + pd_op.transpose + pd_op.reshape -> onednn_op.fused_matmul
   // pd_op.fused_matmul + pd_op.transpose + pd_op.reshape ->
@@ -271,4 +267,4 @@ std::unique_ptr<Pass> CreateMatmulTransposeReshapeFusePass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(matmul_transpose_reshape_fuse_pass,
-                 MatmulTransposeReshapeFusePass);
+                 pir::MatmulTransposeReshapeFusePass);

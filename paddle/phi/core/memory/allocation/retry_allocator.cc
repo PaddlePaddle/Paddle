@@ -21,9 +21,9 @@ COMMON_DECLARE_int64(offload_retry_times);
 
 namespace paddle::memory::allocation {
 
-static std::function<size_t(phi::Place, size_t)> g_oom_callback;
+static std::function<size_t(Place, size_t)> g_oom_callback;
 
-void RegisterOOMCallback(std::function<size_t(phi::Place, size_t)> callback) {
+void RegisterOOMCallback(std::function<size_t(Place, size_t)> callback) {
   g_oom_callback = std::move(callback);
 }
 

@@ -29,10 +29,10 @@ class PythonFunctionInstruction : public InstructionBase {
  public:
   PythonFunctionInstruction(size_t id,
                             const phi::Place& place,
-                            ::pir::Operation* op,
+                            pir::Operation* op,
                             const ValueExecutionInfo& value_exec_info);
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -56,7 +56,7 @@ class PythonFunctionInstruction : public InstructionBase {
 
   std::string python_op_name_;
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   const paddle::OpMetaInfo* python_op_meta_;   // not owned
   const ValueExecutionInfo& value_exec_info_;  // not owned

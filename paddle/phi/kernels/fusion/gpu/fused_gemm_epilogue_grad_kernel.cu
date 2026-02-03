@@ -37,16 +37,11 @@ void FusedGemmEpilogueGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     dev_ctx.template Alloc<T>(y_grad);
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(y.dims()), 0.0, y.dtype(), y_grad);
+    Full<T>(dev_ctx, y.dims(), 0.0, y_grad);
 
     if (bias_grad) {
       dev_ctx.template Alloc<T>(bias_grad);
-      phi::FullKernel<T>(dev_ctx,
-                         common::vectorize(bias_grad->dims()),
-                         0.0,
-                         bias_grad->dtype(),
-                         bias_grad);
+      Full<T>(dev_ctx, bias_grad->dims(), 0.0, bias_grad);
     }
     return;
   }

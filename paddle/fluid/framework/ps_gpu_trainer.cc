@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \

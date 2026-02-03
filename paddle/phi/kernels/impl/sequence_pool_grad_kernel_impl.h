@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void SequencePoolGradKernel(const Context& dev_ctx,
                             const DenseTensor& x UNUSED,
-                            const paddle::optional<DenseTensor>& max_index,
+                            const optional<DenseTensor>& max_index,
                             const DenseTensor& out_grad,
                             bool is_test UNUSED,
                             const std::string& pooltype,
