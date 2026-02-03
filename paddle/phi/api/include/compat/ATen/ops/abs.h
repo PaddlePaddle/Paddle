@@ -32,6 +32,13 @@ inline at::Tensor& abs_(at::Tensor& self) {  // NOLINT(runtime/references)
   return self;
 }
 
+// Tensor member function implementations
+inline at::Tensor Tensor::abs() const { return at::abs(*this); }
+
+inline at::Tensor& Tensor::abs_() const {
+  return at::abs_(const_cast<at::Tensor&>(*this));
+}
+
 }  // namespace at
 
 namespace torch {
