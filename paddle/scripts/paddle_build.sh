@@ -1138,12 +1138,12 @@ function check_whl_size() {
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
     if [ ${whldiffSize} -gt 10 ]; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 risemeup1 swgu98 ooooo-create`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 risemeup1 swgu98`
        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
        if [ "${APPROVALS}" == "FALSE" ]; then
            echo "=========================================================================================="
            echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
-           echo "Then you must have one RD (risemeup1 or swgu98 or ooooo-create) approval for this PR\n"
+           echo "Then you must have one RD (risemeup1 or swgu98) approval for this PR\n"
            echo "=========================================================================================="
            exit 6
        fi
@@ -4096,12 +4096,12 @@ function check_coverage_build() {
     set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 swgu98 luotao1 risemeup1 ooooo-create`
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 swgu98 luotao1 risemeup1`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "=========================================================================================="
             echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com and in PR description."
-            echo "Then you must have one RD (swgu98 (Recommend) or luotao1 or risemeup1 or ooooo-create) approval for this PR\n"
+            echo "Then you must have one RD (swgu98 (Recommend) or luotao1 or risemeup1) approval for this PR\n"
             echo "=========================================================================================="
             exit 6
         fi
