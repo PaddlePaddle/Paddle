@@ -32,10 +32,12 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
     const paddle::DataType compute_type,
     const uint32_t hidden_size,
     const int64_t x_numel,
-    const DenseTensor* scale) {
+    const DenseTensor* scale,
+    const DenseTensor* bias) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (scale != nullptr && input_type != paddle::DataType::FLOAT32 &&
-      hidden_size != 4096 && hidden_size > 1024 && hidden_size <= 10240 &&
+  if (scale != nullptr && bias != nullptr &&
+      input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
+      hidden_size > 1024 && hidden_size <= 10240 &&
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
@@ -186,7 +188,8 @@ void LayerNormGradKernel(const Context& dev_ctx,
                                                     compute_dtype,
                                                     feature_size,
                                                     x.numel(),
-                                                    scale);
+                                                    scale,
+                                                    bias);
   switch (kernel_variant) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
     case LayerNormGadKernelVariant::FAST_LN_V2:
