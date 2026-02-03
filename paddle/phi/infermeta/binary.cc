@@ -3118,20 +3118,23 @@ void MatmulInferMeta(const MetaTensor& x,
   const int64_t rhs_reduce_dim = ndims_y - 2 + trans_y;
   const int64_t K_lhs = dims_x[lhs_reduce_dim];
   const int64_t K_rhs = dims_y[rhs_reduce_dim];
-  PADDLE_ENFORCE_EQ(
-      K_lhs,
-      K_rhs,
-      common::errors::InvalidArgument(
-          "In operator matmul, the [%d] dimension of Input(X) must be equal to "
-          "the [%d] dimension of Input(Y). But receiving the [%d]"
-          "dimension of Input(X) is [%d], and the [%d] dimension of "
-          "Input(Y) is [%d].",
-          lhs_reduce_dim,
-          rhs_reduce_dim,
-          lhs_reduce_dim,
-          K_lhs,
-          rhs_reduce_dim,
-          K_rhs));
+  if (K_rhs != -1 && K_rhs != -1) {
+    PADDLE_ENFORCE_EQ(
+        K_lhs,
+        K_rhs,
+        common::errors::InvalidArgument(
+            "In operator matmul, the [%d] dimension of Input(X) must be equal "
+            "to "
+            "the [%d] dimension of Input(Y). But receiving the [%d]"
+            "dimension of Input(X) is [%d], and the [%d] dimension of "
+            "Input(Y) is [%d].",
+            lhs_reduce_dim,
+            rhs_reduce_dim,
+            lhs_reduce_dim,
+            K_lhs,
+            rhs_reduce_dim,
+            K_rhs));
+  }
   std::vector<int64_t> new_dims;
   if (ndims_x > ndims_y) {
     new_dims.assign(dims_x.begin(), dims_x.end() - 2);
@@ -3677,11 +3680,11 @@ void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_dim[1],
       scales_dim[0],
-      common::errors::InvalidArgument(
-          "The second dim of Input(x) must be equal to the first dim of scales,"
-          "but received %d and %d.",
-          x_dim[2],
-          scales_dim[1]));
+      common::errors::InvalidArgument("The second dim of Input(x) must be "
+                                      "equal to the first dim of scales,"
+                                      "but received %d and %d.",
+                                      x_dim[2],
+                                      scales_dim[1]));
 
   out->set_dtype(x.dtype());
   out->set_dims(x_dim);
@@ -4948,19 +4951,19 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
   PADDLE_ENFORCE_EQ(
       is_layout_invalid,
       false,
-      common::errors::InvalidArgument(
-          "We don't support both lhs and rhs are transposed at the same time"));
+      common::errors::InvalidArgument("We don't support both lhs and rhs are "
+                                      "transposed at the same time"));
   PADDLE_ENFORCE_EQ(
       (lhs.dtype() == DataType::BFLOAT16 || lhs.dtype() == DataType::FLOAT32) &&
           (rhs.dtype() == DataType::BFLOAT16 ||
            rhs.dtype() == DataType::FLOAT32) &&
           lhs.dtype() == rhs.dtype(),
       true,
-      common::errors::InvalidArgument(
-          "The dtype of lhs and rhs must both be BFLOAT16 or both be FLOAT32, "
-          "but got [%s] and [%s]",
-          lhs.dtype(),
-          rhs.dtype()));
+      common::errors::InvalidArgument("The dtype of lhs and rhs must both be "
+                                      "BFLOAT16 or both be FLOAT32, "
+                                      "but got [%s] and [%s]",
+                                      lhs.dtype(),
+                                      rhs.dtype()));
   PADDLE_ENFORCE_EQ(
       lhs_shape.size(),
       2,
@@ -4990,9 +4993,9 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
     // =============================================================================
     // Case 1 and 2: group forward or lhs_grad (input_grad)
     // Note that this case implements grouped gemm, mapping hidden_lhs to
-    // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs as
-    // [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could be
-    // input_hidden_size or output_hidden_size.
+    // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs
+    // as [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could
+    // be input_hidden_size or output_hidden_size.
 
     const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
     output->set_dims(common::make_ddim({total_tokens, hidden_out}));
