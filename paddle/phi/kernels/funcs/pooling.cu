@@ -334,6 +334,9 @@ __global__ void KernelPool2DGrad(
            static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
        index < nthreads;
        index += static_cast<IndexT>(blockDim.x) * gridDim.x) {
+    // Precision-aligned: use master type (MT) for gradient scale computation
+    // to match PyTorch's accscalar_t behavior (float32 for FP16/BF16)
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     T input = static_cast<T>(0);
     T input_grad_data = static_cast<T>(0);
     IndexT phstart, phend, pwstart, pwend;
@@ -384,7 +387,7 @@ __global__ void KernelPool2DGrad(
           pool_process.compute(input,
                                output_value,
                                output_grad[output_sub_idx],
-                               static_cast<T>(1.0 / pool_size),
+                               static_cast<MT>(1.0 / pool_size),
                                &input_grad_data);
         }
       }
@@ -415,7 +418,7 @@ __global__ void KernelPool2DGrad(
             pool_process.compute(input,
                                  output_value,
                                  output_grad[output_sub_idx],
-                                 static_cast<T>(1.0 / pool_size),
+                                 static_cast<MT>(1.0 / pool_size),
                                  &input_grad_data);
           }
         }
@@ -443,7 +446,7 @@ __global__ void KernelPool2DGrad(
             pool_process.compute(input,
                                  output_value,
                                  output_grad[output_sub_idx],
-                                 static_cast<T>(1.0 / pool_size),
+                                 static_cast<MT>(1.0 / pool_size),
                                  &input_grad_data);
           }
         }
@@ -1326,6 +1329,9 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
       static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
   for (IndexT index = start_index; index < nthreads; index += step) {
+    // Precision-aligned: use master type (MT) for gradient scale computation
+    // to match PyTorch's accscalar_t behavior (float32 for FP16/BF16)
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     IndexT w_offset, h_offset, d_offset, c_offset, batch_idx, output_stride;
     T input = static_cast<T>(0);
     if (!channel_last) { /* "NCDHW" */
@@ -1447,7 +1453,7 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
           pool_process.compute(input,
                                output_value,
                                output_grad[output_sub_idx],
-                               static_cast<T>(1.0 / pool_size),
+                               static_cast<MT>(1.0 / pool_size),
                                &input_grad_data);
         }
       }

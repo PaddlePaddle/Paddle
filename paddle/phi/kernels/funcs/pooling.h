@@ -110,9 +110,16 @@ class LPPool {
 template <class T>
 class MaxPoolGrad {
  public:
+  // Define master precision type for API consistency with AvgPoolGrad.
+  // Not used in computation but allows unified interface.
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+
   static constexpr bool use_x = true;
+
+  // Accept scale as MT for API consistency with AvgPoolGrad (even though
+  // scale is unused for max pool gradient).
   HOSTDEVICE inline void compute(
-      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
+      const T& x, const T& y, const T& dy, MT scale UNUSED, T* dx) {
     *dx += dy * static_cast<T>(x == y);
   }
 };
@@ -120,10 +127,23 @@ class MaxPoolGrad {
 template <class T>
 class AvgPoolGrad {
  public:
+  // Define master precision type for this class.
+  // For float16/bfloat16, MT is float; for float, MT is float; for double, MT
+  // is double. This ensures gradient computation happens in sufficient
+  // precision.
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+
   static constexpr bool use_x = false;
+
+  // Precision-aligned with PyTorch: accept scale in master type (MT) and
+  // perform multiplication in MT before casting back to T. This avoids
+  // early precision loss when T is float16/bfloat16.
   HOSTDEVICE inline void compute(
-      const T& x UNUSED, const T& y UNUSED, const T& dy, T scale, T* dx) {
-    *dx += (scale * dy);
+      const T& x UNUSED, const T& y UNUSED, const T& dy, MT scale, T* dx) {
+    // Compute gradient contribution in master precision (MT)
+    MT grad_contribution = scale * static_cast<MT>(dy);
+    // Accumulate in MT, then convert back to T
+    *dx = static_cast<T>(static_cast<MT>(*dx) + grad_contribution);
   }
 };
 
@@ -132,10 +152,16 @@ class LPPoolGrad {
   float norm_type;
 
  public:
+  // Define master precision type for API consistency with AvgPoolGrad.
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+
   static constexpr bool use_x = true;
   HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
+
+  // Accept scale as MT for API consistency with AvgPoolGrad (even though
+  // scale is unused for LP pool gradient).
   HOSTDEVICE inline void compute(
-      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
+      const T& x, const T& y, const T& dy, MT scale UNUSED, T* dx) {
     *dx += static_cast<T>(static_cast<double>(dy) *
                           powf(static_cast<double>(x) / static_cast<double>(y),
                                norm_type - 1.0f));
