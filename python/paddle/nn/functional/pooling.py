@@ -394,6 +394,12 @@ def avg_pool2d(
     )
 
     if in_dynamic_or_pir_mode():
+        # Disable cuDNN for avg_pool2d to ensure precision alignment with PyTorch.
+        # PyTorch uses native CUDA kernel (not cuDNN) for avg_pool2d. cuDNN's internal
+        # accumulation/division strategy differs from PyTorch's native kernel, causing
+        # ~1 ULP differences (~5.96e-08 for float32). Force native kernel for bitwise alignment.
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         output = _C_ops.pool2d(
             x,
             kernel_size,
@@ -432,7 +438,8 @@ def avg_pool2d(
                 "strides": stride,
                 "paddings": padding,
                 "padding_algorithm": padding_algorithm,
-                "use_cudnn": True,
+                # Disable cuDNN for precision alignment with PyTorch (native CUDA kernel).
+                "use_cudnn": False,
                 "ceil_mode": ceil_mode,
                 "exclusive": exclusive,
                 "data_format": data_format,
