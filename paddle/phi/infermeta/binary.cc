@@ -3073,7 +3073,8 @@ void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     MetaConfig config) {
   std::vector<int64_t> dims_x = common::vectorize(x.dims());
   std::vector<int64_t> dims_y = common::vectorize(y.dims());
   auto ndims_x = dims_x.size();
@@ -3118,7 +3119,7 @@ void MatmulInferMeta(const MetaTensor& x,
   const int64_t rhs_reduce_dim = ndims_y - 2 + trans_y;
   const int64_t K_lhs = dims_x[lhs_reduce_dim];
   const int64_t K_rhs = dims_y[rhs_reduce_dim];
-  if (K_rhs != -1 && K_rhs != -1) {
+  if (config.is_runtime || K_rhs != -1 && K_rhs != -1) {
     PADDLE_ENFORCE_EQ(
         K_lhs,
         K_rhs,

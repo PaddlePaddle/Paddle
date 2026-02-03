@@ -43,6 +43,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'IndexSampleInferMeta',
     'LodResetInferMeta',
     'LogLossInferMeta',
+    'MatmulInferMeta',
     'MarginCrossEntropyInferMeta',
     'MatrixNMSInferMeta',
     'MulticlassNmsv1InferMeta',
