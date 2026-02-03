@@ -65,9 +65,18 @@ class Tensor : public TensorBase {
   Tensor& operator=(Tensor&& x) & noexcept {
     return operator=(static_cast<TensorBase&&>(x));
   }
-  Tensor& operator=(const Scalar& v) && { return fill_(v); }
-  Tensor& operator=(const Tensor& rhs) && { return copy_(rhs); }
-  Tensor& operator=(Tensor&& rhs) && { return copy_(rhs); }
+  Tensor& operator=(const Scalar& v) && {
+    fill_(v);
+    return *this;
+  }
+  Tensor& operator=(const Tensor& rhs) && {
+    copy_(rhs);
+    return *this;
+  }
+  Tensor& operator=(Tensor&& rhs) && {
+    copy_(rhs);
+    return *this;
+  }
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
@@ -335,249 +344,256 @@ class Tensor : public TensorBase {
       pinned_place = phi::GetPinnedPlace(current_place);
     }
     return tensor_.copy_to(pinned_place, true);
-    // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
-    // Tensor
-    inline at::Tensor narrow_copy(int64_t dim, int64_t start, int64_t length)
-        const {
-      // narrow_copy returns a copy of the narrowed tensor
-      return narrow(dim, start, length).clone();
-    }
+  }
 
-    // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
-    // Tensor
-    inline at::Tensor narrow_copy_symint(
-        int64_t dim, c10::SymInt start, c10::SymInt length) const {
-      return narrow_copy(dim, start, length);
-    }
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy(int64_t dim,
+                                int64_t start,
+                                int64_t length) const {
+    // narrow_copy returns a copy of the narrowed tensor
+    return narrow(dim, start, length).clone();
+  }
 
-    // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
-    // Tensor(a)
-    inline at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const {
-      // Use slice to implement narrow: narrow(dim, start, length) is equivalent
-      // to slice(dim, start, start + length)
-      return Tensor(paddle::experimental::slice(
-          tensor_, {dim}, {start}, {start + length}, {1}, {}));
-    }
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy_symint(int64_t dim,
+                                       c10::SymInt start,
+                                       c10::SymInt length) const {
+    return narrow_copy(dim, start, length);
+  }
 
-    // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
-    // Tensor(a)
-    inline at::Tensor narrow_symint(
-        int64_t dim, c10::SymInt start, c10::SymInt length) const {
-      return narrow(dim, start, length);
-    }
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const {
+    // Use slice to implement narrow: narrow(dim, start, length) is equivalent
+    // to slice(dim, start, start + length)
+    return Tensor(paddle::experimental::slice(
+        tensor_, {dim}, {start}, {start + length}, {1}, {}));
+  }
 
-    // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
-    // -> Tensor(a)
-    inline at::Tensor narrow(
-        int64_t dim, const at::Tensor& start, int64_t length) const {
-      // Extract scalar value from start tensor
-      PD_CHECK(start.numel() == 1,
-               "start must be a 0-dim tensor or 1-element tensor");
-      int64_t start_val = static_cast<int64_t>(
-          start._PD_GetInner().template data<int64_t>()[0]);
-      return narrow(dim, start_val, length);
-    }
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  c10::SymInt start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
 
-    // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
-    // -> Tensor(a)
-    inline at::Tensor narrow_symint(
-        int64_t dim, const at::Tensor& start, c10::SymInt length) const {
-      return narrow(dim, start, length);
-    }
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow(int64_t dim,
+                           const at::Tensor& start,
+                           int64_t length) const {
+    // Extract scalar value from start tensor
+    PD_CHECK(start.numel() == 1,
+             "start must be a 0-dim tensor or 1-element tensor");
+    int64_t start_val =
+        static_cast<int64_t>(start._PD_GetInner().template data<int64_t>()[0]);
+    return narrow(dim, start_val, length);
+  }
 
-    at::Tensor reshape(at::IntArrayRef shape) const {
-      return Tensor(
-          paddle::experimental::reshape(tensor_, shape._PD_ToPaddleIntArray()));
-    }
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  const at::Tensor& start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
 
-    at::Tensor transpose(int64_t dim0, int64_t dim1) const {
-      std::vector<int> perm(tensor_.dims().size());
-      for (size_t i = 0; i < perm.size(); i++) {
-        perm[i] = static_cast<int>(i);
-      }
-      std::swap(perm[dim0], perm[dim1]);
-      return Tensor(paddle::experimental::transpose(tensor_, perm));
-    }
+  at::Tensor reshape(at::IntArrayRef shape) const {
+    return Tensor(
+        paddle::experimental::reshape(tensor_, shape._PD_ToPaddleIntArray()));
+  }
 
-    at::Tensor permute(at::IntArrayRef dims) const {
-      std::vector<int> perm(dims.size());
-      for (size_t i = 0; i < dims.size(); i++) {
-        perm[i] = static_cast<int>(dims[i]);
-      }
-      return Tensor(paddle::experimental::transpose(tensor_, perm));
+  at::Tensor transpose(int64_t dim0, int64_t dim1) const {
+    std::vector<int> perm(tensor_.dims().size());
+    for (size_t i = 0; i < perm.size(); i++) {
+      perm[i] = static_cast<int>(i);
     }
+    std::swap(perm[dim0], perm[dim1]);
+    return Tensor(paddle::experimental::transpose(tensor_, perm));
+  }
 
-    at::Tensor& copy_(const at::Tensor& src, bool non_blocking = false) const {
-      const_cast<PaddleTensor&>(tensor_).copy_(
-          src._PD_GetInner(), tensor_.place(), /*blocking=*/!non_blocking);
-      return const_cast<at::Tensor&>(*this);
+  at::Tensor permute(at::IntArrayRef dims) const {
+    std::vector<int> perm(dims.size());
+    for (size_t i = 0; i < dims.size(); i++) {
+      perm[i] = static_cast<int>(dims[i]);
     }
+    return Tensor(paddle::experimental::transpose(tensor_, perm));
+  }
 
-    at::Tensor view(at::IntArrayRef size) const {
-      return Tensor(paddle::experimental::view_shape(tensor_, size.vec()));
-    }
+  at::Tensor& copy_(const at::Tensor& src, bool non_blocking = false) const {
+    const_cast<PaddleTensor&>(tensor_).copy_(
+        src._PD_GetInner(), tensor_.place(), /*blocking=*/!non_blocking);
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor view(at::ScalarType dtype) const {
-      return Tensor(paddle::experimental::view_dtype(
-          tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
-    }
+  at::Tensor view(at::IntArrayRef size) const {
+    return Tensor(paddle::experimental::view_shape(tensor_, size.vec()));
+  }
 
-    at::Tensor squeeze() const {
-      return Tensor(paddle::experimental::squeeze(tensor_, {}));
-    }
+  at::Tensor view(at::ScalarType dtype) const {
+    return Tensor(paddle::experimental::view_dtype(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
+  }
 
-    at::Tensor squeeze(int64_t dim) const {
-      return Tensor(paddle::experimental::squeeze(tensor_, {dim}));
-    }
+  at::Tensor squeeze() const {
+    return Tensor(paddle::experimental::squeeze(tensor_, {}));
+  }
 
-    at::Tensor squeeze(at::IntArrayRef dim) const {
-      return Tensor(
-          paddle::experimental::squeeze(tensor_, dim._PD_ToPaddleIntArray()));
-    }
+  at::Tensor squeeze(int64_t dim) const {
+    return Tensor(paddle::experimental::squeeze(tensor_, {dim}));
+  }
 
-    at::Tensor& squeeze_() const {
-      PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-      paddle::experimental::squeeze_(self, {});
-      return const_cast<at::Tensor&>(*this);
-    }
+  at::Tensor squeeze(at::IntArrayRef dim) const {
+    return Tensor(
+        paddle::experimental::squeeze(tensor_, dim._PD_ToPaddleIntArray()));
+  }
 
-    at::Tensor& squeeze_(int64_t dim) const {
-      PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-      paddle::experimental::squeeze_(self, {dim});
-      return const_cast<at::Tensor&>(*this);
-    }
+  at::Tensor& squeeze_() const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::squeeze_(self, {});
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor& squeeze_(at::IntArrayRef dim) const {
-      PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-      paddle::experimental::squeeze_(self, dim._PD_ToPaddleIntArray());
-      return const_cast<at::Tensor&>(*this);
-    }
+  at::Tensor& squeeze_(int64_t dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::squeeze_(self, {dim});
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor unsqueeze() const {
-      return Tensor(paddle::experimental::unsqueeze(tensor_, {}));
-    }
+  at::Tensor& squeeze_(at::IntArrayRef dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::squeeze_(self, dim._PD_ToPaddleIntArray());
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor unsqueeze(int64_t dim) const {
-      return Tensor(paddle::experimental::unsqueeze(tensor_, {dim}));
-    }
+  at::Tensor unsqueeze() const {
+    return Tensor(paddle::experimental::unsqueeze(tensor_, {}));
+  }
 
-    at::Tensor unsqueeze(at::IntArrayRef dim) const {
-      return Tensor(
-          paddle::experimental::unsqueeze(tensor_, dim._PD_ToPaddleIntArray()));
-    }
+  at::Tensor unsqueeze(int64_t dim) const {
+    return Tensor(paddle::experimental::unsqueeze(tensor_, {dim}));
+  }
 
-    at::Tensor& unsqueeze_() const {
-      PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-      paddle::experimental::unsqueeze_(self, {});
-      return const_cast<at::Tensor&>(*this);
-    }
+  at::Tensor unsqueeze(at::IntArrayRef dim) const {
+    return Tensor(
+        paddle::experimental::unsqueeze(tensor_, dim._PD_ToPaddleIntArray()));
+  }
 
-    at::Tensor& unsqueeze_(int64_t dim) const {
-      PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-      paddle::experimental::unsqueeze_(self, {dim});
-      return const_cast<at::Tensor&>(*this);
-    }
+  at::Tensor& unsqueeze_() const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::unsqueeze_(self, {});
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor& unsqueeze_(at::IntArrayRef dim) const {
-      PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
-      paddle::experimental::unsqueeze_(self, dim._PD_ToPaddleIntArray());
-      return const_cast<at::Tensor&>(*this);
-    }
+  at::Tensor& unsqueeze_(int64_t dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::unsqueeze_(self, {dim});
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
-      return Tensor(paddle::experimental::index_select(
-          tensor_, index._PD_GetInner(), dim));
-    }
+  at::Tensor& unsqueeze_(at::IntArrayRef dim) const {
+    PaddleTensor& self = const_cast<PaddleTensor&>(tensor_);
+    paddle::experimental::unsqueeze_(self, dim._PD_ToPaddleIntArray());
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor bitwise_right_shift(const Scalar& other) const {
-      return Tensor(paddle::experimental::bitwise_right_shift(
-          tensor_, paddle::experimental::full({}, other, other.dtype())));
-    }
+  at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
+    return Tensor(
+        paddle::experimental::index_select(tensor_, index._PD_GetInner(), dim));
+  }
 
-    at::Tensor slice(int64_t dim = 0,
-                     ::std::optional<int64_t> start = ::std::nullopt,
-                     ::std::optional<int64_t> end = ::std::nullopt,
-                     int64_t step = 1) {
-      return Tensor(paddle::experimental::slice(
-          tensor_,
-          {dim},
-          start.has_value() ? IntArrayRef(start.value())._PD_ToPaddleIntArray()
-                            : IntArrayRef()._PD_ToPaddleIntArray(),
-          end.has_value() ? IntArrayRef(end.value())._PD_ToPaddleIntArray()
+  at::Tensor bitwise_right_shift(const Scalar& other) const {
+    return Tensor(paddle::experimental::bitwise_right_shift(
+        tensor_, paddle::experimental::full({}, other, other.dtype())));
+  }
+
+  at::Tensor slice(int64_t dim = 0,
+                   ::std::optional<int64_t> start = ::std::nullopt,
+                   ::std::optional<int64_t> end = ::std::nullopt,
+                   int64_t step = 1) {
+    return Tensor(paddle::experimental::slice(
+        tensor_,
+        {dim},
+        start.has_value() ? IntArrayRef(start.value())._PD_ToPaddleIntArray()
                           : IntArrayRef()._PD_ToPaddleIntArray(),
-          {1},
-          {}));
+        end.has_value() ? IntArrayRef(end.value())._PD_ToPaddleIntArray()
+                        : IntArrayRef()._PD_ToPaddleIntArray(),
+        {1},
+        {}));
+  }
+
+  // TODO(wangyanpeng04): modify the api to
+  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const {
+    std::vector<int64_t> starts(indices.size());
+    std::vector<int64_t> ends(indices.size());
+    for (size_t i = 0; i < indices.size(); ++i) {
+      starts[i] = indices[i].start();
+      ends[i] = indices[i].stop();
     }
+    return Tensor(
+        paddle::experimental::slice(tensor_, {0, 1}, starts, ends, {1}, {})
+            .contiguous());
+  }
 
-    // TODO(wangyanpeng04): modify the api to
-    // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
-    at::Tensor index(const std::vector<at::indexing::Slice>& indices) const {
-      std::vector<int64_t> starts(indices.size());
-      std::vector<int64_t> ends(indices.size());
-      for (size_t i = 0; i < indices.size(); ++i) {
-        starts[i] = indices[i].start();
-        ends[i] = indices[i].stop();
-      }
-      return Tensor(
-          paddle::experimental::slice(tensor_, {0, 1}, starts, ends, {1}, {})
-              .contiguous());
-    }
+  at::Tensor& floor_divide_(const at::Scalar& other) const {
+    paddle::experimental::floor_divide_(
+        const_cast<PaddleTensor&>(tensor_),
+        paddle::experimental::full({}, other, other.dtype()));
+    return const_cast<at::Tensor&>(*this);
+  }
 
-    at::Tensor& floor_divide_(const at::Scalar& other) const {
-      paddle::experimental::floor_divide_(
-          const_cast<PaddleTensor&>(tensor_),
-          paddle::experimental::full({}, other, other.dtype()));
-      return const_cast<at::Tensor&>(*this);
-    }
+  // Paddle Tensor has no storage_offset, so we add it here, and it is always
+  // 0.
+  //   int64_t storage_offset() const { return storage_offset_; }
 
-    // Paddle Tensor has no storage_offset, so we add it here, and it is always
-    // 0.
-    //   int64_t storage_offset() const { return storage_offset_; }
+  inline size_t nbytes() const {
+    PD_CHECK(
+        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
+         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
+        "nbytes is not defined for sparse tensors.  If you want the size of "
+        "the constituent "
+        "tensors, add the nbytes of the indices and values.  If you want the "
+        "size of the  "
+        "equivalent dense tensor, multiply numel() by element_size()");
+    return tensor_.numel() * SizeOf(tensor_.dtype());
+  }
 
-    inline size_t nbytes() const {
-      PD_CHECK(
-          ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
-           (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
-          "nbytes is not defined for sparse tensors.  If you want the size of "
-          "the constituent "
-          "tensors, add the nbytes of the indices and values.  If you want the "
-          "size of the  "
-          "equivalent dense tensor, multiply numel() by element_size()");
-      return tensor_.numel() * SizeOf(tensor_.dtype());
-    }
+  size_t itemsize() const { return SizeOf(tensor_.dtype()); }
 
-    size_t itemsize() const { return SizeOf(tensor_.dtype()); }
+  int64_t element_size() const {
+    return static_cast<int64_t>(SizeOf(tensor_.dtype()));
+  }
 
-    int64_t element_size() const {
-      return static_cast<int64_t>(SizeOf(tensor_.dtype()));
-    }
+  inline Tensor clone() const {
+    PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
+    return Tensor(cloned_tensor);
+  }
 
-    inline Tensor clone() const {
-      PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
-      return Tensor(cloned_tensor);
-    }
-
-    Tensor operator[](int64_t index) const {
-      return paddle::experimental::slice(tensor_,
-                                         /*axes=*/{0},
-                                         /*starts=*/{index},
-                                         /*ends=*/{index + 1},
-                                         /*infer_flags=*/{1},
-                                         /*decrease_axis=*/{0});
-    }
+  Tensor operator[](int64_t index) const {
+    return paddle::experimental::slice(tensor_,
+                                       /*axes=*/{0},
+                                       /*starts=*/{index},
+                                       /*ends=*/{index + 1},
+                                       /*infer_flags=*/{1},
+                                       /*decrease_axis=*/{0});
+  }
 
 #ifdef PADDLE_WITH_CUDA
-    void record_stream(const cudaStream_t& stream) const {
-      paddle::memory::RecordStream(
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-          stream);
-    }
+  void record_stream(const cudaStream_t& stream) const {
+    paddle::memory::RecordStream(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
+        stream);
+  }
 #endif
 
-    PaddleTensor _PD_GetInner() const { return tensor_; }
-    PaddleTensor& _PD_GetInner() { return tensor_; }
-  };  // NOLINT(readability/braces)
+  PaddleTensor _PD_GetInner() const { return tensor_; }
+  PaddleTensor& _PD_GetInner() { return tensor_; }
+};  // NOLINT(readability/braces)
 }  // namespace at
 namespace torch {
-  using at::Tensor;
+using at::Tensor;
 }  // namespace torch

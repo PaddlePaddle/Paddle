@@ -314,6 +314,8 @@ inline bool isSignedType(ScalarType t) {
     case ScalarType::ComplexFloat:
     case ScalarType::ComplexDouble:
       return true;
+    default:
+      return false;
   }
 #undef CASE_ISSIGNED
 }
