@@ -91,7 +91,7 @@ def pad(
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -237,7 +237,7 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
         data type is the same with input :math:`x` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -352,12 +352,12 @@ def unfold(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn.functional as F
 
-            >>> x = paddle.randn((100,3,224,224))
+            >>> x = paddle.randn((100, 3, 224, 224))
             >>> y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 

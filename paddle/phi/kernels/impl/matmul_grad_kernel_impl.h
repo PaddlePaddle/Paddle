@@ -155,7 +155,7 @@ static DDim RowMatrixFromVector(const DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return common::make_ddim({1, x_dim[0]});
+  return make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -166,7 +166,7 @@ static DDim ColumnMatrixFromVector(const DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return common::make_ddim({y_dim[0], 1});
+  return make_ddim({y_dim[0], 1});
 }
 
 /**
@@ -594,8 +594,8 @@ void MatmulGradKernel(const Context& dev_ctx,
             std::vector<std::int64_t> out_grad_2d_dim{BN, dout_dims[ndim - 2]};
             std::vector<std::int64_t> y_conj_2d_dim{BN, y_dims[y_ndim - 2]};
 
-            out_grad_processed.Resize(common::make_ddim(out_grad_2d_dim));
-            y_conj_processed.Resize(common::make_ddim(y_conj_2d_dim));
+            out_grad_processed.Resize(make_ddim(out_grad_2d_dim));
+            y_conj_processed.Resize(make_ddim(y_conj_2d_dim));
             // 2D x 2D -> 2D
             MatMulFunction<Context, T>(dev_ctx,
                                        out_grad_processed,
@@ -613,7 +613,7 @@ void MatmulGradKernel(const Context& dev_ctx,
             }
             x_grad_dim[ndim - 2] = dx_help.dims()[0];
             x_grad_dim[ndim - 1] = dx_help.dims()[1];
-            dx_help.Resize(common::make_ddim(x_grad_dim));
+            dx_help.Resize(make_ddim(x_grad_dim));
 
           } else  // NOLINT
 #endif
@@ -644,8 +644,8 @@ void MatmulGradKernel(const Context& dev_ctx,
 
             DenseTensor out_grad_processed = out_grad;
             DenseTensor x_conj_processed = x_conj;
-            out_grad_processed.Resize(common::make_ddim(out_grad_2d_dim));
-            x_conj_processed.Resize(common::make_ddim(x_conj_2d_dim));
+            out_grad_processed.Resize(make_ddim(out_grad_2d_dim));
+            x_conj_processed.Resize(make_ddim(x_conj_2d_dim));
 
             MatMulFunction<Context, T>(dev_ctx,
                                        x_conj_processed,
@@ -662,7 +662,7 @@ void MatmulGradKernel(const Context& dev_ctx,
             }
             y_grad_dim[ndim - 2] = dy_help.dims()[0];
             y_grad_dim[ndim - 1] = dy_help.dims()[1];
-            dy_help.Resize(common::make_ddim(y_grad_dim));
+            dy_help.Resize(make_ddim(y_grad_dim));
 
           } else  // NOLINT
 #endif

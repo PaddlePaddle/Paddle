@@ -330,6 +330,22 @@ class TestBceLossOp_ZeroSize2(TestBceLossOp):
         self.shape = [0]
 
 
+class TestBCELossWithZeroSizeTensor(unittest.TestCase):
+    def test_bce_loss_with_zero_size_tensor(self):
+        paddle.disable_static()
+        input = paddle.to_tensor([], dtype='float32').reshape([0, 13125, 1])
+        label = paddle.to_tensor([], dtype='float32').reshape([0, 13125, 1])
+        input.stop_gradient = False
+        out = paddle.nn.functional.binary_cross_entropy(
+            input, label, reduction='sum'
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(float(loss), 0.0)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

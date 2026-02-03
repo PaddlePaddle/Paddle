@@ -34,16 +34,16 @@ namespace phi {
 template <class T>
 using Vector = std::vector<T>;
 
-inline paddle::optional<phi::GPUPlace> OptionalCUDAPlace(
-    const phi::Allocator::AllocationPtr &gpu_) {
+inline paddle::optional<GPUPlace> OptionalCUDAPlace(
+    const Allocator::AllocationPtr &gpu_) {
   return gpu_ == nullptr ? paddle::none
-                         : paddle::optional<phi::GPUPlace>(gpu_->place());
+                         : paddle::optional<GPUPlace>(gpu_->place());
 }
 
-inline paddle::optional<phi::CustomPlace> OptionalCustomPlace(
-    const phi::Allocator::AllocationPtr &gpu_) {
+inline paddle::optional<CustomPlace> OptionalCustomPlace(
+    const Allocator::AllocationPtr &gpu_) {
   return gpu_ == nullptr ? paddle::none
-                         : paddle::optional<phi::CustomPlace>(gpu_->place());
+                         : paddle::optional<CustomPlace>(gpu_->place());
 }
 
 // Vector<T> implements the std::vector interface, and can get Data or
@@ -154,10 +154,10 @@ class MixVector {
     }
 
     // get cuda ptr. immutable
-    const T *CUDAData(phi::Place place) const {
+    const T *CUDAData(Place place) const {
       PADDLE_ENFORCE_EQ(
-          place.GetType() == phi::AllocationType::GPU ||
-              place.GetType() == phi::AllocationType::CUSTOM,
+          place.GetType() == AllocationType::GPU ||
+              place.GetType() == AllocationType::CUSTOM,
           true,
           common::errors::Unavailable(
               "Place mismatch, CUDA Data must be on CUDA or Custom place."));
@@ -166,7 +166,7 @@ class MixVector {
     }
 
     // get cuda ptr. mutable
-    T *CUDAMutableData(phi::Place place) {
+    T *CUDAMutableData(Place place) {
       const T *ptr = CUDAData(place);
       flag_ = kDirty | kDataInCUDA;
       return const_cast<T *>(ptr);
@@ -187,7 +187,7 @@ class MixVector {
 
     std::mutex &Mutex() const { return mtx_; }
 
-    paddle::optional<phi::GPUPlace> CUDAPlace() const {
+    paddle::optional<GPUPlace> CUDAPlace() const {
       return OptionalCUDAPlace(gpu_);
     }
 
@@ -208,7 +208,7 @@ class MixVector {
 
     void CopyToCPU() const;
 
-    void ImmutableCUDA(phi::Place place) const {
+    void ImmutableCUDA(Place place) const {
       if (IsDirty()) {
         if (IsInCPU()) {
           CopyCPUDataToCUDA(place);
@@ -237,7 +237,7 @@ class MixVector {
       }
     }
 
-    void CopyCPUDataToCUDA(const phi::Place &place) const;
+    void CopyCPUDataToCUDA(const Place &place) const;
 
     void ImmutableCPU() const {
       if (IsDirty() && !IsInCPU()) {  // If data has been changed in CUDA, or
@@ -258,7 +258,7 @@ class MixVector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     std::vector<T> *cpu_;
-    mutable phi::Allocator::AllocationPtr gpu_;
+    mutable Allocator::AllocationPtr gpu_;
     mutable size_t gpu_memory_size_{0};
     mutable int flag_;
 
@@ -341,9 +341,9 @@ class MixVector {
   }
 
   // get cuda ptr. immutable
-  const T *CUDAData(phi::Place place) const {
+  const T *CUDAData(Place place) const {
     {
-      phi::GPUPlace p(place.GetDeviceId());
+      GPUPlace p(place.GetDeviceId());
       auto &mtx = m_->Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_->CUDAPlace();
@@ -357,9 +357,9 @@ class MixVector {
   }
 
   // get cuda ptr. mutable
-  T *CUDAMutableData(phi::Place place) {
+  T *CUDAMutableData(Place place) {
     {
-      phi::GPUPlace p(place.GetDeviceId());
+      GPUPlace p(place.GetDeviceId());
       auto &mtx = m_->Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_->CUDAPlace();
@@ -381,9 +381,9 @@ class MixVector {
   void reserve(size_t size) { m_->reserve(size); }
 
   // the unify method to access CPU or CUDA data. immutable.
-  const T *Data(phi::Place place) const {
-    if ((place.GetType() == phi::AllocationType::GPU) ||
-        (place.GetType() == phi::AllocationType::CUSTOM)) {
+  const T *Data(Place place) const {
+    if ((place.GetType() == AllocationType::GPU) ||
+        (place.GetType() == AllocationType::CUSTOM)) {
       return CUDAData(place);
     } else {
       return data();
@@ -391,9 +391,9 @@ class MixVector {
   }
 
   // the unify method to access CPU or CUDA data. mutable.
-  T *MutableData(phi::Place place) {
-    if ((place.GetType() == phi::AllocationType::GPU) ||
-        (place.GetType() == phi::AllocationType::CUSTOM)) {
+  T *MutableData(Place place) {
+    if ((place.GetType() == AllocationType::GPU) ||
+        (place.GetType() == AllocationType::CUSTOM)) {
       return CUDAMutableData(place);
     } else {
       return data();

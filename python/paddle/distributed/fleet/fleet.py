@@ -1566,8 +1566,9 @@ class Fleet:
             use_fp16_test(bool): Whether to use fp16 testing.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
+                >>> # doctest: +SKIP("In PIR, AMP is unified in dynamic and static graph")
                 >>> import paddle
                 >>> import paddle.nn.functional as F
                 >>> paddle.enable_static()
@@ -1589,7 +1590,8 @@ class Fleet:
                 ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                 ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                 ...     amp_list = paddle.static.amp.CustomOpLists(
-                ...         custom_black_list=['pool2d'])
+                ...         custom_black_list=['pool2d'],
+                ...     )
                 ...     # 4) The entry of Paddle AMP.
                 ...     # Enable pure fp16 training by setting `use_pure_fp16` to True.
                 ...     optimizer = paddle.static.amp.decorate(
@@ -1597,7 +1599,8 @@ class Fleet:
                 ...         amp_list,
                 ...         init_loss_scaling=128.0,
                 ...         use_dynamic_loss_scaling=True,
-                ...         use_pure_fp16=True)
+                ...         use_pure_fp16=True,
+                ...     )
                 ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)

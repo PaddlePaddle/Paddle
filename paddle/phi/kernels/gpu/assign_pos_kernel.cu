@@ -70,7 +70,7 @@ void AssignPosKernel(const Context& dev_ctx,
     cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
   }
 
-  DDim out_dims = common::make_ddim({cpu_eff_num_len_data});
+  DDim out_dims = make_ddim({cpu_eff_num_len_data});
   out->Resize(out_dims);
   auto out_data = dev_ctx.template Alloc<T>(out);
 
