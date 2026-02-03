@@ -73,7 +73,7 @@ def celu(
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
+            >>> x = paddle.to_tensor([[-1.0, 6.0], [1.0, 15.6]])
             >>> out = F.celu(x, alpha=0.2)
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -550,12 +550,15 @@ def prelu(
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-            ...                            [ 3.0, -4.0,  5.0, -6.0],
-            ...                            [-7.0, -8.0,  8.0,  9.0]],
-            ...                           [[ 1.0, -2.0, -3.0,  4.0],
-            ...                            [-5.0,  6.0,  7.0, -8.0],
-            ...                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            >>> data = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [[-2.0, 3.0, -4.0, 5.0], [3.0, -4.0, 5.0, -6.0], [-7.0, -8.0, 8.0, 9.0]],
+            ...             [[1.0, -2.0, -3.0, 4.0], [-5.0, 6.0, 7.0, -8.0], [6.0, 7.0, 8.0, 9.0]],
+            ...         ]
+            ...     ],
+            ...     dtype='float32',
+            ... )
 
             >>> w = paddle.to_tensor([0.25], dtype='float32')
             >>> out = F.prelu(data, w)
@@ -1249,16 +1252,17 @@ def softmax(
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            ...                        [3.0, 4.0, 5.0, 6.0],
-            ...                        [7.0, 8.0, 8.0, 9.0]],
-            ...                       [[1.0, 2.0, 3.0, 4.0],
-            ...                        [5.0, 6.0, 7.0, 8.0],
-            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [[2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 8.0, 9.0]],
+            ...         [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [6.0, 7.0, 8.0, 9.0]],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = F.softmax(x)
             >>> out2 = F.softmax(x, dtype='float64')
-            >>> #out1's data type is float32; out2's data type is float64
-            >>> #out1 and out2's value is as follows:
+            >>> # out1's data type is float32; out2's data type is float64
+            >>> # out1 and out2's value is as follows:
             >>> print(out1)
             >>> print(out2)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1462,7 +1466,7 @@ def swish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([-2., 0., 1.])
+            >>> x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> out = F.swish(x)
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1812,8 +1816,7 @@ def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
             >>> import paddle
             >>> from paddle.nn import functional as F
             >>> x = paddle.to_tensor(
-            ...     [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-            ...         [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+            ...     [[-0.22014759, -1.76358426, 0.80566144, 0.04241343], [-1.94900405, -1.89956081, 0.17134808, -1.11280477]]
             ... )
             >>> print(F.glu(x))
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
