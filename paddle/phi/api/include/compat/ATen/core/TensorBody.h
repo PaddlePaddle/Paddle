@@ -431,8 +431,8 @@ class Tensor : public TensorBase {
     return Tensor(cloned_tensor);
   }
 
-  // abs: Compute absolute value, returns a new tensor
-  at::Tensor abs() const { return Tensor(paddle::experimental::abs(tensor_)); }
+  // abs: Compute absolute value, returns a new tensor (forward to at::abs)
+  at::Tensor abs() const;
 
   // abs_: Compute absolute value inplace
   at::Tensor& abs_() const {
