@@ -86,7 +86,7 @@ void CalculateGrad(const Context& dev_ctx,
               out_grad, d_index, s_index, index_size, slice_size, x_grad);
     } else {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
-      auto out_grad_dims_1 = common::vectorize<int>(out_grad_dims);
+      auto out_grad_dims_1 = vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.insert(out_grad_dims_2.begin(), x_grad_dims[0]);
@@ -166,7 +166,7 @@ void CalculateGrad(const Context& dev_ctx,
               mul_functor,
               sum_functor);
     } else {
-      auto out_grad_dims_1 = common::vectorize<int>(out_grad_dims);
+      auto out_grad_dims_1 = vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.insert(out_grad_dims_2.begin(), x_grad_dims[0]);

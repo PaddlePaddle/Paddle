@@ -22,7 +22,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class Conv2dTransposeBnOneDNNFusePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -72,16 +72,16 @@ class Conv2dTransposeBnOneDNNFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       std::vector<int64_t> conv_input_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("input"));
+          GetShapeFromValue(match_ctx.Tensor("input"));
       auto paddings_size = match_ctx.Attr<std::vector<int>>("paddings");
       std::vector<int64_t> bn_bias_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("bn_bias"));
+          GetShapeFromValue(match_ctx.Tensor("bn_bias"));
       std::vector<int64_t> filter_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("filter"));
+          GetShapeFromValue(match_ctx.Tensor("filter"));
 
       auto conv2d_filter_dtype =
-          pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
-      if (conv2d_filter_dtype.isa<pir::Float16Type>()) {
+          GetDataTypeFromValue(match_ctx.Tensor("filter"));
+      if (conv2d_filter_dtype.isa<Float16Type>()) {
         return false;
       }
 
@@ -104,16 +104,14 @@ class Conv2dTransposeBnOneDNNFusePattern : public paddle::drr::DrrPatternBase {
     // bn_var shape
     const auto &bn_var_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto bn_var_shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("bn_var"));
+          auto bn_var_shape = GetShapeFromValue(match_ctx.Tensor("bn_var"));
           return bn_var_shape;
         });
 
     // reshape scale shape
     const auto &scale_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto bn_scale_shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("bn_scale"));
+          auto bn_scale_shape = GetShapeFromValue(match_ctx.Tensor("bn_scale"));
           return {bn_scale_shape[0], 1, 1, 1};
         });
 
@@ -142,7 +140,7 @@ class Conv2dTransposeBnOneDNNFusePattern : public paddle::drr::DrrPatternBase {
     const auto &new_conv2d_filter_shape = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           std::vector<int64_t> filter_shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("filter"));
+              GetShapeFromValue(match_ctx.Tensor("filter"));
           std::vector<int> new_conv2d_filter_shape;
           int size = filter_shape.size();
           for (int i = 0; i < size; i++) {
@@ -259,18 +257,18 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
         &pat.Tensor("reserve_space")});
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      if (!pir::ValueIsPersistable(match_ctx.Tensor("residual_param"))) {
+      if (!ValueIsPersistable(match_ctx.Tensor("residual_param"))) {
         return false;
       }
       std::vector<int64_t> conv_input_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("input"));
+          GetShapeFromValue(match_ctx.Tensor("input"));
       auto paddings_size = match_ctx.Attr<std::vector<int>>("paddings");
       std::vector<int64_t> bn_bias_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("bn_bias"));
+          GetShapeFromValue(match_ctx.Tensor("bn_bias"));
       std::vector<int64_t> filter_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("filter"));
+          GetShapeFromValue(match_ctx.Tensor("filter"));
       std::vector<int64_t> residual_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("residual_param"));
+          GetShapeFromValue(match_ctx.Tensor("residual_param"));
       if (residual_shape.size() != 1) {
         return false;
       }
@@ -297,16 +295,14 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
     // bn_var shape
     const auto &bn_var_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto bn_var_shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("bn_var"));
+          auto bn_var_shape = GetShapeFromValue(match_ctx.Tensor("bn_var"));
           return bn_var_shape;
         });
 
     // reshape scale shape
     const auto &scale_shape_attr = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto bn_scale_shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("bn_scale"));
+          auto bn_scale_shape = GetShapeFromValue(match_ctx.Tensor("bn_scale"));
           return {bn_scale_shape[0], 1, 1, 1};
         });
 
@@ -335,7 +331,7 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
     const auto &new_conv2d_filter_shape = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
           std::vector<int64_t> filter_shape =
-              pir::GetShapeFromValue(match_ctx.Tensor("filter"));
+              GetShapeFromValue(match_ctx.Tensor("filter"));
           std::vector<int> new_conv2d_filter_shape;
           int size = filter_shape.size();
           for (int i = 0; i < size; i++) {
@@ -405,34 +401,30 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
   }
 };
 
-class ConvTransposeEltwiseaddBnOneDNNFusePass : public pir::PatternRewritePass {
+class ConvTransposeEltwiseaddBnOneDNNFusePass : public PatternRewritePass {
  public:
   ConvTransposeEltwiseaddBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_transpose_bias_bn_fuse_pass", 2) {}
+      : PatternRewritePass("conv2d_transpose_bias_bn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<Conv2dTransposeEltwiseBnOneDNNFusePattern>(
         context));
     return ps;
   }
 };
 
-class ConvTransposeBnOneDNNFusePass : public pir::PatternRewritePass {
+class ConvTransposeBnOneDNNFusePass : public PatternRewritePass {
  public:
   ConvTransposeBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_transpose_bn_fuse_pass", 2) {}
+      : PatternRewritePass("conv2d_transpose_bn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<Conv2dTransposeBnOneDNNFusePattern>(context));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateConv2dTransposeBnOneDNNFusePass() {
   return std::make_unique<ConvTransposeBnOneDNNFusePass>();
@@ -444,6 +436,7 @@ std::unique_ptr<Pass> CreateConv2dTransposeEltwiseaddBnOneDNNFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_transpose_bn_fuse_pass, ConvTransposeBnOneDNNFusePass);
+REGISTER_IR_PASS(conv2d_transpose_bn_fuse_pass,
+                 pir::ConvTransposeBnOneDNNFusePass);
 REGISTER_IR_PASS(conv2d_transpose_bias_bn_fuse_pass,
-                 ConvTransposeEltwiseaddBnOneDNNFusePass);
+                 pir::ConvTransposeEltwiseaddBnOneDNNFusePass);

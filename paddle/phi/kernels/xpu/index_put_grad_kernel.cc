@@ -35,11 +35,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     // Fill value_grad with 0.
     if (value_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(value_grad->dims())),
-          0,
-          value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0, value_grad);
     }
     return;
   }
@@ -59,11 +55,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
-                             0.0f,
-                             value_grad->dtype(),
-                             value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
     }
     return;
   }
@@ -72,10 +64,10 @@ void IndexPutGradKernel(const Context& dev_ctx,
   DenseTensor res_indices(DataType::INT64);
   // Broadcast and merge indices
   XPUDealWithIndices<Context>(dev_ctx, int_indices_v, bd_dims, &res_indices);
-  auto index_shape = common::vectorize<int64_t>(res_indices.dims());
+  auto index_shape = vectorize<int64_t>(res_indices.dims());
   xpu::VectorParam<int64_t> index_param = {
       nullptr, res_indices.numel(), res_indices.data<int64_t>()};
-  auto xshape = common::vectorize<int64_t>(x.dims());
+  auto xshape = vectorize<int64_t>(x.dims());
   xpu::VectorParam<int64_t> xshape_param = {
       xshape.data(), static_cast<int64_t>(xshape.size()), nullptr};
 
@@ -106,7 +98,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     }
   }
   if (value_grad) {
-    auto value_shape = common::vectorize<int64_t>(value_grad->dims());
+    auto value_shape = vectorize<int64_t>(value_grad->dims());
     dev_ctx.template Alloc<T>(value_grad);
     if (value_shape != value_shape_bd) {
       std::vector<int64_t> compress_dims;

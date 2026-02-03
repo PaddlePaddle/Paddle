@@ -19,7 +19,7 @@ import inspect
 import warnings
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, get_overloads
 
 import paddle
 
@@ -761,24 +761,6 @@ def sum_decorator() -> Callable[
     return decorator
 
 
-def floor_divide_decorator():
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if not kwargs:
-                return func(*args, **kwargs)
-            if "input" in kwargs and "x" not in kwargs:
-                kwargs["x"] = kwargs.pop("input")
-            if "other" in kwargs and "y" not in kwargs:
-                kwargs["y"] = kwargs.pop("other")
-            return func(*args, **kwargs)
-
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
-
-    return decorator
-
-
 _SA0_RD1 = {'size_average': 0, 'reduce': 1}
 _SA1_RD2 = {'size_average': 1, 'reduce': 2}
 _SA1_RD3 = {'size_average': 1, 'reduce': 3}
@@ -943,3 +925,15 @@ def index_add_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def use_first_signature(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    overloads = get_overloads(func)
+    if not overloads:
+        return func
+    first_overload = overloads[0]
+    sig = inspect.signature(first_overload)
+    func.__signature__ = sig
+    return func

@@ -437,7 +437,7 @@ template <typename T, typename Context>
 void DepthwiseConv2dBiasGradKernel(const Context& dev_ctx,
                                    const DenseTensor& input,
                                    const DenseTensor& filter,
-                                   const paddle::optional<DenseTensor>& bias,
+                                   const optional<DenseTensor>& bias,
                                    const DenseTensor& out_grad,
                                    const std::vector<int>& strides_t,
                                    const std::vector<int>& paddings_t,
@@ -478,14 +478,14 @@ void DepthwiseConv2dBiasGradKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   if (data_layout != DataLayout::NHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

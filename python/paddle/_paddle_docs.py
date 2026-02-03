@@ -83,7 +83,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -106,7 +106,7 @@ def acos(
 add_doc_and_signature(
     "acosh",
     r"""
-Acosh Activation Operator.
+    Acosh Activation Operator.
 
     .. math::
        out = acosh(x)
@@ -121,7 +121,7 @@ Acosh Activation Operator.
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -159,7 +159,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -212,7 +212,7 @@ add_doc_and_signature(
     Keyword args:
         out(Tensor, optional): The output tensor.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
@@ -353,7 +353,7 @@ add_doc_and_signature(
         it's data type is the same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
@@ -462,6 +462,61 @@ def amax(
 )
 
 add_doc_and_signature(
+    "angle",
+    r"""
+    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
+
+    Equation:
+        .. math::
+
+            angle(x)=arctan2(x.imag, x.real)
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
+            >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
+            >>> z = x + 1j * y
+            >>> z
+            Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
+              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
+             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
+              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
+             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
+               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
+             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
+               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
+
+            >>> theta = paddle.angle(z)
+            >>> theta
+            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
+             [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
+             [-1.57079637, -1.57079637,  0.        ,  1.57079637],
+             [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
+""",
+    """
+def angle(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "all",
     r"""
     Computes the ``logical and`` of tensor elements over the given dimension.
@@ -486,7 +541,7 @@ add_doc_and_signature(
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # x is a bool Tensor with following elements:
@@ -558,7 +613,7 @@ add_doc_and_signature(
         Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -588,6 +643,7 @@ def argmax(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "argmin",
     r"""
@@ -610,7 +666,7 @@ add_doc_and_signature(
         Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -660,7 +716,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -698,7 +754,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -737,7 +793,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -774,6 +830,7 @@ def log2(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "log10",
     r"""
@@ -793,7 +850,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -849,7 +906,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -888,7 +945,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -925,7 +982,7 @@ add_doc_and_signature(
         Tensor. Output of Square operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -966,7 +1023,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1005,7 +1062,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1132,6 +1189,7 @@ def matmul(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "multiply",
     r"""
@@ -1158,7 +1216,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1188,10 +1246,11 @@ def multiply(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "logsumexp",
     r"""
-    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+    Calculates the log of the sum of exponential of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
@@ -1224,19 +1283,19 @@ add_doc_and_signature(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: pycon
 
-        >>> import paddle
+            >>> import paddle
 
-        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        >>> out1 = paddle.logsumexp(x)
-        >>> out1
-        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-        3.46912265)
-        >>> out2 = paddle.logsumexp(x, 1)
-        >>> out2
-        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [2.15317822, 3.15684605])
+            >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+            >>> out1 = paddle.logsumexp(x)
+            >>> out1
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.46912265)
+            >>> out2 = paddle.logsumexp(x, 1)
+            >>> out2
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2.15317822, 3.15684605])
 
 """,
     """
@@ -1250,6 +1309,7 @@ def logsumexp(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "softplus",
     r"""
@@ -1271,7 +1331,7 @@ add_doc_and_signature(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1291,6 +1351,86 @@ def softplus(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "i0",
+    r"""
+    The function used to calculate modified bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \\sum^{\\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> paddle.i0(x)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
+""",
+    """
+def i0(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i0e",
+    r"""
+    The function used to calculate exponentially scaled modified Bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \\sum^{\\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
+            I_{0e}(x) = e^{-|x|}I_0(x)
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i0e(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
+""",
+    """
+def i0e(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
 add_doc_and_signature(
     "isclose",
     r"""
@@ -1400,7 +1540,7 @@ add_doc_and_signature(
         `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -1435,7 +1575,7 @@ add_doc_and_signature(
         `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -1470,7 +1610,7 @@ add_doc_and_signature(
         `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1520,7 +1660,7 @@ add_doc_and_signature(
         Tensor, A Tensor with same data type as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -1572,7 +1712,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1628,7 +1768,7 @@ add_doc_and_signature(
         otherwise it's data type is the same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1722,7 +1862,7 @@ add_doc_and_signature(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1802,7 +1942,7 @@ add_doc_and_signature(
         Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1878,7 +2018,7 @@ add_doc_and_signature(
         N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1997,7 +2137,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2079,7 +2219,7 @@ add_doc_and_signature(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2139,7 +2279,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2181,7 +2321,7 @@ add_doc_and_signature(
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2222,7 +2362,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2256,7 +2396,7 @@ add_doc_and_signature(
         Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2296,7 +2436,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2338,7 +2478,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2379,7 +2519,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2420,7 +2560,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2459,7 +2599,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2503,7 +2643,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2572,7 +2712,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2635,7 +2775,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2684,7 +2824,7 @@ add_doc_and_signature(
         it's data type is the same as x's Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2756,7 +2896,7 @@ add_doc_and_signature(
         it's data type is the same as x's Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2822,7 +2962,7 @@ add_doc_and_signature(
         Tensor: The product Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2887,7 +3027,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2941,7 +3081,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2993,7 +3133,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3045,7 +3185,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3097,7 +3237,7 @@ add_doc_and_signature(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3152,7 +3292,7 @@ add_doc_and_signature(
             (integer types are autocasted into float32).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3195,7 +3335,7 @@ add_doc_and_signature(
         Tensor. Output of Exp operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3238,7 +3378,7 @@ add_doc_and_signature(
         Tensor. Output of Expm1 operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3333,7 +3473,7 @@ add_doc_and_signature(
              [-1,  2, -1],
              [-1, -1,  3]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: diag-example-2
 
             >>> import paddle
@@ -3400,7 +3540,7 @@ add_doc_and_signature(
         Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3481,7 +3621,7 @@ add_doc_and_signature(
         Tensor. Output of Round operator, a Tensor with shape same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3525,7 +3665,7 @@ add_doc_and_signature(
         Tensor.A Tensor with the same data type and shape as :math:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3542,6 +3682,15 @@ def abs(
     *,
     out: Tensor | None = None,
 ) -> Tensor
+""",
+)
+add_doc_and_signature(
+    "abs_",
+    """
+    Inplace version of ``abs`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def abs_(x: Tensor, name: str | None = None) -> Tensor
 """,
 )
 # lubingxin
@@ -3567,7 +3716,7 @@ add_doc_and_signature(
         out (Tensor): An N-D Tensor, the shape and data type is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
@@ -3672,7 +3821,7 @@ add_doc_and_signature(
         N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-0.5, 0, 0.5])
@@ -3715,7 +3864,7 @@ add_doc_and_signature(
         Tensor. Same shape and data type as input (integer types are autocasted into float32)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -3734,55 +3883,44 @@ def asin(
 )
 
 add_doc_and_signature(
-    "baddbmm",
+    "inverse",
     r"""
-    Perform batch matrix multiplication for input :math:`x` and :math:`y`.
-    :math:`input` is added to the final result.
-    The equation is:
-    .. math::
-        out = \beta \times input + \alpha \times x \times y
-    where :math:`\beta` and :math:`\alpha` are scaling factors.
+    Takes the inverse of the square matrix. A square matrix is a matrix with
+    the same number of rows and columns. The input can be a square matrix
+    (2-D Tensor) or batches of square matrices.
+
     Args:
-        input (Tensor): The input tensor to be added to the final result. It should be a 2-D or 3-D tensor.
-            Data type should be float16, float32, float64, uint16.
-        x (Tensor): The first batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, n, p].
-            Data type should be float16, float32, float64, uint16.
-            Alias: ``batch1``.
-        y (Tensor): The second batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, p, m].
-            Data type should be float16, float32, float64, uint16.
-            Alias: ``batch2``.
-        beta (float, optional): The scaling factor for input. Default: 1.0.
-        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
-        out_dtype (paddle.dtype|None, optional): The desired data type of the returned tensor. If None, the output tensor will have the same data type as input. Default: None.
+        x (Tensor): The input tensor. The last two
+            dimensions should be equal. When the number of dimensions is
+            greater than 2, it is treated as batches of square matrix. The data
+            type can be float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor. Default: None.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
     Returns:
-        Tensor: The output tensor should be a 3-D tensor with shape [b, n, m].
+        Tensor: A Tensor holds the inverse of x. The shape and data type
+                        is the same as x.
+
     Examples:
         .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.ones([2, 2, 2])
-            >>> y = paddle.ones([2, 2, 2])
-            >>> input = paddle.ones([2, 2, 2])
+            >>> mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
+            >>> inv = paddle.inverse(mat)
+            >>> print(inv)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.50000000, 0.        ],
+             [0.        , 0.50000000]])
 
-            >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
-            >>> out
-            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[10.50000000, 10.50000000],
-              [10.50000000, 10.50000000]],
-             [[10.50000000, 10.50000000],
-              [10.50000000, 10.50000000]]])
 """,
     """
-def baddbmm(
-    input: Tensor,
+def inverse(
     x: Tensor,
-    y: Tensor,
-    beta: float = 1.0,
-    alpha: float = 1.0,
-    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -3929,7 +4067,7 @@ add_doc_and_signature(
         Tensor: The tensor of frequency.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([1, 2, 1, 4, 5])
@@ -3954,7 +4092,6 @@ def bincount(
 """,
 )
 
-
 add_doc_and_signature(
     "bitwise_and",
     r"""
@@ -3971,15 +4108,16 @@ add_doc_and_signature(
     Args:
         x (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor|None, optional): Result of ``bitwise_and``. It is a N-D Tensor with the same data type of input Tensor. Default: None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         Tensor: Result of ``bitwise_and``. It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
@@ -4001,46 +4139,81 @@ def bitwise_and(
 )
 
 add_doc_and_signature(
-    "bitwise_not",
+    "bitwise_and_",
     r"""
-    Apply ``bitwise_not`` on Tensor ``X``.
+    Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_and`.
+""",
+    """
+def bitwise_and_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_or",
+    r"""
+    Apply ``bitwise_or`` on Tensor ``X`` and ``Y``.
 
     .. math::
-        Out = \\sim X
+        Out = X | Y
 
     Note:
-        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_not``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor|None, optional): Result of ``bitwise_not``. It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
-        Tensor: Result of ``bitwise_not``. It is a N-D Tensor with the same data type of input Tensor.
+        Tensor: Result of ``bitwise_or``. It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> res = paddle.bitwise_not(x)
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_or(x, y)
             >>> print(res)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [ 4,  0, -2])
+            [-1, -1, -3])
 """,
     """
-def bitwise_not(
+def bitwise_or(
     x: Tensor,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "bitwise_or_",
+    r"""
+    Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_or`.
+""",
+    """
+def bitwise_or_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
 
 add_doc_and_signature(
     "bitwise_xor",
@@ -4058,15 +4231,16 @@ add_doc_and_signature(
     Args:
         x (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out (Tensor|None, optional): Result of ``bitwise_xor``. It is a N-D Tensor with the same data type of input Tensor. Default: None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         Tensor: Result of ``bitwise_xor``. It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
@@ -4088,6 +4262,232 @@ def bitwise_xor(
 )
 
 add_doc_and_signature(
+    "bitwise_xor_",
+    r"""
+    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_xor`.
+""",
+    """
+def bitwise_xor_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_not",
+    r"""
+    Apply ``bitwise_not`` on Tensor ``X``.
+
+    .. math::
+        Out = \\sim X
+
+    Note:
+        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_not``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: Result of ``bitwise_not``. It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> res = paddle.bitwise_not(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ 4,  0, -2])
+""",
+    """
+def bitwise_not(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_not_",
+    r"""
+    Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_not`.
+""",
+    """
+def bitwise_not_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_left_shift",
+    r"""
+    Apply ``bitwise_left_shift`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+
+        Out = X \ll Y
+
+    .. note::
+
+        ``paddle.bitwise_left_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: Result of ``bitwise_left_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: pycon
+            :name: bitwise_left_shift_example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[2  , 8  , 32 , 128],
+                    [64 , 136, 128, 130]])
+
+        .. code-block:: pycon
+            :name: bitwise_left_shift_example2
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[2  , 8  , 32 , 128],
+                    [64 , 136, 128, 130]])
+""",
+    """
+def bitwise_left_shift(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_left_shift_",
+    r"""
+    Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+""",
+    """
+def bitwise_left_shift_(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_right_shift",
+    r"""
+    Apply ``bitwise_right_shift`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+
+        Out = X \gg Y
+
+    .. note::
+
+        ``paddle.bitwise_right_shift`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: Result of ``bitwise_right_shift`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: pycon
+            :name: bitwise_right_shift_example1
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[5 , 5 , 5 , 5 ],
+                    [4 , 2 , 8 , 32]])
+
+        .. code-block:: pycon
+            :name: bitwise_right_shift_example2
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[-10,-20,-40,-80],[-16,-17,-32,-65]], dtype=paddle.int8)
+            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]], dtype=paddle.int8)
+            >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)
+            Tensor(shape=[2, 4], dtype=int8, place=Place(gpu:0), stop_gradient=True,
+                [[123, 59 , 27 , 11 ],
+                    [60 , 29 , 56 , 95 ]])
+""",
+    """
+def bitwise_right_shift(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bitwise_right_shift_",
+    r"""
+    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_right_shift`.
+""",
+    """
+def bitwise_right_shift_(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "conj",
     r"""
     This function computes the conjugate of the Tensor elementwisely.
@@ -4101,7 +4501,7 @@ add_doc_and_signature(
         out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4121,6 +4521,225 @@ add_doc_and_signature(
 def conj(
     x: Tensor,
     name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i1",
+    r"""
+    The function is used to calculate modified bessel function of order 1.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i1(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
+""",
+    """
+def i1(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "i1e",
+    r"""
+    The function is used to calculate exponentially scaled modified Bessel function of order 1.
+
+    Args:
+
+        x (Tensor): The input tensor, it's data type should be float32, float64,
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            >>> print(paddle.i1e(x))
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
+""",
+    """
+def i1e(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "addmm",
+    r"""
+    Perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Tensor): The input Tensor to be added to the final result.
+        x (Tensor): The first input Tensor for matrix multiplication. Alias: ``mat1``.
+        y (Tensor): The second input Tensor for matrix multiplication. Alias: ``mat2``.
+        beta (float, optional): Coefficient of $input$, default is 1.
+        alpha (float, optional): Coefficient of $x*y$, default is 1.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor: The output Tensor of addmm.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2])
+            >>> y = paddle.ones([2, 2])
+            >>> input = paddle.ones([2, 2])
+
+            >>> out = paddle.addmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[10.50000000, 10.50000000],
+             [10.50000000, 10.50000000]])
+""",
+    """
+def addmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "addmm_",
+    r"""
+    Inplace version of ``addmm`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_addmm`.
+""",
+    """
+def addmm_(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "baddbmm",
+    r"""
+    Perform batch matrix multiplication for input :math:`x` and :math:`y`.
+    :math:`input` is added to the final result.
+    The equation is:
+    .. math::
+        out = \beta \times input + \alpha \times x \times y
+    where :math:`\beta` and :math:`\alpha` are scaling factors.
+    Args:
+        input (Tensor): The input tensor to be added to the final result. It should be a 2-D or 3-D tensor.
+            Data type should be float16, float32, float64, uint16.
+        x (Tensor): The first batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, n, p].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch1``.
+        y (Tensor): The second batch of matrices to be multiplied. It should be a 3-D tensor with shape [b, p, m].
+            Data type should be float16, float32, float64, uint16.
+            Alias: ``batch2``.
+        beta (float, optional): The scaling factor for input. Default: 1.0.
+        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
+        out_dtype (paddle.dtype|None, optional): The desired data type of the returned tensor. If None, the output tensor will have the same data type as input. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword args:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+    Returns:
+        Tensor: The output tensor should be a 3-D tensor with shape [b, n, m].
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2, 2])
+            >>> y = paddle.ones([2, 2, 2])
+            >>> input = paddle.ones([2, 2, 2])
+
+            >>> out = paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+            >>> out
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]],
+             [[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]]])
+""",
+    """
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "baddbmm_",
+    r"""
+    Inplace version of ``baddbmm`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_baddbmm`.
+""",
+    """
+def baddbmm_(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
 ) -> Tensor
 """,
 )

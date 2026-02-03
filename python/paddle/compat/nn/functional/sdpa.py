@@ -91,7 +91,7 @@ def scaled_dot_product_attention(
                     The dtype can be float16 or bfloat16.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('bfloat need V100 compile')
             >>> import paddle

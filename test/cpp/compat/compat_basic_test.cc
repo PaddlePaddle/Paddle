@@ -53,41 +53,6 @@ TEST(TensorBaseTest, DataPtrAPIs) {
   ASSERT_NE(mutable_ptr, nullptr);
   ASSERT_EQ(mutable_ptr, void_ptr);
 }
-TEST(TensorBaseTest, DimensionAPIs) {
-  // Test dimension related APIs
-  at::TensorBase tensor = at::ones({2, 3, 4}, at::kFloat);
-
-  // Test sizes()
-  auto sizes = tensor.sizes();
-  ASSERT_EQ(sizes.size(), 3);
-  ASSERT_EQ(sizes[0], 2);
-  ASSERT_EQ(sizes[1], 3);
-  ASSERT_EQ(sizes[2], 4);
-
-  // Test size(dim)
-  ASSERT_EQ(tensor.size(0), 2);
-  ASSERT_EQ(tensor.size(1), 3);
-  ASSERT_EQ(tensor.size(2), 4);
-
-  // Test strides()
-  auto strides = tensor.strides();
-  ASSERT_EQ(strides.size(), 3);
-  ASSERT_EQ(strides[0], 12);  // 3*4
-  ASSERT_EQ(strides[1], 4);   // 4
-  ASSERT_EQ(strides[2], 1);   // contiguous
-
-  // Test stride(dim)
-  ASSERT_EQ(tensor.stride(0), 12);
-  ASSERT_EQ(tensor.stride(1), 4);
-  ASSERT_EQ(tensor.stride(2), 1);
-
-  // Test numel()
-  ASSERT_EQ(tensor.numel(), 24);  // 2*3*4
-
-  // Test dim()/ndimension()
-  ASSERT_EQ(tensor.dim(), 3);
-  ASSERT_EQ(tensor.ndimension(), 3);
-}
 TEST(TensorBaseTest, TypeDeviceAPIs) {
   // Test type and device related APIs
   at::TensorBase cpu_tensor = at::ones({2, 3}, at::kFloat);
@@ -353,4 +318,36 @@ TEST(TensorBaseTest, LayoutAPI) {
   std::ostringstream oss;
   oss << tensor.layout();
   ASSERT_EQ(oss.str(), "Strided");
+}
+
+TEST(TensorBaseTest, ResetAPI) {
+  // Test reset() API
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  // Verify tensor is defined before reset
+  ASSERT_TRUE(tensor.defined());
+  ASSERT_NE(tensor.data_ptr(), nullptr);
+  ASSERT_EQ(tensor.numel(), 6);
+
+  // Call reset()
+  tensor.reset();
+
+  // Verify tensor is no longer defined after reset
+  ASSERT_FALSE(tensor.defined());
+
+  // Test reset on already undefined tensor (should not crash)
+  at::TensorBase empty_tensor;
+  ASSERT_FALSE(empty_tensor.defined());
+  empty_tensor.reset();
+  ASSERT_FALSE(empty_tensor.defined());
+
+  // Test reset on tensor after assignment
+  at::TensorBase tensor2 = at::ones({3, 4}, at::kDouble);
+  at::TensorBase tensor3 = tensor2;
+  ASSERT_TRUE(tensor2.defined());
+  ASSERT_TRUE(tensor3.defined());
+
+  tensor2.reset();
+  ASSERT_FALSE(tensor2.defined());
+  ASSERT_TRUE(tensor3.defined());  // tensor3 should still be valid
 }

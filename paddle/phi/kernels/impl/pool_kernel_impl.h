@@ -65,8 +65,7 @@ void PoolRawKernel(const Context& dev_ctx,
                    const float norm_type,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -229,12 +228,10 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
                                DenseTensor* mask) {
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T1, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T1, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<T2, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<T2, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }
@@ -284,11 +281,9 @@ void Pool2dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {  // for pooling_type == "avg"
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -332,8 +327,7 @@ void LPPool2dKernel(const Context& dev_ctx,
       }
     }
     if (need_zero) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
       return;
     }
   }
@@ -390,11 +384,9 @@ void Pool3dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || (!adaptive && pooling_type == "avg")) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -446,12 +438,10 @@ void FractionalMaxPoolRawKernel(const Context& dev_ctx,
                                 DenseTensor* mask) {
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T1, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T1, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<T2, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<T2, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }

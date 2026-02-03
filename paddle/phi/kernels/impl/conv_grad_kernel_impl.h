@@ -49,11 +49,7 @@ void ConvGradKernel(const Context& dev_ctx,
   if (input.numel() == 0 || filter_t.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(filter_grad->dims())),
-          0,
-          filter_grad);
+      Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
     }
     return;
   }
@@ -264,8 +260,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
                         const DenseTensor& input,
                         const DenseTensor& filter,
                         const DenseTensor& out_grad,
-                        const paddle::optional<DenseTensor>& input_grad_grad,
-                        const paddle::optional<DenseTensor>& filter_grad_grad,
+                        const optional<DenseTensor>& input_grad_grad,
+                        const optional<DenseTensor>& filter_grad_grad,
                         const std::vector<int>& strides_t,
                         const std::vector<int>& paddings_t,
                         const std::string& padding_algorithm,

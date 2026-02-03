@@ -45,8 +45,8 @@ struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
                             _scale,
                             /*_causal=*/false,
                             q_dtype,
-                            paddle::optional<DenseTensor>{},
-                            paddle::optional<DenseTensor>{},
+                            optional<DenseTensor>{},
+                            optional<DenseTensor>{},
                             /*_unpadded_lse=*/false,
                             /*_total_q*/ 0) {}
 };
