@@ -4594,8 +4594,14 @@ def logit_(
         return _C_ops.logit_(x, eps)
 
 
+@param_two_alias(["x", "input"], ["y", "end"])
 def lerp(
-    x: Tensor, y: Tensor, weight: float | Tensor, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    weight: float | Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Does a linear interpolation between x and y based on weight.
@@ -4605,11 +4611,18 @@ def lerp(
 
             lerp(x, y, weight) = x + weight * (y - x).
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, The parameter name ``end`` can be used as an alias for ``y``.
+        For example, ``lerp(input=x_tensor, end=y_tensor, weight=0.5)`` is equivalent to ``lerp(x=x_tensor, y=y_tensor, weight=0.5)``.
+
     Args:
         x (Tensor): An N-D Tensor with starting points, the data type is bfloat16, float16, float32, float64.
+            input: An alias for ``x`` , with identical behavior.
         y (Tensor): An N-D Tensor with ending points, the data type is bfloat16, float16, float32, float64.
+            end: An alias for ``y`` , with identical behavior.
         weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is bfloat16, float16, float32, float64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the shape and data type is the same with input.
@@ -4627,6 +4640,19 @@ def lerp(
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.50000000, 6.        , 6.50000000, 7.        ])
 
+            >>> # Using out parameter
+            >>> result = paddle.empty([4], dtype='float32')
+            >>> paddle.lerp(x, y, 0.5, out=result)
+            >>> result
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.50000000, 6.        , 6.50000000, 7.        ])
+
+            >>> # Using parameter aliases (input for x, end for y)
+            >>> out = paddle.lerp(input=x, end=y, weight=0.5)  # type: ignore[call-arg]
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.50000000, 6.        , 6.50000000, 7.        ])
+
     """
     if isinstance(weight, float):
         if x.is_cuda and in_dynamic_mode():
@@ -4635,7 +4661,7 @@ def lerp(
             weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.lerp(x, y, weight)
+        return _C_ops.lerp(x, y, weight, out=out)
     else:
         check_variable_and_dtype(
             x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
