@@ -3081,7 +3081,7 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_x,
                      bool trans_y,
                      MetaTensor* out,
-                     MetaConfig config = MetaConfig()) {
+                     MetaConfig config) {
   std::vector<int64_t> dims_x = vectorize(x.dims());
   std::vector<int64_t> dims_y = vectorize(y.dims());
   auto ndims_x = dims_x.size();
