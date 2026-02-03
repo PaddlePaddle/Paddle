@@ -417,10 +417,10 @@ struct DistTensorPtrConverter : ArgsIterator<DistTensorPtrConverter> {
 
 void inline CUDAErrorCheck(const std::string& check_tag) {
 #ifdef PADDLE_WITH_CUDA
-  std::cout << check_tag << " checking..." << std::endl;
+  // std::cout << check_tag << " checking..." << std::endl;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
-  std::cout << check_tag << " check done." << std::endl;
+  // std::cout << check_tag << " check done." << std::endl;
 #endif
 }
 std::string CreateNodeLabelInDot(GradNodeBase* node);
