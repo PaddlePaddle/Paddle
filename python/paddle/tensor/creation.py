@@ -3995,6 +3995,7 @@ def polar(
 
 
 @dygraph_only
+@param_two_alias(["loc", "median"], ["scale", "sigma"])
 def cauchy_(
     x: paddle.Tensor,
     loc: Numeric = 0,
@@ -4006,7 +4007,9 @@ def cauchy_(
     Args:
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+            Alias: ``median``.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+            Alias: ``sigma``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4096,7 +4099,7 @@ def set_(
         stride (list|tuple|None, optional): Define the target stride. Each element of it should be integer. Default: None,
             and when ``shape`` is also None, it will use the specified ``source``'s stride as default value; when ``shape``
             is specified, it will use the default stride corresponding to the specified ``shape``.
-        offset (int, optional): Define the target offset from x's holder. Default: 0.
+        offset (int, optional): Define the target offset from x's holder in bytes. Default: 0.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
