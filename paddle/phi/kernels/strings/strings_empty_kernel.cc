@@ -23,7 +23,7 @@ template <typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const IntArray& shape,
                  StringTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   dev_ctx.template Alloc<dtype::pstring>(out);
 }
 

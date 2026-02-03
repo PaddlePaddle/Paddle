@@ -222,7 +222,7 @@ class CudnnConvDescManager {
       phi::UpdatePaddingAndDilation(&paddings,
                                     &dilations,
                                     padding_algorithm,
-                                    common::make_ddim(in_data_dims),
+                                    make_ddim(in_data_dims),
                                     strides,
                                     ksize);
 
@@ -410,7 +410,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
   const int input_rank = input.dims().size();
   auto unsys_pad_process = [&](const std::vector<int>& new_input_shape_vec,
                                const std::vector<int>& input_pad) {
-    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     dev_ctx.template Alloc<T>(&transformed_input);
 

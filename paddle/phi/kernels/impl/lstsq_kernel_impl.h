@@ -202,7 +202,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSormqr_bufferSize(
       handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor info;
-  info.Resize(common::make_ddim({1}));
+  info.Resize(make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -212,7 +212,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
 
     handle = dev_ctx.cusolver_dn_handle();
     DenseTensor workspace;
-    workspace.Resize(common::make_ddim({lwork}));
+    workspace.Resize(make_ddim({lwork}));
     float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
     // compute ormgr
@@ -271,7 +271,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDormqr_bufferSize(
       handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor info;
-  info.Resize(common::make_ddim({1}));
+  info.Resize(make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -281,7 +281,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
 
     handle = dev_ctx.cusolver_dn_handle();
     DenseTensor workspace;
-    workspace.Resize(common::make_ddim({lwork}));
+    workspace.Resize(make_ddim({lwork}));
     double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
     // compute ormgr

@@ -220,7 +220,7 @@ void MaskedFillKernel(const Context& dev_ctx,
 
   auto expanded_size =
       vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
-  DDim expanded_dims = common::make_ddim(expanded_size);
+  DDim expanded_dims = make_ddim(expanded_size);
 
   bool flag = funcs::CanDispatchMaskFillShortcut(x.dims(), mask.dims());
   if (expanded_dims != x_dims) flag = false;

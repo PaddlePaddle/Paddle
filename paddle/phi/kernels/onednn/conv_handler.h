@@ -151,11 +151,10 @@ class ConvOneDNNHandlerT
         }
       }
       const auto input_dims = input->dims();
-      const auto data_dims =
-          common::slice_ddim(input_dims, 2, input_dims.size());
+      const auto data_dims = slice_ddim(input_dims, 2, input_dims.size());
       const auto filter_dims = filter->dims();
       const auto filter_data_dims =
-          common::slice_ddim(filter_dims, 2, filter_dims.size());
+          slice_ddim(filter_dims, 2, filter_dims.size());
       const auto ksize = common::vectorize(filter_data_dims);
       std::vector<int64_t> strides(begin(strides_in), end(strides_in));
       std::vector<int64_t> paddings(begin(paddings_in), end(paddings_in));
@@ -308,10 +307,9 @@ class ConvOneDNNHandlerT
       std::vector<int64_t> dilations(begin(dilations_in), end(dilations_in));
 
       auto input_dims = in->dims();
-      auto data_dims = common::slice_ddim(input_dims, 2, input_dims.size());
+      auto data_dims = slice_ddim(input_dims, 2, input_dims.size());
       auto filter_dims = filter->dims();
-      auto filter_data_dims =
-          common::slice_ddim(filter_dims, 2, filter_dims.size());
+      auto filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
       auto ksize = common::vectorize(filter_data_dims);
 
       UpdatePaddingAndDilation(
