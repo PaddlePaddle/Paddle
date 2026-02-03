@@ -351,3 +351,50 @@ TEST(TensorBaseTest, ResetAPI) {
   ASSERT_FALSE(tensor2.defined());
   ASSERT_TRUE(tensor3.defined());  // tensor3 should still be valid
 }
+
+TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
+  // Test is_non_overlapping_and_dense() API
+
+  // Case 1: Contiguous tensor - should be non-overlapping and dense
+  at::TensorBase contiguous_tensor = at::ones({2, 3, 4}, at::kFloat);
+  ASSERT_TRUE(contiguous_tensor.is_contiguous());
+  ASSERT_TRUE(contiguous_tensor.is_non_overlapping_and_dense());
+
+  // Case 2: Scalar tensor (numel == 1) - should be non-overlapping and dense
+  at::TensorBase scalar_tensor = at::ones({}, at::kFloat);
+  ASSERT_EQ(scalar_tensor.numel(), 1);
+  ASSERT_TRUE(scalar_tensor.is_non_overlapping_and_dense());
+
+  // Case 3: Single element tensor - should be non-overlapping and dense
+  at::TensorBase single_element = at::ones({1, 1, 1}, at::kFloat);
+  ASSERT_EQ(single_element.numel(), 1);
+  ASSERT_TRUE(single_element.is_non_overlapping_and_dense());
+
+  // Case 4: Transposed tensor - non-contiguous but still non-overlapping and
+  // dense
+  at::Tensor original = at::ones({3, 4}, at::kFloat);
+  at::Tensor transposed = original.transpose(0, 1);
+  ASSERT_FALSE(transposed.is_contiguous());
+  ASSERT_TRUE(transposed.is_non_overlapping_and_dense());
+
+  // Case 5: Multi-dimensional transpose - still non-overlapping and dense
+  at::Tensor tensor_3d = at::ones({2, 3, 4}, at::kFloat);
+  at::Tensor transposed_3d = tensor_3d.transpose(0, 2);
+  ASSERT_FALSE(transposed_3d.is_contiguous());
+  ASSERT_TRUE(transposed_3d.is_non_overlapping_and_dense());
+
+  // Case 6: Tensor with size-1 dimensions
+  at::TensorBase size_one_dims = at::ones({1, 3, 1, 4}, at::kFloat);
+  ASSERT_TRUE(size_one_dims.is_non_overlapping_and_dense());
+
+  // Case 7: Empty tensor (numel == 0) - should be non-overlapping and dense
+  at::TensorBase empty_tensor = at::ones({0, 3, 4}, at::kFloat);
+  ASSERT_EQ(empty_tensor.numel(), 0);
+  ASSERT_TRUE(empty_tensor.is_non_overlapping_and_dense());
+
+  // Case 8: Permuted tensor - still non-overlapping and dense
+  at::Tensor tensor_4d = at::ones({2, 3, 4, 5}, at::kFloat);
+  at::Tensor permuted = tensor_4d.permute({3, 1, 2, 0});
+  ASSERT_FALSE(permuted.is_contiguous());
+  ASSERT_TRUE(permuted.is_non_overlapping_and_dense());
+}

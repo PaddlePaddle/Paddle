@@ -67,7 +67,7 @@ def generate_comment_body(doc_diff: str, pr_id: int) -> str:
     apis: list[str] = sorted(
         set(re.findall(r"^[+]\s*([a-zA-Z0-9_.]+)\s*\(", doc_diff, re.MULTILINE))
     )
-    # All apis should be loaded, this seems a explicitly check.
+    # All apis should be loaded, this seems an explicitly check.
     unload_apis: list[str] = []
 
     if not apis:

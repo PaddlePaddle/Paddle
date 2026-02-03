@@ -17,6 +17,7 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/SymIntArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
@@ -246,6 +247,38 @@ class Tensor : public TensorBase {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
+  // aten::flatten.using_ints(Tensor(a) self, int start_dim=0, int end_dim=-1)
+  // -> Tensor(a)
+  inline at::Tensor flatten(int64_t start_dim, int64_t end_dim) const {
+    return Tensor(paddle::experimental::flatten(
+        tensor_, static_cast<int>(start_dim), static_cast<int>(end_dim)));
+  }
+
+  // aten::unflatten.int(Tensor(a) self, int dim, SymInt[] sizes) -> Tensor(a)
+  inline at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const {
+    // Compute the new shape by replacing the dimension at 'dim' with 'sizes'
+    int64_t ndim = tensor_.dims().size();
+    int64_t actual_dim = dim < 0 ? dim + ndim : dim;
+    std::vector<int64_t> new_shape;
+    for (int64_t i = 0; i < ndim; ++i) {
+      if (i == actual_dim) {
+        for (auto s : sizes) {
+          new_shape.push_back(s);
+        }
+      } else {
+        new_shape.push_back(tensor_.dims()[i]);
+      }
+    }
+    return Tensor(paddle::experimental::reshape(tensor_, new_shape));
+  }
+
+  // aten::unflatten.int(Tensor(a) self, int dim, SymInt[] sizes) -> Tensor(a)
+  inline at::Tensor unflatten_symint(int64_t dim,
+                                     c10::SymIntArrayRef sizes) const {
+    // SymIntArrayRef is the same as IntArrayRef in this implementation
+    return unflatten(dim, sizes);
+  }
+
   Tensor& fill_(const at::Scalar& value) const {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
     return const_cast<at::Tensor&>(*this);
@@ -258,6 +291,61 @@ class Tensor : public TensorBase {
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
+
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy(int64_t dim,
+                                int64_t start,
+                                int64_t length) const {
+    // narrow_copy returns a copy of the narrowed tensor
+    return narrow(dim, start, length).clone();
+  }
+
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy_symint(int64_t dim,
+                                       c10::SymInt start,
+                                       c10::SymInt length) const {
+    return narrow_copy(dim, start, length);
+  }
+
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const {
+    // Use slice to implement narrow: narrow(dim, start, length) is equivalent
+    // to slice(dim, start, start + length)
+    return Tensor(paddle::experimental::slice(
+        tensor_, {dim}, {start}, {start + length}, {1}, {}));
+  }
+
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  c10::SymInt start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
+
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow(int64_t dim,
+                           const at::Tensor& start,
+                           int64_t length) const {
+    // Extract scalar value from start tensor
+    PD_CHECK(start.numel() == 1,
+             "start must be a 0-dim tensor or 1-element tensor");
+    int64_t start_val =
+        static_cast<int64_t>(start._PD_GetInner().template data<int64_t>()[0]);
+    return narrow(dim, start_val, length);
+  }
+
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  const at::Tensor& start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
 
   at::Tensor reshape(at::IntArrayRef shape) const {
     return Tensor(
