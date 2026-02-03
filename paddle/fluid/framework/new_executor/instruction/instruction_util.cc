@@ -94,7 +94,7 @@ std::vector<int> GetValueIds(pir::Value value,
 
 phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                                        phi::DeviceContext* origin_dev_ctx,
-                                       const phi::Place& place,
+                                       const Place& place,
                                        const std::string& execution_stream,
                                        const int stream_priority) {
   auto& op_attributes = op->attributes();
@@ -284,7 +284,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
   }
   return origin_dev_ctx;
 }
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place) {
   if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -542,13 +542,13 @@ void InsertInplacedExternalInputsToOuts(
   }
 }
 
-bool GetCondData(const phi::DenseTensor& cond) {
+bool GetCondData(const DenseTensor& cond) {
   if (phi::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
   // when phi::is_gpu_place(cond.place()) or
   // phi::is_xpu_place(cond.place()) is true
-  std::unique_ptr<DenseTensor> cpu_cond{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_cond{new DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::framework::TensorCopySync(cond, CPUPlace(), cpu_cond.get());

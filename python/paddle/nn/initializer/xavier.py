@@ -316,17 +316,19 @@ class XavierNormal(XavierInitializer):
         A parameter initialized by Xavier weight, using a normal distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(1)
             >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
             >>> weight_attr = paddle.framework.ParamAttr(
             ...     name="linear_weight",
-            ...     initializer=paddle.nn.initializer.XavierNormal())
+            ...     initializer=paddle.nn.initializer.XavierNormal(),
+            ... )
             >>> bias_attr = paddle.framework.ParamAttr(
             ...     name="linear_bias",
-            ...     initializer=paddle.nn.initializer.XavierNormal())
+            ...     initializer=paddle.nn.initializer.XavierNormal(),
+            ... )
             >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
             >>> print(linear.weight)
             Parameter containing:
@@ -386,17 +388,19 @@ class XavierUniform(XavierInitializer):
         A parameter initialized by Xavier weight, using a uniform distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(1)
             >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
             >>> weight_attr = paddle.framework.ParamAttr(
             ...     name="linear_weight",
-            ...     initializer=paddle.nn.initializer.XavierUniform())
+            ...     initializer=paddle.nn.initializer.XavierUniform(),
+            ... )
             >>> bias_attr = paddle.framework.ParamAttr(
             ...     name="linear_bias",
-            ...     initializer=paddle.nn.initializer.XavierUniform())
+            ...     initializer=paddle.nn.initializer.XavierUniform(),
+            ... )
             >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
             >>> print(linear.weight)
             Parameter containing:

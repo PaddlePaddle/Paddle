@@ -42,14 +42,14 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   int64_t w = size_attr[3];
 
   if (input.numel() == 0) {
-    output->Resize(common::make_ddim({n, h, w, 2}));
+    output->Resize(make_ddim({n, h, w, 2}));
     Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
   // Directly create the base mesh
   DenseTensor base_grid;
-  base_grid.Resize(common::make_ddim({n, h, w, 3}));
+  base_grid.Resize(make_ddim({n, h, w, 3}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
   funcs::CreateBaseGridKernel_4D<T, Context>(
@@ -58,22 +58,22 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   // Apply affine transformation
   DenseTensor base_grid_new;
   base_grid_new.ShareDataWith(base_grid);
-  base_grid_new.Resize(common::make_ddim({n, h * w, 3}));
+  base_grid_new.Resize(make_ddim({n, h * w, 3}));
 
   // Transpose theta: [N, 2, 3] -> [N, 3, 2]
   DenseTensor theta_transposed;
-  theta_transposed.Resize(common::make_ddim({n, 3, 2}));
+  theta_transposed.Resize(make_ddim({n, 3, 2}));
   phi::TransposeKernel<T, Context>(
       dev_ctx, input, {0, 2, 1}, &theta_transposed);
 
   DenseTensor grid_flat;
-  grid_flat.Resize(common::make_ddim({n, h * w, 2}));
+  grid_flat.Resize(make_ddim({n, h * w, 2}));
   phi::BmmKernel<T, Context>(
       dev_ctx, base_grid_new, theta_transposed, &grid_flat);
 
   // Reshaping Output
   output->ShareDataWith(grid_flat);
-  output->Resize(common::make_ddim({n, h, w, 2}));
+  output->Resize(make_ddim({n, h, w, 2}));
 }
 
 template <typename T, typename Context>
@@ -90,14 +90,14 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   int64_t w = size_attr[4];  // width
 
   if (input.numel() == 0) {
-    output->Resize(common::make_ddim({n, d, h, w, 3}));
+    output->Resize(make_ddim({n, d, h, w, 3}));
     Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
   // Create a basic grid
   DenseTensor base_grid;
-  base_grid.Resize(common::make_ddim({n, d, h, w, 4}));
+  base_grid.Resize(make_ddim({n, d, h, w, 4}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
   funcs::CreateBaseGridKernel_5D<T, Context>(
@@ -106,23 +106,23 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   // Apply affine transformation
   DenseTensor base_grid_new;
   base_grid_new.ShareDataWith(base_grid);
-  base_grid_new.Resize(common::make_ddim({n, d * h * w, 4}));
+  base_grid_new.Resize(make_ddim({n, d * h * w, 4}));
 
   // Transpose theta: [N, 3, 4] -> [N, 4, 3]
   DenseTensor theta_transposed;
-  theta_transposed.Resize(common::make_ddim({n, 4, 3}));
+  theta_transposed.Resize(make_ddim({n, 4, 3}));
   phi::TransposeKernel<T, Context>(
       dev_ctx, input, {0, 2, 1}, &theta_transposed);
 
   // Perform batch matrix multiplication
   DenseTensor grid_flat;
-  grid_flat.Resize(common::make_ddim({n, d * h * w, 3}));
+  grid_flat.Resize(make_ddim({n, d * h * w, 3}));
   phi::BmmKernel<T, Context>(
       dev_ctx, base_grid_new, theta_transposed, &grid_flat);
 
   // Reshaping Output
   output->ShareDataWith(grid_flat);
-  output->Resize(common::make_ddim({n, d, h, w, 3}));
+  output->Resize(make_ddim({n, d, h, w, 3}));
 }
 
 template <typename T, typename Context>

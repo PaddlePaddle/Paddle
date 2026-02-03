@@ -1020,7 +1020,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     AccT* mean,
     AccT* variance,
     const DataLayout data_layout) {
-  const auto input_ddim = common::make_ddim(input_shape);
+  const auto input_ddim = make_ddim(input_shape);
   const int64_t C =
       (data_layout == DataLayout::NCHW ? input_ddim[1]
                                        : input_ddim[input_ddim.size() - 1]);

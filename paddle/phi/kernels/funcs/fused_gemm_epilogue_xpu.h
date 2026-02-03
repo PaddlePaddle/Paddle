@@ -87,7 +87,7 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
       common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
   phi::XpuFcInfo info_forward;
   phi::GetFCInfo(
-      x_mat_dims, common::make_ddim({K, N}), trans_x, trans_y, &info_forward);
+      x_mat_dims, make_ddim({K, N}), trans_x, trans_y, &info_forward);
 
   // 2. fc_grad
   const XPUType* a_1 = reinterpret_cast<const XPUType*>(NULL);
