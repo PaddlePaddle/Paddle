@@ -1038,9 +1038,10 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  thrust::complex<float> c_alpha =
-      thrust::complex<float>(alpha.real, alpha.imag);
-  thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
+  // Use rocblas complex types instead of thrust::complex to avoid including
+  // thrust/complex.h which pulls in rocprim (incompatible with non-hipcc compilation)
+  rocblas_float_complex c_alpha = {alpha.real, alpha.imag};
+  rocblas_float_complex c_beta = {beta.real, beta.imag};
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   CUBlas<phi::complex64>::GEMM_EX(&cuda_ctx,
@@ -1099,10 +1100,10 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  thrust::complex<double> c_alpha =
-      thrust::complex<double>(alpha.real, alpha.imag);
-  thrust::complex<double> c_beta =
-      thrust::complex<double>(beta.real, beta.imag);
+  // Use rocblas complex types instead of thrust::complex to avoid including
+  // thrust/complex.h which pulls in rocprim (incompatible with non-hipcc compilation)
+  rocblas_double_complex c_alpha = {alpha.real, alpha.imag};
+  rocblas_double_complex c_beta = {beta.real, beta.imag};
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   CUBlas<phi::complex128>::GEMM_EX(&cuda_ctx,

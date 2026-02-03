@@ -47,25 +47,7 @@ inline static size_t round_up(size_t n, size_t q) {
 }
 
 #ifdef __HIPCC__
-namespace rocprim {
-namespace detail {
-template <>
-struct radix_key_codec_base<phi::float16>
-    : radix_key_codec_integral<phi::float16, uint16_t> {};
-
-template <>
-struct radix_key_codec_base<phi::bfloat16>
-    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
-
-#if HIP_VERSION >= 50400000
-template <>
-struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
-
-template <>
-struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
-#endif
-}  // namespace detail
-}  // namespace rocprim
+#include "paddle/phi/kernels/funcs/rocprim_traits.h"
 namespace cub = hipcub;
 #else
 // set cub base traits in order to handle float16
