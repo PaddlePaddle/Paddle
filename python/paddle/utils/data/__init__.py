@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import dataloader as dataloader
 from .dataloader import (
     default_collate,
     get_worker_info,
