@@ -28,7 +28,7 @@ namespace cg = cooperative_groups;
 
 namespace phi {
 
-#define CUMSUM_BLOCK_SIZE 40
+#define CUMSUM_BLOCK_SIZE 32
 #define CUMSUM_INVALID_TAG -1
 #ifndef MAX_NUM_EXPERTS
 #define MAX_NUM_EXPERTS 64
@@ -93,6 +93,12 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
   __syncthreads();
 
   // ---------------Expertwise deterministic job scheduling ---------------
+  // Input: routemap_topk, probs_topk, expert_base_offset
+  // Output: shared_expert_infos
+  const int warp_id = threadIdx.x / 32;
+  const int lane_id = threadIdx.x % 32;
+  constexpr int warp_num = 16;
+  /* old implementation
   if (threadIdx.x < num_experts) {
     const int expert_id = threadIdx.x;
     local_expert_offsets = expert_base_offset[expert_id];
@@ -137,6 +143,64 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
               ? -1
               : shared_expert_infos[i][expert_id].expert_row_idx +
                     cumsum_offset;
+    }
+  }
+  */
+
+  // new implementation
+  // initialize shared mask
+  __shared__ uint32_t block_expert_mask[max_num_experts];
+  for (int i = threadIdx.x; i < num_experts; i += blockDim.x) {
+    block_expert_mask[i] = 0;
+  }
+  __syncthreads();
+
+  // we using CUMSUM_BLOCK_SIZE = 32, and each warp will handle one column of
+  // routemap.
+  const int global_row = block_row_base + lane_id;
+  const int token_id = lane_id;
+  // Multi warp job scheduling, each warp handle one column of routemap
+  for (int col = warp_id; col < topk; col += warp_num) {
+#pragma unroll
+    for (int expert = 0; expert < num_experts; expert++) {
+      const bool expert_match =
+          (routemap_topk[global_row * topk + col] == expert);
+      uint32_t col_expert_valid_mask = __ballot_sync(0xFFFFFFFF, expert_match);
+      // Using shared mem atomic to aggregate ballot
+      atomicOr(&block_expert_mask[expert], col_expert_valid_mask);
+      shared_expert_infos[token_id][expert].expert_probs =
+          expert_match ? probs_topk[global_row * topk + col] : 0.0f;
+    }
+  }
+  __syncthreads();
+
+  for (int info_idx = threadIdx.x; info_idx < CUMSUM_BLOCK_SIZE * num_experts;
+       info_idx += blockDim.x) {
+    // each warp handle one expert
+    const int expert_id = info_idx / 32;  // n * warp_id
+    const int token_id = info_idx % 32;
+    // warp leader handles global communication
+    const uint32_t related_mask = block_expert_mask[expert_id];
+    int expert_local_cumsum = __popc(related_mask);
+    if (lane_id == 0) {
+      const int anticipate_signal_idx = blockIdx.x * num_experts + expert_id;
+      const int push_signal_idx = (blockIdx.x + 1) * num_experts + expert_id;
+      if (blockIdx.x != 0) {
+        // signal receive from previous block, using light-weight
+        // atomicAdd(check) this will not change any data, only do fetch in
+        // low-cost
+        while ((cumsum_offset = atomicAdd(
+                    &global_expertwise_block_cumsum[anticipate_signal_idx],
+                    0)) == CUMSUM_INVALID_TAG) {
+        }
+      }  // not first block(not pure sender)
+      const int proposed_offset = cumsum_offset + expert_local_cumsum;
+      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+    }  // warp leader
+    cumsum_offset = __shfl_sync(0xFFFFFFFF, cumsum_offset, 0);
+    if (related_mask & (1 << token_id)) {
+      shared_expert_infos[token_id][expert_id].expert_row_idx =
+          cumsum_offset + __popc(related_mask << (31 - token_id));
     }
   }
 
