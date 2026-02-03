@@ -21,6 +21,7 @@
 #include "paddle/fluid/pybind/args_mapper.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/data_type.h"
@@ -366,6 +367,148 @@ void GeluMapper(PyObject* args,
 
   // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
+void FillDiagonalMapper(PyObject* args,
+                        PyObject* kwargs,
+                        Tensor** x_ptr_ptr,
+                        float* value,
+                        int* offset,
+                        bool* wrap) {
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 4;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  auto& x = GetTensorFromArgsOrKWArgs("fill_diagonal_",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"x"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
+
+  PyObject* value_obj = GetItemFromArgsOrKWArgs(args,
+                                                1,
+                                                kwargs,
+                                                {"value", "fill_value"},
+                                                nargs,
+                                                &remaining_kwargs,
+                                                false);
+  *value = CastPyArg2Float(value_obj, "fill_diagonal_", 1);
+
+  PyObject* wrap_obj = nullptr;
+  bool wrap_provided = false;
+  if (nargs > 3) {
+    wrap_obj = PyTuple_GetItem(args, 3);
+    wrap_provided = true;
+  } else if (kwargs) {
+    wrap_obj = PyDict_GetItemString(kwargs, "wrap");
+    if (wrap_obj) {
+      wrap_provided = true;
+      remaining_kwargs--;
+    }
+  }
+
+  PyObject* offset_obj = nullptr;
+  if (nargs > 2) {
+    offset_obj = PyTuple_GetItem(args, 2);
+  } else if (kwargs) {
+    offset_obj = PyDict_GetItemString(kwargs, "offset");
+    if (offset_obj) {
+      remaining_kwargs--;
+    }
+  }
+
+  if (offset_obj && CheckBool(offset_obj) && !wrap_provided) {
+    wrap_obj = offset_obj;
+    wrap_provided = true;
+    offset_obj = nullptr;
+  }
+
+  if (offset_obj) {
+    *offset = CastPyArg2Int(offset_obj, "fill_diagonal_", 2);
+  } else {
+    *offset = 0;
+  }
+  *wrap = CastPyArg2Boolean(wrap_obj, "fill_diagonal_", 3, false);
+
+  if (x.dims().size() != 2) {
+    *wrap = true;
+  }
+
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs, true);
+}
+
+void FillDiagonalMapper(PyObject* args,
+                        PyObject* kwargs,
+                        pir::Value* x,
+                        float* value,
+                        int* offset,
+                        bool* wrap) {
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 4;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  PyObject* x_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"x"}, nargs, &remaining_kwargs);
+  *x = CastPyArg2Value(x_obj, "fill_diagonal_", 0, false);
+
+  PyObject* value_obj = GetItemFromArgsOrKWArgs(args,
+                                                1,
+                                                kwargs,
+                                                {"value", "fill_value"},
+                                                nargs,
+                                                &remaining_kwargs,
+                                                false);
+  *value = CastPyArg2Float(value_obj, "fill_diagonal_", 1);
+
+  PyObject* wrap_obj = nullptr;
+  bool wrap_provided = false;
+  if (nargs > 3) {
+    wrap_obj = PyTuple_GetItem(args, 3);
+    wrap_provided = true;
+  } else if (kwargs) {
+    wrap_obj = PyDict_GetItemString(kwargs, "wrap");
+    if (wrap_obj) {
+      wrap_provided = true;
+      remaining_kwargs--;
+    }
+  }
+
+  PyObject* offset_obj = nullptr;
+  if (nargs > 2) {
+    offset_obj = PyTuple_GetItem(args, 2);
+  } else if (kwargs) {
+    offset_obj = PyDict_GetItemString(kwargs, "offset");
+    if (offset_obj) {
+      remaining_kwargs--;
+    }
+  }
+
+  if (offset_obj && CheckBool(offset_obj) && !wrap_provided) {
+    wrap_obj = offset_obj;
+    wrap_provided = true;
+    offset_obj = nullptr;
+  }
+
+  if (offset_obj) {
+    *offset = CastPyArg2Int(offset_obj, "fill_diagonal_", 2);
+  } else {
+    *offset = 0;
+  }
+  *wrap = CastPyArg2Boolean(wrap_obj, "fill_diagonal_", 3, false);
+
+  auto x_shape = pir::GetShapeFromValue(*x);
+  if (x_shape.size() != 2) {
+    *wrap = true;
+  }
+
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs, true);
 }
 
 }  // namespace pybind

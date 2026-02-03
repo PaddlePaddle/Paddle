@@ -24,7 +24,13 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
+from paddle._C_ops import (  # noqa: F401
+    fill_diagonal_,
+    index_put,
+    index_put_,
+    roll,
+    squeeze_,
+)
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -1192,52 +1198,6 @@ def zero_(x: Tensor) -> Tensor:
 
     """
     return _C_ops.fill_(x, 0.0)
-
-
-@dygraph_only
-@param_one_alias(["value", "fill_value"])
-def fill_diagonal_(
-    x: Tensor,
-    value: float,
-    offset: int = 0,
-    wrap: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Note:
-        This API is ONLY available in Dygraph mode.
-
-    This function fill the value into the x Tensor's diagonal inplace.
-
-    Args:
-        x(Tensor): ``x`` is the original Tensor
-        value(int|float): ``value`` is the value to filled in x.
-            alias: ``fill_value``.
-        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
-        wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
-        name(str|None,optional): Name for the operation (optional, default is None)
-
-    Returns:
-        Tensor, Tensor with diagonal filled with value.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> x = paddle.ones((4, 3)) * 2
-            >>> x.fill_diagonal_(1.0)
-            >>> print(x.tolist())
-            [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
-
-            >>> # Use 'fill_value' alias (PyTorch compatible)
-            >>> x.fill_diagonal_(fill_value=0.0)  # type: ignore
-            >>> print(x.tolist())
-            [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
-    """
-    if in_dynamic_mode():
-        if len(x.shape) == 2:
-            return _C_ops.fill_diagonal_(x, value, offset, wrap)
-        return _C_ops.fill_diagonal_(x, value, offset, True)
 
 
 def _fill_diagonal_tensor_impl(
@@ -3487,27 +3447,6 @@ def squeeze(
         )
 
         return out
-
-
-@inplace_apis_in_dygraph_only
-def squeeze_(
-    x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
-) -> Tensor:
-    """
-    Inplace version of ``squeeze`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_squeeze`.
-    """
-    if axis is None:
-        axis = []
-    elif isinstance(axis, int):
-        axis = [axis]
-    elif isinstance(axis, tuple):
-        axis = list(axis)
-
-    input = x
-    axes = axis
-    if in_dynamic_mode():
-        return _C_ops.squeeze_(input, axes)
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])

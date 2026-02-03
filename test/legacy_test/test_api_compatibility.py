@@ -1765,5 +1765,78 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestSqueezeInplaceCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [2, 1, 3]
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_inplace_Compatibility(self):
+        paddle.disable_static()
+        ref_out = np.squeeze(self.np_x, axis=1)
+
+        # Test 1: Paddle positional arguments
+        x1 = paddle.to_tensor(self.np_x)
+        out1 = paddle.squeeze_(x1, 1)
+
+        # Test 2: Paddle keyword arguments
+        x2 = paddle.to_tensor(self.np_x)
+        out2 = paddle.squeeze_(x=x2, axis=1)
+
+        # Test 3: PyTorch keyword arguments (alias)
+        x3 = paddle.to_tensor(self.np_x)
+        out3 = paddle.squeeze_(input=x3, dim=1)
+
+        # Test 4: Mixed arguments
+        x4 = paddle.to_tensor(self.np_x)
+        out4 = paddle.squeeze_(x4, axis=1)
+
+        # Test 5: Tensor method positional arguments
+        x5 = paddle.to_tensor(self.np_x)
+        out5 = x5.squeeze_(1)
+
+        # Test 6: Tensor method keyword arguments
+        x6 = paddle.to_tensor(self.np_x)
+        out6 = x6.squeeze_(axis=1)
+
+        # Test 7: Tensor method keyword arguments (alias)
+        x7 = paddle.to_tensor(self.np_x)
+        out7 = x7.squeeze_(dim=1)
+
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape, dtype=self.dtype
+            )
+            out1 = paddle.squeeze_(x, 1)
+            out2 = paddle.squeeze_(input=x, dim=1)
+            out3 = x.squeeze_(axis=1)
+            out4 = x.squeeze_(dim=1)
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.squeeze(self.np_x, axis=1)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+    def test_error(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        with self.assertRaises(TypeError):
+            paddle.squeeze_(x, axis=1.2)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

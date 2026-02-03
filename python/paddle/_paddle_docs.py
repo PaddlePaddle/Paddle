@@ -2039,6 +2039,88 @@ def expand_as(
 """,
 )
 
+add_doc_and_signature(
+    "fill_diagonal_",
+    r"""
+    Note:
+        This API is ONLY available in Dygraph mode.
+
+    This function fills the value into the input Tensor's diagonal inplace.
+
+    Args:
+        x (Tensor): The input Tensor.
+        value (int|float): The value to fill in x's diagonal. Alias: ``fill_value``.
+        offset (int, optional): The offset to the main diagonal. Default: 0 (main diagonal).
+        wrap (bool, optional): The diagonal 'wrapped' after N columns for tall matrices. Default: False.
+        name (str|None, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor: The input Tensor with diagonal filled with ``value``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.ones((4, 3)) * 2
+            >>> x.fill_diagonal_(1.0)
+            >>> print(x.tolist())
+            [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+            >>> # Use 'fill_value' alias (PyTorch compatible)
+            >>> x.fill_diagonal_(fill_value=0.0)  # type: ignore
+            >>> print(x.tolist())
+            [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
+""",
+    """
+def fill_diagonal_(
+    x: Tensor,
+    value: float,
+    offset: int = 0,
+    wrap: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "squeeze_",
+    r"""
+    Note:
+        This API is ONLY available in Dygraph mode.
+
+    Inplace version of ``squeeze``. It removes the dimensions of size 1 from the input tensor.
+
+    Args:
+        x (Tensor): The input Tensor. Alias: ``input``.
+        axis (int|list|tuple|None, optional): The dimensions to be squeezed. If None, all dimensions of size 1 will be removed. Alias: ``dim``.
+        name (str|None, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor: The input Tensor after squeeze.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.rand([1, 3, 1, 5])
+            >>> x.squeeze_(axis=0)
+            >>> print(x.shape)
+            [3, 1, 5]
+
+            >>> x = paddle.rand([1, 3, 1, 5])
+            >>> x.squeeze_(dim=2)  # type: ignore
+            >>> print(x.shape)
+            [1, 3, 5]
+""",
+    """
+def squeeze_(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
 # shenwei
 add_doc_and_signature(
     "grid_sample",

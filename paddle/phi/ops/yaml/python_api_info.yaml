@@ -246,6 +246,11 @@
   pre_process :
     func : ExpandAsPreProcess(x, y, target_shape)
 
+- op : fill_diagonal
+  name : [paddle.fill_diagonal_, paddle.Tensor.fill_diagonal_]
+  args_mapper :
+    func : FillDiagonalMapper
+
 - op : floor
   name : [paddle.floor, paddle.Tensor.floor]
   args_alias :
@@ -472,6 +477,11 @@
 
 - op : square
   name : [paddle.square, paddle.Tensor.square]
+  args_alias :
+    use_default_mapping : True
+
+- op : squeeze_
+  name : [paddle.squeeze_, paddle.Tensor.squeeze_]
   args_alias :
     use_default_mapping : True
 

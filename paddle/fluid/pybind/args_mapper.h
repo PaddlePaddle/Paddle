@@ -59,6 +59,19 @@ void ArgSumMapper(PyObject* args,
                   pir::Value* axis,
                   phi::DataType* dtype,
                   bool* keepdim);
+
+void FillDiagonalMapper(PyObject* args,
+                        PyObject* kwargs,
+                        Tensor** x_ptr_ptr,
+                        float* value,
+                        int* offset,
+                        bool* wrap);
+void FillDiagonalMapper(PyObject* args,
+                        PyObject* kwargs,
+                        pir::Value* x,
+                        float* value,
+                        int* offset,
+                        bool* wrap);
 }  // namespace pybind
 
 }  // namespace paddle
