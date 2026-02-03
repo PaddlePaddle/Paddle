@@ -2413,6 +2413,19 @@ def fractional_max_pool3d(
 
 @overload
 def lp_pool1d(
+    x: Tensor,
+    norm_type: float,
+    kernel_size: Size1,
+    stride: Size1 | None = None,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
+    ceil_mode: bool = False,
+    data_format: DataLayout1D = "NCL",
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def lp_pool1d(
     input: Tensor,
     norm_type: float,
     kernel_size: Size1,
@@ -2552,6 +2565,19 @@ def lp_pool1d(
             },
         )
         return squeeze(pool_out, [axis])
+
+
+@overload
+def lp_pool2d(
+    x: Tensor,
+    norm_type: float,
+    kernel_size: Size2,
+    stride: Size2 | None = None,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
+    ceil_mode: bool = False,
+    data_format: DataLayout2D = "NCHW",
+    name: str | None = None,
+) -> Tensor: ...
 
 
 @overload

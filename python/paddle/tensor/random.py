@@ -972,6 +972,30 @@ def standard_normal(
 
 @overload
 def randn(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def randn(
+    *shape: ShapeLike,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def randn(
     size: ShapeLike,
     *,
     out: paddle.Tensor | None = None,
@@ -2272,6 +2296,30 @@ def randperm(
         )
         out.stop_gradient = True
         return out
+
+
+@overload
+def rand(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def rand(
+    *shape: ShapeLike,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
 
 
 @overload

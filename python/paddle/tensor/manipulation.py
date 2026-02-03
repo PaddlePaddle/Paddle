@@ -2982,6 +2982,31 @@ def split(
 
 @overload
 def tensor_split(
+    x: Tensor,
+    num_or_indices: int | Sequence[int],
+    axis: int | Tensor = 0,
+    name: str | None = None,
+) -> list[Tensor]: ...
+
+
+@overload
+def tensor_split(
+    x: Tensor,
+    indices: int | Sequence[int],
+    axis: int | Tensor = 0,
+) -> list[Tensor]: ...
+
+
+@overload
+def tensor_split(
+    x: Tensor,
+    sections: int | Sequence[int],
+    axis: int | Tensor = 0,
+) -> list[Tensor]: ...
+
+
+@overload
+def tensor_split(
     input: Tensor,
     indices_or_sections: int | Sequence[int],
     dim: int | Tensor = 0,
@@ -5212,6 +5237,21 @@ def broadcast_to(
 
 @overload
 def expand(
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def expand(
+    x: Tensor,
+    *shape: ShapeLike,
+) -> Tensor: ...
+
+
+@overload
+def expand(
     input: Tensor,
     size: ShapeLike,
 ) -> Tensor: ...
@@ -5361,6 +5401,14 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs
         )
         return out
+
+
+@overload
+def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
+
+
+@overload
+def reshape(x: Tensor, *shape: ShapeLike) -> Tensor: ...
 
 
 @overload
@@ -7646,6 +7694,19 @@ def scatter_add_(
 
 @overload
 def index_add(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: Number = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def index_add(
     input: Tensor,
     dim: int,
     index: Tensor,
@@ -7743,7 +7804,17 @@ def index_add(
 
 
 @overload
-@inplace_apis_in_dygraph_only
+def index_add_(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: int = 1,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
 def index_add_(
     input: Tensor,
     dim: int,
@@ -7918,12 +7989,32 @@ def view(
 ) -> Tensor: ...
 
 
-@dygraph_only
+@overload
+def view(
+    x: Tensor,
+    shape_or_dtype: Sequence[int] | DTypeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    *shape_or_dtype: Sequence[int],
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    dtype: DTypeLike,
+) -> Tensor: ...
+
+
 @overload
 def view(
     x: Tensor,
     size: Sequence[int],
-    name: str | None = None,
 ) -> Tensor: ...
 
 
