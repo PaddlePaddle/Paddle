@@ -1,0 +1,171 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <ATen/core/Tensor.h>
+#include <c10/core/Scalar.h>
+#include <c10/util/ArrayRef.h>
+#include <optional>
+#include <vector>
+
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/int_array.h"
+
+namespace at {
+
+// Tensor member function implementations
+
+// std with single dimension
+inline Tensor Tensor::std(int dim) const {
+  return std(at::IntArrayRef{dim}, true, false);
+}
+
+// std with unbiased flag (compute over all dimensions)
+inline Tensor Tensor::std(bool unbiased) const {
+  std::vector<int64_t> empty_dims;
+  double correction = unbiased ? 1.0 : 0.0;
+  return std_impl(empty_dims, correction, false);
+}
+
+// std with dimensions, unbiased flag, and keepdim
+inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
+                          bool unbiased,
+                          bool keepdim) const {
+  // Convert unbiased to correction: unbiased=True means correction=1
+  double correction = unbiased ? 1.0 : 0.0;
+  std::vector<int64_t> dims_vec;
+  if (dim.has_value() && dim.value().size() > 0) {
+    dims_vec.assign(dim.value().begin(), dim.value().end());
+  }
+  return std_impl(dims_vec, correction, keepdim);
+}
+
+// std with dimensions, correction value, and keepdim
+inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
+                          const ::std::optional<at::Scalar>& correction,
+                          bool keepdim) const {
+  // Default correction is 1.0 (Bessel's correction)
+  double correction_value = 1.0;
+  if (correction.has_value()) {
+    // Convert at::Scalar to double
+    // at::Scalar is mapped to paddle::experimental::Scalar in compatibility
+    // layer
+    const at::Scalar& scalar = correction.value();
+    correction_value = scalar.to<double>();
+  }
+  std::vector<int64_t> dims_vec;
+  if (dim.has_value() && dim.value().size() > 0) {
+    dims_vec.assign(dim.value().begin(), dim.value().end());
+  }
+  return std_impl(dims_vec, correction_value, keepdim);
+}
+
+// std with DimnameList (not supported, throws error)
+inline Tensor Tensor::std(at::DimnameList dim,
+                          bool unbiased,
+                          bool keepdim) const {
+  PD_THROW(
+      "std: Paddle does not support named tensors (DimnameList). "
+      "Please use dimension indices instead.");
+}
+
+// std with DimnameList and correction (not supported, throws error)
+inline Tensor Tensor::std(at::DimnameList dim,
+                          const ::std::optional<at::Scalar>& correction,
+                          bool keepdim) const {
+  PD_THROW(
+      "std: Paddle does not support named tensors (DimnameList). "
+      "Please use dimension indices instead.");
+}
+
+// Internal implementation for std (standard deviation = sqrt(variance))
+inline Tensor Tensor::std_impl(const std::vector<int64_t>& dims_vec,
+                               double correction_value,
+                               bool keepdim) const {
+  // Convert dims_vec to IntArray
+  phi::IntArray dims_int_array(dims_vec);
+
+  // Compute mean along specified dimensions (keepdim=true for intermediate)
+  paddle::Tensor mean_tensor;
+  if (dims_vec.empty()) {
+    // Compute mean over all elements
+    mean_tensor = paddle::experimental::mean(
+        tensor_, phi::IntArray(std::vector<int64_t>{}), true);
+  } else {
+    mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
+  }
+
+  // Compute (x - mean)^2
+  paddle::Tensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
+  paddle::Tensor diff_squared = paddle::experimental::multiply(diff, diff);
+
+  // Compute sum of squared differences
+  paddle::Tensor sum_squared_diff;
+  if (dims_vec.empty()) {
+    sum_squared_diff =
+        paddle::experimental::sum(diff_squared,
+                                  phi::IntArray(std::vector<int64_t>{}),
+                                  diff_squared.dtype(),
+                                  keepdim);
+  } else {
+    sum_squared_diff = paddle::experimental::sum(
+        diff_squared, dims_int_array, diff_squared.dtype(), keepdim);
+  }
+
+  // Calculate n (number of elements along reduced dimensions)
+  int64_t n = tensor_.numel();
+  if (!dims_vec.empty()) {
+    // Calculate number of elements along specified dimensions
+    n = 1;
+    for (int64_t d : dims_vec) {
+      int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
+      if (dim_idx >= 0 &&
+          dim_idx < static_cast<int64_t>(tensor_.dims().size())) {
+        n *= tensor_.dims()[dim_idx];
+      }
+    }
+  }
+
+  // Compute corrected_n = n - correction
+  double corrected_n = static_cast<double>(n) - correction_value;
+  if (corrected_n <= 0.0) {
+    corrected_n = static_cast<double>(n);
+  }
+
+  // Divide by corrected_n to get variance
+  // Convert dims to IntArray for full()
+  std::vector<int64_t> result_shape_vec;
+  for (int64_t i = 0; i < sum_squared_diff.dims().size(); ++i) {
+    result_shape_vec.push_back(sum_squared_diff.dims()[i]);
+  }
+  paddle::Tensor correction_scalar =
+      paddle::experimental::full(phi::IntArray(result_shape_vec),
+                                 phi::Scalar(corrected_n),
+                                 sum_squared_diff.dtype(),
+                                 sum_squared_diff.place());
+  paddle::Tensor variance =
+      paddle::experimental::divide(sum_squared_diff, correction_scalar);
+
+  // Compute standard deviation = sqrt(variance)
+  paddle::Tensor result = paddle::experimental::sqrt(variance);
+
+  return Tensor(result);
+}
+
+}  // namespace at
+
+namespace torch {
+// Export std functions to torch namespace if needed
+}  // namespace torch

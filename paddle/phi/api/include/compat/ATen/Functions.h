@@ -23,6 +23,7 @@
 #include <ATen/ops/full.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/reshape.h>
+#include <ATen/ops/std.h>
 #include <ATen/ops/transpose.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>
