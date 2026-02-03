@@ -65,12 +65,6 @@ DEFINE_CAST(uint32_t, UInt32)
 DEFINE_CAST(uint64_t, UInt64)
 #undef DEFINE_CAST
 
-at::Tensor Tensor::abs() const { return at::abs(*this); }
-
-at::Tensor& Tensor::abs_() const {
-  return at::abs_(const_cast<at::Tensor&>(*this));
-}
-
 at::Tensor Tensor::index(
     const c10::List<::std::optional<at::Tensor>>& indices) const {
   return at::index(*this, indices);
