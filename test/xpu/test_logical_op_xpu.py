@@ -85,6 +85,16 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
             self.high = 100
 
 
+class TestLogicalAndEmptyTensorXPU(unittest.TestCase):
+    def test_bitwise_and_empty(self):
+        paddle.disable_static()
+        x = paddle.empty([2, 3, 3, 3, 4, 0, 5, 2], dtype='bool')
+        y = paddle.empty([2, 3, 3, 3, 4, 1, 5, 2], dtype='bool')
+        out = paddle.bitwise_and(x, y)
+        self.assertEqual(list(out.shape), [2, 3, 3, 3, 4, 0, 5, 2])
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('logical_and')
 for stype in support_types:
     create_test_class(globals(), XPUTestLogicalAnd, stype)
