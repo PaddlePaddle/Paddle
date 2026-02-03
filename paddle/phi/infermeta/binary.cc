@@ -3114,6 +3114,24 @@ void MatmulInferMeta(const MetaTensor& x,
     N = dims_y[ndims_y - 1];
   }
 
+  const int64_t lhs_reduce_dim = ndims_x - 1 - trans_x;
+  const int64_t rhs_reduce_dim = ndims_y - 2 + trans_y;
+  const int64_t K_lhs = dims_x[lhs_reduce_dim];
+  const int64_t K_rhs = dims_y[rhs_reduce_dim];
+  PADDLE_ENFORCE_EQ(
+      K_lhs,
+      K_rhs,
+      common::errors::InvalidArgument(
+          "In operator matmul, the [%d] dimension of Input(X) must be equal to "
+          "the [%d] dimension of Input(Y). But receiving the [%d]"
+          "dimension of Input(X) is [%d], and the [%d] dimension of "
+          "Input(Y) is [%d].",
+          lhs_reduce_dim,
+          rhs_reduce_dim,
+          lhs_reduce_dim,
+          K_lhs,
+          rhs_reduce_dim,
+          K_rhs))
   std::vector<int64_t> new_dims;
   if (ndims_x > ndims_y) {
     new_dims.assign(dims_x.begin(), dims_x.end() - 2);
