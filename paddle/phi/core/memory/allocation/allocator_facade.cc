@@ -1030,7 +1030,8 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_cuda_managed_memory) {
       auto cuda_allocator_small =
           FLAGS_vmm_small_pool_size_in_mb
               ? std::make_shared<CUDAVirtualMemAllocator>(p)
@@ -1112,7 +1113,8 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_cuda_managed_memory) {
       auto cuda_allocator_small =
           FLAGS_vmm_small_pool_size_in_mb
               ? std::make_shared<CUDAVirtualMemAllocator>(p)

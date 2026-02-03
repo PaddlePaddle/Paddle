@@ -21,10 +21,18 @@ import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
+import paddle
 import paddle.inference as paddle_infer
 
 
 class TrtConvertIndexPut(TrtLayerAutoScanTest):
+    def setUp(self):
+        paddle.set_flags(
+            {
+                'FLAGS_use_virtual_memory_auto_growth': 0,
+            }
+        )
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
