@@ -166,7 +166,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.random_u,
             self.return_mask,
         )
-        mask = mask.astype("int32")
+        mask = mask.astype("int64")
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
         else:

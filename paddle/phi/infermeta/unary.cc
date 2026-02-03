@@ -2035,7 +2035,7 @@ void FractionalMaxPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   mask->set_dims(make_ddim(output_shape));
-  mask->set_dtype(phi::CppTypeToDataType<int>::Type());
+  mask->set_dtype(phi::CppTypeToDataType<int64_t>::Type());
 }
 
 void FrameInferMeta(const MetaTensor& x,

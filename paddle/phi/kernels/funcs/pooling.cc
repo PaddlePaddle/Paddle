@@ -1549,12 +1549,12 @@ class FractionalMaxPool2dGradFunctor<CPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool2dFunctor<CPUContext, float, int>;
-template class FractionalMaxPool2dGradFunctor<CPUContext, float, int>;
-template class FractionalMaxPool2dFunctor<CPUContext, double, int>;
-template class FractionalMaxPool2dGradFunctor<CPUContext, double, int>;
-template class FractionalMaxPool2dFunctor<CPUContext, dtype::float16, int>;
-template class FractionalMaxPool2dGradFunctor<CPUContext, dtype::float16, int>;
+template class FractionalMaxPool2dFunctor<CPUContext, float, int64_t>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, float, int64_t>;
+template class FractionalMaxPool2dFunctor<CPUContext, double, int64_t>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, double, int64_t>;
+template class FractionalMaxPool2dFunctor<CPUContext, dtype::float16, int64_t>;
+template class FractionalMaxPool2dGradFunctor<CPUContext, dtype::float16, int64_t>;
 
 /*
  * All tensors are in NCDHW format.
@@ -1741,11 +1741,11 @@ class FractionalMaxPool3dGradFunctor<CPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool3dFunctor<CPUContext, float, int>;
-template class FractionalMaxPool3dGradFunctor<CPUContext, float, int>;
-template class FractionalMaxPool3dFunctor<CPUContext, double, int>;
-template class FractionalMaxPool3dGradFunctor<CPUContext, double, int>;
-template class FractionalMaxPool3dFunctor<CPUContext, dtype::float16, int>;
-template class FractionalMaxPool3dGradFunctor<CPUContext, dtype::float16, int>;
+template class FractionalMaxPool3dFunctor<CPUContext, float, int64_t>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, float, int64_t>;
+template class FractionalMaxPool3dFunctor<CPUContext, double, int64_t>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, double, int64_t>;
+template class FractionalMaxPool3dFunctor<CPUContext, dtype::float16, int64_t>;
+template class FractionalMaxPool3dGradFunctor<CPUContext, dtype::float16, int64_t>;
 
 }  // namespace phi::funcs
