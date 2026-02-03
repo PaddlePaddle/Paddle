@@ -61,7 +61,7 @@ class TestRegisteredPhiKernels(unittest.TestCase):
         self.forward_ops = []
         self.backward_ops = []
 
-        root_path = pathlib.Path(__file__).parents[3]
+        root_path = pathlib.Path(__file__).parents[2]
 
         ops_yaml_path = [
             'paddle/phi/ops/yaml/ops.yaml',
