@@ -2930,7 +2930,7 @@ class Executor:
                 >>> filelist = []  # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
-                >>> exe.infer_from_dataset(program=paddle.static.default_main_program(), dataset=dataset)
+                >>> exe.infer_from_dataset(program=paddle.static.default_main_program(), dataset=dataset,)
         """
         return self._run_from_dataset(
             program,
@@ -3037,6 +3037,8 @@ class Executor:
 
             .. code-block:: pycon
 
+                >>> # doctest: +SKIP("This does not supported in PIR mode")
+
                 >>> import paddle
 
                 >>> paddle.enable_static()
@@ -3051,7 +3053,7 @@ class Executor:
                 >>> filelist = []  # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
-                >>> exe.train_from_dataset(program=paddle.static.default_main_program(), dataset=dataset)
+                >>> exe.train_from_dataset(program=paddle.static.default_main_program(), dataset=dataset,)
         """
         return self._run_from_dataset(
             program,
