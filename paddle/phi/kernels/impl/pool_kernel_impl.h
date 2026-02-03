@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/pool_kernel.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/primitive/functor_primitives.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 #endif
 
 namespace phi {
@@ -131,8 +130,8 @@ void PoolRawKernel(const Context& dev_ctx,
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
           auto stream = dev_ctx.stream();
-          funcs::ReduceKernel<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
-              dev_ctx, x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim);
+          funcs::ReduceGpuKernel<T, T, kps::MeanOps>(
+              dev_ctx, x, out, reduce_dim);
 #else  // for cpu
           funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
           funcs::AvgPool<T> pool_process;
