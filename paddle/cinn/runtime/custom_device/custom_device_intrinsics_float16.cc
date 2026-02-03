@@ -11,10 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef CINN_WITH_CUSTOM_DEVICE
-#error "STOP!!! custom_device_intrinsics_float16 is BEING COMPILED!"
-#endif
-
+#ifdef CINN_WITH_CUSTOM_DEVICE
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
 #include "paddle/cinn/common/float16.h"
@@ -155,3 +152,4 @@ void ForceRegisterCustomDeviceIntrinsicsFloat16() {
 }  // namespace custom_device
 }  // namespace runtime
 }  // namespace cinn
+#endif  // CINN_WITH_CUSTOM_DEVICE

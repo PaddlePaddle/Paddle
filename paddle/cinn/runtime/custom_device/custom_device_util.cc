@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#ifdef CINN_WITH_CUSTOM_DEVICE
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
 #include <vector>
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
@@ -110,3 +110,4 @@ void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
 }  // namespace custom_device
 }  // namespace runtime
 }  // namespace cinn
+#endif  // CINN_WITH_CUSTOM_DEVICE

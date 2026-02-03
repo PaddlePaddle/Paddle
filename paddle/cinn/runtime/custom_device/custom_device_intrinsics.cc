@@ -11,11 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef CINN_WITH_CUSTOM_DEVICE
-#error \
-    "STOP!!! custom_device_intrinsics is BEING COMPILED! 停下！我正在被编译！"
-#endif
-
+#ifdef CINN_WITH_CUSTOM_DEVICE
 // 1. 头文件
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
@@ -492,3 +488,4 @@ void ForceRegisterCinnCustomDeviceIntrinsics() {
 }  // namespace custom_device
 }  // namespace runtime
 }  // namespace cinn
+#endif  // CINN_WITH_CUSTOM_DEVICE
