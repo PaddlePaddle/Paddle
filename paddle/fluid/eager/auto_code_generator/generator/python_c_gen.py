@@ -378,6 +378,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         self.is_forward_only = True
         self.need_parse_python_api_args = False
+        self.need_parse_inplace_python_api_args = False
 
         # Generated Results
         self.python_c_function_str = ""
@@ -390,7 +391,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             False if 'backward' in forward_api_contents.keys() else True
         )
 
-    def GeneratePythonCFunction(self, no_predefined_out_tensor=False):
+    def GeneratePythonCFunction(
+        self, inplace=False, no_predefined_out_tensor=False
+    ):
         namespace = self.namespace
         forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
@@ -400,13 +403,20 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
 
-        need_parse_python_api_args = self.need_parse_python_api_args
-        args_alias_map = self.args_alias_map
+        if inplace:
+            need_parse_python_api_args = self.need_parse_inplace_python_api_args
+            args_alias_map = self.inplace_args_alias_map
+            dygraph_pre_process = self.inplace_dygraph_pre_process
+            args_mapper_func = self.inplace_args_mapper_func_name
+        else:
+            need_parse_python_api_args = self.need_parse_python_api_args
+            args_alias_map = self.args_alias_map
+            dygraph_pre_process = self.dygraph_pre_process
+            args_mapper_func = self.args_mapper_func_name
+
         max_args = len(orig_forward_attrs_list) + len(
             forward_inputs_position_map
         )
-        dygraph_pre_process = self.dygraph_pre_process
-        args_mapper_func = self.args_mapper_func_name
         inplace_args_pos_map = {}
         inplace_returns_pos_map = {}
         get_params_nums_and_check_str = "   // NO NEED"
@@ -436,6 +446,16 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
                     )
             return keywords
+
+        if inplace:
+            inplaced_forward_api_name = GetInplacedFunctionName(
+                self.forward_api_name
+            )
+            inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+                "::",
+                namespace,
+                GetForwardFunctionName(inplaced_forward_api_name),
+            )
 
         for name, (ttype, pos) in forward_inputs_position_map.items():
             input_names = input_names + ", " + name
@@ -589,9 +609,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 )
         check_remaining_params_validity_str = "    // NO NEED"
         if need_parse_python_api_args:
-            check_remaining_params_validity_str = (
-                CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("false")
-            )
+            if not inplace:
+                check_remaining_params_validity_str = (
+                    CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("false")
+                )
+            else:
+                check_remaining_params_validity_str = (
+                    CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("true")
+                )
         pre_process_str = "    // NO NEED"
         if need_parse_python_api_args and len(dygraph_pre_process) > 0:
 
@@ -715,100 +740,34 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
-        get_predefined_out_str = ""
-        if not no_predefined_out_tensor and forward_api_name != "empty_like":
-            forward_outputs_position_list = list(
-                self.forward_outputs_position_map.values()
-            )
-            if IsUsePredefinedOut(forward_outputs_position_list):
-                length = len(forward_outputs_position_list)
-                if length == 1:
-                    get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
-                else:
-                    get_predefined_out_str = f"    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_{length}(kwargs);"
-
-                dygraph_function_call_str = (
-                    dygraph_function_call_str + ", predefined_out"
+        if not inplace:
+            get_predefined_out_str = ""
+            if (
+                not no_predefined_out_tensor
+                and forward_api_name != "empty_like"
+            ):
+                forward_outputs_position_list = list(
+                    self.forward_outputs_position_map.values()
                 )
+                if IsUsePredefinedOut(forward_outputs_position_list):
+                    length = len(forward_outputs_position_list)
+                    if length == 1:
+                        get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
+                    else:
+                        get_predefined_out_str = f"    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_{length}(kwargs);"
+
+                    dygraph_function_call_str = (
+                        dygraph_function_call_str + ", predefined_out"
+                    )
 
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
             "::", namespace, GetForwardFunctionName(forward_api_name)
         )
 
-        return_str = "    return ToPyObject(ad_func_out);"
-
-        # Generate Record Event for performance profiling
-        pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
-            "pythonc_record_event", forward_api_name, "pybind_imperative_func"
-        )
-
-        noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
-            fwd_function_name,
-            dygraph_function_call_str,
-            fwd_function_name,
-            dygraph_function_call_str,
-        )
-
-        # Generate Python-C Function Definition
-        self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-            forward_api_name,
-            pythonc_record_event_str,
-            forward_api_name,
-            get_params_nums_and_check_str,
-            get_eager_tensor_str,
-            parse_attributes_str,
-            check_remaining_params_validity_str,
-            args_mapper_str,
-            convert_to_dist_str,
-            pre_process_str,
-            get_predefined_out_str,
-            set_device_str,
-            noamp_dygraph_function_str,
-            return_str,
-        )
-        self.python_c_function_declare_str = (
-            PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=forward_api_name)
-        )
-
-        # Set prefix of forward_api_name to avoid conflicts
-        prefix = self.namespace.removeprefix("::").removesuffix("::")
-        forward_api_name_prefix = "" if prefix == "" else prefix + "_"
-
-        # Generate Python-C Function Registration
-        self.python_c_function_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
-            forward_api_name_prefix,
-            forward_api_name,
-            namespace,
-            forward_api_name,
-            forward_api_name,
-        )
-
-        if forward_inplace_map:
-            inplaced_forward_api_name = GetInplacedFunctionName(
-                self.forward_api_name
-            )
-            inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "::",
-                namespace,
-                GetForwardFunctionName(inplaced_forward_api_name),
-            )
-            dygraph_function_call_str = ",".join(dygraph_function_call_list)
-
-            inplace_noamp_dygraph_function_str = (
-                NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
-                    inplaced_fwd_function_name,
-                    dygraph_function_call_str,
-                    inplaced_fwd_function_name,
-                    dygraph_function_call_str,
-                )
-            )
-
-            if need_parse_python_api_args and args_mapper_func is None:
-                check_remaining_params_validity_str = (
-                    CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("true")
-                )
-
+        if not inplace:
+            return_str = "    return ToPyObject(ad_func_out);"
+        else:
             # map of output position and input position
             return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"
             for inplace_input, inplace_output in forward_inplace_map.items():
@@ -838,6 +797,64 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     )
             return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
 
+        # Generate Record Event for performance profiling
+        pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
+            "pythonc_record_event", forward_api_name, "pybind_imperative_func"
+        )
+
+        if not inplace:
+            noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+                fwd_function_name,
+                dygraph_function_call_str,
+                fwd_function_name,
+                dygraph_function_call_str,
+            )
+        else:
+            inplace_noamp_dygraph_function_str = (
+                NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+                    inplaced_fwd_function_name,
+                    dygraph_function_call_str,
+                    inplaced_fwd_function_name,
+                    dygraph_function_call_str,
+                )
+            )
+
+        # Set prefix of forward_api_name to avoid conflicts
+        prefix = self.namespace.removeprefix("::").removesuffix("::")
+        forward_api_name_prefix = "" if prefix == "" else prefix + "_"
+
+        if not inplace:
+            # Generate Python-C Function Definition
+            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                forward_api_name,
+                pythonc_record_event_str,
+                forward_api_name,
+                get_params_nums_and_check_str,
+                get_eager_tensor_str,
+                parse_attributes_str,
+                check_remaining_params_validity_str,
+                args_mapper_str,
+                convert_to_dist_str,
+                pre_process_str,
+                get_predefined_out_str,
+                set_device_str,
+                noamp_dygraph_function_str,
+                return_str,
+            )
+            self.python_c_function_declare_str = (
+                PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=forward_api_name)
+            )
+            # Generate Python-C Function Registration
+            self.python_c_function_reg_str = (
+                PYTHON_C_FUNCTION_REG_TEMPLATE.format(
+                    forward_api_name_prefix,
+                    forward_api_name,
+                    namespace,
+                    forward_api_name,
+                    forward_api_name,
+                )
+            )
+        else:
             # Generate Python-C Function Definition
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name,
@@ -855,13 +872,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplace_noamp_dygraph_function_str,
                 return_str,
             )
-
             python_c_function_declare_str = (
                 PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(
                     name=inplaced_forward_api_name
                 )
             )
-
             python_c_inplace_func_reg_str = (
                 PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                     forward_api_name_prefix,
@@ -897,6 +912,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         if len(self.python_api_info) > 0:
             self.need_parse_python_api_args = True
             self.ParsePythonAPIInfo()
+        if self.forward_inplace_map:
+            inplace_api_name = GetInplacedFunctionName(self.forward_api_name)
+            if inplace_api_name in python_api_info_from_yaml.keys():
+                self.inplace_python_api_info = python_api_info_from_yaml[
+                    inplace_api_name
+                ]
+            if len(self.inplace_python_api_info) > 0:
+                self.need_parse_inplace_python_api_args = True
+                self.ParsePythonAPIInfo(True)
 
     def run(
         self, no_predefined_out_tensor=False, no_parse_python_api_info=False
@@ -923,7 +947,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
         # Code Generation
-        self.GeneratePythonCFunction(no_predefined_out_tensor)
+        self.GeneratePythonCFunction(False, no_predefined_out_tensor)
+        if self.forward_inplace_map:
+            self.GeneratePythonCFunction(True, no_predefined_out_tensor)
 
         return True
 
