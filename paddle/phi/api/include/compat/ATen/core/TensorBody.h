@@ -542,11 +542,13 @@ class Tensor : public TensorBase {
             size_t N,
             template <typename U> class PtrTraits = DefaultPtrTraits,
             typename index_t = int64_t>
-  C10_DEPRECATED_MESSAGE(
+  [[deprecated(
       "packed_accessor is deprecated, use packed_accessor32 or "
-      "packed_accessor64 instead")
-  GenericPackedTensorAccessor<T, N, PtrTraits, index_t> packed_accessor()
-      const& {
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() const& {
     return this->template generic_packed_accessor<T, N, PtrTraits, index_t>();
   }
 
@@ -554,11 +556,13 @@ class Tensor : public TensorBase {
             size_t N,
             template <typename U> class PtrTraits = DefaultPtrTraits,
             typename index_t = int64_t>
-  C10_DEPRECATED_MESSAGE(
+  [[deprecated(
       "packed_accessor is deprecated, use packed_accessor32 or "
-      "packed_accessor64 instead")
-  GenericPackedTensorAccessor<T, N, PtrTraits, index_t> packed_accessor() && =
-      delete;
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() && = delete;
 
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
