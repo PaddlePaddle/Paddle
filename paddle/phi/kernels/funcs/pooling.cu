@@ -196,12 +196,22 @@ __global__ void KernelPool2D(const IndexT nthreads,
         &input_offset);
     input_data += input_offset;
 
+    // Precision-aligned with PyTorch: compute pool_size BEFORE clamping to
+    // valid input range. PyTorch clamps hend/wend to (input_dim + padding)
+    // first, computes pool_size, then clamps to actual input dimensions.
     hstart = h_offset * stride_height - padding_height;
-    hend = min(hstart + ksize_height, input_height);
-    hstart = max(hstart, static_cast<IndexT>(0));
     wstart = w_offset * stride_width - padding_width;
-    wend = min(wstart + ksize_width, input_width);
+    // Clamp end to input_dim + padding (for pool_size calculation)
+    hend = min(hstart + ksize_height, input_height + padding_height);
+    wend = min(wstart + ksize_width, input_width + padding_width);
+    // Compute pool_size BEFORE clamping start (matches PyTorch
+    // count_include_pad=True)
+    IndexT pool_size_before_clamp = (hend - hstart) * (wend - wstart);
+    // Now clamp to valid input range for actual accumulation
+    hstart = max(hstart, static_cast<IndexT>(0));
     wstart = max(wstart, static_cast<IndexT>(0));
+    hend = min(hend, input_height);
+    wend = min(wend, input_width);
 
     T ele = pool_process.initial();
     for (IndexT h = hstart; h < hend; ++h) {
@@ -212,8 +222,11 @@ __global__ void KernelPool2D(const IndexT nthreads,
         pool_process.compute(input_data[input_idx], &ele);
       }
     }
-    IndexT pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                                 : ksize_height * ksize_width;
+    // exclusive=True (PyTorch count_include_pad=False): use clamped pool_size
+    // exclusive=False (PyTorch count_include_pad=True): use pool_size before
+    // clamp
+    IndexT pool_size =
+        exclusive ? (hend - hstart) * (wend - wstart) : pool_size_before_clamp;
     // Precision-aligned: Cast pool_size directly to MT (master type) to avoid
     // unnecessary intermediate low-precision cast (e.g., int→float16→float32
     // should be int→float32). This matches PyTorch's precision behavior.
@@ -407,9 +420,20 @@ __global__ void KernelPool2DGrad(
           }
         }
       } else {
+        // Precision-aligned with PyTorch: for exclusive=False
+        // (count_include_pad=True), compute pool_size BEFORE clamping to valid
+        // input range
         for (IndexT ph = phstart; ph < phend; ++ph) {
           for (IndexT pw = pwstart; pw < pwend; ++pw) {
-            IndexT pool_size = ksize_height * ksize_width;
+            IndexT hstart = ph * stride_height - padding_height;
+            IndexT wstart = pw * stride_width - padding_width;
+            // Clamp end to input_dim + padding first (for pool_size)
+            IndexT hend =
+                min(hstart + ksize_height, input_height + padding_height);
+            IndexT wend =
+                min(wstart + ksize_width, input_width + padding_width);
+            // Compute pool_size BEFORE clamping start
+            IndexT pool_size = (hend - hstart) * (wend - wstart);
             IndexT tmp_idx = ph * output_width + pw;
             IndexT output_sub_idx =
                 channel_last ? tmp_idx * divmods.channel.divisor + c_offset
@@ -1214,15 +1238,27 @@ __global__ void KernelPool3D(const IndexT nthreads,
       wstart = AdaptStartIndex(pw, input_width, output_width);
       wend = AdaptEndIndex(pw, input_width, output_width);
     } else {
+      // Precision-aligned with PyTorch: compute pool_size BEFORE clamping to
+      // valid input range for exclusive=False (count_include_pad=True)
       dstart = pd * stride_depth - padding_depth;
       hstart = ph * stride_height - padding_height;
       wstart = pw * stride_width - padding_width;
-      dend = min(dstart + ksize_depth, input_depth);
-      hend = min(hstart + ksize_height, input_height);
-      wend = min(wstart + ksize_width, input_width);
+      // Clamp end to input_dim + padding first (for pool_size calculation)
+      dend = min(dstart + ksize_depth, input_depth + padding_depth);
+      hend = min(hstart + ksize_height, input_height + padding_height);
+      wend = min(wstart + ksize_width, input_width + padding_width);
+    }
+    // Compute pool_size_before_clamp for exclusive=False
+    IndexT pool_size_before_clamp =
+        (dend - dstart) * (hend - hstart) * (wend - wstart);
+    // Now clamp to valid input range for actual accumulation (for non-adaptive)
+    if (!adaptive) {
       dstart = max(dstart, static_cast<IndexT>(0));
       hstart = max(hstart, static_cast<IndexT>(0));
       wstart = max(wstart, static_cast<IndexT>(0));
+      dend = min(dend, input_depth);
+      hend = min(hend, input_height);
+      wend = min(wend, input_width);
     }
 
     IndexT input_data_stride;
@@ -1247,9 +1283,11 @@ __global__ void KernelPool3D(const IndexT nthreads,
         }
       }
     }
+    // exclusive=True or adaptive: use clamped pool_size
+    // exclusive=False: use pool_size before clamp (for count_include_pad=True)
     IndexT pool_size = (exclusive || adaptive)
                            ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                           : ksize_depth * ksize_height * ksize_width;
+                           : pool_size_before_clamp;
     // Precision-aligned: Cast pool_size directly to MT (master type) to avoid
     // unnecessary intermediate low-precision cast for float16/bfloat16.
     using MT = typename dtype::MPTypeTrait<T>::Type;
@@ -1370,18 +1408,33 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
                                 &pool_height);
             pool_size = pool_depth * pool_height * pool_width;
           } else {
+            // Precision-aligned with PyTorch: for exclusive=False
+            // (count_include_pad=True), compute pool_size BEFORE clamping to
+            // valid input range
             IndexT dstart = pd * stride_depth - padding_depth;
             IndexT hstart = ph * stride_height - padding_height;
             IndexT wstart = pw * stride_width - padding_width;
-            IndexT dend = min(dstart + ksize_depth, input_depth);
-            IndexT hend = min(hstart + ksize_height, input_height);
-            IndexT wend = min(wstart + ksize_width, input_width);
+            // Clamp end to input_dim + padding first (for pool_size
+            // calculation)
+            IndexT dend =
+                min(dstart + ksize_depth, input_depth + padding_depth);
+            IndexT hend =
+                min(hstart + ksize_height, input_height + padding_height);
+            IndexT wend =
+                min(wstart + ksize_width, input_width + padding_width);
+            // Compute pool_size BEFORE clamping start
+            IndexT pool_size_before_clamp =
+                (dend - dstart) * (hend - hstart) * (wend - wstart);
+            // Clamp to valid range for exclusive=True
             dstart = max(dstart, static_cast<IndexT>(0));
             hstart = max(hstart, static_cast<IndexT>(0));
             wstart = max(wstart, static_cast<IndexT>(0));
+            dend = min(dend, input_depth);
+            hend = min(hend, input_height);
+            wend = min(wend, input_width);
             pool_size =
                 exclusive ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                          : ksize_depth * ksize_height * ksize_width;
+                          : pool_size_before_clamp;
           }
 
           IndexT output_sub_idx =
