@@ -169,6 +169,18 @@ class XPUTestCumprodOP(XPUOpTestWrapper):
                 run(place)
 
 
+class TestCumprodEmptyXPU(unittest.TestCase):
+    def test_cumprod_empty_tensor(self):
+        paddle.disable_static()
+        try:
+            paddle.set_device('xpu')
+            x = paddle.empty([0], dtype='float32')
+            out = paddle.cumprod(x, -1)
+            self.assertEqual(list(out.shape), [0])
+        finally:
+            paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('cumprod')
 for stype in support_types:
     create_test_class(globals(), XPUTestCumprodOP, stype)

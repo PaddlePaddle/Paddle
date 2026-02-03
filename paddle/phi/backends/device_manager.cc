@@ -942,6 +942,22 @@ void DeviceManager::DestroyBlasLtHandle(const Place& place,
   dev_impl->DestroyBlasLtHandle(device_id, blaslt_handle);
 }
 
+void DeviceManager::InitDnnHandle(const Place& place,
+                                  void** dnn_handle,
+                                  phi::stream::stream_t stream) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->InitDnnHandle(device_id, dnn_handle, stream);
+}
+
+void DeviceManager::DestroyDnnHandle(const Place& place, void* dnn_handle) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->DestroyDnnHandle(device_id, dnn_handle);
+}
+
 DeviceManager& DeviceManager::Instance() {
   static DeviceManager platform_manager;
   return platform_manager;

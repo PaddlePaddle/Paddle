@@ -325,6 +325,12 @@ class PADDLE_API DeviceManager {
 
   static void DestroyBlasLtHandle(const Place& place, void* blaslt_handle);
 
+  static void InitDnnHandle(const Place& place,
+                            void** dnn_handle,
+                            stream::stream_t stream);
+
+  static void DestroyDnnHandle(const Place& place, void* dnn_handle);
+
   // cudaGraph
   static void CUDAStreamBeginCapture(const Place& place,
                                      stream::stream_t stream,

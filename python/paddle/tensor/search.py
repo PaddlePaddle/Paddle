@@ -24,7 +24,6 @@ from paddle import _C_ops
 from paddle._C_ops import argmax, argmin  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     index_select_decorator,
     param_one_alias,
     param_two_alias,
@@ -52,7 +51,7 @@ from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 __all__ = []
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def argsort(
     x: Tensor,
     axis: int = -1,
@@ -89,17 +88,25 @@ def argsort(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]],
-            ...                       [[5,2,4,2],
-            ...                        [4,7,7,9],
-            ...                        [1,7,0,6]]],
-            ...                      dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [5, 8, 9, 5],
+            ...             [0, 0, 1, 7],
+            ...             [6, 9, 2, 4],
+            ...         ],
+            ...         [
+            ...             [5, 2, 4, 2],
+            ...             [4, 7, 7, 9],
+            ...             [1, 7, 0, 6],
+            ...         ],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = paddle.argsort(x, axis=-1)
             >>> out2 = paddle.argsort(x, axis=0)
             >>> out3 = paddle.argsort(x, axis=1)
@@ -131,7 +138,7 @@ def argsort(
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
 
-            >>> x = paddle.to_tensor([1, 0]*40, dtype='float32')
+            >>> x = paddle.to_tensor([1, 0] * 40, dtype='float32')
             >>> out1 = paddle.argsort(x, stable=False)
             >>> out2 = paddle.argsort(x, stable=True)
 
@@ -225,13 +232,17 @@ def index_select(
         Tensor, A Tensor with same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
-            ...                       [5.0, 6.0, 7.0, 8.0],
-            ...                       [9.0, 10.0, 11.0, 12.0]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 2.0, 3.0, 4.0],
+            ...         [5.0, 6.0, 7.0, 8.0],
+            ...         [9.0, 10.0, 11.0, 12.0],
+            ...     ]
+            ... )
             >>> index = paddle.to_tensor([0, 1, 1], dtype='int32')
             >>> out_z1 = paddle.index_select(x=x, index=index)
             >>> print(out_z1.numpy())
@@ -327,13 +338,17 @@ def nonzero(x: Tensor, as_tuple=False, *, out: Tensor | None = None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
-            ...                        [0.0, 2.0, 0.0],
-            ...                        [0.0, 0.0, 3.0]])
+            >>> x1 = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 0.0, 0.0],
+            ...         [0.0, 2.0, 0.0],
+            ...         [0.0, 0.0, 3.0],
+            ...     ]
+            ... )
             >>> x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
             >>> out_z1 = paddle.nonzero(x1)
             >>> print(out_z1)
@@ -415,13 +430,17 @@ def argwhere(input: Tensor) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1.0, 0.0, 0.0],
-            ...                       [0.0, 2.0, 0.0],
-            ...                       [0.0, 0.0, 3.0]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 0.0, 0.0],
+            ...         [0.0, 2.0, 0.0],
+            ...         [0.0, 0.0, 3.0],
+            ...     ]
+            ... )
             >>> out = paddle.tensor.search.argwhere(x)
             >>> print(out)
             Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -497,17 +516,25 @@ def sort(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]],
-            ...                       [[5,2,4,2],
-            ...                        [4,7,7,9],
-            ...                        [1,7,0,6]]],
-            ...                      dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [5, 8, 9, 5],
+            ...             [0, 0, 1, 7],
+            ...             [6, 9, 2, 4],
+            ...         ],
+            ...         [
+            ...             [5, 2, 4, 2],
+            ...             [4, 7, 7, 9],
+            ...             [1, 7, 0, 6],
+            ...         ],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = paddle.sort(x=x, axis=-1)
             >>> out2 = paddle.sort(x=x, axis=0)
             >>> out3 = paddle.sort(x=x, axis=1)
@@ -568,17 +595,25 @@ def msort(input: Tensor, *, out: Tensor | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]],
-            ...                       [[5,2,4,2],
-            ...                        [4,7,7,9],
-            ...                        [1,7,0,6]]],
-            ...                      dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [5, 8, 9, 5],
+            ...             [0, 0, 1, 7],
+            ...             [6, 9, 2, 4],
+            ...         ],
+            ...         [
+            ...             [5, 2, 4, 2],
+            ...             [4, 7, 7, 9],
+            ...             [1, 7, 0, 6],
+            ...         ],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = paddle.msort(input=x)
             >>> print(out1.numpy())
             [[[5. 2. 4. 2.]
@@ -624,11 +659,17 @@ def mode(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> tensor = paddle.to_tensor([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]], dtype=paddle.float32)
+            >>> tensor = paddle.to_tensor(
+            ...     [
+            ...         [[1, 2, 2], [2, 3, 3]],
+            ...         [[0, 5, 5], [9, 9, 0]],
+            ...     ],
+            ...     dtype=paddle.float32,
+            ... )
             >>> res = paddle.mode(tensor, 2)
             >>> print(res)
             (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -660,7 +701,7 @@ def mode(
         return values, indices
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def where(
     condition: Tensor,
     x: Tensor | float | None = None,
@@ -701,7 +742,7 @@ def where(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -903,19 +944,34 @@ def index_sample(x: Tensor, index: Tensor) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
-            ...                       [5.0, 6.0, 7.0, 8.0],
-            ...                       [9.0, 10.0, 11.0, 12.0]], dtype='float32')
-            >>> index = paddle.to_tensor([[0, 1, 2],
-            ...                           [1, 2, 3],
-            ...                           [0, 0, 0]], dtype='int32')
-            >>> target = paddle.to_tensor([[100, 200, 300, 400],
-            ...                            [500, 600, 700, 800],
-            ...                            [900, 1000, 1100, 1200]], dtype='int32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 2.0, 3.0, 4.0],
+            ...         [5.0, 6.0, 7.0, 8.0],
+            ...         [9.0, 10.0, 11.0, 12.0],
+            ...     ],
+            ...     dtype='float32',
+            ... )
+            >>> index = paddle.to_tensor(
+            ...     [
+            ...         [0, 1, 2],
+            ...         [1, 2, 3],
+            ...         [0, 0, 0],
+            ...     ],
+            ...     dtype='int32',
+            ... )
+            >>> target = paddle.to_tensor(
+            ...     [
+            ...         [100, 200, 300, 400],
+            ...         [500, 600, 700, 800],
+            ...         [900, 1000, 1100, 1200],
+            ...     ],
+            ...     dtype='int32',
+            ... )
             >>> out_z1 = paddle.index_sample(x, index)
             >>> print(out_z1.numpy())
             [[1. 2. 3.]
@@ -1006,16 +1062,24 @@ def masked_select(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
-            ...                       [5.0, 6.0, 7.0, 8.0],
-            ...                       [9.0, 10.0, 11.0, 12.0]])
-            >>> mask = paddle.to_tensor([[True, False, False, False],
-            ...                          [True, True, False, False],
-            ...                          [True, False, False, False]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 2.0, 3.0, 4.0],
+            ...         [5.0, 6.0, 7.0, 8.0],
+            ...         [9.0, 10.0, 11.0, 12.0],
+            ...     ]
+            ... )
+            >>> mask = paddle.to_tensor(
+            ...     [
+            ...         [True, False, False, False],
+            ...         [True, True, False, False],
+            ...         [True, False, False, False],
+            ...     ]
+            ... )
             >>> out = paddle.masked_select(x, mask)
             >>> print(out.numpy())
             [1. 5. 6. 9.]
@@ -1090,7 +1154,7 @@ def topk(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1197,7 +1261,7 @@ def bucketize(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1270,13 +1334,24 @@ def searchsorted(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> sorted_sequence = paddle.to_tensor([[1, 3, 5, 7, 9, 11],
-            ...                                     [2, 4, 6, 8, 10, 12]], dtype='int32')
-            >>> values = paddle.to_tensor([[3, 6, 9, 10], [3, 6, 9, 10]], dtype='int32')
+            >>> sorted_sequence = paddle.to_tensor(
+            ...     [
+            ...         [1, 3, 5, 7, 9, 11],
+            ...         [2, 4, 6, 8, 10, 12],
+            ...     ],
+            ...     dtype='int32',
+            ... )
+            >>> values = paddle.to_tensor(
+            ...     [
+            ...         [3, 6, 9, 10],
+            ...         [3, 6, 9, 10],
+            ...     ],
+            ...     dtype='int32',
+            ... )
             >>> out1 = paddle.searchsorted(sorted_sequence, values)
             >>> print(out1)
             Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1358,11 +1433,11 @@ def kthvalue(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.randn((2,3,2))
+            >>> x = paddle.randn((2, 3, 2))
             >>> print(x)
             >>> # doctest: +SKIP('Different environments yield different output.')
             Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
