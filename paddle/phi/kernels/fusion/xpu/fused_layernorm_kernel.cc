@@ -56,6 +56,13 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(mean);
   dev_ctx.template Alloc<float>(variance);
 
+  if (m * n == 0) {
+    if (residual) {
+      dev_ctx.template Alloc<T>(residual_out);
+    }
+    return;
+  }
+
   DenseTensor residual_alpha_tmp;
   residual_alpha_tmp.Resize({1});
 
