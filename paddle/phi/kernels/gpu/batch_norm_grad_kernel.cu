@@ -513,13 +513,13 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context &dev_ctx,
                           const DenseTensor &x,
-                          const paddle::optional<DenseTensor> &scale,
-                          const paddle::optional<DenseTensor> &bias,
-                          const paddle::optional<DenseTensor> &mean,
-                          const paddle::optional<DenseTensor> &variance,
+                          const optional<DenseTensor> &scale,
+                          const optional<DenseTensor> &bias,
+                          const optional<DenseTensor> &mean,
+                          const optional<DenseTensor> &variance,
                           const DenseTensor &saved_mean,
                           const DenseTensor &saved_variance,
-                          const paddle::optional<DenseTensor> &reserve_space,
+                          const optional<DenseTensor> &reserve_space,
                           const DenseTensor &y_grad,
                           float momentum,
                           float epsilon_f,
@@ -533,7 +533,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
                           DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -584,13 +584,13 @@ void BatchNormGradFunctor(const Context &dev_ctx,
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
 
   if (Bias) {
     new_bias = bias.get();
   } else {
-    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+    new_bias = Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1332,13 +1332,13 @@ void BatchNormGradFunctor(const Context &dev_ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
-                         const paddle::optional<DenseTensor> &scale,
-                         const paddle::optional<DenseTensor> &bias,
-                         const paddle::optional<DenseTensor> &mean,
-                         const paddle::optional<DenseTensor> &variance,
+                         const optional<DenseTensor> &scale,
+                         const optional<DenseTensor> &bias,
+                         const optional<DenseTensor> &mean,
+                         const optional<DenseTensor> &variance,
                          const DenseTensor &saved_mean,
                          const DenseTensor &saved_variance,
-                         const paddle::optional<DenseTensor> &reserve_space,
+                         const optional<DenseTensor> &reserve_space,
                          const DenseTensor &y_grad,
                          float momentum,
                          float epsilon,
@@ -1352,16 +1352,8 @@ void BatchNormGradKernel(const Context &dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (scale_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(scale_grad->dims())),
-          0,
-          scale_grad);
-    if (bias_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(bias_grad->dims())),
-                            0,
-                            bias_grad);
+      Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
+    if (bias_grad) Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
     return;
   }
   BatchNormGradFunctor<T, Context>(dev_ctx,
@@ -1387,27 +1379,26 @@ void BatchNormGradKernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void BatchNormDoubleGradKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x,
-    const paddle::optional<DenseTensor> &scale,
-    const paddle::optional<DenseTensor> &mean,
-    const paddle::optional<DenseTensor> &variance,
-    const DenseTensor &saved_mean,
-    const DenseTensor &saved_variance,
-    const DenseTensor &y_grad,
-    const paddle::optional<DenseTensor> &x_grad_grad,
-    const paddle::optional<DenseTensor> &scale_grad_grad,
-    const paddle::optional<DenseTensor> &bias_grad_grad,
-    float momentum,
-    float epsilon,
-    const std::string &data_layout_str,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    DenseTensor *x_grad,
-    DenseTensor *scale_grad,
-    DenseTensor *y_grad_grad) {
+void BatchNormDoubleGradKernel(const Context &dev_ctx,
+                               const DenseTensor &x,
+                               const optional<DenseTensor> &scale,
+                               const optional<DenseTensor> &mean,
+                               const optional<DenseTensor> &variance,
+                               const DenseTensor &saved_mean,
+                               const DenseTensor &saved_variance,
+                               const DenseTensor &y_grad,
+                               const optional<DenseTensor> &x_grad_grad,
+                               const optional<DenseTensor> &scale_grad_grad,
+                               const optional<DenseTensor> &bias_grad_grad,
+                               float momentum,
+                               float epsilon,
+                               const std::string &data_layout_str,
+                               bool is_test,
+                               bool use_global_stats,
+                               bool trainable_statistics,
+                               DenseTensor *x_grad,
+                               DenseTensor *scale_grad,
+                               DenseTensor *y_grad_grad) {
   PADDLE_ENFORCE_EQ(is_test,
                     false,
                     common::errors::InvalidArgument(
@@ -1415,7 +1406,7 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   const DenseTensor *running_mean = nullptr;
   const DenseTensor *running_variance = nullptr;
@@ -1431,7 +1422,7 @@ void BatchNormDoubleGradKernel(
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
   funcs::NormDoubleGradFunctor<Context, T>(dev_ctx,
                                            data_layout,

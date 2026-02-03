@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -83,21 +83,17 @@ class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class SqueezeTransposePass : public pir::PatternRewritePass {
+class SqueezeTransposePass : public PatternRewritePass {
  public:
   SqueezeTransposePass()
-      : pir::PatternRewritePass("squeeze_transpose_onednn_fuse_pass", 2) {}
+      : PatternRewritePass("squeeze_transpose_onednn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<SqueezeTransposePattern>(context));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateSqueezeTransposeOneDNNPass() {
   // pd_op.squeeze + transpose2  -> onednn_op.fused_transpose
@@ -106,4 +102,4 @@ std::unique_ptr<Pass> CreateSqueezeTransposeOneDNNPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(squeeze_transpose_onednn_fuse_pass, SqueezeTransposePass);
+REGISTER_IR_PASS(squeeze_transpose_onednn_fuse_pass, pir::SqueezeTransposePass);

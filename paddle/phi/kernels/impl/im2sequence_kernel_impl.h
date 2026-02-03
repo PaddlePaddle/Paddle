@@ -34,7 +34,7 @@ inline int Im2SeqOutputSize(
 template <typename T, typename Context>
 void Im2SequenceKernel(const Context& dev_ctx,
                        const DenseTensor& x_in,
-                       const paddle::optional<DenseTensor>& y,
+                       const optional<DenseTensor>& y,
                        const std::vector<int>& kernels,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
@@ -50,7 +50,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
     const DenseTensor* img_real_size = y.get_ptr();
 
     DenseTensor cpu_shape_tensor;
-    Copy(dev_ctx, *img_real_size, phi::CPUPlace(), true, &cpu_shape_tensor);
+    Copy(dev_ctx, *img_real_size, CPUPlace(), true, &cpu_shape_tensor);
     std::vector<int> img_real_h;
     std::vector<int> img_real_w;
     std::vector<int> output_height;
@@ -97,7 +97,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
                        kernels[1]});
       offset_out += output_height[i] * output_width[i];
 
-      funcs::Im2ColFunctor<funcs::ColFormat::kOCF, Context, T> f;
+      funcs::Im2ColFunctor<funcs::ColFormat::OCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     phi::LegacyLoD lod(1);
@@ -127,7 +127,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
       DenseTensor dst = out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
 
-      funcs::Im2ColFunctor<funcs::ColFormat::kOCF, Context, T> f;
+      funcs::Im2ColFunctor<funcs::ColFormat::OCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     out->Resize(out_dims);
@@ -146,7 +146,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void Im2SequenceGradKernel(const Context& dev_ctx,
                            const DenseTensor& x_in,
-                           const paddle::optional<DenseTensor>& y,
+                           const optional<DenseTensor>& y,
                            const DenseTensor& out_grad,
                            const std::vector<int>& kernels,
                            const std::vector<int>& strides,
@@ -184,7 +184,7 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
         d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
     const DenseTensor src = d_out->Slice(i, i + 1).Resize(
         {output_height, output_width, img_channels, kernels[0], kernels[1]});
-    funcs::Col2ImFunctor<funcs::ColFormat::kOCF, Context, T> f;
+    funcs::Col2ImFunctor<funcs::ColFormat::OCF, Context, T> f;
     f(dev_ctx, src, dilations, strides, paddings, &dst);
   }
   d_out->Resize(d_out_dims);

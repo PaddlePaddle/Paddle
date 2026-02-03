@@ -89,7 +89,6 @@
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -874,7 +873,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           },
           py::return_value_policy::reference);
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+      std::unordered_map<std::string, std::pair<bool, DenseTensor>>;
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

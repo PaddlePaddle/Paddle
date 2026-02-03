@@ -59,8 +59,7 @@ void CropGradKernel(const Context& dev_ctx,
                     DenseTensor* x_grad) {
   // x[3, 5], shape[2, 0], out[2, 0]
   if (out_grad.numel() == 0 && x_grad != nullptr) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   size_t rank = out_grad.dims().size();

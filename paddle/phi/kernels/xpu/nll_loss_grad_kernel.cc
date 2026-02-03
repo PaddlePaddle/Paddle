@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void NllLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& label,
-                       const paddle::optional<DenseTensor>& weight,
+                       const optional<DenseTensor>& weight,
                        const DenseTensor& total_weight,
                        const DenseTensor& d_out,
                        int64_t ignore_index,
@@ -45,7 +45,7 @@ void NllLossGradKernel(const Context& dev_ctx,
   auto d_x_data = dev_ctx.template Alloc<XPUType>(d_x);
 
   auto d_x_dims = d_x->dims();
-  std::vector<int64_t> d_x_shape = common::vectorize<int64_t>(d_x_dims);
+  std::vector<int64_t> d_x_shape = vectorize<int64_t>(d_x_dims);
 
   auto weight_data =
       weight.get_ptr() ? weight.get_ptr()->data<float>() : nullptr;

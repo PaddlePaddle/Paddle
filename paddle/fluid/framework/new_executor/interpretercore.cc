@@ -50,7 +50,7 @@ InterpreterCore::InterpreterCore(const phi::Place& place,
 InterpreterCore::InterpreterCore(
     const phi::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    const ::pir::Block* ir_block,
+    const pir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : impl_(nullptr), fetch_var_names_() {
@@ -64,12 +64,11 @@ InterpreterCore::~InterpreterCore() {
   impl_.reset(nullptr);
 }
 
-FetchList InterpreterCore::Run(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch,
-    bool enable_job_schedule_profiler,
-    bool switch_stream) {
+FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
+                               const std::vector<DenseTensor>& feed_tensors,
+                               bool need_fetch,
+                               bool enable_job_schedule_profiler,
+                               bool switch_stream) {
   return impl_->Run(feed_names,
                     feed_tensors,
                     need_fetch,

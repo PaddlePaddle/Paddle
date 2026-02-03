@@ -36,11 +36,7 @@ void ScatterGradKernel(const Context &dev_ctx,
       dev_ctx.template Alloc<T>(x_grad);
     }
     if (updates_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(updates_grad->dims())),
-          0,
-          updates_grad);
+      Full<T, Context>(dev_ctx, updates_grad->dims(), 0, updates_grad);
     }
     return;
   }

@@ -271,11 +271,11 @@ void CrossAttentionXPUFusePass::PrepareQKVWeight(Graph* graph,
                                                  Node* w,
                                                  Node** real_w,
                                                  Node** w_max) const {
-  phi::DenseTensor w_tensor;
-  phi::DenseTensor w_int16_tensor;
-  phi::DenseTensor w_max_tensor;
+  DenseTensor w_tensor;
+  DenseTensor w_int16_tensor;
+  DenseTensor w_max_tensor;
 
-  Assign(scope->Var(w->Name())->Get<phi::DenseTensor>(), &w_tensor);
+  Assign(scope->Var(w->Name())->Get<DenseTensor>(), &w_tensor);
   CastToFp32(&w_tensor, &w_int16_tensor);
   ConvertWithQuant<float, int16_t>(
       &w_int16_tensor, &w_max_tensor, nullptr, false);
@@ -317,9 +317,8 @@ void CrossAttentionXPUFusePass::PrepareQKVWeight(Graph* graph,
     if (w_var == nullptr) {
       // Create qkv_w_intx/qkv_w_max variable/tensor
       Assign(w_int16_tensor,
-             scope->Var(real_w_name)->GetMutable<phi::DenseTensor>());
-      Assign(w_max_tensor,
-             scope->Var(w_max_name)->GetMutable<phi::DenseTensor>());
+             scope->Var(real_w_name)->GetMutable<DenseTensor>());
+      Assign(w_max_tensor, scope->Var(w_max_name)->GetMutable<DenseTensor>());
     } else {
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
@@ -351,15 +350,15 @@ void CrossAttentionXPUFusePass::PrepareQKVBias(Graph* graph,
                                                Node** real_q_bias,
                                                Node** real_k_bias,
                                                Node** real_v_bias) const {
-  phi::DenseTensor* q_bias_tensor;
-  phi::DenseTensor* k_bias_tensor;
-  phi::DenseTensor* v_bias_tensor;
-  phi::DenseTensor q_bias_fp32_tensor;
-  phi::DenseTensor k_bias_fp32_tensor;
-  phi::DenseTensor v_bias_fp32_tensor;
-  q_bias_tensor = scope->Var(q_bias->Name())->GetMutable<phi::DenseTensor>();
-  k_bias_tensor = scope->Var(k_bias->Name())->GetMutable<phi::DenseTensor>();
-  v_bias_tensor = scope->Var(v_bias->Name())->GetMutable<phi::DenseTensor>();
+  DenseTensor* q_bias_tensor;
+  DenseTensor* k_bias_tensor;
+  DenseTensor* v_bias_tensor;
+  DenseTensor q_bias_fp32_tensor;
+  DenseTensor k_bias_fp32_tensor;
+  DenseTensor v_bias_fp32_tensor;
+  q_bias_tensor = scope->Var(q_bias->Name())->GetMutable<DenseTensor>();
+  k_bias_tensor = scope->Var(k_bias->Name())->GetMutable<DenseTensor>();
+  v_bias_tensor = scope->Var(v_bias->Name())->GetMutable<DenseTensor>();
   CastToFp32(q_bias_tensor, &q_bias_fp32_tensor);
   CastToFp32(k_bias_tensor, &k_bias_fp32_tensor);
   CastToFp32(v_bias_tensor, &v_bias_fp32_tensor);
@@ -389,7 +388,7 @@ void CrossAttentionXPUFusePass::PrepareQKVBias(Graph* graph,
     block_q_bias_desc->SetShape(q_bias_desc.GetShape());
     block_q_bias_desc->SetDataType(q_bias_desc.GetDataType());
     Assign(q_bias_fp32_tensor,
-           scope->Var(q_bias_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(q_bias_name)->GetMutable<DenseTensor>());
   }
   if (*real_k_bias == nullptr) {
     // Create k_bias node
@@ -405,7 +404,7 @@ void CrossAttentionXPUFusePass::PrepareQKVBias(Graph* graph,
     block_k_bias_desc->SetShape(k_bias_desc.GetShape());
     block_k_bias_desc->SetDataType(k_bias_desc.GetDataType());
     Assign(k_bias_fp32_tensor,
-           scope->Var(k_bias_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(k_bias_name)->GetMutable<DenseTensor>());
   }
   if (*real_v_bias == nullptr) {
     // Create v_bias node
@@ -421,7 +420,7 @@ void CrossAttentionXPUFusePass::PrepareQKVBias(Graph* graph,
     block_v_bias_desc->SetShape(v_bias_desc.GetShape());
     block_v_bias_desc->SetDataType(v_bias_desc.GetDataType());
     Assign(v_bias_fp32_tensor,
-           scope->Var(v_bias_name)->GetMutable<phi::DenseTensor>());
+           scope->Var(v_bias_name)->GetMutable<DenseTensor>());
   }
 }
 

@@ -59,7 +59,7 @@ class VmmImportedAllocation : public phi::Allocation {
  public:
   VmmImportedAllocation(void* ptr,
                         size_t bytes,
-                        phi::Place place,
+                        Place place,
                         std::shared_ptr<ImportedVmmMulti> keep)
       : Allocation(ptr, bytes, place), keep_(std::move(keep)) {}
 

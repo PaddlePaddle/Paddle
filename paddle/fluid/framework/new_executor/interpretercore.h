@@ -40,7 +40,7 @@ class InterpreterCore {
   TEST_API InterpreterCore(
       const phi::Place& place,
       const std::vector<std::string>& fetch_var_names,
-      const ::pir::Block* ir_prog,
+      const pir::Block* ir_prog,
       Scope* scope,
       const ExecutionConfig& execution_config = ExecutionConfig());
   TEST_API ~InterpreterCore();
@@ -49,7 +49,7 @@ class InterpreterCore {
 
   TEST_API paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors,
+      const std::vector<DenseTensor>& feed_tensors,
       bool need_fetch = true,
       bool enable_job_schedule_profiler = false,
       bool switch_stream = false);

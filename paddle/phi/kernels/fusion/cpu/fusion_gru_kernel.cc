@@ -46,14 +46,14 @@ namespace phi::fusion {
                                   phi::jit::to_kerneltype(activation));      \
   phi::jit::gru_t one_step;                                                  \
   auto ComputeH1 =                                                           \
-      phi::jit::KernelFuncs<phi::jit::GRUH1Tuple<T>, phi::CPUPlace>::Cache() \
+      phi::jit::KernelFuncs<phi::jit::GRUH1Tuple<T>, CPUPlace>::Cache().At(  \
+          attr);                                                             \
+  auto ComputeHtPart1 =                                                      \
+      phi::jit::KernelFuncs<phi::jit::GRUHtPart1Tuple<T>, CPUPlace>::Cache() \
           .At(attr);                                                         \
-  auto ComputeHtPart1 = phi::jit::KernelFuncs<phi::jit::GRUHtPart1Tuple<T>,  \
-                                              phi::CPUPlace>::Cache()        \
-                            .At(attr);                                       \
-  auto ComputeHtPart2 = phi::jit::KernelFuncs<phi::jit::GRUHtPart2Tuple<T>,  \
-                                              phi::CPUPlace>::Cache()        \
-                            .At(attr);                                       \
+  auto ComputeHtPart2 =                                                      \
+      phi::jit::KernelFuncs<phi::jit::GRUHtPart2Tuple<T>, CPUPlace>::Cache() \
+          .At(attr);                                                         \
   const T* x_data = x.data<T>();                                             \
   const T* wx_data = weight_x.data<T>();                                     \
   const T* wh_data = weight_h.data<T>();                                     \
@@ -62,10 +62,10 @@ namespace phi::fusion {
 template <typename T, typename Context>
 void SeqCompute(const Context& dev_ctx,
                 const DenseTensor& x,
-                const paddle::optional<DenseTensor>& h0,
+                const optional<DenseTensor>& h0,
                 const DenseTensor& weight_x,
                 const DenseTensor& weight_h,
-                const paddle::optional<DenseTensor>& bias,
+                const optional<DenseTensor>& bias,
                 const std::string& activation,
                 const std::string& gate_activation,
                 const bool is_reverse,
@@ -166,10 +166,10 @@ void SeqCompute(const Context& dev_ctx,
 template <typename T, typename Context>
 void BatchCompute(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& h0,
+                  const optional<DenseTensor>& h0,
                   const DenseTensor& weight_x,
                   const DenseTensor& weight_h,
-                  const paddle::optional<DenseTensor>& bias,
+                  const optional<DenseTensor>& bias,
                   const std::string& activation,
                   const std::string& gate_activation,
                   const bool is_reverse,
@@ -340,10 +340,10 @@ void BatchCompute(const Context& dev_ctx,
 template <typename T, typename Context>
 void FusionGRUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& h0,
+                     const optional<DenseTensor>& h0,
                      const DenseTensor& weight_x,
                      const DenseTensor& weight_h,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& bias,
                      const std::string& activation,
                      const std::string& gate_activation,
                      const bool is_reverse,

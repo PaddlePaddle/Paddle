@@ -40,8 +40,7 @@ void ConvKernelImpl(const Context& dev_ctx,
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;
   if (input.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
   // The filter will be reshaped in the calculations,
@@ -140,7 +139,7 @@ void ConvKernelImpl(const Context& dev_ctx,
   int64_t in_step = transformed_input.dims()[1] / groups;
   int64_t out_step = transformed_output.dims()[1] / groups;
 
-  funcs::Im2ColFunctor<funcs::ColFormat::kCFO, Context, T> im2col;
+  funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
   funcs::Vol2ColFunctor<Context, T> vol2col;
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);

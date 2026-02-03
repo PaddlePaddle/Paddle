@@ -250,10 +250,6 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
-        if hasattr(x, 'dtype') and x.dtype == dtype:
-            if not getattr(x, 'is_leaf', False):
-                return x
-
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -1197,6 +1193,7 @@ def zero_(x: Tensor) -> Tensor:
 
 
 @dygraph_only
+@param_one_alias(["value", "fill_value"])
 def fill_diagonal_(
     x: Tensor,
     value: float,
@@ -1212,7 +1209,8 @@ def fill_diagonal_(
 
     Args:
         x(Tensor): ``x`` is the original Tensor
-        value(int|float): ``value`` is the value to filled in x
+        value(int|float): ``value`` is the value to filled in x.
+            alias: ``fill_value``.
         offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
         wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
         name(str|None,optional): Name for the operation (optional, default is None)
@@ -1221,13 +1219,18 @@ def fill_diagonal_(
         Tensor, Tensor with diagonal filled with value.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.ones((4, 3)) * 2
             >>> x.fill_diagonal_(1.0)
             >>> print(x.tolist())
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+            >>> # Use 'fill_value' alias (PyTorch compatible)
+            >>> x.fill_diagonal_(fill_value=0.0)  # type: ignore
+            >>> print(x.tolist())
+            [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
     """
     if in_dynamic_mode():
         if len(x.shape) == 2:
@@ -1448,7 +1451,7 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
     return x.numpy(False).tolist()
 
 
-@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
+@param_two_alias(["x", "tensors"], ["axis", "dim"])
 def concat(
     x: Sequence[Tensor],
     axis: int | Tensor = 0,
@@ -1489,16 +1492,13 @@ def concat(
         Tensor, A Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x1 = paddle.to_tensor([[1, 2, 3],
-            ...                        [4, 5, 6]])
-            >>> x2 = paddle.to_tensor([[11, 12, 13],
-            ...                        [14, 15, 16]])
-            >>> x3 = paddle.to_tensor([[21, 22],
-            ...                        [23, 24]])
+            >>> x1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            >>> x2 = paddle.to_tensor([[11, 12, 13], [14, 15, 16]])
+            >>> x3 = paddle.to_tensor([[21, 22], [23, 24]])
             >>> zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             >>> # When the axis is negative, the real axis is (axis + Rank(x))
             >>> # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -2202,7 +2202,7 @@ def flatten_(
         return _C_ops.flatten_(x, start_axis, stop_axis)
 
 
-@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
+@param_two_alias(["x", "tensors"], ["axis", "dim"])
 def stack(
     x: Sequence[Tensor],
     axis: int = 0,
@@ -2301,6 +2301,9 @@ def stack(
        :width: 1000
        :alt: Legend 1
        :align: center
+
+    .. note::
+        Alias Support: The parameter name ``tensors`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
@@ -4863,7 +4866,7 @@ def scatter_nd(
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def chunk(
     x: Tensor, chunks: int, axis: int | Tensor = 0, name: str | None = None
 ) -> list[Tensor]:
@@ -4901,7 +4904,7 @@ def chunk(
         list(Tensor), The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4934,7 +4937,7 @@ def chunk(
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
-@ParamAliasDecorator({"x": ["input"], "repeat_times": ["dims"]})
+@param_two_alias(["x", "input"], ["repeat_times", "dims"])
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -4950,6 +4953,7 @@ def tile(
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``repeat_times``.
         For example, ``tile(input=x, dims=repeat_times)`` is equivalent to ``tile(x=x, repeat_times=repeat_times)``.
+
     Args:
         x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32, int64, complex64 or complex128.
             alias: ``input``.
@@ -4962,7 +4966,7 @@ def tile(
         N-D Tensor. The data type is the same as ``x``. The size of the i-th dimension is equal to ``x[i] * repeat_times[i]``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5149,7 +5153,7 @@ def repeat(
     return tile(input, repeat_times=repeats)
 
 
-@ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
+@param_two_alias(["x", "input"], ["shape", "size"])
 def broadcast_to(
     x: Tensor,
     shape: ShapeLike,
@@ -5184,7 +5188,7 @@ def broadcast_to(
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -7187,7 +7191,7 @@ def scatter_add(
     )
 
 
-@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
+@param_two_alias(["arr", "input"], ["axis", "dim"])
 def take_along_axis(
     arr: Tensor,
     indices: Tensor,
@@ -7218,11 +7222,11 @@ def take_along_axis(
         Tensor, The indexed element, same dtype with arr.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7,8,9]])
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
             >>> index = paddle.to_tensor([[0]])
             >>> axis = 0
             >>> result = paddle.take_along_axis(x, index, axis)
@@ -7809,6 +7813,13 @@ def unflatten(
     return x
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "shape": ["size"],
+        "offset": ["storage_offset"],
+    }
+)
 @dygraph_only
 def as_strided(
     x: Tensor,
@@ -7830,10 +7841,10 @@ def as_strided(
          :alt: Legend
 
     Args:
-        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
-        shape (list|tuple): Define the target shape. Each element of it should be integer.
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``. Alias: ``input``.
+        shape (list|tuple): Define the target shape. Each element of it should be integer. Alias: ``size``.
         stride (list|tuple): Define the target stride. Each element of it should be integer.
-        offset (int, optional): Define the target Tensor's offset from x's holder. Default: 0.
+        offset (int, optional): Define the target Tensor's offset from x's holder. Default: 0. Alias: ``storage_offset``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

@@ -45,7 +45,7 @@ AttentionLSTMFusePass::AttentionLSTMFusePass() {
       .IsTensor()
       .IsOptional()
       .End()
-      .AddInput("ShapeTensorList")  // vector<phi::DenseTensor<int>>
+      .AddInput("ShapeTensorList")  // vector<DenseTensor<int>>
       .IsOptional()
       .End()
       .AddOutput("Out")
@@ -177,21 +177,21 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   CHECK_P4(x0, x1, x2, x3);          \
   CHECK_P1(x4);
 
-void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
-                       const phi::DenseTensor& W_forget_w1,
-                       const phi::DenseTensor& W_input_w0,
-                       const phi::DenseTensor& W_input_w1,
-                       const phi::DenseTensor& W_output_w0,
-                       const phi::DenseTensor& W_output_w1,
-                       const phi::DenseTensor& W_cell_w0,
-                       const phi::DenseTensor& W_cell_w1,
-                       phi::DenseTensor* out);
+void PrepareLSTMWeight(const DenseTensor& W_forget_w0,
+                       const DenseTensor& W_forget_w1,
+                       const DenseTensor& W_input_w0,
+                       const DenseTensor& W_input_w1,
+                       const DenseTensor& W_output_w0,
+                       const DenseTensor& W_output_w1,
+                       const DenseTensor& W_cell_w0,
+                       const DenseTensor& W_cell_w1,
+                       DenseTensor* out);
 
-void PrepareLSTMBias(const phi::DenseTensor& B_forget,
-                     const phi::DenseTensor& B_input,
-                     const phi::DenseTensor& B_output,
-                     const phi::DenseTensor& B_cell,
-                     phi::DenseTensor* out);
+void PrepareLSTMBias(const DenseTensor& B_forget,
+                     const DenseTensor& B_input,
+                     const DenseTensor& B_output,
+                     const DenseTensor& B_cell,
+                     DenseTensor* out);
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
@@ -203,8 +203,8 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
 
   // Create new parameters.
   // AddInput
-  scope.Var(param.LSTMWeight)->GetMutable<phi::DenseTensor>();
-  scope.Var(param.LSTMBias)->GetMutable<phi::DenseTensor>();
+  scope.Var(param.LSTMWeight)->GetMutable<DenseTensor>();
+  scope.Var(param.LSTMBias)->GetMutable<DenseTensor>();
 // AddOutput
 #define IR_NODE(x)                                 \
   VarDesc key_##x(param.x);                        \
@@ -220,20 +220,20 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   IR_NODE(LSTMOUT);
 #undef IR_NODE
 
-#define GATE_W(name__)                                                      \
-  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");                    \
-  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");                    \
-  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");                    \
-  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);              \
-  VLOG(4) << #name__ "_w0"                                                  \
-          << " shape: " << W_##name__##_w0->Get<phi::DenseTensor>().dims(); \
-  VLOG(4) << #name__ "_w1"                                                  \
-          << " shape: " << W_##name__##_w1->Get<phi::DenseTensor>().dims(); \
-  VLOG(4) << #name__ "_b0"                                                  \
-          << " shape: " << W_##name__##_b0->Get<phi::DenseTensor>().dims(); \
-  auto& W_##name__##_w0_t = W_##name__##_w0->Get<phi::DenseTensor>();       \
-  auto& W_##name__##_w1_t = W_##name__##_w1->Get<phi::DenseTensor>();       \
-  auto& W_##name__##_b0_t = W_##name__##_b0->Get<phi::DenseTensor>();
+#define GATE_W(name__)                                                 \
+  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");               \
+  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");               \
+  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");               \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);         \
+  VLOG(4) << #name__ "_w0"                                             \
+          << " shape: " << W_##name__##_w0->Get<DenseTensor>().dims(); \
+  VLOG(4) << #name__ "_w1"                                             \
+          << " shape: " << W_##name__##_w1->Get<DenseTensor>().dims(); \
+  VLOG(4) << #name__ "_b0"                                             \
+          << " shape: " << W_##name__##_b0->Get<DenseTensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<DenseTensor>();       \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<DenseTensor>();       \
+  auto& W_##name__##_b0_t = W_##name__##_b0->Get<DenseTensor>();
 
   GATE_W(forget);
   GATE_W(input);
@@ -249,23 +249,23 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
       attention_fc_w, attention_fc_b, attention_output_w, attention_output_b);
 
   auto* lstm_weight = scope.Var(param.LSTMWeight);
-  auto* lstm_weight_t = lstm_weight->GetMutable<phi::DenseTensor>();
+  auto* lstm_weight_t = lstm_weight->GetMutable<DenseTensor>();
   auto* lstm_bias = scope.Var(param.LSTMBias);
-  auto* lstm_bias_t = lstm_bias->GetMutable<phi::DenseTensor>();
+  auto* lstm_bias_t = lstm_bias->GetMutable<DenseTensor>();
 
   // reshape attention_bias
   auto* attention_bias_t =
-      scope.FindVar(param.AttentionBias)->GetMutable<phi::DenseTensor>();
+      scope.FindVar(param.AttentionBias)->GetMutable<DenseTensor>();
   PADDLE_ENFORCE_EQ(
       attention_bias_t->dims().size(),
       1,
       common::errors::InvalidArgument(
-          "phi::DenseTensor attention bias dimension size(%d) must be 1.",
+          "DenseTensor attention bias dimension size(%d) must be 1.",
           attention_bias_t->dims().size()));
   attention_bias_t->Resize(common::make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
-      scope.FindVar(param.AttentionScalarBias)->GetMutable<phi::DenseTensor>();
+      scope.FindVar(param.AttentionScalarBias)->GetMutable<DenseTensor>();
   attention_scalar_bias_t->Resize(
       common::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
@@ -283,21 +283,21 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
 }
 
 // Prepare parameters
-void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
-                       const phi::DenseTensor& W_forget_w1,
-                       const phi::DenseTensor& W_input_w0,
-                       const phi::DenseTensor& W_input_w1,
-                       const phi::DenseTensor& W_output_w0,
-                       const phi::DenseTensor& W_output_w1,
-                       const phi::DenseTensor& W_cell_w0,
-                       const phi::DenseTensor& W_cell_w1,
-                       phi::DenseTensor* out) {
+void PrepareLSTMWeight(const DenseTensor& W_forget_w0,
+                       const DenseTensor& W_forget_w1,
+                       const DenseTensor& W_input_w0,
+                       const DenseTensor& W_input_w1,
+                       const DenseTensor& W_output_w0,
+                       const DenseTensor& W_output_w1,
+                       const DenseTensor& W_cell_w0,
+                       const DenseTensor& W_cell_w1,
+                       DenseTensor* out) {
   int D = static_cast<int>(W_forget_w0.dims()[0]);
   int M = static_cast<int>(W_forget_w1.dims()[0]);
   out->Resize(common::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
-  float* out_data = out->mutable_data<float>(phi::CPUPlace());
+  float* out_data = out->mutable_data<float>(CPUPlace());
   std::array<const float*, 4> tensors{W_forget_w0.data<float>(),
                                       W_input_w0.data<float>(),
                                       W_output_w0.data<float>(),
@@ -324,25 +324,24 @@ void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
   }
 }
 
-void PrepareLSTMBias(const phi::DenseTensor& B_forget,
-                     const phi::DenseTensor& B_input,
-                     const phi::DenseTensor& B_output,
-                     const phi::DenseTensor& B_cell,
-                     phi::DenseTensor* out) {
+void PrepareLSTMBias(const DenseTensor& B_forget,
+                     const DenseTensor& B_input,
+                     const DenseTensor& B_output,
+                     const DenseTensor& B_cell,
+                     DenseTensor* out) {
   std::array<const float*, 4> tensors{B_forget.data<float>(),
                                       B_input.data<float>(),
                                       B_output.data<float>(),
                                       B_cell.data<float>()};
 
-  PADDLE_ENFORCE_EQ(
-      B_forget.dims().size(),
-      1,
-      common::errors::InvalidArgument(
-          "phi::DenseTensor B forget dimension size(%d) must be 1.",
-          B_forget.dims().size()));
+  PADDLE_ENFORCE_EQ(B_forget.dims().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "DenseTensor B forget dimension size(%d) must be 1.",
+                        B_forget.dims().size()));
   int D = static_cast<int>(B_forget.dims()[0]);
   out->Resize(common::make_ddim({1, 4 * D}));
-  auto* out_data = out->mutable_data<float>(phi::CPUPlace());
+  auto* out_data = out->mutable_data<float>(CPUPlace());
   for (size_t i = 0; i < tensors.size(); i++) {
     memcpy(out_data + D * i, tensors[i], D * sizeof(float));
   }

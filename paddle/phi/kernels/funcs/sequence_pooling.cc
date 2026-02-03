@@ -375,7 +375,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
     if (pooltype == "SUM") {
       auto place = dev_ctx.GetPlace();
       PADDLE_ENFORCE_EQ(
-          place == phi::CPUPlace(),
+          place == CPUPlace(),
           true,
           errors::InvalidArgument(
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
@@ -384,9 +384,9 @@ class SequencePoolFunctor<phi::CPUContext, T> {
       phi::jit::seq_pool_attr_t attr(
           static_cast<int>(input.numel() / input.dims()[0]),
           phi::jit::SeqPoolType::kSum);
-      auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
-                                           phi::CPUPlace>::Cache()
-                         .At(attr);
+      auto seqpool =
+          phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, CPUPlace>::Cache()
+              .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
         if (attr.h == 0) {

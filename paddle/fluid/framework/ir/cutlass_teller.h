@@ -63,7 +63,7 @@ class CutlassTeller {
 
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
-      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      const auto &filter_tensor = filter_var->Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(filter_tensor.dims().size(),
                         4UL,
                         common::errors::InvalidArgument(
@@ -136,7 +136,7 @@ class CutlassTeller {
 
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
-      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      const auto &filter_tensor = filter_var->Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(filter_tensor.dims().size(),
                         4UL,
                         common::errors::InvalidArgument(
@@ -217,7 +217,7 @@ class CutlassTeller {
 
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
-      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      const auto &filter_tensor = filter_var->Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(filter_tensor.dims().size(),
                         4UL,
                         common::errors::InvalidArgument(

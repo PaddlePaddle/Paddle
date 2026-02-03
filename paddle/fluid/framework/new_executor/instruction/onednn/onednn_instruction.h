@@ -30,7 +30,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
  public:
   OneDNNPhiKernelInstruction(size_t id,
                              const phi::Place& place,
-                             ::pir::Operation* op,
+                             pir::Operation* op,
                              const ValueExecutionInfo* value_exec_info);
 
   ~OneDNNPhiKernelInstruction();
@@ -47,7 +47,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -65,7 +65,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
 
   std::string phi_op_name_;
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 

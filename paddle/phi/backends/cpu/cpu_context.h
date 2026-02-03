@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -34,6 +35,11 @@ class PADDLE_API CPUContext : public DeviceContext,
   virtual ~CPUContext();
   Eigen::DefaultDevice* eigen_device() const;
   const Place& GetPlace() const override;
+
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "CPUContext does not support cudnn_handle()."));
+  }
 
   static const char* name() { return "CPUContext"; }
 

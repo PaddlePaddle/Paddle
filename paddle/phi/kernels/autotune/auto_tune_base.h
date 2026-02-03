@@ -124,7 +124,7 @@ class AutoTuneBase {
     // Regard 1st run as warmup, judge the compare result by the time cost
     // of rest cycles.
     constexpr int repeats = 11;
-    phi::GpuTimer timer;
+    GpuTimer timer;
     float time_cost = 0;
     const auto& stream = dev_ctx.stream();
 
@@ -212,7 +212,7 @@ class GatherGemmScatterAutoTuner
     return instance.get();
   }
 
-  void Run(const phi::GPUContext& dev_ctx,
+  void Run(const GPUContext& dev_ctx,
            const size_t key,
            T const alpha,
            T const beta,
@@ -237,7 +237,7 @@ class GatherGemmScatterAutoTuner
   }
 
  protected:
-  size_t PickBestKernel(const phi::GPUContext& dev_ctx,
+  size_t PickBestKernel(const GPUContext& dev_ctx,
                         const T& alpha,
                         const T& beta,
                         Args&... args) {

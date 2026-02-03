@@ -51,7 +51,7 @@ def array_length(array):
         Tensor, 0-D Tensor with shape [], which is the length of array.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -133,7 +133,7 @@ def array_read(array, i):
         Tensor, A Tensor that is read at the specified position of ``array``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -225,7 +225,7 @@ def array_write(
         list|Tensor, The input ``array`` after ``x`` is written into.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -324,7 +324,7 @@ def create_array(
         whose ``VarType`` is ``DENSE_TENSOR_ARRAY``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

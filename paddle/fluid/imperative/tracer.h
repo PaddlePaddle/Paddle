@@ -62,7 +62,7 @@ class Tracer {
   Tracer()
       : basic_engine_(new BasicEngine()),
         generator_(new UniqueNameGenerator()) {
-    expected_place_ = phi::CPUPlace();
+    expected_place_ = CPUPlace();
   }
 
   ~Tracer() = default;
@@ -159,7 +159,7 @@ class Tracer {
 
   PADDLE_API std::string GetAmpDtype() const;
 
-  PADDLE_API phi::DataType GetAmpPhiDtype() const;
+  PADDLE_API DataType GetAmpPhiDtype() const;
 
   TEST_API void DisableLayoutAutoTune();
 

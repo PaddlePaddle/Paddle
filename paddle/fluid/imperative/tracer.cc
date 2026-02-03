@@ -285,23 +285,21 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
   if (GetCurrentAmpAttrs()->GetAmpLevel() == AmpLevel::O1) {
-    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
+    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastInputs<VarType>(type, ins));
-    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() ==
-               phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastBF16Inputs<VarType>(type, ins));
     }
   } else if (GetCurrentAmpAttrs()->GetAmpLevel() == AmpLevel::O2) {
-    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
+    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureFp16Inputs<VarType>(type, ins));
-    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() ==
-               phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureBf16Inputs<VarType>(type, ins));
@@ -442,18 +440,18 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
-  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
-  std::map<phi::DenseTensor*, std::shared_ptr<phi::Allocation>>
+  std::map<DenseTensor*, DenseTensor*> need_backup_inputs2outputs;
+  std::map<DenseTensor*, std::shared_ptr<phi::Allocation>>
       need_backup_inputs2holder;
-  std::map<phi::DenseTensor*, phi::DDim> need_backup_inputs2strides;
-  std::map<phi::DenseTensor*, size_t> need_backup_inputs2offset;
+  std::map<DenseTensor*, phi::DDim> need_backup_inputs2strides;
+  std::map<DenseTensor*, size_t> need_backup_inputs2offset;
   if (FLAGS_use_stride_kernel) {
     for (auto& iter : inplace_map) {
       auto inputs_iter = ins.find(iter.first);
       for (size_t i = 0; i < inputs_iter->second.size(); i++) {
         auto var = inputs_iter->second[i]->MutableVar();
-        if (var->IsType<phi::DenseTensor>()) {
-          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<DenseTensor>();
           if (!dense_tensor->meta().is_contiguous()) {
             NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
             auto outputs_iter = tmp_out->find(iter.second);
@@ -462,7 +460,7 @@ void Tracer::TraceOp(const std::string& type,
             need_backup_inputs2outputs[dense_tensor] =
                 outputs_iter->second[i]
                     ->MutableVar()
-                    ->GetMutable<phi::DenseTensor>();
+                    ->GetMutable<DenseTensor>();
             need_backup_inputs2holder[dense_tensor] = dense_tensor->Holder();
             need_backup_inputs2strides[dense_tensor] = dense_tensor->strides();
             need_backup_inputs2offset[dense_tensor] = dense_tensor->offset();
@@ -519,15 +517,15 @@ void Tracer::TraceOp(const std::string& type,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
 
-  std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
+  std::map<DenseTensor*, DenseTensor*> need_backup_inputs2outputs;
 
   if (FLAGS_use_stride_kernel) {
     for (auto& iter : inplace_map) {
       auto inputs_iter = ins.find(iter.first);
       for (size_t i = 0; i < inputs_iter->second.size(); i++) {
         auto var = inputs_iter->second[i]->MutableVar();
-        if (var->IsType<phi::DenseTensor>()) {
-          auto dense_tensor = var->GetMutable<phi::DenseTensor>();
+        if (var->IsType<DenseTensor>()) {
+          auto dense_tensor = var->GetMutable<DenseTensor>();
           if (!dense_tensor->meta().is_contiguous()) {
             NameTensorMap* tmp_out = const_cast<NameTensorMap*>(&outs);
             auto outputs_iter = tmp_out->find(iter.second);
@@ -536,7 +534,7 @@ void Tracer::TraceOp(const std::string& type,
             need_backup_inputs2outputs[dense_tensor] =
                 outputs_iter->second[i]
                     ->MutableVar()
-                    ->GetMutable<phi::DenseTensor>();
+                    ->GetMutable<DenseTensor>();
           }
         }
       }
@@ -606,7 +604,7 @@ std::string Tracer::GetAmpDtype() const {
   return g_current_amp_attrs->GetAmpDtype();
 }
 
-phi::DataType Tracer::GetAmpPhiDtype() const {
+DataType Tracer::GetAmpPhiDtype() const {
   return g_current_amp_attrs->GetAmpPhiDtype();
 }
 
@@ -624,7 +622,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(phi::CPUPlace());
+  auto* dev_ctx = pool.Get(CPUPlace());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {

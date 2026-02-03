@@ -25,38 +25,33 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
-namespace {
+namespace pir {
 
 template <typename OpType>
-class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
+class OneDNNPlacementPattern : public OpRewritePattern<OpType> {
  public:
-  using pir::OpRewritePattern<OpType>::OpRewritePattern;
+  using OpRewritePattern<OpType>::OpRewritePattern;
 
-  bool MatchAndRewrite(
-      OpType op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  bool MatchAndRewrite(OpType op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     std::string target_op_name = op->name();
     if (target_op_name == "pd_op.scale" || target_op_name == "pd_op.scale_" ||
         target_op_name == "pd_op.cast" || target_op_name == "pd_op.cast_") {
-      auto input_type = pir::GetDataTypeFromValue(op->operand_source(0));
-      if (!(pir::isa<pir::Float32Type>(input_type) ||
-            pir::isa<pir::BFloat16Type>(input_type)))
+      auto input_type = GetDataTypeFromValue(op->operand_source(0));
+      if (!(isa<Float32Type>(input_type) || isa<BFloat16Type>(input_type)))
         return false;
     }
     if (target_op_name == "pd_op.slice") {
-      auto input_type = pir::GetDataTypeFromValue(op->operand_source(0));
-      if (!(pir::isa<pir::Float32Type>(input_type) ||
-            pir::isa<pir::BFloat16Type>(input_type) ||
-            pir::isa<pir::UInt8Type>(input_type) ||
-            pir::isa<pir::Int8Type>(input_type)))
+      auto input_type = GetDataTypeFromValue(op->operand_source(0));
+      if (!(isa<Float32Type>(input_type) || isa<BFloat16Type>(input_type) ||
+            isa<UInt8Type>(input_type) || isa<Int8Type>(input_type)))
         return false;
     }
     target_op_name.replace(0, 5, "onednn_op");
 
-    auto op_info =
-        pir::IrContext::Instance()->GetRegisteredOpInfo(target_op_name);
+    auto op_info = IrContext::Instance()->GetRegisteredOpInfo(target_op_name);
     if (op_info) {
-      std::vector<pir::Type> op_item_inner_output_types;
+      std::vector<Type> op_item_inner_output_types;
       for (size_t i = 0; i < op->num_results(); ++i) {
         op_item_inner_output_types.push_back(op->result_type(i));
       }
@@ -72,10 +67,10 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
         attributes["is_test"] = rewriter.bool_attr(true);
       }
 
-      pir::Operation *op_item_inner = rewriter.Build(op->operands_source(),
-                                                     attributes,
-                                                     op_item_inner_output_types,
-                                                     op_info);
+      Operation *op_item_inner = rewriter.Build(op->operands_source(),
+                                                attributes,
+                                                op_item_inner_output_types,
+                                                op_info);
       rewriter.ReplaceOp(op, op_item_inner->results());
     }
 
@@ -85,26 +80,26 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
 
 class PatternCreator {
  public:
-  explicit PatternCreator(pir::IrContext *context) : context(context) {}
+  explicit PatternCreator(IrContext *context) : context(context) {}
 
   template <typename Op>
-  void CreatePatterns(pir::RewritePatternSet &patternSet) {
+  void CreatePatterns(RewritePatternSet &patternSet) {
     auto pattern = std::make_unique<OneDNNPlacementPattern<Op>>(
         context, benefit++, std::vector<std::string>{});
     patternSet.Add(std::move(pattern));
   }
 
  private:
-  pir::IrContext *context;
+  IrContext *context;
   int benefit = 1;
 };
 
-class OneDNNPlacementPass : public pir::PatternRewritePass {
+class OneDNNPlacementPass : public PatternRewritePass {
  public:
-  OneDNNPlacementPass() : pir::PatternRewritePass("onednn_placement_pass", 2) {}
+  OneDNNPlacementPass() : PatternRewritePass("onednn_placement_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
 
     PatternCreator patternCreator(context);
     patternCreator.CreatePatterns<paddle::dialect::MatmulOp>(ps);
@@ -265,14 +260,10 @@ class OneDNNPlacementPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateOneDNNPlacementPass() {
   return std::make_unique<OneDNNPlacementPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(onednn_placement_pass, OneDNNPlacementPass);
+REGISTER_IR_PASS(onednn_placement_pass, pir::OneDNNPlacementPass);
