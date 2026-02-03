@@ -66,4 +66,8 @@ DEFINE_CAST(uint64_t, UInt64)
 
 at::Tensor Tensor::abs() const { return at::abs(*this); }
 
+at::Tensor& Tensor::abs_() const {
+  return at::abs_(const_cast<at::Tensor&>(*this));
+}
+
 }  // namespace at

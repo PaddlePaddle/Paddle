@@ -27,8 +27,14 @@ inline at::Tensor abs(const at::Tensor& self) {
   return paddle::experimental::abs(self._PD_GetInner());
 }
 
+inline at::Tensor& abs_(at::Tensor& self) {  // NOLINT(runtime/references)
+  paddle::experimental::abs_(self._PD_GetInner());
+  return self;
+}
+
 }  // namespace at
 
 namespace torch {
 using at::abs;
+using at::abs_;
 }  // namespace torch
