@@ -38,6 +38,14 @@ void DiagKernel(const Context& dev_ctx,
   if (x.dims().size() == 0) {
     x_shape = std::vector<int64_t>({1});
   }
+  if (x.numel() == 0) {
+    int r_fill = xpu::constant<XPUType>(dev_ctx.x_context(),
+                                        out_data,
+                                        out->numel(),
+                                        static_cast<XPUType>(padding_value));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r_fill, "constant");
+    return;
+  }
 
   int r = xpu::diag<XPUType>(dev_ctx.x_context(),
                              x_data,
