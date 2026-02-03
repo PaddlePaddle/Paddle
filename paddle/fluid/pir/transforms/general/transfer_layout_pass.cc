@@ -335,7 +335,7 @@ struct FlowGraph {
       }
 
       auto prefer_layout = layout_transform_iface.PreferLayout(&op);
-      if (prefer_layout == DataLayout::NHWC) {
+      if (prefer_layout == common::DataLayout::NHWC) {
         Node op_node(&op);
         mutable_nodes.insert(op_node);
         AddEdge(op_node, dst_node(), THRESHOLD);
@@ -765,7 +765,8 @@ class TransferLayoutPass : public Pass {
           if (layout_transformation_iface &&
               (kOpsOriginTransfer.find(op->name()) !=
                kOpsOriginTransfer.end())) {
-            layout_transformation_iface.RewriteByLayout(op, DataLayout::NHWC);
+            layout_transformation_iface.RewriteByLayout(
+                op, common::DataLayout::NHWC);
             num_of_layout_changed_ops++;
           } else {
             PADDLE_THROW(common::errors::Unimplemented(
@@ -795,7 +796,8 @@ class TransferLayoutPass : public Pass {
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
         const auto& new_layout =
-            ((src_set.count(node) > 0) ? DataLayout::NHWC : DataLayout::NCHW);
+            ((src_set.count(node) > 0) ? common::DataLayout::NHWC
+                                       : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(dst_value.defining_op());
         num_of_transpose_ops++;
         auto transpose_op =
@@ -841,7 +843,8 @@ class TransferLayoutPass : public Pass {
             ((src_set.count(node) > 0) ? layout_to_perm("NCHW", "NHWC")
                                        : layout_to_perm("NHWC", "NCHW"));
         const auto& new_layout =
-            ((src_set.count(node) > 0) ? DataLayout::NHWC : DataLayout::NCHW);
+            ((src_set.count(node) > 0) ? common::DataLayout::NHWC
+                                       : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(value.defining_op());
         num_of_transpose_ops++;
         auto transpose_op =
