@@ -731,8 +731,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                        int64_t offset,
                        DenseTensor* out) {
   DenseTensorMeta meta = input.meta();
-  meta.strides = common::make_ddim(out_stride);
-  meta.dims = common::make_ddim(dims);
+  meta.strides = make_ddim(out_stride);
+  meta.dims = make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
   int rank = out->dims().size();

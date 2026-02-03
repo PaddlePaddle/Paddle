@@ -36,7 +36,7 @@ class DataTransferHelper {
 
   bool apply(const phi::KernelKey& kernel_type_for_var,
              const phi::KernelKey& expected_kernel_key,
-             const phi::DenseTensor* tensor,
+             const DenseTensor* tensor,
              const std::string& var_name,
              std::string* new_var_name,
              std::vector<OpFuncNode>* new_op_func_nodes,
@@ -81,7 +81,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  bool static_build = false);
 
 inline bool need_device_transform(const phi::KernelKey& kernel_type_for_var,
-                                  const phi::DenseTensor* tensor,
+                                  const DenseTensor* tensor,
                                   const phi::Backend& expected_backend) {
   if (kernel_type_for_var.backend() == phi::Backend::ALL_BACKEND ||
       expected_backend == phi::Backend::ALL_BACKEND) {

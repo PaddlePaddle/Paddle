@@ -26,6 +26,9 @@
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
 #include <utils/scalar_type_conversion.h>
+#include <algorithm>
+#include <iostream>
+#include <vector>
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -149,8 +152,58 @@ class PADDLE_API TensorBase {
     return tensor_.is_contiguous();
   }
 
+  bool is_non_overlapping_and_dense() const {
+    // Empty or scalar tensors are always non-overlapping and dense
+    if (numel() <= 1) {
+      return true;
+    }
+
+    // If the tensor is contiguous, it is non-overlapping and dense
+    if (tensor_.is_contiguous()) {
+      return true;
+    }
+
+    // For non-contiguous tensors, check if sorted strides form a valid dense
+    // layout
+    auto sizes_vec = sizes();
+    auto strides_vec = strides();
+    int64_t ndim = dim();
+
+    // Create a permutation sorted by strides (ascending order)
+    std::vector<int64_t> perm(ndim);
+    for (int64_t i = 0; i < ndim; ++i) {
+      perm[i] = i;
+    }
+    std::sort(perm.begin(), perm.end(), [&](int64_t a, int64_t b) {
+      return strides_vec[a] < strides_vec[b];
+    });
+
+    // Check if sorted strides form a valid dense layout without gaps/overlaps
+    int64_t expected_stride = 1;
+    for (int64_t i = 0; i < ndim; ++i) {
+      int64_t dim_idx = perm[i];
+      if (sizes_vec[dim_idx] == 0) {
+        return true;  // Empty tensor
+      }
+      if (sizes_vec[dim_idx] == 1) {
+        continue;  // Size-1 dimensions don't affect density
+      }
+      if (strides_vec[dim_idx] != expected_stride) {
+        return false;
+      }
+      expected_stride *= sizes_vec[dim_idx];
+    }
+    return true;
+  }
+
   c10::ScalarType scalar_type() const {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  }
+
+  bool has_names() const {
+    // In PyTorch, has_names() is used to check if any dimension has names.
+    // In Paddle, we don't support named dimension yet, so always return false.
+    return false;
   }
 
   c10::TensorOptions options() const {
@@ -310,6 +363,68 @@ class PADDLE_API TensorBase {
   }
   template <typename T, size_t N>
   TensorAccessor<T, N> accessor() && = delete;
+
+  // Return a `GenericPackedTensorAccessor` for CUDA `Tensor`s. You have to
+  // specify scalar type and dimension. You can optionally specify
+  // RestrictPtrTraits as a template parameter to cast the data pointer to a
+  // __restrict__ pointer. In order to use this, your CUDA kernel has to take a
+  // corresponding GenericPackedTensorAccessor as an argument.
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  GenericPackedTensorAccessor<T, N, PtrTraits, index_t>
+  generic_packed_accessor() const& {
+    static_assert(
+        N > 0,
+        "accessor is used for indexing tensor, for scalars use *data_ptr<T>()");
+    TORCH_CHECK(dim() == N,
+                "TensorAccessor expected ",
+                N,
+                " dims but tensor has ",
+                dim());
+    T* ptr = nullptr;
+    if constexpr (std::is_const_v<T>) {
+      ptr = const_data_ptr<T>();
+    } else {
+      ptr = mutable_data_ptr<T>();
+    }
+    return GenericPackedTensorAccessor<T, N, PtrTraits, index_t>(
+        static_cast<typename PtrTraits<T>::PtrType>(ptr),
+        sizes().data(),
+        strides().data());
+  }
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  GenericPackedTensorAccessor<T, N> generic_packed_accessor() && = delete;
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor32<T, N, PtrTraits> packed_accessor32() const& {
+    TORCH_CHECK(
+        numel() <= static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+        "numel needs to be smaller than int32_t max; otherwise, please use "
+        "packed_accessor64");
+    return generic_packed_accessor<T, N, PtrTraits, int32_t>();
+  }
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor32<T, N, PtrTraits> packed_accessor32() && = delete;
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor64<T, N, PtrTraits> packed_accessor64() const& {
+    return generic_packed_accessor<T, N, PtrTraits, int64_t>();
+  }
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor64<T, N, PtrTraits> packed_accessor64() && = delete;
 
   const PaddleTensor& _PD_GetInner() const& { return tensor_; }
   PaddleTensor& _PD_GetInner() & { return tensor_; }

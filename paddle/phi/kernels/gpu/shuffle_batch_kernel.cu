@@ -53,7 +53,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   for (int i = 0; i < x.dims().size() - 1; i++) {
     elem_size *= x.dims()[i];
   }
-  shuffleidx->Resize(common::make_ddim({elem_size}));
+  shuffleidx->Resize(make_ddim({elem_size}));
 
   int64_t seed_int = 0;
   if (seed.initialized()) {
@@ -103,7 +103,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
       x_data, shuffleidx_data, out_data, x_embed_size);
   funcs::ForRange<phi::GPUContext> for_range(dev_ctx, elem_size * x_embed_size);
   for_range(functor);
-  seed_out->Resize(common::make_ddim({1}));
+  seed_out->Resize(make_ddim({1}));
   auto* seed_out_data = dev_ctx.template HostAlloc<int64_t>(seed_out);
   *seed_out_data = engine();
 #endif

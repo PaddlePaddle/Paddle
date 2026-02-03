@@ -153,7 +153,7 @@ PADDLE_API const std::shared_ptr<Generator>& DefaultXPUGenerator(
     int64_t device_id = -1);
 
 PADDLE_API const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
-    const phi::CustomPlace& place);
+    const CustomPlace& place);
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 

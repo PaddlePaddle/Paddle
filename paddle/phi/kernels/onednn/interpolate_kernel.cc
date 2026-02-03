@@ -176,7 +176,7 @@ void InterpolateKernel(
                                                out_h,
                                                out_w,
                                                scale);
-  DDim dim_out = common::make_ddim(out_dims_vec);
+  DDim dim_out = make_ddim(out_dims_vec);
   out->Resize(dim_out);
 
   funcs::InterpolateOneDNNHandler<T> handler(

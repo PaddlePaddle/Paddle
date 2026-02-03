@@ -60,18 +60,18 @@ static void UniqueConsecutiveFlattenedTensor(const Context& dev_ctx,
   }
   out_vec.resize(output_size);
 
-  out->Resize(common::make_ddim({output_size}));
+  out->Resize(make_ddim({output_size}));
   auto* out_data = dev_ctx.template Alloc<InT>(out);
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
   if (return_inverse) {
-    inverse->Resize(common::make_ddim({in.numel()}));
+    inverse->Resize(make_ddim({in.numel()}));
     auto* inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
 
   if (return_counts) {
-    count->Resize(common::make_ddim({out->numel()}));
+    count->Resize(make_ddim({out->numel()}));
     auto* counts_data = dev_ctx.template Alloc<IndexT>(count);
     std::copy(counts_vec.begin(), counts_vec.end(), counts_data);
   }
@@ -160,7 +160,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
-  DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
+  DDim in_trans_dims = make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   dev_ctx.template Alloc<InT>(&in_trans);
   funcs::TransCompute<Context, InT>(
@@ -202,10 +202,10 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(common::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(make_ddim(out_trans_dims_vec));
   dev_ctx.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(common::make_ddim(out_trans_dims_vec));
+  out->Resize(make_ddim(out_trans_dims_vec));
   dev_ctx.template Alloc<InT>(out);
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   funcs::TransCompute<Context, InT>(

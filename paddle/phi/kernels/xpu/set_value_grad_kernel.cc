@@ -88,7 +88,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                              axes.size(),
                              false);
 
-  DDim out_dims(common::make_ddim(out_dims_vector));
+  DDim out_dims(make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_local.size(), 0);
   funcs::StridedSliceFunctor(starts_local.data(),
@@ -269,7 +269,7 @@ void SetValueGradImpl(const Context& dev_ctx,
       // for value is a 0-D Tensor
       if (value_grad_dims.size() == 0) {
         value_grad_dims_vec =
-            vectorize<int64_t>(common::make_ddim(std::vector<int64_t>({1})));
+            vectorize<int64_t>(make_ddim(std::vector<int64_t>({1})));
       }
       for (auto offset : offsets) {
         for (int i = 0; i < out_dims_size; i++) {
