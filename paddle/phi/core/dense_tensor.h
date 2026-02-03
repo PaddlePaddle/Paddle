@@ -192,6 +192,8 @@ class PADDLE_API DenseTensor : public TensorBase,
 
   DenseTensor& Resize(const DDim& dims);
 
+  DenseTensor& Resize(const std::initializer_list<int64_t> dims);
+
   /// \brief Change the lod information in the metadata.
   /// \param legacy_lod The new lod of the dense tensor.
   void ResetLoD(const LegacyLoD& legacy_lod);
