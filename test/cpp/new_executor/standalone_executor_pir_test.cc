@@ -71,7 +71,7 @@ TEST(StandaloneExecutor, run) {
   std::string out_name = "add_out";
   builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 
   auto place = phi::CPUPlace();
   Scope scope;
@@ -118,7 +118,7 @@ TEST(StandaloneExecutor, run_error) {
   std::string out_name = "add_out";
   builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 
   for (auto op : kernel_program->block()->ops()) {
     op->erase_attribute("origin_id");
@@ -182,7 +182,7 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   std::string out_name = "add_out";
   builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 
   auto place = phi::CPUPlace();
   Scope scope;
@@ -232,7 +232,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   std::string out_name = "full_out";
   builder.Build<pir::ShadowOutputOp>(full->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 
   auto place = phi::CPUPlace();
   Scope scope;
@@ -295,7 +295,7 @@ TEST(StandaloneExecutor, if_op) {
   builder.SetInsertionPointToBlockEnd(block);
   builder.Build<pir::ShadowOutputOp>(if_op->result(0), out_name);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 
   auto place = phi::CPUPlace();
   Scope scope;
