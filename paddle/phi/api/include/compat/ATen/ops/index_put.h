@@ -174,6 +174,34 @@ inline at::Tensor index_put(
       self._PD_GetInner(), pd_indices, values._PD_GetInner(), accumulate);
 }
 
+// Tensor member function implementations
+inline at::Tensor Tensor::index(
+    const c10::List<::std::optional<at::Tensor>>& indices) const {
+  return at::index(*this, indices);
+}
+
+inline at::Tensor& Tensor::index_put_(
+    const c10::List<::std::optional<at::Tensor>>& indices,
+    const at::Tensor& values,
+    bool accumulate) const {
+  return at::index_put_(
+      const_cast<at::Tensor&>(*this), indices, values, accumulate);
+}
+
+inline at::Tensor& Tensor::index_put_(
+    const c10::List<::std::optional<at::Tensor>>& indices,
+    const at::Scalar& v,
+    bool accumulate) const {
+  return at::index_put_(const_cast<at::Tensor&>(*this), indices, v, accumulate);
+}
+
+inline at::Tensor Tensor::index_put(
+    const c10::List<::std::optional<at::Tensor>>& indices,
+    const at::Tensor& values,
+    bool accumulate) const {
+  return at::index_put(*this, indices, values, accumulate);
+}
+
 }  // namespace at
 
 namespace torch {
