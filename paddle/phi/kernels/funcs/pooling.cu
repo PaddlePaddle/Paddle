@@ -214,7 +214,11 @@ __global__ void KernelPool2D(const IndexT nthreads,
     }
     IndexT pool_size = exclusive ? (hend - hstart) * (wend - wstart)
                                  : ksize_height * ksize_width;
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
+    // Precision-aligned: Cast pool_size directly to MT (master type) to avoid
+    // unnecessary intermediate low-precision cast (e.g., int→float16→float32
+    // should be int→float32). This matches PyTorch's precision behavior.
+    using MT = typename dtype::MPTypeTrait<T>::Type;
+    pool_process.finalize(static_cast<MT>(pool_size), &ele);
     output_data[index] = ele;
   }
 }
@@ -275,7 +279,10 @@ __global__ void AdaptiveKernelPool2D(const IndexT nthreads,
         }
       }
       IndexT pool_size = (hend - hstart) * (wend - wstart);
-      pool_process.finalize(static_cast<T>(pool_size), &ele);
+      // Precision-aligned: Cast pool_size directly to MT (master type) to avoid
+      // unnecessary intermediate low-precision cast for float16/bfloat16.
+      using MT = typename dtype::MPTypeTrait<T>::Type;
+      pool_process.finalize(static_cast<MT>(pool_size), &ele);
       IndexT output_idx =
           channel_last
               ? (h_offset * output_width + w_offset) * channels + c_offset
@@ -1243,7 +1250,10 @@ __global__ void KernelPool3D(const IndexT nthreads,
     IndexT pool_size = (exclusive || adaptive)
                            ? (dend - dstart) * (hend - hstart) * (wend - wstart)
                            : ksize_depth * ksize_height * ksize_width;
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
+    // Precision-aligned: Cast pool_size directly to MT (master type) to avoid
+    // unnecessary intermediate low-precision cast for float16/bfloat16.
+    using MT = typename dtype::MPTypeTrait<T>::Type;
+    pool_process.finalize(static_cast<MT>(pool_size), &ele);
     output_data[index] = ele;
   }
 }
