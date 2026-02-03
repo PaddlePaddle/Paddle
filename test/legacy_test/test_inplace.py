@@ -1601,7 +1601,7 @@ class TestDygraphInplacBitwiseAnd(TestDygraphInplaceLogicAnd):
         )
 
     # will fix it by add inplace pre_process
-    def _test_broadcast_error(self):
+    def test_broadcast_error(self):
         broadcast_input = paddle.randint(
             low=0, high=10, shape=[3, 1, 4], dtype="int32"
         )

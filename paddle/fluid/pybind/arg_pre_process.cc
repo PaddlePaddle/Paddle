@@ -556,6 +556,41 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   }
 }
 
+// BitwiseAnd broadcast validation for dygraph
+void BitwiseInplacePreProcess(Tensor* x, Tensor* y) {
+  auto x_shape = x->dims();
+  auto y_shape = y->dims();
+
+  auto out_shape = phi::funcs::BroadcastTwoDims(x_shape, y_shape);
+
+  PADDLE_ENFORCE_EQ(
+      out_shape,
+      x_shape,
+      phi::errors::InvalidArgument(
+          "The shape of broadcast output %s is different from that of inplace "
+          "tensor %s in the Inplace operation.",
+          out_shape,
+          x_shape));
+}
+
+// BitwiseAnd broadcast validation for static graph
+void BitwiseInplacePreProcess(pir::Value* x, pir::Value* y) {
+  auto x_shape = pir::GetShapeFromValue(*x);
+  auto y_shape = pir::GetShapeFromValue(*y);
+
+  auto out_shape = phi::funcs::BroadcastTwoDims(common::make_ddim(x_shape),
+                                                common::make_ddim(y_shape));
+
+  PADDLE_ENFORCE_EQ(
+      out_shape,
+      common::make_ddim(x_shape),
+      phi::errors::InvalidArgument(
+          "The shape of broadcast output %s is different from that of inplace "
+          "tensor %s in the Inplace operation.",
+          out_shape,
+          common::make_ddim(x_shape)));
+}
+
 }  // namespace pybind
 
 }  // namespace paddle
