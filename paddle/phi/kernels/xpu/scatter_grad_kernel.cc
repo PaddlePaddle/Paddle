@@ -37,6 +37,20 @@ void ScatterGradKernel(const Context &dev_ctx,
     }
     return;
   }
+  if (index.numel() == 0) {
+    if (x_grad) {
+      phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (updates_grad) {
+      dev_ctx.template Alloc<T>(updates_grad);
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(updates_grad->dims())),
+          0,
+          updates_grad);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto &index_type = index.dtype();
