@@ -60,7 +60,7 @@ void NonZeroKernel(const Context& dev_ctx,
     true_num_cpu = numel;
   }
 
-  out->Resize(common::make_ddim({true_num_cpu, rank}));
+  out->Resize(make_ddim({true_num_cpu, rank}));
   auto* out_data = dev_ctx.template Alloc<int64_t>(out);
 
   if (true_num_cpu == 0) {

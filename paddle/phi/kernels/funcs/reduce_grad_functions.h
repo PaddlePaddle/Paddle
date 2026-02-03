@@ -50,7 +50,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
     broad_cast_times *= x_dims[dims_ref[i]];
   }
-  auto reduced_dims = common::make_ddim(reduced_dims_v);
+  auto reduced_dims = make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 

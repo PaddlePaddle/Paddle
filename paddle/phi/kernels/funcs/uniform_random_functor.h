@@ -110,7 +110,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
         tensor->dims(),
-        common::make_ddim({1}),
+        make_ddim({1}),
         common::errors::InvalidArgument(
             "Shape of dim tensor in uniform_random_op should be [1]"
             "But received tensor's dim=%s.",

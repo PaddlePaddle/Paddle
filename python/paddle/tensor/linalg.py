@@ -4706,6 +4706,7 @@ def corrcoef(x: Tensor, rowvar: bool = True, name: str | None = None) -> Tensor:
     return c
 
 
+@param_two_alias(["x", "x1"], ["y", "x2"])
 def cdist(
     x: Tensor,
     y: Tensor,
@@ -4727,7 +4728,9 @@ def cdist(
 
     Args:
         x (Tensor): A tensor with shape :math:`B \times P \times M`.
+            Alias: ``x1``.
         y (Tensor): A tensor with shape :math:`B \times R \times M`.
+            Alias: ``x2``.
         p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
         compute_mode (str, optional): The mode for compute distance.
 
@@ -4807,10 +4810,18 @@ def cdist(
     p = float(p)
 
     if r1 == 0 or r2 == 0:
-        return paddle.empty((r1, r2), dtype=x.dtype)
+        if x.ndim == 3 and y.ndim == 3:
+            batch_size = x.shape[0]
+            return paddle.empty((batch_size, r1, r2), dtype=x.dtype)
+        else:
+            return paddle.empty((r1, r2), dtype=x.dtype)
 
     if c1 == 0:
-        return paddle.zeros((r1, r2), dtype=x.dtype)
+        if x.ndim == 3 and y.ndim == 3:
+            batch_size = x.shape[0]
+            return paddle.zeros((batch_size, r1, r2), dtype=x.dtype)
+        else:
+            return paddle.zeros((r1, r2), dtype=x.dtype)
 
     if p == 2.0 and (mode == 1 or (mode == 0 and (r1 > 25 or r2 > 25))):
         x_norm = paddle.sum(x.pow(2), axis=-1, keepdim=True)

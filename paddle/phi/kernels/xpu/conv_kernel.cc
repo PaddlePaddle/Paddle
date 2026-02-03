@@ -57,9 +57,8 @@ void ConvKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           ("XPU does not support data_format is NDHWC in conv op.")));
 
-  DDim in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
-  DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  DDim in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
@@ -183,6 +182,10 @@ void Conv3DKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations_t,
                   const std::string& data_format,
                   DenseTensor* out) {
+  if (input.numel() == 0 || out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int64_t> dilations(dilations_t.begin(), dilations_t.end());
@@ -194,13 +197,12 @@ void Conv3DKernel(const Context& dev_ctx,
 
   DDim in_data_dims;
   if (data_format == "NDHWC") {
-    in_data_dims = common::slice_ddim(input.dims(), 1, input.dims().size() - 1);
+    in_data_dims = slice_ddim(input.dims(), 1, input.dims().size() - 1);
   } else {
-    in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
+    in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
   }
 
-  DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);

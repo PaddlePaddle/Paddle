@@ -143,7 +143,7 @@ class SelectedRowsImpl {
   /*
    * @brief Get complete Dims before
    */
-  phi::DDim GetCompleteDims() const {
+  DDim GetCompleteDims() const {
     std::vector<int64_t> dims = common::vectorize(value_->dims());
     dims[0] = height_;
     return common::make_ddim(dims);

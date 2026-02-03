@@ -401,7 +401,7 @@ void ArgsortKernel(const Context& dev_ctx,
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     dev_ctx.template Alloc<int64_t>(indices);
     dev_ctx.template Alloc<T>(output);
@@ -434,8 +434,8 @@ void ArgsortKernel(const Context& dev_ctx,
     // Do transpose
     TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

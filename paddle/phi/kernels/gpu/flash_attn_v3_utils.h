@@ -30,10 +30,10 @@ namespace phi {
       AllocationType::GPU, \
       common::errors::InvalidArgument(#x " must be on CUDA Device"))
 
-#define CHECK_SHAPE(x, ...)                           \
-  PADDLE_ENFORCE_EQ(x.dims(),                         \
-                    common::make_ddim({__VA_ARGS__}), \
-                    common::errors::InvalidArgument(  \
+#define CHECK_SHAPE(x, ...)                          \
+  PADDLE_ENFORCE_EQ(x.dims(),                        \
+                    make_ddim({__VA_ARGS__}),        \
+                    common::errors::InvalidArgument( \
                         #x " must have shape (" #__VA_ARGS__ ")"))
 
 #define CHECK_CONTIGUOUS(x)                   \

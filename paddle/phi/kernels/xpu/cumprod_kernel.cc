@@ -33,6 +33,9 @@ void CumprodKernel(const Context& dev_ctx,
   DDim shape = x->dims();
   std::vector<int64_t> xshape = vectorize<int64_t>(shape);
 
+  if (input.numel() == 0) {
+    return;
+  }
   if (dim < 0) dim += xshape.size();
   if (shape.size() == 0) {
     int r =

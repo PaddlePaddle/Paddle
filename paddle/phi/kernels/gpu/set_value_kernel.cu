@@ -177,7 +177,7 @@ void SetValueKernel(const Context& dev_ctx,
 
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
-  value_tensor.Resize(common::make_ddim(shape));
+  value_tensor.Resize(make_ddim(shape));
   SetTensorValueKernel<T, Context>(dev_ctx,
                                    in,
                                    value_tensor,

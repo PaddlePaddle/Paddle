@@ -43,7 +43,7 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   int64_t w = grad_grid_dims[2];
 
   // The shape of input_grad (theta gradient) should be [N, 2, 3]
-  input_grad->Resize(common::make_ddim({n, 2, 3}));
+  input_grad->Resize(make_ddim({n, 2, 3}));
   T* grad_theta_data = dev_ctx.template Alloc<T>(input_grad);
 
   if (output_grad.numel() == 0) {
@@ -54,7 +54,7 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   // 1. Directly create the basic grid using the same kernel as the forward
   // direction
   DenseTensor base_grid;
-  base_grid.Resize(common::make_ddim({n, h, w, 3}));
+  base_grid.Resize(make_ddim({n, h, w, 3}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
   funcs::CreateBaseGridKernel_4D<T, Context>(
@@ -63,22 +63,22 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   // 2. Reshaping base_grid to [N, H * W, 3]
   DenseTensor base_grid_reshaped;
   base_grid_reshaped.ShareDataWith(base_grid);
-  base_grid_reshaped.Resize(common::make_ddim({n, h * w, 3}));
+  base_grid_reshaped.Resize(make_ddim({n, h * w, 3}));
 
   // 3. Transposition base_grid: [N, H * W, 3] ->[N, 3, H * W]
   DenseTensor base_grid_transposed;
-  base_grid_transposed.Resize(common::make_ddim({n, 3, h * w}));
+  base_grid_transposed.Resize(make_ddim({n, 3, h * w}));
   phi::TransposeKernel<T, Context>(
       dev_ctx, base_grid_reshaped, {0, 2, 1}, &base_grid_transposed);
 
   // 4. Reshaping Output_grad to [N, H * W, 2]
   DenseTensor grad_grid_reshaped;
   grad_grid_reshaped.ShareDataWith(output_grad);
-  grad_grid_reshaped.Resize(common::make_ddim({n, h * w, 2}));
+  grad_grid_reshaped.Resize(make_ddim({n, h * w, 2}));
 
   // 5. Batch matrix multiplication: [N, 3, H * W] x [N, H * W, 2]=[N, 3, 2]
   DenseTensor grad_theta_temp;
-  grad_theta_temp.Resize(common::make_ddim({n, 3, 2}));
+  grad_theta_temp.Resize(make_ddim({n, 3, 2}));
 
   phi::BmmKernel<T, Context>(
       dev_ctx, base_grid_transposed, grad_grid_reshaped, &grad_theta_temp);
@@ -102,7 +102,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   int64_t w = grad_grid_dims[3];
 
   // The shape of input_grad (theta gradient) should be [N, 3, 4]
-  input_grad->Resize(common::make_ddim({n, 3, 4}));
+  input_grad->Resize(make_ddim({n, 3, 4}));
   T* grad_theta_data = dev_ctx.template Alloc<T>(input_grad);
 
   if (output_grad.numel() == 0) {
@@ -113,7 +113,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   // 1. Directly create the basic grid using the same kernel as the forward
   // direction
   DenseTensor base_grid;
-  base_grid.Resize(common::make_ddim({n, d, h, w, 4}));
+  base_grid.Resize(make_ddim({n, d, h, w, 4}));
   T* base_grid_data = dev_ctx.template Alloc<T>(&base_grid);
 
   funcs::CreateBaseGridKernel_5D<T, Context>(
@@ -122,23 +122,23 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   // 2. Reshaping base_grid to [N, D * H * W, 4]
   DenseTensor base_grid_reshaped;
   base_grid_reshaped.ShareDataWith(base_grid);
-  base_grid_reshaped.Resize(common::make_ddim({n, d * h * w, 4}));
+  base_grid_reshaped.Resize(make_ddim({n, d * h * w, 4}));
 
   // 3. Transpose base_grid:[N，D*H*W，4]->[N，4，D*H*W]
   DenseTensor base_grid_transposed;
-  base_grid_transposed.Resize(common::make_ddim({n, 4, d * h * w}));
+  base_grid_transposed.Resize(make_ddim({n, 4, d * h * w}));
   phi::TransposeKernel<T, Context>(
       dev_ctx, base_grid_reshaped, {0, 2, 1}, &base_grid_transposed);
 
   // 4. Reshaping Output_grad to [N, D * H * W, 3]
   DenseTensor grad_grid_reshaped;
   grad_grid_reshaped.ShareDataWith(output_grad);
-  grad_grid_reshaped.Resize(common::make_ddim({n, d * h * w, 3}));
+  grad_grid_reshaped.Resize(make_ddim({n, d * h * w, 3}));
 
   // 5. Batch matrix multiplication: [N, 4, D * H * W] x [N, D * H * W, 3]=[N,
   // 4, 3]
   DenseTensor grad_theta_temp;
-  grad_theta_temp.Resize(common::make_ddim({n, 4, 3}));
+  grad_theta_temp.Resize(make_ddim({n, 4, 3}));
 
   phi::BmmKernel<T, Context>(
       dev_ctx, base_grid_transposed, grad_grid_reshaped, &grad_theta_temp);
