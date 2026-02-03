@@ -17,6 +17,7 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/List.h>
 #include <c10/core/SymIntArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -484,6 +485,25 @@ class Tensor : public TensorBase {
         paddle::experimental::slice(tensor_, {0, 1}, starts, ends, {1}, {})
             .contiguous());
   }
+
+  // index: Get values at specified tensor indices (forward to at::index)
+  at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
+
+  // index_put_: Set values at specified indices in-place (forward to
+  // at::index_put_)
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Tensor& values,
+                         bool accumulate = false) const;
+
+  // index_put_: Set scalar value at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Scalar& v,
+                         bool accumulate = false) const;
+
+  // index_put: Non-inplace version of index_put_
+  at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
+                       const at::Tensor& values,
+                       bool accumulate = false) const;
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(

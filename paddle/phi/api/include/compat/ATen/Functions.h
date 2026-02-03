@@ -21,6 +21,7 @@
 #include <ATen/ops/empty_like.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
+#include <ATen/ops/index_put.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/reshape.h>
 #include <ATen/ops/transpose.h>
