@@ -3138,7 +3138,7 @@ void MatmulInferMeta(const MetaTensor& x,
           lhs_reduce_dim,
           K_lhs,
           rhs_reduce_dim,
-          K_rhs))
+          K_rhs));
   std::vector<int64_t> new_dims;
   if (ndims_x > ndims_y) {
     new_dims.assign(dims_x.begin(), dims_x.end() - 2);
