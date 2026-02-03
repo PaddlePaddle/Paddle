@@ -28,7 +28,6 @@ from paddle import _C_ops
 from paddle._C_ops import diag, tril, triu  # noqa: F401
 from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
     size_args_decorator,
@@ -1655,7 +1654,7 @@ def ones(
     )
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def ones_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -1796,7 +1795,7 @@ def zeros(
     )
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def zeros_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -2006,7 +2005,7 @@ def eye(
     return out
 
 
-@ParamAliasDecorator({"shape": ["size"]})
+@param_one_alias(["shape", "size"])
 def full(
     shape: ShapeLike,
     fill_value: Numeric | str,
@@ -3200,7 +3199,7 @@ def empty(
         return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def empty_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -3962,6 +3961,7 @@ def polar(
 
 
 @dygraph_only
+@param_two_alias(["loc", "median"], ["scale", "sigma"])
 def cauchy_(
     x: paddle.Tensor,
     loc: Numeric = 0,
@@ -3973,7 +3973,9 @@ def cauchy_(
     Args:
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+            Alias: ``median``.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+            Alias: ``sigma``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4063,7 +4065,7 @@ def set_(
         stride (list|tuple|None, optional): Define the target stride. Each element of it should be integer. Default: None,
             and when ``shape`` is also None, it will use the specified ``source``'s stride as default value; when ``shape``
             is specified, it will use the default stride corresponding to the specified ``shape``.
-        offset (int, optional): Define the target offset from x's holder. Default: 0.
+        offset (int, optional): Define the target offset from x's holder in bytes. Default: 0.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

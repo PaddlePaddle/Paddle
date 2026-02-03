@@ -169,7 +169,7 @@ def calculate_gain(
         A float value, which is the recommended gain for this nonlinearity function.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
