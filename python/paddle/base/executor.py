@@ -2931,9 +2931,9 @@ class Executor:
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.infer_from_dataset(
-...     program=paddle.static.default_main_program(),
-...     dataset=dataset,
-... )
+                ...     program=paddle.static.default_main_program(),
+                ...     dataset=dataset,
+                ... )
         """
         return self._run_from_dataset(
             program,
@@ -3057,9 +3057,9 @@ class Executor:
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
                 >>> exe.train_from_dataset(
-...     program=paddle.static.default_main_program(),
-...     dataset=dataset,
-... )
+                ...     program=paddle.static.default_main_program(),
+                ...     dataset=dataset,
+                ... )
         """
         return self._run_from_dataset(
             program,
