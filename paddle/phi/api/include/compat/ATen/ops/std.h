@@ -17,11 +17,13 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/Scalar.h>
 #include <c10/util/ArrayRef.h>
+#include <c10/util/OptionalArrayRef.h>
 #include <optional>
 #include <vector>
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace at {
 
@@ -70,24 +72,6 @@ inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
     dims_vec.assign(dim.value().begin(), dim.value().end());
   }
   return std_impl(dims_vec, correction_value, keepdim);
-}
-
-// std with DimnameList (not supported, throws error)
-inline Tensor Tensor::std(at::DimnameList dim,
-                          bool unbiased,
-                          bool keepdim) const {
-  PD_THROW(
-      "std: Paddle does not support named tensors (DimnameList). "
-      "Please use dimension indices instead.");
-}
-
-// std with DimnameList and correction (not supported, throws error)
-inline Tensor Tensor::std(at::DimnameList dim,
-                          const ::std::optional<at::Scalar>& correction,
-                          bool keepdim) const {
-  PD_THROW(
-      "std: Paddle does not support named tensors (DimnameList). "
-      "Please use dimension indices instead.");
 }
 
 // Internal implementation for std (standard deviation = sqrt(variance))

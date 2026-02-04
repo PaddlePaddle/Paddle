@@ -18,11 +18,8 @@
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
 #include <c10/core/Scalar.h>
-#include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
@@ -31,10 +28,6 @@
 #endif
 
 namespace at {
-// Forward declarations for DimnameList support
-struct Dimname;
-using DimnameList = c10::ArrayRef<Dimname>;
-
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
 class Tensor : public TensorBase {
@@ -555,10 +548,6 @@ class Tensor : public TensorBase {
              bool unbiased = true,
              bool keepdim = false) const;
   Tensor std(at::OptionalIntArrayRef dim,
-             const ::std::optional<at::Scalar>& correction,
-             bool keepdim = false) const;
-  Tensor std(at::DimnameList dim, bool unbiased, bool keepdim = false) const;
-  Tensor std(at::DimnameList dim,
              const ::std::optional<at::Scalar>& correction,
              bool keepdim = false) const;
 
