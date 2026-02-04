@@ -82,7 +82,7 @@ class ScopedRNNBase {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
+      auto* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(place));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx->template Alloc<uint8_t>(dropout_state);
     }

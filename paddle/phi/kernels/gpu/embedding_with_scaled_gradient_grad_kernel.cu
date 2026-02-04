@@ -190,7 +190,7 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
   }
 
  private:
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
   const DenseTensor& input_;
   const DenseTensor& weight_;
   const DenseTensor& out_grad_;

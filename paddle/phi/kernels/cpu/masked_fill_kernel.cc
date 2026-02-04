@@ -44,7 +44,7 @@ void MaskedFillKernel(const Context& dev_ctx,
   DenseTensor x_expand;
   DenseTensor value_expand;
 
-  DDim expand_dims = common::make_ddim(expanded_size);
+  DDim expand_dims = make_ddim(expanded_size);
   if (mask.dims() != expand_dims) {
     ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);

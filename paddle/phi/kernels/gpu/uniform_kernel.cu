@@ -188,7 +188,7 @@ void UniformKernel(const Context& dev_ctx,
                    const Scalar& max,
                    int seed,
                    DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
 
   constexpr bool is_complex =

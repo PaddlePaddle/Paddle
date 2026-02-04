@@ -24,7 +24,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 namespace paddle {
 namespace framework {
 TuplePopInstruction::TuplePopInstruction(size_t id,
-                                         const phi::Place& place,
+                                         const Place& place,
                                          pir::Operation* op,
                                          ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {

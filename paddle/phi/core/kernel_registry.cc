@@ -26,8 +26,8 @@ namespace phi {
 void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
                       const KernelKey& default_key,
                       KernelArgsDef* args_def) {
-  auto default_tensor_layout = phi::DataLayout::NCHW;
-  if (default_key.layout() != phi::DataLayout::ANY) {
+  auto default_tensor_layout = DataLayout::NCHW;
+  if (default_key.layout() != DataLayout::ANY) {
     default_tensor_layout = default_key.layout();
   }
   for (auto arg_type : args_type) {
@@ -84,7 +84,7 @@ void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
                             default_key.dtype(),
                             arg_type);
     } else if (arg_type ==
-               std::type_index(typeid(const phi::ExtendedTensor&))) {  // NOLINT
+               std::type_index(typeid(const ExtendedTensor&))) {  // NOLINT
       args_def->AppendInput(default_key.backend(),
                             default_tensor_layout,
                             default_key.dtype(),
@@ -104,7 +104,7 @@ void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
                             default_key.dtype(),
                             arg_type);
     } else if (arg_type ==
-               std::type_index(typeid(const phi::FeedList&))) {  // NOLINT
+               std::type_index(typeid(const FeedList&))) {  // NOLINT
       args_def->AppendInput(default_key.backend(),
                             default_tensor_layout,
                             default_key.dtype(),

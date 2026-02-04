@@ -105,7 +105,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& dev_ctx,
     if (!dims_.empty()) {
       dims_[0] = out_size;
     }
-    out->Resize(common::make_ddim(dims_));
+    out->Resize(make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
@@ -163,7 +163,7 @@ void SendURecvKernel(const Context& dev_ctx,
     if (out_size_data[0] <= 0) {
       out->Resize(x.dims());
     } else {
-      out->Resize(common::make_ddim(out_size_data));
+      out->Resize(make_ddim(out_size_data));
     }
     if (reduce_op == "MEAN") {
       int64_t input_size =

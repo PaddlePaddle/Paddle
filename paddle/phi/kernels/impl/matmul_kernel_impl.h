@@ -145,7 +145,7 @@ void MatMulFunctionImplWithBlas(
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    Out->Resize(common::make_ddim({}));
+    Out->Resize(make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     if (FLAGS_use_legacy_gemm) {
       blas.GEMM(CblasNoTrans,
@@ -213,7 +213,7 @@ void MatMulFunctionImplWithBlas(
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(common::make_ddim(out_dims));
+    Out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int64_t M = Y.numel() / N;
@@ -291,7 +291,7 @@ void MatMulFunctionImplWithBlas(
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(common::make_ddim(out_dims));
+    Out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
@@ -379,7 +379,7 @@ void MatMulFunctionImplWithBlas(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<T>(Out);
 
   const int batch_dim = ndim - 2;
@@ -455,7 +455,7 @@ void MatMulFunctionImplWithBlas(
         std::vector<int64_t> actual_dim = common::vectorize(processedY.dims());
         actual_dim[actual_dim.size() - 1] =
             out_original_shape[out_original_shape.size() - 2];
-        Out->Resize(common::make_ddim(actual_dim));
+        Out->Resize(make_ddim(actual_dim));
         DenseTensor transposedOut = TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);
@@ -589,7 +589,7 @@ void MatMulFunctionImplWithCublasLt(
             N));
 
     // MatMul's case 0  =>  vector * vector
-    Out->Resize(common::make_ddim({}));
+    Out->Resize(make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     VLOG(3) << "MatMul with blaslt case 1";
     blaslt::Run(dev_ctx,
@@ -637,7 +637,7 @@ void MatMulFunctionImplWithCublasLt(
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(common::make_ddim(out_dims));
+    Out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -720,7 +720,7 @@ void MatMulFunctionImplWithCublasLt(
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(common::make_ddim(out_dims));
+    Out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
@@ -813,7 +813,7 @@ void MatMulFunctionImplWithCublasLt(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<T>(Out);
 
   const int batch_dim = ndim - 2;
@@ -1097,7 +1097,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
       return false;
     }
 
-    out->Resize(common::make_ddim({}));
+    out->Resize(make_ddim({}));
     dev_ctx.template Alloc<int32_t>(out);
     blaslt::Run(dev_ctx,
                 y_data,
@@ -1150,7 +1150,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    out->ResizeAndAllocate(common::make_ddim(out_dims));
+    out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<int32_t>(out);
     if (trans_y) {
       const int64_t M = y.numel() / N;
@@ -1237,7 +1237,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    out->ResizeAndAllocate(common::make_ddim(out_dims));
+    out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<int32_t>(out);
 
     if (trans_x) {
@@ -1326,7 +1326,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
+  out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<int32_t>(out);
 
   const int batch_dim = ndim - 2;
@@ -1526,7 +1526,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    out->Resize(common::make_ddim({}));
+    out->Resize(make_ddim({}));
     dev_ctx.template Alloc<int32_t>(out);
     funcs::Int8GEMM(dev_ctx,
                     CblasNoTrans,
@@ -1574,7 +1574,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    out->ResizeAndAllocate(common::make_ddim(out_dims));
+    out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<int32_t>(out);
     if (trans_y) {
       const int M = y.numel() / N;
@@ -1655,7 +1655,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    out->ResizeAndAllocate(common::make_ddim(out_dims));
+    out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<int32_t>(out);
 
     if (trans_x) {
@@ -1746,7 +1746,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
+  out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<int32_t>(out);
 
   const int batch_dim = ndim - 2;

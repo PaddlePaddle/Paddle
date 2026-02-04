@@ -81,7 +81,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   auto input_num = x.numel();
   auto input_dim = x.dims();
   auto index_dim = index.dims();

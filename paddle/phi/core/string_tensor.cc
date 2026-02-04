@@ -33,7 +33,7 @@ StringTensor::StringTensor(Allocator* a, StringTensorMeta&& meta)
   init_holder();
 }
 
-StringTensor::StringTensor(const std::shared_ptr<phi::Allocation>& holder,
+StringTensor::StringTensor(const std::shared_ptr<Allocation>& holder,
                            const StringTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
@@ -114,9 +114,9 @@ void StringTensor::init_holder() {
   auto& place = holder_->place();
   auto bytes_size = holder_->size();
   VLOG(6) << "Init StringTensor data with bytes:" << bytes_size;
-  if (place.GetType() == phi::AllocationType::CPU) {
+  if (place.GetType() == AllocationType::CPU) {
     std::memset(ptr, 0, bytes_size);
-  } else if (place.GetType() == phi::AllocationType::GPU) {
+  } else if (place.GetType() == AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_HIP
     hipMemset(ptr, 0, bytes_size);
@@ -178,7 +178,7 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
   return reinterpret_cast<void*>(ptr);
 }
 
-dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
+dtype::pstring* StringTensor::mutable_data(const Place& place,
                                            size_t requested_size) {
   PADDLE_ENFORCE_GE(
       numel(),
