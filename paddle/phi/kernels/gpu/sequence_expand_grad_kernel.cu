@@ -49,8 +49,8 @@ inline __global__ void sequence_expand_grad_kernel(const T* dout_data,
 }
 
 template <typename T>
-struct SequenceExpandGradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SequenceExpandGradFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/

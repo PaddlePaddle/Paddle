@@ -302,11 +302,24 @@ jobs:
             exit $ret
           }'\'' ERR
 
+          retry_or_skip() {
+            if "$@"; then
+              return 0
+            fi
+            echo "WARN: command failed, retrying in 20s: $*"
+            sleep 20
+            if "$@"; then
+              return 0
+            fi
+            echo "WARN: command failed again, skip install: $*"
+            return 0
+          }
+
           echo "::group::Install dependencies"
-          python -m pip install PyGithub
-          python -m pip install wheel
+          retry_or_skip python -m pip install PyGithub
+          retry_or_skip python -m pip install wheel
           echo "::endgroup::"
-          pip install -U numpy==1.26.4
+          retry_or_skip pip install -U numpy==1.26.4
           git config --global --add safe.directory ${work_dir}
           git config --global --add safe.directory ${work_dir}/Paddle
           pwd

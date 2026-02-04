@@ -3807,6 +3807,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_XPU
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_current_device_id", &platform::GetXPUCurrentDeviceId);
+  m.def("set_xpu_current_device_id", &platform::SetXPUDeviceId, py::arg("i"));
   m.def("xpu_empty_cache", platform::EmptyCache);
   m.def(
       "get_device_properties",

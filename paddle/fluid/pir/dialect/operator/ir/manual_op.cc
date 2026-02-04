@@ -2760,10 +2760,9 @@ phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
         phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1));
     starts_or_ends_list.SetFromTensor(true);
   } else if (starts_or_ends.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim starts_or_ends_dim =
-        starts_or_ends.type()
-            .dyn_cast<paddle::dialect::DenseTensorType>()
-            .dims();
+    DDim starts_or_ends_dim = starts_or_ends.type()
+                                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                                  .dims();
     size_t starts_or_ends_size = common::product(starts_or_ends_dim);
     if (common::contain_unknown_dim(starts_or_ends_dim)) {
       starts_or_ends_size = 1;
@@ -3626,7 +3625,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       vec_shape = std::vector<int64_t>(shape_size, -2);
       *is_from_tensor = true;
     } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
-      common::DDim shape_dim =
+      DDim shape_dim =
           shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 
       if (shape.isa<pir::OpResult>() &&

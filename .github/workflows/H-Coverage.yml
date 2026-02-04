@@ -23,6 +23,7 @@ env:
   CI_name: h-coverage
   CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+  fleet_branch: "release/0.2"
 
 defaults:
   run:
@@ -385,6 +386,7 @@ jobs:
             -e PADDLE_ROOT \
             -e ci_scripts \
             -e no_proxy \
+            -e fleet_branch \
             -e CI_name \
             -e CCACHE_DIR \
             -e CCACHE_SECONDARY_STORAGE \
@@ -405,6 +407,13 @@ jobs:
           git config user.name "PaddleCI"
           git config user.email "paddle_ci@example.com"
           git config pull.rebase false
+          if [ "${BRANCH}" != "develop" ]; then
+            git checkout $fleet_branch
+            echo "Checked out fleet branch: $fleet_branch"
+          else
+            git checkout develop
+            echo "Checked out fleet branch: develop"
+          fi
           mkdir -p /home/.cache/pip
           pip cache dir
           echo "Install uv"
@@ -524,6 +533,13 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
+          if [ "${BRANCH}" != "develop" ]; then
+            git checkout $fleet_branch
+            echo "Checked out fleet branch: $fleet_branch"
+          else
+            git checkout develop
+            echo "Checked out fleet branch: develop"
+          fi
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
@@ -574,6 +590,7 @@ jobs:
             -e PADDLE_ROOT \
             -e ci_scripts \
             -e CACHE_DIR \
+            -e fleet_branch \
             -e no_proxy \
             -e CI_name \
             -e PIP_CACHE_DIR \
@@ -622,6 +639,13 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
+          if [ "${BRANCH}" != "develop" ]; then
+            git checkout $fleet_branch
+            echo "Checked out fleet branch: $fleet_branch"
+          else
+            git checkout develop
+            echo "Checked out fleet branch: develop"
+          fi
           python -c "import paddle; print(paddle.version.commit)"
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.

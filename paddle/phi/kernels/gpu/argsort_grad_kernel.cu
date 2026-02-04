@@ -83,7 +83,7 @@ static __global__ void FillGrad(const T* dO,
 }
 
 template <typename T, typename IndType>
-void ArgFullAssign(const phi::GPUContext& dev_ctx,
+void ArgFullAssign(const GPUContext& dev_ctx,
                    const DenseTensor* dO,
                    const DenseTensor* indices,
                    DenseTensor* dX,
@@ -117,7 +117,7 @@ void ArgFullAssign(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-void ArgFlattenAssign(const phi::GPUContext& dev_ctx,
+void ArgFlattenAssign(const GPUContext& dev_ctx,
                       const DenseTensor* dO,
                       const DenseTensor* indices,
                       int64_t size,

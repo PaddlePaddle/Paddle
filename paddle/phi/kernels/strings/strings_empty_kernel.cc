@@ -34,8 +34,6 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
 
 }  // namespace phi::strings
 
-using pstring = ::phi::dtype::pstring;
-
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,
                                  CPU,
                                  ALL_LAYOUT,

@@ -171,7 +171,7 @@ bool CanDoInplace(const std::unordered_set<Value>& eager_dels,
     // result.
     auto is_numel_equal_loose_version = [](const TensorType& in,
                                            const TensorType& out) -> bool {
-      auto calculate_numel = [](const phi::DDim& ddim) -> int64_t {
+      auto calculate_numel = [](const DDim& ddim) -> int64_t {
         int64_t numel = 1;
         for (int i = 0; i < ddim.size(); i++) {
           numel *= ddim[i];

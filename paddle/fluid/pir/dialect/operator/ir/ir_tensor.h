@@ -31,8 +31,8 @@ class IrTensor : public phi::TensorBase,
   IrTensor() = default;
 
   IrTensor(phi::DataType dtype,
-           const phi::DDim& dims,
-           phi::DataLayout layout,
+           const DDim& dims,
+           DataLayout layout,
            LegacyLoD lod,
            size_t offset = 0);
 
@@ -51,9 +51,9 @@ class IrTensor : public phi::TensorBase,
 
   int64_t numel() const override;
 
-  const phi::DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return dims_; }
 
-  void SetDims(const phi::DDim& dims) { dims_ = dims; }
+  void SetDims(const DDim& dims) { dims_ = dims; }
 
   const phi::Place& place() const override;
 
@@ -61,9 +61,9 @@ class IrTensor : public phi::TensorBase,
 
   void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
 
-  phi::DataLayout layout() const noexcept override { return layout_; }
+  DataLayout layout() const noexcept override { return layout_; }
 
-  void SetLayout(phi::DataLayout layout) { layout_ = layout; }
+  void SetLayout(DataLayout layout) { layout_ = layout; }
 
   const LegacyLoD& lod() const noexcept { return lod_; }
 
@@ -86,9 +86,9 @@ class IrTensor : public phi::TensorBase,
                      bool fake_alloc = false) override;
 
  private:
-  phi::DDim dims_;
+  DDim dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  phi::DataLayout layout_{phi::DataLayout::NCHW};
+  DataLayout layout_{DataLayout::NCHW};
   LegacyLoD lod_;
   size_t offset_{0};
 };
