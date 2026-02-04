@@ -210,6 +210,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : cross
+  name : [paddle.cross, paddle.Tensor.cross]
+  args_alias :
+    use_default_mapping : True
+
 - op : diag
   name : [paddle.diag, paddle.Tensor.diag]
   args_alias :

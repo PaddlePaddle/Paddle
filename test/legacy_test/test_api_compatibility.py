@@ -1765,5 +1765,82 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+# Edit by AI Agent
+# Test cross compatibility
+class TestCrossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape_x = [2, 3]
+        self.shape_y = [2, 3]
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape_x).astype('float32')
+        self.np_y = np.random.randn(*self.shape_y).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        paddle_dygraph_out = []
+
+        # Position args
+        out1 = paddle.cross(x, y)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.cross(x=x, y=y, axis=1)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args
+        out3 = paddle.cross(input=x, other=y, dim=1)
+        paddle_dygraph_out.append(out3)
+
+        # Test out parameter
+        out4 = paddle.empty([2, 3], dtype='float32')
+        paddle.cross(x, y, out=out4)
+        paddle_dygraph_out.append(out4)
+
+        # Numpy reference
+        ref_out = np.cross(self.np_x, self.np_y)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-5
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_x, dtype='float32'
+            )
+            y = paddle.static.data(
+                name="y", shape=self.shape_y, dtype='float32'
+            )
+
+            # Position args
+            out1 = paddle.cross(x, y)
+            # Paddle keyword args
+            out2 = paddle.cross(x=x, y=y, axis=1)
+            # Torch keyword args
+            out3 = paddle.cross(input=x, other=y, dim=1)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.cross(self.np_x, self.np_y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-5)
+
+
 if __name__ == '__main__':
     unittest.main()

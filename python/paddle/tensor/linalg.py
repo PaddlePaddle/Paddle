@@ -21,13 +21,19 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bincount, bmm, diagonal, dot, matmul  # noqa: F401
+from paddle._C_ops import (  # noqa: F401
+    bincount,
+    bmm,
+    cross,
+    diagonal,
+    dot,
+    matmul,
+)
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
-    param_one_alias,
     param_two_alias,
     transpose_decorator,
 )
@@ -2010,112 +2016,6 @@ def t_(input, name=None):
         # 2-D tensor
         perm = [1, 0]
         out = _C_ops.transpose_(input, perm)
-        return out
-
-
-@param_one_alias(["axis", "dim"])
-def cross(
-    x: Tensor,
-    y: Tensor,
-    axis: int = 9,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the cross product between two tensors along an axis.
-
-    Inputs must have the same shape, and the length of their axes should be equal to 3.
-    If `axis` is not given, it defaults to the first axis found with the length 3.
-
-    .. note::
-        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
-
-    Args:
-        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
-        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
-        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. A Tensor with same data type as `x`.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor(
-            ...     [
-            ...         [1.0, 1.0, 1.0],
-            ...         [2.0, 2.0, 2.0],
-            ...         [3.0, 3.0, 3.0],
-            ...     ]
-            ... )
-            >>> y = paddle.to_tensor(
-            ...     [
-            ...         [1.0, 1.0, 1.0],
-            ...         [1.0, 1.0, 1.0],
-            ...         [1.0, 1.0, 1.0],
-            ...     ]
-            ... )
-            >>> z1 = paddle.cross(x, y)
-            >>> print(z1)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1., -1., -1.],
-             [ 2.,  2.,  2.],
-             [-1., -1., -1.]])
-
-            >>> z2 = paddle.cross(x, y, axis=1)
-            >>> print(z2)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 0., 0.],
-             [0., 0., 0.],
-             [0., 0., 0.]])
-    """
-    if in_dynamic_or_pir_mode():
-        axis = K_DEFAULT_DIM if axis is None else axis
-        return _C_ops.cross(x, y, axis)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                "int32",
-                "int64",
-                "complex64",
-                "complex128",
-            ],
-            'cross',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                "int32",
-                "int64",
-                "complex64",
-                "complex128",
-            ],
-            'cross',
-        )
-        helper = LayerHelper("cross", **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        attrs = {}
-        attrs['dim'] = axis
-
-        helper.append_op(
-            type='cross',
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
         return out
 
 

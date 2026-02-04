@@ -2580,6 +2580,55 @@ def cosh(
 """,
 )
 
+
+add_doc_and_signature(
+    "cross",
+    r"""
+    Computes the cross product between two tensors along an axis.
+
+    Inputs must have the same shape, and the length of their axes should be equal to 3.
+    If `axis` is not given, it defaults to the first axis found with the length 3.
+
+    Args:
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Returns:
+        Tensor. A Tensor with same data type as `x`.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]])
+            >>> y = paddle.to_tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+            >>> z1 = paddle.cross(x, y)
+            >>> print(z1)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1., -1., -1.],
+             [-1., -1., -1.]])
+
+            >>> z2 = paddle.cross(x, y, axis=1)
+            >>> print(z2)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 0.],
+             [0., 0., 0.]])
+""",
+    """
+def cross(
+    x: Tensor,
+    y: Tensor,
+    axis: int = 9,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
 add_doc_and_signature(
     "floor",
     r"""
