@@ -19,7 +19,18 @@ limitations under the License. */
 namespace phi {
 namespace backends {
 namespace xpu {
-
+constexpr DataType FLOAT32 = DataType::FLOAT32;
+constexpr DataType FLOAT64 = DataType::FLOAT64;
+constexpr DataType FLOAT16 = DataType::FLOAT16;
+constexpr DataType BFLOAT16 = DataType::BFLOAT16;
+constexpr DataType INT32 = DataType::INT32;
+constexpr DataType INT64 = DataType::INT64;
+constexpr DataType UINT8 = DataType::UINT8;
+constexpr DataType INT16 = DataType::INT16;
+constexpr DataType INT8 = DataType::INT8;
+constexpr DataType BOOL = DataType::BOOL;
+constexpr DataType COMPLEX64 = DataType::COMPLEX64;
+constexpr DataType COMPLEX128 = DataType::COMPLEX128;
 using XPUKernelSet = std::unordered_set<phi::DataType>;
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 

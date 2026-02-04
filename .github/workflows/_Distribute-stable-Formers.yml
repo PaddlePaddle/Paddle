@@ -33,7 +33,7 @@ jobs:
     if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'formers'
+      workflow-name: "formers"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -43,6 +43,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -127,6 +128,7 @@ jobs:
           -e no_proxy \
           -w /workspace --network host ${formers_docker}
       - name: Download paddle.tar.gz and merge target branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

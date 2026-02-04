@@ -105,7 +105,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -4443,10 +4442,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   BindGlooWrapper(&m);
-  BindBoxHelper(&m);
-#ifdef PADDLE_WITH_BOX_PS
-  BindBoxWrapper(&m);
-#endif
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   BindNCCLWrapper(&m);
 #endif

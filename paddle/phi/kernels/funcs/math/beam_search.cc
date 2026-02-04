@@ -64,8 +64,8 @@ class BeamSearchFunctor<phi::CPUContext, T> {
         0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
-    auto dims = common::make_ddim(
-        std::vector<int64_t>({static_cast<int>(num_instances), 1}));
+    auto dims =
+        make_ddim(std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
     auto *selected_ids_data = dev_ctx.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);

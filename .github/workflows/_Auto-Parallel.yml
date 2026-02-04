@@ -31,7 +31,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'auto-parallel'
+      workflow-name: "auto-parallel"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,6 +41,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Auto-Parallel
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -74,6 +75,7 @@ jobs:
       - name: Download Paddle
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -88,6 +90,7 @@ jobs:
       - name: Download PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "Download and extract PaddleNLP.tar.gz"

@@ -15,11 +15,11 @@ on:
       SLICE_TEST_MODE:
         type: string
         required: false
-        default: 'test_ci'
+        default: "test_ci"
       SLICE_BENCHMARK_FRAMEWORKS:
         type: string
         required: false
-        default: 'paddle'
+        default: "paddle"
       MANUALLY_PR_ID:
         type: string
         required: false
@@ -58,6 +58,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: slice
+    timeout-minutes: 20
     steps:
       - name: Check docker image and run container
         env:
@@ -91,6 +92,7 @@ jobs:
       - name: Download PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
