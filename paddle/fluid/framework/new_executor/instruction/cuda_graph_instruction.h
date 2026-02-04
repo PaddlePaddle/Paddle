@@ -35,7 +35,7 @@ class ValueExecutionInfo;
 class CudaGraphInstruction : public InstructionBase {
  public:
   CudaGraphInstruction(size_t id,
-                       const phi::Place& place,
+                       const Place& place,
                        pir::Operation* op,
                        uint8_t* cuda_graph_state_ref,
                        int64_t cuda_graph_capture_pool_id,
@@ -57,7 +57,7 @@ class CudaGraphInstruction : public InstructionBase {
   void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
  private:
-  const phi::Place& place_;
+  const Place& place_;
   pir::Operation* op_;
   uint8_t* cuda_graph_state_ref_ = nullptr;
   int64_t cuda_graph_capture_pool_id_ = -1;

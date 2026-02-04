@@ -28,7 +28,7 @@ constexpr char kSymbolBindings[] = "symbol_bindings";
 ///
 /// \brief ModuleOp
 ///
-class IR_API ModuleOp : public pir::Op<ModuleOp> {
+class IR_API ModuleOp : public Op<ModuleOp> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.module"; }
@@ -45,7 +45,7 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
   void Destroy();
 };
 
-class IR_API GroupOp : public pir::Op<GroupOp> {
+class IR_API GroupOp : public Op<GroupOp> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.group"; }
@@ -53,7 +53,7 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
   static const char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Type> &output_types);
+                    const std::vector<Type> &output_types);
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
@@ -61,16 +61,16 @@ class IR_API GroupOp : public pir::Op<GroupOp> {
 
   Block *block();
   Block *block() const;
-  std::vector<pir::Operation *> GetOperators() const;
+  std::vector<Operation *> GetOperators() const;
   void VerifySig();
-  void Print(pir::IrPrinter &printer);  // NOLINT
+  void Print(IrPrinter &printer);  // NOLINT
 };
 
 ///
 /// \brief ParameterOp: OpResult = ParameterOp({StrAttribute,
 /// StrAttribute})
 ///
-class IR_API ParameterOp : public pir::Op<ParameterOp> {
+class IR_API ParameterOp : public Op<ParameterOp> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.parameter"; }
@@ -91,7 +91,7 @@ class IR_API ParameterOp : public pir::Op<ParameterOp> {
 /// \brief SetParameterOp: SetParameterOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
-class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
+class IR_API SetParameterOp : public Op<SetParameterOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.set_parameter"; }
@@ -109,7 +109,7 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
 /// StrAttribute})
 ///
 class IR_API ShadowOutputOp
-    : public pir::Op<ShadowOutputOp, SideEffectTrait, ImmutableLayoutTrait> {
+    : public Op<ShadowOutputOp, SideEffectTrait, ImmutableLayoutTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.shadow_output"; }
@@ -125,7 +125,7 @@ class IR_API ShadowOutputOp
 ///
 /// \brief CombineOp: CombineOp(OpOperand)
 ///
-class IR_API CombineOp : public pir::Op<CombineOp> {
+class IR_API CombineOp : public Op<CombineOp> {
  public:
   using Op::Op;
 
@@ -140,20 +140,20 @@ class IR_API CombineOp : public pir::Op<CombineOp> {
                     const std::vector<Value> &inputs);
 
   void VerifySig() const;
-  std::vector<pir::Value> inputs() {
-    std::vector<pir::Value> inputs;
+  std::vector<Value> inputs() {
+    std::vector<Value> inputs;
     for (uint32_t idx = 0; idx < num_operands(); idx++) {
       inputs.push_back(operand_source(static_cast<int>(idx)));
     }
     return inputs;
   }
-  pir::Value out() { return result(0); }
+  Value out() { return result(0); }
 };
 
 ///
 /// \brief SliceOp: SliceOp(OpOperand)
 ///
-class IR_API SliceOp : public pir::Op<SliceOp> {
+class IR_API SliceOp : public Op<SliceOp> {
  public:
   using Op::Op;
 
@@ -169,7 +169,7 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
                     int index);
 
   void VerifySig() const;
-  pir::Value input() { return operand_source(0); }
+  Value input() { return operand_source(0); }
   void RefreshStopGradients();
 
  private:
@@ -180,7 +180,7 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
 ///
 /// \brief SplitOp: SplitOp(OpOperand)
 ///
-class IR_API SplitOp : public pir::Op<SplitOp> {
+class IR_API SplitOp : public Op<SplitOp> {
  public:
   using Op::Op;
 
@@ -195,7 +195,7 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
                     Value input);
 
   void VerifySig() const;
-  pir::Value input() { return operand_source(0); }
+  Value input() { return operand_source(0); }
   std::vector<Value> outputs() {
     std::vector<Value> res;
     for (uint32_t idx = 0; idx < num_results(); idx++) {

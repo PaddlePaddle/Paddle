@@ -24,7 +24,7 @@ jobs:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'win-gpu'
+      workflow-name: "win-gpu"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -34,6 +34,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: win-gpu
+    timeout-minutes: 120
     env:
       PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
@@ -63,6 +64,7 @@ jobs:
     steps:
       - name: Download Paddle and clean env
         working-directory: ..
+        timeout-minutes: 30
         run: |
           whoami
           cd
