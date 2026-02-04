@@ -34,7 +34,6 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
-    tensor_split_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -2980,40 +2979,13 @@ def split(
         return outs
 
 
-@overload
-def tensor_split(
-    x: Tensor,
-    num_or_indices: int | Sequence[int],
-    axis: int | Tensor = 0,
-    name: str | None = None,
-) -> list[Tensor]: ...
-
-
-@overload
-def tensor_split(
-    x: Tensor,
-    indices: int | Sequence[int],
-    axis: int | Tensor = 0,
-) -> list[Tensor]: ...
-
-
-@overload
-def tensor_split(
-    x: Tensor,
-    sections: int | Sequence[int],
-    axis: int | Tensor = 0,
-) -> list[Tensor]: ...
-
-
-@overload
-def tensor_split(
-    input: Tensor,
-    indices_or_sections: int | Sequence[int],
-    dim: int | Tensor = 0,
-) -> list[Tensor]: ...
-
-
-@tensor_split_decorator
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices_or_sections", "indices", "sections"],
+        "axis": ["dim"],
+    }
+)
 def tensor_split(
     x: Tensor,
     num_or_indices: int | Sequence[int],
