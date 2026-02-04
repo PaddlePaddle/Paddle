@@ -50,6 +50,10 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
+
+if(WITH_SLEEF)
+  list(APPEND PHI_DEPS sleef)
+endif()
 if(WITH_CINN)
   list(APPEND PHI_DEPS ap_phi)
 endif()
