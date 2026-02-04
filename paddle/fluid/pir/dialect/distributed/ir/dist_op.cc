@@ -187,7 +187,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
                                                 tensor_dist_attr,
                                                 local_shape);
   argument.AddOutput(out_dist_tensor_type);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 OpInfoTuple ReshardOp::GetOpInfo() {
@@ -308,7 +308,7 @@ void ReshardOp::Build(pir::Builder& builder,
       tensor_dist_attr,
       local_shape);
   argument.AddOutput(out_dist_tensor_type);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void DtensorFromLocalOp::Build(pir::Builder& builder,
@@ -349,7 +349,7 @@ void DtensorFromLocalOp::Build(pir::Builder& builder,
                                                 tensor_dist_attr,
                                                 local_tensor_type.dims());
   argument.AddOutput(out_dist_tensor_type);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 OpInfoTuple DtensorFromLocalOp::GetOpInfo() {
@@ -450,7 +450,7 @@ void DtensorToLocalOp::Build(pir::Builder& builder,
   }
 
   argument.AddOutput(dist_type.local_type());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 OpInfoTuple DtensorToLocalOp::GetOpInfo() {
@@ -589,7 +589,7 @@ TEST_API void paddle::dialect::MoESubMeshTensorsOp::Build(
     argument.AddOutput(out_dist_tensor_type);
   }
 
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 OpInfoTuple MoESubMeshTensorsOp::GetOpInfo() {
@@ -728,7 +728,7 @@ TEST_API void paddle::dialect::MoEGlobalMeshTensorOp::Build(
       pir::IrContext::Instance(), out_dense_tensor_type, global_dist_attr);
   argument.AddOutput(out_dist_tensor_type);
 
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 OpInfoTuple MoEGlobalMeshTensorOp::GetOpInfo() {
@@ -886,7 +886,7 @@ void DistReshapeOp::Build(pir::Builder& builder,
                                                 local_shape);
   argument.AddOutput(out_dist_tensor_type);
 
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 std::vector<std::vector<pir::Value>> DistReshapeOp::Vjp(
