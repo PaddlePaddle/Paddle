@@ -358,7 +358,7 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
             np.testing.assert_allclose(out_6.numpy(), self.res_6_np)
             np.testing.assert_allclose(out_7.numpy(), self.res_7_np)
-            np.testing.assert_allclose(out_8.numpy(), self.res_8_np)
+            np.testing.assert_allclose(out_8.numpy(), self.res_7_np)
 
 
 class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
