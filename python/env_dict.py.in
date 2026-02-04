@@ -13,6 +13,7 @@ env_dict={
     'WITH_PSLI':'@WITH_PSLI@',
     'FLUID_CORE_NAME':'@FLUID_CORE_NAME@',
     'PHI_LIB':'@PHI_LIB@',
+    'PHI_LINK':'@PHI_LINK@',
     'PHI_NAME':'@PHI_NAME@',
     'PHI_CORE_LIB':'@PHI_CORE_LIB@',
     'PHI_CORE_NAME':'@PHI_CORE_NAME@',
