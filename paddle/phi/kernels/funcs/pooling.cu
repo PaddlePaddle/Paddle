@@ -2214,7 +2214,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings, dilations are two elements. These two elements
- * represent height, width and dilation, respectively.
+ * represent height and width, respectively.
  */
 template <typename T1, typename T2>
 class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
@@ -2380,7 +2380,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings, dilations are two elements. These two elements
- * represent height, width and dilation, respectively.
+ * represent height and width, respectively.
  */
 template <typename T1, typename T2>
 class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
@@ -2666,7 +2666,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
 /*
  * All tensors are in NCDHW format.
  * Ksize, strides, paddings, dilations are three elements. These three elements
- * represent depth, height, width and dilation, respectively.
+ * represent depth, height and width, respectively.
  */
 template <typename T1, typename T2>
 class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
@@ -2804,7 +2804,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
 /*
  * All tensors are in NCDHW format.
  * Ksize, strides, paddings, dilations are three elements. These three elements
- * represent depth, height, width and dilation, respectively.
+ * represent depth, height and width, respectively.
  */
 template <typename T1, typename T2>
 class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
