@@ -55,7 +55,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   DenseTensor x_grad_expand;
   DenseTensor value_grad_expand;
 
-  auto expanded_dims = common::make_ddim(expanded_size);
+  auto expanded_dims = make_ddim(expanded_size);
 
   if (mask.dims() != expanded_dims) {
     ExpandKernel<bool, Context>(

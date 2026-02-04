@@ -40,7 +40,7 @@ int64_t MetaTensor::numel() const {
 
 DDim MetaTensor::dims() const {
   ValidCheck(*this);
-  if (phi::SelectedRows::classof(tensor_)) {
+  if (SelectedRows::classof(tensor_)) {
     return static_cast<SelectedRows*>(tensor_)->GetCompleteDims();
   } else {
     return tensor_->dims();
@@ -50,22 +50,22 @@ DDim MetaTensor::dims() const {
 size_t MetaTensor::size() const {
   ValidCheck(*this);
   PADDLE_ENFORCE_EQ(
-      phi::TensorArray::classof(tensor_),
+      TensorArray::classof(tensor_),
       true,
       common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
-  phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
+  TensorArray* tensor_array = static_cast<TensorArray*>(tensor_);
   return tensor_array->size();
 }
 
 DDim MetaTensor::dims(int64_t index) const {
   ValidCheck(*this);
   PADDLE_ENFORCE_EQ(
-      phi::TensorArray::classof(tensor_),
+      TensorArray::classof(tensor_),
       true,
       common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
-  phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
+  TensorArray* tensor_array = static_cast<TensorArray*>(tensor_);
   return tensor_array->at(index).dims();
 }
 
@@ -89,25 +89,25 @@ DataLayout MetaTensor::layout() const {
 
 void MetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     auto meta =
         DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
     meta->dims = dims;
     if (!strided_kernel_used_) {
       meta->strides = meta->calc_strides(dims);
     }
-  } else if (phi::StringTensor::classof(tensor_)) {
+  } else if (StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
-  } else if (phi::SelectedRows::classof(tensor_)) {
+  } else if (SelectedRows::classof(tensor_)) {
     static_cast<SelectedRows*>(tensor_)->set_height(dims[0]);
-  } else if (phi::SparseCooTensor::classof(tensor_)) {
+  } else if (SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->dims = dims;
-  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+  } else if (SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dims = dims;
-  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+  } else if (distributed::DistTensor::classof(tensor_)) {
     static_cast<distributed::DistTensor*>(tensor_)->unsafe_set_dims(dims);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -125,30 +125,29 @@ void MetaTensor::set_strides(const DDim& strides) {
 
 void MetaTensor::set_dtype(DataType dtype) {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->dtype = dtype;
-  } else if (phi::TensorArray::classof(tensor_)) {
-    static_cast<phi::TensorArray*>(tensor_)->set_type(dtype);
-  } else if (phi::StringTensor::classof(tensor_)) {
+  } else if (TensorArray::classof(tensor_)) {
+    static_cast<TensorArray*>(tensor_)->set_type(dtype);
+  } else if (StringTensor::classof(tensor_)) {
     // No need to set dtype
-  } else if (phi::SelectedRows::classof(tensor_)) {
+  } else if (SelectedRows::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->dtype = dtype;
-  } else if (phi::SparseCooTensor::classof(tensor_)) {
+  } else if (SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->dtype = dtype;
-  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+  } else if (SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dtype = dtype;
-  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+  } else if (distributed::DistTensor::classof(tensor_)) {
     // For pipeline parallelism, DistTensor holds an uninitialized DenseTensor,
     // But kernel launch needs to get it's placement, dtype and layout.
     VLOG(3) << "DistTensor set dtype: " << dtype;
     DenseTensorUtils::GetMutableMeta(
-        static_cast<phi::distributed::DistTensor*>(tensor_)
-            ->unsafe_mutable_value())
+        static_cast<distributed::DistTensor*>(tensor_)->unsafe_mutable_value())
         ->dtype = dtype;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -158,35 +157,34 @@ void MetaTensor::set_dtype(DataType dtype) {
 
 void MetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     auto meta =
         DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
     meta->layout = layout;
     if (!strided_kernel_used_) {
       meta->strides = meta->calc_strides(meta->dims);
     }
-  } else if (phi::TensorArray::classof(tensor_)) {
-    static_cast<phi::TensorArray*>(tensor_)->set_layout(layout);
-  } else if (phi::StringTensor::classof(tensor_)) {
+  } else if (TensorArray::classof(tensor_)) {
+    static_cast<TensorArray*>(tensor_)->set_layout(layout);
+  } else if (StringTensor::classof(tensor_)) {
     // No need to set layout
-  } else if (phi::SelectedRows::classof(tensor_)) {
+  } else if (SelectedRows::classof(tensor_)) {
     auto meta = DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value());
     meta->layout = layout;
     if (!strided_kernel_used_) {
       meta->strides = meta->calc_strides(meta->dims);
     }
-  } else if (phi::SparseCooTensor::classof(tensor_)) {
+  } else if (SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->layout = layout;
-  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+  } else if (SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->layout = layout;
-  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+  } else if (distributed::DistTensor::classof(tensor_)) {
     VLOG(3) << "DistTensor set layout: " << layout;
     DenseTensorUtils::GetMutableMeta(
-        static_cast<phi::distributed::DistTensor*>(tensor_)
-            ->unsafe_mutable_value())
+        static_cast<distributed::DistTensor*>(tensor_)->unsafe_mutable_value())
         ->layout = layout;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -197,19 +195,18 @@ void MetaTensor::set_layout(DataLayout layout) {
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   ValidCheck(meta_tensor);
-  if (phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_) ||
-      phi::distributed::DistTensor::classof(tensor_)) {
+  if (SparseCooTensor::classof(tensor_) || SparseCsrTensor::classof(tensor_) ||
+      distributed::DistTensor::classof(tensor_)) {
     return;
   }
   if (meta_tensor.lod().empty()) {
     // no need share
     return;
   }
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->legacy_lod = meta_tensor.lod();
-  } else if (phi::SelectedRows::classof(tensor_)) {
+  } else if (SelectedRows::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->legacy_lod = meta_tensor.lod();
@@ -222,19 +219,18 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
 
 void MetaTensor::share_lod(const LegacyLoD& legacy_lod) {
   ValidCheck(*this);
-  if (phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_) ||
-      phi::distributed::DistTensor::classof(tensor_)) {
+  if (SparseCooTensor::classof(tensor_) || SparseCsrTensor::classof(tensor_) ||
+      distributed::DistTensor::classof(tensor_)) {
     return;
   }
   if (legacy_lod.empty()) {
     // no need share
     return;
   }
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->legacy_lod = legacy_lod;
-  } else if (phi::SelectedRows::classof(tensor_)) {
+  } else if (SelectedRows::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->legacy_lod = legacy_lod;
@@ -261,11 +257,9 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor, int64_t index) {
 
 void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_) ||
-      phi::SelectedRows::classof(tensor_) ||
-      phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_) ||
-      phi::distributed::DistTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_) || SelectedRows::classof(tensor_) ||
+      SparseCooTensor::classof(tensor_) || SparseCsrTensor::classof(tensor_) ||
+      distributed::DistTensor::classof(tensor_)) {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     set_layout(meta_tensor.layout());
@@ -286,7 +280,7 @@ bool MetaTensor::is_dist() const {
   return distributed::DistTensor::classof(tensor_);
 }
 bool MetaTensor::is_tensor_array() const {
-  return phi::TensorArray::classof(tensor_);
+  return TensorArray::classof(tensor_);
 }
 
 bool MetaTensor::is_same_tensor(const MetaTensor& meta_tensor) const {
@@ -295,17 +289,17 @@ bool MetaTensor::is_same_tensor(const MetaTensor& meta_tensor) const {
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
-  bool is_dense_tensor = phi::DenseTensor::classof(tensor_);
-  bool is_selected_rows = phi::SelectedRows::classof(tensor_);
-  bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
-  bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
-  bool is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
+  bool is_dense_tensor = DenseTensor::classof(tensor_);
+  bool is_selected_rows = SelectedRows::classof(tensor_);
+  bool is_sparse_coo = SparseCooTensor::classof(tensor_);
+  bool is_sparse_csr = SparseCsrTensor::classof(tensor_);
+  bool is_dist_tensor = distributed::DistTensor::classof(tensor_);
   if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr ||
       is_dist_tensor) {
     if (is_selected_rows) {
       const auto in_tensor_base = meta_tensor.tensor();
       PADDLE_ENFORCE_EQ(
-          phi::SelectedRows::classof(in_tensor_base),
+          SelectedRows::classof(in_tensor_base),
           true,
           errors::InvalidArgument("The input MetaTensor is SelectedRows, but "
                                   "the output MetaTensor is not this type."));
@@ -330,7 +324,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
 
 void MetaTensor::share_strides(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     set_strides(meta_tensor.strides());
   }
 }
@@ -340,13 +334,13 @@ bool MetaTensor::initialized() const { return tensor_ != nullptr; }
 // Private Member Methods
 
 const LegacyLoD& MetaTensor::lod() const {
-  if (phi::DenseTensor::classof(tensor_)) {
+  if (DenseTensor::classof(tensor_)) {
     return static_cast<DenseTensor*>(tensor_)->lod();
-  } else if (phi::SelectedRows::classof(tensor_)) {
+  } else if (SelectedRows::classof(tensor_)) {
     return static_cast<SelectedRows*>(tensor_)->value().lod();
-  } else if (phi::SparseCooTensor::classof(tensor_)) {
+  } else if (SparseCooTensor::classof(tensor_)) {
     return static_cast<SparseCooTensor*>(tensor_)->non_zero_elements().lod();
-  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+  } else if (SparseCsrTensor::classof(tensor_)) {
     return static_cast<SparseCsrTensor*>(tensor_)->non_zero_elements().lod();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -361,7 +355,7 @@ const LegacyLoD& MetaTensor::lod(int64_t index) const {
       true,
       common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
-  phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
+  TensorArray* tensor_array = static_cast<TensorArray*>(tensor_);
   return tensor_array->at(index).lod();
 }
 

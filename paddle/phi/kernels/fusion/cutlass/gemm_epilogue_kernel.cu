@@ -58,7 +58,7 @@ void GemmEpilogueKernel(const Context& dev_ctx,
   std::vector<int64_t> output_dims;
   funcs::FCOutputSize(
       input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
-  out->Resize(common::make_ddim(output_dims));
+  out->Resize(make_ddim(output_dims));
   out->set_lod(input.lod());
 
   dev_ctx.template Alloc<T>(out);

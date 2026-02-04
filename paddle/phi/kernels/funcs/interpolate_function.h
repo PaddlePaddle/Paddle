@@ -120,13 +120,13 @@ inline std::vector<int> get_new_shape(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     phi::DeviceContext* dev_ctx = pool.Get(tensor->place());
-    PADDLE_ENFORCE_EQ(tensor->dims() == common::make_ddim({1}) ||
-                          tensor->dims() == common::make_ddim({}),
-                      true,
-                      errors::InvalidArgument(
-                          "The shape of dimension tensor should be [1] or [],"
-                          "but received d%.",
-                          tensor->dims()));
+    PADDLE_ENFORCE_EQ(
+        tensor->dims() == make_ddim({1}) || tensor->dims() == make_ddim({}),
+        true,
+        errors::InvalidArgument(
+            "The shape of dimension tensor should be [1] or [],"
+            "but received d%.",
+            tensor->dims()));
     if (tensor->dtype() == phi::DataType::INT64) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (tensor->place().GetType() == AllocationType::CUSTOM) {
