@@ -65,9 +65,7 @@ class CodeGenGpuHost : public CodeGenHost {
           }
         },
         [&](common::CustomDeviceArch) {
-          if (op->name == runtime::intrinsic::call_custom_device_kernel ||
-              op->name ==
-                  runtime::intrinsic::call_custom_device_cooperative_kernel) {
+          if (op->name == runtime::intrinsic::call_custom_device_kernel) {
             return LowerGPUKernelCall(op);
           } else {
             return CodeGenHost::Visit(op);

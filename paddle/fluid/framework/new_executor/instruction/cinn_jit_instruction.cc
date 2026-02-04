@@ -165,8 +165,7 @@ class CinnJitInstruction::FnPtrImpl {
       }
     }
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-    // --- Custom Device 专用逻辑 (简单直接) ---
-    // Custom Device 目前不支持 CINN 的 Tuning 和 CUDA Graph
+    // Custom Device not support CINN Tuning and CUDA Graph
     if (is_gpu) {
       ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
           static_cast<void*>(func_args_.data()), func_args_.size(), stream);
@@ -369,7 +368,7 @@ void CinnJitInstruction::Run() {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (place_.GetType() == phi::AllocationType::CUSTOM) {
-    is_gpu = true;  // CINN 视 Custom Device 为 GPU 类设备
+    is_gpu = true;  // CINN treat custom device as gpu device
     running_stream = static_cast<void*>(
         static_cast<phi::CustomContext*>(dev_ctx_)->stream());
   }

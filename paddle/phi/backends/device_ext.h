@@ -138,16 +138,16 @@ void profiler_add_device_trace_event(C_Profiler prof, void* event);
 
 struct C_CinnInterface {
   size_t size;
-  void* dev_ptr;  // 厂商私有上下文，传给下面所有函数的第一个参数
+  void* dev_ptr;
 
-  // --- Compiler Toolchain 部分 ---
+  // --- Compiler Toolchain ---
   C_Status (*compile)(void* dev_ptr,
                       const char* code,
                       char* out_path,
                       size_t len);
   const char* (*get_runtime_source)(void* dev_ptr);
 
-  // --- Runtime Strategy 部分 ---
+  // --- Runtime Strategy ---
   C_Status (*module_load)(void* dev_ptr, const char* path, void** mod_out);
   C_Status (*module_unload)(void* dev_ptr, void* module_handle);
   C_Status (*get_kernel_address)(void* dev_ptr,
@@ -167,7 +167,7 @@ struct C_CinnInterface {
                             int shm,
                             void* stream);
 
-  // --- Compile Strategy 部分 ---
+  // --- Compile Strategy ---
   C_Status (*apply_custom_pass)(void* dev_ptr, void* ir_module);
 };
 

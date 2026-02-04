@@ -1,4 +1,4 @@
-// Copyright (c) 2024 CINN Authors. All Rights Reserved.
+// Copyright (c) 2026 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,16 +39,17 @@ std::string Compiler::operator()(const std::string& code,
   std::string dev_type = "";
   auto devs = phi::DeviceManager::GetAllCustomDeviceTypes();
   if (!devs.empty()) {
-    dev_type = devs[0];  // 默认取第一个注册的自定义设备
+    // Default to the first registered custom device
+    // Notice: Multi-vendor Environment not supported yet
+    dev_type = devs[0];
   }
 
   auto place = phi::CustomPlace(dev_type, 0);
-  // 1. 获取插件
+  // 1. Get the plugin instance
   auto& plugin =
       cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
 
-  // 2. 转发给插件的 Toolchain
-  // include_headers 这个参数看你是否决定传给插件，或者约定代码里已经包含了
+  // 2. Forward the compilation request to the plugin's Toolchain
   return plugin.GetToolchain()->Compile(code);
 }
 

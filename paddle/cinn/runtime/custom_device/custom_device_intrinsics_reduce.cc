@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
-#include "paddle/phi/backends/device_manager.h"  // <--- 【新增】用于获取设备名
+#include "paddle/phi/backends/device_manager.h"
 
 #define CINN_CUSTOM_DEVICE_FP16
 
@@ -27,7 +27,7 @@ namespace runtime {
 namespace custom_device {
 void ForceRegisterCustomDeviceIntrinsicsReduce() {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  std::string custom_device_name = "unknown_custom_device";  // 默认兜底
+  std::string custom_device_name = "unknown_custom_device";
   int device_id = 0;
   if (!dev_types.empty()) {
     custom_device_name = dev_types[0];

@@ -40,7 +40,7 @@ const int kMaxNumel = BucketInfo::kMaxNumel;
 int GetWarpSize(const common::Target& target) {
   return std::visit(
       [&](const auto& impl) -> int {
-        // 获取当前 variant 存储的具体类型
+        // Retrieve the specific type stored in the current variant
         using ArchT = std::decay_t<decltype(impl)>;
 
         if constexpr (std::is_same_v<ArchT, common::NVGPUArch>) {
@@ -57,10 +57,10 @@ int GetWarpSize(const common::Target& target) {
           return 32;
         }
       },
-      target.arch.variant());  // [重点] 使用 arch.variant()
+      target.arch.variant());  // Use arch.variant() to access the variant type
 }
 
-// [新增] 辅助函数：获取 SM 最大寄存器数
+// Get the maximum number of registers per SM
 int GetMaxRegistersPerSM(const common::Target& target) {
   return std::visit(
       [&](const auto& impl) -> int {

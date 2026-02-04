@@ -135,15 +135,10 @@ endif()
 
 if(WITH_CUSTOM_DEVICE)
   message(STATUS "CINN Compile with custom device support")
-  # 除非你确定需要 SYCL/DPCPP，否则删掉下面两行，避免找不到包
-  # set(DPCPP_DIR ${PROJECT_SOURCE_DIR}/cmake/cinn)
-  # find_package(DPCPP REQUIRED CONFIG)
 
   add_definitions(-DCINN_WITH_CUSTOM_DEVICE)
 
-  # 2. 设置运行时头文件路径 (参考 CUDA/ROCm)
   if(NOT DEFINED ENV{runtime_include_dir})
-    # 为自定义设备创建一个专门的 runtime 路径
     set(ENV{runtime_include_dir}
         "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/custom_device")
     add_definitions(
@@ -151,7 +146,6 @@ if(WITH_CUSTOM_DEVICE)
     )
   endif()
 
-  # 3. 拷贝必要的头文件，否则 JIT 编译算子时会找不到 float16 等定义
   message(STATUS "copy float16 headers for custom device")
   file(MAKE_DIRECTORY $ENV{runtime_include_dir})
   file(COPY paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 CINN Authors. All Rights Reserved.
+// Copyright (c) 2026 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ namespace backends {
 namespace cdrtc {
 
 /**
- * An helper class to call Csrtc or Cdcc. Input CUSTOMDEVICE device source code,
+ * An helper class to call Cdrtc or Cdcc. Input CUSTOMDEVICE device source code,
  * get hsaco string.
  */
 class Compiler {
@@ -39,7 +39,10 @@ class Compiler {
   std::string operator()(const std::string& code, bool include_headers = true);
 
  private:
-  // 只需要保留 target，用于确定去哪个 Place 找插件
+  /**
+   * The target is used to identify the specific Place/Device for
+   * retrieving the corresponding plugin.
+   */
   common::Target target_;
 };
 

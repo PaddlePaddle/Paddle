@@ -1,4 +1,4 @@
-// Copyright (c) 2024 CINN Authors. All Rights Reserved.
+// Copyright (c) 2026 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,16 +27,19 @@ CodeGenCustomDevice::CodeGenCustomDevice(Target target)
     : CodeGenGpuDev(target) {}
 
 void CodeGenCustomDevice::PrintIncludes() {
-  // 1. 基础宏定义
+  // 1. Basic macro definitions
   str_ += "#define CINN_WITH_CUSTOM_DEVICE\n";
   str_ += "#include \"float16.h\"\n";
   str_ += "using cinn::common::float16;\n";
 
-  // 2. 动态获取厂商的 Runtime Source
-  // 逻辑：找到当前系统中的 Custom Device 类型 -> 获取插件 -> 获取源码
+  // 2. Dynamically retrieve CustomDevice Runtime Source
+  // Logic: Identify current system's Custom Device types -> Get Plugin ->
+  // Extract Source
   std::string dev_type = "";
   auto devs = phi::DeviceManager::GetAllCustomDeviceTypes();
   if (!devs.empty()) {
+    // Default to the first registered custom device
+    // Notice: Multi-vendor Environment not supported yet
     dev_type = devs[0];
   } else {
     LOG(WARNING)
@@ -44,14 +47,15 @@ void CodeGenCustomDevice::PrintIncludes() {
     return;
   }
 
-  // 获取插件实例
+  // Get the plugin instance
   auto place = phi::CustomPlace(dev_type, 0);
   try {
     auto& plugin =
         cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(
             place);
 
-    // 3. 从 Toolchain 中获取运行时源码并追加到生成的 Kernel 字符串中
+    // 3. Extract runtime source from Toolchain and append to the generated
+    // Kernel
     std::string runtime_src = plugin.GetToolchain()->GetRuntimeSource();
     if (runtime_src.empty()) {
       LOG(WARNING) << "Custom Device [" << dev_type

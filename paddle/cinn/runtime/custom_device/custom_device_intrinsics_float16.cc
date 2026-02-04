@@ -18,7 +18,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_util.h"
-#include "paddle/phi/backends/device_manager.h"  // <--- 【新增】用于获取设备名
+#include "paddle/phi/backends/device_manager.h"
 
 using cinn::common::float16;
 using cinn::runtime::custom_device::CustomBackendAPI;
@@ -30,7 +30,7 @@ namespace runtime {
 namespace custom_device {
 void ForceRegisterCustomDeviceIntrinsicsFloat16() {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  std::string custom_device_name = "unknown_custom_device";  // 默认兜底
+  std::string custom_device_name = "unknown_custom_device";
   int device_id = 0;
   if (!dev_types.empty()) {
     custom_device_name = dev_types[0];

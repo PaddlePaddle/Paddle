@@ -34,7 +34,7 @@ struct UnknownArch {};
 CINN_ARCH_CLASS_NAMES(DEFINE_CINN_ARCH);
 #undef DEFINE_CINN_ARCH
 struct CustomDeviceArch {
-  std::string device_type{"unknown_custom"};
+  std::string device_type{"unknown_custom_device"};
   int device_id{0};
 };
 

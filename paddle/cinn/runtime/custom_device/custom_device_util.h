@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,7 @@ namespace runtime {
 namespace custom_device {
 
 /**
- * @brief 通用的自定义设备 Kernel 调用接口。
- * * 该函数不再直接调用特定厂商的 API (如 hipLaunchKernel)，
- * 而是通过 CinnCustomDevicePlugin 转发给厂商插件实现。
+ * @brief A generic interface for invoking custom device kernels.
  */
 void cinn_call_custom_device_kernel(void *kernel_fn,
                                     void *v_args,
@@ -39,7 +37,7 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                                     void *stream);
 
 /**
- * @brief 用于动态形状推理的 Host 端辅助函数。
+ * @brief A host-side helper function used for dynamic shape inference.
  */
 void infer_shape_set_value(int row, int col, int64_t value, int64_t **v);
 

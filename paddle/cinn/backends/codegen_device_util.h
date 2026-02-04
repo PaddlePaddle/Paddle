@@ -132,12 +132,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-          // 1. 创建 CodeGen 对象，传入默认的 CustomDevice Target
           custom_device::CodeGenCustomDevice codegen_dev(
               cinn::common::DefaultCustomDeviceTarget());
-          // 2. 模拟编译过程，这一步会遍历 AST 并计算动态共享内存的大小
           codegen_dev.Compile(ir::LoweredFunc(func));
-          // 3. 获取计算结果
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
         },

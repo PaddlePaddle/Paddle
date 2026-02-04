@@ -335,7 +335,7 @@ std::string Target::device_name_str() const {
       [](const CustomDeviceArch &arch) -> std::string {
         return arch.device_type;
       },
-      [](const auto &) -> std::string { return "unknown_device"; }});
+      [](const auto &) -> std::string { return "unknown_custom_device"; }});
 #else
   CINN_NOT_IMPLEMENTED
 #endif
@@ -405,28 +405,25 @@ const Target &DefaultHygonDcuSyclTarget() {
 
 const Target &DefaultCustomDeviceTarget() {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  // 1. 获取当前注册的所有 Custom Device 类型
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 
   std::string device_type = "unknown_custom_device";
   int device_id = 0;
 
-  // 2. 如果存在自定义设备，取第一个作为默认值 (通常列表非空)
   if (!dev_types.empty()) {
+    // Default to the first registered custom device
+    // Notice: Multi-vendor Environment not supported yet
     device_type = dev_types[0];
-    // 获取该类型对应的当前设备 ID
     device_id = phi::DeviceManager::GetDevice(device_type);
   }
 
-  // 3. 使用获取到的 type 和 id 构造 CustomDeviceArch
-  // 注意：这里假设 CustomDeviceArch 结构体的字段顺序是 {device_type, device_id}
   static Target target(Target::OS::Linux,
                        CustomDeviceArch{device_type, device_id},
                        Target::Bit::k64,
                        {},
                        {});
 #else
-  // Fallback: 如果没有编译 CustomDevice，保持原样
+  // Fallback: not compiled with CustomDevice
   static Target target(
       Target::OS::Linux, CustomDeviceArch{}, Target::Bit::k64, {}, {});
 #endif

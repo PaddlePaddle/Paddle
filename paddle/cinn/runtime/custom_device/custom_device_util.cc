@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                                     int block_z,
                                     int shared_memory_bytes,
                                     void *stream) {
-  // 1. 获取当前设备 (通过 Phi DeviceManager)
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   PADDLE_ENFORCE_EQ(dev_types.empty(),
                     false,
@@ -43,7 +42,6 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
   int device_id = phi::DeviceManager::GetDevice(dev_type);
   auto place = phi::CustomPlace(dev_type, device_id);
 
-  // 2. 获取插件实例
   auto &plugin = CinnCustomDevicePlugin::GetInstance(place);
   auto *runtime_strategy = plugin.GetRuntime();
 
@@ -51,11 +49,6 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
           << grid_x << "," << grid_y << "," << grid_z << ")"
           << " Block(" << block_x << "," << block_y << "," << block_z << ")";
 
-  // 3. 参数转换：从 cinn_pod_value_t (v_args) 到 void** (kernel_args)
-  // CINN 的参数协议：
-  // - 如果是 Buffer，传入的是 cinn_buffer_t*，我们需要提取其内部的 memory
-  // 指针。
-  // - 如果是标量 (int/float)，直接传入其地址。
   std::vector<void *> kernel_args;
   kernel_args.reserve(num_args);
 
@@ -66,40 +59,30 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                                         cinn::utils::EventType::kInstruction);
     for (int idx = 0; idx < num_args; ++idx) {
       if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t *>()) {
-        // 对于显存 Buffer，获取 cinn_buffer_t->memory (这已经在 Device
-        // 端分配好了)
         cinn_buffer_t *buffer = static_cast<cinn_buffer_t *>(args[idx]);
         kernel_args.emplace_back(&(buffer->memory));
       } else {
-        // 对于标量参数，获取其在 host 上的数据地址
-        // 注意：插件内部的 LaunchKernel 需要处理这些标量的拷贝或映射
         kernel_args.emplace_back(const_cast<void *>(args[idx].data_addr()));
       }
     }
   }
 
-  // 4. 调用插件的 LaunchKernel
-  // 此时 kernel_fn 是厂商插件 LoadModule 后返回的函数句柄 (如
-  // customDeviceFunction_t)
   {
     cinn::utils::RecordEvent record_run("plugin_launch_kernel",
                                         cinn::utils::EventType::kInstruction);
 
-    // 注意：这里我们传入 args 的地址数组
-    // 厂商实现通常类似于：cuLaunchKernel(..., kernel_args.data(), ...)
-    runtime_strategy->LaunchKernel(
-        kernel_fn,
-        "",  // 这里 func_name 可为空，因为 kernel_fn 已经是句柄了
-        kernel_args.data(),
-        num_args,
-        grid_x,
-        grid_y,
-        grid_z,
-        block_x,
-        block_y,
-        block_z,
-        shared_memory_bytes,
-        stream);
+    runtime_strategy->LaunchKernel(kernel_fn,
+                                   "",  // func_name
+                                   kernel_args.data(),
+                                   num_args,
+                                   grid_x,
+                                   grid_y,
+                                   grid_z,
+                                   block_x,
+                                   block_y,
+                                   block_z,
+                                   shared_memory_bytes,
+                                   stream);
   }
 }
 

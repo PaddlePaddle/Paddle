@@ -551,24 +551,25 @@ void Compiler::RegisterCudaModuleSymbol() {
 
 void Compiler::RegisterCustomDeviceModuleSymbol() {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  // 1. 获取插件实例
+  // 1. Get the plugin instance
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   PADDLE_ENFORCE_EQ(!dev_types.empty(),
                     true,
                     ::common::errors::NotFound(
                         "No custom device registered in DeviceManager."));
-
+  // Default to the first registered custom device
+  // Notice: Multi-vendor Environment not supported yet
   std::string dev_type = dev_types[0];
   auto place = phi::CustomPlace(dev_type, 0);
   auto& plugin =
       cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
 
-  // 2. 准备源码
-  // 此时 device_fn_code_ 已经包含了通过 Codegen 拼接的 Runtime Source
+  // 2. Prepare the source code
+  // device_fn_code_ already contains the CustomDevice Runtime Source
+  // appended during the Codegen phase.
   std::string source_code = device_fn_code_;
 
-  // 3. 调用插件工具链进行编译 (Compile)
-  // 返回值通常是编译产物的路径 (如 .so 或 .o 文件路径)
+  // 3. Invoke the plugin toolchain to perform compilation
   std::string lib_path = plugin.GetToolchain()->Compile(source_code);
 
   PADDLE_ENFORCE_EQ(
@@ -576,9 +577,9 @@ void Compiler::RegisterCustomDeviceModuleSymbol() {
       true,
       ::common::errors::External("Custom Device Toolchain compile failed."));
 
-  // 4. 调用插件运行时加载模块 (LoadModule)
-  // device_module_ 是 Compiler 类的成员变量: std::unique_ptr<CustomModule>
-  // device_module_;
+  // 4. Invoke the plugin runtime to load the module
+  // device_module_ is a member variable of the Compiler class:
+  // std::unique_ptr<CustomModule> device_module_;
   this->device_module_ = plugin.GetRuntime()->LoadModule(lib_path);
   PADDLE_ENFORCE_NOT_NULL(
       this->device_module_,
@@ -586,9 +587,9 @@ void Compiler::RegisterCustomDeviceModuleSymbol() {
           "Custom Device Runtime failed to load module from %s",
           lib_path.c_str()));
 
-  // 5. 注册 Kernel 符号
-  // 我们需要获取设备 Kernel 的指针 (或者 Handle)，并将其注册为
-  // [kernel_name]_ptr_
+  // 5. Register Kernel symbols
+  // Retrieve the device function pointers (handles) and register them
+  // as [kernel_name]_ptr_
   RuntimeSymbols symbols;
   for (const auto& kernel_fn_name : device_fn_name_) {
     void* fn_kernel = this->device_module_->GetFunction(kernel_fn_name);
@@ -598,7 +599,7 @@ void Compiler::RegisterCustomDeviceModuleSymbol() {
                                 "Custom Device Runtime cannot find kernel: %s",
                                 kernel_fn_name.c_str()));
 
-    // 保存指针供 ExecutionEngine 使用
+    // Store the pointer for use by the ExecutionEngine
     fn_ptr_.push_back(fn_kernel);
     symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
   }
@@ -722,9 +723,9 @@ void Compiler::CompileCustomDeviceModule(const Module& module,
       SplitDeviceAndHostModule(module);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
-  VLOG(1) << "[CustomDevice] host module:\n" << host_module;
+  VLOG(3) << "[CustomDevice] host module:\n" << host_module;
 
-  VLOG(1) << "[CustomDevice] device module:\n" << device_module;
+  VLOG(3) << "[CustomDevice] device module:\n" << device_module;
   std::string source_code;
 
   if (!FLAGS_cinn_debug_custom_code_path.empty()) {
