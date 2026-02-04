@@ -34,7 +34,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: win-infer
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
