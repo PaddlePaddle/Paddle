@@ -2603,13 +2603,13 @@ add_doc_and_signature(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]])
-            >>> y = paddle.to_tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+            >>> x = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+            >>> y = paddle.to_tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
             >>> z1 = paddle.cross(x, y)
             >>> print(z1)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1., -1., -1.],
-             [-1., -1., -1.]])
+            [[0., 0., 1.],
+             [1., 0., 0.]])
 
             >>> z2 = paddle.cross(x, y, axis=1)
             >>> print(z2)
