@@ -69,7 +69,7 @@ class L1Decay(WeightDecayRegularizer):
         coeff(float, optional): regularization coeff. Default:0.0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: set Regularizer in optimizer
@@ -82,15 +82,12 @@ class L1Decay(WeightDecayRegularizer):
             >>> loss = paddle.mean(out)
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
-            >>> momentum = paddle.optimizer.Momentum(
-            ...     learning_rate=0.1,
-            ...     parameters=linear.parameters(),
-            ...     weight_decay=L1Decay(0.0001))
+            >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=L1Decay(0.0001))
             >>> back = out.backward()
             >>> momentum.step()
             >>> momentum.clear_grad()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: set Regularizer in parameters
@@ -101,13 +98,14 @@ class L1Decay(WeightDecayRegularizer):
             >>> from paddle.regularizer import L1Decay
 
             >>> my_conv2d = Conv2D(
-            ...         in_channels=10,
-            ...         out_channels=10,
-            ...         kernel_size=1,
-            ...         stride=1,
-            ...         padding=0,
-            ...         weight_attr=ParamAttr(regularizer=L1Decay(coeff=0.01)),
-            ...         bias_attr=False)
+            ...     in_channels=10,
+            ...     out_channels=10,
+            ...     kernel_size=1,
+            ...     stride=1,
+            ...     padding=0,
+            ...     weight_attr=ParamAttr(regularizer=L1Decay(coeff=0.01)),
+            ...     bias_attr=False,
+            ... )
     """
 
     def __init__(self, coeff: float = 0.0) -> None:
@@ -187,7 +185,7 @@ class L2Decay(WeightDecayRegularizer):
         coeff(float, optional): regularization coeff. Default:0.0
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: set Regularizer in optimizer
@@ -199,15 +197,12 @@ class L2Decay(WeightDecayRegularizer):
             >>> loss = paddle.mean(out)
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
-            >>> momentum = paddle.optimizer.Momentum(
-            ...     learning_rate=0.1,
-            ...     parameters=linear.parameters(),
-            ...     weight_decay=L2Decay(0.0001))
+            >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=L2Decay(0.0001))
             >>> back = out.backward()
             >>> momentum.step()
             >>> momentum.clear_grad()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: set Regularizer in parameters
@@ -218,13 +213,14 @@ class L2Decay(WeightDecayRegularizer):
             >>> from paddle.regularizer import L2Decay
 
             >>> my_conv2d = Conv2D(
-            ...         in_channels=10,
-            ...         out_channels=10,
-            ...         kernel_size=1,
-            ...         stride=1,
-            ...         padding=0,
-            ...         weight_attr=ParamAttr(regularizer=L2Decay(coeff=0.01)),
-            ...         bias_attr=False)
+            ...     in_channels=10,
+            ...     out_channels=10,
+            ...     kernel_size=1,
+            ...     stride=1,
+            ...     padding=0,
+            ...     weight_attr=ParamAttr(regularizer=L2Decay(coeff=0.01)),
+            ...     bias_attr=False,
+            ... )
     """
 
     def __init__(self, coeff: float = 0.0) -> None:
