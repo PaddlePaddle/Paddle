@@ -3214,7 +3214,6 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     )
     return helper.append_activation(out)
 
-
 def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     r"""
     :api_attr: Static Graph
@@ -3276,7 +3275,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                   The data type and shape is same as input tensor.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: pycon
 
             >>> import paddle
 
@@ -3284,7 +3283,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             >>> weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
             >>> x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
             >>> print(x.shape)
-            (2, 8, 32, 32)
+            paddle.Size([2, 8, 32, 32])
     """
     helper = LayerHelper('spectral_norm', **locals())
     check_variable_and_dtype(
@@ -3351,7 +3350,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
 # For debug usage
 py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
-
 
 def layer_norm(
     input,
