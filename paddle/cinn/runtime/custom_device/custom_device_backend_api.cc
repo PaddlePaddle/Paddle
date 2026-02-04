@@ -32,6 +32,9 @@ void ForceRegisterCustomDeviceIntrinsicsFloat16();
 // Anonymous Namespace: Define concrete default implementation classes
 // ============================================================
 namespace {
+std::mutex g_memory_mutex;
+std::unordered_map<void*, size_t> g_memory_map;
+
 // Default CustomDeviceModule implementation (linking module_unload and
 // get_kernel_address)
 class DefaultCustomDeviceModule : public cinn::runtime::CustomModule {
@@ -286,19 +289,36 @@ void* CustomBackendAPI::malloc(size_t numBytes) {
   int device_id = get_device();
   auto place = phi::CustomPlace(dev_types[0], device_id);
 
-  return phi::DeviceManager::GetDeviceWithPlace(place)->MemoryAllocate(
-      numBytes);
+  void* ptr =
+      phi::DeviceManager::GetDeviceWithPlace(place)->MemoryAllocate(numBytes);
+
+  if (ptr) {
+    std::lock_guard<std::mutex> lock(g_memory_mutex);
+    g_memory_map[ptr] = numBytes;
+  }
+  return ptr;
 }
 
-void CustomBackendAPI::free(void* data, size_t numBytes) {
+void CustomBackendAPI::free(void* data) {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   if (dev_types.empty()) return;
 
   int device_id = get_device();
   auto place = phi::CustomPlace(dev_types[0], device_id);
 
-  phi::DeviceManager::GetDeviceWithPlace(place)->MemoryDeallocate(data,
-                                                                  numBytes);
+  size_t size = 0;
+  {
+    std::lock_guard<std::mutex> lock(g_memory_mutex);
+    auto it = g_memory_map.find(data);
+    if (it != g_memory_map.end()) {
+      size = it->second;
+      g_memory_map.erase(it);
+    } else {
+      LOG(WARNING) << "CustomBackendAPI::free: Pointer " << data
+                   << " size info not found!";
+    }
+  }
+  phi::DeviceManager::GetDeviceWithPlace(place)->MemoryDeallocate(data, size);
 }
 
 void CustomBackendAPI::memset(void* data, int value, size_t numBytes) {

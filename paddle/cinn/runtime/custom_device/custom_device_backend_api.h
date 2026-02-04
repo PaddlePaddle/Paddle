@@ -126,7 +126,7 @@ class CustomBackendAPI final : public BackendAPI {
 
   // Memory Management
   void* malloc(size_t numBytes) override;
-  void free(void* data, size_t numBytes) override;
+  void free(void* data) override;
   void memset(void* data, int value, size_t numBytes) override;
   void memcpy(void* dest,
               const void* src,
