@@ -197,8 +197,7 @@ struct IR_API TypeManager {
   ///
   template <typename T, typename... Args>
   static T get(IrContext *ctx, Args &&...args) {
-    return get<T, Args...>(
-        ctx, pir::TypeId::get<T>(), std::forward<Args>(args)...);
+    return get<T, Args...>(ctx, TypeId::get<T>(), std::forward<Args>(args)...);
   }
 
   ///
@@ -247,7 +246,7 @@ struct IR_API TypeManager {
   ///
   template <typename T>
   static void RegisterType(IrContext *ctx) {
-    RegisterType<T>(ctx, pir::TypeId::get<T>());
+    RegisterType<T>(ctx, TypeId::get<T>());
   }
 
   ///

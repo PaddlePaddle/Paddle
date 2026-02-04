@@ -90,16 +90,24 @@ def mean(
         type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[1., 2., 3., 4.],
-            ...                        [5., 6., 7., 8.],
-            ...                        [9., 10., 11., 12.]],
-            ...                       [[13., 14., 15., 16.],
-            ...                        [17., 18., 19., 20.],
-            ...                        [21., 22., 23., 24.]]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [1.0, 2.0, 3.0, 4.0],
+            ...             [5.0, 6.0, 7.0, 8.0],
+            ...             [9.0, 10.0, 11.0, 12.0],
+            ...         ],
+            ...         [
+            ...             [13.0, 14.0, 15.0, 16.0],
+            ...             [17.0, 18.0, 19.0, 20.0],
+            ...             [21.0, 22.0, 23.0, 24.0],
+            ...         ],
+            ...     ]
+            ... )
             >>> out1 = paddle.mean(x)
             >>> print(out1.numpy())
             12.5
@@ -120,7 +128,7 @@ def mean(
             [ 8.5 12.5 16.5]
             >>> out5 = paddle.mean(x, dtype='float64')
             >>> out5
-            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                 12.50000000)
     """
     if dtype is not None:
@@ -213,7 +221,7 @@ def var(
         Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -427,7 +435,7 @@ def numel(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: The number of elements for the input Tensor, whose shape is [].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -508,10 +516,15 @@ def nanmedian(
         only nanmedian value will be returned.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [float('nan'), 2.0, 3.0],
+            ...         [0.0, 1.0, 2.0],
+            ...     ]
+            ... )
 
             >>> y1 = x.nanmedian()
             >>> print(y1.numpy())
@@ -545,7 +558,7 @@ def nanmedian(
             >>> print(y7_index.numpy())
             [1 1]
 
-            >>> y8 = x.nanmedian((0,1), mode='min')
+            >>> y8 = x.nanmedian((0, 1), mode='min')
             >>> print(y8.numpy())
             2.0
     """
@@ -667,7 +680,7 @@ def median(
         indices will be int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -713,7 +726,15 @@ def median(
             [1, 1, 1])
 
             >>> # cases containing nan values
-            >>> x = paddle.to_tensor(np.array([[1,float('nan'),3,float('nan')],[1,2,3,4],[float('nan'),1,2,3]]))
+            >>> x = paddle.to_tensor(
+            ...     np.array(
+            ...         [
+            ...             [1, float('nan'), 3, float('nan')],
+            ...             [1, 2, 3, 4],
+            ...             [float('nan'), 1, 2, 3],
+            ...         ]
+            ...     )
+            ... )
 
             >>> y6 = paddle.median(x, axis=-1, keepdim=True)
             >>> print(y6)
@@ -1008,11 +1029,11 @@ def quantile(
         Tensor, results of quantile along ``axis`` of ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
+            >>> y = paddle.arange(0, 8, dtype="float32").reshape([4, 2])
             >>> print(y)
             Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 1.],
@@ -1033,17 +1054,17 @@ def quantile(
             >>> y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
             >>> print(y3)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.80000000, 2.80000000],
+            [[1.80000007, 2.80000019],
              [3.        , 4.        ]])
 
-            >>> y[0,0] = float("nan")
+            >>> y[0, 0] = float("nan")
             >>> y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
             >>> print(y4)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[nan       ],
-             [2.80000000],
-             [4.80000000],
-             [6.80000000]])
+             [2.79999995],
+             [4.80000019],
+             [6.80000019]])
 
     """
     return _compute_quantile(
@@ -1093,15 +1114,18 @@ def nanquantile(
         Tensor, results of quantile along ``axis`` of ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor(
-            ...     [[0, 1, 2, 3, 4],
-            ...      [5, 6, 7, 8, 9]],
-            ...     dtype="float32")
-            >>> x[0,0] = float("nan")
+            ...     [
+            ...         [0, 1, 2, 3, 4],
+            ...         [5, 6, 7, 8, 9],
+            ...     ],
+            ...     dtype="float32",
+            ... )
+            >>> x[0, 0] = float("nan")
 
             >>> y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
             >>> print(y1)
@@ -1122,8 +1146,8 @@ def nanquantile(
             >>> y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
             >>> print(y4)
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[3.40000000],
-             [8.20000000]])
+            [[3.40000010],
+             [8.19999981]])
 
             >>> nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
             >>> y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)

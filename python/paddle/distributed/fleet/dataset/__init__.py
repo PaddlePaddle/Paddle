@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 
 from .dataset import (  # noqa: F401
-    BoxPSDataset,
     DatasetBase,
     FileInstantDataset,
     InMemoryDataset,

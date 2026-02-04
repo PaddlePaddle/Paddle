@@ -10,6 +10,7 @@ jobs:
     name: Check
     runs-on:
       group: Template
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:

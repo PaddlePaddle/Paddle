@@ -26,7 +26,7 @@ TensorDistAttribute DistDenseTensorType::tensor_dist_attr() const {
   return storage()->tensor_dist_attr;
 }
 
-const common::DDim& DistDenseTensorType::local_ddim() const {
+const DDim& DistDenseTensorType::local_ddim() const {
   return storage()->local_ddim;
 }
 
@@ -34,12 +34,11 @@ DistDenseTensorType DistDenseTensorType::get(
     pir::IrContext* ctx,
     pir::DenseTensorType dense_tensor_type,
     TensorDistAttribute tensor_dist_attr,
-    const common::DDim& local_ddim) {
+    const DDim& local_ddim) {
   return Base::get(ctx, dense_tensor_type, tensor_dist_attr, local_ddim);
 }
 
-common::DDim InferLocalDDim(const common::DDim& global_ddim,
-                            TensorDistAttribute dist_attr) {
+DDim InferLocalDDim(const DDim& global_ddim, TensorDistAttribute dist_attr) {
   if (global_ddim.size() == -1 || global_ddim.size() == 0) {
     return global_ddim;
   }
@@ -54,7 +53,7 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
                         global_ddim.size(),
                         dim_mapping.size()));
 
-  common::DDim local_ddim(global_ddim);
+  DDim local_ddim(global_ddim);
   if (dist_attr.placements_attr().has_value()) {
     PlacementsAttribute placements_attr = dist_attr.placements_attr().value();
     const phi::distributed::Placements& placements =
@@ -82,8 +81,7 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
   return local_ddim;
 }
 
-common::DDim InferGlobalDDim(const common::DDim& local_ddim,
-                             TensorDistAttribute dist_attr) {
+DDim InferGlobalDDim(const DDim& local_ddim, TensorDistAttribute dist_attr) {
   if (local_ddim.size() == -1 || local_ddim.size() == 0) {
     return local_ddim;
   }
@@ -97,7 +95,7 @@ common::DDim InferGlobalDDim(const common::DDim& local_ddim,
                         "size, but bot %d vs %d",
                         local_ddim.size(),
                         dim_mapping.size()));
-  common::DDim global_ddim(local_ddim);
+  DDim global_ddim(local_ddim);
   if (dist_attr.placements_attr().has_value()) {
     PlacementsAttribute placements_attr = dist_attr.placements_attr().value();
     const phi::distributed::Placements& placements =

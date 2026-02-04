@@ -50,6 +50,7 @@ jobs:
     if: ${{ inputs.clone-can-skip != 'true' }}
     runs-on:
       group: Mac-CI
+    timeout-minutes: 60
 
     steps:
       - name: Check environment

@@ -20,7 +20,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 namespace funcs {

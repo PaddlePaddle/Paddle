@@ -1456,9 +1456,9 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
  * height and width, respectively.
  */
 template <class T, bool fuse_relu_before_conv>
-class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
+class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& filter,
                   const std::vector<int>& strides,
@@ -1513,7 +1513,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
       filter_hwc.Resize(filter_hwc_dims);
       dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
-      funcs::TransposeNormal<phi::GPUContext, T> trans;
+      funcs::TransposeNormal<GPUContext, T> trans;
       trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
@@ -1631,9 +1631,9 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 };
 
 template <typename T, bool fuse_relu_before_conv>
-class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
+class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& filter,
                   const DenseTensor& output_grad,
@@ -1690,7 +1690,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
       filter_hwc.Resize(filter_hwc_dims);
       dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
-      funcs::TransposeNormal<phi::GPUContext, T> trans;
+      funcs::TransposeNormal<GPUContext, T> trans;
       trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
@@ -1811,11 +1811,9 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 };
 
 template <typename T, bool fuse_relu_before_conv>
-class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                     T,
-                                     fuse_relu_before_conv> {
+class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output_grad,
                   const std::vector<int>& strides,
@@ -1939,7 +1937,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                    filter_grad->dims()[1]});                   \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
         dev_ctx.template Alloc<T>(&filter_grad_hwc);                           \
-        funcs::SetConstant<phi::GPUContext, T> set_zero;                       \
+        funcs::SetConstant<GPUContext, T> set_zero;                            \
         set_zero(dev_ctx, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \
       } else {                                                                 \
@@ -1981,7 +1979,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                                    filter_grad_data);          \
       if (c_filter != -1) {                                                    \
         std::vector<int> perm_axis({2, 3, 0, 1});                              \
-        funcs::TransposeNormal<phi::GPUContext, T> trans;                      \
+        funcs::TransposeNormal<GPUContext, T> trans;                           \
         trans(dev_ctx, filter_grad_hwc, filter_grad, perm_axis);               \
       }                                                                        \
     }                                                                          \
@@ -2004,36 +2002,28 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
   }
 };
 
-template class DepthwiseConvFunctor<phi::GPUContext, float, false>;
-template class DepthwiseConvFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvFunctor<phi::GPUContext, phi::float16, false>;
+template class DepthwiseConvFunctor<GPUContext, float, false>;
+template class DepthwiseConvFunctor<GPUContext, double, false>;
+template class DepthwiseConvFunctor<GPUContext, phi::float16, false>;
 
-template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, false>;
-template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvInputGradFunctor<phi::GPUContext,
-                                             phi::float16,
-                                             false>;
+template class DepthwiseConvInputGradFunctor<GPUContext, float, false>;
+template class DepthwiseConvInputGradFunctor<GPUContext, double, false>;
+template class DepthwiseConvInputGradFunctor<GPUContext, phi::float16, false>;
 
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, false>;
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                              phi::float16,
-                                              false>;
+template class DepthwiseConvFilterGradFunctor<GPUContext, float, false>;
+template class DepthwiseConvFilterGradFunctor<GPUContext, double, false>;
+template class DepthwiseConvFilterGradFunctor<GPUContext, phi::float16, false>;
 
-template class DepthwiseConvFunctor<phi::GPUContext, float, true>;
-template class DepthwiseConvFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvFunctor<phi::GPUContext, phi::float16, true>;
+template class DepthwiseConvFunctor<GPUContext, float, true>;
+template class DepthwiseConvFunctor<GPUContext, double, true>;
+template class DepthwiseConvFunctor<GPUContext, phi::float16, true>;
 
-template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, true>;
-template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvInputGradFunctor<phi::GPUContext,
-                                             phi::float16,
-                                             true>;
+template class DepthwiseConvInputGradFunctor<GPUContext, float, true>;
+template class DepthwiseConvInputGradFunctor<GPUContext, double, true>;
+template class DepthwiseConvInputGradFunctor<GPUContext, phi::float16, true>;
 
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, true>;
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                              phi::float16,
-                                              true>;
+template class DepthwiseConvFilterGradFunctor<GPUContext, float, true>;
+template class DepthwiseConvFilterGradFunctor<GPUContext, double, true>;
+template class DepthwiseConvFilterGradFunctor<GPUContext, phi::float16, true>;
 
 }  // namespace phi::math

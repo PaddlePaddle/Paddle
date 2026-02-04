@@ -145,7 +145,7 @@ void DistKernel(const Context& dev_ctx,
     int64_t n = x.numel();
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
-    intermediate.Resize(common::make_ddim({config.block_per_grid.x}));
+    intermediate.Resize(make_ddim({config.block_per_grid.x}));
     T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
     std::vector<int64_t> axis_dims = {static_cast<int64_t>(-1)};
     std::vector<int> reduce_axis =
