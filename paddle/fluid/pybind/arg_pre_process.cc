@@ -557,7 +557,7 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
 }
 
 // BitwiseAnd broadcast validation for dygraph
-void BitwiseInplacePreProcess(Tensor* x, Tensor* y) {
+void InplaceShapePreProcess(Tensor* x, Tensor* y) {
   auto x_shape = x->dims();
   auto y_shape = y->dims();
 
@@ -574,7 +574,7 @@ void BitwiseInplacePreProcess(Tensor* x, Tensor* y) {
 }
 
 // BitwiseAnd broadcast validation for static graph
-void BitwiseInplacePreProcess(pir::Value* x, pir::Value* y) {
+void InplaceShapePreProcess(pir::Value* x, pir::Value* y) {
   auto x_shape = pir::GetShapeFromValue(*x);
   auto y_shape = pir::GetShapeFromValue(*y);
 

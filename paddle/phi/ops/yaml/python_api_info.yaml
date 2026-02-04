@@ -140,7 +140,7 @@
   args_alias :
     use_default_mapping : True
   pre_process :
-    func : BitwiseInplacePreProcess(x, y)
+    func : InplaceShapePreProcess(x, y)
 
 - op : bitwise_left_shift
   name : [paddle.bitwise_left_shift, paddle.Tensor.bitwise_left_shift]
@@ -172,7 +172,7 @@
   args_alias :
     use_default_mapping : True
   pre_process :
-    func : BitwiseInplacePreProcess(x, y)
+    func : InplaceShapePreProcess(x, y)
 
 - op : bitwise_right_shift
   name : [paddle.bitwise_right_shift, paddle.Tensor.bitwise_right_shift]
@@ -194,7 +194,7 @@
   args_alias :
     use_default_mapping : True
   pre_process :
-    func : BitwiseInplacePreProcess(x, y)
+    func : InplaceShapePreProcess(x, y)
 
 - op : ceil
   name : [paddle.ceil, paddle.Tensor.ceil]

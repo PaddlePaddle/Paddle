@@ -77,10 +77,10 @@ void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
 void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
 
 // BitwiseAnd broadcast validation for dygraph
-void BitwiseInplacePreProcess(Tensor* x, Tensor* y);
+void InplaceShapePreProcess(Tensor* x, Tensor* y);
 
 // BitwiseAnd broadcast validation for static graph
-void BitwiseInplacePreProcess(pir::Value* x, pir::Value* y);
+void InplaceShapePreProcess(pir::Value* x, pir::Value* y);
 
 }  // namespace pybind
 
