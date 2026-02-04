@@ -4611,15 +4611,11 @@ def lerp(
 
             lerp(x, y, weight) = x + weight * (y - x).
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, The parameter name ``end`` can be used as an alias for ``y``.
-        For example, ``lerp(input=x_tensor, end=y_tensor, weight=0.5)`` is equivalent to ``lerp(x=x_tensor, y=y_tensor, weight=0.5)``.
-
     Args:
         x (Tensor): An N-D Tensor with starting points, the data type is bfloat16, float16, float32, float64.
-            input: An alias for ``x`` , with identical behavior.
+            Alias: ``input``
         y (Tensor): An N-D Tensor with ending points, the data type is bfloat16, float16, float32, float64.
-            end: An alias for ``y`` , with identical behavior.
+            Alias: ``end``
         weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is bfloat16, float16, float32, float64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
