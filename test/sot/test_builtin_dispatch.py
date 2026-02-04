@@ -496,6 +496,13 @@ def test_native_code_function_gpu_only():
     # "ObjectVariable does not implement '_reconstruct' method"
     # Therefore, we return individual properties as primitive types instead
     device_properties = paddle.device.cuda.get_device_properties()
+
+    paddle.core.nvprof_start()
+    paddle.core.nvprof_enable_record_event()
+    paddle.core.nvprof_nvtx_push("")
+    paddle.core.nvprof_nvtx_pop()
+    paddle.core.nvprof_stop()
+
     return (
         device_properties.name,
         device_properties.major,
