@@ -85,8 +85,6 @@ class ProbabilityEntry(EntryAttr):
             ...         initializer=paddle.nn.initializer.Uniform(),
             ...     ),
             ... )
-
-
     """
 
     def __init__(self, probability: float) -> None:
@@ -131,7 +129,6 @@ class CountFilterEntry(EntryAttr):
             ...         initializer=paddle.nn.initializer.Uniform(),
             ...     ),
             ... )
-
     """
 
     def __init__(self, count_filter: int) -> None:
