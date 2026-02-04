@@ -1598,23 +1598,12 @@ def ones(
 
 @overload
 def ones(
-    *shape: ShapeLike,
+    *size: ShapeLike,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     pin_memory: bool = False,
-) -> paddle.Tensor: ...
-
-
-@overload
-def ones(
-    size: ShapeLike,
-    *,
-    out: paddle.Tensor | None = None,
-    dtype: DTypeLike | None = None,
-    device: PlaceLike | None = None,
-    requires_grad: bool = False,
 ) -> paddle.Tensor: ...
 
 
@@ -1635,7 +1624,7 @@ def ones(
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, the elements of it should be integers or 0-D Tensor with shape [].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is a Tensor, it should be a 1-D Tensor which represents a list.
         dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1673,6 +1662,13 @@ def ones(
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
             >>> data3 = paddle.ones(shape=shape)
             >>> print(data3.numpy())
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
+
+            >>> # shape can be a variable number of arguments
+            >>> data4 = paddle.ones(3, 2)
+            >>> print(data4.numpy())
             [[1. 1.]
              [1. 1.]
              [1. 1.]]
@@ -1765,23 +1761,12 @@ def zeros(
 
 @overload
 def zeros(
-    *shape: ShapeLike,
+    *size: ShapeLike,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     pin_memory: bool = False,
-) -> paddle.Tensor: ...
-
-
-@overload
-def zeros(
-    size: ShapeLike,
-    *,
-    out: paddle.Tensor | None = None,
-    dtype: DTypeLike | None = None,
-    device: PlaceLike | None = None,
-    requires_grad: bool = False,
 ) -> paddle.Tensor: ...
 
 
@@ -1810,7 +1795,7 @@ def zeros(
         shape (tuple|list|Tensor|variable number of arguments): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             alias: ``size``.
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is a Tensor, it should be a 1-D Tensor which represents a list.
         dtype(str|paddle.dtype|np.dtype, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
             property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -1849,6 +1834,13 @@ def zeros(
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
             >>> data3 = paddle.zeros(shape=shape)
             >>> print(data3.numpy())
+            [[0. 0.]
+             [0. 0.]
+             [0. 0.]]
+
+            >>> # shape can be a variable number of arguments
+            >>> data4 = paddle.zeros(3, 2)
+            >>> print(data4.numpy())
             [[0. 0.]
              [0. 0.]
              [0. 0.]]
@@ -3095,19 +3087,7 @@ def empty(
 
 @overload
 def empty(
-    *shape: ShapeLike,
-    out: paddle.Tensor | None = None,
-    dtype: DTypeLike | None = None,
-    device: PlaceLike | None = None,
-    requires_grad: bool = False,
-    pin_memory: bool = False,
-) -> paddle.Tensor: ...
-
-
-@overload
-def empty(
-    size: ShapeLike,
-    *,
+    *size: ShapeLike,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
@@ -3133,7 +3113,7 @@ def empty(
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is a Tensor, it should be a 1-D Tensor which represents a list.
         dtype(str|paddle.dtype|np.dtype, optional): Data type of the output Tensor
             which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dtype is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
@@ -3175,6 +3155,14 @@ def empty(
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
             >>> data3 = paddle.empty(shape=shape)
             >>> print(data3.numpy())
+            >>> # doctest: +SKIP('change everytime')
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
+
+            >>> # shape can be a variable number of arguments
+            >>> data4 = paddle.empty(3, 2)
+            >>> print(data4.numpy())
             >>> # doctest: +SKIP('change everytime')
             [[1. 1.]
              [1. 1.]
