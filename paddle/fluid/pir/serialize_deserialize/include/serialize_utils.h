@@ -550,7 +550,7 @@ Json serializeTypeToJsonIncludeWriteType<paddle::dialect::DistDenseTensorType>(
   content.push_back(serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
       type.tensor_dist_attr()));
 
-  // serialize common::DDim local_ddim;
+  // serialize DDim local_ddim;
   std::vector<int64_t> local_ddim_;
   for (auto i = 0; i < type.local_ddim().size(); i++) {
     local_ddim_.push_back(type.local_ddim().at(i));

@@ -90,7 +90,7 @@ struct EmbeddingGradAddToCUDAFunctor {
   }
 
  private:
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
   const DenseTensor& token_indices_;
   const DenseTensor& main_grad_in_;
   const DenseTensor& out_grad_;

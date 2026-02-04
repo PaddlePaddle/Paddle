@@ -32,7 +32,7 @@ void ShapeKernel(const Context& dev_ctx,
       x_dims.size() >= 3) {
     auto rdims = common::vectorize<int>(x_dims);
     std::rotate(rdims.begin() + 1, rdims.begin() + 2, rdims.end());
-    x_dims = common::make_ddim(rdims);
+    x_dims = make_ddim(rdims);
   }
 
   out->Resize({x_dims.size()});

@@ -96,8 +96,8 @@ struct VisitDataArgMinMaxFunctor {
     int new_axis = axis;
     if (flatten) {
       // always reduce 1D -> 0D
-      x_dims = common::make_ddim({x.numel()});
-      out_dims = common::make_ddim({});
+      x_dims = make_ddim({x.numel()});
+      out_dims = make_ddim({});
       new_axis = 0;
     } else {
       x_dims = x.dims();

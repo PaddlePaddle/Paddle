@@ -37,6 +37,10 @@ void VarGradKernel(const Context& dev_ctx,
                    bool unbiased,
                    double correction,
                    DenseTensor* x_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   int rank = x.dims().size();
   if (rank == 0 || axis.size() == 0) {
     const auto dof = static_cast<double>(x.numel()) - correction;
@@ -105,6 +109,10 @@ void StdGradKernel(const Context& dev_ctx,
                    bool unbiased,
                    double correction,
                    DenseTensor* x_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   // grad_var = (grad / (out * 2)).masked_fill_(out == 0, 0);
   DenseTensor two_tensor =
       phi::FullLike<T, Context>(dev_ctx, out, static_cast<T>(2.0));

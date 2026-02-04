@@ -25,6 +25,13 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/type_safe_sign_math.h"
 
+#ifdef PADDLE_WITH_SLEEF
+#include <sleef.h>
+#if defined(__AVX512F__)
+#include <immintrin.h>
+#endif
+#endif
+
 namespace phi {
 namespace funcs {
 
@@ -1413,6 +1420,32 @@ struct InverseTruncDivideFunctor<dtype::bfloat16> {
     return static_cast<dtype::bfloat16>(std::trunc(b_float / a_float));
   }
 };
+
+#ifdef PADDLE_WITH_SLEEF
+template <typename T>
+inline HOSTDEVICE
+    typename std::enable_if<std::is_same<T, float>::value, T>::type
+    compute_pow_sleef(const T a, const T b) {
+  return Sleef_powf1_u10(a, b);
+}
+
+template <typename T>
+inline HOSTDEVICE
+    typename std::enable_if<std::is_same<T, double>::value, T>::type
+    compute_pow_sleef(const T a, const T b) {
+  return Sleef_powd1_u10(a, b);
+}
+
+#if defined(__AVX512F__)
+inline HOSTDEVICE __m512 compute_pow_sleef_vec(__m512 a, __m512 b) {
+  return Sleef_powf16_u10(a, b);
+}
+
+inline HOSTDEVICE __m512d compute_pow_sleef_vec(__m512d a, __m512d b) {
+  return Sleef_powd8_u10(a, b);
+}
+#endif
+#endif
 
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
 template <typename T, typename MPType>

@@ -18,7 +18,7 @@
 namespace phi {
 
 template <typename T>
-static inline int ExpandByMemoryCopy(const phi::GPUContext& dev_ctx,
+static inline int ExpandByMemoryCopy(const GPUContext& dev_ctx,
                                      const DenseTensor& x,
                                      DenseTensor* out,
                                      const phi::Vector<size_t>& x_lod,
@@ -93,8 +93,8 @@ inline __global__ void sequence_expand_kernel(const T* x_data,
 }
 
 template <typename T>
-struct SequenceExpandFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SequenceExpandFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/

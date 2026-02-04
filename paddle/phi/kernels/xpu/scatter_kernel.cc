@@ -88,7 +88,7 @@ void ScatterKernel(const Context &dev_ctx,
   }
 
   int64_t dim0 = x.dims()[0];
-  int64_t dim1 = common::product(common::slice_ddim(x_dims, 1, x_dims.size()));
+  int64_t dim1 = common::product(slice_ddim(x_dims, 1, x_dims.size()));
 
   DenseTensor indices_cpu(index.type());
   Copy(dev_ctx, index, CPUPlace(), true, &indices_cpu);

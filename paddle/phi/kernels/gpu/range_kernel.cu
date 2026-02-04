@@ -47,7 +47,7 @@ void RangeTensorKernel(const Context& dev_ctx,
   }
   int64_t size =
       static_cast<int64_t>(((end_value - start_value) / step_value) + 1);
-  out->Resize(common::make_ddim({size}));
+  out->Resize(make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -86,7 +86,7 @@ void RangeNullaryKernel(const Context& dev_ctx,
   }
   int64_t size = static_cast<int64_t>(
       ((end_value_mpt - start_value_mpt) / step_value_mpt) + 1);
-  out->Resize(common::make_ddim({size}));
+  out->Resize(make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
     return;
@@ -129,9 +129,8 @@ void RangeKernel(const Context& dev_ctx,
       dev_ctx, start_value, end_value, step_value, out);
 }
 
-template decltype(RangeNullaryKernel<int64_t, phi::GPUContext>)
-    RangeNullaryKernel;
-template decltype(RangeNullaryKernel<int, phi::GPUContext>) RangeNullaryKernel;
+template decltype(RangeNullaryKernel<int64_t, GPUContext>) RangeNullaryKernel;
+template decltype(RangeNullaryKernel<int, GPUContext>) RangeNullaryKernel;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(range_tensor,

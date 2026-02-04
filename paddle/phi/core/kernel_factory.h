@@ -70,7 +70,7 @@ class KernelKey {
   explicit KernelKey(const int& dtype, const Place& place)
       : backend_(TransToPhiBackend(place)),
         layout_(DataLayout::ALL_LAYOUT),
-        dtype_(phi::TransToPhiDataType(dtype)) {}
+        dtype_(TransToPhiDataType(dtype)) {}
 
   explicit KernelKey(const Place& place,
                      const DataLayout& layout,
