@@ -25,9 +25,7 @@ phi::DataType DataTypeAttribute::data() const { return storage()->GetAsKey(); }
 
 phi::Place PlaceAttribute::data() const { return storage()->GetAsKey(); }
 
-phi::DataLayout DataLayoutAttribute::data() const {
-  return storage()->GetAsKey();
-}
+DataLayout DataLayoutAttribute::data() const { return storage()->GetAsKey(); }
 
 phi::Scalar ScalarAttribute::data() const {
   if (isa<pir::FloatAttribute>()) {

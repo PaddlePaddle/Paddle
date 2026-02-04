@@ -542,13 +542,13 @@ void InsertInplacedExternalInputsToOuts(
   }
 }
 
-bool GetCondData(const phi::DenseTensor& cond) {
+bool GetCondData(const DenseTensor& cond) {
   if (phi::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
   // when phi::is_gpu_place(cond.place()) or
   // phi::is_xpu_place(cond.place()) is true
-  std::unique_ptr<DenseTensor> cpu_cond{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_cond{new DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::framework::TensorCopySync(cond, CPUPlace(), cpu_cond.get());

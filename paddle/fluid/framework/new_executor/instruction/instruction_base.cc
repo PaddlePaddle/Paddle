@@ -34,7 +34,7 @@ static DDim GetDimsDebug(const Scope& scope,
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {
@@ -62,7 +62,7 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -93,7 +93,7 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   };
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -136,7 +136,7 @@ static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.lod();
   } else {
     return default_lod;

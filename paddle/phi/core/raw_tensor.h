@@ -25,8 +25,8 @@ namespace phi {
 /// \brief Fluid Kernel and PHI Kernel will be unified in the future.
 /// So, we need a class in PHI that can represent the RawTensor type in Fluid.
 /// The RawTensor is for PHI Kernel that has RawTensor type arguments.
-class RawTensor : public phi::ExtendedTensor,
-                  public phi::TypeInfoTraits<phi::TensorBase, RawTensor> {
+class RawTensor : public ExtendedTensor,
+                  public TypeInfoTraits<TensorBase, RawTensor> {
  public:
   RawTensor() = default;
 

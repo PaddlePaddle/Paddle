@@ -84,7 +84,7 @@ def global_scope() -> core._Scope:
         Scope: The global/default scope instance.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy
@@ -124,7 +124,7 @@ def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy
@@ -132,7 +132,7 @@ def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
 
             >>> new_scope = paddle.static.Scope()
             >>> with paddle.static.scope_guard(new_scope):
-            ...         paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+            ...     paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
             >>> numpy.array(new_scope.find_var("data").get_tensor())
             array([[1., 1.],
                    [1., 1.]])
@@ -151,7 +151,7 @@ def as_numpy(tensor, copy=False):
     For higher dimensional sequence data, please use DenseTensor directly.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> import numpy
@@ -160,7 +160,7 @@ def as_numpy(tensor, copy=False):
             >>> with base.scope_guard(new_scope):
             ...     base.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), base.CPUPlace())
             >>> tensor = new_scope.find_var("data").get_tensor()
-            >>> base.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
+            >>> base.executor.as_numpy(tensor)  # or numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
        tensor(Variable): a instance of Tensor
@@ -701,7 +701,7 @@ def _as_lodtensor(data, place, dtype=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle.base as base
@@ -1653,7 +1653,7 @@ class Executor:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1786,7 +1786,7 @@ class Executor:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-1
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
@@ -1812,14 +1812,14 @@ class Executor:
                 >>> x = numpy.random.random(size=(10, 1)).astype('float32')
                 >>> loss_val, array_val = exe.run(
                 ...     feed={'X': x},
-                ...     fetch_list=[loss.name, array.name]  # type: ignore[union-attr]
+                ...     fetch_list=[loss.name, array.name],  # type: ignore[union-attr]
                 ... )
                 >>> print(array_val)
                 >>> # doctest: +SKIP("Random output")
                 [array(0.16870381, dtype=float32)]
                 >>> # doctest: -SKIP
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-2
 
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
@@ -1844,15 +1844,15 @@ class Executor:
                 >>> build_strategy = paddle.static.BuildStrategy()
                 >>> binary = paddle.static.CompiledProgram(
                 ...     paddle.static.default_main_program(),
-                ...     build_strategy=build_strategy
+                ...     build_strategy=build_strategy,
                 ... )
                 >>> batch_size = 6
                 >>> x = np.random.random(size=(batch_size, 1)).astype('float32')
 
-                >>> prediction, = exe.run(
+                >>> (prediction,) = exe.run(
                 ...     binary,
                 ...     feed={'X': x},
-                ...     fetch_list=[prediction.name]
+                ...     fetch_list=[prediction.name],
                 ... )
                 >>> # If the user uses two GPU cards to run this python code, the printed result will be
                 >>> # (6, class_dim). The first dimension value of the printed result is the batch_size.
@@ -2913,7 +2913,7 @@ class Executor:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("This does not supported in PIR mode")
                 >>> import paddle
@@ -2927,11 +2927,13 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = [] # type: ignore[var-annotated]
+                >>> filelist = []  # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
-                >>> exe.infer_from_dataset(program=paddle.static.default_main_program(),
-                ...                         dataset=dataset)
+                >>> exe.infer_from_dataset(
+                ...     program=paddle.static.default_main_program(),
+                ...     dataset=dataset,
+                ... )
         """
         return self._run_from_dataset(
             program,
@@ -3036,12 +3038,14 @@ class Executor:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
+
+                >>> # doctest: +SKIP("This does not supported in PIR mode")
 
                 >>> import paddle
 
                 >>> paddle.enable_static()
-                >>> place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
+                >>> place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
                 >>> exe = paddle.static.Executor(place)
                 >>> x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
                 >>> y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
@@ -3049,11 +3053,13 @@ class Executor:
                 >>> dataset.set_use_var([x, y])
                 >>> dataset.set_thread(1)
                 >>> # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-                >>> filelist = [] # type: ignore[var-annotated]
+                >>> filelist = []  # type: ignore[var-annotated]
                 >>> dataset.set_filelist(filelist)
                 >>> exe.run(paddle.static.default_startup_program())
-                >>> exe.train_from_dataset(program=paddle.static.default_main_program(),
-                ...                         dataset=dataset)
+                >>> exe.train_from_dataset(
+                ...     program=paddle.static.default_main_program(),
+                ...     dataset=dataset,
+                ... )
         """
         return self._run_from_dataset(
             program,

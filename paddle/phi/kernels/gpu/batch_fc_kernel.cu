@@ -93,7 +93,7 @@ void BatchFCCUDAKernel(const Context& dev_ctx,
   int64_t strideA = ins_num * in_dim;
   int64_t strideB = in_dim * out_dim;
 
-  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.BatchedGEMM(transA,
                    transB,
                    ins_num,

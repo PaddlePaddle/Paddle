@@ -99,7 +99,7 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
       auto dense_tensor_in = var->GetMutable<DenseTensor>();
 
       std::shared_ptr<DenseTensor> tensor_in(
-          dense_tensor_in, [](phi::DenseTensor* ptr) {
+          dense_tensor_in, [](DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
       input_index++;
@@ -173,7 +173,7 @@ void PythonFunctionInstruction::BuildPythonFunctionContext(
               ->GetMutable<DenseTensor>();
       cache_out_ptrs_.push_back(dense_tensor_out);
       std::shared_ptr<DenseTensor> tensor_out(
-          dense_tensor_out, [](phi::DenseTensor* ptr) {
+          dense_tensor_out, [](DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
       paddle::Tensor python_out;

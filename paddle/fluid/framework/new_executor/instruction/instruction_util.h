@@ -61,7 +61,7 @@ void InsertInplacedExternalInputsToOuts(
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
-bool GetCondData(const phi::DenseTensor& cond);
+bool GetCondData(const DenseTensor& cond);
 
 void HandleForInplaceOp(pir::Operation* op,
                         const ValueExecutionInfo* value_exe_info,

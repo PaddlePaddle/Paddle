@@ -25,8 +25,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/strings/gpu/copy_utils.h"
 
-using pstring = ::phi::dtype::pstring;
-
 namespace phi {
 namespace strings {
 

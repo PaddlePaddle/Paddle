@@ -323,9 +323,8 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
   if (kernel_key.backend() == phi::Backend::GPUDNN) {
     auto iter = phi::KernelFactory::Instance().kernels().find(kernel_name);
     if (iter != phi::KernelFactory::Instance().kernels().end()) {
-      auto kernel_iter = iter->second.find({phi::Backend::GPUDNN,
-                                            phi::DataLayout::ALL_LAYOUT,
-                                            kernel_key.dtype()});
+      auto kernel_iter = iter->second.find(
+          {phi::Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
       if (kernel_iter == iter->second.end()) {
         return true;
       }
@@ -573,14 +572,15 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
 }
 
 #ifdef PADDLE_WITH_DNNL
-static pir::Value AddOneDNN2PaddleLayoutTransferOp(
-    pir::Value in, const phi::DataLayout& dst_layout, pir::Block* block) {
+static pir::Value AddOneDNN2PaddleLayoutTransferOp(pir::Value in,
+                                                   const DataLayout& dst_layout,
+                                                   pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   auto in_alloc_type = in.type().dyn_cast<AllocatedDenseTensorType>();
 
   phi::KernelKey kernel_key;
   kernel_key.set_backend(phi::Backend::CPU);
-  kernel_key.set_layout(phi::DataLayout::ANY);
+  kernel_key.set_layout(DataLayout::ANY);
   kernel_key.set_dtype(dialect::TransToPhiDataType(in_alloc_type.dtype()));
 
   std::unordered_map<std::string, pir::Attribute> op_attribute;
@@ -639,10 +639,10 @@ static const phi::DataType GetKernelTypeforVar(
 }
 
 template <class IrType>
-std::tuple<phi::Backend, phi::DataLayout> parse_kernel_info(pir::Type type) {
+std::tuple<phi::Backend, DataLayout> parse_kernel_info(pir::Type type) {
   phi::Backend backend =
       paddle::experimental::ParseBackend(type.dyn_cast<IrType>().place());
-  phi::DataLayout layout =
+  DataLayout layout =
       paddle::experimental::ParseLayout(type.dyn_cast<IrType>().data_layout());
   return {backend, layout};
 }
@@ -763,7 +763,7 @@ static pir::Type BuildOutputType(pir::Type type,
 template <class IrType1, class IrType2>
 static pir::Type create_type(pir::Type type,
                              const phi::Place& place,
-                             const phi::DataLayout& layout,
+                             const DataLayout& layout,
                              pir::Type out_dtype,
                              pir::IrContext* ctx) {
   auto input_type = type.dyn_cast<IrType1>();
@@ -778,7 +778,7 @@ static pir::Type create_type(pir::Type type,
 
 static pir::Type BuildOutputType(pir::Type type,
                                  const phi::Place& place,
-                                 const phi::DataLayout& layout,
+                                 const DataLayout& layout,
                                  pir::IrContext* ctx) {
   if (type.isa<DenseTensorType>()) {
     auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
@@ -812,7 +812,7 @@ pir::Value AddDtypeTransferOp(pir::Value in,
 
   // Get kernelkey (backend、layout)
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
-  phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
 
   if (in.type().isa<AllocatedDenseTensorType>()) {
     auto out = parse_kernel_info<AllocatedDenseTensorType>(in.type());
@@ -1177,7 +1177,7 @@ phi::KernelKey GetKernelKey(
           "FeedOp, FetchOp, ArrayLengthOp can only output a dense tensor or "
           "dense tensor array.");
     }
-    return {phi::Backend::CPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+    return {phi::Backend::CPU, DataLayout::ANY, TransToPhiDataType(dtype)};
   }
 
   if (op->isa<DataOp>()) {
@@ -1195,7 +1195,7 @@ phi::KernelKey GetKernelKey(
     }
 
     return {backend,
-            phi::DataLayout::ANY,
+            DataLayout::ANY,
             TransToPhiDataType(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
@@ -1203,7 +1203,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
+    return {backend, DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<FullWithTensorOp>()) {
@@ -1211,7 +1211,7 @@ phi::KernelKey GetKernelKey(
     auto dtype =
         op->attributes().at("dtype").dyn_cast<DataTypeAttribute>().data();
 
-    phi::KernelKey res(backend, phi::DataLayout::ANY, dtype);
+    phi::KernelKey res(backend, DataLayout::ANY, dtype);
     if (NeedFallBackCpu(op, kernel_fn_str, res)) {
       res.set_backend(phi::Backend::CPU);
     }
@@ -1226,8 +1226,7 @@ phi::KernelKey GetKernelKey(
                      .dyn_cast<paddle::dialect::DenseTensorArrayType>()
                      .dtype();
 
-    phi::KernelKey res(
-        backend, phi::DataLayout::ANY, TransToPhiDataType(dtype));
+    phi::KernelKey res(backend, DataLayout::ANY, TransToPhiDataType(dtype));
     if (NeedFallBackCpu(op, kernel_fn_str, res)) {
       res.set_backend(phi::Backend::CPU);
     }
@@ -1240,13 +1239,13 @@ phi::KernelKey GetKernelKey(
     auto backend = paddle::experimental::ParseBackend(dst_place, place);
     return {
         backend,
-        phi::DataLayout::ANY,
+        DataLayout::ANY,
         TransToPhiDataType(
             op->operand_source(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
-  phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
   phi::DataType kernel_dtype = phi::DataType::UNDEFINED;
 
   if (op_info_parser != nullptr) {
@@ -1368,9 +1367,9 @@ phi::KernelKey GetKernelKey(
         VLOG(8) << "Infer kernel backend from op operands";
       }
     }
-    if (kernel_layout == phi::DataLayout::UNDEFINED) {
+    if (kernel_layout == DataLayout::UNDEFINED) {
       kernel_layout = kernel_key.layout();
-      if (kernel_layout != phi::DataLayout::UNDEFINED) {
+      if (kernel_layout != DataLayout::UNDEFINED) {
         VLOG(8) << "Infer kernel layout from op operands";
       }
     }
@@ -1389,8 +1388,8 @@ phi::KernelKey GetKernelKey(
 
 #ifdef PADDLE_WITH_DNNL
   if (kernel_backend != phi::Backend::ONEDNN &&
-      kernel_layout == phi::DataLayout::ONEDNN) {
-    kernel_layout = phi::DataLayout::ANY;
+      kernel_layout == DataLayout::ONEDNN) {
+    kernel_layout = DataLayout::ANY;
   }
 #endif
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_dtype);
@@ -1427,8 +1426,8 @@ phi::KernelKey GetKernelKey(
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
 #ifdef PADDLE_WITH_DNNL
-    if (res.layout() == phi::DataLayout::ONEDNN) {
-      res.set_layout(phi::DataLayout::ANY);
+    if (res.layout() == DataLayout::ONEDNN) {
+      res.set_layout(DataLayout::ANY);
     }
 #endif
     VLOG(8) << "kernel backend must be on CPU when need fallback";
@@ -1462,7 +1461,7 @@ phi::KernelKey GetKernelKey(
           op->name().size() - strlen(OneDNNOperatorDialect::name()) - 1)) ==
           0) {
     res.set_backend(phi::Backend::ONEDNN);
-    res.set_layout(phi::DataLayout::ONEDNN);
+    res.set_layout(DataLayout::ONEDNN);
   }
 #endif
   return res;
@@ -1766,7 +1765,7 @@ void AddShadowFeedForValue(
   if (op_item->result(index).type().isa<DenseTensorType>()) {
     phi::KernelKey shadow_key{
         backend,
-        phi::DataLayout::ANY,
+        DataLayout::ANY,
         TransToPhiDataType(
             op_item->result(index).type().dyn_cast<DenseTensorType>().dtype())};
     std::unordered_map<std::string, pir::Attribute> attr_map{
@@ -1805,7 +1804,7 @@ void AddShadowFeedForValue(
     // Add ShadowFeedTensors Op
     phi::KernelKey shadow_key{
         backend,
-        phi::DataLayout::ANY,
+        DataLayout::ANY,
         TransToPhiDataType(vec_type[0].dyn_cast<DenseTensorType>().dtype())};
 
     std::unordered_map<std::string, pir::Attribute> attr_map{
@@ -2024,7 +2023,7 @@ void HandleForSpecialOp(
                phi::AllocationType::UNDEFINED) &&
               (ParsePhiPlace(new_in.type()) != arg_place)) {
             phi::KernelKey kernel_key(TransToPhiBackend(place),
-                                      phi::DataLayout::ALL_LAYOUT,
+                                      DataLayout::ALL_LAYOUT,
                                       ParsePhiDType(new_in.type()));
 
             new_in = AddPlaceTransferOp(
@@ -2058,9 +2057,9 @@ void HandleForSpecialOp(
         auto new_in_type = new_in.type();
         if (new_in_type.isa<AllocatedDenseTensorType>()) {
           if (new_in_type.dyn_cast<AllocatedDenseTensorType>().data_layout() ==
-              phi::DataLayout::ONEDNN) {
+              DataLayout::ONEDNN) {
             new_in = AddOneDNN2PaddleLayoutTransferOp(
-                new_in, phi::DataLayout::ANY, block);
+                new_in, DataLayout::ANY, block);
           }
         }
 #endif
@@ -2296,9 +2295,8 @@ void HandleForSpecialOp(
           auto out_type =
               AllocatedDenseTensorType::get(ctx, out_place, value_type);
           phi::Backend backend = paddle::experimental::get_accelerat_backend();
-          phi::KernelKey kernel_key(backend,
-                                    phi::DataLayout::ANY,
-                                    TransToPhiDataType(value_type.dtype()));
+          phi::KernelKey kernel_key(
+              backend, DataLayout::ANY, TransToPhiDataType(value_type.dtype()));
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
@@ -2348,8 +2346,8 @@ void PushBackOutputTypes(pir::IrContext* ctx,
              result_type.isa<SparseCsrTensorType>()) {
 #ifdef PADDLE_WITH_DNNL
     if (kernel_key.backend() == phi::Backend::ONEDNN) {
-      op_output_types->push_back(BuildOutputType(
-          result_type, out_place, phi::DataLayout::ONEDNN, ctx));
+      op_output_types->push_back(
+          BuildOutputType(result_type, out_place, DataLayout::ONEDNN, ctx));
     } else {
       op_output_types->push_back(BuildOutputType(result_type, out_place, ctx));
     }
@@ -2366,8 +2364,8 @@ void PushBackOutputTypes(pir::IrContext* ctx,
             base_type.isa<SelectedRowsType>()) {
 #ifdef PADDLE_WITH_DNNL
           if (kernel_key.backend() == phi::Backend::ONEDNN) {
-            vec_inner_types.push_back(BuildOutputType(
-                base_type, out_place, phi::DataLayout::ONEDNN, ctx));
+            vec_inner_types.push_back(
+                BuildOutputType(base_type, out_place, DataLayout::ONEDNN, ctx));
           } else {
             vec_inner_types.push_back(
                 BuildOutputType(base_type, out_place, ctx));
@@ -2383,11 +2381,11 @@ void PushBackOutputTypes(pir::IrContext* ctx,
       } else {
         // NOTE(phlrain), kernel not support a nullptr in output
         pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-        phi::DDim dims = {};
-        phi::DataLayout data_layout = phi::DataLayout::NCHW;
+        DDim dims = {};
+        DataLayout data_layout = DataLayout::NCHW;
 #ifdef PADDLE_WITH_DNNL
         if (kernel_key.backend() == phi::Backend::ONEDNN) {
-          data_layout = phi::DataLayout::ONEDNN;
+          data_layout = DataLayout::ONEDNN;
         }
 #endif
         phi::LegacyLoD lod = {{}};
@@ -2866,9 +2864,9 @@ std::vector<pir::Value> BuildInputs(
       auto new_in_type = new_in.type();
       if (new_in_type.isa<AllocatedDenseTensorType>()) {
         if (new_in_type.dyn_cast<AllocatedDenseTensorType>().data_layout() ==
-            phi::DataLayout::ONEDNN) {
-          new_in = AddOneDNN2PaddleLayoutTransferOp(
-              new_in, phi::DataLayout::ANY, block);
+            DataLayout::ONEDNN) {
+          new_in =
+              AddOneDNN2PaddleLayoutTransferOp(new_in, DataLayout::ANY, block);
         }
       } else if (new_in_type.isa<pir::VectorType>() &&
                  new_in.defining_op()->isa<::pir::CombineOp>()) {
@@ -2880,10 +2878,10 @@ std::vector<pir::Value> BuildInputs(
           if (in_value.type().isa<AllocatedDenseTensorType>()) {
             if (in_value.type()
                     .dyn_cast<AllocatedDenseTensorType>()
-                    .data_layout() == phi::DataLayout::ONEDNN) {
+                    .data_layout() == DataLayout::ONEDNN) {
               need_replace_combine_op = true;
               in_value = AddOneDNN2PaddleLayoutTransferOp(
-                  in_value, phi::DataLayout::ANY, block);
+                  in_value, DataLayout::ANY, block);
             }
             new_vec_inputs.push_back(in_value);
             types_in_vec.push_back(in_value.type());
@@ -3604,7 +3602,7 @@ void ProcessBlock(
         auto dtype = dense_tensor_type.dtype();
         phi::Backend backend = paddle::experimental::get_accelerat_backend();
         phi::KernelKey shadow_key{
-            backend, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
+            backend, DataLayout::ANY, TransToPhiDataType(dtype)};
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
             {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -3635,7 +3633,7 @@ void ProcessBlock(
         phi::Backend backend = paddle::experimental::get_accelerat_backend();
         phi::KernelKey shadow_key{
             backend,
-            phi::DataLayout::ANY,
+            DataLayout::ANY,
             TransToPhiDataType(
                 vec_type[0].dyn_cast<DenseTensorType>().dtype())};
 
@@ -3766,7 +3764,7 @@ void ProcessBlock(
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
-        kernel_key.set_layout(phi::DataLayout::ONEDNN);
+        kernel_key.set_layout(DataLayout::ONEDNN);
       }
     } else if ((FLAGS_use_mkldnn || FLAGS_use_onednn) &&
                kernel_key.backend() == phi::Backend::CPU &&
@@ -3778,7 +3776,7 @@ void ProcessBlock(
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
-        kernel_key.set_layout(phi::DataLayout::ONEDNN);
+        kernel_key.set_layout(DataLayout::ONEDNN);
       }
     } else if (kernel_key.backend() == phi::Backend::ONEDNN &&
                !op_item->HasTrait<OneDNNTrait>()) {
@@ -3787,7 +3785,7 @@ void ProcessBlock(
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
-        kernel_key.set_layout(phi::DataLayout::ONEDNN);
+        kernel_key.set_layout(DataLayout::ONEDNN);
       }
     }
 #endif

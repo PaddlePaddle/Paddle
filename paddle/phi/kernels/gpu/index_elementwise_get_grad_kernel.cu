@@ -65,7 +65,7 @@ __global__ void IndexEleGetGradAccKernel(
 }
 
 template <typename T, typename OffsetT = uint32_t>
-void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
+void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
                                 const std::vector<const DenseTensor*>& index,
@@ -250,7 +250,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
 }
 
 template <typename T, typename IndexT>
-void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
+void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                             const DenseTensor& input,
                             const DenseTensor& value,
                             const std::vector<const DenseTensor*>& indices,
@@ -272,9 +272,8 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
 
   const bool unsafe = true;
   const bool self_contiguous = self.meta().is_contiguous();
-  auto self_ = self_contiguous
-                   ? self
-                   : phi::Contiguous<T, phi::GPUContext>(dev_ctx, self);
+  auto self_ =
+      self_contiguous ? self : phi::Contiguous<T, GPUContext>(dev_ctx, self);
   DenseTensor linearIndex, src, expandedValue = value;
   int64_t nElemBefore, strideBefore, sliceSize;
   std::vector<int64_t> inversePerm;
@@ -299,20 +298,19 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
     }
 
     DenseTensor expanded_tensor;
-    phi::ExpandKernel<T, phi::GPUContext>(
+    phi::ExpandKernel<T, GPUContext>(
         dev_ctx, expandedValue, phi::IntArray(expanded_size), &expanded_tensor);
     expandedValue = expanded_tensor;
   }
   if (!expandedValue.meta().is_contiguous()) {
-    expandedValue = phi::Contiguous<T, phi::GPUContext>(dev_ctx, expandedValue);
+    expandedValue = phi::Contiguous<T, GPUContext>(dev_ctx, expandedValue);
   }
 
   if (num_indices > 0 && sliceSize > 0) {
     const bool permuted = !src.meta().is_contiguous();
     DenseTensor src_ =
-        permuted ? phi::Contiguous<T, phi::GPUContext>(dev_ctx, src) : src;
-    linearIndex =
-        phi::Reshape<IndexT, phi::GPUContext>(dev_ctx, linearIndex, {-1});
+        permuted ? phi::Contiguous<T, GPUContext>(dev_ctx, src) : src;
+    linearIndex = phi::Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
 
     DenseTensor sorted_indices;
     sorted_indices.Resize(linearIndex.dims());
@@ -325,10 +323,10 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
 
     auto shape = phi::IntArray(common::vectorize<int64_t>(linearIndex.dims()));
     auto divisor =
-        Full<IndexT, phi::GPUContext>(dev_ctx, shape, phi::Scalar(sliceSize));
+        Full<IndexT, GPUContext>(dev_ctx, shape, phi::Scalar(sliceSize));
 
-    DenseTensor linearIndex_d = phi::FloorDivide<IndexT, phi::GPUContext>(
-        dev_ctx, linearIndex, divisor);
+    DenseTensor linearIndex_d =
+        phi::FloorDivide<IndexT, GPUContext>(dev_ctx, linearIndex, divisor);
 
     DenseTensor range;
     range.Resize({num_indices});
@@ -384,7 +382,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
                      inversePerm_int.begin(),
                      [](int64_t x) { return static_cast<int>(x); });
 
-      phi::Transpose<T, phi::GPUContext>(
+      phi::Transpose<T, GPUContext>(
           dev_ctx, src_, inversePerm_int, &transposed_src);
       Copy(dev_ctx, transposed_src, dev_ctx.GetPlace(), false, output);
     } else if (!self_contiguous) {

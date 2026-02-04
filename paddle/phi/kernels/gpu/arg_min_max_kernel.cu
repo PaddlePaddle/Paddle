@@ -80,7 +80,7 @@ __global__ void ArgCUDAKernel(const int64_t height,     // n * h
 }
 
 template <typename T, typename IndType, class Reducer, typename IndexType>
-void ComputeFullArg(const phi::GPUContext& dev_ctx,
+void ComputeFullArg(const GPUContext& dev_ctx,
                     const DenseTensor& input,
                     DenseTensor* indices,
                     const int64_t pre,
