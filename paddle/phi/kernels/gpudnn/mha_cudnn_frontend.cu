@@ -349,7 +349,7 @@ void fused_attn_arbitrary_seqlen_fwd_impl(int64_t b,
                                           cudnn_frontend::DataType_t tensorType,
                                           void *workspace,
                                           size_t *workspace_size,
-                                          const GPUContext &dev_ctx) {
+                                          const phi::GPUContext &dev_ctx) {
   bool is_bias = (bias_type == MHA_Bias_Type::POST_SCALE_BIAS);
   bool is_alibi = false;
   bool is_causal = ((mask_type == MHA_Mask_Type::CAUSAL_MASK) ||
@@ -668,7 +668,7 @@ void fused_attn_arbitrary_seqlen_bwd_impl(int64_t b,
                                           cudnn_frontend::DataType_t tensorType,
                                           void *workspace,
                                           size_t *workspace_size,
-                                          const GPUContext &dev_ctx) {
+                                          const phi::GPUContext &dev_ctx) {
   bool is_bias = (bias_type == MHA_Bias_Type::POST_SCALE_BIAS);
   bool need_dbias = (bias_b == 1) && (bias_h == h) && devPtrdBias != nullptr;
   bool is_alibi = false;
