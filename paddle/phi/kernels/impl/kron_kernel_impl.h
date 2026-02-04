@@ -45,7 +45,7 @@ inline DenseTensor UnsqueezeTo(const DenseTensor &src, int ndims) {
     for (int i = ndims - rank; i < ndims; i++) {
       new_dim[i] = shape[i - ndims + rank];
     }
-    res.Resize(common::make_ddim(new_dim));
+    res.Resize(make_ddim(new_dim));
   }
   return res;
 }

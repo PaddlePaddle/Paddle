@@ -47,7 +47,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   auto cu_stream = dev_ctx.stream();
   DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
-  auto dim = common::make_ddim(dims);
+  auto dim = make_ddim(dims);
   input_indices.Resize(dim);
   dev_ctx.template Alloc<int64_t>(&input_indices);
   size_t temp_storage_bytes = -1;
@@ -143,7 +143,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
       EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));
 
   std::vector<int64_t> odims = {num_rows, 1};
-  dim = common::make_ddim(odims);
+  dim = make_ddim(odims);
   auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
   auto e_tmp_values =
       EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
@@ -191,7 +191,7 @@ void KthvalueKernel(const Context& dev_ctx,
 
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
     const T* input_data = x.data<T>();
@@ -240,7 +240,7 @@ void KthvalueKernel(const Context& dev_ctx,
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }
-      DDim tmp_out_dims = common::make_ddim(tmp_out_shape);
+      DDim tmp_out_dims = make_ddim(tmp_out_shape);
       output->Resize(tmp_out_dims);
       indices->Resize(tmp_out_dims);
     }
@@ -262,8 +262,8 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_out.Resize(trans_out_dims);
     int64_t* tran_indices_data = dev_ctx.template Alloc<int64_t>(&trans_ind);
     T* tran_output_data = dev_ctx.template Alloc<T>(&trans_out);
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000

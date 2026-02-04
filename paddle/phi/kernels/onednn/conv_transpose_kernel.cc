@@ -127,10 +127,10 @@ class ConvTransposeOneDNNHandlerT
             "Now we only support 2d oneDNN convolution transpose op"));
 
     const auto x_dims = x->dims();
-    const auto x_data_dims = common::slice_ddim(x_dims, 2, x_dims.size());
+    const auto x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
     const auto filter_dims = filter->dims();
     const auto filter_data_dims =
-        common::slice_ddim(filter_dims, 2, filter_dims.size());
+        slice_ddim(filter_dims, 2, filter_dims.size());
     const auto ksize = common::vectorize(filter_data_dims);
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, x_data_dims, strides, ksize);
