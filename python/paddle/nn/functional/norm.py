@@ -207,7 +207,13 @@ def batch_norm(
             >>> weight = paddle.to_tensor([2], dtype="float32")
             >>> bias = paddle.to_tensor([1], dtype="float32")
 
-            >>> batch_norm_out = paddle.nn.functional.batch_norm(x, running_mean, running_variance, weight, bias)
+            >>> batch_norm_out = paddle.nn.functional.batch_norm(
+            ...     x,
+            ...     running_mean,
+            ...     running_variance,
+            ...     weight,
+            ...     bias,
+            ... )
             >>> print(batch_norm_out)
             Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[1.         , 2.99998999 , 4.99997997 ],

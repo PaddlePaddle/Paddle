@@ -2017,7 +2017,14 @@ def ctc_loss(
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [3.91798496, 2.90765214])
 
-            >>> loss = F.ctc_loss(log_probs, labels, input_lengths, label_lengths, blank=0, reduction='mean')
+            >>> loss = F.ctc_loss(
+            ...     log_probs,
+            ...     labels,
+            ...     input_lengths,
+            ...     label_lengths,
+            ...     blank=0,
+            ...     reduction='mean',
+            ... )
             >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    1.13760614)
@@ -2140,8 +2147,16 @@ def rnnt_loss(
             >>> acts = np.array(
             ...     [
             ...         [
-            ...             [[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1], [0.1, 0.1, 0.2, 0.8, 0.1]],
-            ...             [[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.2, 0.1, 0.1], [0.7, 0.1, 0.2, 0.1, 0.1]],
+            ...             [
+            ...                 [0.1, 0.6, 0.1, 0.1, 0.1],
+            ...                 [0.1, 0.1, 0.6, 0.1, 0.1],
+            ...                 [0.1, 0.1, 0.2, 0.8, 0.1],
+            ...             ],
+            ...             [
+            ...                 [0.1, 0.6, 0.1, 0.1, 0.1],
+            ...                 [0.1, 0.1, 0.2, 0.1, 0.1],
+            ...                 [0.7, 0.1, 0.2, 0.1, 0.1],
+            ...             ],
             ...         ]
             ...     ]
             ... )
@@ -2957,7 +2972,12 @@ def cross_entropy(
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
             >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(
-            ...     logits, labels, soft_label=True, axis=axis, weight=weight, reduction=reduction
+            ...     logits,
+            ...     labels,
+            ...     soft_label=True,
+            ...     axis=axis,
+            ...     weight=weight,
+            ...     reduction=reduction,
             ... )
             >>> print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -2981,7 +3001,12 @@ def cross_entropy(
 
             >>> # integer labels
             >>> paddle_integer_loss_mean = paddle.nn.functional.cross_entropy(
-            ...     logits, integer_labels, axis=axis, weight=weight, label_smoothing=label_smoothing, reduction=reduction
+            ...     logits,
+            ...     integer_labels,
+            ...     axis=axis,
+            ...     weight=weight,
+            ...     label_smoothing=label_smoothing,
+            ...     reduction=reduction,
             ... )
             >>> print(paddle_integer_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -2989,7 +3014,12 @@ def cross_entropy(
 
             >>> # one_hot labels
             >>> paddle_one_hot_loss_mean = paddle.nn.functional.cross_entropy(
-            ...     logits, one_hot_labels, axis=axis, weight=weight, label_smoothing=label_smoothing, reduction=reduction
+            ...     logits,
+            ...     one_hot_labels,
+            ...     axis=axis,
+            ...     weight=weight,
+            ...     label_smoothing=label_smoothing,
+            ...     reduction=reduction,
             ... )
             >>> print(paddle_one_hot_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -4674,7 +4704,12 @@ def adaptive_log_softmax_with_loss(
             >>> tail_weights[0].append(paddle.randn([5, 2], dtype=paddle.float32))
             >>> tail_weights[0].append(paddle.randn([2, 1], dtype=paddle.float32))
             >>> out, loss = F.adaptive_log_softmax_with_loss(
-            ...     input, paddle.full([3], 1, dtype='int64'), head_weight, tail_weights, cutoffs=[2], head_bias=head_bias
+            ...     input,
+            ...     paddle.full([3], 1, dtype='int64'),
+            ...     head_weight,
+            ...     tail_weights,
+            ...     cutoffs=[2],
+            ...     head_bias=head_bias,
             ... )
             >>> print(out)
             >>> print(out)

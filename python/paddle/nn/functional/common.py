@@ -2770,7 +2770,9 @@ def class_center_sample(
         >>> dist.all_gather(label_list, label)
         >>> label = paddle.concat(label_list, axis=0)
         >>> remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
-        ...     label, num_classes_list[rank_id], num_samples
+        ...     label,
+        ...     num_classes_list[rank_id],
+        ...     num_samples,
         ... )
 
         >>> print(label)
