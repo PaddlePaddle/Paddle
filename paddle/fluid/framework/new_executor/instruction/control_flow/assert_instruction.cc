@@ -22,7 +22,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle::framework {
 AssertInstruction::AssertInstruction(size_t id,
-                                     const phi::Place& place,
+                                     const Place& place,
                                      pir::Operation* op,
                                      ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place),

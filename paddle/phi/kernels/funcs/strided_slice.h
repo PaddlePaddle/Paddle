@@ -199,7 +199,7 @@ void StridedSliceCompute(const Context& dev_ctx,
                       out_dims_vector.data(),
                       axes.size(),
                       false);
-  DDim out_dims(common::make_ddim(out_dims_vector));
+  DDim out_dims(make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_.size(), 0);
   StridedSliceFunctor(starts_.data(),
@@ -247,7 +247,7 @@ void StridedSliceCompute(const Context& dev_ctx,
     if (new_out_shape.size() == 0) {
       new_out_shape.push_back(1);
     }
-    out_dims_origin = common::make_ddim(new_out_shape);
+    out_dims_origin = make_ddim(new_out_shape);
   }
 
   bool need_reverse = false;
@@ -294,7 +294,7 @@ void StridedSliceCompute(const Context& dev_ctx,
                          const std::vector<int>& decrease_axis,
                          TensorArray* out) {
   const int64_t size = x.size();
-  auto in_dims = common::make_ddim({size});
+  auto in_dims = make_ddim({size});
 
   auto starts_ = starts.GetData();
   auto ends_ = ends.GetData();
@@ -316,7 +316,7 @@ void StridedSliceCompute(const Context& dev_ctx,
                       out_dims_vector.data(),
                       axes.size(),
                       false);
-  DDim out_dims(common::make_ddim(out_dims_vector));
+  DDim out_dims(make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_.size(), 0);
   StridedSliceFunctor(starts_.data(),
@@ -364,7 +364,7 @@ void StridedSliceCompute(const Context& dev_ctx,
     if (new_out_shape.size() == 0) {
       new_out_shape.push_back(1);
     }
-    out_dims_origin = common::make_ddim(new_out_shape);
+    out_dims_origin = make_ddim(new_out_shape);
   }
 
   bool need_reverse = false;
@@ -535,7 +535,7 @@ void StridedSliceGradCompute(const Context& dev_ctx,
   // calculate the output shape. when set it to inplace OP, there may be
   // some problems.
   const int64_t size = x.size();
-  DDim out_dims = common::make_ddim({size});
+  DDim out_dims = make_ddim({size});
 
   auto starts_ = starts.GetData();
   auto ends_ = ends.GetData();

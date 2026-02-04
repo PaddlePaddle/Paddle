@@ -60,7 +60,7 @@ struct NormConvolutionArgs {
             "The size of input_shape is expected to 4. But received "
             "input_shape's size is %d, input_shape is [%s].",
             input_shape.size(),
-            common::make_ddim(input_shape)));
+            make_ddim(input_shape)));
     PADDLE_ENFORCE_EQ(
         filter_shape.size(),
         4U,
@@ -68,14 +68,14 @@ struct NormConvolutionArgs {
             "The size of filter_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             filter_shape.size(),
-            common::make_ddim(filter_shape)));
+            make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
                           (filter_shape[1] == 1 || filter_shape[1] == 3),
                       true,
                       common::errors::InvalidArgument(
                           "The filter_shape is expected to store as nhwc, and "
                           "h = w = 1 or 3. But received filter_shape is [%s].",
-                          common::make_ddim(filter_shape)));
+                          make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ((filter_shape[0] % 32 == 0 && filter_shape[3] % 8 == 0),
                       true,
                       common::errors::InvalidArgument(
@@ -92,7 +92,7 @@ struct NormConvolutionArgs {
             "The size of output_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             output_shape.size(),
-            common::make_ddim(output_shape)));
+            make_ddim(output_shape)));
     is_support = IsSupport(dev_ctx, filter_shape, stride, dilation, group);
     PADDLE_ENFORCE_EQ(
         is_support,

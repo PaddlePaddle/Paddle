@@ -23,6 +23,10 @@ void LabelSmoothKernel(const Context& dev_ctx,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
+  if (label.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto ptr = dev_ctx.template Alloc<T>(out);
   if (prior_dist.is_initialized()) {
     PADDLE_THROW(

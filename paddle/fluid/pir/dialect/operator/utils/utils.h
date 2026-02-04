@@ -185,7 +185,7 @@ const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap();
 
 const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
 
-const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
+const std::unordered_map<std::string, DataLayout>& StringToDataLayoutMap();
 
 void SetStopGradient();
 

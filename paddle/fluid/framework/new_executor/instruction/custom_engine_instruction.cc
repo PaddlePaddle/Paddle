@@ -129,7 +129,7 @@ void BuildEngineValueMap(
 
 CustomEngineInstruction::CustomEngineInstruction(
     size_t id,
-    const phi::Place &place,
+    const Place &place,
     pir::Operation *op,
     ValueExecutionInfo *value_exec_info,
     paddle::framework::interpreter::ExecutionConfig execution_config)
