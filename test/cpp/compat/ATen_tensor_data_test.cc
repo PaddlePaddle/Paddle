@@ -27,7 +27,7 @@ TEST(TensorDataTest, TensorDataContiguous) {
   at::Tensor data_tensor = tensor.tensor_data();
 
   // Verify shape and values
-  ASSERT_EQ(data_tensor.dims().size(), 2);
+  ASSERT_EQ(data_tensor.dim(), 2);
   ASSERT_EQ(data_tensor.size(0), 3);
   ASSERT_EQ(data_tensor.size(1), 4);
 
@@ -54,7 +54,7 @@ TEST(TensorDataTest, TensorDataNonContiguous) {
   at::Tensor data_tensor = transposed.tensor_data();
 
   // Verify shape matches
-  ASSERT_EQ(data_tensor.dims().size(), 2);
+  ASSERT_EQ(data_tensor.dim(), 2);
   ASSERT_EQ(data_tensor.size(0), 4);
   ASSERT_EQ(data_tensor.size(1), 3);
 
@@ -79,7 +79,7 @@ TEST(TensorDataTest, TensorDataEmptyTensor) {
   at::Tensor data_tensor = tensor.tensor_data();
 
   // Verify shape
-  ASSERT_EQ(data_tensor.dims().size(), 1);
+  ASSERT_EQ(data_tensor.dim(), 1);
   ASSERT_EQ(data_tensor.size(0), 0);
   ASSERT_EQ(data_tensor.numel(), 0);
 }
@@ -94,7 +94,7 @@ TEST(TensorDataTest, TensorDataDifferentDtypes) {
     at::Tensor data_tensor = tensor.tensor_data();
 
     ASSERT_EQ(data_tensor.dtype(), dtype);
-    ASSERT_EQ(data_tensor.dims().size(), 2);
+    ASSERT_EQ(data_tensor.dim(), 2);
     ASSERT_EQ(data_tensor.size(0), 2);
     ASSERT_EQ(data_tensor.size(1), 3);
   }
@@ -108,7 +108,7 @@ TEST(TensorDataTest, VariableDataContiguous) {
   at::Tensor var_tensor = tensor.variable_data();
 
   // Verify shape and values
-  ASSERT_EQ(var_tensor.dims().size(), 2);
+  ASSERT_EQ(var_tensor.dim(), 2);
   ASSERT_EQ(var_tensor.size(0), 3);
   ASSERT_EQ(var_tensor.size(1), 4);
 
@@ -134,7 +134,7 @@ TEST(TensorDataTest, VariableDataNonContiguous) {
   at::Tensor var_tensor = transposed.variable_data();
 
   // Verify shape matches
-  ASSERT_EQ(var_tensor.dims().size(), 2);
+  ASSERT_EQ(var_tensor.dim(), 2);
   ASSERT_EQ(var_tensor.size(0), 4);
   ASSERT_EQ(var_tensor.size(1), 3);
 
@@ -152,7 +152,7 @@ TEST(TensorDataTest, VariableDataEmptyTensor) {
   at::Tensor var_tensor = tensor.variable_data();
 
   // Verify shape
-  ASSERT_EQ(var_tensor.dims().size(), 1);
+  ASSERT_EQ(var_tensor.dim(), 1);
   ASSERT_EQ(var_tensor.size(0), 0);
   ASSERT_EQ(var_tensor.numel(), 0);
 }
@@ -167,7 +167,7 @@ TEST(TensorDataTest, VariableDataDifferentDtypes) {
     at::Tensor var_tensor = tensor.variable_data();
 
     ASSERT_EQ(var_tensor.dtype(), dtype);
-    ASSERT_EQ(var_tensor.dims().size(), 2);
+    ASSERT_EQ(var_tensor.dim(), 2);
     ASSERT_EQ(var_tensor.size(0), 2);
     ASSERT_EQ(var_tensor.size(1), 3);
   }
@@ -181,9 +181,8 @@ TEST(TensorDataTest, TensorDataAndVariableDataEquivalence) {
   at::Tensor variable_data_result = tensor.variable_data();
 
   // Verify shapes match
-  ASSERT_EQ(tensor_data_result.dims().size(),
-            variable_data_result.dims().size());
-  for (int64_t i = 0; i < tensor_data_result.dims().size(); ++i) {
+  ASSERT_EQ(tensor_data_result.dim(), variable_data_result.dim());
+  for (int64_t i = 0; i < tensor_data_result.dim(); ++i) {
     ASSERT_EQ(tensor_data_result.size(i), variable_data_result.size(i));
   }
 
@@ -218,7 +217,7 @@ TEST(TensorDataTest, TensorData3DTensor) {
 
   at::Tensor data_tensor = tensor.tensor_data();
 
-  ASSERT_EQ(data_tensor.dims().size(), 3);
+  ASSERT_EQ(data_tensor.dim(), 3);
   ASSERT_EQ(data_tensor.size(0), 2);
   ASSERT_EQ(data_tensor.size(1), 3);
   ASSERT_EQ(data_tensor.size(2), 4);
@@ -235,7 +234,7 @@ TEST(TensorDataTest, VariableData3DTensor) {
 
   at::Tensor var_tensor = tensor.variable_data();
 
-  ASSERT_EQ(var_tensor.dims().size(), 3);
+  ASSERT_EQ(var_tensor.dim(), 3);
   ASSERT_EQ(var_tensor.size(0), 2);
   ASSERT_EQ(var_tensor.size(1), 3);
   ASSERT_EQ(var_tensor.size(2), 4);
