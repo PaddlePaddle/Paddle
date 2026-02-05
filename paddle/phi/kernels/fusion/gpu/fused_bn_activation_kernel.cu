@@ -109,23 +109,22 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
   cudnnTensorDescriptor_t bn_param_desc_;
   cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+      dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 
   VLOG(3) << "Setting descriptors.";
   std::vector<int> dims = {N, C, H, W, D};
   std::vector<int> strides = {H * W * D * C, 1, W * D * C, D * C, C};
 
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
-      data_desc_,
-      CudnnDataType::type,
-      x_dims.size() > 3 ? x_dims.size() : 4,
-      dims.data(),
-      strides.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cudnnSetTensorNdDescriptor(data_desc_,
+                                          CudnnDataType::type,
+                                          x_dims.size() > 3 ? x_dims.size() : 4,
+                                          dims.data(),
+                                          strides.data()));
 
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDeriveBNTensorDescriptor(
       bn_param_desc_, data_desc_, mode_));
 
   double this_factor = 1. - momentum;
@@ -146,7 +145,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
 
   // --------------- cudnn batchnorm workspace ---------------
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
+      dynload::cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
           /*handle=*/handle,
           /*mode=*/mode_,
           /*bnOps=*/bnOps_,
@@ -159,7 +158,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
 
   // -------------- cudnn batchnorm reserve space --------------
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
+      dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
           /*handle=*/handle,
           /*mode=*/mode_,
           /*bnOps=*/bnOps_,
@@ -175,39 +174,37 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
       (workspace_size + phi::SizeOf(x.dtype()) - 1) / phi::SizeOf(x.dtype()))});
   workspace_ptr = dev_ctx.template Alloc<T>(&workspace_tensor);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnBatchNormalizationForwardTrainingEx(
-          handle,
-          mode_,
-          bnOps_,
-          CudnnDataType::kOne(),
-          CudnnDataType::kZero(),
-          data_desc_,
-          x.template data<T>(),
-          nullptr,
-          nullptr,
-          data_desc_,
-          y->template data<T>(),
-          bn_param_desc_,
-          scale.template data<BatchNormParamType>(),
-          bias.template data<BatchNormParamType>(),
-          this_factor,
-          dev_ctx.template Alloc<BatchNormParamType>(mean_out),
-          dev_ctx.template Alloc<BatchNormParamType>(variance_out),
-          epsilon1,
-          dev_ctx.template Alloc<BatchNormParamType>(saved_mean),
-          dev_ctx.template Alloc<BatchNormParamType>(saved_variance),
-          activation_desc_,
-          workspace_ptr,
-          workspace_size,
-          reserve_space_ptr,
-          reserve_space_size));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationForwardTrainingEx(
+      handle,
+      mode_,
+      bnOps_,
+      CudnnDataType::kOne(),
+      CudnnDataType::kZero(),
+      data_desc_,
+      x.template data<T>(),
+      nullptr,
+      nullptr,
+      data_desc_,
+      y->template data<T>(),
+      bn_param_desc_,
+      scale.template data<BatchNormParamType>(),
+      bias.template data<BatchNormParamType>(),
+      this_factor,
+      dev_ctx.template Alloc<BatchNormParamType>(mean_out),
+      dev_ctx.template Alloc<BatchNormParamType>(variance_out),
+      epsilon1,
+      dev_ctx.template Alloc<BatchNormParamType>(saved_mean),
+      dev_ctx.template Alloc<BatchNormParamType>(saved_variance),
+      activation_desc_,
+      workspace_ptr,
+      workspace_size,
+      reserve_space_ptr,
+      reserve_space_size));
 
   // clean when exit.
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+      dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "

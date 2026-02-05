@@ -25,6 +25,7 @@
 #include <c10/util/Float8_e5m2.h>
 #include <c10/util/Half.h>
 #include <c10/util/complex.h>
+#include <sstream>
 
 #include "paddle/common/macros.h"
 
@@ -294,26 +295,80 @@ inline bool isSignedType(ScalarType t) {
     return std::numeric_limits< \
         ::c10::impl::ScalarTypeToCPPTypeT<ScalarType::name>>::is_signed;
 
-  // TODO(#146647): If we expect to have numeric_limits for everything,
-  // let's just have a big macro for the whole thing.
-  // If we're hardcoding it, let's just use the macro and a "true"/"false"
-  // below?
   switch (t) {
-    CASE_ISSIGNED(BFloat16);
-    CASE_ISSIGNED(Float8_e5m2);
-    CASE_ISSIGNED(Float8_e4m3fn);
-    CASE_ISSIGNED(Byte);
-    CASE_ISSIGNED(Char);
-    CASE_ISSIGNED(Short);
-    CASE_ISSIGNED(Int);
-    CASE_ISSIGNED(Long);
-    CASE_ISSIGNED(Half);
-    CASE_ISSIGNED(Float);
-    CASE_ISSIGNED(Double);
-    CASE_ISSIGNED(Bool);
+    // Signed integer types (using numeric_limits)
+    CASE_ISSIGNED(Char);   // int8_t
+    CASE_ISSIGNED(Short);  // int16_t
+    CASE_ISSIGNED(Int);    // int32_t
+    CASE_ISSIGNED(Long);   // int64_t
+
+    // Signed integer types (dummy types, explicitly return true)
+    case ScalarType::Int1:
+    case ScalarType::Int2:
+    case ScalarType::Int3:
+    case ScalarType::Int4:
+    case ScalarType::Int5:
+    case ScalarType::Int6:
+    case ScalarType::Int7:
+      return true;
+
+      // Signed floating point types (using numeric_limits)
+      CASE_ISSIGNED(Half);    // float16
+      CASE_ISSIGNED(Float);   // float32
+      CASE_ISSIGNED(Double);  // float64
+      CASE_ISSIGNED(BFloat16);
+      CASE_ISSIGNED(Float8_e5m2);
+      CASE_ISSIGNED(Float8_e4m3fn);
+
+    // Complex types (treated as signed)
     case ScalarType::ComplexFloat:
     case ScalarType::ComplexDouble:
       return true;
+
+    // Signed quantized types (explicitly return true)
+    case ScalarType::QInt8:
+    case ScalarType::QInt32:
+      return true;
+
+      // Unsigned integer types (using numeric_limits)
+      CASE_ISSIGNED(Byte);  // uint8_t
+
+    // Unsigned integer types (explicitly return false)
+    case ScalarType::UInt16:
+    case ScalarType::UInt32:
+    case ScalarType::UInt64:
+    case ScalarType::UInt1:
+    case ScalarType::UInt2:
+    case ScalarType::UInt3:
+    case ScalarType::UInt4:
+    case ScalarType::UInt5:
+    case ScalarType::UInt6:
+    case ScalarType::UInt7:
+      return false;
+
+    // Unsigned quantized types (explicitly return false)
+    case ScalarType::QUInt8:
+    case ScalarType::QUInt4x2:
+    case ScalarType::QUInt2x4:
+      return false;
+
+      // Bool is unsigned (using numeric_limits)
+      CASE_ISSIGNED(Bool);
+
+    // Invalid/undefined types - should not happen in normal usage
+    // If this is hit, it indicates a programming error or unsupported type
+    case ScalarType::Undefined:
+    case ScalarType::NumOptions: {
+      std::ostringstream oss;
+      oss << "isSignedType: Invalid or unsupported ScalarType value: "
+          << toString(t) << " (" << static_cast<int>(t) << ")";
+      PD_THROW(oss.str());
+      return false;  // Unreachable, but satisfies compiler
+    }
+
+      // Note: If a new ScalarType is added to the enum but not handled here,
+      // the compiler will warn about missing case. This ensures all types are
+      // explicitly handled.
   }
 #undef CASE_ISSIGNED
 }

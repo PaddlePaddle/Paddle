@@ -123,7 +123,7 @@ void RankAttentionCUDAKernel(const Context &dev_ctx,
   int64_t strideA = block_matrix_row;
   int64_t strideB = block_matrix_row * para_col;
 
-  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.BatchedGEMM(transA,
                    transB,
                    1,

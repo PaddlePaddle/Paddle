@@ -122,8 +122,8 @@ struct BroadcastDimsSimplifier {
                 out_idx,
                 out_dims[out_idx],
                 in_dim[in_idx],
-                common::make_ddim(in_dim),
-                common::make_ddim(out_dims)));
+                make_ddim(in_dim),
+                make_ddim(out_dims)));
           }
         }
         in_dim.resize(rank);
