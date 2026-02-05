@@ -252,6 +252,7 @@ def binomial(count: Tensor, prob: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias(["x", "input"])
 def poisson(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.
@@ -260,9 +261,14 @@ def poisson(x: Tensor, name: str | None = None) -> Tensor:
 
         out_i \sim Poisson (lambda = x_i)
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``poisson(input=x)`` is equivalent to ``poisson(x=x)``.
+
     Args:
         x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
             should be bfloat16, float16, float32, float64.
+            alias: ``input``.
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
