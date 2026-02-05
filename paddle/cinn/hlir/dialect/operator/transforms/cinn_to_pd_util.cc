@@ -289,8 +289,10 @@ template <typename TARGET_OP>
   attrs["kernel_size"] = kernel_size;
   attrs["strides"] = attrs.at("stride_size");
   attrs["paddings"] = attrs.at("padding_size");
+  attrs["dilations"] = attrs.at("dilation_size");
   attrs.erase("stride_size");
   attrs.erase("padding_size");
+  attrs.erase("dilation_size");
   auto pd_op = rewriter.Build<paddle::dialect::Pool2dOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
   for (uint32_t i = 0; i < op->num_results(); ++i) {

@@ -35,6 +35,7 @@ def pool3D_forward_naive(
     ksize,
     strides,
     paddings,
+    dilations=[1, 1, 1],
     global_pool=0,
     ceil_mode=False,
     exclusive=True,
@@ -107,28 +108,36 @@ def pool3D_forward_naive(
     if adaptive:
         D_out, H_out, W_out = ksize
     else:
+        effective_ksize_d = (ksize[0] - 1) * dilations[0] + 1
+        effective_ksize_h = (ksize[1] - 1) * dilations[1] + 1
+        effective_ksize_w = (ksize[2] - 1) * dilations[2] + 1
         D_out = (
-            (D - ksize[0] + pad_d_forth + pad_d_back + strides[0] - 1)
+            (D - effective_ksize_d + pad_d_forth + pad_d_back + strides[0] - 1)
             // strides[0]
             + 1
             if ceil_mode
-            else (D - ksize[0] + pad_d_forth + pad_d_back) // strides[0] + 1
+            else (D - effective_ksize_d + pad_d_forth + pad_d_back)
+            // strides[0]
+            + 1
         )
 
         H_out = (
-            (H - ksize[1] + pad_h_up + pad_h_down + strides[1] - 1)
+            (H - effective_ksize_h + pad_h_up + pad_h_down + strides[1] - 1)
             // strides[1]
             + 1
             if ceil_mode
-            else (H - ksize[1] + pad_h_up + pad_h_down) // strides[1] + 1
+            else (H - effective_ksize_h + pad_h_up + pad_h_down) // strides[1]
+            + 1
         )
 
         W_out = (
-            (W - ksize[2] + pad_w_left + pad_w_right + strides[2] - 1)
+            (W - effective_ksize_w + pad_w_left + pad_w_right + strides[2] - 1)
             // strides[2]
             + 1
             if ceil_mode
-            else (W - ksize[2] + pad_w_left + pad_w_right) // strides[2] + 1
+            else (W - effective_ksize_w + pad_w_left + pad_w_right)
+            // strides[2]
+            + 1
         )
 
     out = (
@@ -154,18 +163,21 @@ def pool3D_forward_naive(
                     d_start = k * strides[0] - pad_d_forth
                     d_end = np.min(
                         (
-                            k * strides[0] + ksize[0] - pad_d_forth,
+                            k * strides[0] + effective_ksize_d - pad_d_forth,
                             D + pad_d_back,
                         )
                     )
                     h_start = i * strides[1] - pad_h_up
                     h_end = np.min(
-                        (i * strides[1] + ksize[1] - pad_h_up, H + pad_h_down)
+                        (
+                            i * strides[1] + effective_ksize_h - pad_h_up,
+                            H + pad_h_down,
+                        )
                     )
                     w_start = j * strides[2] - pad_w_left
                     w_end = np.min(
                         (
-                            j * strides[2] + ksize[2] - pad_w_left,
+                            j * strides[2] + effective_ksize_w - pad_w_left,
                             W + pad_w_right,
                         )
                     )
@@ -175,15 +187,26 @@ def pool3D_forward_naive(
                         * (h_end - h_start)
                         * (w_end - w_start)
                     )
-                    w_start = np.max((w_start, 0))
-                    d_start = np.max((d_start, 0))
-                    h_start = np.max((h_start, 0))
+                    # w_start = np.max((w_start, 0))
+                    # d_start = np.max((d_start, 0))
+                    # h_start = np.max((h_start, 0))
+                    while d_start < 0:
+                        d_start += dilations[0]
+                    while h_start < 0:
+                        h_start += dilations[1]
+                    while w_start < 0:
+                        w_start += dilations[2]
+
                     w_end = np.min((w_end, W))
                     d_end = np.min((d_end, D))
                     h_end = np.min((h_end, H))
                 if data_format == 'NCDHW':
                     x_masked = x[
-                        :, :, d_start:d_end, h_start:h_end, w_start:w_end
+                        :,
+                        :,
+                        d_start : d_end : dilations[0],
+                        h_start : h_end : dilations[1],
+                        w_start : w_end : dilations[2],
                     ]
                     if pool_type == 'avg':
                         if exclusive or adaptive:
@@ -201,7 +224,11 @@ def pool3D_forward_naive(
 
                 elif data_format == 'NDHWC':
                     x_masked = x[
-                        :, d_start:d_end, h_start:h_end, w_start:w_end, :
+                        :,
+                        d_start : d_end : dilations[0],
+                        h_start : h_end : dilations[1],
+                        w_start : w_end : dilations[2],
+                        :,
                     ]
                     if pool_type == 'avg':
                         if exclusive or adaptive:
@@ -225,6 +252,7 @@ def max_pool3D_forward_naive(
     ksize,
     strides,
     paddings,
+    dilations=[1, 1, 1],
     global_pool=0,
     ceil_mode=False,
     exclusive=True,
@@ -235,6 +263,7 @@ def max_pool3D_forward_naive(
         ksize=ksize,
         strides=strides,
         paddings=paddings,
+        dilations=dilations,
         global_pool=global_pool,
         ceil_mode=ceil_mode,
         exclusive=exclusive,
@@ -260,6 +289,7 @@ def avg_pool3D_forward_naive(
         ksize=ksize,
         strides=strides,
         paddings=paddings,
+        dilations=[1, 1, 1],
         global_pool=global_pool,
         ceil_mode=ceil_mode,
         exclusive=exclusive,
@@ -275,6 +305,7 @@ def pool3d_wrapper_not_use_cudnn(
     ksize=[],
     strides=[],
     paddings=[],
+    dilations=[1, 1, 1],
     ceil_mode=False,
     exclusive=True,
     data_format="NCDHW",
@@ -292,6 +323,7 @@ def pool3d_wrapper_not_use_cudnn(
         ksize,
         strides,
         paddings,
+        dilations,
         ceil_mode,
         exclusive,
         data_format,
@@ -307,6 +339,7 @@ def pool3d_wrapper_use_cudnn(
     ksize=[],
     strides=[],
     paddings=[],
+    dilations=[1, 1, 1],
     ceil_mode=False,
     exclusive=True,
     data_format="NCDHW",
@@ -322,6 +355,7 @@ def pool3d_wrapper_use_cudnn(
         ksize,
         strides,
         paddings,
+        dilations,
         ceil_mode,
         exclusive,
         data_format,
@@ -340,6 +374,7 @@ class TestPool3D_Op(OpTest):
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
         self.init_paddings()
+        self.init_dilations()
         self.init_global_pool()
         self.init_kernel_type()
         self.init_pool_type()
@@ -356,6 +391,7 @@ class TestPool3D_Op(OpTest):
             self.ksize,
             self.strides,
             self.paddings,
+            self.dilations,
             self.global_pool,
             self.ceil_mode,
             self.exclusive,
@@ -370,6 +406,7 @@ class TestPool3D_Op(OpTest):
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
+            'dilations': self.dilations,
             'ksize': self.ksize,
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
@@ -432,6 +469,9 @@ class TestPool3D_Op(OpTest):
     def init_paddings(self):
         self.paddings = [0, 0, 0]
         self.padding_algorithm = "EXPLICIT"
+
+    def init_dilations(self):
+        self.dilations = [1, 1, 1]
 
     def init_kernel_type(self):
         self.use_cudnn = False

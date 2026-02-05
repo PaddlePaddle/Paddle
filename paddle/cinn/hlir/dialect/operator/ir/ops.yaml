@@ -54,14 +54,14 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
-  args : (Tensor x, int64_t[] kernel_size, int64_t[] stride_size, int64_t[] padding_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  args : (Tensor x, int64_t[] kernel_size, int64_t[] stride_size, int64_t[] padding_size, int64_t[] dilation_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
-    param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    param : [x, kernel_size, stride_size, padding_size, dilation_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   kernel :
     func : pool2d
-    param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    param : [x, kernel_size, stride_size, padding_size, dilation_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
 
 - op : reduce_max
   args : (Tensor x, int64_t[] axis, bool keepdim)

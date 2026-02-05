@@ -78,6 +78,8 @@ class Pool3dOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     std::vector<int> paddings =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+    std::vector<int> dilations =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
     bool exclusive = op_desc.HasAttr("exclusive")
                          ? PADDLE_GET_CONST(bool, op_desc.GetAttr("exclusive"))
                          : true;
@@ -138,6 +140,7 @@ class Pool3dOpConverter : public OpConverter {
                                           ksize,
                                           strides,
                                           paddings,
+                                          dilations,
                                           global_pooling);
       layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
     }

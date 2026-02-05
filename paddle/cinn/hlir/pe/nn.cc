@@ -1347,6 +1347,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
                              const std::vector<int> &kernel_size,
                              const std::vector<int> &stride_size,
                              const std::vector<int> &padding_size,
+                             const std::vector<int> &dilation_size,
                              const std::string &pooling_type,
                              const std::vector<int> &axis,
                              bool ceil_mode,
@@ -1388,6 +1389,8 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
   std::vector<Var> daxis;
   std::vector<Expr> kernel(k_size);
   std::vector<Expr> stride(k_size);
+  std::vector<Expr> dilation(k_size);
+  std::vector<Expr> dilated_kernel(k_size);
   std::vector<Expr> pad_head(k_size);
   std::vector<Expr> pad_tail(k_size);
   std::vector<Expr> pad_before(x_size, Expr(0));
@@ -1399,6 +1402,8 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     int ii = axis[i];
     kernel[i] = Expr(kernel_size[i]);
     stride[i] = Expr(stride_size[i]);
+    dilation[i] = Expr(dilation_size[i]);
+    dilated_kernel[i] = Expr((kernel_size[i] - 1) * dilation_size[i] + 1);
     pad_head[i] = Expr(padding_size[i]);
     pad_tail[i] = Expr(padding_size[i + k_size]);
     do_pad = (do_pad) ? do_pad : (padding_size[i] || padding_size[i + k_size]);
@@ -1413,7 +1418,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     pad_after[ii] = pad_tail[i];
 
     auto out_dim = optim::ArithSimplify(
-        (tensor->shape[ii] - kernel[i] + pad_head[i] + pad_tail[i]) /
+        (tensor->shape[ii] - dilated_kernel[i] + pad_head[i] + pad_tail[i]) /
             stride[i] +
         1);
 
@@ -1440,7 +1445,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
 
           for (int i = 0; i < k_size; i++) {
             int ii = axis[i];
-            indices[ii] = output[ii] * stride[i] + daxis[i];
+            indices[ii] = output[ii] * stride[i] + daxis[i] * dilation[i];
           }
 
           return lang::ReduceMax(temp(indices), {daxis}, min_value);
@@ -1570,6 +1575,7 @@ std::vector<Tensor> Pool1d(const Tensor &tensor,
                            const std::vector<int> &kernel_size,
                            const std::vector<int> &stride_size,
                            const std::vector<int> &padding_size,
+                           const std::vector<int> &dilation_size,
                            const std::string &pool_type,
                            bool ceil_mode,
                            bool exclusive,
@@ -1594,6 +1600,7 @@ std::vector<Tensor> Pool1d(const Tensor &tensor,
                   kernel_size,
                   stride_size,
                   padding_size,
+                  dilation_size,
                   pool_type,
                   axis,
                   ceil_mode,
@@ -1657,6 +1664,7 @@ std::vector<Tensor> Pool2d(const Tensor &tensor,
                            const std::vector<int> &kernel_size,
                            const std::vector<int> &stride_size,
                            const std::vector<int> &padding_size,
+                           const std::vector<int> &dilation_size,
                            const std::string &pool_type,
                            bool ceil_mode,
                            bool exclusive,
@@ -1690,6 +1698,7 @@ std::vector<Tensor> Pool2d(const Tensor &tensor,
                   kernel_size,
                   stride_size,
                   padding_size,
+                  dilation_size,
                   pool_type,
                   axis,
                   ceil_mode,
@@ -1702,6 +1711,7 @@ std::vector<Tensor> Pool3d(const Tensor &tensor,
                            const std::vector<int> &kernel_size,
                            const std::vector<int> &stride_size,
                            const std::vector<int> &padding_size,
+                           const std::vector<int> &dilation_size,
                            const std::string &pool_type,
                            bool ceil_mode,
                            bool exclusive,
@@ -1732,6 +1742,7 @@ std::vector<Tensor> Pool3d(const Tensor &tensor,
                   kernel_size,
                   stride_size,
                   padding_size,
+                  dilation_size,
                   pool_type,
                   axis,
                   ceil_mode,

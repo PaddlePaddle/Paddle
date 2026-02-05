@@ -31,19 +31,22 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                                        const bool& adaptive,
                                        const std::vector<int>& ksize,
                                        const std::vector<int>& strides,
-                                       const std::vector<int>& real_paddings) {
+                                       const std::vector<int>& real_paddings,
+                                       const std::vector<int>& dilations) {
   std::vector<int> output_shape = input_shape;
   if (adaptive) {
     output_shape[0] = ksize[0];
     output_shape[1] = ksize[1];
   } else {
     int output_h = 0, output_w = 0;
+    int effective_filter_h = (ksize[0] - 1) * dilations[0] + 1;
+    int effective_filter_w = (ksize[1] - 1) * dilations[1] + 1;
     if (ceil_mode) {
-      output_h = (input_shape[0] - ksize[0] + real_paddings[0] +
+      output_h = (input_shape[0] - effective_filter_h + real_paddings[0] +
                   real_paddings[1] + strides[0] - 1) /
                      strides[0] +
                  1;
-      output_w = (input_shape[1] - ksize[1] + real_paddings[2] +
+      output_w = (input_shape[1] - effective_filter_w + real_paddings[2] +
                   real_paddings[3] + strides[1] - 1) /
                      strides[1] +
                  1;
@@ -82,7 +85,8 @@ class PoolPlugin : public PluginTensorRT {
              std::vector<int> strides,
              std::vector<int> paddings,
              std::vector<int> input_shape,
-             std::vector<int> real_paddings)
+             std::vector<int> real_paddings,
+             std::vector<int> dilations)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
         adaptive_(adaptive),
@@ -91,6 +95,7 @@ class PoolPlugin : public PluginTensorRT {
         strides_(strides),
         paddings_(paddings),
         real_paddings_(real_paddings),
+        dilations_(dilations),
         input_shape_(input_shape) {
     output_shape_ = input_shape_;
     std::vector<int> output_shape =
@@ -99,7 +104,8 @@ class PoolPlugin : public PluginTensorRT {
                        adaptive_,
                        ksize_,
                        strides_,
-                       real_paddings_);
+                       real_paddings_,
+                       dilations_);
     output_shape_[1] = output_shape[0];
     output_shape_[2] = output_shape[1];
   }
@@ -116,6 +122,7 @@ class PoolPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &strides_);
     DeserializeValue(&serialData, &serialLength, &paddings_);
     DeserializeValue(&serialData, &serialLength, &real_paddings_);
+    DeserializeValue(&serialData, &serialLength, &dilations_);
     DeserializeValue(&serialData, &serialLength, &input_shape_);
     DeserializeValue(&serialData, &serialLength, &output_shape_);
   }
@@ -145,6 +152,7 @@ class PoolPlugin : public PluginTensorRT {
   std::vector<int> strides_;
   std::vector<int> paddings_;
   std::vector<int> real_paddings_;
+  std::vector<int> dilations_;
   std::vector<int> input_shape_;
   std::vector<int> output_shape_;
 };
@@ -176,6 +184,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
                     const std::vector<int>& ksize,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings,
+                    const std::vector<int>& dilations,
                     const bool& is_global)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
@@ -184,6 +193,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
+        dilations_(dilations),
         is_global_(is_global) {}
 
   PoolPluginDynamic(void const* serialData, size_t serialLength);
@@ -244,6 +254,7 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> ksize_;
   std::vector<int> strides_;
   std::vector<int> paddings_;
+  std::vector<int> dilations_;
   bool is_global_;
 };
 
@@ -287,6 +298,7 @@ class PIRPoolPluginDynamicCreator : public TensorRTPluginCreator {
     std::vector<int> ksize;
     std::vector<int> strides;
     std::vector<int> paddings;
+    std::vector<int> dilations;
     bool global_pooling = false;
 
     for (int i = 0; i < fc->nbFields; ++i) {
@@ -313,6 +325,10 @@ class PIRPoolPluginDynamicCreator : public TensorRTPluginCreator {
         const int length = fc->fields[i].length;
         const int* data = static_cast<const int*>(fc->fields[i].data);
         paddings.insert(paddings.end(), data, data + length);
+      } else if (field_name.compare("dilations") == 0) {
+        const int length = fc->fields[i].length;
+        const int* data = static_cast<const int*>(fc->fields[i].data);
+        dilations.insert(dilations.end(), data, data + length);
       } else if (field_name.compare("global_pooling") == 0) {
         global_pooling = *static_cast<const bool*>(field.data);
       } else {
@@ -326,6 +342,7 @@ class PIRPoolPluginDynamicCreator : public TensorRTPluginCreator {
                                  ksize,
                                  strides,
                                  paddings,
+                                 dilations,
                                  global_pooling);
   }
 };

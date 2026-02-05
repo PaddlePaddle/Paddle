@@ -1548,6 +1548,7 @@ class PoolingOneDNNHandler
                        const IntArray& kernel_size,
                        const std::vector<int64_t>& strides,
                        const std::vector<int64_t>& paddings,
+                       const std::vector<int64_t>& dilations,
                        bool global_pooling,
                        const std::string& padding_algorithm,
                        bool ceil_mode,
@@ -1563,6 +1564,7 @@ class PoolingOneDNNHandler
                                             kernel_size.GetData().end());
     std::vector<int64_t> copied_strides(strides.begin(), strides.end());
     std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
+    std::vector<int64_t> copied_dilations(dilations.begin(), dilations.end());
     // Only 2D pooling is supported now
     PADDLE_ENFORCE_EQ(
         copied_kernel_size.size(),
@@ -1626,7 +1628,7 @@ class PoolingOneDNNHandler
                        ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                        : false;
 
-    memory::dims dilation = {0, 0};
+    // memory::dims dilation = {0, 0};
 
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
@@ -1639,7 +1641,7 @@ class PoolingOneDNNHandler
         dst_md,
         copied_strides,
         copied_kernel_size,
-        dilation,
+        copied_dilations,
         onednn_paddings[0],
         onednn_paddings[1]);
   }
@@ -1649,6 +1651,7 @@ class PoolingOneDNNHandler
                        const IntArray& kernel_size,
                        const std::vector<int64_t>& strides,
                        const std::vector<int64_t>& paddings,
+                       const std::vector<int64_t>& dilations,
                        bool global_pooling,
                        const std::string& padding_algorithm,
                        bool ceil_mode,
@@ -1676,6 +1679,7 @@ class PoolingOneDNNHandler
                                             kernel_size.GetData().end());
     std::vector<int64_t> copied_strides(strides.begin(), strides.end());
     std::vector<int64_t> copied_paddings(paddings.begin(), paddings.end());
+    std::vector<int64_t> copied_dilations(dilations.begin(), dilations.end());
     auto in_x_dims = in_x->dims();
     DDim data_dims = slice_ddim(in_x_dims, 2, in_x_dims.size());
     if (global_pooling) {
@@ -1717,7 +1721,7 @@ class PoolingOneDNNHandler
                                     &copied_kernel_size,
                                     &copied_strides);
     }
-    memory::dims dilation = {0, 0};
+    // memory::dims dilation = {0, 0};
 
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training,
@@ -1729,7 +1733,7 @@ class PoolingOneDNNHandler
         dst_md,
         copied_strides,
         copied_kernel_size,
-        dilation,
+        copied_dilations,
         onednn_paddings[0],
         onednn_paddings[1]);
 
@@ -1742,7 +1746,7 @@ class PoolingOneDNNHandler
         out_grad->mem_desc(),
         copied_strides,
         copied_kernel_size,
-        dilation,
+        copied_dilations,
         onednn_paddings[0],
         onednn_paddings[1]);
   }

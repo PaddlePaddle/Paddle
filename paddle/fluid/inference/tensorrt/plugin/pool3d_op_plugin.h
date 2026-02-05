@@ -31,40 +31,45 @@ static std::vector<int> CalcOutputSize(const std::vector<int>& input_shape,
                                        const bool& adaptive,
                                        const std::vector<int>& ksize,
                                        const std::vector<int>& strides,
-                                       const std::vector<int>& paddings) {
+                                       const std::vector<int>& paddings,
+                                       const std::vector<int>& dilations) {
   std::vector<int> output_shape = input_shape;
   if (adaptive) {
     output_shape[0] = ksize[0];
     output_shape[1] = ksize[1];
     output_shape[2] = ksize[2];
   } else {
-    int output_d =
-        (input_shape[0] - ksize[0] + 2 * paddings[0]) / strides[0] + 1;
-    int output_h =
-        (input_shape[1] - ksize[1] + 2 * paddings[1]) / strides[1] + 1;
-    int output_w =
-        (input_shape[2] - ksize[2] + 2 * paddings[2]) / strides[2] + 1;
+    int effective_filter_d = (ksize[0] - 1) * dilations[0] + 1;
+    int effective_filter_h = (ksize[1] - 1) * dilations[1] + 1;
+    int effective_filter_w = (ksize[2] - 1) * dilations[2] + 1;
+
     if (ceil_mode) {
-      output_d =
-          (input_shape[0] - ksize[0] + 2 * paddings[0] + strides[0] - 1) /
-              strides[0] +
+      output_shape[0] = (input_shape[0] - effective_filter_d + 2 * paddings[0] +
+                         strides[0] - 1) /
+                            strides[0] +
+                        1;
+      output_shape[1] = (input_shape[1] - effective_filter_h + 2 * paddings[1] +
+                         strides[1] - 1) /
+                            strides[1] +
+                        1;
+      output_shape[2] = (input_shape[2] - effective_filter_w + 2 * paddings[2] +
+                         strides[2] - 1) /
+                            strides[2] +
+                        1;
+    } else {
+      output_shape[0] =
+          (input_shape[0] - effective_filter_d + 2 * paddings[0]) / strides[0] +
           1;
-      output_h =
-          (input_shape[1] - ksize[1] + 2 * paddings[1] + strides[1] - 1) /
-              strides[1] +
+      output_shape[1] =
+          (input_shape[1] - effective_filter_h + 2 * paddings[1]) / strides[1] +
           1;
-      output_w =
-          (input_shape[2] - ksize[2] + 2 * paddings[2] + strides[2] - 1) /
-              strides[2] +
+      output_shape[2] =
+          (input_shape[2] - effective_filter_w + 2 * paddings[2]) / strides[2] +
           1;
     }
-    output_shape[0] = output_d;
-    output_shape[1] = output_h;
-    output_shape[2] = output_w;
   }
   return output_shape;
 }
-
 class Pool3DPlugin : public PluginTensorRTV2Ext {
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override;
@@ -83,6 +88,7 @@ class Pool3DPlugin : public PluginTensorRTV2Ext {
                std::vector<int> ksize,
                std::vector<int> strides,
                std::vector<int> paddings,
+               std::vector<int> dilations,
                std::vector<int> input_shape)
       : ceil_mode_(ceil_mode),
         pool3d_type_(pool3d_type),
@@ -90,6 +96,7 @@ class Pool3DPlugin : public PluginTensorRTV2Ext {
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
+        dilations_(dilations),
         input_shape_(input_shape) {
     output_shape_ = input_shape_;
     std::vector<int> output_shape =
@@ -98,7 +105,8 @@ class Pool3DPlugin : public PluginTensorRTV2Ext {
                        adaptive_,
                        ksize_,
                        strides_,
-                       paddings_);
+                       paddings_,
+                       dilations_);
     output_shape_[1] = output_shape[0];
     output_shape_[2] = output_shape[1];
     output_shape_[3] = output_shape[2];
@@ -114,6 +122,7 @@ class Pool3DPlugin : public PluginTensorRTV2Ext {
     DeserializeValue(&serialData, &serialLength, &ksize_);
     DeserializeValue(&serialData, &serialLength, &strides_);
     DeserializeValue(&serialData, &serialLength, &paddings_);
+    DeserializeValue(&serialData, &serialLength, &dilations_);
     DeserializeValue(&serialData, &serialLength, &input_shape_);
     DeserializeValue(&serialData, &serialLength, &output_shape_);
   }
@@ -150,6 +159,7 @@ class Pool3DPlugin : public PluginTensorRTV2Ext {
   std::vector<int> ksize_;
   std::vector<int> strides_;
   std::vector<int> paddings_;
+  std::vector<int> dilations_;
   std::vector<int> input_shape_;
   std::vector<int> output_shape_;
 };
@@ -180,6 +190,7 @@ class Pool3DPluginDynamic : public DynamicPluginTensorRT {
                       const std::vector<int>& ksize,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
                       const bool& is_global)
       : ceil_mode_(ceil_mode),
         pool3d_type_(pool3d_type),
@@ -187,6 +198,7 @@ class Pool3DPluginDynamic : public DynamicPluginTensorRT {
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
+        dilations_(dilations),
         is_global_(is_global) {}
 
   Pool3DPluginDynamic(void const* serialData, size_t serialLength);
@@ -239,6 +251,7 @@ class Pool3DPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> ksize_;
   std::vector<int> strides_;
   std::vector<int> paddings_;
+  std::vector<int> dilations_;
   bool is_global_;
 };
 
@@ -267,6 +280,7 @@ class PIRPool3DPluginDynamic : public DynamicPluginTensorRT {
                          const std::vector<int>& ksize,
                          const std::vector<int>& strides,
                          const std::vector<int>& paddings,
+                         const std::vector<int>& dilations,
                          const bool& is_global)
       : ceil_mode_(ceil_mode),
         pool3d_type_(pool3d_type),
@@ -274,6 +288,7 @@ class PIRPool3DPluginDynamic : public DynamicPluginTensorRT {
         ksize_(ksize),
         strides_(strides),
         paddings_(paddings),
+        dilations_(dilations),
         is_global_(is_global) {}
 
   PIRPool3DPluginDynamic(void const* serialData, size_t serialLength);
@@ -326,6 +341,7 @@ class PIRPool3DPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> ksize_;
   std::vector<int> strides_;
   std::vector<int> paddings_;
+  std::vector<int> dilations_;
   bool is_global_;
 };
 
@@ -353,6 +369,7 @@ class PIRPool3DPluginDynamicCreator : public TensorRTPluginCreator {
     std::vector<int> ksize;
     std::vector<int> strides;
     std::vector<int> paddings;
+    std::vector<int> dilations;
     bool is_global = false;
 
     for (int i = 0; i < fc->nbFields; ++i) {
@@ -378,14 +395,24 @@ class PIRPool3DPluginDynamicCreator : public TensorRTPluginCreator {
         const int length = fc->fields[i].length;
         const int* data = static_cast<const int*>(fc->fields[i].data);
         paddings.insert(paddings.end(), data, data + length);
+      } else if (field_name.compare("dilations") == 0) {
+        const int length = fc->fields[i].length;
+        const int* data = static_cast<const int*>(fc->fields[i].data);
+        dilations.insert(dilations.end(), data, data + length);
       } else if (field_name.compare("is_global") == 0) {
         is_global = *static_cast<const bool*>(field.data);
       } else {
         assert(false && "Unknown plugin field name.");
       }
     }
-    return new PIRPool3DPluginDynamic(
-        ceil_mode, pool3d_type, adaptive, ksize, strides, paddings, is_global);
+    return new PIRPool3DPluginDynamic(ceil_mode,
+                                      pool3d_type,
+                                      adaptive,
+                                      ksize,
+                                      strides,
+                                      paddings,
+                                      dilations,
+                                      is_global);
   }
 };
 REGISTER_TRT_PLUGIN_V2(Pool3DPluginDynamicCreator);

@@ -345,6 +345,7 @@ std::vector<ir::Tensor> SoftmaxONEDNN(
  * @param kernel_size Vector of ints: {pool_kernel_width}
  * @param stride_size Vector of ints: {pool_stride_width}
  * @param padding_size Vector of ints: {head_pad_width, tail_pad_width}
+ * @param dilation_size Vector of ints: {dilation_width}
  * @param pool_type The type of pooling operator, currently support "max" and
  * "avg". Default is "max".
  * @param ceil_mode Whether to use ceil when calculating the output size.
@@ -361,6 +362,7 @@ std::vector<ir::Tensor> Pool1d(
     const std::vector<int> &kernel_size,
     const std::vector<int> &stride_size,
     const std::vector<int> &padding_size,
+    const std::vector<int> &dilation_size,
     const std::string &pool_type = "max",
     bool ceil_mode = false,
     bool exclusive = true,
@@ -377,6 +379,7 @@ std::vector<ir::Tensor> Pool1d(
  * @param stride_size Vector of ints: {pool_stride_height, pool_stride_width}
  * @param padding_size Vector of ints: {head_pad_height, head_pad_width,
  * tail_pad_height, tail_pad_width}
+ * @param dilation_size Vector of ints: {dilation_height, dilation_width}
  * @param pool_type The type of pooling operator, currently support "max" and
  * "avg". Default is "max".
  * @param ceil_mode Whether to use ceil when calculating the output size.
@@ -393,6 +396,7 @@ std::vector<ir::Tensor> Pool2d(
     const std::vector<int> &kernel_size,
     const std::vector<int> &stride_size,
     const std::vector<int> &padding_size,
+    const std::vector<int> &dilation_size,
     const std::string &pool_type = "max",
     bool ceil_mode = false,
     bool exclusive = true,
@@ -415,6 +419,8 @@ std::vector<ir::Tensor> GlobalPool2d(const ir::Tensor &tensor,
  * pool_stride_width}
  * @param padding_size Vector of ints: {head_pad_depth, head_pad_height,
  * head_pad_width, tail_pad_depth, tail_pad_height, tail_pad_width}
+ * @param dilation_size Vector of ints: {dilation_depth, dilation_height,
+ * dilation_width}
  * @param pool_type The type of pooling operator, currently support "max" and
  * "avg". Default is "max".
  * @param ceil_mode Whether to use ceil when calculating the output size.
@@ -429,6 +435,7 @@ std::vector<ir::Tensor> Pool3d(
     const std::vector<int> &kernel_size,
     const std::vector<int> &stride_size,
     const std::vector<int> &padding_size,
+    const std::vector<int> &dilation_size,
     const std::string &pool_type = "max",
     bool ceil_mode = false,
     bool exclusive = true,

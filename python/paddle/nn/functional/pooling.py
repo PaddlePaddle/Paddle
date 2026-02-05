@@ -275,12 +275,15 @@ def avg_pool1d(
     # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+    dilation = [1, 1]
+
     if in_dynamic_or_pir_mode():
         output = _C_ops.pool2d(
             x,
             kernel_size,
             stride,
             padding,
+            dilation,
             ceil_mode,
             exclusive,
             data_format,
@@ -307,6 +310,7 @@ def avg_pool1d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -393,12 +397,15 @@ def avg_pool2d(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
 
+    dilation = [1, 1]
+
     if in_dynamic_or_pir_mode():
         output = _C_ops.pool2d(
             x,
             kernel_size,
             stride,
             padding,
+            dilation,
             ceil_mode,
             exclusive,
             data_format,
@@ -431,6 +438,7 @@ def avg_pool2d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -520,12 +528,15 @@ def avg_pool3d(
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
+    dilation = [1, 1, 1]
+
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.pool3d(
             x,
             kernel_size,
             stride,
             padding,
+            dilation,
             ceil_mode,
             exclusive,
             data_format,
@@ -554,6 +565,7 @@ def avg_pool3d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -579,6 +591,7 @@ def max_pool1d(
     kernel_size: Size1,
     stride: Size1 | None = None,
     padding: _PaddingSizeMode | Size1 | Size2 = 0,
+    dilation: Size1 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
     name: str | None = None,
@@ -643,13 +656,22 @@ def max_pool1d(
         padding, 1, ceil_mode=ceil_mode
     )
 
+    dilation = [1, *convert_to_list(dilation, 1, "dilation")]
+
     # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
     if in_dynamic_or_pir_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -662,6 +684,7 @@ def max_pool1d(
                 kernel_size,
                 stride,
                 padding,
+                dilation,
                 ceil_mode,
                 True,
                 data_format,
@@ -691,6 +714,7 @@ def max_pool1d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -1152,6 +1176,7 @@ def max_pool2d(
     kernel_size: Size2,
     stride: Size2 | None = None,
     padding: _PaddingSizeMode | Size2 | Size4 = 0,
+    dilation: Size2 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout2D = 'NCHW',
@@ -1230,6 +1255,8 @@ def max_pool2d(
         padding, num_dims=2, channel_last=channel_last, ceil_mode=ceil_mode
     )
 
+    dilation = convert_to_list(dilation, 2, 'dilation')
+
     if data_format == "NHWC" and return_mask:
         raise ValueError(
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
@@ -1238,7 +1265,14 @@ def max_pool2d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return output if return_mask else output[0]
         else:
@@ -1247,6 +1281,7 @@ def max_pool2d(
                 kernel_size,
                 stride,
                 padding,
+                dilation,
                 ceil_mode,
                 True,
                 data_format,
@@ -1279,6 +1314,7 @@ def max_pool2d(
                     "global_pooling": False,
                     "strides": stride,
                     "paddings": padding,
+                    "dilations": dilation,
                     "padding_algorithm": padding_algorithm,
                     "use_cudnn": True,
                     "ceil_mode": ceil_mode,
@@ -1301,6 +1337,7 @@ def max_pool2d(
                     "global_pooling": False,
                     "strides": stride,
                     "paddings": padding,
+                    "dilations": dilation,
                     "padding_algorithm": padding_algorithm,
                     "use_cudnn": True,
                     "ceil_mode": ceil_mode,
@@ -1317,6 +1354,7 @@ def max_pool3d(
     kernel_size: Size3,
     stride: Size3 | None = None,
     padding: _PaddingSizeMode | Size3 | Size6 = 0,
+    dilation: Size3 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout3D = 'NCDHW',
@@ -1390,6 +1428,8 @@ def max_pool3d(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode
     )
 
+    dilation = convert_to_list(dilation, 3, 'dilation')
+
     if data_format == "NDHWC" and return_mask:
         raise ValueError(
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
@@ -1398,7 +1438,14 @@ def max_pool3d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return output if return_mask else output[0]
         else:
@@ -1407,6 +1454,7 @@ def max_pool3d(
                 kernel_size,
                 stride,
                 padding,
+                dilation,
                 ceil_mode,
                 True,
                 data_format,
@@ -1437,6 +1485,7 @@ def max_pool3d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -1503,6 +1552,7 @@ def adaptive_avg_pool1d(
             pool_size,
             [1, 1],
             [0, 0],
+            [1, 1],
             False,
             True,
             "NCHW",
@@ -1640,6 +1690,7 @@ def adaptive_avg_pool2d(
             output_size,
             [1, 1],
             [0, 0],
+            [1, 1],
             False,
             True,
             data_format,
@@ -1775,6 +1826,7 @@ def adaptive_avg_pool3d(
             output_size,
             [1, 1, 1],
             [0, 0, 0],
+            [1, 1, 1],
             False,
             True,
             data_format,
@@ -1874,7 +1926,7 @@ def adaptive_max_pool1d(
     x = unsqueeze(x, [2])
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True, False
+            x, pool_size, [1, 1], [0, 0], [1, 1], False, True, False
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1976,7 +2028,7 @@ def adaptive_max_pool2d(
             output_size[1] = in_w
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True, False
+            x, output_size, [1, 1], [0, 0], [1, 1], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2076,7 +2128,7 @@ def adaptive_max_pool3d(
     if in_dynamic_or_pir_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
+            x, output_size, [1, 1, 1], [0, 0, 0], [1, 1, 1], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2521,12 +2573,15 @@ def lp_pool1d(
     # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+    dilation = [1, 1]
+
     if in_dynamic_or_pir_mode():
         output = _C_ops.lp_pool2d(
             x,
             kernel_size,
             stride,
             padding,
+            dilation,
             ceil_mode,
             True,
             data_format,
@@ -2554,6 +2609,7 @@ def lp_pool1d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "ceil_mode": ceil_mode,
                 "exclusive": True,
@@ -2642,12 +2698,15 @@ def lp_pool2d(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
 
+    dilation = [1, 1]
+
     if in_dynamic_or_pir_mode():
         output = _C_ops.lp_pool2d(
             x,
             kernel_size,
             stride,
             padding,
+            dilation,
             ceil_mode,
             True,
             data_format,
@@ -2677,6 +2736,7 @@ def lp_pool2d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "ceil_mode": ceil_mode,
                 "exclusive": True,

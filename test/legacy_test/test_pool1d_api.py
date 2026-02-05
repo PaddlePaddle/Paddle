@@ -40,6 +40,7 @@ def max_pool1D_forward_naive(
     ksize,
     strides,
     paddings,
+    dilations=[1],
     global_pool=0,
     ceil_mode=False,
     exclusive=False,
@@ -52,10 +53,13 @@ def max_pool1D_forward_naive(
     if adaptive:
         L_out = ksize[0]
     else:
+        effective_ksize = (ksize[0] - 1) * dilations[0] + 1
         L_out = (
-            (L - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
+            (L - effective_ksize + 2 * paddings[0] + strides[0] - 1)
+            // strides[0]
+            + 1
             if ceil_mode
-            else (L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+            else (L - effective_ksize + 2 * paddings[0]) // strides[0] + 1
         )
 
     out = np.zeros((N, C, L_out))
@@ -64,9 +68,12 @@ def max_pool1D_forward_naive(
             r_start = adaptive_start_index(i, L, ksize[0])
             r_end = adaptive_end_index(i, L, ksize[0])
         else:
-            r_start = np.max((i * strides[0] - paddings[0], 0))
-            r_end = np.min((i * strides[0] + ksize[0] - paddings[0], L))
-        x_masked = x[:, :, r_start:r_end]
+            r_start = i * strides[0] - paddings[0]
+            while r_start < 0:
+                r_start += strides[0]
+            # r_start = np.max((i * strides[0] - paddings[0], 0))
+            r_end = np.min((i * strides[0] + effective_ksize - paddings[0], L))
+        x_masked = x[:, :, r_start : r_end : dilations[0]]
 
         out[:, :, i] = np.max(x_masked, axis=(2))
     return out

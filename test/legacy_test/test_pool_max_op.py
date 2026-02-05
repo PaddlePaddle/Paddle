@@ -38,7 +38,7 @@ def adaptive_end_index(index, input_size, output_size):
 
 
 def max_pool3D_forward_naive(
-    x, ksize, strides, paddings, global_pool=False, adaptive=False
+    x, ksize, strides, paddings, dilations, global_pool=False, adaptive=False
 ):
     N, C, D, H, W = x.shape
     if global_pool:
@@ -48,9 +48,12 @@ def max_pool3D_forward_naive(
     if adaptive:
         D_out, H_out, W_out = ksize
     else:
-        D_out = (D - ksize[0] + 2 * paddings[0]) // strides[0] + 1
-        H_out = (H - ksize[1] + 2 * paddings[1]) // strides[1] + 1
-        W_out = (W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
+        effective_ksize_d = (ksize[0] - 1) * dilations[0] + 1
+        effective_ksize_h = (ksize[1] - 1) * dilations[1] + 1
+        effective_ksize_w = (ksize[2] - 1) * dilations[2] + 1
+        D_out = (D - effective_ksize_d + 2 * paddings[0]) // strides[0] + 1
+        H_out = (H - effective_ksize_h + 2 * paddings[1]) // strides[1] + 1
+        W_out = (W - effective_ksize_w + 2 * paddings[2]) // strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
     mask = np.zeros((N, C, D_out, H_out, W_out))
     for k in range(D_out):
@@ -58,23 +61,45 @@ def max_pool3D_forward_naive(
             d_start = adaptive_start_index(k, D, ksize[0])
             d_end = adaptive_end_index(k, D, ksize[0])
         else:
-            d_start = np.max((k * strides[0] - paddings[0], 0))
-            d_end = np.min((k * strides[0] + ksize[0] - paddings[0], D))
+            d_start = k * strides[0] - paddings[0]
+            while d_start < 0:
+                d_start += dilations[0]
+            # d_start = np.max((k * strides[0] - paddings[0], 0))
+            d_end = np.min(
+                (k * strides[0] + effective_ksize_d - paddings[0], D)
+            )
         for i in range(H_out):
             if adaptive:
                 h_start = adaptive_start_index(i, H, ksize[1])
                 h_end = adaptive_end_index(i, H, ksize[1])
             else:
-                h_start = np.max((i * strides[1] - paddings[1], 0))
-                h_end = np.min((i * strides[1] + ksize[1] - paddings[1], H))
+                h_start = i * strides[1] - paddings[1]
+                while h_start < 0:
+                    h_start += dilations[1]
+                # h_start = np.max((i * strides[1] - paddings[1], 0))
+                h_end = np.min(
+                    (i * strides[1] + effective_ksize_h - paddings[1], H)
+                )
             for j in range(W_out):
                 if adaptive:
                     w_start = adaptive_start_index(j, W, ksize[2])
                     w_end = adaptive_end_index(j, W, ksize[2])
                 else:
-                    w_start = np.max((j * strides[2] - paddings[2], 0))
-                    w_end = np.min((j * strides[2] + ksize[2] - paddings[2], W))
-                x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
+                    w_start = j * strides[2] - paddings[2]
+                    while w_start < 0:
+                        w_start += dilations[2]
+                    # w_start = np.max((j * strides[2] - paddings[2], 0))
+                    w_end = np.min(
+                        (j * strides[2] + effective_ksize_w - paddings[2], W)
+                    )
+                # x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
+                x_masked = x[
+                    :,
+                    :,
+                    d_start : d_end : dilations[0],
+                    h_start : h_end : dilations[1],
+                    w_start : w_end : dilations[2],
+                ]
 
                 out[:, :, k, i, j] = np.max(x_masked, axis=(2, 3, 4))
 
@@ -82,9 +107,9 @@ def max_pool3D_forward_naive(
                     for c in range(C):
                         arr = x_masked[n, c, :, :, :]
                         index = np.where(arr == np.max(arr))
-                        sub_deep = index[0][0]
-                        sub_row = index[1][0]
-                        sub_col = index[2][0]
+                        sub_deep = index[0][0] * dilations[0]
+                        sub_row = index[1][0] * dilations[1]
+                        sub_col = index[2][0] * dilations[2]
                         index = (
                             ((d_start + sub_deep) * H + (h_start + sub_row)) * W
                             + w_start
@@ -96,7 +121,7 @@ def max_pool3D_forward_naive(
 
 
 def max_pool2D_forward_naive(
-    x, ksize, strides, paddings, global_pool=False, adaptive=False
+    x, ksize, strides, paddings, dilations, global_pool=False, adaptive=False
 ):
     N, C, H, W = x.shape
     if global_pool:
@@ -106,8 +131,10 @@ def max_pool2D_forward_naive(
     if adaptive:
         H_out, W_out = ksize
     else:
-        H_out = (H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
-        W_out = (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+        effective_ksize_h = (ksize[0] - 1) * dilations[0] + 1
+        effective_ksize_w = (ksize[1] - 1) * dilations[1] + 1
+        H_out = (H - effective_ksize_h + 2 * paddings[0]) // strides[0] + 1
+        W_out = (W - effective_ksize_w + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
     mask = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
@@ -118,11 +145,27 @@ def max_pool2D_forward_naive(
                 c_start = adaptive_start_index(j, W, ksize[1])
                 c_end = adaptive_end_index(j, W, ksize[1])
             else:
-                r_start = np.max((i * strides[0] - paddings[0], 0))
-                r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-                c_start = np.max((j * strides[1] - paddings[1], 0))
-                c_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
-            x_masked = x[:, :, r_start:r_end, c_start:c_end]
+                r_start = i * strides[0] - paddings[0]
+                while r_start < 0:
+                    r_start += dilations[0]
+                # r_start = np.max((i * strides[0] - paddings[0], 0))
+                r_end = np.min(
+                    (i * strides[0] + effective_ksize_h - paddings[0], H)
+                )
+                c_start = j * strides[1] - paddings[1]
+                while c_start < 0:
+                    c_start += dilations[1]
+                # c_start = np.max((j * strides[1] - paddings[1], 0))
+                c_end = np.min(
+                    (j * strides[1] + effective_ksize_w - paddings[1], W)
+                )
+            # x_masked = x[:, :, r_start:r_end, c_start:c_end]
+            x_masked = x[
+                :,
+                :,
+                r_start : r_end : dilations[0],
+                c_start : c_end : dilations[1],
+            ]
 
             out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
 
@@ -130,8 +173,8 @@ def max_pool2D_forward_naive(
                 for c in range(C):
                     arr = x_masked[n, c, :, :]
                     index = np.where(arr == np.max(arr))
-                    sub_row = index[0][0]
-                    sub_col = index[1][0]
+                    sub_row = index[0][0] * dilations[0]
+                    sub_col = index[1][0] * dilations[1]
                     index = (r_start + sub_row) * W + c_start + sub_col
                     mask[n, c, i, j] = index
 
@@ -143,12 +186,20 @@ def max_pool3d_with_index_wrapper(
     kernel_size=[],
     strides=[],
     paddings=[],
+    dilations=[],
     global_pooling=False,
     adaptive=False,
     ceil_mode=False,
 ):
     return paddle._C_ops.max_pool3d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        dilations,
+        global_pooling,
+        adaptive,
+        ceil_mode,
     )
 
 
@@ -174,6 +225,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             self.ksize,
             self.strides,
             self.paddings,
+            self.dilations,
             self.global_pool,
             self.adaptive,
         )
@@ -186,6 +238,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
+            'dilations': self.dilations,
             'ksize': self.ksize,
             'global_pooling': self.global_pool,
             'adaptive': self.adaptive,
@@ -220,6 +273,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.ksize = [3, 3, 3]
         self.strides = [2, 2, 2]
         self.paddings = [1, 1, 1]
+        self.dilations = [1, 1, 1]
 
     def init_global(self):
         self.global_pool = False
@@ -242,6 +296,7 @@ class TestCase2(TestMaxPoolWithIndex_Op):
         self.ksize = [3, 3, 3]
         self.strides = [2, 2, 2]
         self.paddings = [0, 0, 0]
+        self.dilations = [1, 1, 1]
 
     def init_global(self):
         self.global_pool = True
@@ -344,12 +399,20 @@ def max_pool2d_with_index_wrapper(
     kernel_size=[],
     strides=[],
     paddings=[],
+    dilations=[],
     global_pooling=False,
     adaptive=False,
     ceil_mode=False,
 ):
     return paddle._C_ops.max_pool2d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        dilations,
+        global_pooling,
+        adaptive,
+        ceil_mode,
     )
 
 
@@ -362,6 +425,7 @@ class TestCase4(TestMaxPoolWithIndex_Op):
         self.ksize = [3, 3]
         self.strides = [1, 1]
         self.paddings = [1, 1]
+        self.dilations = [1, 1]
 
     def init_global(self):
         self.global_pool = True
@@ -381,6 +445,7 @@ class TestCase6(TestMaxPoolWithIndex_Op):
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]
+        self.dilations = [1, 1]
 
     def init_global(self):
         self.global_pool = True
@@ -513,6 +578,7 @@ class TestMaxPool2dV2Op(OpTest):
             self.ksize,
             self.strides,
             self.paddings,
+            self.dilations,
             self.global_pool,
             self.adaptive,
         )
@@ -524,6 +590,7 @@ class TestMaxPool2dV2Op(OpTest):
         self.attrs = {
             'strides': self.strides,
             'paddings': self.paddings,
+            'dilations': self.dilations,
             'kernel_size': self.ksize,
             'data_format': self.data_format,
             'global_pooling': self.global_pool,
@@ -617,6 +684,7 @@ class TestCase9(TestMaxPool2dV2Op):
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]
+        self.dilations = [1, 1]
 
     def init_global(self):
         self.global_pool = True
@@ -711,6 +779,30 @@ create_test_bf16_class(TestMaxPool2dV2Op)
 create_test_bf16_class(TestCase8)
 create_test_bf16_class(TestCase9)
 create_test_bf16_class(TestCase10)
+
+
+class TestCase2D_Dilations(TestMaxPoolWithIndex_Op):
+    def init_test_case(self):
+        self.op_type = "max_pool2d_with_index"
+        self.python_api = max_pool2d_with_index_wrapper
+        self.pool_forward_naive = max_pool2D_forward_naive
+        self.shape = [2, 3, 7, 7]
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0]
+        self.dilations = [2, 2]
+
+
+class TestCase3D_Dilations(TestMaxPoolWithIndex_Op):
+    def init_test_case(self):
+        self.op_type = "max_pool3d_with_index"
+        self.python_api = max_pool3d_with_index_wrapper
+        self.pool_forward_naive = max_pool3D_forward_naive
+        self.shape = [2, 3, 7, 7, 7]
+        self.ksize = [3, 3, 3]
+        self.strides = [1, 1, 1]
+        self.paddings = [0, 0, 0]
+        self.dilations = [2, 2, 2]
 
 
 if __name__ == '__main__':

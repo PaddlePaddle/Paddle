@@ -33,6 +33,7 @@ void MaxPoolV2CUDNNKernel(const Context& dev_ctx,
                           const std::vector<int>& kernel_size,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
+                          const std::vector<int>& dilations,
                           const std::string& data_format,
                           bool global_pooling,
                           bool adaptive,
@@ -52,6 +53,18 @@ void MaxPoolV2CUDNNKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
+
+  // Check that all dilation values are 1, as cuDNN maxpool doesn't support
+  // dilated pooling
+  for (auto dilation : dilations) {
+    PADDLE_ENFORCE_EQ(
+        dilation,
+        1,
+        common::errors::InvalidArgument(
+            "Dilation in max pooling cuDNN kernel must be 1, but got %d",
+            dilation));
+  }
+
   // Allocate output tensors
   dev_ctx.template Alloc<T1>(out);
   dev_ctx.template Alloc<T2>(saved_idx);
@@ -202,6 +215,7 @@ void MaxPool2dV2CUDNNKernel(const Context& dev_ctx,
                             const std::vector<int>& kernel_size,
                             const std::vector<int>& strides,
                             const std::vector<int>& paddings,
+                            const std::vector<int>& dilations,
                             const std::string& data_format,
                             bool global_pooling,
                             bool adaptive,
@@ -213,6 +227,7 @@ void MaxPool2dV2CUDNNKernel(const Context& dev_ctx,
                                    kernel_size,
                                    strides,
                                    paddings,
+                                   dilations,
                                    data_format,
                                    global_pooling,
                                    adaptive,

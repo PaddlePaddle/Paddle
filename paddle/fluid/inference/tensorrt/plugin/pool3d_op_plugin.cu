@@ -24,8 +24,8 @@ size_t Pool3DPlugin::getSerializationSize() const TRT_NOEXCEPT {
   return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
          SerializedSize(pool3d_type_) + SerializedSize(adaptive_) +
          SerializedSize(ksize_) + SerializedSize(strides_) +
-         SerializedSize(paddings_) + SerializedSize(input_shape_) +
-         SerializedSize(output_shape_);
+         SerializedSize(paddings_) + SerializedSize(strides_) +
+         SerializedSize(input_shape_) + SerializedSize(output_shape_);
 }
 
 // TRT will call this func when we need to serialize the configuration of
@@ -38,6 +38,7 @@ void Pool3DPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, ksize_);
   SerializeValue(&buffer, strides_);
   SerializeValue(&buffer, paddings_);
+  SerializeValue(&buffer, dilations_);
   SerializeValue(&buffer, input_shape_);
   SerializeValue(&buffer, output_shape_);
 }
@@ -49,6 +50,7 @@ Pool3DPlugin *Pool3DPlugin::clone() const TRT_NOEXCEPT {
                           ksize_,
                           strides_,
                           paddings_,
+                          dilations_,
                           input_shape_);
 }
 
@@ -124,6 +126,7 @@ int Pool3DPlugin::enqueue(int batchSize,
                    ksize_,
                    strides_,
                    paddings_,
+                   dilations_,
                    true,
                    adaptive_,
                    odatas[0],
@@ -139,6 +142,7 @@ int Pool3DPlugin::enqueue(int batchSize,
                    ksize_,
                    strides_,
                    paddings_,
+                   dilations_,
                    true,
                    adaptive_,
                    odatas[0],
@@ -161,6 +165,7 @@ Pool3DPluginDynamic::Pool3DPluginDynamic(void const *serialData,
   DeserializeValue(&serialData, &serialLength, &ksize_);
   DeserializeValue(&serialData, &serialLength, &strides_);
   DeserializeValue(&serialData, &serialLength, &paddings_);
+  DeserializeValue(&serialData, &serialLength, &dilations_);
   DeserializeValue(&serialData, &serialLength, &is_global_);
 }
 
@@ -171,6 +176,7 @@ nvinfer1::IPluginV2DynamicExt *Pool3DPluginDynamic::clone() const TRT_NOEXCEPT {
                                  ksize_,
                                  strides_,
                                  paddings_,
+                                 dilations_,
                                  is_global_);
 }
 
@@ -199,7 +205,7 @@ size_t Pool3DPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ceil_mode_) + SerializedSize(pool3d_type_.c_str()) +
          SerializedSize(adaptive_) + SerializedSize(ksize_) +
          SerializedSize(strides_) + SerializedSize(paddings_) +
-         SerializedSize(is_global_);
+         SerializedSize(dilations_) + SerializedSize(is_global_);
 }
 
 void Pool3DPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
@@ -209,6 +215,7 @@ void Pool3DPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, ksize_);
   SerializeValue(&buffer, strides_);
   SerializeValue(&buffer, paddings_);
+  SerializeValue(&buffer, dilations_);
   SerializeValue(&buffer, is_global_);
 }
 
@@ -246,69 +253,107 @@ nvinfer1::DimsExprs Pool3DPluginDynamic::getOutputDimensions(
   auto stri_2 = expr_builder.constant(strides_[2]);
   auto one_value = expr_builder.constant(1);
 
-  auto v0_tmp = expr_builder.constant(-ksize_[0] + 2 * paddings_[0]);
-  auto v1_tmp = expr_builder.constant(-ksize_[1] + 2 * paddings_[1]);
-  auto v2_tmp = expr_builder.constant(-ksize_[2] + 2 * paddings_[2]);
+  auto effective_filter_0 =
+      expr_builder.constant((ksize_[0] - 1) * dilations_[0] + 1);
+  auto effective_filter_1 =
+      expr_builder.constant((ksize_[1] - 1) * dilations_[1] + 1);
+  auto effective_filter_2 =
+      expr_builder.constant((ksize_[2] - 1) * dilations_[2] + 1);
 
-  auto ceil_tmp =
-      expr_builder.constant(-ksize_[0] + 2 * paddings_[0] + strides_[0] - 1);
-  auto ceil1_tmp =
-      expr_builder.constant(-ksize_[1] + 2 * paddings_[1] + strides_[1] - 1);
-  auto ceil2_tmp =
-      expr_builder.constant(-ksize_[2] + 2 * paddings_[2] + strides_[2] - 1);
+  auto padding_0 = expr_builder.constant(2 * paddings_[0]);
+  auto padding_1 = expr_builder.constant(2 * paddings_[1]);
+  auto padding_2 = expr_builder.constant(2 * paddings_[2]);
 
   if (!ceil_mode_) {
+    auto numerator_d = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                *inputs[0].d[2],
+                                *effective_filter_0),
+        *padding_0);
+
     output.d[2] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[2], *v0_tmp),
-            *stri_0),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_d, *stri_0),
         *one_value);
+
+    auto numerator_h = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                *inputs[0].d[3],
+                                *effective_filter_1),
+        *padding_1);
+
     output.d[3] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[3], *v1_tmp),
-            *stri_1),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_h, *stri_1),
         *one_value);
+
+    auto numerator_w = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                *inputs[0].d[4],
+                                *effective_filter_2),
+        *padding_2);
+
     output.d[4] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[4], *v2_tmp),
-            *stri_2),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_w, *stri_2),
         *one_value);
 
   } else {
+    auto numerator_d = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                    *inputs[0].d[2],
+                                    *effective_filter_0),
+            *padding_0),
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUB, *stri_0, *one_value));
+
     output.d[2] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[2], *ceil_tmp),
-            *stri_0),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_d, *stri_0),
         *one_value);
+
+    auto numerator_h = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                    *inputs[0].d[3],
+                                    *effective_filter_1),
+            *padding_1),
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUB, *stri_1, *one_value));
+
     output.d[3] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[3],
-                                    *ceil1_tmp),
-            *stri_1),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_h, *stri_1),
         *one_value);
+
+    auto numerator_w = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                    *inputs[0].d[4],
+                                    *effective_filter_2),
+            *padding_2),
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUB, *stri_2, *one_value));
+
     output.d[4] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[4],
-                                    *ceil2_tmp),
-            *stri_2),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_w, *stri_2),
         *one_value);
   }
 
@@ -389,8 +434,13 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     output_shape[3] = 1;
     output_shape[4] = 1;
   } else {
-    auto data_dim = CalcOutputSize(
-        {d, h, w}, ceil_mode_, adaptive_, ksize_, strides_, paddings_);
+    auto data_dim = CalcOutputSize({d, h, w},
+                                   ceil_mode_,
+                                   adaptive_,
+                                   ksize_,
+                                   strides_,
+                                   paddings_,
+                                   dilations_);
     output_shape[2] = data_dim[0];
     output_shape[3] = data_dim[1];
     output_shape[4] = data_dim[2];
@@ -406,6 +456,7 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                    ksize,
                    strides_,
                    paddings,
+                   dilations_,
                    true,
                    adaptive_,
                    output,
@@ -421,6 +472,7 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                    ksize,
                    strides_,
                    paddings,
+                   dilations_,
                    true,
                    adaptive_,
                    output,
@@ -452,6 +504,7 @@ nvinfer1::IPluginV2DynamicExt *PIRPool3DPluginDynamic::clone() const
                                     ksize_,
                                     strides_,
                                     paddings_,
+                                    dilations_,
                                     is_global_);
 }
 
@@ -480,7 +533,7 @@ size_t PIRPool3DPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ceil_mode_) + SerializedSize(pool3d_type_.c_str()) +
          SerializedSize(adaptive_) + SerializedSize(ksize_) +
          SerializedSize(strides_) + SerializedSize(paddings_) +
-         SerializedSize(is_global_);
+         SerializedSize(dilations_) + SerializedSize(is_global_);
 }
 
 void PIRPool3DPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
@@ -490,6 +543,7 @@ void PIRPool3DPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, ksize_);
   SerializeValue(&buffer, strides_);
   SerializeValue(&buffer, paddings_);
+  SerializeValue(&buffer, dilations_);
   SerializeValue(&buffer, is_global_);
 }
 
@@ -527,69 +581,107 @@ nvinfer1::DimsExprs PIRPool3DPluginDynamic::getOutputDimensions(
   auto stri_2 = expr_builder.constant(strides_[2]);
   auto one_value = expr_builder.constant(1);
 
-  auto v0_tmp = expr_builder.constant(-ksize_[0] + 2 * paddings_[0]);
-  auto v1_tmp = expr_builder.constant(-ksize_[1] + 2 * paddings_[1]);
-  auto v2_tmp = expr_builder.constant(-ksize_[2] + 2 * paddings_[2]);
+  auto effective_filter_0 =
+      expr_builder.constant((ksize_[0] - 1) * dilations_[0] + 1);
+  auto effective_filter_1 =
+      expr_builder.constant((ksize_[1] - 1) * dilations_[1] + 1);
+  auto effective_filter_2 =
+      expr_builder.constant((ksize_[2] - 1) * dilations_[2] + 1);
 
-  auto ceil_tmp =
-      expr_builder.constant(-ksize_[0] + 2 * paddings_[0] + strides_[0] - 1);
-  auto ceil1_tmp =
-      expr_builder.constant(-ksize_[1] + 2 * paddings_[1] + strides_[1] - 1);
-  auto ceil2_tmp =
-      expr_builder.constant(-ksize_[2] + 2 * paddings_[2] + strides_[2] - 1);
+  auto padding_0 = expr_builder.constant(2 * paddings_[0]);
+  auto padding_1 = expr_builder.constant(2 * paddings_[1]);
+  auto padding_2 = expr_builder.constant(2 * paddings_[2]);
 
   if (!ceil_mode_) {
+    auto numerator_d = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                *inputs[0].d[2],
+                                *effective_filter_0),
+        *padding_0);
+
     output.d[2] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[2], *v0_tmp),
-            *stri_0),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_d, *stri_0),
         *one_value);
+
+    auto numerator_h = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                *inputs[0].d[3],
+                                *effective_filter_1),
+        *padding_1);
+
     output.d[3] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[3], *v1_tmp),
-            *stri_1),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_h, *stri_1),
         *one_value);
+
+    auto numerator_w = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                *inputs[0].d[4],
+                                *effective_filter_2),
+        *padding_2);
+
     output.d[4] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[4], *v2_tmp),
-            *stri_2),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_w, *stri_2),
         *one_value);
 
   } else {
+    auto numerator_d = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                    *inputs[0].d[2],
+                                    *effective_filter_0),
+            *padding_0),
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUB, *stri_0, *one_value));
+
     output.d[2] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(
-                nvinfer1::DimensionOperation::kSUM, *inputs[0].d[2], *ceil_tmp),
-            *stri_0),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_d, *stri_0),
         *one_value);
+
+    auto numerator_h = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                    *inputs[0].d[3],
+                                    *effective_filter_1),
+            *padding_1),
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUB, *stri_1, *one_value));
+
     output.d[3] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[3],
-                                    *ceil1_tmp),
-            *stri_1),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_h, *stri_1),
         *one_value);
+
+    auto numerator_w = expr_builder.operation(
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUM,
+            *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                    *inputs[0].d[4],
+                                    *effective_filter_2),
+            *padding_2),
+        *expr_builder.operation(
+            nvinfer1::DimensionOperation::kSUB, *stri_2, *one_value));
+
     output.d[4] = expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kFLOOR_DIV,
-            *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
-                                    *inputs[0].d[4],
-                                    *ceil2_tmp),
-            *stri_2),
+            nvinfer1::DimensionOperation::kFLOOR_DIV, *numerator_w, *stri_2),
         *one_value);
   }
 
@@ -671,8 +763,13 @@ int PIRPool3DPluginDynamic::enqueue(
     output_shape[3] = 1;
     output_shape[4] = 1;
   } else {
-    auto data_dim = CalcOutputSize(
-        {d, h, w}, ceil_mode_, adaptive_, ksize_, strides_, paddings_);
+    auto data_dim = CalcOutputSize({d, h, w},
+                                   ceil_mode_,
+                                   adaptive_,
+                                   ksize_,
+                                   strides_,
+                                   paddings_,
+                                   dilations_);
     output_shape[2] = data_dim[0];
     output_shape[3] = data_dim[1];
     output_shape[4] = data_dim[2];
@@ -688,6 +785,7 @@ int PIRPool3DPluginDynamic::enqueue(
                    ksize,
                    strides_,
                    paddings,
+                   dilations_,
                    true,
                    adaptive_,
                    output,
@@ -703,6 +801,7 @@ int PIRPool3DPluginDynamic::enqueue(
                    ksize,
                    strides_,
                    paddings,
+                   dilations_,
                    true,
                    adaptive_,
                    output,

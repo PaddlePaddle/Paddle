@@ -202,6 +202,7 @@ class Pool2dDirectCUDAFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool exclusive,
                   bool adaptive,
                   T* output,
@@ -218,6 +219,7 @@ class Pool2dFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -252,6 +254,7 @@ class MaxPool2dGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
@@ -266,6 +269,7 @@ class Pool3dDirectCUDAFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   bool exclusive,
                   bool adaptive,
                   T* output,
@@ -282,6 +286,7 @@ class Pool3dFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
@@ -316,6 +321,7 @@ class MaxPool3dGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   const std::string data_format,
                   DenseTensor* input_grad);
 };
@@ -335,6 +341,7 @@ class MaxPool2dWithIndexFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -349,6 +356,7 @@ class MaxPool2dWithIndexGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -361,6 +369,7 @@ class MaxPool3dWithIndexFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -375,6 +384,7 @@ class MaxPool3dWithIndexGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -443,6 +453,7 @@ inline T PoolOutputSize(T input_size,
                         T padding_1,
                         T padding_2,
                         T stride,
+                        T dilation,
                         bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
@@ -451,15 +462,18 @@ inline T PoolOutputSize(T input_size,
           "The stride of PoolOutputSize shall not be 0, but received %d.",
           stride));
 
+  T effective_filter_size = (filter_size - 1) * dilation + 1;
+
   T output_size;
   if (!ceil_mode) {
     output_size =
-        (input_size - filter_size + padding_1 + padding_2) / stride + 1;
-  } else {
-    output_size =
-        (input_size - filter_size + padding_1 + padding_2 + stride - 1) /
-            stride +
+        (input_size - effective_filter_size + padding_1 + padding_2) / stride +
         1;
+  } else {
+    output_size = (input_size - effective_filter_size + padding_1 + padding_2 +
+                   stride - 1) /
+                      stride +
+                  1;
   }
   PADDLE_ENFORCE_GE(
       output_size,
@@ -474,21 +488,29 @@ inline T PoolOutputSize(T input_size,
           padding_1,
           padding_2,
           filter_size,
+          dilation,
           stride));
   return output_size;
 }
 
-inline int MaxPoolOutputSize(
-    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
+inline int MaxPoolOutputSize(int input_size,
+                             int filter_size,
+                             int padding,
+                             int stride,
+                             int dilation,
+                             bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
       common::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
+  int effective_filter_size = (filter_size - 1) * dilation + 1;
   if (ceil_mode) {
-    return (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
+    return (input_size - effective_filter_size + 2 * padding + stride - 1) /
+               stride +
+           1;
   } else {
-    return (input_size - filter_size + 2 * padding) / stride + 1;
+    return (input_size - effective_filter_size + 2 * padding) / stride + 1;
   }
 }
 
