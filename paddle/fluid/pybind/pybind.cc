@@ -3342,6 +3342,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const GPUPlace &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
+  m.def("_check_last_cuda_error", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
+  });
   m.def("_set_warmup", [](bool warmup) {
 #if defined(PADDLE_WITH_CUDA)
     paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
