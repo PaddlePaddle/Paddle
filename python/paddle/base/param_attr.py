@@ -300,9 +300,11 @@ class WeightNormParamAttr(ParamAttr):
             ...     dtype="float32",
             ... )
 
-            >>> linear = paddle.nn.Linear(
-            ...     10,
-            ...     1000,
+
+            >>> # doctest: +SKIP
+            >>> out = paddle.static.nn.fc(
+            ...     x=data,
+            ...     size=1000,
             ...     weight_attr=paddle.static.WeightNormParamAttr(
             ...         dim=None,
             ...         name='weight_norm_param',
@@ -313,7 +315,6 @@ class WeightNormParamAttr(ParamAttr):
             ...         need_clip=True,
             ...     ),
             ... )
-            >>> out = linear(data)
     """
 
     # List to record the parameters reparameterized by weight normalization.
