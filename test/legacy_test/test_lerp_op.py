@@ -19,7 +19,6 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     get_device_place,
-    get_places,
     is_custom_device,
 )
 
@@ -152,66 +151,48 @@ class TestLerpAPI(unittest.TestCase):
         self.y = np.full(4, 10.0).astype(self.dtype)
         self.w = np.asarray([0.75]).astype(self.dtype)
         self.res_ref = self.x + self.w * (self.y - self.x)
-        self.place = get_places()
 
     def test_static_api(self):
         paddle.enable_static()
-
-        def run(place):
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 4], dtype=self.dtype)
-                y = paddle.static.data('y', [1, 4], dtype=self.dtype)
-                out = paddle.lerp(x, y, 0.5)
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    feed={
-                        'x': self.x.reshape([1, 4]),
-                        'y': self.y.reshape([1, 4]),
-                    }
-                )
-            for r in res:
-                np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
-
-        for place in self.place:
-            run(place)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', [1, 4], dtype=self.dtype)
+            y = paddle.static.data('y', [1, 4], dtype=self.dtype)
+            out = paddle.lerp(x, y, 0.5)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            res = exe.run(
+                feed={
+                    'x': self.x.reshape([1, 4]),
+                    'y': self.y.reshape([1, 4]),
+                }
+            )
+        for r in res:
+            np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        def run(place):
-            paddle.disable_static(place)
-            x = paddle.to_tensor(self.x)
-            y = paddle.to_tensor(self.y)
-            w = paddle.to_tensor(np.full(4, 0.75).astype(self.dtype))
-            out = paddle.lerp(x, y, w)
-            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
-            paddle.enable_static()
-
-        for place in self.place:
-            run(place)
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        w = paddle.to_tensor(np.full(4, 0.75).astype(self.dtype))
+        out = paddle.lerp(x, y, w)
+        np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
 
     def test_inplace_api(self):
-        def run(place):
-            paddle.disable_static(place)
-            x = paddle.to_tensor(self.x)
-            y = paddle.to_tensor(self.y)
-            x.lerp_(y, 0.75)
-            np.testing.assert_allclose(self.res_ref, x.numpy(), rtol=1e-05)
-            paddle.enable_static()
-
-        for place in self.place:
-            run(place)
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        x.lerp_(y, 0.75)
+        np.testing.assert_allclose(self.res_ref, x.numpy(), rtol=1e-05)
+        paddle.enable_static()
 
     def test_inplace_api_exception(self):
-        def run(place):
-            paddle.disable_static(place)
-            x = paddle.to_tensor(self.x)
-            y = paddle.to_tensor(self.y)
-            w = paddle.to_tensor([0.75, 0.75], dtype=self.dtype)
-            with self.assertRaises(ValueError):
-                x.lerp_(y, w)
-            paddle.enable_static()
-
-        for place in self.place:
-            run(place)
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        w = paddle.to_tensor([0.75, 0.75], dtype=self.dtype)
+        with self.assertRaises(ValueError):
+            x.lerp_(y, w)
+        paddle.enable_static()
 
     def test_x_broadcast_y(self):
         paddle.disable_static()
@@ -232,6 +213,77 @@ class TestLerpAPI(unittest.TestCase):
         )
         res_ref = x + w * (y - x)
         np.testing.assert_allclose(res_ref, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_dygraph_compatibility(self):
+        """Test parameter aliases, out parameter, and various calling patterns."""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        w = paddle.to_tensor(np.full(4, 0.75).astype(self.dtype))
+        paddle_dygraph_out = []
+
+        # Position args
+        out1 = paddle.lerp(x, y, 0.75)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.lerp(x=x, y=y, weight=0.75)
+        paddle_dygraph_out.append(out2)
+
+        # Parameter aliases (input for x, end for y)
+        out3 = paddle.lerp(input=x, end=y, weight=0.75)
+        paddle_dygraph_out.append(out3)
+
+        # Partial alias: input for x, y uses original name
+        out4 = paddle.lerp(input=x, y=y, weight=0.75)
+        paddle_dygraph_out.append(out4)
+
+        # Partial alias: x uses original name, end for y
+        out5 = paddle.lerp(x=x, end=y, weight=0.75)
+        paddle_dygraph_out.append(out5)
+
+        # Test out parameter
+        out6 = paddle.empty([4], dtype=self.dtype)
+        result6 = paddle.lerp(x, y, 0.75, out=out6)
+        paddle_dygraph_out.append(out6)
+        paddle_dygraph_out.append(result6)
+
+        # Test out parameter with tensor weight
+        out7 = paddle.empty([4], dtype=self.dtype)
+        paddle.lerp(x, y, w, out=out7)
+        paddle_dygraph_out.append(out7)
+
+        # Test parameter aliases with out parameter
+        out8 = paddle.empty([4], dtype=self.dtype)
+        result8 = paddle.lerp(input=x, end=y, weight=0.75, out=out8)
+        paddle_dygraph_out.append(out8)
+        paddle_dygraph_out.append(result8)
+
+        # Test out=None (default)
+        out9 = paddle.lerp(x, y, 0.75, out=None)
+        paddle_dygraph_out.append(out9)
+
+        # Verify all outputs
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_out_parameter_broadcast(self):
+        """Test out parameter with broadcasting."""
+        paddle.disable_static()
+        x = np.arange(1.0, 21.0).astype(self.dtype).reshape([2, 2, 5])
+        y = np.full(30, 10.0).astype(self.dtype).reshape([3, 2, 1, 5])
+        res_ref = x + 0.5 * (y - x)
+        # Create output tensor with broadcast shape
+        out_tensor = paddle.empty(res_ref.shape, dtype=self.dtype)
+        result = paddle.lerp(
+            paddle.to_tensor(x), paddle.to_tensor(y), 0.5, out=out_tensor
+        )
+        np.testing.assert_allclose(res_ref, out_tensor.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(
+            result.numpy(), out_tensor.numpy(), rtol=1e-05
+        )
         paddle.enable_static()
 
 

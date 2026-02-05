@@ -229,7 +229,7 @@ paddle::dialect::DataLayoutAttribute
 deserializeAttrFromJson<paddle::dialect::DataLayoutAttribute, std::string>(
     Json* attr_json, pir::IrContext* ctx) {
   std::string data = attr_json->at(DATA).template get<std::string>();
-  phi::DataLayout data_type = common::StringToDataLayout(data);
+  DataLayout data_type = common::StringToDataLayout(data);
   return paddle::dialect::DataLayoutAttribute::get(ctx, data_type);
 }
 
@@ -490,7 +490,7 @@ T deserializeTypeFromJsonIncludeParseType(Json* type_json,
 
   std::vector<int64_t> dims =
       data_json.at(1).template get<std::vector<int64_t>>();
-  phi::DDim ddim = phi::make_ddim(dims);
+  DDim ddim = phi::make_ddim(dims);
   pir::DataLayout data_layout =
       common::StringToDataLayout(data_json.at(2).template get<std::string>());
 
@@ -520,7 +520,7 @@ deserializeTypeFromJsonIncludeParseType<paddle::dialect::DenseTensorArrayType>(
 
   std::vector<int64_t> dims =
       data_json.at(1).template get<std::vector<int64_t>>();
-  phi::DDim ddim = phi::make_ddim(dims);
+  DDim ddim = phi::make_ddim(dims);
   pir::DataLayout data_layout =
       common::StringToDataLayout(data_json.at(2).template get<std::string>());
 
@@ -536,11 +536,11 @@ deserializeTypeFromJsonIncludeParseType<paddle::dialect::SparseCooTensorType>(
 
   std::vector<int64_t> dims =
       data_json.at(1).template get<std::vector<int64_t>>();
-  phi::DDim ddim = phi::make_ddim(dims);
+  DDim ddim = phi::make_ddim(dims);
 
   std::vector<int64_t> non_zero_dims =
       data_json.at(2).template get<std::vector<int64_t>>();
-  phi::DDim non_zero_ddim = phi::make_ddim(non_zero_dims);
+  DDim non_zero_ddim = phi::make_ddim(non_zero_dims);
   pir::DataLayout data_layout =
       common::StringToDataLayout(data_json.at(3).template get<std::string>());
   Json* non_zero_indices_json = &(data_json.at(4));
@@ -569,7 +569,7 @@ deserializeTypeFromJsonIncludeParseType<paddle::dialect::SparseCsrTensorType>(
 
   std::vector<int64_t> dims =
       data_json.at(1).template get<std::vector<int64_t>>();
-  phi::DDim ddim = phi::make_ddim(dims);
+  DDim ddim = phi::make_ddim(dims);
   pir::DataLayout data_layout =
       common::StringToDataLayout(data_json.at(2).template get<std::string>());
   Json* non_zero_crows_json = &(data_json.at(3));
@@ -608,10 +608,10 @@ deserializeTypeFromJsonIncludeParseType<paddle::dialect::DistDenseTensorType>(
   paddle::dialect::TensorDistAttribute tensor_dist_attr =
       deserializeTensorDistAttr(&(data_json.at(1)), ctx);
 
-  // deserialize common::DDim local_ddim;
+  // deserialize DDim local_ddim;
   std::vector<int64_t> dims =
       data_json.at(2).template get<std::vector<int64_t>>();
-  phi::DDim local_ddim = phi::make_ddim(dims);
+  DDim local_ddim = phi::make_ddim(dims);
 
   return paddle::dialect::DistDenseTensorType::get(
       ctx, dense_tensor_type, tensor_dist_attr, local_ddim);

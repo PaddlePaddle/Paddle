@@ -103,7 +103,7 @@ void RandpermKernel(const Context& dev_ctx,
     range_data[idx] = static_cast<T>(idx);
   });
 
-  out->Resize(common::make_ddim({n}));
+  out->Resize(make_ddim({n}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   // Refer to [Algorithm of randperm] https://osf.io/af2hy/ to

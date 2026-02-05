@@ -119,7 +119,7 @@ void LinearV2Kernel(const Context& dev_ctx,
       DenseTensor bias_processed = bias;
       auto blas = funcs::GetBlas<Context, T>(dev_ctx);
       if (bias.numel() != (M * N)) {
-        bias_processed.Resize(common::make_ddim({1, bias.numel()}));
+        bias_processed.Resize(make_ddim({1, bias.numel()}));
         VLOG(10) << "bias.dim(): " << bias.dims();
         VLOG(10) << "M*N: " << M * N;
         VLOG(10) << "bias tiling and addmm calculating";
