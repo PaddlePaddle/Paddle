@@ -18,13 +18,87 @@
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/ScalarType.h>
 #include <c10/core/SymIntArrayRef.h>
+#include <limits>
 #include <optional>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
 namespace at {
+
+// Helper function to get default min/max values based on ScalarType
+namespace detail {
+inline at::Scalar get_default_min_value(c10::ScalarType dtype) {
+  switch (dtype) {
+    case c10::ScalarType::Byte:
+      return at::Scalar(static_cast<uint8_t>(0));
+    case c10::ScalarType::Char:
+      return at::Scalar(std::numeric_limits<int8_t>::lowest());
+    case c10::ScalarType::Short:
+      return at::Scalar(std::numeric_limits<int16_t>::lowest());
+    case c10::ScalarType::Int:
+      return at::Scalar(std::numeric_limits<int32_t>::lowest());
+    case c10::ScalarType::Long:
+      return at::Scalar(std::numeric_limits<int64_t>::lowest());
+    case c10::ScalarType::UInt16:
+      return at::Scalar(static_cast<uint16_t>(0));
+    case c10::ScalarType::UInt32:
+      return at::Scalar(static_cast<uint32_t>(0));
+    case c10::ScalarType::UInt64:
+      return at::Scalar(static_cast<uint64_t>(0));
+    case c10::ScalarType::Half:
+      return at::Scalar(-std::numeric_limits<float>::infinity());
+    case c10::ScalarType::Float:
+      return at::Scalar(-std::numeric_limits<float>::infinity());
+    case c10::ScalarType::Double:
+      return at::Scalar(-std::numeric_limits<double>::infinity());
+    case c10::ScalarType::BFloat16:
+      return at::Scalar(-std::numeric_limits<float>::infinity());
+    case c10::ScalarType::Bool:
+      return at::Scalar(false);
+    default:
+      // For other types, use a safe default
+      return at::Scalar(-std::numeric_limits<double>::infinity());
+  }
+}
+
+inline at::Scalar get_default_max_value(c10::ScalarType dtype) {
+  switch (dtype) {
+    case c10::ScalarType::Byte:
+      return at::Scalar(std::numeric_limits<uint8_t>::max());
+    case c10::ScalarType::Char:
+      return at::Scalar(std::numeric_limits<int8_t>::max());
+    case c10::ScalarType::Short:
+      return at::Scalar(std::numeric_limits<int16_t>::max());
+    case c10::ScalarType::Int:
+      return at::Scalar(std::numeric_limits<int32_t>::max());
+    case c10::ScalarType::Long:
+      return at::Scalar(std::numeric_limits<int64_t>::max());
+    case c10::ScalarType::UInt16:
+      return at::Scalar(std::numeric_limits<uint16_t>::max());
+    case c10::ScalarType::UInt32:
+      return at::Scalar(std::numeric_limits<uint32_t>::max());
+    case c10::ScalarType::UInt64:
+      return at::Scalar(std::numeric_limits<uint64_t>::max());
+    case c10::ScalarType::Half:
+      return at::Scalar(std::numeric_limits<float>::infinity());
+    case c10::ScalarType::Float:
+      return at::Scalar(std::numeric_limits<float>::infinity());
+    case c10::ScalarType::Double:
+      return at::Scalar(std::numeric_limits<double>::infinity());
+    case c10::ScalarType::BFloat16:
+      return at::Scalar(std::numeric_limits<float>::infinity());
+    case c10::ScalarType::Bool:
+      return at::Scalar(true);
+    default:
+      // For other types, use a safe default
+      return at::Scalar(std::numeric_limits<double>::infinity());
+  }
+}
+}  // namespace detail
+
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
 class Tensor : public TensorBase {
@@ -524,9 +598,12 @@ class Tensor : public TensorBase {
   at::Tensor clamp(
       const ::std::optional<at::Scalar>& min,
       const ::std::optional<at::Scalar>& max = ::std::nullopt) const {
-    // Use default values for missing min/max since clip requires both
-    at::Scalar min_scalar = min.has_value() ? min.value() : at::Scalar(-1e38);
-    at::Scalar max_scalar = max.has_value() ? max.value() : at::Scalar(1e38);
+    // Get default min/max values based on tensor dtype to avoid overflow
+    c10::ScalarType dtype = this->dtype();
+    at::Scalar min_scalar =
+        min.has_value() ? min.value() : detail::get_default_min_value(dtype);
+    at::Scalar max_scalar =
+        max.has_value() ? max.value() : detail::get_default_max_value(dtype);
     return Tensor(paddle::experimental::clip(tensor_, min_scalar, max_scalar));
   }
 
