@@ -883,9 +883,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                       dev_ctx.stream()));
   // ------------------- resource allocate -------------------------
   const int64_t topk = expert_routemap_topk.dims()[1];
-  const int output_rows = using_tp_alloc
-                              ? (tokens_cumulated * topk + num_experts * (127))
-                              : tokens_cumulated;
+  const int output_rows =
+      using_tp_alloc ? (rows * topk + num_experts * (127)) : tokens_cumulated;
   PADDLE_ENFORCE_LE(
       topk,
       std::numeric_limits<int32_t>::max(),
