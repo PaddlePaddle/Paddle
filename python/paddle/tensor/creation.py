@@ -131,7 +131,7 @@ def create_global_var(
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("static mode has dtype mismatch issue")
+            >>> # doctest: +SKIP("paddle.static.create_global_var doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> main_program = paddle.static.Program()
