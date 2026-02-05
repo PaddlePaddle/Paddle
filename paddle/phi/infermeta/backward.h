@@ -462,6 +462,19 @@ PADDLE_API void MaxPoolWithIndexGradInferMeta(
     bool ceil_mode,
     MetaTensor* dx);
 
+PADDLE_API void MaxPool2dWithIndexGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& mask,
+    const MetaTensor& dout,
+    const std::vector<int>& kernel_size,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    bool global_pooling,
+    bool adaptive,
+    bool ceil_mode,
+    MetaTensor* dx);
+
 PADDLE_API void MedianGradInferMeta(const MetaTensor& x,
                                     const MetaTensor& median_data,
                                     const MetaTensor& median_index,

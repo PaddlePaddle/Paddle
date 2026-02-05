@@ -172,6 +172,315 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
   }
 };
 
+template <typename T>
+class MaxPool2DWithDilationsFunctor<CPUContext, T> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  DenseTensor* output) {
+    bool channel_last = (data_format == "NHWC");
+
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_channels =
+        channel_last ? input.dims()[3] : input.dims()[1];
+    const int64_t input_height =
+        channel_last ? input.dims()[1] : input.dims()[2];
+    const int64_t input_width =
+        channel_last ? input.dims()[2] : input.dims()[3];
+
+    const int64_t output_channels =
+        channel_last ? output->dims()[3] : output->dims()[1];
+    const int64_t output_height =
+        channel_last ? output->dims()[1] : output->dims()[2];
+    const int64_t output_width =
+        channel_last ? output->dims()[2] : output->dims()[3];
+
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
+
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+
+    const T* input_data = input.data<T>();
+    T* output_data = context.template Alloc<T>(output);
+
+    int64_t hstart = 0, hend = 1;
+    int64_t wstart = 0, wend = 1;
+    if (!channel_last) {
+      const int64_t input_stride = input_height * input_width;
+      const int64_t output_stride = output_height * output_width;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              hstart = ph * stride_height - padding_height;
+              hend = hstart + (ksize_height - 1) * dilation_height + 1;
+
+              hstart = (hstart < static_cast<int64_t>(0))
+                           ? hstart + ((-hstart + dilation_height - 1) /
+                                       dilation_height) *
+                                          dilation_height
+                           : hstart;
+
+              hend =
+                  (hend > input_height)
+                      ? input_height - ((hend - input_height) % dilation_height)
+                      : hend;
+
+              wstart = pw * stride_width - padding_width;
+              wend = wstart + (ksize_width - 1) * dilation_width + 1;
+
+              wstart = (wstart < static_cast<int64_t>(0))
+                           ? wstart + ((-wstart + dilation_width - 1) /
+                                       dilation_width) *
+                                          dilation_width
+                           : wstart;
+
+              wend = (wend > input_width)
+                         ? input_width - ((wend - input_width) % dilation_width)
+                         : wend;
+
+              T ele = static_cast<T>(-FLT_MAX);
+              for (int64_t h = hstart; h < hend; h += dilation_height) {
+                for (int64_t w = wstart; w < wend; w += dilation_width) {
+                  ele = input_data[h * input_width + w] > ele
+                            ? input_data[h * input_width + w]
+                            : ele;
+                }
+              }
+              output_data[ph * output_width + pw] = ele;
+            }
+          }
+          input_data += input_stride;
+          output_data += output_stride;
+        }
+      }
+    } else {
+      const int64_t input_stride = input_height * input_width * input_channels;
+      const int64_t output_stride =
+          output_height * output_width * output_channels;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              hstart = ph * stride_height - padding_height;
+              hend = hstart + (ksize_height - 1) * dilation_height + 1;
+
+              hstart = (hstart < static_cast<int64_t>(0))
+                           ? hstart + ((-hstart + dilation_height - 1) /
+                                       dilation_height) *
+                                          dilation_height
+                           : hstart;
+
+              hend =
+                  (hend > input_height)
+                      ? input_height - ((hend - input_height) % dilation_height)
+                      : hend;
+
+              wstart = pw * stride_width - padding_width;
+              wend = wstart + (ksize_width - 1) * dilation_width + 1;
+
+              wstart = (wstart < static_cast<int64_t>(0))
+                           ? wstart + ((-wstart + dilation_width - 1) /
+                                       dilation_width) *
+                                          dilation_width
+                           : wstart;
+
+              wend = (wend > input_width)
+                         ? input_width - ((wend - input_width) % dilation_width)
+                         : wend;
+              T ele = static_cast<T>(-FLT_MAX);
+              for (int64_t h = hstart; h < hend; h += dilation_height) {
+                for (int64_t w = wstart; w < wend; w += dilation_width) {
+                  ele = input_data[h * input_width * input_channels +
+                                   w * input_channels + c] > ele
+                            ? input_data[h * input_width * input_channels +
+                                         w * input_channels + c]
+                            : ele;
+                }
+              }
+              output_data[ph * output_width * output_channels +
+                          pw * output_channels + c] = ele;
+            }
+          }
+        }
+        input_data += input_stride;
+        output_data += output_stride;
+      }
+    }
+  }
+};
+
+template <class T>
+class MaxPool2DWithDilationsGradFunctor<CPUContext, T> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  DenseTensor* input_grad) {
+    bool channel_last = (data_format == "NHWC");
+
+    const int64_t batch_size = input.dims()[0];
+
+    const int64_t input_channels =
+        channel_last ? input.dims()[3] : input.dims()[1];
+    const int64_t input_height =
+        channel_last ? input.dims()[1] : input.dims()[2];
+    const int64_t input_width =
+        channel_last ? input.dims()[2] : input.dims()[3];
+
+    const int64_t output_channels =
+        channel_last ? output.dims()[3] : output.dims()[1];
+    const int64_t output_height =
+        channel_last ? output.dims()[1] : output.dims()[2];
+    const int64_t output_width =
+        channel_last ? output.dims()[2] : output.dims()[3];
+
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
+
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+
+    const T* input_data = input.data<T>();
+    const T* output_data = output.data<T>();
+    const T* output_grad_data = output_grad.data<T>();
+    T* input_grad_data = context.template Alloc<T>(input_grad);
+
+    if (!channel_last) {
+      const int64_t input_stride = input_height * input_width;
+      const int64_t output_stride = output_height * output_width;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            int64_t hstart = ph * stride_height - padding_height;
+            int64_t hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            hstart = (hstart < static_cast<int64_t>(0))
+                         ? hstart + ((-hstart + dilation_height - 1) /
+                                     dilation_height) *
+                                        dilation_height
+                         : hstart;
+
+            hend =
+                (hend > input_height)
+                    ? input_height - ((hend - input_height) % dilation_height)
+                    : hend;
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              int64_t wstart = pw * stride_width - padding_width;
+              int64_t wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              wstart = (wstart < static_cast<int64_t>(0))
+                           ? wstart + ((-wstart + dilation_width - 1) /
+                                       dilation_width) *
+                                          dilation_width
+                           : wstart;
+
+              wend = (wend > input_width)
+                         ? input_width - ((wend - input_width) % dilation_width)
+                         : wend;
+
+              bool stop = false;
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
+                  int64_t input_idx = h * input_width + w;
+                  int64_t output_idx = ph * output_width + pw;
+                  if (input_data[input_idx] == output_data[output_idx]) {
+                    input_grad_data[input_idx] += output_grad_data[output_idx];
+                    stop = true;
+                  }
+                }
+              }
+            }
+          }
+          input_data += input_stride;
+          output_data += output_stride;
+          input_grad_data += input_stride;
+          output_grad_data += output_stride;
+        }
+      }
+    } else {
+      const int64_t input_stride = input_height * input_width * input_channels;
+      const int64_t output_stride =
+          output_height * output_width * output_channels;
+      for (int64_t i = 0; i < batch_size; i++) {
+        for (int64_t c = 0; c < output_channels; ++c) {
+          for (int64_t ph = 0; ph < output_height; ++ph) {
+            int64_t hstart = ph * stride_height - padding_height;
+            int64_t hend = hstart + (ksize_height - 1) * dilation_height + 1;
+            hstart = (hstart < static_cast<int64_t>(0))
+                         ? hstart + ((-hstart + dilation_height - 1) /
+                                     dilation_height) *
+                                        dilation_height
+                         : hstart;
+
+            hend =
+                (hend > input_height)
+                    ? input_height - ((hend - input_height) % dilation_height)
+                    : hend;
+            for (int64_t pw = 0; pw < output_width; ++pw) {
+              int64_t wstart = pw * stride_width - padding_width;
+              int64_t wend = wstart + (ksize_width - 1) * dilation_width + 1;
+              wstart = (wstart < static_cast<int64_t>(0))
+                           ? wstart + ((-wstart + dilation_width - 1) /
+                                       dilation_width) *
+                                          dilation_width
+                           : wstart;
+
+              wend = (wend > input_width)
+                         ? input_width - ((wend - input_width) % dilation_width)
+                         : wend;
+
+              bool stop = false;
+              for (int64_t h = hstart; h < hend && !stop;
+                   h += dilation_height) {
+                for (int64_t w = wstart; w < wend && !stop;
+                     w += dilation_width) {
+                  int64_t input_idx =
+                      h * input_width * input_channels + w * input_channels + c;
+                  int64_t output_idx = ph * output_width * output_channels +
+                                       pw * output_channels + c;
+                  if (input_data[input_idx] == output_data[output_idx]) {
+                    input_grad_data[input_idx] += output_grad_data[output_idx];
+                    stop = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+        input_data += input_stride;
+        output_data += output_stride;
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+      }
+    }
+  }
+};
+
 /*
  * tensors are in NCHW or NHWC format.
  * Ksize, strides are two elements. These two elements represent height
@@ -463,7 +772,6 @@ class MaxPool2dGradFunctor<CPUContext, T> {
 };
 template class MaxPool2dGradFunctor<CPUContext, float>;
 template class MaxPool2dGradFunctor<CPUContext, double>;
-
 template class MaxPool2dGradFunctor<CPUContext, dtype::float16>;
 
 template class Pool2dFunctor<CPUContext, MaxPool<float>, float>;
@@ -472,6 +780,14 @@ template class Pool2dFunctor<CPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, LPPoolGrad<float>, float>;
+
+template class MaxPool2DWithDilationsFunctor<CPUContext, float>;
+template class MaxPool2DWithDilationsFunctor<CPUContext, double>;
+template class MaxPool2DWithDilationsFunctor<phi::CPUContext, dtype::float16>;
+template class MaxPool2DWithDilationsGradFunctor<CPUContext, float>;
+template class MaxPool2DWithDilationsGradFunctor<CPUContext, double>;
+template class MaxPool2DWithDilationsGradFunctor<CPUContext, dtype::float16>;
+
 template class Pool2dFunctor<CPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<CPUContext, AvgPool<double>, double>;
 template class Pool2dFunctor<CPUContext, LPPool<double>, double>;
@@ -1184,6 +1500,90 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
   }
 };
 
+template <typename T1, typename T2>
+class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  DenseTensor* output,
+                  DenseTensor* mask) {
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_height = input.dims()[2];
+    const int64_t input_width = input.dims()[3];
+    const int64_t output_channels = output->dims()[1];
+    const int64_t output_height = output->dims()[2];
+    const int64_t output_width = output->dims()[3];
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+    const int64_t input_stride = input_height * input_width;
+    const int64_t output_stride = output_height * output_width;
+
+    const T1* input_data = input.data<T1>();
+    T1* output_data = context.template Alloc<T1>(output);
+    T2* mask_data = context.template Alloc<T2>(mask);
+
+    int64_t hstart = 0, hend = 0;
+    int64_t wstart = 0, wend = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
+      for (int64_t c = 0; c < output_channels; ++c) {
+        for (int64_t ph = 0; ph < output_height; ++ph) {
+          hstart = ph * stride_height - padding_height;
+          hend = hstart + (ksize_height - 1) * dilation_height + 1;
+          hstart = (hstart < static_cast<int64_t>(0))
+                       ? hstart + ((-hstart + dilation_height - 1) /
+                                   dilation_height) *
+                                      dilation_height
+                       : hstart;
+
+          hend = (hend > input_height)
+                     ? input_height - ((hend - input_height) % dilation_height)
+                     : hend;
+          for (int64_t pw = 0; pw < output_width; ++pw) {
+            wstart = pw * stride_width - padding_width;
+            wend = wstart + (ksize_width - 1) * dilation_width + 1;
+            wstart = (wstart < static_cast<int64_t>(0))
+                         ? wstart + ((-wstart + dilation_width - 1) /
+                                     dilation_width) *
+                                        dilation_width
+                         : wstart;
+
+            wend = (wend > input_width)
+                       ? input_width - ((wend - input_width) % dilation_width)
+                       : wend;
+
+            T1 ele = static_cast<T1>(-FLT_MAX);
+            int64_t index = -1;
+            for (int64_t h = hstart; h < hend; h += dilation_height) {
+              for (int64_t w = wstart; w < wend; w += dilation_width) {
+                if (ele < input_data[h * input_width + w]) {
+                  ele = input_data[h * input_width + w];
+                  index = h * input_width + w;
+                }
+              }
+            }
+            output_data[ph * output_width + pw] = ele;
+            mask_data[ph * output_width + pw] = index;
+          }
+        }
+        // offset
+        input_data += input_stride;
+        output_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
 /*
  * All tensors are in NCHW format.
  * Ksize, strides, paddings are two elements. These two elements represent
@@ -1232,10 +1632,61 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
   }
 };
 
+template <typename T1, typename T2>
+class MaxPool2dWithDilationsAndIndexGradFunctor<CPUContext, T1, T2> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int64_t>& ksize UNUSED,
+                  const std::vector<int64_t>& strides UNUSED,
+                  const std::vector<int64_t>& paddings UNUSED,
+                  const std::vector<int64_t>& dilations UNUSED,
+                  DenseTensor* input_grad) {
+    const int64_t batch_size = input_grad->dims()[0];
+    const int64_t input_height = input_grad->dims()[2];
+    const int64_t input_width = input_grad->dims()[3];
+    const int64_t output_channels = output_grad.dims()[1];
+    const int64_t output_height = output_grad.dims()[2];
+    const int64_t output_width = output_grad.dims()[3];
+    const int64_t input_stride = input_height * input_width;
+    const int64_t output_stride = output_height * output_width;
+
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+
+    for (int64_t n = 0; n < batch_size; ++n) {
+      for (int64_t c = 0; c < output_channels; ++c) {
+        for (int64_t ph = 0; ph < output_height; ++ph) {
+          for (int64_t pw = 0; pw < output_width; ++pw) {
+            const int64_t output_idx = ph * output_width + pw;
+            const int64_t input_idx =
+                static_cast<int64_t>(mask_data[output_idx]);
+            input_grad_data[input_idx] += output_grad_data[output_idx];
+          }
+        }
+        // offset
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+        mask_data += output_stride;
+      }
+    }
+  }
+};
+
 template class MaxPool2dWithIndexFunctor<CPUContext, float, int>;
+template class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, float, int>;
 template class MaxPool2dWithIndexGradFunctor<CPUContext, float, int>;
+template class MaxPool2dWithDilationsAndIndexGradFunctor<CPUContext,
+                                                         float,
+                                                         int>;
 template class MaxPool2dWithIndexFunctor<CPUContext, double, int>;
+template class MaxPool2dWithDilationsAndIndexFunctor<CPUContext, double, int>;
 template class MaxPool2dWithIndexGradFunctor<CPUContext, double, int>;
+template class MaxPool2dWithDilationsAndIndexGradFunctor<CPUContext,
+                                                         double,
+                                                         int>;
 
 /*
  * All tensors are in NCDHW format.

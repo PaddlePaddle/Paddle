@@ -154,7 +154,7 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
             self.assertIn("pd_op.conv2d", load_op_type_list)
             self.assertIn("pd_op.batch_norm_", load_op_type_list)
             self.assertIn("pd_op.relu", load_op_type_list)
-            self.assertIn("pd_op.pool2d", load_op_type_list)
+            self.assertIn("pd_op.max_pool2d_with_dilations", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
     @test_ast_only
@@ -195,7 +195,7 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
             self.assertIn("pd_op.conv2d", load_op_type_list)
             self.assertIn("pd_op.batch_norm_", load_op_type_list)
             self.assertIn("pd_op.relu", load_op_type_list)
-            self.assertIn("pd_op.pool2d", load_op_type_list)
+            self.assertIn("pd_op.max_pool2d_with_dilations", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
 
