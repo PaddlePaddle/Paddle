@@ -197,7 +197,6 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::SoftmaxOp softmax_op2 =
       builder.Build<paddle::dialect::SoftmaxOp>(transpose_op1.out(), -1);
 
-  // Note(Pan Zhaowu): [4, 3, 16] * [4, 16, 3] -> [4, 3, 3] .
   paddle::dialect::TransposeOp matmul_rhs_trans =
       builder.Build<paddle::dialect::TransposeOp>(full_input_op1.out(),
                                                   std::vector<int>{0, 2, 1});
@@ -207,8 +206,6 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                                matmul_rhs_trans.out());
 
   // path 2
-  // Note(Pan Zhaowu):
-  // LayerNorm scale/bias must match the last dimension of the input [4, 3, 16].
   paddle::dialect::FullOp full_op_scale =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{16},
                                              1.5,
@@ -225,8 +222,6 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::TransposeOp>(full_input_op1.out(),
                                                   std::vector<int>{0, 1, 2});
 
-  // Note(Pan Zhaowu): Aligning dimensions for matmul_op1:
-  // [4, 3, 16] * [4, 16, 3] -> [4, 3, 3].
   paddle::dialect::TransposeOp transpose_op3 =
       builder.Build<paddle::dialect::TransposeOp>(full_input_op1.out(),
                                                   std::vector<int>{0, 2, 1});
@@ -235,8 +230,6 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::MatmulOp>(transpose_op2.out(),
                                                transpose_op3.out());
 
-  // Both matmul_op2 and matmul_op1 are now [4, 3, 3], so this multiplication is
-  // valid.
   paddle::dialect::MatmulOp matmul_op3 =
       builder.Build<paddle::dialect::MatmulOp>(matmul_op2.out(),
                                                matmul_op1.out());
@@ -279,28 +272,22 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::ReluOp>(add_op2.out());
 
   // tail
-  // Note(Pan Zhaowu): mean/variance are [4, 3].
-  // Matmul needs [4, 3] * [3, 4] (2D) or [4, 3, 1] * [4, 1, 3] (3D).
-  // Here we transpose to [3, 4] for a standard 2D matrix multiplication.
-  paddle::dialect::MultiplyOp multiply_op1 =
-      builder.Build<paddle::dialect::MultiplyOp>(layernorm_op1.variance(),
-                                                 layernorm_op1.mean());
+  paddle::dialect::AddOp safe_op1 = builder.Build<paddle::dialect::AddOp>(
+      layernorm_op1.variance(), layernorm_op1.mean());
 
-  // matmul_op5: [4, 3, 3] * [4, 3, 3] -> Valid
   paddle::dialect::MatmulOp matmul_op5 =
       builder.Build<paddle::dialect::MatmulOp>(relu_op1.out(),
                                                softmax_op3.out());
 
-  // matmul_op6: [4, 3, 3] * [4, 3, 16] -> Valid
   paddle::dialect::MatmulOp matmul_op6 =
       builder.Build<paddle::dialect::MatmulOp>(softmax_op4.out(),
                                                relu_op2.out());
 
-  // CHANGE: Updated the fetch index to use multiply_op1.out()
-  builder.Build<paddle::dialect::FetchOp>(multiply_op1.out(), "out1", 0);
+  builder.Build<paddle::dialect::FetchOp>(safe_op1.out(), "out1", 0);
   builder.Build<paddle::dialect::FetchOp>(matmul_op5.out(), "out2", 1);
   builder.Build<paddle::dialect::FetchOp>(matmul_op6.out(), "out3", 2);
 }
+
 class DrrPatternRewritePass : public pir::PatternRewritePass {
  public:
   DrrPatternRewritePass()
