@@ -2534,18 +2534,33 @@ def batch_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-
+            >>> import numpy as np
             >>> paddle.enable_static()
-            >>> x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            >>> hidden1 = paddle.static.nn.fc(x=x, size=200)
-            >>> print(hidden1.shape)
-            (3, 200)
-            >>> hidden2 = paddle.static.nn.batch_norm(input=hidden1)
-            >>> print(hidden2.shape)
-            (3, 200)
+
+            >>> # Context Manager 'OldIrGuard' is required for static graph APIs
+            >>> # in the transition period to PIR mode.
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     main_prog = paddle.static.Program()
+            ...     startup_prog = paddle.static.Program()
+            ...     with paddle.static.program_guard(main_prog, startup_prog):
+            ...         # NCHW format: [Batch, Channel, Height, Width]
+            ...         x = paddle.static.data(name="x", shape=[None, 3, 32, 32], dtype="float32")
+            ...         out = paddle.static.nn.batch_norm(input=x)
+            ...         print(out.shape)
+            (-1, 3, 32, 32)
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
+            ...     _ = exe.run(startup_prog)
+            ...
+            ...     # Prepare input data
+            ...     np.random.seed(2023)
+            ...     x_np = np.random.random((2, 3, 32, 32)).astype("float32")
+            ...     res = exe.run(main_prog, feed={"x": x_np}, fetch_list=[out])
+            ...     print(res[0].shape)
+            (2, 3, 32, 32)
     """
     assert bias_attr is not False, (
         "bias_attr should not be False in batch_norm."
@@ -2715,7 +2730,7 @@ def batch_norm(
         "use_global_stats": use_global_stats,
     }
     if isinstance(momentum, paddle.static.Variable):
-        inputs['MomemtumTensor'] = momentum
+        inputs['MomentumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
 
