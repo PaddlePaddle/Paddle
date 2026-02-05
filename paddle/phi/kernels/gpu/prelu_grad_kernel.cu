@@ -179,7 +179,7 @@ void PReluGradKernel(const Context& dev_ctx,
   }
 
   funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      static_cast<const phi::GPUContext&>(dev_ctx),
+      static_cast<const GPUContext&>(dev_ctx),
       alpha_grad_tmp,
       alpha_grad,
       kps::IdentityFunctor<T>(),

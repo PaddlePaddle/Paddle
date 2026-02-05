@@ -153,5 +153,5 @@ TEST(kernel_dialect, cond_op_test) {
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   program.Print(std::cout);
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 }

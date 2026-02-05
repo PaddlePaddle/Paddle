@@ -297,8 +297,25 @@ class TestPool1D_API(unittest.TestCase):
 
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+            # test param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+            result = F.max_pool1d(
+                input=input,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                return_indices=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
             max_pool1d_dg = paddle.nn.layer.MaxPool1D(
                 kernel_size=2, stride=None, padding=0
+            )
+            result = max_pool1d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            # test param_one_alias(["return_mask", "return_indices"])
+            max_pool1d_dg = paddle.nn.layer.MaxPool1D(
+                kernel_size=2, stride=None, padding=0, return_indices=False
             )
             result = max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)

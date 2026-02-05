@@ -497,7 +497,7 @@ void LarsMomentumKernel(
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
   // DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
-  // phi::GPUContext>(
+  // GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   DenseTensor tmp_buffer_t;
   tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});

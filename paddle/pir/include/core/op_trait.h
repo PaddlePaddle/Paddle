@@ -24,10 +24,10 @@ namespace pir {
 /// same operand shape.
 ///
 class IR_API SameOperandsShapeTrait
-    : public pir::OpTraitBase<SameOperandsShapeTrait> {
+    : public OpTraitBase<SameOperandsShapeTrait> {
  public:
-  explicit SameOperandsShapeTrait(const pir::Operation *op)
-      : pir::OpTraitBase<SameOperandsShapeTrait>(op) {}
+  explicit SameOperandsShapeTrait(const Operation *op)
+      : OpTraitBase<SameOperandsShapeTrait>(op) {}
   static void Verify(Operation *op);
 };
 
@@ -36,10 +36,10 @@ class IR_API SameOperandsShapeTrait
 /// same operand and result shape.
 ///
 class IR_API SameOperandsAndResultShapeTrait
-    : public pir::OpTraitBase<SameOperandsAndResultShapeTrait> {
+    : public OpTraitBase<SameOperandsAndResultShapeTrait> {
  public:
-  explicit SameOperandsAndResultShapeTrait(const pir::Operation *op)
-      : pir::OpTraitBase<SameOperandsAndResultShapeTrait>(op) {}
+  explicit SameOperandsAndResultShapeTrait(const Operation *op)
+      : OpTraitBase<SameOperandsAndResultShapeTrait>(op) {}
   static void Verify(Operation *op);
 };
 
@@ -48,10 +48,10 @@ class IR_API SameOperandsAndResultShapeTrait
 /// same operand element type (or the type itself if it is scalar).
 ///
 class IR_API SameOperandsElementTypeTrait
-    : public pir::OpTraitBase<SameOperandsElementTypeTrait> {
+    : public OpTraitBase<SameOperandsElementTypeTrait> {
  public:
-  explicit SameOperandsElementTypeTrait(const pir::Operation *op)
-      : pir::OpTraitBase<SameOperandsElementTypeTrait>(op) {}
+  explicit SameOperandsElementTypeTrait(const Operation *op)
+      : OpTraitBase<SameOperandsElementTypeTrait>(op) {}
   static void Verify(Operation *op);
 };
 
@@ -60,10 +60,10 @@ class IR_API SameOperandsElementTypeTrait
 /// same operand and result element type (or the type itself if it is scalar).
 ///
 class IR_API SameOperandsAndResultElementTypeTrait
-    : public pir::OpTraitBase<SameOperandsAndResultElementTypeTrait> {
+    : public OpTraitBase<SameOperandsAndResultElementTypeTrait> {
  public:
-  explicit SameOperandsAndResultElementTypeTrait(const pir::Operation *op)
-      : pir::OpTraitBase<SameOperandsAndResultElementTypeTrait>(op) {}
+  explicit SameOperandsAndResultElementTypeTrait(const Operation *op)
+      : OpTraitBase<SameOperandsAndResultElementTypeTrait>(op) {}
   static void Verify(Operation *op);
 };
 
@@ -73,10 +73,10 @@ class IR_API SameOperandsAndResultElementTypeTrait
 /// SameOperandsAndResultShapeTrait and SameOperandsAndResultElementTypeTrait
 ///
 class IR_API SameOperandsAndResultTypeTrait
-    : public pir::OpTraitBase<SameOperandsAndResultTypeTrait> {
+    : public OpTraitBase<SameOperandsAndResultTypeTrait> {
  public:
-  explicit SameOperandsAndResultTypeTrait(const pir::Operation *op)
-      : pir::OpTraitBase<SameOperandsAndResultTypeTrait>(op) {}
+  explicit SameOperandsAndResultTypeTrait(const Operation *op)
+      : OpTraitBase<SameOperandsAndResultTypeTrait>(op) {}
 
   static void Verify(Operation *op);
 };
@@ -85,11 +85,10 @@ class IR_API SameOperandsAndResultTypeTrait
 /// \brief Provides verification that all operands of the specified op have the
 /// same type.
 ///
-class IR_API SameTypeOperandsTrait
-    : public pir::OpTraitBase<SameTypeOperandsTrait> {
+class IR_API SameTypeOperandsTrait : public OpTraitBase<SameTypeOperandsTrait> {
  public:
-  explicit SameTypeOperandsTrait(const pir::Operation *op)
-      : pir::OpTraitBase<SameTypeOperandsTrait>(op) {}
+  explicit SameTypeOperandsTrait(const Operation *op)
+      : OpTraitBase<SameTypeOperandsTrait>(op) {}
   static void Verify(Operation *op);
 };
 

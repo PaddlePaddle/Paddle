@@ -122,7 +122,6 @@ set(PYBIND_SRCS
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
     gloo_wrapper_py.cc
-    box_helper_py.cc
     data_set_py.cc
     bind_cost_model.cc
     compatible.cc

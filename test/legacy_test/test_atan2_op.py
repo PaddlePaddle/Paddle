@@ -40,6 +40,7 @@ class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
         self.prim_op_type = "prim"
+
         self.python_api = paddle.atan2
         self.public_python_api = paddle.atan2
         self.check_cinn = True

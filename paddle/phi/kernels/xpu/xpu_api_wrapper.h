@@ -182,10 +182,8 @@ static void GetFCInfo(const DDim& x_dims,
                       bool trans_x,
                       bool trans_y,
                       XpuFcInfo* info) {
-  DDim new_x_dims =
-      (x_dims.size() > 1) ? x_dims : common::make_ddim({1, x_dims[0]});
-  DDim new_y_dims =
-      (y_dims.size() > 1) ? y_dims : common::make_ddim({y_dims[0], 1});
+  DDim new_x_dims = (x_dims.size() > 1) ? x_dims : make_ddim({1, x_dims[0]});
+  DDim new_y_dims = (y_dims.size() > 1) ? y_dims : make_ddim({y_dims[0], 1});
 
   auto mat_dim_a = funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
   auto mat_dim_b = funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);

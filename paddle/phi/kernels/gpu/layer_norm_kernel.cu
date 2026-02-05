@@ -470,7 +470,7 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(
     U* variance,
     int begin_norm_axis,
     float eps) {
-  const auto x_dims = common::make_ddim(input_shape);
+  const auto x_dims = make_ddim(input_shape);
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = matrix_dim[0];
   int64_t feature_size = matrix_dim[1];

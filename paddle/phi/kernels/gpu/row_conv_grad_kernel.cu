@@ -300,7 +300,7 @@ void RowConvGradKernel(const Context &dev_ctx,
   phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
   size_t *idx = mixv_batch_indices.CUDAMutableData(dev_ctx.GetPlace());
 
-  funcs::SetConstant<phi::GPUContext, T> zero;
+  funcs::SetConstant<GPUContext, T> zero;
 
   if (dFilter) {
     T *dfilter = dev_ctx.template Alloc<T>(dFilter);

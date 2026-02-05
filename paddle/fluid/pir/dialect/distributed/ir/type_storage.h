@@ -29,12 +29,11 @@ class DistDenseTensorTypeStorage : public pir::TypeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey =
-      std::tuple<pir::DenseTensorType, TensorDistAttribute, common::DDim>;
+  using ParamKey = std::tuple<pir::DenseTensorType, TensorDistAttribute, DDim>;
 
   DistDenseTensorTypeStorage(pir::DenseTensorType dense_tensor_type,
                              TensorDistAttribute tensor_dist_attr,
-                             const common::DDim& local_ddim)
+                             const DDim& local_ddim)
       : dense_tensor_type(dense_tensor_type),
         tensor_dist_attr(tensor_dist_attr),
         local_ddim(local_ddim) {}
@@ -54,7 +53,7 @@ class DistDenseTensorTypeStorage : public pir::TypeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     auto dense_tensor_type_hash = std::hash<pir::Type>()(std::get<0>(key));
     auto tensor_dist_attr_hash = std::hash<pir::Attribute>()(std::get<1>(key));
-    auto local_ddim_hash = std::hash<common::DDim>()(std::get<2>(key));
+    auto local_ddim_hash = std::hash<DDim>()(std::get<2>(key));
     auto value = pir::detail::hash_combine(dense_tensor_type_hash,
                                            tensor_dist_attr_hash);
     return pir::detail::hash_combine(value, local_ddim_hash);
@@ -75,7 +74,7 @@ class DistDenseTensorTypeStorage : public pir::TypeStorage {
   ///
   pir::DenseTensorType dense_tensor_type;
   TensorDistAttribute tensor_dist_attr;
-  common::DDim local_ddim;
+  DDim local_ddim;
 };
 
 }  // namespace dialect

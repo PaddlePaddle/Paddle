@@ -129,7 +129,7 @@ TEST(CustomDevice, Tensor) {
 
   EXPECT_EQ(program->block()->size(), 6u);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(program);
 
   auto place = phi::CustomPlace(DEVICE_TYPE, 0);
   paddle::framework::Scope scope;

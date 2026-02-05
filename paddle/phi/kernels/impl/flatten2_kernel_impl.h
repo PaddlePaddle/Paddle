@@ -35,7 +35,7 @@ void Flatten2Kernel(const Context &dev_ctx,
   auto *in = &x;
   auto x_dims = in->dims();
 
-  auto out_dims = common::make_ddim(funcs::GetOutputShape(axes, x_dims));
+  auto out_dims = make_ddim(funcs::GetOutputShape(axes, x_dims));
 
   dev_ctx.Alloc(out, x.dtype());
   Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
@@ -53,7 +53,7 @@ void Flatten2GradKernel(const Context &dev_ctx,
   auto *d_out = &out_grad;
 
   auto xshape_dims = x_shape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
 
   dev_ctx.Alloc(x_grad, out_grad.dtype());
   Copy(dev_ctx, *d_out, dev_ctx.GetPlace(), false, d_x);
