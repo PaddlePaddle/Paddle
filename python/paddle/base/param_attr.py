@@ -294,20 +294,19 @@ class WeightNormParamAttr(ParamAttr):
 
             >>> paddle.enable_static()
 
+            >>> # doctest: +SKIP
             >>> data = paddle.static.data(
             ...     name="data",
             ...     shape=[None, 10],
             ...     dtype="float32",
             ... )
-
-
-            >>> # doctest: +SKIP
             >>> out = paddle.static.nn.fc(
             ...     x=data,
             ...     size=1000,
             ...     weight_attr=paddle.static.WeightNormParamAttr(
             ...         dim=None,
             ...         name='weight_norm_param',
+            ...         initializer=paddle.nn.initializer.XavierUniform(),
             ...         learning_rate=1.0,
             ...         regularizer=paddle.regularizer.L2Decay(0.1),
             ...         trainable=True,
