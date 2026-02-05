@@ -19,8 +19,10 @@ from op_test import get_places
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
     max_pool2D_forward_naive,
+    max_pool2d_with_dilations_forward_naive,
     pool2D_forward_naive,
 )
+from test_pool_max_op import max_pool2d_with_dilations_and_index_forward_naive
 
 import paddle
 from paddle import base
@@ -149,6 +151,40 @@ class TestPool2D_API(unittest.TestCase):
                 fetch_list=[result],
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+
+    def check_max_with_index_static_results(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32, 32], dtype="float32"
+            )
+            out, mask = max_pool2d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=1,
+                dilation=2,
+                return_mask=True,
+            )
+
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            out_np, mask_np = max_pool2d_with_dilations_and_index_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[1, 1],
+                dilations=[2, 2],
+                global_pool=False,
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input": input_np},
+                fetch_list=[out, mask],
+            )
+            np.testing.assert_allclose(fetches[0], out_np, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], mask_np, rtol=1e-05)
 
     def check_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
@@ -811,6 +847,7 @@ class TestPool2D_API(unittest.TestCase):
         paddle.enable_static()
         for place in self.places:
             self.check_max_static_results(place)
+            self.check_max_with_index_static_results(place)
             self.check_avg_static_results(place)
             self.check_lp_static_results(place)
             self.check_lp_float64_static(place)
@@ -822,7 +859,58 @@ class TestPool2D_API(unittest.TestCase):
         paddle.enable_static()
         for place in self.places:
             self.check_max_static_results(place)
+            self.check_max_with_index_static_results(place)
         paddle.disable_static()
+
+    def check_max_dygraph_with_dilations(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+
+            result = max_pool2d(
+                input,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                dilation=[2, 2],
+                return_mask=False,
+            )
+
+            result_np = max_pool2d_with_dilations_forward_naive(
+                input_np,
+                ksize=[3, 3],
+                strides=[1, 1],
+                paddings=[1, 1],
+                dilations=[2, 2],
+            )
+
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_max_dygraph_with_dilations_and_index(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+
+            out, mask = max_pool2d(
+                input,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                dilation=[2, 2],
+                return_mask=True,
+            )
+
+            out_np, mask_np = max_pool2d_with_dilations_and_index_forward_naive(
+                input_np,
+                ksize=[3, 3],
+                strides=[1, 1],
+                paddings=[1, 1],
+                dilations=[2, 2],
+                global_pool=False,
+            )
+
+            np.testing.assert_allclose(out.numpy(), out_np, rtol=1e-05)
+            np.testing.assert_allclose(mask.numpy(), mask_np, rtol=1e-05)
 
     def test_pool2d(self):
         for place in self.places:
@@ -844,6 +932,8 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
             self.check_lp_dygraph_float64(place)
             self.check_lp_dygraph_float16(place)
+            self.check_max_dygraph_with_dilations(place)
+            self.check_max_dygraph_with_dilations_and_index(place)
 
 
 class TestPool2DError_API(unittest.TestCase):

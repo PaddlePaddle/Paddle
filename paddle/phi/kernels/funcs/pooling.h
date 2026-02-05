@@ -225,6 +225,32 @@ class Pool2dFunctor {
                   PoolProcess pool_compute);
 };
 
+template <typename Context, typename T>
+class MaxPool2DWithDilationsFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  DenseTensor* output);
+};
+
+template <typename Context, typename T1, typename T2>
+class MaxPool2dWithDilationsAndIndexFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  DenseTensor* output,
+                  DenseTensor* mask);
+};
+
 template <typename Context, typename PoolProcess, typename T>
 class Pool2dGradFunctor {
  public:
@@ -240,6 +266,34 @@ class Pool2dGradFunctor {
                   bool adaptive,
                   DenseTensor* input_grad,
                   PoolProcess pool_compute);
+};
+
+template <typename Context, typename T>
+class MaxPool2DWithDilationsGradFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  const std::string data_format,
+                  DenseTensor* input_grad);
+};
+
+template <typename Context, typename T1, typename T2>
+class MaxPool2dWithDilationsAndIndexGradFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
+                  DenseTensor* input_grad);
 };
 
 template <typename Context, class T>
