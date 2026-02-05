@@ -454,7 +454,6 @@ from .tensor.manipulation import (
     flatten,
     flatten_,
     flip,
-    flip as reverse,
     gather,
     gather_nd,
     hsplit,

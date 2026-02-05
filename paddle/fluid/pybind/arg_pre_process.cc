@@ -556,6 +556,55 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   }
 }
 
+// Renorm preprocessing: handle negative axis
+void NegativeAxisPreProcess(Tensor* x, int* axis) {
+  int rank = x->dims().size();
+
+  // Check upper bound first
+  PADDLE_ENFORCE_LT(
+      *axis,
+      rank,
+      common::errors::InvalidArgument(
+          "the axis:%d should be less than the shape's size %d", *axis, rank));
+
+  // If axis is negative, check lower bound then convert
+  if (*axis < 0) {
+    PADDLE_ENFORCE_GE(
+        *axis,
+        -rank,
+        common::errors::InvalidArgument(
+            "the axis:%d should not be less than -1 * length of input_shape:%d",
+            *axis,
+            -rank));
+    *axis = *axis + rank;
+  }
+}
+
+void NegativeAxisPreProcess(Value* x, int* axis) {
+  // Handle negative axis for static graph
+  auto x_shape = pir::GetShapeFromValue(*x);
+  int64_t rank = x_shape.size();
+
+  // Check upper bound first
+  PADDLE_ENFORCE_LT(
+      *axis,
+      static_cast<int>(rank),
+      common::errors::InvalidArgument(
+          "the axis:%d should be less than the shape's size %ld", *axis, rank));
+
+  // If axis is negative, check lower bound then convert
+  if (*axis < 0) {
+    PADDLE_ENFORCE_GE(
+        *axis,
+        -static_cast<int>(rank),
+        common::errors::InvalidArgument("the axis:%d should not be less than "
+                                        "-1 * length of input_shape:%ld",
+                                        *axis,
+                                        -static_cast<int>(rank)));
+    *axis = *axis + rank;
+  }
+}
+
 }  // namespace pybind
 
 }  // namespace paddle

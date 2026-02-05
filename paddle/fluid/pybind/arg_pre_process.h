@@ -76,6 +76,10 @@ void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
 // Baddbmm broadcast validation for static graph
 void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
 
+// Renorm preprocessing: handle negative axis
+void NegativeAxisPreProcess(Tensor* x, int* axis);
+void NegativeAxisPreProcess(Value* x, int* axis);
+
 }  // namespace pybind
 
 }  // namespace paddle
