@@ -68,7 +68,6 @@ class SimpleMLPPipeline(PipelineLayer):
     def __init__(
         self, hcg, hidden_size=100, has_bias=False, vocab_size=24, pp_degree=2
     ):
-        assert pp_degree == 2
         shared_embedding = SharedLayerDesc(
             key="shared_embedding",
             layer_func=VocabParallelEmbedding,
@@ -261,6 +260,9 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
             v_group=pp_group,
             memory_growth_threshold=memory_growth_threshold,
         )
+
+        print("=======> PP_GROUP")
+        print("=======> pp_group: ", pp_group)
 
         full_param = dict(full_param_iter)
         param_shape = {
