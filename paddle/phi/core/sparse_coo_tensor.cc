@@ -36,7 +36,7 @@ SparseCooTensor::SparseCooTensor(const DenseTensor& non_zero_indices,
       non_zero_elements_(non_zero_elements),
       coalesced_(false) {
   meta_.dims = dims;
-  meta_.layout = DataLayout::NCHW;
+  meta_.layout = DataLayout::SPARSE_COO;
   meta_.dtype = non_zero_elements.dtype();
 }
 
@@ -47,7 +47,7 @@ SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
       non_zero_elements_(non_zero_elements),
       coalesced_(false) {
   meta_.dims = dims;
-  meta_.layout = DataLayout::NCHW;
+  meta_.layout = DataLayout::SPARSE_COO;
   meta_.dtype = non_zero_elements.dtype();
 }
 
@@ -138,6 +138,8 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
   this->non_zero_indices_ = non_zero_indices;
   this->non_zero_elements_ = non_zero_elements;
   this->meta_.dims = dims;
+  this->meta_.layout = DataLayout::SPARSE_COO;
+  this->meta_.dtype = non_zero_elements.dtype();
   this->coalesced_ = coalesced;
 }
 
