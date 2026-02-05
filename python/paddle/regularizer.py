@@ -201,7 +201,11 @@ class L2Decay(WeightDecayRegularizer):
             >>> loss = paddle.mean(out)
             >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
             >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
-            >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=L2Decay(0.0001))
+            >>> momentum = paddle.optimizer.Momentum(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ...     weight_decay=L2Decay(0.0001),
+            ... )
             >>> back = out.backward()
             >>> momentum.step()
             >>> momentum.clear_grad()
