@@ -237,8 +237,8 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
       out_types.push_back(pir::DenseTensorType::get(
           pir::IrContext::Instance(),
           TransToIrDataType(outputs_dtype[i]),
-          phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
-          phi::DataLayout::NCHW,
+          DDim(outputs_shape[i].data(), outputs_shape[i].size()),
+          DataLayout::NCHW,
           phi::LegacyLoD(),
           0));
     }

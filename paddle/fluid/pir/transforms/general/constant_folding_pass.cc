@@ -291,8 +291,7 @@ class ConstantFoldingPattern : public RewritePattern {
     if (VLOG_IS_ON(3)) {
       std::cout << "IR before lowering = " << new_program << std::endl;
     }
-    auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
+    auto kernel_program = pir::PdOpLowerToKernelPass(&new_program, place_);
     if (VLOG_IS_ON(3)) {
       std::cout << "IR after lowering = " << *kernel_program << std::endl;
     }

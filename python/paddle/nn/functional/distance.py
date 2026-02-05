@@ -73,11 +73,11 @@ def pairwise_distance(
           depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
-            >>> y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
+            >>> x = paddle.to_tensor([[1.0, 3.0], [3.0, 5.0]], dtype=paddle.float64)
+            >>> y = paddle.to_tensor([[5.0, 6.0], [7.0, 8.0]], dtype=paddle.float64)
             >>> distance = paddle.nn.functional.pairwise_distance(x, y)
             >>> print(distance)
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -139,7 +139,7 @@ def pdist(
         Tensor with shape :math:`N(N-1)/2` , the dtype is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -150,7 +150,7 @@ def pdist(
                     [-1.50370061,  1.73954511,  0.13331604,  1.66359663, -0.55764782],
                     [-0.59911072, -0.57773495, -1.03176904, -0.33741450, -0.29695082],
                     [-1.50258386,  0.67233968, -1.07747352,  0.80170447, -0.06695852]])
-            >>> pdist_out=paddle.pdist(a)
+            >>> pdist_out = paddle.pdist(a)
             >>> print(pdist_out)
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [2.87295413, 2.79758120, 3.02793980, 3.40844536, 1.89435327, 1.93171620])

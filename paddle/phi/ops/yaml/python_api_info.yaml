@@ -80,6 +80,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : atan2
+  name : [paddle.atan2, paddle.Tensor.atan2]
+  args_alias :
+    use_default_mapping : True
+
 - op : atanh
   name : [paddle.atanh, paddle.Tensor.atanh]
   args_alias :

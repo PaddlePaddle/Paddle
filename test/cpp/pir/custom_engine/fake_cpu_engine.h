@@ -116,7 +116,7 @@ C_Status CustomEngineOpLower(C_CustomEngineLowerParams* lower_param) {
   pir::Block* op_block = &(region.front());
 
   // process subgraph block
-  paddle::dialect::ProcessBlock(
+  pir::ProcessBlock(
       *place, sub_graph_block, op_block, ctx, map_op_pair, map_value_pair);
 
   if (VLOG_IS_ON(3)) {
