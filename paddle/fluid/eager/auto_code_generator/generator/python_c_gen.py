@@ -377,8 +377,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.is_forward_only = True
-        self.need_parse_python_api_args = False
-        self.need_parse_inplace_python_api_args = False
 
         # Generated Results
         self.python_c_function_str = ""
@@ -392,8 +390,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
     def GeneratePythonCFunction(
-        self, inplace=False, no_predefined_out_tensor=False
+        self,
+        inplace=False,
+        no_predefined_out_tensor=False,
+        no_parse_python_api_info=False,
     ):
+        global python_api_info_from_yaml
         namespace = self.namespace
         forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
@@ -404,15 +406,44 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         is_forward_only = self.is_forward_only
 
         if inplace:
-            need_parse_python_api_args = self.need_parse_inplace_python_api_args
-            args_alias_map = self.inplace_args_alias_map
-            dygraph_pre_process = self.inplace_dygraph_pre_process
-            args_mapper_func = self.inplace_args_mapper_func_name
-        else:
-            need_parse_python_api_args = self.need_parse_python_api_args
-            args_alias_map = self.args_alias_map
-            dygraph_pre_process = self.dygraph_pre_process
-            args_mapper_func = self.args_mapper_func_name
+            inplaced_forward_api_name = GetInplacedFunctionName(
+                self.forward_api_name
+            )
+            inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+                "::",
+                namespace,
+                GetForwardFunctionName(inplaced_forward_api_name),
+            )
+
+        # Parse python_api_info
+        need_parse_python_api_args = False
+        if not no_parse_python_api_info:
+            python_api_info = {}
+            if not inplace:
+                if forward_api_name in python_api_info_from_yaml.keys():
+                    python_api_info = python_api_info_from_yaml[
+                        forward_api_name
+                    ]
+                if len(python_api_info) > 0:
+                    self.python_api_info = python_api_info
+                    need_parse_python_api_args = True
+                    self.ParsePythonAPIInfo()
+            else:
+                if (
+                    inplaced_forward_api_name
+                    in python_api_info_from_yaml.keys()
+                ):
+                    python_api_info = python_api_info_from_yaml[
+                        inplaced_forward_api_name
+                    ]
+                if len(python_api_info) > 0:
+                    self.python_api_info = python_api_info
+                    need_parse_python_api_args = True
+                    self.ParsePythonAPIInfo()
+
+        args_alias_map = self.args_alias_map
+        dygraph_pre_process = self.dygraph_pre_process
+        args_mapper_func = self.args_mapper_func_name
 
         max_args = len(orig_forward_attrs_list) + len(
             forward_inputs_position_map
@@ -446,16 +477,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
                     )
             return keywords
-
-        if inplace:
-            inplaced_forward_api_name = GetInplacedFunctionName(
-                self.forward_api_name
-            )
-            inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "::",
-                namespace,
-                GetForwardFunctionName(inplaced_forward_api_name),
-            )
 
         for name, (ttype, pos) in forward_inputs_position_map.items():
             input_names = input_names + ", " + name
@@ -903,25 +924,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
-    def InitAndParsePythonAPIInfo(self):
-        global python_api_info_from_yaml
-        if self.forward_api_name in python_api_info_from_yaml.keys():
-            self.python_api_info = python_api_info_from_yaml[
-                self.forward_api_name
-            ]
-        if len(self.python_api_info) > 0:
-            self.need_parse_python_api_args = True
-            self.ParsePythonAPIInfo()
-        if self.forward_inplace_map:
-            inplace_api_name = GetInplacedFunctionName(self.forward_api_name)
-            if inplace_api_name in python_api_info_from_yaml.keys():
-                self.inplace_python_api_info = python_api_info_from_yaml[
-                    inplace_api_name
-                ]
-            if len(self.inplace_python_api_info) > 0:
-                self.need_parse_inplace_python_api_args = True
-                self.ParsePythonAPIInfo(True)
-
     def run(
         self, no_predefined_out_tensor=False, no_parse_python_api_info=False
     ):
@@ -936,8 +938,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-        if not no_parse_python_api_info:
-            self.InitAndParsePythonAPIInfo()
         if SkipAPIGeneration(self.forward_api_name):
             return False
 
@@ -947,9 +947,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
         # Code Generation
-        self.GeneratePythonCFunction(False, no_predefined_out_tensor)
+        self.GeneratePythonCFunction(
+            False, no_predefined_out_tensor, no_parse_python_api_info
+        )
         if self.forward_inplace_map:
-            self.GeneratePythonCFunction(True, no_predefined_out_tensor)
+            self.GeneratePythonCFunction(
+                True, no_predefined_out_tensor, no_parse_python_api_info
+            )
 
         return True
 
