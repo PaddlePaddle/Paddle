@@ -290,23 +290,17 @@ class WeightNormParamAttr(ParamAttr):
 
         .. code-block:: pycon
 
+            >>> # doctest: +SKIP("Static-Check: example is for documentation only")
             >>> import paddle
-
             >>> paddle.enable_static()
-
-            >>> # doctest: +SKIP
-            >>> data = paddle.static.data(
-            ...     name="data",
-            ...     shape=[None, 10],
-            ...     dtype="float32",
-            ... )
-            >>> out = paddle.static.nn.fc(
+            >>> data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
+            >>> fc = paddle.static.nn.fc(
             ...     x=data,
             ...     size=1000,
             ...     weight_attr=paddle.static.WeightNormParamAttr(
             ...         dim=None,
-            ...         name='weight_norm_param',
-            ...         initializer=paddle.nn.initializer.XavierUniform(),
+            ...         name="weight_norm_param",
+            ...         initializer=paddle.nn.initializer.Constant(1.0),
             ...         learning_rate=1.0,
             ...         regularizer=paddle.regularizer.L2Decay(0.1),
             ...         trainable=True,
