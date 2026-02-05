@@ -6219,6 +6219,10 @@ void MoePermuteInferMeta(const MetaTensor& X,
   }
 
   if (do_gather) {
+    if (using_tp_alloc) {
+      const int64_t topk = expert_routemap_topk.dims()[1];
+      output_rows = rows * topk + num_experts * 127;
+    }
     X_unzipped->set_dims({output_rows, cols});
     X_unzipped->set_dtype(X.dtype());
   } else {
