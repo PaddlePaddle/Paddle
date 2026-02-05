@@ -1264,7 +1264,7 @@ void ResidualAddRmsNormWrapper(const Context& dev_ctx,
       dev_ctx.stream(), load, store, rows, cols, epsilon, nullptr);
 }
 
-template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
+template void ResidualAddRmsNormWrapper(const GPUContext& dev_ctx,
                                         const phi::float16* x,
                                         const phi::float16* residual,
                                         const phi::float16* bias,
@@ -1276,7 +1276,7 @@ template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
                                         phi::float16* residual_output,
                                         phi::float16* output);
 
-template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
+template void ResidualAddRmsNormWrapper(const GPUContext& dev_ctx,
                                         const phi::bfloat16* x,
                                         const phi::bfloat16* residual,
                                         const phi::bfloat16* bias,
@@ -1288,7 +1288,7 @@ template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
                                         phi::bfloat16* residual_output,
                                         phi::bfloat16* output);
 
-template void ResidualAddRmsNormWrapper(const phi::GPUContext& dev_ctx,
+template void ResidualAddRmsNormWrapper(const GPUContext& dev_ctx,
                                         const float* x,
                                         const float* residual,
                                         const float* bias,
@@ -1317,7 +1317,7 @@ void RmsNormWrapper(const Context& dev_ctx,
       dev_ctx.stream(), load, store, rows, cols, epsilon, nullptr);
 }
 
-template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
+template void RmsNormWrapper(const GPUContext& dev_ctx,
                              const phi::float16* x,
                              const phi::float16* weight,
                              const phi::float16* bias,
@@ -1326,7 +1326,7 @@ template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
                              const int cols,
                              phi::float16* output);
 
-template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
+template void RmsNormWrapper(const GPUContext& dev_ctx,
                              const phi::bfloat16* x,
                              const phi::bfloat16* weight,
                              const phi::bfloat16* bias,
@@ -1335,7 +1335,7 @@ template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
                              const int cols,
                              phi::bfloat16* output);
 
-template void RmsNormWrapper(const phi::GPUContext& dev_ctx,
+template void RmsNormWrapper(const GPUContext& dev_ctx,
                              const float* x,
                              const float* weight,
                              const float* bias,

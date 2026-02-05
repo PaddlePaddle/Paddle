@@ -679,6 +679,7 @@ class MaxPool1D(Layer):
     ceil_mode: bool
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         kernel_size: Size1,
@@ -810,6 +811,7 @@ class MaxPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         kernel_size: Size2,
@@ -831,6 +833,7 @@ class MaxPool2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.max_pool2d(
             x,
@@ -933,6 +936,7 @@ class MaxPool3D(Layer):
     data_format: DataLayout3D
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         kernel_size: Size3,
@@ -954,6 +958,7 @@ class MaxPool3D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.max_pool3d(
             x,
@@ -1990,6 +1995,7 @@ class FractionalMaxPool2D(Layer):
             paddle.Size([2, 3, 2, 3])
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size2,
@@ -2005,6 +2011,7 @@ class FractionalMaxPool2D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.fractional_max_pool2d(
             x,
@@ -2106,6 +2113,7 @@ class FractionalMaxPool3D(Layer):
             paddle.Size([2, 3, 2, 3, 3])
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size2,
@@ -2121,6 +2129,7 @@ class FractionalMaxPool3D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.fractional_max_pool3d(
             x,

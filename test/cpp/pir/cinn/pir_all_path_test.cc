@@ -86,7 +86,7 @@ static void RunAndCheckResult(::pir::Program* program,
 
   phi::Place place = phi::GPUPlace(0);
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(program, place);
+  auto kernel_program = pir::PdOpLowerToKernelPass(program, place);
 
   paddle::framework::Scope exe_scope;
 

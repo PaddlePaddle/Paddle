@@ -28,7 +28,9 @@ void GatherNdGradKernel(const Context &dev_ctx,
                         DenseTensor *x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
-
+  if (x_grad->numel() == 0) {
+    return;
+  }
   int r = 0;
   XPUType *dx_data = reinterpret_cast<XPUType *>(x_grad->data<T>());
   r = xpu::constant<XPUType>(
@@ -49,7 +51,7 @@ void GatherNdGradKernel(const Context &dev_ctx,
         0,
         common::errors::InvalidArgument("end_size[%d] should be 0", end_size));
     // remain dim
-    auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+    auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
     int64_t remain_numel = common::product(remain_ddim);
 
     int64_t x_numel = x.numel();

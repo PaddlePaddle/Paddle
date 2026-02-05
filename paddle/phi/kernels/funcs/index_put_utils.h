@@ -58,7 +58,7 @@ DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
   }
 
   DenseTensor mid_tensor(tensor.dtype());
-  mid_tensor.Resize(common::make_ddim(mid_dims));
+  mid_tensor.Resize(make_ddim(mid_dims));
   ReshapeKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
 
   DenseTensor res_tensor(tensor.dtype());
@@ -93,7 +93,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
                               "the only bool tensor in indices should "
                               "have number of dimension at least 1"));
         DenseTensor nonzero_indices(phi::DataType::INT64);
-        nonzero_indices.Resize(common::make_ddim({-1, rank}));
+        nonzero_indices.Resize(make_ddim({-1, rank}));
         NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
         if (nonzero_indices.numel() == 0) {
@@ -106,7 +106,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
         for (int i = 0; i < rank; ++i) {
           tmp_indices_v->emplace_back(
               DenseTensor(phi::DataType::INT64)
-                  .Resize(common::make_ddim({nonzero_indices.dims()[0]})));
+                  .Resize(make_ddim({nonzero_indices.dims()[0]})));
         }
         for (int i = 0; i < rank; ++i) {
           integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
@@ -179,7 +179,7 @@ static DDim BroadCastTensorsDims(
     }
     target_dims[target_rank - index - 1] = target_dim_size;
   }
-  return common::make_ddim(target_dims);
+  return make_ddim(target_dims);
 }
 
 template <typename T, typename Context>
@@ -224,7 +224,7 @@ void DealWithIndices(const Context& dev_ctx,
     res_dim_v->insert(res_dim_v->end(),
                       tmp_x_dims.begin() + int_indices_v.size(),
                       tmp_x_dims.end());
-    DDim res_dim = common::make_ddim(*res_dim_v);
+    DDim res_dim = make_ddim(*res_dim_v);
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
       DenseTensor index_tensor;
       if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
@@ -323,7 +323,7 @@ DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
                                int64_t N,
                                phi::DataType dtype) {
   DenseTensor res(dtype);
-  res.Resize(common::make_ddim({N}));
+  res.Resize(make_ddim({N}));
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
@@ -346,7 +346,7 @@ DenseTensor GetRangeTensor(const Context& dev_ctx,
                            int64_t N,
                            phi::DataType dtype) {
   DenseTensor res(dtype);
-  res.Resize(common::make_ddim({N}));
+  res.Resize(make_ddim({N}));
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   range_kernel<T>(N, out);

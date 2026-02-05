@@ -106,6 +106,18 @@ class TestMeanOpError(unittest.TestCase):
             paddle.nn.functional.softmax(input3)
 
 
+class TestNanmeanEmptyXPU(unittest.TestCase):
+    def test_nanmean_empty_batch_dim0_axis_minus1(self):
+        paddle.disable_static()
+        try:
+            paddle.set_device('xpu')
+            x = paddle.empty([0, 3, 4, 5], dtype='float32')
+            out = paddle.nanmean(x, axis=-1, keepdim=False)
+            self.assertEqual(list(out.shape), [0, 3, 4])
+        finally:
+            paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('mean')
 for stype in support_types:
     create_test_class(globals(), XPUTestMeanOp, stype)

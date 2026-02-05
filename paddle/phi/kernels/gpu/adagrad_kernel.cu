@@ -58,8 +58,8 @@ __global__ void AdagradGPUKernel(const T* param,
 }
 
 template <typename T>
-struct DenseAdagradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct DenseAdagradFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -154,8 +154,8 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
 }
 
 template <typename T>
-struct SparseAdagradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SparseAdagradFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
@@ -163,15 +163,14 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    funcs::scatter::MergeAdd<phi::GPUContext, T> merge_func;
+    funcs::scatter::MergeAdd<GPUContext, T> merge_func;
     auto grad_merge = merge_func(dev_ctx, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
     phi::Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
-    auto grad_square =
-        SquareSelectedRows<phi::GPUContext, T>(dev_ctx, grad_merge);
+    auto grad_square = SquareSelectedRows<GPUContext, T>(dev_ctx, grad_merge);
 
-    funcs::SelectedRowsAddToTensor<phi::GPUContext, T> functor;
+    funcs::SelectedRowsAddToTensor<GPUContext, T> functor;
     functor(dev_ctx, grad_square, moment);
 
     // 3. update parameter
@@ -187,7 +186,7 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
         <<<grid2,
            threads,
            0,
-           reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream()>>>(
+           reinterpret_cast<const GPUContext&>(dev_ctx).stream()>>>(
             grad_merge_data,
             mixv_merge_rows.CUDAMutableData(dev_ctx.GetPlace()),
             lr,
@@ -199,11 +198,11 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct SparseAdagradFunctor<phi::GPUContext, float>;
-template struct SparseAdagradFunctor<phi::GPUContext, double>;
-template struct DenseAdagradFunctor<phi::GPUContext, float>;
-template struct DenseAdagradFunctor<phi::GPUContext, double>;
-template struct DenseAdagradFunctor<phi::GPUContext, phi::float16>;
+template struct SparseAdagradFunctor<GPUContext, float>;
+template struct SparseAdagradFunctor<GPUContext, double>;
+template struct DenseAdagradFunctor<GPUContext, float>;
+template struct DenseAdagradFunctor<GPUContext, double>;
+template struct DenseAdagradFunctor<GPUContext, phi::float16>;
 
 }  // namespace phi
 
