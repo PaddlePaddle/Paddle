@@ -144,7 +144,7 @@ class DtypeMatchGuard : public GuardBase {
   explicit DtypeMatchGuard(const paddle::framework::proto::VarType& dtype_ptr)
       : expected_(dtype_ptr.type()) {}
 
-  explicit DtypeMatchGuard(const DataType& dtype_ptr)
+  explicit DtypeMatchGuard(const phi::DataType& dtype_ptr)
       : expected_(phi::TransToProtoVarType(dtype_ptr)) {}
 
   bool check(PyObject* value) override;
