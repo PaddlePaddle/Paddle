@@ -35,6 +35,8 @@ def moe_permute(
     using_ue8m0_scale: bool = False,
     using_tp_alloc: bool = False,
     return_expert_indices: bool = False,
+    override_buffer_size: int = -1,
+    tokens_per_expert_tensor: Tensor | None = None,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     r"""
