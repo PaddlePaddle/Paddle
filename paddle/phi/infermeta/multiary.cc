@@ -6191,11 +6191,16 @@ void MoePermuteInferMeta(const MetaTensor& X,
                         "Input expert_prob_topk's dtype should be FLOAT32"));
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
   int64_t output_rows = 0;
-  for (int i = 0; i < num_experts; ++i) {
-    const int64_t tokens = tokens_per_expert[i];
-    output_rows += ((tokens + padding_alignment - 1) / padding_alignment) *
-                   padding_alignment;
+  if (using_tp_alloc) {
+    output_rows = rows * topk + num_experts * 127;
+  } else {
+    for (int i = 0; i < num_experts; ++i) {
+      const int64_t tokens = tokens_per_expert[i];
+      output_rows += ((tokens + padding_alignment - 1) / padding_alignment) *
+                     padding_alignment;
+    }
   }
   if (XScale && do_gather) {
     if (using_ue8m0_scale) {
@@ -6219,10 +6224,6 @@ void MoePermuteInferMeta(const MetaTensor& X,
   }
 
   if (do_gather) {
-    if (using_tp_alloc) {
-      const int64_t topk = expert_routemap_topk.dims()[1];
-      output_rows = rows * topk + num_experts * 127;
-    }
     X_unzipped->set_dims({output_rows, cols});
     X_unzipped->set_dtype(X.dtype());
   } else {
