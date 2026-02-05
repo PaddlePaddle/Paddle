@@ -63,7 +63,7 @@ static DDim ValidateShape(const std::vector<int64_t>& shape,
     }
   }
 
-  return common::make_ddim(output_shape);
+  return make_ddim(output_shape);
 }
 
 template <typename Context, typename T, size_t D>

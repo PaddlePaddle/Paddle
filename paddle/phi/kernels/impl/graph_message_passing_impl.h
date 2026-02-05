@@ -100,8 +100,8 @@ inline std::vector<ShapeT> InferBroadcastShape(const DDim& x_dims,
   std::vector<ShapeT> e_dims_array(max_dim);
   std::vector<ShapeT> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
-  funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
-                                common::make_ddim(e_dims2),
+  funcs::GetBroadcastDimsArrays(make_ddim(x_dims2),
+                                make_ddim(e_dims2),
                                 x_dims_array.data(),
                                 e_dims_array.data(),
                                 out_dims_array.data(),

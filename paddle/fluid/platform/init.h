@@ -26,6 +26,8 @@ namespace framework {
 
 PADDLE_API bool InitGflags(std::vector<std::string> argv);
 
+PADDLE_API void InitGflagsFromEnv();
+
 PADDLE_API void InitGLOG(const std::string& prog_name);
 
 TEST_API void InitDevices();

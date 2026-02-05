@@ -285,23 +285,21 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
   if (GetCurrentAmpAttrs()->GetAmpLevel() == AmpLevel::O1) {
-    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
+    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastInputs<VarType>(type, ins));
-    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() ==
-               phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           AutoCastBF16Inputs<VarType>(type, ins));
     }
   } else if (GetCurrentAmpAttrs()->GetAmpLevel() == AmpLevel::O2) {
-    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == phi::DataType::FLOAT16) {
+    if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureFp16Inputs<VarType>(type, ins));
-    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() ==
-               phi::DataType::BFLOAT16) {
+    } else if (GetCurrentAmpAttrs()->GetAmpPhiDtype() == DataType::BFLOAT16) {
       VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
       ins_amp = std::make_unique<NameVarMap<VarType>>(
           CastPureBf16Inputs<VarType>(type, ins));
@@ -606,7 +604,7 @@ std::string Tracer::GetAmpDtype() const {
   return g_current_amp_attrs->GetAmpDtype();
 }
 
-phi::DataType Tracer::GetAmpPhiDtype() const {
+DataType Tracer::GetAmpPhiDtype() const {
   return g_current_amp_attrs->GetAmpPhiDtype();
 }
 

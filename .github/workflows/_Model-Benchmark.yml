@@ -29,7 +29,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'model-benchmark'
+      workflow-name: "model-benchmark"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -39,6 +39,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: model-benchmark
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -87,6 +88,7 @@ jobs:
             -w /workspace --network host ${docker_image}
 
       - name: Prepare environment and download paddle
+        timeout-minutes: 30
         run: |
           docker exec ${container_name} bash -c '
           rm -rf * .[^.]*
@@ -115,6 +117,7 @@ jobs:
           '
 
       - name: Download paddlescope
+        timeout-minutes: 30
         if: ${{ env.can-skip != 'true' }}
         run: |
           docker exec ${container_name} bash -c '

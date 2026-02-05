@@ -191,7 +191,7 @@ std::unique_ptr<pir::Program> ApplyIrPass(
     }
   }
 #endif
-  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
+  auto ir_res = pir::PdOpLowerToKernelPass(program, place);
 
   if (FLAGS_pir_apply_inplace_pass) {
     pir::PassManager pm(pir::IrContext::Instance(), 3);
@@ -405,7 +405,7 @@ std::unique_ptr<pir::Program> ConstructBackwardIrProgram(
 
   auto program = TranslateLegacyProgramToProgram(local_program);
 
-  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+  auto res = pir::PdOpLowerToKernelPass(program.get(), place);
 
   if (FLAGS_pir_apply_inplace_pass) {
     pir::PassManager pm(pir::IrContext::Instance(), 3);

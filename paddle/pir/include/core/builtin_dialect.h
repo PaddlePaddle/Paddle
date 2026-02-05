@@ -22,9 +22,9 @@ namespace pir {
 /// all built-in types defined in builtin_type.h will be registered in this
 /// Dialect.
 ///
-class IR_API BuiltinDialect : public pir::Dialect {
+class IR_API BuiltinDialect : public Dialect {
  public:
-  explicit BuiltinDialect(pir::IrContext* context);
+  explicit BuiltinDialect(IrContext* context);
   ///
   /// \brief Each Dialect needs to provide a name function to return the name of
   /// the Dialect.
@@ -33,7 +33,7 @@ class IR_API BuiltinDialect : public pir::Dialect {
   ///
   static const char* name() { return "builtin"; }
 
-  void PrintType(pir::Type type, std::ostream& os) const override;
+  void PrintType(Type type, std::ostream& os) const override;
 
  private:
   void initialize();

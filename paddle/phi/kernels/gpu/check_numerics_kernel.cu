@@ -284,7 +284,7 @@ inline std::string GetHintString(const std::string& op_type,
 }
 
 template <typename T>
-static char* GetGpuHintStringPtr(const phi::GPUContext& dev_ctx,
+static char* GetGpuHintStringPtr(const GPUContext& dev_ctx,
                                  const std::string& op_type,
                                  const std::string& var_name,
                                  int dev_id) {
@@ -344,7 +344,7 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-static void PrintStack(const phi::GPUContext& dev_ctx,
+static void PrintStack(const GPUContext& dev_ctx,
                        const DenseTensor& stats,
                        const std::string& op_type,
                        const std::string& var_name,
@@ -369,7 +369,7 @@ static void PrintStack(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename MT>
-static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
+static void WriteToOutputDir(const GPUContext& dev_ctx,
                              const DenseTensor& tensor,
                              const DenseTensor& stats,
                              const DenseTensor& values,

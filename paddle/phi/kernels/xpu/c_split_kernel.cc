@@ -55,7 +55,7 @@ void CSplitKernel(const Context& dev_ctx,
   int64_t end_size = dims[dims_size - 1];
 
   // remain dim
-  auto remain_ddim = common::slice_ddim(dims, 0, dims_size - 1);
+  auto remain_ddim = slice_ddim(dims, 0, dims_size - 1);
   int64_t remain_numel = common::product(remain_ddim);
 
   dims[dims_size - 1] /= nranks;

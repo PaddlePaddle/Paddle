@@ -75,9 +75,9 @@ void ReshapeCooGPUKernel(const Context& dev_ctx,
   const auto* x_indices_data = x.indices().data<IntT>();
   auto* out_indices_data = out_indices.data<IntT>();
   const DDim& x_sparse_part_strides =
-      common::stride(common::make_ddim(x_sparse_part_dims));
+      common::stride(make_ddim(x_sparse_part_dims));
   const DDim& out_sparse_part_strides =
-      common::stride(common::make_ddim(out_sparse_part_dims));
+      common::stride(make_ddim(out_sparse_part_dims));
 
   int64_t *destination_x_sparse_part_strides,
       *destination_out_sparse_part_strides;

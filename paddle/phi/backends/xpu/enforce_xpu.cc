@@ -244,10 +244,9 @@ inline std::string build_runtime_error_msg() {
 std::string get_bkcl_error_msg(BKCLResult_t stat) {
   std::string error_msg;
   if (stat == BKCLResult_t::BKCL_RUNTIME_ERROR) {
-    error_msg = ::phi::backends::xpu::build_bkcl_error_msg(stat) + "\n" +
-                ::phi::backends::xpu::build_runtime_error_msg();
+    error_msg = build_bkcl_error_msg(stat) + "\n" + build_runtime_error_msg();
   } else {
-    error_msg = ::phi::backends::xpu::build_bkcl_error_msg(stat);
+    error_msg = build_bkcl_error_msg(stat);
   }
   return error_msg;
 }
@@ -255,23 +254,23 @@ std::string get_bkcl_error_msg(BKCLResult_t stat) {
 
 #ifdef PADDLE_WITH_XPU_FFT
 std::string get_fft_error_msg(cufftResult_t stat) {
-  std::string error_msg = ::phi::backends::xpu::build_fft_error_msg(stat);
+  std::string error_msg = build_fft_error_msg(stat);
   return error_msg;
 }
 #endif
 
 std::string get_xpu_error_msg(int stat) {
-  std::string error_msg = ::phi::backends::xpu::build_xpu_error_msg(stat);
+  std::string error_msg = build_xpu_error_msg(stat);
   return error_msg;
 }
 
 std::string get_xdnn_error_msg(int stat, std::string msg) {
   std::string error_msg = "";
   if (stat == baidu::xpu::api::Error_t::RUNTIME_ERROR) {
-    error_msg = ::phi::backends::xpu::build_xdnn_error_msg(stat, msg) + "\n" +
-                ::phi::backends::xpu::build_runtime_error_msg();
+    error_msg =
+        build_xdnn_error_msg(stat, msg) + "\n" + build_runtime_error_msg();
   } else {
-    error_msg = ::phi::backends::xpu::build_xdnn_error_msg(stat, msg);
+    error_msg = build_xdnn_error_msg(stat, msg);
   }
   return error_msg;
 }
@@ -282,10 +281,10 @@ std::string get_xblas_error_msg(int stat, std::string msg) {
     return error_msg;
   } else {
     if (stat == xblasStatus_t::CUBLAS_STATUS_INTERNAL_ERROR) {
-      error_msg = ::phi::backends::xpu::build_xblas_error_msg(stat, msg) +
-                  "\n" + ::phi::backends::xpu::build_runtime_error_msg();
+      error_msg =
+          build_xblas_error_msg(stat, msg) + "\n" + build_runtime_error_msg();
     } else {
-      error_msg = ::phi::backends::xpu::build_xblas_error_msg(stat, msg);
+      error_msg = build_xblas_error_msg(stat, msg);
     }
   }
   return error_msg;
