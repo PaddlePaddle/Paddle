@@ -171,15 +171,6 @@ void LogsumexpPreProcess(pir::Value* x,
 }
 
 void RenormPreProcess(Tensor* x, int* axis) {
-  // Python原逻辑：
-  // if not axis < len(input_shape):
-  //     raise ValueError(f"the axis:{axis} should be less then the shape's size
-  //     {len(input_shape)}:{input_shape}")
-  // if not axis >= 0:
-  //     if not axis >= -1 * len(input_shape):
-  //         raise ValueError(f"the axis:{axis} should not be less than -1 *
-  //         length of input_shape:{-1 * len(input_shape)}")
-  //     axis = axis + len(input_shape)
   int input_shape_size = x->dims().size();
   PADDLE_ENFORCE_LT(*axis,
                     input_shape_size,
