@@ -335,27 +335,3 @@ class MultiTrainer(TrainerDesc):
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
         self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class DistMultiTrainer(TrainerDesc):
-    """
-    Implement of DistMultiTrainer.
-    It's for Distributed training.
-    """
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def _set_program(self, program):
-        super()._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
-        self.proto_desc.class_name = "DistMultiTrainer"
-        if self._program is None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)

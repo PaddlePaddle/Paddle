@@ -123,7 +123,6 @@ from .lod_tensor import (  # noqa: F401
 )
 from .param_attr import ParamAttr, WeightNormParamAttr  # noqa: F401
 from .trainer_desc import (  # noqa: F401
-    DistMultiTrainer,
     MultiTrainer,
     TrainerDesc,
 )

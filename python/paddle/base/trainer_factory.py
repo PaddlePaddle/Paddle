@@ -34,8 +34,7 @@ from .device_worker import (  # noqa: F401
     Section,
 )
 from .framework import Variable
-from .trainer_desc import (  # noqa: F401
-    DistMultiTrainer,
+from .trainer_desc import (
     MultiTrainer,
 )
 
