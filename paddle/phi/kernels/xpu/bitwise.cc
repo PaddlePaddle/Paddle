@@ -26,6 +26,7 @@ void BitwiseNotKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
   int r = xpu::logical_not(dev_ctx.x_context(),
                            reinterpret_cast<const XPUDataType*>(x.data<T>()),
                            reinterpret_cast<XPUDataType*>(out->data<T>()),
