@@ -1765,5 +1765,72 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestRenormAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [2, 2, 3]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        # 位置参数 (args)
+        out1 = paddle.renorm(x, 1.0, 2, 2.05)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle关键字参数 (kwargs)
+        out2 = paddle.renorm(x=x, p=1.0, axis=2, max_norm=2.05)
+        paddle_dygraph_out.append(out2)
+
+        # Torch关键字参数
+        out3 = paddle.renorm(input=x, p=1.0, dim=2, max_norm=2.05)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor方法 - kwargs
+        out4 = x.renorm(p=1.0, axis=2, max_norm=2.05)
+        paddle_dygraph_out.append(out4)
+
+        # Tensor方法 - dim别名
+        out5 = x.renorm(p=1.0, dim=2, max_norm=2.05)
+        paddle_dygraph_out.append(out5)
+
+        # 验证所有输出
+        for out in paddle_dygraph_out:
+            self.assertEqual(out.shape, self.shape)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # 位置参数
+            out1 = paddle.renorm(x, 1.0, 2, 2.05)
+            # Paddle关键字参数
+            out2 = paddle.renorm(x=x, p=1.0, axis=2, max_norm=2.05)
+            # Torch关键字参数
+            out3 = paddle.renorm(input=x, p=1.0, dim=2, max_norm=2.05)
+            # Tensor方法
+            out4 = x.renorm(p=1.0, axis=2, max_norm=2.05)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            for out in fetches:
+                self.assertEqual(out.shape, self.shape)
+
+
 if __name__ == '__main__':
     unittest.main()

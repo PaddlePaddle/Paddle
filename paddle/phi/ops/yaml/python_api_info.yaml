@@ -422,6 +422,20 @@
   args_alias :
     use_default_mapping : True
 
+- op : renorm
+  name : [paddle.renorm, paddle.Tensor.renorm]
+  args_alias :
+    use_default_mapping : True
+  pre_process:
+    func : RenormPreProcess(x, axis)
+
+- op : renorm_
+  name : [paddle.renorm_, paddle.Tensor.renorm]
+  args_alias :
+    use_default_mapping : True
+  pre_process:
+    func : RenormPreProcess(x, axis)
+
 - op : roll
   name : [paddle.roll, paddle.Tensor.roll]
   args_alias:

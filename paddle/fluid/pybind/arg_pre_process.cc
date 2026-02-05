@@ -169,6 +169,57 @@ void LogsumexpPreProcess(pir::Value* x,
   }
   return;
 }
+
+void RenormPreProcess(Tensor* x, int* axis) {
+  // Python原逻辑：
+  // if not axis < len(input_shape):
+  //     raise ValueError(f"the axis:{axis} should be less then the shape's size
+  //     {len(input_shape)}:{input_shape}")
+  // if not axis >= 0:
+  //     if not axis >= -1 * len(input_shape):
+  //         raise ValueError(f"the axis:{axis} should not be less than -1 *
+  //         length of input_shape:{-1 * len(input_shape)}")
+  //     axis = axis + len(input_shape)
+  int input_shape_size = x->dims().size();
+  PADDLE_ENFORCE_LT(*axis,
+                    input_shape_size,
+                    phi::errors::InvalidArgument(
+                        "the axis:%d should be less then the shape's size %d",
+                        *axis,
+                        input_shape_size));
+  if (*axis < 0) {
+    PADDLE_ENFORCE_GE(
+        *axis,
+        -input_shape_size,
+        phi::errors::InvalidArgument(
+            "the axis:%d should not be less than -1 * length of input_shape:%d",
+            *axis,
+            -input_shape_size));
+    *axis = *axis + input_shape_size;
+  }
+}
+
+void RenormPreProcess(pir::Value* x, int* axis) {
+  std::vector<int64_t> x_shape = pir::GetShapeFromValue(*x);
+  int input_shape_size = x_shape.size();
+  PADDLE_ENFORCE_LT(*axis,
+                    input_shape_size,
+                    phi::errors::InvalidArgument(
+                        "the axis:%d should be less then the shape's size %d",
+                        *axis,
+                        input_shape_size));
+  if (*axis < 0) {
+    PADDLE_ENFORCE_GE(
+        *axis,
+        -input_shape_size,
+        phi::errors::InvalidArgument(
+            "the axis:%d should not be less than -1 * length of input_shape:%d",
+            *axis,
+            -input_shape_size));
+    *axis = *axis + input_shape_size;
+  }
+}
+
 void SumPreProcess(Value* x, Value* axis) {
   paddle::dialect::SetStopGradient(axis);
 }

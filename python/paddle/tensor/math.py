@@ -58,6 +58,8 @@ from paddle._C_ops import (  # noqa: F401
     minimum,
     multiply,
     nextafter,
+    renorm,
+    renorm_,
     sign,
     sin,
     sum,
@@ -2206,94 +2208,6 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
             inputs={'X': input, 'Y': mat2},
             outputs={'Out': out},
         )
-        return out
-
-
-def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
-    """
-    **renorm**
-
-    This operator is used to calculate the p-norm along the axis,
-    suppose the input-shape on axis dimension has the value of T, then
-    the tensor is split into T parts, the p-norm should be calculated for each
-    part, if the p-norm for part i is larger than max-norm, then each element
-    in part i should be re-normalized at the same scale so that part-i' p-norm equals
-    max-norm exactly, otherwise part-i stays unchanged.
-
-    Args:
-        x (Tensor): The input Tensor
-        p (float): The power of the norm operation.
-        axis (int): the dimension to slice the tensor.
-        max-norm (float): the maximal norm limit.
-
-    Returns:
-        Tensor: the renorm Tensor.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> input = [
-            ...     [[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]],
-            ...     [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]],
-            ... ]
-            >>> x = paddle.to_tensor(input, dtype='float32')
-            >>> y = paddle.renorm(x, 1.0, 2, 2.05)
-            >>> print(y)
-            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[ 0.40594056,  0.29285714, -0.41000000],
-              [ 0.60891086,  0.04392857,  0.61500001]],
-             [[ 0.40594056, -1.17142856,  0.41000000],
-              [ 0.62920785,  0.54178572,  0.61500001]]])
-
-    """
-    input_shape = x.shape
-    if not axis < len(input_shape):
-        raise ValueError(
-            f"the axis:{axis} should be less then the shape's size {len(input_shape)}:{input_shape}"
-        )
-    if not axis >= 0:
-        if not axis >= -1 * len(input_shape):
-            raise ValueError(
-                f"the axis:{axis} should not be less than -1 * length of input_shape:{-1 * len(input_shape)}"
-            )
-        axis = axis + len(input_shape)
-    if in_dynamic_or_pir_mode():
-        out = _C_ops.renorm(x, p, axis, max_norm)
-        return out
-    else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
-        inputs = {'X': x}
-        attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
-
-        helper = LayerHelper("renorm", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(
-            type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out}
-        )
-        return out
-
-
-@inplace_apis_in_dygraph_only
-def renorm_(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
-    """
-    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_renorm`.
-    """
-    input_shape = x.shape
-    if not axis < len(input_shape):
-        raise ValueError(
-            f"the axis:{axis} should be less then the shape's size {len(input_shape)}:{input_shape}"
-        )
-    if not axis >= 0:
-        if not axis >= -1 * len(input_shape):
-            raise ValueError(
-                f"the axis:{axis} should not be less than -1 * length of input_shape:{-1 * len(input_shape)}"
-            )
-        axis = axis + len(input_shape)
-    if in_dynamic_mode():
-        out = _C_ops.renorm_(x, p, axis, max_norm)
         return out
 
 

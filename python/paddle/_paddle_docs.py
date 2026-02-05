@@ -4743,3 +4743,67 @@ def baddbmm_(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "renorm",
+    r"""
+    This operator is used to calculate the p-norm along the axis,
+    suppose the input-shape on axis dimension has the value of T, then
+    the tensor is split into T parts, the p-norm should be calculated for each
+    part, if the p-norm for part i is larger than max-norm, then each element
+    in part i should be re-normalized at the same scale so that part-i' p-norm equals
+    max-norm exactly, otherwise part-i stays unchanged.
+
+    Args:
+        x (Tensor): The input Tensor
+        p (float): The power of the norm operation.
+        axis (int): the dimension to slice the tensor.
+        max_norm (float): the maximal norm limit.
+
+    Returns:
+        Tensor: the renorm Tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = [
+            ...     [[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]],
+            ...     [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]],
+            ... ]
+            >>> x = paddle.to_tensor(input, dtype='float32')
+            >>> y = paddle.renorm(x, 1.0, 2, 2.05)
+            >>> print(y)
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.40594056,  0.29285714, -0.41000000],
+              [ 0.60891086,  0.04392857,  0.61500001]],
+             [[ 0.40594056, -1.17142856,  0.41000000],
+              [ 0.62920785,  0.54178572,  0.61500001]]])
+""",
+    """
+def renorm(
+    x: Tensor,
+    p: float,
+    axis: int,
+    max_norm: float,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "renorm_",
+    r"""
+    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_renorm`.
+""",
+    """
+def renorm_(
+    x: Tensor,
+    p: float,
+    axis: int,
+    max_norm: float,
+) -> Tensor
+""",
+)

@@ -49,6 +49,9 @@ void BinCountPreProcess(Value* x,
 void LogsumexpPreProcess(Tensor* x, std::vector<int>* axis, bool* reduce_all);
 void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);
 
+void RenormPreProcess(Tensor* x, int* axis);
+void RenormPreProcess(Value* x, int* axis);
+
 void SumPreProcess(Value* x, Value* axis);
 void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
 void AllClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol);
