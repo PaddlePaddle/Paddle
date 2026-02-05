@@ -27,72 +27,30 @@
 
 namespace at {
 
-// Tensor member function implementations
-
-// std with single dimension
-inline Tensor Tensor::std(int dim) const {
-  return std(at::IntArrayRef{dim}, true, false);
-}
-
-// std with unbiased flag (compute over all dimensions)
-inline Tensor Tensor::std(bool unbiased) const {
-  std::vector<int64_t> empty_dims;
-  double correction = unbiased ? 1.0 : 0.0;
-  return std_impl(empty_dims, correction, false);
-}
-
-// std with dimensions, unbiased flag, and keepdim
-inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
-                          bool unbiased,
-                          bool keepdim) const {
-  // Convert unbiased to correction: unbiased=True means correction=1
-  double correction = unbiased ? 1.0 : 0.0;
-  std::vector<int64_t> dims_vec;
-  if (dim.has_value() && dim.value().size() > 0) {
-    dims_vec.assign(dim.value().begin(), dim.value().end());
-  }
-  return std_impl(dims_vec, correction, keepdim);
-}
-
-// std with dimensions, correction value, and keepdim
-inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
-                          const ::std::optional<at::Scalar>& correction,
-                          bool keepdim) const {
-  // Default correction is 1.0 (Bessel's correction)
-  double correction_value = 1.0;
-  if (correction.has_value()) {
-    // Convert at::Scalar to double
-    // at::Scalar is mapped to paddle::experimental::Scalar in compatibility
-    // layer
-    const at::Scalar& scalar = correction.value();
-    correction_value = scalar.to<double>();
-  }
-  std::vector<int64_t> dims_vec;
-  if (dim.has_value() && dim.value().size() > 0) {
-    dims_vec.assign(dim.value().begin(), dim.value().end());
-  }
-  return std_impl(dims_vec, correction_value, keepdim);
-}
-
 // Internal implementation for std (standard deviation = sqrt(variance))
-inline Tensor Tensor::std_impl(const std::vector<int64_t>& dims_vec,
-                               double correction_value,
-                               bool keepdim) const {
+// Non-member function implementation
+inline Tensor std_impl(const Tensor& self,
+                       const std::vector<int64_t>& dims_vec,
+                       double correction_value,
+                       bool keepdim) {
   // Convert dims_vec to IntArray
   phi::IntArray dims_int_array(dims_vec);
+
+  // Get inner Paddle tensor
+  paddle::Tensor tensor = self._PD_GetInner();
 
   // Compute mean along specified dimensions (keepdim=true for intermediate)
   paddle::Tensor mean_tensor;
   if (dims_vec.empty()) {
     // Compute mean over all elements
     mean_tensor = paddle::experimental::mean(
-        tensor_, phi::IntArray(std::vector<int64_t>{}), true);
+        tensor, phi::IntArray(std::vector<int64_t>{}), true);
   } else {
-    mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
+    mean_tensor = paddle::experimental::mean(tensor, dims_int_array, true);
   }
 
   // Compute (x - mean)^2
-  paddle::Tensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
+  paddle::Tensor diff = paddle::experimental::subtract(tensor, mean_tensor);
   paddle::Tensor diff_squared = paddle::experimental::multiply(diff, diff);
 
   // Compute sum of squared differences
@@ -109,15 +67,15 @@ inline Tensor Tensor::std_impl(const std::vector<int64_t>& dims_vec,
   }
 
   // Calculate n (number of elements along reduced dimensions)
-  int64_t n = tensor_.numel();
+  int64_t n = tensor.numel();
   if (!dims_vec.empty()) {
     // Calculate number of elements along specified dimensions
     n = 1;
     for (int64_t d : dims_vec) {
-      int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
+      int64_t dim_idx = d < 0 ? d + tensor.dims().size() : d;
       if (dim_idx >= 0 &&
-          dim_idx < static_cast<int64_t>(tensor_.dims().size())) {
-        n *= tensor_.dims()[dim_idx];
+          dim_idx < static_cast<int64_t>(tensor.dims().size())) {
+        n *= tensor.dims()[dim_idx];
       }
     }
   }
@@ -146,6 +104,53 @@ inline Tensor Tensor::std_impl(const std::vector<int64_t>& dims_vec,
   paddle::Tensor result = paddle::experimental::sqrt(variance);
 
   return Tensor(result);
+}
+
+// Tensor member function implementations
+
+// std with single dimension
+inline Tensor Tensor::std(int dim) const {
+  return std(at::IntArrayRef{dim}, true, false);
+}
+
+// std with unbiased flag (compute over all dimensions)
+inline Tensor Tensor::std(bool unbiased) const {
+  std::vector<int64_t> empty_dims;
+  double correction = unbiased ? 1.0 : 0.0;
+  return std_impl(*this, empty_dims, correction, false);
+}
+
+// std with dimensions, unbiased flag, and keepdim
+inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
+                          bool unbiased,
+                          bool keepdim) const {
+  // Convert unbiased to correction: unbiased=True means correction=1
+  double correction = unbiased ? 1.0 : 0.0;
+  std::vector<int64_t> dims_vec;
+  if (dim.has_value() && dim.value().size() > 0) {
+    dims_vec.assign(dim.value().begin(), dim.value().end());
+  }
+  return std_impl(*this, dims_vec, correction, keepdim);
+}
+
+// std with dimensions, correction value, and keepdim
+inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
+                          const ::std::optional<at::Scalar>& correction,
+                          bool keepdim) const {
+  // Default correction is 1.0 (Bessel's correction)
+  double correction_value = 1.0;
+  if (correction.has_value()) {
+    // Convert at::Scalar to double
+    // at::Scalar is mapped to paddle::experimental::Scalar in compatibility
+    // layer
+    const at::Scalar& scalar = correction.value();
+    correction_value = scalar.to<double>();
+  }
+  std::vector<int64_t> dims_vec;
+  if (dim.has_value() && dim.value().size() > 0) {
+    dims_vec.assign(dim.value().begin(), dim.value().end());
+  }
+  return std_impl(*this, dims_vec, correction_value, keepdim);
 }
 
 }  // namespace at

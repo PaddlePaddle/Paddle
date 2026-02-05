@@ -551,12 +551,6 @@ class Tensor : public TensorBase {
              const ::std::optional<at::Scalar>& correction,
              bool keepdim = false) const;
 
- private:
-  // Internal implementation for std
-  Tensor std_impl(const std::vector<int64_t>& dims_vec,
-                  double correction_value,
-                  bool keepdim) const;
-
  public:
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
