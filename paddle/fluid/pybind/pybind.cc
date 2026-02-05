@@ -105,7 +105,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -3343,6 +3342,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const GPUPlace &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
+  m.def("_check_last_cuda_error", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
+  });
   m.def("_set_warmup", [](bool warmup) {
 #if defined(PADDLE_WITH_CUDA)
     paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
@@ -3808,6 +3812,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_XPU
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_current_device_id", &platform::GetXPUCurrentDeviceId);
+  m.def("set_xpu_current_device_id", &platform::SetXPUDeviceId, py::arg("i"));
   m.def("xpu_empty_cache", platform::EmptyCache);
   m.def(
       "get_device_properties",
@@ -4443,10 +4448,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   BindGlooWrapper(&m);
-  BindBoxHelper(&m);
-#ifdef PADDLE_WITH_BOX_PS
-  BindBoxWrapper(&m);
-#endif
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   BindNCCLWrapper(&m);
 #endif

@@ -27,7 +27,7 @@ PADDLE_API void GaussianKernel(const Context& dev_ctx,
                                int seed,
                                DataType dtype,
                                DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   int64_t size = out->numel();
   T* data = dev_ctx.template Alloc<T>(out);
   std::shared_ptr<std::mt19937_64> engine;

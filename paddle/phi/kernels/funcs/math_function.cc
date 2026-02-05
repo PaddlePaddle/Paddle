@@ -39,7 +39,6 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_factory.h"

@@ -414,7 +414,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
       DenseTensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
+      auto in_e = EigenMatrix<T>::From(in_t, make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
       if (pooltype == "AVERAGE") {  // NOLINT
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));

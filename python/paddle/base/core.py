@@ -292,6 +292,7 @@ try:
         __package__,
         __unittest_throw_exception__,
         _append_python_callable_object_and_return_id,
+        _check_last_cuda_error,
         _cleanup,
         _create_loaded_parameter,
         _cuda_synchronize,

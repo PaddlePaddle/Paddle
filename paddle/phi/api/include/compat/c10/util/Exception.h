@@ -82,3 +82,6 @@ inline void C10ThrowImpl(C10ErrorType err_type, const std::string& msg) {
 }
 
 #define C10_THROW_ERROR(err_type, msg) C10ThrowImpl(err_type, msg)
+
+// Deprecated attribute macro
+#define C10_DEPRECATED_MESSAGE(msg) [[deprecated(msg)]]
