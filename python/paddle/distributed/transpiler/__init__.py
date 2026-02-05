@@ -16,7 +16,3 @@ from .distribute_transpiler import (  # noqa: F401
     DistributeTranspiler,
     DistributeTranspilerConfig,
 )
-from .memory_optimization_transpiler import (  # noqa: F401
-    memory_optimize,
-    release_memory,
-)
