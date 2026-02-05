@@ -112,7 +112,7 @@ class CountFilterEntry(EntryAttr):
             >>> sparse_feature_dim = 1024
             >>> embedding_size = 64
 
-            >>> entry = paddle.distributed.ProbabilityEntry(0.1)
+            >>> entry = paddle.distributed.CountFilterEntry(10)
 
             >>> input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
