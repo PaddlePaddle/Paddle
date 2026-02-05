@@ -42,8 +42,10 @@ endif()
 file(TO_NATIVE_PATH "${PADDLE_SOURCE_DIR}/patches/eigen/TensorRandom.h.patch"
      tensor_random_header)
 # See: [Why calling some `git` commands before `patch`?]
-set(EIGEN_PATCH_COMMAND git checkout -- . && git checkout ${EIGEN_TAG} && git
-                        apply ${tensor_random_header})
+set(EIGEN_PATCH_COMMAND
+    git checkout -- Eigen/src/Core/arch/SSE/Complex.h
+    unsupported/Eigen/CXX11/src/Tensor/TensorRandom.h && git checkout
+    ${EIGEN_TAG} && git apply ${tensor_random_header})
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
        complex_header)

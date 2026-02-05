@@ -2,7 +2,10 @@ file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
 file(GLOB_RECURSE FLUID_PY_FILES ./paddle/base/*.py)
 set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
 
-if(WITH_GPU)
+if(DEFINED PADDLE_PYTHON_PACKAGE_NAME AND NOT PADDLE_PYTHON_PACKAGE_NAME
+                                          STREQUAL "")
+  set(PACKAGE_NAME "${PADDLE_PYTHON_PACKAGE_NAME}")
+elseif(WITH_GPU)
   set(PACKAGE_NAME "paddlepaddle-gpu")
 elseif(WITH_ROCM)
   set(PACKAGE_NAME "paddlepaddle-dcu")

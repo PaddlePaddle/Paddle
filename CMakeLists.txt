@@ -127,6 +127,14 @@ if(WITH_GPU AND NOT APPLE)
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
 endif()
 
+if(WITH_CUDA_CUSTOM_DEVICE AND NOT WITH_GPU)
+  enable_language(CUDA)
+  if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL
+                                             "")
+    set(CMAKE_CUDA_ARCHITECTURES OFF)
+  endif()
+endif()
+
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
                "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
@@ -345,6 +353,17 @@ option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
+option(WITH_CUDA_CUSTOM_DEVICE
+       "Compile PaddlePaddle with iluvatar_gpu custom device" OFF)
+set(ILUVATAR_GPU_SOURCE_DIR
+    "${PADDLE_SOURCE_DIR}/../backends/iluvatar_gpu"
+    CACHE PATH "Path to iluvatar_gpu source directory")
+set(ILUVATAR_GPU_BINARY_DIR
+    "${PADDLE_SOURCE_DIR}/../backends/iluvatar_gpu/build"
+    CACHE PATH "Path to iluvatar_gpu build directory")
+set(ILUVATAR_CMAKE_ARGS
+    ""
+    CACHE STRING "Extra CMake args forwarded to iluvatar_gpu sub-build")
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" ON)
@@ -358,6 +377,12 @@ if(WIN32 OR NOT WITH_GPU)
   set(WITH_CUDNN_FRONTEND
       OFF
       CACHE BOOL "" FORCE)
+endif()
+
+if(WITH_CUDA_CUSTOM_DEVICE)
+  set(WITH_CUSTOM_DEVICE
+      ON
+      CACHE BOOL "Compile with custom device support" FORCE)
 endif()
 
 if(WITH_RECORD_BUILDTIME)
@@ -734,10 +759,22 @@ if(WITH_CPP_DIST)
 endif()
 
 add_subdirectory(paddle)
+if(WITH_CUDA_CUSTOM_DEVICE)
+  add_subdirectory(${ILUVATAR_GPU_SOURCE_DIR} ${ILUVATAR_GPU_BINARY_DIR})
+endif()
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
 add_subdirectory(test)
+
+if(WITH_CUDA_CUSTOM_DEVICE AND TARGET iluvatar_package_copy)
+  if(TARGET paddle_python)
+    add_dependencies(paddle_python iluvatar_package_copy)
+  endif()
+  if(TARGET paddle_copy)
+    add_dependencies(paddle_copy iluvatar_package_copy)
+  endif()
+endif()
 
 get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
 list(JOIN all_inc_dirs "\r\n" all_inc_dirs)
