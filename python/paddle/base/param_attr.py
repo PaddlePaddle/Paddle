@@ -302,7 +302,6 @@ class WeightNormParamAttr(ParamAttr):
             ...     weight_attr=paddle.static.WeightNormParamAttr(
             ...         dim=None,
             ...         name='weight_norm_param',
-            ...         initializer=paddle.nn.initializer.Constant(1.0),
             ...         learning_rate=1.0,
             ...         regularizer=paddle.regularizer.L2Decay(0.1),
             ...         trainable=True,
