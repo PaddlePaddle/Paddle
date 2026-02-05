@@ -744,6 +744,9 @@ class MaxPool2D(Layer):
             4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple): The dilation size. Dilation could be in one of the following forms.
+            1. An int, which specifies the same dilation size for both the height and width dimensions.
+            2. A list[int] or tuple(int) whose length is 2, [dilation_height, dilation_weight] whose value means the dilation size of each dimension.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -769,13 +772,13 @@ class MaxPool2D(Layer):
 
             >>> # max pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
+            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
             >>> output = MaxPool2D(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1, return_mask=True)
             >>> output, max_indices = MaxPool2D(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
@@ -786,6 +789,7 @@ class MaxPool2D(Layer):
     kernel_size: Size2
     stride: Size2 | None
     padding: _PaddingSizeMode | Size2 | Size4
+    dilation: Size2
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout2D
@@ -797,6 +801,7 @@ class MaxPool2D(Layer):
         kernel_size: Size2,
         stride: Size2 | None = None,
         padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        dilation: Size2 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout2D = 'NCHW',
@@ -806,6 +811,7 @@ class MaxPool2D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
@@ -818,6 +824,7 @@ class MaxPool2D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
