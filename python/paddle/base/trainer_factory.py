@@ -36,9 +36,7 @@ from .device_worker import (  # noqa: F401
 from .framework import Variable
 from .trainer_desc import (  # noqa: F401
     DistMultiTrainer,
-    HeterPipelineTrainer,
     MultiTrainer,
-    PipelineTrainer,
 )
 
 __all__ = []
