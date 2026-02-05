@@ -70,7 +70,8 @@ struct EigenBroadcastGrad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, T, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, T, 6>; \
   template struct FUNCTOR<Eigen::GpuDevice, T, 7>; \
-  template struct FUNCTOR<Eigen::GpuDevice, T, 8>
+  template struct FUNCTOR<Eigen::GpuDevice, T, 8>; \
+  template struct FUNCTOR<Eigen::GpuDevice, T, 9>
 INSTANTIATION(EigenBroadcast, bool);
 INSTANTIATION(EigenBroadcast, dtype::float16);
 INSTANTIATION(EigenBroadcast, dtype::bfloat16);

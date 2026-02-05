@@ -544,6 +544,34 @@ class Tensor : public TensorBase {
   }
 #endif
 
+  // Deprecated packed_accessor for compatibility with PyTorch
+  // Use packed_accessor32 or packed_accessor64 instead
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() const& {
+    return this->template generic_packed_accessor<T, N, PtrTraits, index_t>();
+  }
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() && = delete;
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };

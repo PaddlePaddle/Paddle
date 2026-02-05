@@ -164,7 +164,7 @@ void GemmEpilogueKernel(const Context& dev_ctx,
       workspace,
   };
 
-  void* dlhandler = phi::dynload::GetCutlassGemmEpilogueHandle();
+  void* dlhandler = dynload::GetCutlassGemmEpilogueHandle();
   func gemm_epilogue_func = NULL;
   PADDLE_ENFORCE_NOT_NULL(
       dlhandler,

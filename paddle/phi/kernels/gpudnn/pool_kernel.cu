@@ -207,10 +207,10 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   char* pool_workspace;
-  size_t pool_workernel_size_ = 0;
+  size_t pool_worksize = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenPoolingGetWorkSpaceSizeV2(
-      cudnn_pool_desc, cudnn_output_desc, &pool_workernel_size_));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_workernel_size_));
+      cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::miopenPoolingForward(handle,
                                     cudnn_pool_desc,
@@ -222,7 +222,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                                     transformed_output_data,
                                     false,
                                     pool_workspace,
-                                    pool_workernel_size_));
+                                    pool_worksize));
   PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
