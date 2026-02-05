@@ -62,7 +62,7 @@ option(WITH_MAGMA "Compile PaddlePaddle with Magma library" OFF)
 option(
   WITH_SLEEF
   "Compile PaddlePaddle with Sleef library for high precision math functions"
-  OFF)
+  ON)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
