@@ -5217,15 +5217,8 @@ def expand(
 
 @overload
 def expand(
-    x: Tensor,
-    *shape: ShapeLike,
-) -> Tensor: ...
-
-
-@overload
-def expand(
     input: Tensor,
-    size: ShapeLike,
+    *size: ShapeLike,
 ) -> Tensor: ...
 
 
@@ -5380,11 +5373,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
 
 
 @overload
-def reshape(x: Tensor, *shape: ShapeLike) -> Tensor: ...
-
-
-@overload
-def reshape(input: Tensor, shape: ShapeLike) -> Tensor: ...
+def reshape(input: Tensor, *shape: ShapeLike) -> Tensor: ...
 
 
 @reshape_decorator()
@@ -7961,27 +7950,11 @@ def as_strided(
     return _C_ops.as_strided(x, shape, stride, offset)
 
 
-@dygraph_only
-@overload
-def view(
-    x: Tensor,
-    dtype: DTypeLike,
-    name: str | None = None,
-) -> Tensor: ...
-
-
 @overload
 def view(
     x: Tensor,
     shape_or_dtype: Sequence[int] | DTypeLike,
     name: str | None = None,
-) -> Tensor: ...
-
-
-@overload
-def view(
-    x: Tensor,
-    *shape_or_dtype: Sequence[int],
 ) -> Tensor: ...
 
 
@@ -7996,6 +7969,13 @@ def view(
 def view(
     x: Tensor,
     size: Sequence[int],
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    *shape: Sequence[int],
 ) -> Tensor: ...
 
 

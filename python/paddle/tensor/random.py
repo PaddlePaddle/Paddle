@@ -985,19 +985,7 @@ def randn(
 
 @overload
 def randn(
-    *shape: ShapeLike,
-    out: paddle.Tensor | None = None,
-    dtype: DTypeLike | None = None,
-    device: PlaceLike | None = None,
-    requires_grad: bool = False,
-    pin_memory: bool = False,
-) -> Tensor: ...
-
-
-@overload
-def randn(
-    size: ShapeLike,
-    *,
+    *size: ShapeLike,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
@@ -2313,19 +2301,7 @@ def rand(
 
 @overload
 def rand(
-    *shape: ShapeLike,
-    out: paddle.Tensor | None = None,
-    dtype: DTypeLike | None = None,
-    device: PlaceLike | None = None,
-    requires_grad: bool = False,
-    pin_memory: bool = False,
-) -> Tensor: ...
-
-
-@overload
-def rand(
-    size: ShapeLike,
-    *,
+    *size: ShapeLike,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
