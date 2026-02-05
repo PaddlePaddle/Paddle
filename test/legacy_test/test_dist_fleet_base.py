@@ -392,7 +392,7 @@ class TestFleetBase(unittest.TestCase):
                         break
             return is_lf
 
-        def catlog(logx):
+        def catalog(logx):
             basename = os.path.basename(logx)
             print(
                 f"\n================== Error {basename} begin ====================="
@@ -416,8 +416,8 @@ class TestFleetBase(unittest.TestCase):
                     (tr0_out_log, tr0_err_log),
                     (tr1_out_log, tr1_err_log),
                 ]:
-                    catlog(out)
-                    catlog(err)
+                    catalog(out)
+                    catalog(err)
 
         for pipe in [
             tr0_err,
