@@ -24,7 +24,6 @@ from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
     bincount,
     bmm,
-    cross,
     diagonal,
     dot,
     matmul,
@@ -1354,6 +1353,67 @@ def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
         type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
     return out
+
+
+def cross(
+    x: Tensor,
+    y: Tensor,
+    axis: int | None = None,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Computes the cross product between two tensors along an axis.
+
+    Args:
+        x (Tensor): The first input tensor.
+        y (Tensor): The second input tensor.
+        axis (int, optional): The axis along which to compute the cross product.
+            If None, it defaults to the first dimension found with size 3.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The cross product of x and y.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]])
+            >>> y = paddle.to_tensor([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+
+            >>> z1 = paddle.cross(x, y)
+            >>> print(z1)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1., -1., -1.],
+             [ 2.,  2.,  2.],
+             [-1., -1., -1.]])
+
+            >>> z2 = paddle.cross(x, y, axis=1)
+            >>> print(z2)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 0.],
+             [0., 0., 0.],
+             [0., 0., 0.]])
+    """
+    if axis is None:
+        axis = K_DEFAULT_DIM
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.cross(x, y, axis)
+    else:
+        helper = LayerHelper("cross", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        attrs = {}
+        attrs['dim'] = axis
+        helper.append_op(
+            type="cross",
+            inputs={'X': x, 'Y': y},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def cond(

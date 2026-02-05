@@ -1765,7 +1765,6 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
-# Edit by AI Agent
 # Test cross compatibility
 class TestCrossAPI(unittest.TestCase):
     def setUp(self):
