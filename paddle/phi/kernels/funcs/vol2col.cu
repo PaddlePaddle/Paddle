@@ -441,7 +441,6 @@ template class PADDLE_API Col2VolFunctor<phi::GPUContext, double>;
 template class PADDLE_API Vol2ColFunctor<phi::GPUContext, phi::dtype::float16>;
 template class PADDLE_API Vol2ColFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 
-// 显式实例化 Col2Vol
 template class PADDLE_API Col2VolFunctor<phi::GPUContext, phi::dtype::float16>;
 template class PADDLE_API Col2VolFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 }  // namespace funcs

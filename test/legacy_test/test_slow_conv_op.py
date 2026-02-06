@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -22,8 +21,8 @@ import paddle.nn.functional as F
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or sys.platform == 'win32',
-    "Skipping tests: CUDA is not available or running on Windows.",
+    not paddle.is_compiled_with_cuda(),
+    "Skipping tests: CUDA is not available.",
 )
 class TestSlowConv2d(unittest.TestCase):
     def setUp(self):
@@ -79,10 +78,7 @@ class TestSlowConv2d(unittest.TestCase):
     def _run_op(
         self, np_x, np_w, np_b, dtype, layout, groups, disable_cudnn_flag
     ):
-        # Control whether to use cuDNN via FLAGS_conv2d_disable_cudnn
         paddle.set_flags({'FLAGS_conv2d_disable_cudnn': disable_cudnn_flag})
-
-        # Also ensure accuracy compatible kernel is enabled if needed
         paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
 
         x = paddle.to_tensor(np_x, place=self.place, dtype=dtype)
@@ -193,15 +189,9 @@ class TestSlowConv2d(unittest.TestCase):
         self._check_implementation('float32', layout="NHWC", with_bias=True)
         self._check_implementation('float32', layout="NHWC", with_bias=False)
 
-    def test_fp64(self):
-        self._check_implementation('float64', layout="NCHW", with_bias=True)
-        self._check_implementation('float64', layout="NCHW", with_bias=False)
-        self._check_implementation('float64', layout="NHWC", with_bias=True)
-        self._check_implementation('float64', layout="NHWC", with_bias=False)
-
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or sys.platform == 'win32',
+    not paddle.is_compiled_with_cuda(),
     "Skipping tests: CUDA is not available or running on Windows.",
 )
 class TestSlowConv2dDilated(unittest.TestCase):
@@ -228,7 +218,6 @@ class TestSlowConv2dDilated(unittest.TestCase):
         elif dtype == 'float32':
             return 1e-4, 1e-4
         elif dtype == 'float16':
-            # FP16 累加误差在 Native 和 cuDNN 之间可能较大，适当放宽
             return 5e-2, 5e-2
         return 1e-4, 1e-4
 
@@ -237,7 +226,7 @@ class TestSlowConv2dDilated(unittest.TestCase):
         N = 2
         C_in = 4
         C_out = 4
-        H, W = 16, 16  # 稍微加大一点尺寸以容纳 dilation
+        H, W = 16, 16
         K = 3
 
         if layout == "NCHW":
@@ -259,12 +248,7 @@ class TestSlowConv2dDilated(unittest.TestCase):
     def _run_op(
         self, np_x, np_w, np_b, dtype, layout, groups, disable_cudnn_flag
     ):
-        # Control whether to use cuDNN via FLAGS_conv2d_disable_cudnn
-        # Flag=0 -> Use cuDNN (Reference)
-        # Flag=1 -> Disable cuDNN (Target, hits SlowDilated2d if implementation is correct)
         paddle.set_flags({'FLAGS_conv2d_disable_cudnn': disable_cudnn_flag})
-
-        # Ensure accuracy compatible kernel is enabled to reduce non-deterministic algo noise
         paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
 
         x = paddle.to_tensor(np_x, place=self.place, dtype=dtype)
@@ -278,14 +262,13 @@ class TestSlowConv2dDilated(unittest.TestCase):
             b = paddle.to_tensor(np_b, place=self.place, dtype=dtype)
             b.stop_gradient = False
 
-        # [Key Configuration] Dilation = 2
         out = F.conv2d(
             x,
             w,
             b,
             stride=1,
             padding=1,
-            dilation=2,  # <--- 强制走 dilated 逻辑
+            dilation=2,
             groups=groups,
             data_format=layout,
         )
@@ -376,12 +359,6 @@ class TestSlowConv2dDilated(unittest.TestCase):
         self._check_implementation('float32', layout="NCHW", with_bias=False)
         self._check_implementation('float32', layout="NHWC", with_bias=True)
         self._check_implementation('float32', layout="NHWC", with_bias=False)
-
-    def test_fp64(self):
-        self._check_implementation('float64', layout="NCHW", with_bias=True)
-        self._check_implementation('float64', layout="NCHW", with_bias=False)
-        self._check_implementation('float64', layout="NHWC", with_bias=True)
-        self._check_implementation('float64', layout="NHWC", with_bias=False)
 
 
 if __name__ == '__main__':

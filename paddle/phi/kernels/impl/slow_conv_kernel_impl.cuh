@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,42 +43,6 @@ COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
-// 辅助打印 vector
-inline void print_vec_paddle(const std::string& name,
-                             const std::vector<int64_t>& vec) {
-  std::cout << "[DEBUG Paddle] " << name << ": [";
-  for (auto v : vec) std::cout << v << ", ";
-  std::cout << "]" << std::endl;
-}
-
-#define DUMP_DIR "/work/software/reps/Paddle/learn/test_case/conv_bin/"
-
-template <typename T, typename Context>
-inline void dump_paddle_tensor_for_md5(const Context& dev_ctx,
-                                       const phi::DenseTensor& t,
-                                       const std::string& filename) {
-  phi::DenseTensor t_cpu;
-  phi::Copy(dev_ctx, t, phi::CPUPlace(), true, &t_cpu);
-
-  // 拼接绝对路径
-  std::string full_path = std::string(DUMP_DIR) + filename;
-
-  std::ofstream outfile(full_path, std::ios::out | std::ios::binary);
-  if (!outfile) {
-    std::cerr << "[Error] Cannot open " << full_path
-              << " (Check if directory exists!)" << std::endl;
-    return;
-  }
-
-  size_t total_bytes = t_cpu.numel() * sizeof(T);
-  outfile.write(reinterpret_cast<const char*>(t_cpu.data<T>()), total_bytes);
-  outfile.close();
-
-  std::cout << "[DEBUG] Dumped " << full_path << " (" << total_bytes
-            << " bytes)" << std::endl;
-}
-
 template <typename T>
 static inline T div_rtn(T x, T y) {
   int q = x / y;
@@ -324,7 +288,6 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
   if (grad_weight) set_zero(dev_ctx, grad_weight, static_cast<T>(0));
   if (grad_bias) set_zero(dev_ctx, grad_bias, static_cast<T>(0));
   if (output && !bias) set_zero(dev_ctx, output, static_cast<T>(0));
-  // if (grad_input) set_zero(dev_ctx, grad_input, static_cast<T>(0));
 
   // Bias CPU Mirror
   DenseTensor bias_cpu;
@@ -371,26 +334,6 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
                                  paddings,
                                  dilations,
                                  columns_ptr);
-      // ===================== [DEBUG OUTPUT START] =====================
-      if (elt == 0) {
-        std::cout << "\n>>> [Paddle Internal] Dumping Batch 0 Intermediate..."
-                  << std::endl;
-
-        dump_paddle_tensor_for_md5<T, Context>(
-            dev_ctx, input_n, "paddle_internal_input_n.bin");
-
-        dump_paddle_tensor_for_md5<T, Context>(
-            dev_ctx, columns, "paddle_internal_columns.bin");
-
-        // int64_t m = columns.size(1);
-        // int64_t n = nOutputPlane;
-        // int64_t k = columns.size(0);
-        // std::cout << "GEMM Args: "
-        //           << "M=" << m << ", N=" << n << ", K=" << k << " (lda=" << m
-        //           << ", ldb=" << k << ", ldc=" << m << ")" << std::endl;
-      }
-      // ===================== [DEBUG OUTPUT END] =======================
-
       blas.GEMM(false,                              // TransA
                 false,                              // TransB
                 static_cast<int>(output_channels),  // M
@@ -405,16 +348,6 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
                 output_ptr_raw,                     // C
                 static_cast<int>(col_dim1)          // ldc
       );
-
-      // ===================== [DEBUG OUTPUT START] =====================
-      if (elt == 0) {
-        std::cout << ">>> [Paddle Internal] Dumping Batch 0 GEMM Result..."
-                  << std::endl;
-        dump_paddle_tensor_for_md5<T, Context>(
-            dev_ctx, output_n, "paddle_internal_gemm_result.bin");
-      }
-      // ===================== [DEBUG OUTPUT END] =======================
-
     } else {
       grad_output_n = Select<T>(*grad_output, elt);
     }
@@ -497,18 +430,17 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context, int64_t dim>
-void SlowConvBackwardNoGroup(
-    const Context& dev_ctx,
-    const DenseTensor& grad_output,
-    const DenseTensor& input,
-    const DenseTensor& weight,
-    const std::vector<int64_t>& kernel_size,
-    const std::vector<int64_t>& strides,
-    const std::vector<int64_t>& paddings,
-    const std::vector<int64_t>& dilations,
-    DenseTensor* grad_input,
-    DenseTensor* grad_weight,
-    DenseTensor* grad_bias) {  // [Update] 增加 grad_bias 参数
+void SlowConvBackwardNoGroup(const Context& dev_ctx,
+                             const DenseTensor& grad_output,
+                             const DenseTensor& input,
+                             const DenseTensor& weight,
+                             const std::vector<int64_t>& kernel_size,
+                             const std::vector<int64_t>& strides,
+                             const std::vector<int64_t>& paddings,
+                             const std::vector<int64_t>& dilations,
+                             DenseTensor* grad_input,
+                             DenseTensor* grad_weight,
+                             DenseTensor* grad_bias) {
   int64_t rank = input.dims().size();
   bool is_batch = (rank == (dim + 2));
 
@@ -532,29 +464,12 @@ void SlowConvBackwardNoGroup(
   make_batch_view(input, input_);
 
   const DenseTensor& weight_ = weight;
-  // ===================== [DEBUG: Paddle Inputs] =====================
-  std::cout << "\n>>> [Paddle Backward] Dumping Inputs..." << std::endl;
-  dump_paddle_tensor_for_md5<T, Context>(
-      dev_ctx, grad_output_, "paddle_bk_grad_output.bin");
-  dump_paddle_tensor_for_md5<T, Context>(
-      dev_ctx, input_, "paddle_bk_input.bin");
-  dump_paddle_tensor_for_md5<T, Context>(
-      dev_ctx, weight_, "paddle_bk_weight.bin");
-  // ==================================================================
 
   DenseTensor grad_input_view;
   DenseTensor* grad_input_ptr = nullptr;
 
   if (grad_input) {
     dev_ctx.template Alloc<T>(grad_input);
-    // ===================== [DEBUG: Paddle Init State] =====================
-    // [关键验证点]：查看 Paddle Alloc 之后的显存内容
-    std::cout << ">>> [Paddle Backward] Dumping GradInput Initial State "
-                 "(Post-Alloc)..."
-              << std::endl;
-    dump_paddle_tensor_for_md5<T, Context>(
-        dev_ctx, *grad_input, "paddle_bk_grad_input_init.bin");
-    // ======================================================================
 
     if (!is_batch) {
       grad_input_view.ShareDataWith(*grad_input);
@@ -574,7 +489,6 @@ void SlowConvBackwardNoGroup(
     grad_weight_ptr = grad_weight;
   }
 
-  // [Update] 处理 Bias Grad
   DenseTensor* grad_bias_ptr = nullptr;
   if (grad_bias) {
     dev_ctx.template Alloc<T>(grad_bias);
@@ -595,29 +509,13 @@ void SlowConvBackwardNoGroup(
       strides,
       paddings,
       dilations);
-  // ===================== [DEBUG: Paddle Result] =====================
-  if (grad_input) {
-    std::cout << ">>> [Paddle Backward] Dumping GradInput Final Result..."
-              << std::endl;
-    dump_paddle_tensor_for_md5<T, Context>(
-        dev_ctx, *grad_input, "paddle_bk_grad_input_final.bin");
-  }
-  if (grad_weight) {
-    dump_paddle_tensor_for_md5<T, Context>(
-        dev_ctx, *grad_weight, "paddle_bk_grad_weight_final.bin");
-  }
-  if (grad_bias) {
-    dump_paddle_tensor_for_md5<T, Context>(
-        dev_ctx, *grad_bias, "paddle_bk_grad_bias_final.bin");
-  }
-  // ==================================================================
 }
 
 template <typename T, typename Context, int64_t dim>
 void SlowConvNoGroup(const Context& dev_ctx,
                      const DenseTensor& input,
                      const DenseTensor& weight,
-                     const DenseTensor* bias,  // [Update] 增加 bias 指针参数
+                     const DenseTensor* bias,
                      const std::vector<int64_t>& kernel_size,
                      const std::vector<int64_t>& strides,
                      const std::vector<int64_t>& paddings,
@@ -655,56 +553,33 @@ void SlowConvNoGroup(const Context& dev_ctx,
     output_.ShareDataWith(*output);
   }
 
-  // ===================== [DEBUG START] =====================
-  std::cout << "\n========== PADDLE DEBUG INFO ==========" << std::endl;
-  print_vec_paddle("Kernel Size", kernel_size);
-  print_vec_paddle("Stride Size", strides);
-  print_vec_paddle("Pad Size   ", paddings);
-  print_vec_paddle("Dilation   ", dilations);
-
-  std::cout << ">>> Dumping Paddle Inputs..." << std::endl;
-  dump_paddle_tensor_for_md5<T, Context>(dev_ctx, input_, "paddle_input.bin");
-  dump_paddle_tensor_for_md5<T, Context>(dev_ctx, weight_, "paddle_weight.bin");
-  if (bias) {
-    dump_paddle_tensor_for_md5<T, Context>(dev_ctx, *bias, "paddle_bias.bin");
-  }
-
-  std::cout << "=======================================\n" << std::endl;
-
-  SlowConvDilatedAllCUDAImpl<T, Context, dim>(
-      dev_ctx,
-      &output_,  // [Output]
-      &input_,   // [Input]
-      &weight_,  // [Weight]
-      bias,      // [Bias] (Update: 传入 bias 指针)
-      nullptr,   // [GradOutput]
-      nullptr,   // [GradInput]
-      nullptr,   // [GradWeight]
-      nullptr,   // [GradBias]
-      kernel_size,
-      strides,
-      paddings,
-      dilations);
-
-  // ===================== [DEBUG OUTPUT START] =====================
-  std::cout << ">>> Dumping Paddle Output..." << std::endl;
-  dump_paddle_tensor_for_md5<T, Context>(dev_ctx, output_, "paddle_output.bin");
-  // ===================== [DEBUG OUTPUT END] =======================
+  SlowConvDilatedAllCUDAImpl<T, Context, dim>(dev_ctx,
+                                              &output_,  // [Output]
+                                              &input_,   // [Input]
+                                              &weight_,  // [Weight]
+                                              bias,      // [Bias]
+                                              nullptr,   // [GradOutput]
+                                              nullptr,   // [GradInput]
+                                              nullptr,   // [GradWeight]
+                                              nullptr,   // [GradBias]
+                                              kernel_size,
+                                              strides,
+                                              paddings,
+                                              dilations);
 }
 
 template <typename T, typename Context, int64_t dim>
-void SlowConvForward(
-    const Context& dev_ctx,
-    const DenseTensor& input,
-    const DenseTensor& filter_t,
-    const paddle::optional<DenseTensor>& bias,  // [Update] 接收 Optional Bias
-    const std::vector<int>& strides,
-    const std::vector<int>& paddings_t,
-    const std::string& padding_algorithm,
-    int groups,
-    const std::vector<int>& dilations_t,
-    const std::string& data_format,
-    DenseTensor* output) {
+void SlowConvForward(const Context& dev_ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& filter_t,
+                     const paddle::optional<DenseTensor>& bias,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings_t,
+                     const std::string& padding_algorithm,
+                     int groups,
+                     const std::vector<int>& dilations_t,
+                     const std::string& data_format,
+                     DenseTensor* output) {
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;
@@ -769,7 +644,7 @@ void SlowConvForward(
     SlowConvNoGroup<T, Context, dim>(dev_ctx,
                                      input_contiguous,
                                      weight_contiguous,
-                                     bias_ptr,  // [Update] 传入 bias 指针
+                                     bias_ptr,
                                      to_int64_vec(ksize),
                                      to_int64_vec(strides),
                                      to_int64_vec(paddings),
@@ -812,8 +687,7 @@ void SlowConvForward(
                                    {},
                                    &weight_g);
 
-      // [Update] Slice Bias (OutChannel dim 0)
-      // Bias 是 1D Tensor，也需要按 Group 切分
+      // Slice Bias (OutChannel dim 0)
       DenseTensor bias_g;
       const DenseTensor* bias_g_ptr = nullptr;
       if (bias_ptr) {
@@ -829,22 +703,20 @@ void SlowConvForward(
       }
 
       DenseTensor output_g;
-      // 需要为 output_g 分配内存，SlowConvNoGroup 会直接写
       auto out_shape = transformed_output.dims();
       out_shape[channel_dim] = out_g_sz;
       output_g.Resize(out_shape);
       dev_ctx.template Alloc<T>(&output_g);
 
-      SlowConvNoGroup<T, Context, dim>(
-          dev_ctx,
-          input_g,
-          weight_g,
-          bias_g_ptr,  // [Update] 传入切片后的 bias
-          to_int64_vec(ksize),
-          to_int64_vec(strides),
-          to_int64_vec(paddings),
-          to_int64_vec(dilations),
-          &output_g);
+      SlowConvNoGroup<T, Context, dim>(dev_ctx,
+                                       input_g,
+                                       weight_g,
+                                       bias_g_ptr,
+                                       to_int64_vec(ksize),
+                                       to_int64_vec(strides),
+                                       to_int64_vec(paddings),
+                                       to_int64_vec(dilations),
+                                       &output_g);
 
       outputs[g] = output_g;
     }
@@ -875,7 +747,7 @@ void SlowConvBackward(const Context& dev_ctx,
                       const std::string& data_format,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad,
-                      DenseTensor* bias_grad) {  // [Update] 增加 bias_grad
+                      DenseTensor* bias_grad) {
   if (!input_grad && !filter_grad && !bias_grad) return;
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -887,7 +759,6 @@ void SlowConvBackward(const Context& dev_ctx,
     if (filter_grad) {
       Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
     }
-    // [Update] 处理 0-size 下的 bias_grad 初始化
     if (bias_grad) {
       dev_ctx.template Alloc<T>(bias_grad);
       Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
@@ -897,7 +768,6 @@ void SlowConvBackward(const Context& dev_ctx,
 
   if (input_grad) dev_ctx.template Alloc<T>(input_grad);
   if (filter_grad) dev_ctx.template Alloc<T>(filter_grad);
-  // [Update] 分配 bias_grad 显存
   if (bias_grad) dev_ctx.template Alloc<T>(bias_grad);
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -933,7 +803,7 @@ void SlowConvBackward(const Context& dev_ctx,
   DenseTensor tmp_input_grad;
   DenseTensor* t_input_grad_ptr = nullptr;
   DenseTensor* t_filter_grad_ptr = filter_grad;
-  DenseTensor* t_bias_grad_ptr = bias_grad;  // [Update] Bias 指针
+  DenseTensor* t_bias_grad_ptr = bias_grad;
 
   if (input_grad) {
     if (channel_last) {
@@ -971,7 +841,7 @@ void SlowConvBackward(const Context& dev_ctx,
                                              to_int64_vec(dilations),
                                              t_input_grad_ptr,
                                              t_filter_grad_ptr,
-                                             t_bias_grad_ptr);  // [Update]
+                                             t_bias_grad_ptr);
   } else {
     int64_t in_rank = input_cont.dims().size();
     bool has_batch = (in_rank == dim + 2);
@@ -985,8 +855,7 @@ void SlowConvBackward(const Context& dev_ctx,
 
     std::vector<DenseTensor> grad_inputs_g(groups);
     std::vector<DenseTensor> grad_weights_g(groups);
-    std::vector<DenseTensor> grad_biases_g(
-        groups);  // [Update] 存储每组的 Bias 梯度
+    std::vector<DenseTensor> grad_biases_g(groups);
 
     for (int g = 0; g < groups; ++g) {
       // Slice GradOutput (Channel)
@@ -1024,7 +893,7 @@ void SlowConvBackward(const Context& dev_ctx,
 
       DenseTensor grad_input_g_tensor;
       DenseTensor grad_weight_g_tensor;
-      DenseTensor grad_bias_g_tensor;  // [Update] 组内的 Bias 梯度
+      DenseTensor grad_bias_g_tensor;
 
       if (t_input_grad_ptr) {
         auto g_shape = t_input_grad_ptr->dims();
@@ -1036,7 +905,6 @@ void SlowConvBackward(const Context& dev_ctx,
         w_shape[0] = out_g_sz;
         grad_weight_g_tensor.Resize(w_shape);
       }
-      // [Update] Resize 组内 Bias 梯度
       if (t_bias_grad_ptr) {
         auto b_shape = t_bias_grad_ptr->dims();
         b_shape[0] = out_g_sz;
@@ -1054,11 +922,11 @@ void SlowConvBackward(const Context& dev_ctx,
           to_int64_vec(dilations),
           (t_input_grad_ptr ? &grad_input_g_tensor : nullptr),
           (t_filter_grad_ptr ? &grad_weight_g_tensor : nullptr),
-          (t_bias_grad_ptr ? &grad_bias_g_tensor : nullptr));  // [Update]
+          (t_bias_grad_ptr ? &grad_bias_g_tensor : nullptr));
 
       if (t_input_grad_ptr) grad_inputs_g[g] = grad_input_g_tensor;
       if (t_filter_grad_ptr) grad_weights_g[g] = grad_weight_g_tensor;
-      if (t_bias_grad_ptr) grad_biases_g[g] = grad_bias_g_tensor;  // [Update]
+      if (t_bias_grad_ptr) grad_biases_g[g] = grad_bias_g_tensor;
     }
 
     // Concat Input Grad
@@ -1076,7 +944,7 @@ void SlowConvBackward(const Context& dev_ctx,
       phi::ConcatKernel<T, Context>(dev_ctx, ptrs, 0, t_filter_grad_ptr);
     }
 
-    // [Update] Concat Bias Grad
+    // Concat Bias Grad
     if (t_bias_grad_ptr) {
       std::vector<const DenseTensor*> ptrs;
       for (auto& t : grad_biases_g) ptrs.push_back(&t);
