@@ -143,6 +143,10 @@ class TestAddcmulOp_0D(TestAddcmulOp):
         self.attrs = {'value': 0.5}
 
 
+@unittest.skipIf(
+    is_custom_device(),
+    "addcmul is not supported on custom devices",
+)
 class TestAddcmulFP16Op(TestAddcmulOp):
     """Test float16 dtype"""
 
@@ -159,7 +163,7 @@ class TestAddcmulFP16Op(TestAddcmulOp):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda() or is_custom_device())
+    not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -275,6 +279,10 @@ class TestAddcmulBroadcast3D(OpTest):
         )
 
 
+@unittest.skipIf(
+    is_custom_device(),
+    "addcmul is not supported on custom devices",
+)
 class TestAddcmulOpError(unittest.TestCase):
     """Test error cases"""
 
@@ -299,6 +307,10 @@ class TestAddcmulOpError(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    is_custom_device(),
+    "addcmul is not supported on custom devices",
+)
 class TestAddcmulAPI(unittest.TestCase):
     """Test Python API compatibility"""
 
@@ -370,6 +382,10 @@ class TestAddcmulAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    is_custom_device(),
+    "addcmul is not supported on custom devices",
+)
 class TestAddcmulGradEmptyTensor(unittest.TestCase):
     """Test gradient with empty tensors - covers numel==0 branch"""
 
@@ -394,6 +410,10 @@ class TestAddcmulGradEmptyTensor(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    is_custom_device(),
+    "addcmul is not supported on custom devices",
+)
 class TestAddcmulSelectiveGrad(unittest.TestCase):
     """Test gradient with selective stop_gradient - covers null grad pointer branches"""
 
@@ -452,6 +472,10 @@ class TestAddcmulSelectiveGrad(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    is_custom_device(),
+    "addcmul is not supported on custom devices",
+)
 class TestAddcmulGrad0DScalar(unittest.TestCase):
     """Test 0D scalar gradient - covers AddcmulGradZero"""
 
