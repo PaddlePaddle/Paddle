@@ -116,24 +116,46 @@ void LinearV2Kernel(const Context& dev_ctx,
           transpose_weight,
           phi::funcs::MatmulFusedType::kMatmulBias);
     } else {
-      // The AddmmKernel path cannot handle transpose_weight=True when N==1,
-      // e.g. x:[1, 10], w:[1, 10] (logical weight^T:[10, 1]).
-      // Reuse MatMulFunction with transpose_weight to preserve torch-compatible
-      // linear semantics for 1D/small-output cases.
-      std::vector<std::int64_t> input_dims_vec =
-          common::vectorize(input_processed.dims());
-      std::vector<std::int64_t> weight_dims_vec =
-          common::vectorize(weight_processed.dims());
+      if (!transpose_weight) {
+        DenseTensor bias_processed = bias;
+        if (bias.numel() != (M * N)) {
+          bias_processed.Resize(make_ddim({1, bias.numel()}));
+          VLOG(10) << "bias.dim(): " << bias.dims();
+          VLOG(10) << "M*N: " << M * N;
+          VLOG(10) << "bias tiling and addmm calculating";
+          // only broadcast to 1D bias whatsoever
+          phi::TileKernel<T, Context>(
+              dev_ctx, bias_processed, {M, 1}, &bias_processed);
+          VLOG(10) << "bias_processed.dims(): " << bias_processed.dims();
+        } else {
+          bias_processed = bias;
+        }
+        phi::AddmmKernel<T>(dev_ctx,
+                            bias_processed,
+                            input_processed,
+                            weight_processed,
+                            1.0f,
+                            1.0f,
+                            out);
+      } else {
+        // AddmmKernel does not have transpose flags. For transpose_weight=True
+        // (e.g. x:[1, 10], w:[1, 10] with logical w^T:[10, 1]), use MatMul
+        // to keep torch-compatible linear semantics.
+        std::vector<std::int64_t> input_dims_vec =
+            common::vectorize(input_processed.dims());
+        std::vector<std::int64_t> weight_dims_vec =
+            common::vectorize(weight_processed.dims());
 
-      MatMulFunction<Context, T>(dev_ctx,
-                                 input_processed,
-                                 weight_processed,
-                                 input_dims_vec,
-                                 weight_dims_vec,
-                                 out,
-                                 false,
-                                 transpose_weight);
-      AddKernel<T, Context>(dev_ctx, *out, bias, out);
+        MatMulFunction<Context, T>(dev_ctx,
+                                   input_processed,
+                                   weight_processed,
+                                   input_dims_vec,
+                                   weight_dims_vec,
+                                   out,
+                                   false,
+                                   transpose_weight);
+        AddKernel<T, Context>(dev_ctx, *out, bias, out);
+      }
     }
     out->Resize(out_dim_original);
   } else  // NOLINT
