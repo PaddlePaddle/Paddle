@@ -454,6 +454,16 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
+bool SlowConv2dDilatedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return Conv2dOpInferSymbolicShape(op, infer_context);
+}
+
+bool SlowConv3dDilatedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return Conv2dOpInferSymbolicShape(op, infer_context);
+}
+
 bool ConvTransposeFunction(pir::Operation *op,
                            pir::InferSymbolicShapeContext *infer_context,
                            std::vector<symbol::DimExpr> output_size) {

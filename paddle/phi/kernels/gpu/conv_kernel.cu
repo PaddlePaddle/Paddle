@@ -13,12 +13,65 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_kernel.h"
-
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/conv_kernel_impl.h"
+#include "paddle/phi/kernels/impl/slow_conv_kernel_impl.cuh"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
+
+template <typename T, typename Context>
+void SlowConvDilatedKernel(const Context& dev_ctx,
+                           const DenseTensor& input,
+                           const DenseTensor& filter,
+                           const paddle::optional<DenseTensor>& bias,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::string& padding_algorithm,
+                           const std::vector<int>& dilations,
+                           int groups,
+                           const std::string& data_format,
+                           DenseTensor* out) {
+  SlowConvForward<T, Context, 2>(dev_ctx,
+                                 input,
+                                 filter,
+                                 bias,
+                                 strides,
+                                 paddings,
+                                 padding_algorithm,
+                                 groups,
+                                 dilations,
+                                 data_format,
+                                 out);
+}
+
+template <typename T, typename Context>
+void SlowConv3DDilatedKernel(const Context& dev_ctx,
+                             const DenseTensor& input,
+                             const DenseTensor& filter,
+                             const paddle::optional<DenseTensor>& bias,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::string& padding_algorithm,
+                             int groups,
+                             const std::vector<int>& dilations,
+                             const std::string& data_format,
+                             DenseTensor* out) {
+  SlowConvForward<T, Context, 3>(dev_ctx,
+                                 input,
+                                 filter,
+                                 bias,
+                                 strides,
+                                 paddings,
+                                 padding_algorithm,
+                                 groups,
+                                 dilations,
+                                 data_format,
+                                 out);
+}
 
 template <typename T, typename Context>
 void ConvKernel(const Context& dev_ctx,
@@ -68,6 +121,38 @@ void Conv3DKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d, GPU, ALL_LAYOUT, phi::ConvKernel, float, double) {}
+PD_REGISTER_KERNEL(conv2d,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ConvKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(conv3d, GPU, ALL_LAYOUT, phi::Conv3DKernel, float, double) {}
+PD_REGISTER_KERNEL(conv3d,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Conv3DKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
+
+PD_REGISTER_KERNEL(slow_conv2d_dilated,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SlowConvDilatedKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
+
+PD_REGISTER_KERNEL(slow_conv3d_dilated,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SlowConv3DDilatedKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}

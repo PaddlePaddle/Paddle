@@ -25,6 +25,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'BoxClipInferMeta',
     'ConvInferMeta',
     'Conv3DInferMeta',
+    'SlowConvDilatedInferMeta',
+    'SlowConv3DDilatedInferMeta',
     'ConvTransposeInferMeta',
     'Conv2dTransposeInferMeta',
     'CrossEntropyInferMeta',

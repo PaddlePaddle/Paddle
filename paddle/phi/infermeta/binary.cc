@@ -742,6 +742,52 @@ void Conv3DInferMeta(const MetaTensor& input,
                 config);
 }
 
+void SlowConvDilatedInferMeta(const MetaTensor& input,
+                              const MetaTensor& filter,
+                              const MetaTensor& bias,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings_t,
+                              const std::string& padding_algorithm,
+                              const std::vector<int>& dilations_t,
+                              int groups,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings_t,
+                padding_algorithm,
+                dilations_t,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
+void SlowConv3DDilatedInferMeta(const MetaTensor& input,
+                                const MetaTensor& filter,
+                                const MetaTensor& bias,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format,
+                                MetaTensor* out,
+                                MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
 void ConvTransposeInferMeta(const MetaTensor& x,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,
