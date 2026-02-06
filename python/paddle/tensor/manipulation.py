@@ -30,6 +30,7 @@ from paddle._C_ops import (  # noqa: F401
     index_put_,
     roll,
     squeeze_,
+    unsqueeze_,
 )
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
@@ -4054,28 +4055,6 @@ def unsqueeze(
         )
 
         return out
-
-
-@inplace_apis_in_dygraph_only
-def unsqueeze_(
-    x: Tensor, axis: int | Sequence[int] | Tensor, name: str | None = None
-) -> Tensor:
-    """
-    Inplace version of ``unsqueeze`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_unsqueeze`.
-    """
-    input = x
-    axes = axis
-    if isinstance(axes, int):
-        axes = [axes]
-    elif isinstance(axes, Variable):
-        axes = axes.tolist()
-    elif isinstance(axes, (list, tuple)):
-        axes = [
-            item.item(0) if isinstance(item, Variable) else item
-            for item in axes
-        ]
-    return _C_ops.unsqueeze_(input, axes)
 
 
 def _take_along_axis_wrapper(

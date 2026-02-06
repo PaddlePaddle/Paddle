@@ -480,6 +480,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : squeeze
+  name : [paddle.squeeze, paddle.Tensor.squeeze]
+  args_alias :
+    use_default_mapping : True
+
 - op : squeeze_
   name : [paddle.squeeze_, paddle.Tensor.squeeze_]
   args_alias :
@@ -511,5 +516,15 @@
 
 - op : triu
   name : [paddle.triu, paddle.Tensor.triu]
+  args_alias :
+    use_default_mapping : True
+
+- op : unsqueeze_
+  name : [paddle.unsqueeze_, paddle.Tensor.unsqueeze_]
+  args_alias :
+    use_default_mapping : True
+
+- op : unsqueeze
+  name : [paddle.unsqueeze, paddle.Tensor.unsqueeze]
   args_alias :
     use_default_mapping : True

@@ -2121,6 +2121,45 @@ def squeeze_(
 """,
 )
 
+add_doc_and_signature(
+    "unsqueeze_",
+    r"""
+    Note:
+        This API is ONLY available in Dygraph mode.
+
+    Inplace version of ``unsqueeze``. It inserts dimensions of size 1 to the input tensor.
+
+    Args:
+        x (Tensor): The input Tensor. Alias: ``input``.
+        axis (int|list|tuple|Tensor): The dimensions to be inserted. Alias: ``dim``.
+        name (str|None, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor: The input Tensor after unsqueeze.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.rand([5, 10])
+            >>> x.unsqueeze_(axis=0)
+            >>> print(x.shape)
+            [1, 5, 10]
+
+            >>> x = paddle.rand([5, 10])
+            >>> x.unsqueeze_(dim=1)  # type: ignore
+            >>> print(x.shape)
+            [5, 1, 10]
+""",
+    """
+def unsqueeze_(
+    x: Tensor,
+    axis: int | Sequence[int] | Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
 # shenwei
 add_doc_and_signature(
     "grid_sample",
