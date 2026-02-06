@@ -427,7 +427,6 @@
   args_alias :
     axis : [dim]
     max_norm : [maxnorm]
-    use_default_mapping : True
   pre_process:
     func : RenormPreProcess(x, axis)
 
@@ -436,7 +435,6 @@
   args_alias :
     axis : [dim]
     max_norm : [maxnorm]
-    use_default_mapping : True
   pre_process:
     func : RenormPreProcess(x, axis)
 
