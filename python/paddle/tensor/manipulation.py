@@ -5443,6 +5443,9 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.)
 
+            >>> out = paddle.reshape(x, 6, 4, 2)
+            >>> print(out.shape)
+            paddle.Size([6, 4, 2])
     """
 
     def get_attr_shape(list_shape):
