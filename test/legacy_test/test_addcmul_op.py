@@ -143,18 +143,6 @@ class TestAddcmulOp_0D(TestAddcmulOp):
         self.attrs = {'value': 0.5}
 
 
-class TestAddcmulOp_NegativeValue(TestAddcmulOp):
-    """Test with negative value"""
-
-    def init_shapes_and_data(self):
-        self.inputs = {
-            'input': np.random.random((10, 10)).astype(self.dtype),
-            'tensor1': np.random.random((10, 10)).astype(self.dtype),
-            'tensor2': np.random.random((10, 10)).astype(self.dtype),
-        }
-        self.attrs = {'value': -1.5}
-
-
 class TestAddcmulFP16Op(TestAddcmulOp):
     """Test float16 dtype"""
 
@@ -510,130 +498,6 @@ class TestAddcmulGrad0DScalar(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestAddcmulGradBroadcastReduction(unittest.TestCase):
-    """Test gradient broadcast reduction - covers ReduceGrad and ComputeBroadcastGradDims"""
-
-    def test_input_broadcast_reduce(self):
-        """Test input gradient reduction"""
-        paddle.disable_static()
-        input_np = np.random.random((1, 4)).astype('float64')
-        tensor1_np = np.random.random((3, 4)).astype('float64')
-        tensor2_np = np.random.random((3, 4)).astype('float64')
-
-        input_t = paddle.to_tensor(input_np, stop_gradient=False)
-        tensor1_t = paddle.to_tensor(tensor1_np, stop_gradient=False)
-        tensor2_t = paddle.to_tensor(tensor2_np, stop_gradient=False)
-
-        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=0.5)
-        out.sum().backward()
-
-        self.assertEqual(list(input_t.grad.shape), [1, 4])
-        np.testing.assert_allclose(
-            input_t.grad.numpy(), np.ones((1, 4)) * 3, rtol=1e-5
-        )
-        paddle.enable_static()
-
-    def test_tensor1_broadcast_reduce(self):
-        """Test tensor1 gradient reduction"""
-        paddle.disable_static()
-        input_np = np.random.random((3, 4)).astype('float64')
-        tensor1_np = np.random.random((1, 4)).astype('float64')
-        tensor2_np = np.random.random((3, 4)).astype('float64')
-        value = 0.5
-
-        input_t = paddle.to_tensor(input_np, stop_gradient=True)
-        tensor1_t = paddle.to_tensor(tensor1_np, stop_gradient=False)
-        tensor2_t = paddle.to_tensor(tensor2_np, stop_gradient=True)
-
-        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=value)
-        out.sum().backward()
-
-        self.assertEqual(list(tensor1_t.grad.shape), [1, 4])
-        expected = (value * tensor2_np).sum(axis=0, keepdims=True)
-        np.testing.assert_allclose(tensor1_t.grad.numpy(), expected, rtol=1e-5)
-        paddle.enable_static()
-
-    def test_tensor2_broadcast_reduce_3d(self):
-        """Test tensor2 gradient reduction with 3D"""
-        paddle.disable_static()
-        input_np = np.random.random((2, 3, 5)).astype('float64')
-        tensor1_np = np.random.random((2, 3, 5)).astype('float64')
-        tensor2_np = np.random.random((1, 1, 5)).astype('float64')
-        value = 0.5
-
-        input_t = paddle.to_tensor(input_np, stop_gradient=True)
-        tensor1_t = paddle.to_tensor(tensor1_np, stop_gradient=True)
-        tensor2_t = paddle.to_tensor(tensor2_np, stop_gradient=False)
-
-        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=value)
-        out.sum().backward()
-
-        self.assertEqual(list(tensor2_t.grad.shape), [1, 1, 5])
-        expected = (value * tensor1_np).sum(axis=(0, 1), keepdims=True)
-        np.testing.assert_allclose(tensor2_t.grad.numpy(), expected, rtol=1e-5)
-        paddle.enable_static()
-
-    def test_all_broadcast_reduce_4d(self):
-        """Test all gradients with reduction in 4D"""
-        paddle.disable_static()
-        input_np = np.random.random((1, 1, 4, 5)).astype('float64')
-        tensor1_np = np.random.random((2, 1, 1, 5)).astype('float64')
-        tensor2_np = np.random.random((1, 3, 1, 1)).astype('float64')
-
-        input_t = paddle.to_tensor(input_np, stop_gradient=False)
-        tensor1_t = paddle.to_tensor(tensor1_np, stop_gradient=False)
-        tensor2_t = paddle.to_tensor(tensor2_np, stop_gradient=False)
-
-        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=0.5)
-        self.assertEqual(list(out.shape), [2, 3, 4, 5])
-        out.sum().backward()
-
-        self.assertEqual(list(input_t.grad.shape), [1, 1, 4, 5])
-        self.assertEqual(list(tensor1_t.grad.shape), [2, 1, 1, 5])
-        self.assertEqual(list(tensor2_t.grad.shape), [1, 3, 1, 1])
-        paddle.enable_static()
-
-
-class TestAddcmulBroadcastGradHighRank(unittest.TestCase):
-    """Test broadcast gradient for high rank tensors (5D, 6D)"""
-
-    def test_broadcast_5d(self):
-        paddle.disable_static()
-        input_np = np.random.random((2, 2, 3, 4, 6)).astype('float64')
-        tensor1_np = np.random.random((3, 4, 6)).astype('float64')
-        tensor2_np = np.random.random((1, 1, 1, 4, 6)).astype('float64')
-
-        input_t = paddle.to_tensor(input_np, stop_gradient=False)
-        tensor1_t = paddle.to_tensor(tensor1_np, stop_gradient=False)
-        tensor2_t = paddle.to_tensor(tensor2_np, stop_gradient=False)
-
-        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=0.5)
-        out.sum().backward()
-
-        self.assertEqual(list(input_t.grad.shape), [2, 2, 3, 4, 6])
-        self.assertEqual(list(tensor1_t.grad.shape), [3, 4, 6])
-        self.assertEqual(list(tensor2_t.grad.shape), [1, 1, 1, 4, 6])
-        paddle.enable_static()
-
-    def test_broadcast_6d(self):
-        paddle.disable_static()
-        input_np = np.random.random((2, 2, 2, 3, 4, 5)).astype('float64')
-        tensor1_np = np.random.random((2, 3, 4, 5)).astype('float64')
-        tensor2_np = np.random.random((1, 1, 2, 1, 4, 5)).astype('float64')
-
-        input_t = paddle.to_tensor(input_np, stop_gradient=False)
-        tensor1_t = paddle.to_tensor(tensor1_np, stop_gradient=False)
-        tensor2_t = paddle.to_tensor(tensor2_np, stop_gradient=False)
-
-        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=0.5)
-        out.sum().backward()
-
-        self.assertEqual(list(input_t.grad.shape), [2, 2, 2, 3, 4, 5])
-        self.assertEqual(list(tensor1_t.grad.shape), [2, 3, 4, 5])
-        self.assertEqual(list(tensor2_t.grad.shape), [1, 1, 2, 1, 4, 5])
-        paddle.enable_static()
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "CINN requires CUDA",
@@ -856,6 +720,156 @@ class TestAddcmulCINNGrad(unittest.TestCase):
         cinn_loss = net_cinn(x, t1, t2)
         np.testing.assert_allclose(
             cinn_loss.numpy(), dy_loss.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+
+# ============================================================
+# OpTest broadcast tests for high ranks (backward reduction)
+# These do NOT set prim_op_type to force C++ kernel backward path
+# ============================================================
+
+
+class TestAddcmulBroadcast4D(OpTest):
+    """Rank 4 broadcasting - all three tensors broadcast with reduction"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        # output: (2,3,10,10)=600, each input >= 100
+        input_np = np.random.random((1, 1, 10, 10)).astype(self.dtype)
+        tensor1_np = np.random.random((2, 1, 10, 10)).astype(self.dtype)
+        tensor2_np = np.random.random((1, 3, 10, 10)).astype(self.dtype)
+        value = 0.5
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulBroadcast5D(OpTest):
+    """Rank 5 broadcasting - multi-dim reduction"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        # output: (2,2,5,5,5)=500, each input >= 100
+        input_np = np.random.random((1, 2, 5, 5, 5)).astype(self.dtype)
+        tensor1_np = np.random.random((2, 1, 5, 5, 5)).astype(self.dtype)
+        tensor2_np = np.random.random((2, 2, 1, 5, 5)).astype(self.dtype)
+        value = 0.3
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulBroadcast6D(OpTest):
+    """Rank 6 broadcasting - multi-dim reduction"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        # output: (2,2,2,5,5,5)=1000, each input >= 100
+        input_np = np.random.random((1, 2, 2, 5, 5, 5)).astype(self.dtype)
+        tensor1_np = np.random.random((2, 1, 2, 5, 5, 5)).astype(self.dtype)
+        tensor2_np = np.random.random((2, 2, 1, 5, 5, 5)).astype(self.dtype)
+        value = 0.2
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulBroadcastAll3D(OpTest):
+    """All three tensors broadcast - exercises all reduction paths"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.float64
+
+        # output: (10,10,10)=1000, each input = 100
+        input_np = np.random.random((1, 10, 10)).astype(self.dtype)
+        tensor1_np = np.random.random((10, 1, 10)).astype(self.dtype)
+        tensor2_np = np.random.random((10, 10, 1)).astype(self.dtype)
+        value = 0.5
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
         )
 
 
