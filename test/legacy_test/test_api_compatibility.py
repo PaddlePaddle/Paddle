@@ -1813,9 +1813,7 @@ class TestSqueezeInplaceCompatibility(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=self.shape, dtype=self.dtype
-            )
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             out1 = paddle.squeeze_(x, 1)
             out2 = paddle.squeeze_(input=x, dim=1)
             out3 = x.squeeze_(axis=1)
@@ -1886,9 +1884,7 @@ class TestUnsqueezeInplaceCompatibility(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=self.shape, dtype=self.dtype
-            )
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             out1 = paddle.unsqueeze_(x, 1)
             out2 = paddle.unsqueeze_(input=x, dim=1)
             out3 = x.unsqueeze_(axis=1)
