@@ -195,7 +195,7 @@ class BeamSearchDecoder(Decoder):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
