@@ -7,23 +7,11 @@ if(WITH_GPU OR WITH_ROCM)
     nv_test(
       test_fused_residual_dropout_bias
       SRCS fused_residual_dropout_bias_test.cu
-      DEPS tensor
-           op_registry
-           dropout_op
-           generated_op
-           device_context
-           phi
-           common)
+      DEPS tensor op_registry dropout_op generated_op phi common)
     nv_test(
       test_fused_dropout_act_bias
       SRCS fused_dropout_act_bias_test.cu
-      DEPS tensor
-           op_registry
-           dropout_op
-           generated_op
-           device_context
-           phi
-           common)
+      DEPS tensor op_registry dropout_op generated_op phi common)
     nv_test(
       test_fused_layernorm_residual_dropout_bias
       SRCS fused_layernorm_residual_dropout_bias_test.cu
@@ -31,14 +19,13 @@ if(WITH_GPU OR WITH_ROCM)
            op_registry
            dropout_op
            generated_op
-           device_context
            phi
            common
            ${CINN_DEPS})
     nv_test(
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc
-      DEPS generated_op tensor op_registry device_context phi common)
+      DEPS generated_op tensor op_registry phi common)
     paddle_test(test_cudnn_bn_add_relu SRCS cudnn_bn_add_relu_test.cc)
   endif()
 endif()

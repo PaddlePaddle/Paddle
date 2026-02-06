@@ -12,7 +12,7 @@ if(WITH_GPU)
   nv_test(
     test_allocator
     SRCS test_allocator.cu
-    DEPS device_context phi common)
+    DEPS phi common)
   nv_test(
     test_cuda_stream
     SRCS test_cuda_stream.cu
@@ -29,7 +29,7 @@ elseif(WITH_ROCM)
   hip_test(
     test_allocator
     SRCS test_allocator.cu
-    DEPS device_context phi common)
+    DEPS phi common)
   hip_test(
     test_cuda_stream
     SRCS test_cuda_stream.cu

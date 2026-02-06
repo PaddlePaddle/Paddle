@@ -110,7 +110,7 @@ if(WITH_GPU)
   nv_test(
     malloc_test
     SRCS malloc_test.cu
-    DEPS device_context)
+    DEPS phi)
   nv_test(
     stream_safe_cuda_alloc_test
     SRCS stream_safe_cuda_alloc_test.cu
@@ -140,7 +140,7 @@ if(WITH_ROCM)
   hip_test(
     malloc_test
     SRCS malloc_test.cu
-    DEPS device_context)
+    DEPS phi)
   hip_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
