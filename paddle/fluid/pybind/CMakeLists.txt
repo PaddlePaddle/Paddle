@@ -23,7 +23,6 @@ set(PYBIND_DEPS
     imperative_profiler
     imperative_flag
     dlpack_tensor
-    device_context
     gloo_wrapper
     infer_io_utils
     op_version_registry

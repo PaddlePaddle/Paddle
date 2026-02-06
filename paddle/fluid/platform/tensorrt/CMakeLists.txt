@@ -1,7 +1,7 @@
 nv_library(
   trt_engine
   SRCS engine.cc
-  DEPS device_context)
+  DEPS phi)
 
 nv_library(
   trt_plugin

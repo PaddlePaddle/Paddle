@@ -12,7 +12,6 @@ if(WITH_XPU_BKCL)
     SRCS prepared_operator.cc
     DEPS proto_desc
          operator
-         device_context
          lod_tensor
          selected_rows_utils
          var_type_traits
@@ -28,7 +27,6 @@ elseif(WITH_NCCL OR WITH_RCCL)
     SRCS prepared_operator.cc
     DEPS proto_desc
          operator
-         device_context
          lod_tensor
          selected_rows_utils
          var_type_traits
@@ -44,7 +42,6 @@ else()
     SRCS prepared_operator.cc
     DEPS proto_desc
          operator
-         device_context
          lod_tensor
          selected_rows_utils
          var_type_traits

@@ -16,5 +16,4 @@
 cc_library(
   openvino_engine
   SRCS engine.cc
-  DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context openvino tbb
-       openvino_paddle)
+  DEPS ${GLOB_OPERATOR_DEPS} framework_proto phi openvino tbb openvino_paddle)

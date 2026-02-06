@@ -161,7 +161,7 @@ cc_test(
 cc_test(
   prune_test
   SRCS prune_test.cc
-  DEPS op_info prune device_context)
+  DEPS op_info prune phi)
 cc_test(
   var_type_inference_test
   SRCS var_type_inference_test.cc
