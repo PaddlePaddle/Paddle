@@ -972,6 +972,22 @@
   outputs :
     out : Out
 
+- op : div_scale
+  backward : div_scale_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    scale :
+      data_type : float
+      tensor_name : ScaleTensor
+    bias :
+      data_type : float
+      support_tensor : false
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
+
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div_grad)
   inputs :

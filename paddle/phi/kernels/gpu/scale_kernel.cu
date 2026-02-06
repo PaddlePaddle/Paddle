@@ -62,6 +62,29 @@ void ScaleKernel(const Context& dev_ctx,
       &outputs,
       ScaleFunctor<T, MT>(scale.to<MT>(), bias.to<MT>(), bias_after_scale));
 }
+
+template <typename T, typename Context>
+void DivScaleKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const Scalar& scale,
+                    DenseTensor* out) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  inputs.emplace_back(&x);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  if (x.numel() <= 0 || (!x.IsInitialized())) {
+    return;
+  }
+  funcs::ElementwiseKernel<T>(
+      dev_ctx,
+      inputs,
+      &outputs,
+      ScaleFunctor<T, MT>(
+          static_cast<MT>(1.0) / scale.to<MT>(), static_cast<MT>(0), true));
+}
+
 #ifdef _WIN32
 INSTANCE_SCALAR_KERNEL(int, GPUContext)
 INSTANCE_SCALAR_KERNEL(int64_t, GPUContext)
@@ -78,6 +101,25 @@ PD_REGISTER_KERNEL(scale,
                    GPU,
                    ALL_LAYOUT,
                    phi::ScaleKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(div_scale,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DivScaleKernel,
                    bool,
                    float,
                    double,

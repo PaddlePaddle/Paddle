@@ -892,6 +892,12 @@
   kernel :
     func : dist_grad
 
+- backward_op : div_scale_grad
+  forward : div_scale (Tensor x, Scalar scale) -> Tensor(out)
+  args : (Tensor out_grad, Scalar scale=1.0)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, scale, 0.0f, true)
+
 - backward_op : dot_grad
   forward : dot (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)

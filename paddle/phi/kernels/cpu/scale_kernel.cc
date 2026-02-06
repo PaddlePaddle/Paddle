@@ -44,6 +44,23 @@ void ScaleKernel(const Context& dev_ctx,
   funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, scale.to<T>(), bias.to<T>(), bias_after_scale);
 }
+
+template <typename T, typename Context>
+void DivScaleKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const Scalar& scale,
+                    DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  auto eigen_out = EigenVector<T>::Flatten(*out);
+  auto eigen_x = EigenVector<T>::Flatten(x);
+  auto& dev = *dev_ctx.eigen_device();
+  if (x.numel() <= 0 || (!x.IsInitialized())) {
+    return;
+  }
+  funcs::EigenDiv<std::decay_t<decltype(dev)>, T>::Eval(
+      dev, eigen_out, eigen_x, scale.to<T>());
+}
+
 #ifdef _WIN32
 INSTANCE_SCALAR_KERNEL(int, CPUContext)
 INSTANCE_SCALAR_KERNEL(int64_t, CPUContext)
@@ -63,6 +80,23 @@ PD_REGISTER_KERNEL(scale,
                    CPU,
                    ALL_LAYOUT,
                    phi::ScaleKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::bfloat16,
+                   phi::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::complex64,
+                   phi::complex128) {}
+
+PD_REGISTER_KERNEL(div_scale,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DivScaleKernel,
                    bool,
                    float,
                    double,

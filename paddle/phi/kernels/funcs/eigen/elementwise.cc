@@ -70,5 +70,15 @@ struct EigenDiv<Eigen::DefaultDevice, T> {
 
 template struct EigenDiv<Eigen::DefaultDevice, float>;
 template struct EigenDiv<Eigen::DefaultDevice, double>;
+template struct EigenDiv<Eigen::DefaultDevice, int>;
+template struct EigenDiv<Eigen::DefaultDevice, int64_t>;
+template struct EigenDiv<Eigen::DefaultDevice, bool>;
+template struct EigenDiv<Eigen::DefaultDevice, int8_t>;
+template struct EigenDiv<Eigen::DefaultDevice, uint8_t>;
+template struct EigenDiv<Eigen::DefaultDevice, int16_t>;
+template struct EigenDiv<Eigen::DefaultDevice, phi::dtype::float16>;
+template struct EigenDiv<Eigen::DefaultDevice, phi::dtype::bfloat16>;
+template struct EigenDiv<Eigen::DefaultDevice, phi::dtype::complex<float>>;
+template struct EigenDiv<Eigen::DefaultDevice, phi::dtype::complex<double>>;
 
 }  // namespace phi::funcs
