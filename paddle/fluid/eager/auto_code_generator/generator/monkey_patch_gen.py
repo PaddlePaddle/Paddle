@@ -83,6 +83,13 @@ SET_UNIFIED_FUNCTION_TEMPLATE = """
 
 # Unified map: list of (module_path, method_name, func) for all module paths
 unified_func_map = []
+# APIs that keep Python wrappers for richer argument normalization/signatures.
+_SKIP_MONKEY_PATCH_APIS = {
+    ("paddle", "unsqueeze"),
+    ("paddle.Tensor", "unsqueeze"),
+    ("paddle", "squeeze"),
+    ("paddle.Tensor", "squeeze"),
+}
 # The python api info which not in ops.yaml
 python_api_info_from_yaml = {}
 
@@ -132,6 +139,9 @@ def ClassifyAPIByPrefix(python_api_info, op_name):
 
         # Remove trailing dot to get module_path
         module_path = prefix.rstrip('.')
+        if (module_path, method_name) in _SKIP_MONKEY_PATCH_APIS:
+            continue
+
         unified_mapping = UNIFIED_NAME_METHOD_MAPPING_TEMPLATE.format(
             module_path=module_path,
             method_name=method_name,
