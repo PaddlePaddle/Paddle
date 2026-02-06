@@ -299,12 +299,10 @@ bool IsCompiledWithAVX() {
 }
 
 bool IsCompiledWithCUDA() {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
-    !defined(PADDLE_WITH_CUSTOM_DEVICE)
-  return false;
-#else
+#if defined(PADDLE_WITH_CUDA)
   return true;
 #endif
+  return false;
 }
 
 bool IsCompiledWithCudnnFrontend() {

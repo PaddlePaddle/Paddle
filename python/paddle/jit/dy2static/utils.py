@@ -884,12 +884,18 @@ def infer_use_cinn_backend(backend, build_strategy):
 def cinn_is_available():
     if not paddle.is_compiled_with_cinn():
         return False
-    if not paddle.is_compiled_with_cuda():
-        return False
-    if not isinstance(
-        paddle.framework._current_expected_place_(), paddle.base.core.CUDAPlace
+    if not (
+        paddle.is_compiled_with_cuda()
+        or paddle.is_compiled_with_rocm()
+        or paddle.is_compiled_with_custom_device()
     ):
         return False
+    if not isinstance(
+        paddle.framework._current_expected_place_(),
+        (paddle.base.core.CUDAPlace, paddle.base.core.CustomPlace),
+    ):
+        return False
+
     if platform.system() != "Linux":
         return False
     if not paddle.framework.use_pir_api():
