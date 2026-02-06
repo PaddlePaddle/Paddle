@@ -2730,7 +2730,7 @@ def batch_norm(
         "use_global_stats": use_global_stats,
     }
     if isinstance(momentum, paddle.static.Variable):
-        inputs['MomentumTensor'] = momentum
+        inputs['MomemtumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
 
