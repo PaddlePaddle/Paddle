@@ -35,8 +35,7 @@ __global__ void prune_gate_by_capacity_kernel(const T1* gate_idx_data,
                                               T2* expert_count_data,
                                               const int64_t batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size) {
-    auto orig_cap =
-        phi::CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
+    auto orig_cap = CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
     if (orig_cap <= 0) {
       new_gate_idx_data[i] = -1;
     } else {

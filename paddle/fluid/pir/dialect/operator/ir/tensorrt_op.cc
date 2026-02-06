@@ -248,7 +248,7 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   argument_outputs.push_back(out_vector_type);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void TensorRTEngineOp::VerifySig() {

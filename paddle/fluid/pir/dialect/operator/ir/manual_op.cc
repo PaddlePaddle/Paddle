@@ -166,7 +166,7 @@ void FetchOp::Build(pir::Builder &builder,
       FetchOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FetchOp::Build(pir::Builder &builder,
@@ -205,7 +205,7 @@ void FetchOp::Build(pir::Builder &builder,
       FetchOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FetchOp::VerifySig() {
@@ -524,7 +524,7 @@ void AddNArrayOp::Build(pir::Builder &builder,             // NOLINT
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -702,7 +702,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
       FusedGemmEpilogueOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FusedGemmEpilogueOp::VerifySig() {
@@ -1027,7 +1027,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
       FusedGemmEpilogueGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FusedGemmEpilogueGradOp::VerifySig() {}
@@ -1262,7 +1262,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       SplitGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::Build(pir::Builder &builder,
@@ -1281,7 +1281,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       SplitGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::VerifySig() {
@@ -1441,7 +1441,7 @@ void CreateArrayOp::Build(pir::Builder &builder,
       CreateArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void CreateArrayOp::VerifySig() {
@@ -1575,7 +1575,7 @@ void CreateArrayLikeOp::Build(pir::Builder &builder,             // NOLINT
       CreateArrayLikeOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void CreateArrayLikeOp::VerifySig() {
@@ -1849,7 +1849,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
       ArrayReadOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::Build(pir::Builder &builder,
@@ -1866,7 +1866,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
       ArrayReadOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::VerifySig() {
@@ -2258,7 +2258,7 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
       ArrayToTensorOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayToTensorOp::VerifySig() {
@@ -2496,7 +2496,7 @@ void TensorToArrayOp::Build(pir::Builder &builder,             // NOLINT
       TensorToArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void TensorToArrayOp::VerifySig() {
@@ -2793,7 +2793,7 @@ void SliceArrayOp::Build(pir::Builder &builder,             // NOLINT
   std::vector<pir::Type> argument_outputs =
       SliceArrayOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -2973,7 +2973,7 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
       SliceArrayDenseOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -3089,7 +3089,7 @@ void AssignArrayOp::Build(pir::Builder &builder,
   std::vector<pir::Type> argument_outputs =
       AssignArrayOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void AssignArrayOp::VerifySig() {
@@ -3380,7 +3380,7 @@ void ExpandOp::Build(pir::Builder &builder,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::Build(pir::Builder &builder,
@@ -3416,7 +3416,7 @@ void ExpandOp::Build(pir::Builder &builder,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::Build(pir::Builder &builder,
@@ -3436,7 +3436,7 @@ void ExpandOp::Build(pir::Builder &builder,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 bool ExpandOp::InferSymbolicShape(
@@ -3804,7 +3804,7 @@ void IncrementOp::Build(pir::Builder &builder,
       IncrementOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void IncrementOp::Build(pir::Builder &builder,
@@ -3833,7 +3833,7 @@ void IncrementOp::Build(pir::Builder &builder,
       IncrementOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void IncrementOp::VerifySig() {
@@ -4009,7 +4009,7 @@ void Increment_Op::Build(pir::Builder &builder,
       Increment_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void Increment_Op::Build(pir::Builder &builder,
@@ -4038,7 +4038,7 @@ void Increment_Op::Build(pir::Builder &builder,
       Increment_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void Increment_Op::VerifySig() {
@@ -4404,7 +4404,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
       ShapeBroadcastOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -4794,7 +4794,7 @@ void ArrayPopOp::Build(pir::Builder &builder,             // NOLINT
       ArrayPopOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayPopOp::InferMeta(phi::InferMetaContext *infer_meta) {

@@ -51,7 +51,7 @@ __global__ void CEmbeddingGrad(T* table,
     auto id = ids[row];
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
-      phi::CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
+      CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
     }
   }
 }
