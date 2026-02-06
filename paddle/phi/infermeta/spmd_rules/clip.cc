@@ -25,14 +25,6 @@ SpmdInfo ClipInferSpmd(const DistMetaTensor& x,
   return ElementwiseUnaryInferSpmd(x);
 }
 
-SpmdInfo ClipInferSpmdReverse(const DistMetaTensor& x,
-                              const DistMetaTensor& out,
-                              const Scalar& min,
-                              const Scalar& max) {
-  VLOG(4) << "ClipInferSpmdReverse Call ElementwiseUnaryInferSpmdReverse";
-  return ElementwiseUnaryInferSpmdReverse(x, out);
-}
-
 SpmdInfo ClipGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
                            const Scalar& min,
