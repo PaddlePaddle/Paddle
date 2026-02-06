@@ -71,7 +71,7 @@ __global__ void GPUDistFpnProposalsHelper(const int nthreads,
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
-    phi::CudaAtomicAdd(
+    CudaAtomicAdd(
         sub_lod_list + (tgt_lvl - min_level) * lod_size + roi_batch_ind, 1);
   }
 }

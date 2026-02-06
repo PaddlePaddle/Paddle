@@ -80,122 +80,121 @@ extern PyTypeObject* g_placement_shard_pytype;
 extern PyTypeObject* g_placement_replicated_pytype;
 extern PyTypeObject* g_placement_partial_pytype;
 
-int TensorDtype2NumpyDtype(phi::DataType dtype) {
+int TensorDtype2NumpyDtype(DataType dtype) {
   switch (dtype) {
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       return pybind11::detail::npy_api::NPY_BOOL_;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       return pybind11::detail::npy_api::NPY_INT8_;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       return pybind11::detail::npy_api::NPY_UINT8_;
-    case phi::DataType::UINT16:
+    case DataType::UINT16:
       return pybind11::detail::npy_api::NPY_UINT16_;
-    case phi::DataType::UINT32:
+    case DataType::UINT32:
       return pybind11::detail::npy_api::NPY_UINT32_;
-    case phi::DataType::UINT64:
+    case DataType::UINT64:
       return pybind11::detail::npy_api::NPY_UINT64_;
-    case phi::DataType::INT16:
+    case DataType::INT16:
       return pybind11::detail::npy_api::NPY_INT16_;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       return pybind11::detail::npy_api::NPY_INT32_;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       return pybind11::detail::npy_api::NPY_INT64_;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       return pybind11::detail::NPY_UINT16_;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       return pybind11::detail::NPY_FLOAT16_;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       return pybind11::detail::npy_api::NPY_FLOAT_;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       return pybind11::detail::npy_api::NPY_DOUBLE_;
-    case phi::DataType::COMPLEX64:
+    case DataType::COMPLEX64:
       return pybind11::detail::NPY_COMPLEX64;
-    case phi::DataType::COMPLEX128:
+    case DataType::COMPLEX128:
       return pybind11::detail::NPY_COMPLEX128;
-    case phi::DataType::PSTRING:
+    case DataType::PSTRING:
       return pybind11::detail::npy_api::NPY_UNICODE_;
-    case phi::DataType::FLOAT8_E4M3FN:
+    case DataType::FLOAT8_E4M3FN:
       return pybind11::detail::npy_api::NPY_BYTE_;
-    case phi::DataType::FLOAT8_E5M2:
+    case DataType::FLOAT8_E5M2:
       return pybind11::detail::npy_api::NPY_BYTE_;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unknown phi::DataType, the int value = %d.",
-          static_cast<int>(dtype)));
+          "Unknown DataType, the int value = %d.", static_cast<int>(dtype)));
       return 0;
   }
 }
 
-phi::DataType NumpyDtype2TensorDtype(const int& np_dtype) {
+DataType NumpyDtype2TensorDtype(const int& np_dtype) {
   switch (np_dtype) {
     case pybind11::detail::npy_api::NPY_BOOL_:
-      return phi::DataType::BOOL;
+      return DataType::BOOL;
     case pybind11::detail::npy_api::NPY_INT8_:
-      return phi::DataType::INT8;
+      return DataType::INT8;
     case pybind11::detail::npy_api::NPY_UINT8_:
-      return phi::DataType::UINT8;
+      return DataType::UINT8;
     case pybind11::detail::npy_api::NPY_INT16_:
-      return phi::DataType::INT16;
+      return DataType::INT16;
     case pybind11::detail::npy_api::NPY_INT32_:
-      return phi::DataType::INT32;
+      return DataType::INT32;
     case pybind11::detail::npy_api::NPY_INT64_:
-      return phi::DataType::INT64;
+      return DataType::INT64;
     case pybind11::detail::NPY_UINT16_:
-      return phi::DataType::BFLOAT16;
+      return DataType::BFLOAT16;
     case pybind11::detail::NPY_FLOAT16_:
-      return phi::DataType::FLOAT16;
+      return DataType::FLOAT16;
     case pybind11::detail::npy_api::NPY_FLOAT_:
-      return phi::DataType::FLOAT32;
+      return DataType::FLOAT32;
     case pybind11::detail::npy_api::NPY_DOUBLE_:
-      return phi::DataType::FLOAT64;
+      return DataType::FLOAT64;
     case pybind11::detail::NPY_COMPLEX64:
-      return phi::DataType::COMPLEX64;
+      return DataType::COMPLEX64;
     case pybind11::detail::NPY_COMPLEX128:
-      return phi::DataType::COMPLEX128;
+      return DataType::COMPLEX128;
     case pybind11::detail::npy_api::NPY_UNICODE_:
-      return phi::DataType::PSTRING;
+      return DataType::PSTRING;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unknown numpy dtype, the int value = %d.", np_dtype));
-      return phi::DataType::UNDEFINED;
+      return DataType::UNDEFINED;
   }
 }
 
-phi::DataType StrDtype2TensorDtype(const std::string& np_dtype) {
+DataType StrDtype2TensorDtype(const std::string& np_dtype) {
   if (np_dtype == "bool") {
-    return phi::DataType::BOOL;
+    return DataType::BOOL;
   } else if (np_dtype == "int8") {
-    return phi::DataType::INT8;
+    return DataType::INT8;
   } else if (np_dtype == "uint8") {
-    return phi::DataType::UINT8;
+    return DataType::UINT8;
   } else if (np_dtype == "int16") {
-    return phi::DataType::INT16;
+    return DataType::INT16;
   } else if (np_dtype == "int32") {
-    return phi::DataType::INT32;
+    return DataType::INT32;
   } else if (np_dtype == "int64") {
-    return phi::DataType::INT64;
+    return DataType::INT64;
   } else if (np_dtype == "bfloat16") {
-    return phi::DataType::BFLOAT16;
+    return DataType::BFLOAT16;
   } else if (np_dtype == "float16") {
-    return phi::DataType::FLOAT16;
+    return DataType::FLOAT16;
   } else if (np_dtype == "float32") {
-    return phi::DataType::FLOAT32;
+    return DataType::FLOAT32;
   } else if (np_dtype == "float64") {
-    return phi::DataType::FLOAT64;
+    return DataType::FLOAT64;
   } else if (np_dtype == "complex64") {
-    return phi::DataType::COMPLEX64;
+    return DataType::COMPLEX64;
   } else if (np_dtype == "complex128") {
-    return phi::DataType::COMPLEX128;
+    return DataType::COMPLEX128;
   } else if (np_dtype == "float8_e4m3fn") {
-    return phi::DataType::FLOAT8_E4M3FN;
+    return DataType::FLOAT8_E4M3FN;
   } else if (np_dtype == "float8_e5m2") {
-    return phi::DataType::FLOAT8_E5M2;
+    return DataType::FLOAT8_E5M2;
   } else if (np_dtype == "unicode") {
-    return phi::DataType::PSTRING;
+    return DataType::PSTRING;
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unknown numpy dtype, the value = %s.", np_dtype));
-    return phi::DataType::UNDEFINED;
+    return DataType::UNDEFINED;
   }
 }
 
@@ -970,7 +969,7 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                             const std::string& op_type,
                                             ssize_t arg_pos) {
   if (obj == Py_None) {
-    return phi::DataType::UNDEFINED;
+    return DataType::UNDEFINED;
   }
 
   paddle::DataType dtype;
@@ -1253,7 +1252,7 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const phi::DataType& dtype) {
+PyObject* ToPyObject(const DataType& dtype) {
   static const std::vector<std::string> dtype_names = {
       "UNDEFINED", "BOOL",     "UINT8",         "INT8",        "UINT16",
       "INT16",     "UINT32",   "INT32",         "UINT64",      "INT64",
@@ -1264,7 +1263,7 @@ PyObject* ToPyObject(const phi::DataType& dtype) {
                                 dtype_names[static_cast<int>(dtype)].c_str());
 }
 
-PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
+PyObject* ToPyObject(const std::vector<DataType>& dtypes) {
   PyObject* result = PyList_New((Py_ssize_t)dtypes.size());
   for (size_t i = 0; i < dtypes.size(); i++) {
     PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(dtypes[i]));
@@ -2463,7 +2462,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
                                         arg_pos + 1));
   }
 
-  phi::DataType dtype = phi::DataType::INT64;
+  DataType dtype = DataType::INT64;
   std::vector<int64_t> shape;
   for (Py_ssize_t i = 0; i < len; ++i) {
     PyObject* item = PySequence_GetItem(obj, i);
@@ -2972,7 +2971,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
   if (obj == Py_None) {
-    return phi::DataType::UNDEFINED;
+    return DataType::UNDEFINED;
   }
   if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
     framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);

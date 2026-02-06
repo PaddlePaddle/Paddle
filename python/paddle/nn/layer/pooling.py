@@ -97,8 +97,8 @@ class AvgPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
-            >>> pool_out = AvgPool1D(data)
+            >>> avg_pool1d = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
+            >>> pool_out = avg_pool1D(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
@@ -209,10 +209,10 @@ class AvgPool2D(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> # max pool2d
+            >>> # avg pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
-            >>> output = AvgPool2D(input)
+            >>> avg_pool2d = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
+            >>> output = avg_pool2d(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
 
@@ -321,8 +321,8 @@ class AvgPool3D(Layer):
 
             >>> # avg pool3d
             >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
-            >>> output = AvgPool3D(input)
+            >>> avg_pool3d = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
+            >>> output = avg_pool3d(input)
             >>> print(output.shape)
             paddle.Size([1, 2, 1, 16, 16])
 
@@ -430,8 +430,8 @@ class LPPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> LPPool1D = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
-            >>> pool_out = LPPool1D(data)
+            >>> lp_pool1d = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> pool_out = lp_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
@@ -547,8 +547,8 @@ class LPPool2D(Layer):
 
             >>> # lp pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> LPPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
-            >>> output = LPPool2D(input)
+            >>> lp_pool2d = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> output = lp_pool2d(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
 
@@ -629,6 +629,8 @@ class MaxPool1D(Layer):
             4. A list[int] or tuple(int) whose length is 2, It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or(0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation size is a tuple or list,
+            it must contain an integer. Default: 1.
         return_mask(bool, optional): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode(bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default False.
@@ -651,23 +653,28 @@ class MaxPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
-            >>> pool_out = MaxPool1D(data)
+            >>> max_pool1d = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
+            >>> pool_out = max_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
-            >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            >>> pool_out, indices = MaxPool1D(data)
+            >>> max_pool1d = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> pool_out, indices = max_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
             >>> print(indices.shape)
             paddle.Size([1, 3, 16])
 
+            >>> max_pool1d = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> pool_out = max_pool1d(data)
+            >>> print(pool_out.shape)
+            paddle.Size([1, 3, 15])
     """
 
     kernel_size: Size1
     stride: Size1 | None
     padding: _PaddingSizeMode | Size1 | Size2
+    dilation: Size1
     return_mask: bool
     ceil_mode: bool
     name: str | None
@@ -678,6 +685,7 @@ class MaxPool1D(Layer):
         kernel_size: Size1,
         stride: Size1 | None = None,
         padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        dilation: Size1 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         name: str | None = None,
@@ -686,6 +694,7 @@ class MaxPool1D(Layer):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.ceil_mode = ceil_mode
         self.return_mask = return_mask
         self.name = name
@@ -696,6 +705,7 @@ class MaxPool1D(Layer):
             self.kernel_size,
             self.stride,
             self.padding,
+            self.dilation,
             self.return_mask,
             self.ceil_mode,
             self.name,
@@ -703,7 +713,7 @@ class MaxPool1D(Layer):
         return out
 
     def extra_repr(self) -> str:
-        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -727,7 +737,7 @@ class MaxPool2D(Layer):
         ..  math::
 
             Output(N_i, C_j, h, w) = \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1}
-                Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
+                Input(N_i, C_j, stride[0] \times h + m * dilation[0], stride[1] \times w + n * dilation[1])
 
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -744,6 +754,9 @@ class MaxPool2D(Layer):
             4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple or list, it must
+            contain two integers, (dilation_Height, dilation_Width). Otherwise, the dilation size
+            will be a square of an int. Default 1.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -769,23 +782,30 @@ class MaxPool2D(Layer):
 
             >>> # max pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
-            >>> output = MaxPool2D(input)
+            >>> max_pool2d = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
+            >>> output = max_pool2d(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            >>> output, max_indices = MaxPool2D(input)
+            >>> max_pool2d = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> output, max_indices = max_pool2d(input)
             >>> print(output.shape)
             paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
             paddle.Size([1, 3, 16, 16])
+
+            >>> # for dilation (dilated max pooling)
+            >>> max_pool2d = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> output = max_pool2d(input)
+            >>> print(output.shape)
+            paddle.Size([1, 3, 15, 15])
     """
 
     kernel_size: Size2
     stride: Size2 | None
     padding: _PaddingSizeMode | Size2 | Size4
+    dilation: Size2
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout2D
@@ -797,6 +817,7 @@ class MaxPool2D(Layer):
         kernel_size: Size2,
         stride: Size2 | None = None,
         padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        dilation: Size2 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout2D = 'NCHW',
@@ -806,6 +827,7 @@ class MaxPool2D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
@@ -818,6 +840,7 @@ class MaxPool2D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -825,7 +848,7 @@ class MaxPool2D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -853,6 +876,11 @@ class MaxPool3D(Layer):
             4. A list[int] or tuple(int) whose length is \6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple or list, it must
+            contain three integers, (dilation_Depth, dilation_Height, dilation_Width). Otherwise, the dilation size
+            will be a cube of an int. Default 1.
+            Note: dilation is only supported on CPU currently. When dilation is not 1,
+            return_mask must be True.
         ceil_mode(bool, optional): ${ceil_mode_comment}
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`,
@@ -879,23 +907,30 @@ class MaxPool3D(Layer):
 
             >>> # max pool3d
             >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
-            >>> output = MaxPool3D(input)
+            >>> max_pool3d = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
+            >>> output = max_pool3d(input)
             >>> print(output.shape)
             paddle.Size([1, 2, 1, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            >>> output, max_indices = MaxPool3D(input)
+            >>> max_pool3d = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> output, max_indices = max_pool3d(input)
             >>> print(output.shape)
             paddle.Size([1, 2, 1, 16, 16])
             >>> print(max_indices.shape)
             paddle.Size([1, 2, 1, 16, 16])
+
+            >>> # for dilation (dilated max pooling)
+            >>> max_pool3d = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> output = max_pool3d(input)
+            >>> print(output.shape)
+            paddle.Size([1, 2, 1, 15, 15])
     """
 
     kernel_size: Size3
     stride: Size3 | None
     padding: _PaddingSizeMode | Size3 | Size6
+    dilation: Size3
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout3D
@@ -907,6 +942,7 @@ class MaxPool3D(Layer):
         kernel_size: Size3,
         stride: Size3 | None = None,
         padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        dilation: Size3 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout3D = 'NCDHW',
@@ -916,6 +952,7 @@ class MaxPool3D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
@@ -928,6 +965,7 @@ class MaxPool3D(Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -935,7 +973,7 @@ class MaxPool3D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -985,8 +1023,8 @@ class AdaptiveAvgPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
-            >>> pool_out = AdaptiveAvgPool1D(data)
+            >>> adaptive_avg_pool1d = nn.AdaptiveAvgPool1D(output_size=16)
+            >>> pool_out = adaptive_avg_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
     """
@@ -1266,14 +1304,14 @@ class AdaptiveMaxPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
-            >>> pool_out = AdaptiveMaxPool1D(data)
+            >>> adaptive_max_pool1d = nn.AdaptiveMaxPool1D(output_size=16)
+            >>> pool_out = adaptive_max_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
             >>> # for return_mask = true
-            >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
-            >>> pool_out, indices = AdaptiveMaxPool1D(data)
+            >>> adaptive_max_pool1d = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
+            >>> pool_out, indices = adaptive_max_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
             >>> print(indices.shape)
@@ -1575,8 +1613,8 @@ class MaxUnPool1D(Layer):
             paddle.Size([1, 3, 8])
             >>> print(indices.shape)
             paddle.Size([1, 3, 8])
-            >>> Unpool1D = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
-            >>> unpool_out = Unpool1D(pool_out, indices)
+            >>> unpool1d = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
+            >>> unpool_out = unpool1d(pool_out, indices)
             >>> print(unpool_out.shape)
             paddle.Size([1, 3, 16])
 
@@ -1692,8 +1730,8 @@ class MaxUnPool2D(Layer):
             paddle.Size([1, 1, 3, 3])
             >>> print(indices.shape)
             paddle.Size([1, 1, 3, 3])
-            >>> Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
-            >>> unpool_out = Unpool2D(pool_out, indices)
+            >>> unpool2d = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
+            >>> unpool_out = unpool2d(pool_out, indices)
             >>> print(unpool_out.shape)
             paddle.Size([1, 1, 6, 6])
 
@@ -1810,8 +1848,8 @@ class MaxUnPool3D(Layer):
             paddle.Size([1, 1, 2, 2, 3])
             >>> print(indices.shape)
             paddle.Size([1, 1, 2, 2, 3])
-            >>> Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
-            >>> unpool_out = Unpool3D(pool_out, indices)
+            >>> unpool3d = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
+            >>> unpool_out = unpool3d(pool_out, indices)
             >>> print(unpool_out.shape)
             paddle.Size([1, 1, 4, 4, 6])
 
