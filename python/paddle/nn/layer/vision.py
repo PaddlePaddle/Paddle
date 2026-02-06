@@ -189,7 +189,7 @@ class ChannelShuffle(Layer):
         - **out**: 4-D tensor with shape and dtype same as x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
