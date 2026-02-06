@@ -1598,7 +1598,7 @@ def ones(
 
 @overload
 def ones(
-    *size: ShapeLike,
+    *size: int,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
@@ -1761,7 +1761,7 @@ def zeros(
 
 @overload
 def zeros(
-    *size: ShapeLike,
+    *size: int,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
@@ -3087,7 +3087,7 @@ def empty(
 
 @overload
 def empty(
-    *size: ShapeLike,
+    *size: int,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,

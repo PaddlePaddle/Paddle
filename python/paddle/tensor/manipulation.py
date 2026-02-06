@@ -5218,7 +5218,7 @@ def expand(
 @overload
 def expand(
     input: Tensor,
-    *size: ShapeLike,
+    *size: int,
 ) -> Tensor: ...
 
 
@@ -5373,7 +5373,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
 
 
 @overload
-def reshape(input: Tensor, *shape: ShapeLike) -> Tensor: ...
+def reshape(input: Tensor, *shape: int) -> Tensor: ...
 
 
 @reshape_decorator()
@@ -7975,7 +7975,7 @@ def view(
 @overload
 def view(
     x: Tensor,
-    *shape: Sequence[int],
+    *shape: int,
 ) -> Tensor: ...
 
 

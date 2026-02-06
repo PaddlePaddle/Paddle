@@ -985,7 +985,7 @@ def randn(
 
 @overload
 def randn(
-    *size: ShapeLike,
+    *size: int,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
@@ -2301,7 +2301,7 @@ def rand(
 
 @overload
 def rand(
-    *size: ShapeLike,
+    *size: int,
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
