@@ -2886,6 +2886,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& kernel_size,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
+                               const std::vector<int>& dilations,
                                bool global_pooling,
                                bool adaptive,
                                bool ceil_mode,
@@ -2894,6 +2895,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaConfig config) {
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int> dilations_ = dilations;
 
   auto x_dims = x.dims();
 
@@ -2933,6 +2935,13 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
           "Paddings size %d and pooling size %d should be the same.",
           paddings_.size(),
           kernel_size_.size()));
+  PADDLE_ENFORCE_EQ(
+      kernel_size_.size(),
+      dilations_.size(),
+      errors::InvalidArgument(
+          "Dilations size %d and pooling size %d should be the same.",
+          dilations_.size(),
+          kernel_size_.size()));
 
   std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
   if (adaptive) {
@@ -2945,8 +2954,9 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
       } else {
         output_shape.push_back(funcs::MaxPoolOutputSize(x_dims[i + 2],
                                                         kernel_size_[i],
-                                                        paddings_[i],
                                                         strides[i],
+                                                        paddings_[i],
+                                                        dilations_[i],
                                                         ceil_mode));
       }
     }

@@ -992,13 +992,13 @@ class Conv2DTranspose(_ConvNd):
 
 class Conv3D(_ConvNd):
     r"""
-    **Convlution3d Layer**
+    **Convolution3d Layer**
     The convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are multidimensional tensors with a shape of
     :math:`[N, C, D, H, W]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
@@ -1168,7 +1168,7 @@ class Conv3D(_ConvNd):
 
 class Conv3DTranspose(_ConvNd):
     r"""
-    **Convlution3D transpose layer**
+    **Convolution3D transpose layer**
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW format. Where N is batch size, C is the number of channels,

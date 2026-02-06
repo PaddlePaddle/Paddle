@@ -115,7 +115,7 @@ void ExpandOp::Build(pir::Builder& builder,
   std::vector<pir::Type> argument_outputs =
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::Build(pir::Builder& builder,
@@ -163,7 +163,7 @@ void ExpandOp::Build(pir::Builder& builder,
   std::vector<pir::Type> argument_outputs =
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::Build(pir::Builder& builder,
@@ -187,7 +187,7 @@ void ExpandOp::Build(pir::Builder& builder,
   std::vector<pir::Type> argument_outputs =
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::VerifySig() {

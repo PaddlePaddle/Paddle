@@ -269,9 +269,9 @@ PyLayerOp PyLayerOp::UpdateInput() {
   }
 
   if (need_build_new_pylayer) {
-    ::pir::IrContext *ctx = ::pir::IrContext::Instance();
+    pir::IrContext *ctx = pir::IrContext::Instance();
 
-    ::pir::Builder builder = ::pir::Builder(ctx, program_block);
+    pir::Builder builder = pir::Builder(ctx, program_block);
     builder.set_insertion_point(&(**this));
     auto new_pylayer = builder.Build<PyLayerOp>(new_pylayer_inputs,
                                                 forward_region().TakeBack(),

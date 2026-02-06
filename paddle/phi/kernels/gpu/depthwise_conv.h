@@ -1026,7 +1026,7 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   T value) {
 #if (defined(PADDLE_WITH_HIP) || \
      (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
-  phi::CudaAtomicAdd(tensor + index, value);
+  CudaAtomicAdd(tensor + index, value);
 #else
   // Check if 32 bit aligned
   __half* target_addr = reinterpret_cast<__half*>(tensor + index);
@@ -1059,7 +1059,7 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   T value) {
 #if (defined(PADDLE_WITH_HIP) || \
      (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 800)))
-  phi::CudaAtomicAdd(tensor + index, value);
+  CudaAtomicAdd(tensor + index, value);
 #else
   // Check if 32 bit aligned
   __nv_bfloat16* target_addr = reinterpret_cast<__nv_bfloat16*>(tensor + index);
@@ -1093,7 +1093,7 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   index_t index,
                                                   const index_t numel,
                                                   T value) {
-  phi::CudaAtomicAdd(tensor + index, value);
+  CudaAtomicAdd(tensor + index, value);
 }
 
 template <typename T, bool fuse_relu_before_conv>

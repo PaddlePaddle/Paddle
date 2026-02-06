@@ -79,9 +79,9 @@ __global__ void KernelBincount(const InputT* input,
   for (int64_t i = global_tid; i < total_elements; i += stride) {
     InputT index = input[i];
     if (!has_weights) {
-      phi::CudaAtomicAdd(&output[index], 1L);
+      CudaAtomicAdd(&output[index], 1L);
     } else {
-      phi::CudaAtomicAdd(&output[index], static_cast<OutT>(weights[i]));
+      CudaAtomicAdd(&output[index], static_cast<OutT>(weights[i]));
     }
   }
 }

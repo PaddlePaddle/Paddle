@@ -211,6 +211,6 @@ class CombineOp;
 namespace paddle {
 namespace dialect {
 
-OVERLOAD_REWRITE_BY_LAYOUT(::pir::CombineOp);
+OVERLOAD_REWRITE_BY_LAYOUT(pir::CombineOp);
 }  // namespace dialect
 }  // namespace paddle

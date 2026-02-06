@@ -767,7 +767,7 @@ __device__ void RadixCountUsingMask(const T* input,
   if (GetLaneId() == 0) {
 #pragma unroll
     for (uint32_t i = 0; i < RadixSize; ++i) {
-      phi::CudaAtomicAdd(&shared_mem[i], counts[i]);
+      CudaAtomicAdd(&shared_mem[i], counts[i]);
     }
   }
 
