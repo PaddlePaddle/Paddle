@@ -246,7 +246,7 @@
   pre_process :
     func : ExpandAsPreProcess(x, y, target_shape)
 
-- op : fill_diagonal
+- op : fill_diagonal_
   name : [paddle.fill_diagonal_, paddle.Tensor.fill_diagonal_]
   args_mapper :
     func : FillDiagonalMapper
