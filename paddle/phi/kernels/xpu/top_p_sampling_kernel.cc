@@ -103,7 +103,10 @@ void TopPSamplingKernel(const Context& dev_ctx,
   uint64_t offset = 0;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int* ids_int_ptr = RAII_GUARD.alloc<int>(ids->numel());
-
+  PADDLE_ENFORCE_EQ(
+      threshold.is_initialized(),
+      false,
+      errors::InvalidArgument(("threshold not supported in top_p_sampling")));
   if (!FLAGS_xpu_use_rejection_top_p_sampling) {
     float* rand_coeff_xpu = RAII_GUARD.alloc<float>(rand_coeff_cpu.size());
     int r = xpu::do_host2device(dev_ctx.x_context(),
@@ -160,36 +163,12 @@ void TopPSamplingKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale_cast_fusion");
     }
   } else {
-    DenseTensor k_threshold;
-    k_threshold.Resize({bs});
-    int* k_threshold_ptr = dev_ctx.template Alloc<int>(&k_threshold);
-    if (threshold.get_ptr() != nullptr) {
-      XPUType* threshold_data = reinterpret_cast<XPUType*>(
-          const_cast<T*>(threshold.get_ptr()->data<T>()));
-      // k_threshold = static_cast<int>((1 - infer_threshold[0]) * vocab_size)
-      int r = xpu::scale<XPUType, float>(dev_ctx.x_context(),
-                                         threshold_data,
-                                         threshold_data,
-                                         bs,
-                                         true,
-                                         -vocab_size,
-                                         vocab_size);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::scale");
-      r = xpu::cast<XPUType, int>(
-          dev_ctx.x_context(), threshold_data, k_threshold_ptr, bs);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
-    } else {
-      int r = xpu::constant<int>(
-          dev_ctx.x_context(), k_threshold_ptr, bs, vocab_size);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::constant");
-    }
-
     if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
         std::is_same<T, phi::float16>::value) {
       int r = xpu::top_k_top_p_sampling_from_probs<XPUType, int>(
           dev_ctx.x_context(),
           x_ptr,
-          k_threshold_ptr,
+          nullptr,
           ps_ptr,
           nullptr,
           ids_int_ptr,
@@ -217,7 +196,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
       r = xpu::top_k_top_p_sampling_from_probs<XPUTypeFP16, int>(
           dev_ctx.x_context(),
           x_fp16_ptr,
-          k_threshold_ptr,
+          nullptr,
           ps_fp16_ptr,
           nullptr,
           ids_int_ptr,
