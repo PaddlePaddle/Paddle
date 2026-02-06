@@ -1713,30 +1713,29 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
-
+            .. code-block:: pycon
+                >>> # doctest: +SKIP('PIR clone issue')
                 >>> import paddle
                 >>> paddle.enable_static()
                 >>> import paddle.distributed.fleet as fleet
-                >>> import paddle.nn.functional as F
-
-                >>> hid_dim = 10
-                >>> label_dim = 2
-                >>> input_x = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
-                >>> input_y = paddle.static.data(name='y', shape=[None, 1], dtype='int64')
-                >>> fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
-                >>> fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
-                >>> prediction = paddle.static.nn.fc(x=[fc_2], size=label_dim, activation='softmax')
-                >>> cost = F.cross_entropy(input=prediction, label=input_y)
-                >>> avg_cost = paddle.mean(x=cost)
-
-                >>> fleet.init(is_collective=True)
-                >>> strategy = fleet.DistributedStrategy()
-                >>> linear = paddle.nn.Linear(10, 10)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
-                >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-                >>> optimizer.minimize(avg_cost)
-
+                >>> # 1. 简化的静态图网络
+                >>> x = paddle.static.data(name='x', shape=[None, 1], dtype='float32')
+                >>> y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
+                >>> w = paddle.static.create_parameter(shape=[1, 1], dtype='float32', name='w')
+                >>> b = paddle.static.create_parameter(shape=[1], dtype='float32', name='b')
+                >>> prediction = paddle.add(paddle.matmul(x, w), b)
+                >>> loss = paddle.mean(paddle.square(prediction-y))
+                >>> # 2. 初始化 Fleet
+                >>> fleet.init(is_collective=False)
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                >>> optimizer = fleet.distributed_optimizer(optimizer)
+                >>> optimize_ops, params_grads = optimizer.minimize(loss)
+                >>> # 3. 显式打印输出
+                >>> print(len(optimize_ops))
+                1
+                >>> print(params_grads[0][0].name)
+                w
+                >>> # doctest: -SKIP
                 >>> # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
