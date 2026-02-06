@@ -183,6 +183,16 @@ class TestCompatLinearLayer(unittest.TestCase):
         self._compare_forward(x_np, weight_np, bias_np)
         self._compare_backward(x_np, weight_np, bias_np)
 
+
+    def test_1d_input_single_output_with_bias(self):
+        """Test 1D input with out_features=1 to cover addmm fallback path"""
+        x_np = np.random.randn(10).astype(np.float32)
+        weight_np = np.random.randn(1, 10).astype(np.float32)
+        bias_np = np.random.randn(1).astype(np.float32)
+
+        self._compare_forward(x_np, weight_np, bias_np)
+        self._compare_backward(x_np, weight_np, bias_np)
+
     def test_3d_input_with_bias(self):
         """Test 3D input with bias"""
         x_np = np.random.randn(2, 4, 3).astype(np.float32)
