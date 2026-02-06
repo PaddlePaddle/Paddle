@@ -168,7 +168,7 @@ def monkey_patch_value():
                 >>> import paddle
                 >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> x = paddle.static.data(name="x", shape=[2, 2], dtype='float32')
                 >>> y = x.cpu()
         """
 
