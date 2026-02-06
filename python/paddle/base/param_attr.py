@@ -290,7 +290,7 @@ class WeightNormParamAttr(ParamAttr):
 
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("Static-Check: example is for documentation only")
+            >>> # doctest: +SKIP("paddle.static.WeightNormParamAttr module doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
