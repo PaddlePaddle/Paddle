@@ -195,7 +195,7 @@ class Uniform(UniformInitializer):
         A parameter initialized by uniform distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(1)

@@ -163,7 +163,7 @@ def monkey_patch_value():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
