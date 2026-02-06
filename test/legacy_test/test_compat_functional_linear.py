@@ -145,7 +145,6 @@ class TestCompatLinear(unittest.TestCase):
         self._compare_forward(x_np, weight_np, bias_np)
         self._compare_backward(x_np, weight_np, bias_np)
 
-
     def test_1d_input_single_output_with_bias(self):
         """Test 1D input with out_features=1 to cover addmm fallback path"""
         x_np = np.random.randn(10).astype(np.float32)
