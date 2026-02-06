@@ -178,7 +178,7 @@ class InstanceNorm1D(_InstanceNormBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -270,7 +270,7 @@ class InstanceNorm2D(_InstanceNormBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -366,7 +366,7 @@ class InstanceNorm3D(_InstanceNormBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -471,7 +471,7 @@ class GroupNorm(Layer):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -662,7 +662,7 @@ class LayerNorm(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -992,7 +992,7 @@ class BatchNorm(Layer):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.nn as nn
             >>> import paddle
@@ -1277,7 +1277,7 @@ class BatchNorm1D(_BatchNormBase):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -1392,7 +1392,7 @@ class BatchNorm2D(_BatchNormBase):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -1480,7 +1480,7 @@ class BatchNorm3D(_BatchNormBase):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -1613,7 +1613,7 @@ class SyncBatchNorm(_BatchNormBase):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
 
@@ -1769,7 +1769,7 @@ class SyncBatchNorm(_BatchNormBase):
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
