@@ -137,7 +137,7 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
       }
 #endif
       auto kernel_program =
-          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+          pir::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
       plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
 

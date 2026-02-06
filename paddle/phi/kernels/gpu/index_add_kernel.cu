@@ -45,7 +45,7 @@ __global__ void index_add_cuda_kernel(const T* input,
         (index[dim_idx] < 0 ? index[dim_idx] + index_dim_size : index[dim_idx]);
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    phi::CudaAtomicAdd(&output[input_idx], add_value[idx]);
+    CudaAtomicAdd(&output[input_idx], add_value[idx]);
   }
 }
 

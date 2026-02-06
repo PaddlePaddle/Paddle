@@ -788,17 +788,7 @@ void MoePermuteKernel(const Context &dev_ctx,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "topk should be less than INT_MAX, received topk: (%ld)", topk));
-  token_prob_unzipped->Resize({output_rows});
-  if (do_gather) {  // no gather, no resize.
-    X_unzipped->Resize({output_rows, cols});
-    if (XScale) {
-      // TODO(large-tensor): downstream functors may still use int; guard until
-      // upgraded.
-      int64_t quanted_cols = XScale.get_ptr()->dims()[1];
 
-      XScale_unzipped->Resize({output_rows, quanted_cols});
-    }
-  }
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);

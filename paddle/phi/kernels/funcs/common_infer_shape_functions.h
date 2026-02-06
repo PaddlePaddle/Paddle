@@ -31,7 +31,7 @@ inline DDim BroadcastTwoDims(const DDim &x_dims,
                          out_dims_array.data(),
                          max_dim,
                          axis);
-  return common::make_ddim(out_dims_array);
+  return make_ddim(out_dims_array);
 }
 
 }  // namespace phi::funcs

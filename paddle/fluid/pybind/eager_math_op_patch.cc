@@ -108,13 +108,13 @@ void InitTensorWithNumpyValue(const py::object& array,
   }
 }
 
-std::set<phi::DataType> _supported_int_dtype_{DataType::UINT8,
-                                              DataType::INT8,
-                                              DataType::INT16,
-                                              DataType::INT32,
-                                              DataType::INT64,
-                                              DataType::BOOL};
-std::set<phi::DataType> _complex_dtypes{
+std::set<DataType> _supported_int_dtype_{DataType::UINT8,
+                                         DataType::INT8,
+                                         DataType::INT16,
+                                         DataType::INT32,
+                                         DataType::INT64,
+                                         DataType::BOOL};
+std::set<DataType> _complex_dtypes{
     DataType::COMPLEX64,
     DataType::COMPLEX128,
 };
@@ -186,11 +186,11 @@ Tensor CallScalarFunction(const Tensor& self_tensor,
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
-    auto MPType = (self_tensor.dtype() == phi::DataType::FLOAT16 ||
-                   self_tensor.dtype() == phi::DataType::BFLOAT16 ||
-                   self_tensor.dtype() == phi::DataType::FLOAT8_E5M2 ||
-                   self_tensor.dtype() == phi::DataType::FLOAT8_E4M3FN)
-                      ? phi::DataType::FLOAT32
+    auto MPType = (self_tensor.dtype() == DataType::FLOAT16 ||
+                   self_tensor.dtype() == DataType::BFLOAT16 ||
+                   self_tensor.dtype() == DataType::FLOAT8_E5M2 ||
+                   self_tensor.dtype() == DataType::FLOAT8_E4M3FN)
+                      ? DataType::FLOAT32
                       : self_tensor.dtype();
     PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         MPType, "CallScalarFunction", ([&] {
@@ -217,7 +217,7 @@ void TypePromotionForZeroDimTensor(std::string func,
     VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
             << self_tensor.dtype() << " y: " << other_tensor.dtype();
 
-    phi::DataType promote_type;
+    DataType promote_type;
     // different major types or both 0-d tensor follow with T+T rule.
     if (!is_common_dtype_for_scalar(self_tensor.dtype(),
                                     other_tensor.dtype()) ||
@@ -312,7 +312,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -425,7 +425,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -535,7 +535,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -633,9 +633,21 @@ static PyObject* tensor__mul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
+      // NOTE: For string types, return NotImplemented to allow Python to try to
+      // reflected method. This is the expected behavior per Python's data
+      // model: when the left operand doesn't support the operation with the
+      // right operand type, it should return NotImplemented so that the right
+      // operand's reflected method can be attempted. This avoids unintended
+      // string-to-number conversions (e.g., "a" -> 0) in the Scalar
+      // constructor.
+      if (PyObject_CheckString(other_obj)) {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+      }
+
       paddle::experimental::Scalar value;
 
       // NOTE: call reflected method of other_obj if cast failed
@@ -747,7 +759,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -852,7 +864,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -944,7 +956,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1037,7 +1049,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1131,7 +1143,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -1240,7 +1252,7 @@ static PyObject* tensor__rmod__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1338,7 +1350,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -1376,14 +1388,14 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   }
 
   // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
+  DataType lhs_dtype = self_tensor.dtype();
+  DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
     // note: only op_type in _supported_promote_complex_types_ should promote
     // dtype
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
         _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
+      DataType promote_dtype =
           phi::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
               framework::TransToProtoVarType(lhs_dtype),
               framework::TransToProtoVarType(rhs_dtype)));
@@ -1481,7 +1493,7 @@ static PyObject* tensor__rmatmul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1503,14 +1515,14 @@ static PyObject* tensor__rmatmul__method(TensorObject* self,
   }
 
   // 3. promote types or unify right var type to left var
-  phi::DataType lhs_dtype = self_tensor.dtype();
-  phi::DataType rhs_dtype = other_tensor.dtype();
+  DataType lhs_dtype = self_tensor.dtype();
+  DataType rhs_dtype = other_tensor.dtype();
   if (lhs_dtype != rhs_dtype) {
     // note: only op_type in _supported_promote_complex_types_ should promote
     // dtype
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
         _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
-      phi::DataType promote_dtype =
+      DataType promote_dtype =
           phi::TransToPhiDataType(framework::PromoteTypesIfComplexExists(
               framework::TransToProtoVarType(lhs_dtype),
               framework::TransToProtoVarType(rhs_dtype)));
@@ -1602,7 +1614,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1695,7 +1707,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1789,7 +1801,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -1898,7 +1910,7 @@ static PyObject* tensor__rfloordiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1995,7 +2007,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -2104,7 +2116,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -2197,7 +2209,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;
@@ -2298,7 +2310,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
+      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value;

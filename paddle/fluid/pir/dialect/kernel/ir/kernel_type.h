@@ -39,8 +39,8 @@ class AllocatedDenseTensorType
   static AllocatedDenseTensorType get(pir::IrContext *ctx,
                                       const phi::Place &place,
                                       const pir::Type &dtype,
-                                      const phi::DDim &dims,
-                                      const phi::DataLayout &layout,
+                                      const DDim &dims,
+                                      const DataLayout &layout,
                                       const phi::LegacyLoD &lod,
                                       size_t offset) {
     dialect::DenseTensorType dense_tensor_type =
@@ -56,9 +56,9 @@ class AllocatedDenseTensorType
 
   pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  phi::DataLayout data_layout() const;
+  DataLayout data_layout() const;
 
   const phi::LegacyLoD &lod() const;
 
@@ -83,8 +83,8 @@ class AllocatedSelectedRowsType
   static AllocatedSelectedRowsType get(pir::IrContext *ctx,
                                        const phi::Place &place,
                                        const pir::Type &dtype,
-                                       const phi::DDim &dims,
-                                       const phi::DataLayout &layout,
+                                       const DDim &dims,
+                                       const DataLayout &layout,
                                        const phi::LegacyLoD &lod,
                                        size_t offset) {
     dialect::SelectedRowsType type =
@@ -100,9 +100,9 @@ class AllocatedSelectedRowsType
 
   pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  phi::DataLayout data_layout() const;
+  DataLayout data_layout() const;
 
   const phi::LegacyLoD &lod() const;
 
@@ -128,9 +128,9 @@ class AllocatedSparseCooTensorType
       pir::IrContext *ctx,
       const phi::Place &place,
       const pir::Type &dtype,
-      const phi::DDim &dims,
-      const phi::DDim &non_zero_dims,
-      const phi::DataLayout &layout,
+      const DDim &dims,
+      const DDim &non_zero_dims,
+      const DataLayout &layout,
       pir::DenseTensorType non_zero_indices,
       pir::DenseTensorType non_zero_elements,
       bool coalesced) {
@@ -154,11 +154,11 @@ class AllocatedSparseCooTensorType
 
   const pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  const phi::DDim &non_zero_dims() const;
+  const DDim &non_zero_dims() const;
 
-  phi::DataLayout data_layout() const;
+  DataLayout data_layout() const;
 
   pir::DenseTensorType non_zero_indices() const;
 
@@ -186,8 +186,8 @@ class AllocatedSparseCsrTensorType
       pir::IrContext *ctx,
       const phi::Place &place,
       const pir::Type &dtype,
-      const phi::DDim &dims,
-      const phi::DataLayout &layout,
+      const DDim &dims,
+      const DataLayout &layout,
       pir::DenseTensorType non_zero_crows,
       pir::DenseTensorType non_zero_cols,
       pir::DenseTensorType non_zero_elements) {
@@ -210,9 +210,9 @@ class AllocatedSparseCsrTensorType
 
   pir::Type dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  phi::DataLayout data_layout() const;
+  DataLayout data_layout() const;
 
   pir::DenseTensorType non_zero_crows() const;
 
@@ -239,8 +239,8 @@ class AllocatedDenseTensorArrayType
   static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
                                            const phi::Place &place,
                                            const pir::Type &dtype,
-                                           const phi::DDim &dims,
-                                           const phi::DataLayout &layout) {
+                                           const DDim &dims,
+                                           const DataLayout &layout) {
     dialect::DenseTensorArrayType type =
         dialect::DenseTensorArrayType::get(ctx, dtype, dims, layout);
 
@@ -254,9 +254,9 @@ class AllocatedDenseTensorArrayType
 
   const pir::Type &dtype() const;
 
-  const pir::DDim &dims() const;
+  const DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  const DataLayout &data_layout() const;
 };
 
 }  // namespace dialect

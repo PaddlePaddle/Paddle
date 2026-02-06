@@ -75,8 +75,8 @@ __global__ void sequence_softmax_kernel(const T *in_data,
 }
 
 template <typename T>
-struct SequenceSoftmaxFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &dev_ctx,
+struct SequenceSoftmaxFunctor<GPUContext, T> {
+  void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &x,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   DenseTensor *out) {

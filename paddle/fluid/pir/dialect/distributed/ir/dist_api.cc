@@ -146,7 +146,7 @@ pir::Value moe_global_mesh_tensor(
   TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
       ctx, global_mesh, global_dims_mapping, global_partial_status);
 
-  phi::DDim global_ddim = phi::make_ddim(global_shape);
+  DDim global_ddim = phi::make_ddim(global_shape);
 
   auto op = ApiBuilder::Instance().GetBuilder()->Build<MoEGlobalMeshTensorOp>(
       inputs, local_dist_attrs, global_dist_attr, global_ddim);
@@ -163,8 +163,8 @@ pir::Value dist_reshape(
     const std::vector<int64_t>& dims_mapping,
     const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  common::DDim global_dims = common::make_ddim(global_shape);
-  common::DDim local_dims = common::make_ddim(local_shape);
+  DDim global_dims = common::make_ddim(global_shape);
+  DDim local_dims = common::make_ddim(local_shape);
   PlacementsAttribute x_placements_attr =
       PlacementsAttribute::get(ctx, x_placements);
   PlacementsAttribute placements_attr =

@@ -48,9 +48,9 @@ struct LRNFunctor<phi::CPUContext, T> {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
-      in_transpose.Resize(common::make_ddim(shape));
-      mid_transpose.Resize(common::make_ddim(shape));
-      out_transpose.Resize(common::make_ddim(shape));
+      in_transpose.Resize(make_ddim(shape));
+      mid_transpose.Resize(make_ddim(shape));
+      out_transpose.Resize(make_ddim(shape));
       dev_ctx.Alloc<T>(&in_transpose);
       dev_ctx.Alloc<T>(&mid_transpose);
       dev_ctx.Alloc<T>(&out_transpose);

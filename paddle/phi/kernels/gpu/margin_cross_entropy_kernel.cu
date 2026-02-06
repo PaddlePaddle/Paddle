@@ -231,7 +231,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   T* logits_max_buff = dev_ctx.template Alloc<T>(&logits_max);
 
   funcs::ReduceKernel<T, T, phi::kps::MaxFunctor, phi::kps::IdentityFunctor<T>>(
-      static_cast<const phi::GPUContext&>(dev_ctx),
+      static_cast<const GPUContext&>(dev_ctx),
       softmax_2d,
       &logits_max,
       phi::kps::IdentityFunctor<T>(),
@@ -254,7 +254,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&sum_exp_logits);
   T* sum_exp_logits_buff = dev_ctx.template Alloc<T>(&sum_exp_logits);
   funcs::ReduceKernel<T, T, phi::kps::AddFunctor, phi::kps::ExpFunctor<T>>(
-      static_cast<const phi::GPUContext&>(dev_ctx),
+      static_cast<const GPUContext&>(dev_ctx),
       softmax_2d,
       &sum_exp_logits,
       phi::kps::ExpFunctor<T>(),

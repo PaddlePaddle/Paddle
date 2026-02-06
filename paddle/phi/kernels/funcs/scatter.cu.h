@@ -95,7 +95,7 @@ __global__ void ScatterCUDAKernel(const T* params,
       VecType* dst = reinterpret_cast<VecType*>(output + out_i);
       *dst = *src;
     } else {
-      phi::CudaAtomicAdd(output + out_i, *(params + i));
+      CudaAtomicAdd(output + out_i, *(params + i));
     }
   }
 }
@@ -149,7 +149,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
 
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      phi::CudaAtomicAdd(&(dst->val[k]), src->val[k]);
+      CudaAtomicAdd(&(dst->val[k]), src->val[k]);
     }
   }
 }
@@ -306,7 +306,7 @@ void GPUScatterNdAdd(const phi::GPUContext& dev_ctx,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
   int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;

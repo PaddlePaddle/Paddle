@@ -49,7 +49,7 @@ __global__ void GraphSendUVGradCUDAKernel(const T* out_grad,
     const T* out_grad_off = out_grad + ty * slice_size;
     T* x_grad_off = x_grad + dst * slice_size;
     while (tx < slice_size) {
-      phi::CudaAtomicAdd(x_grad_off + tx, out_grad_off[tx]);
+      CudaAtomicAdd(x_grad_off + tx, out_grad_off[tx]);
       tx += stride_x;
     }
     ty += stride_y;

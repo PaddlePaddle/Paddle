@@ -30,7 +30,7 @@ namespace paddle::framework::interpreter {
 
 bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                                const phi::KernelKey& expected_kernel_key,
-                               const phi::DenseTensor* tensor,
+                               const DenseTensor* tensor,
                                const std::string& var_name,
                                std::string* new_var_name,
                                std::vector<OpFuncNode>* op_func_nodes,
@@ -240,8 +240,7 @@ bool IsTensorOfVarInitialized(Variable* var) {
     if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetDenseTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<phi::TensorArray>()) {
-      return static_cast<const phi::DenseTensor*>(
-                 &(var->Get<phi::TensorArray>()[0]))
+      return static_cast<const DenseTensor*>(&(var->Get<phi::TensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -507,14 +506,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           const std::string var_name = argument_names[i];
           Variable* var = arguments->at(i);
 
-          const phi::DenseTensor* tensor_in = nullptr;
+          const DenseTensor* tensor_in = nullptr;
           if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
             tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<phi::TensorArray>()) {
             if (var->Get<phi::TensorArray>().empty()) {
               continue;
             }
-            tensor_in = static_cast<const phi::DenseTensor*>(
+            tensor_in = static_cast<const DenseTensor*>(
                 &(var->Get<phi::TensorArray>()[0]));
           } else {
             continue;
@@ -573,7 +572,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               infer_varkernel_context.SetVarName(
                   const_cast<std::string*>(&parameter_name));
               infer_varkernel_context.SetDenseTensor(
-                  const_cast<phi::DenseTensor*>(tensor_in));
+                  const_cast<DenseTensor*>(tensor_in));
               kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
                   &infer_varkernel_context);
             }

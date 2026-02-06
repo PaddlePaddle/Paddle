@@ -99,7 +99,7 @@ void ConvKernelImpl(const Context& dev_ctx,
     col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
   }
 
-  DDim col_shape(common::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
 
   // use col_matrix_shape in the gemm calculation
   // size:

@@ -29,7 +29,7 @@ class ValueExecutionInfo;
 class LegacyKernelInstruction : public InstructionBase {
  public:
   LegacyKernelInstruction(size_t id,
-                          const phi::Place& place,
+                          const Place& place,
                           pir::Operation* op,
                           const ValueExecutionInfo* value_exec_info);
 
