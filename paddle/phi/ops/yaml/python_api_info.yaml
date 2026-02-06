@@ -425,6 +425,7 @@
 - op : renorm
   name : [paddle.renorm, paddle.Tensor.renorm]
   args_alias :
+    x : [input]
     axis : [dim]
     max_norm : [maxnorm]
   pre_process:
@@ -433,6 +434,7 @@
 - op : renorm_
   name : [paddle.renorm_, paddle.Tensor.renorm]
   args_alias :
+    x : [input]
     axis : [dim]
     max_norm : [maxnorm]
   pre_process:
