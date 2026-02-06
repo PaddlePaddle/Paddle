@@ -1712,30 +1712,30 @@ class Fleet:
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-
             .. code-block:: pycon
+
                 >>> # doctest: +SKIP('PIR clone issue')
                 >>> import paddle
                 >>> paddle.enable_static()
                 >>> import paddle.distributed.fleet as fleet
-                >>> # 1. 简化的静态图网络
-                >>> x = paddle.static.data(name='x', shape=[None, 1], dtype='float32')
-                >>> y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
-                >>> w = paddle.static.create_parameter(shape=[1, 1], dtype='float32', name='w')
-                >>> b = paddle.static.create_parameter(shape=[1], dtype='float32', name='b')
-                >>> prediction = paddle.add(paddle.matmul(x, w), b)
-                >>> loss = paddle.mean(paddle.square(prediction-y))
-                >>> # 2. 初始化 Fleet
-                >>> fleet.init(is_collective=False)
-                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-                >>> optimizer = fleet.distributed_optimizer(optimizer)
-                >>> optimize_ops, params_grads = optimizer.minimize(loss)
-                >>> # 3. 显式打印输出
+                >>> import paddle.distributed.fleet.base.role_maker as role_maker
+                >>> role = role_maker.PaddleCloudRoleMaker()
+                >>> fleet.init(role)
+                >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+                >>> l_out = paddle.static.nn.fc(x=input_x, size=10, activation='softmax')
+                >>> cost = paddle.nn.functional.cross_entropy(input=l_out, label=input_y)
+                >>> avg_cost = paddle.mean(x=cost)
+                >>> strategy = fleet.DistributedStrategy()
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+                >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+                >>> optimize_ops, params_grads = optimizer.minimize(avg_cost)
                 >>> print(len(optimize_ops))
-                1
+                0
                 >>> print(params_grads[0][0].name)
                 w
                 >>> # doctest: -SKIP
+
                 >>> # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
