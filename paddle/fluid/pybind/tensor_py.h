@@ -678,7 +678,7 @@ void SetUVATensorFromPyArray(const std::shared_ptr<Tensor> &self,
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
+      phi::DenseTensorMeta(DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<DenseTensor> tmp_t = std::make_shared<DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(CPUPlace())
           .get(),

@@ -25,7 +25,7 @@ namespace pir {
 ///
 class IR_API Parameter {
  public:
-  Parameter(void* data, size_t size, pir::Type type) {
+  Parameter(void* data, size_t size, Type type) {
     PADDLE_ENFORCE_EQ(
         data == nullptr && size > 0,
         false,

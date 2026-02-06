@@ -100,7 +100,7 @@ __global__ void GPUPSROIPoolBackward(const int64_t nthreads,
     for (int ih = hstart; ih < hend; ++ih) {
       for (int iw = wstart; iw < wend; ++iw) {
         int input_index = ih * width + iw;
-        phi::CudaAtomicAdd(offset_dx_data + input_index, diff_val);
+        CudaAtomicAdd(offset_dx_data + input_index, diff_val);
       }
     }
   }

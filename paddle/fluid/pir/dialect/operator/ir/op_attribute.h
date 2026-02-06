@@ -109,7 +109,7 @@ class IR_API DataLayoutAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
-  phi::DataLayout data() const;
+  DataLayout data() const;
   static std::string name() { return "a_layout"; }
 };
 

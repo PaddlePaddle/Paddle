@@ -68,9 +68,8 @@ __global__ void GPURoiPoolBackward(const IndexType nthreads,
 
     int64_t arg_max = offset_arg_max_data[ph * pooled_width + pw];
     if (arg_max != -1) {
-      phi::CudaAtomicAdd(
-          offset_input_grad + arg_max,
-          static_cast<T>(offset_output_grad[ph * pooled_width + pw]));
+      CudaAtomicAdd(offset_input_grad + arg_max,
+                    static_cast<T>(offset_output_grad[ph * pooled_width + pw]));
     }
   }
 }

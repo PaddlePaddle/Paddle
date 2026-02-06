@@ -50,6 +50,7 @@ jobs:
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
@@ -135,6 +136,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           rm -rf * .[^.]*
@@ -258,6 +260,7 @@ jobs:
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 240
     steps:
       - name: Check docker image and run container
         env:
@@ -331,6 +334,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

@@ -108,7 +108,7 @@ Tensor full<DescTensor>(const IntArray& shape,
 
 template <>
 Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
-  Tensor out = empty<DescTensor>({}, DataType::FLOAT32, paddle::Place());
+  Tensor out = empty<DescTensor>({}, DataType::FLOAT32, Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("cast");
@@ -137,7 +137,7 @@ Tensor slice<DescTensor>(const Tensor& input,
   op->SetInput(
       "Input",
       {std::static_pointer_cast<prim::DescTensor>(input.impl())->Name()});
-  auto out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  auto out = empty<DescTensor>({}, phi::DataType::FLOAT32, Place());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->SetAttr("axes", unsafe_vector_cast<int64_t, int>(axes));

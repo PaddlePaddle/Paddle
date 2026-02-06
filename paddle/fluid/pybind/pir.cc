@@ -362,7 +362,7 @@ using ComputeReturnType = std::variant<float,
                                        std::vector<int32_t>,
                                        std::vector<int64_t>,
                                        std::vector<float>,
-                                       phi::DataType,
+                                       DataType,
                                        Place>;
 ComputeReturnType CastPyObjectToAny(const pybind11::object &obj,
                                     const std::string &type_name) {
@@ -395,9 +395,7 @@ ComputeReturnType CastPyObjectToAny(const pybind11::object &obj,
              return obj.cast<std::vector<float>>();
            }},
           {"datatype",
-           [](const pybind11::object &obj) {
-             return obj.cast<phi::DataType>();
-           }},
+           [](const pybind11::object &obj) { return obj.cast<DataType>(); }},
           {"place",
            [](const pybind11::object &obj) { return obj.cast<Place>(); }}};
 
@@ -1468,7 +1466,7 @@ void BindValue(py::module *m) {
       .def_property(
           "dtype",
           [](Value self) { return pir::GetValueDtype(self); },
-          [](Value self, phi::DataType dtype) {
+          [](Value self, DataType dtype) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
@@ -1827,7 +1825,7 @@ void BindType(py::module *m) {
       .def_property(
           "dtype",
           [](Type self) { return GetTensorDtype(self); },
-          [](Type self, phi::DataType dtype) {
+          [](Type self, DataType dtype) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
@@ -3200,7 +3198,7 @@ void BindDrrPatternContext(pybind11::module *m) {
       .def(
           "DataTypeAttr",
           [](drr::MatchContext &self, const std::string &value_name) {
-            return self.Attr<phi::DataType>(value_name);
+            return self.Attr<DataType>(value_name);
           },
           pybind11::arg("value_name"))
       .def(

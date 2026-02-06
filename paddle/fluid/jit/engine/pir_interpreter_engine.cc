@@ -35,7 +35,7 @@ PirInterpreterEngine::PirInterpreterEngine(
                     common::errors::PreconditionNotMet(
                         "There is no operator in ProgramDesc."));
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, &scope_);
-  prog_ = paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_);
+  prog_ = pir::PdOpLowerToKernelPass(prog_.get(), place_);
   CreateInterpreterCore();
 }
 

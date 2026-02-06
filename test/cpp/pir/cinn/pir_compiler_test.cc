@@ -213,7 +213,7 @@ ProgramInfo BuildSoftmax() {
 //   phi::Place place = phi::GPUPlace(0);
 
 //   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(new_program.get(), place);
+//       pir::PdOpLowerToKernelPass(new_program.get(), place);
 
 //   paddle::framework::Scope exe_scope;
 

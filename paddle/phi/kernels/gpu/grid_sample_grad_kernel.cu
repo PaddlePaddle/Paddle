@@ -36,7 +36,7 @@ static __forceinline__ __device__ void AtomicAdd(T* data,
                                                  IndexT W,
                                                  T delta) {
   if (InBounds(h, w, H, W)) {
-    phi::CudaAtomicAdd(data + h * sH + w * sW, delta);
+    CudaAtomicAdd(data + h * sH + w * sW, delta);
   }
 }
 
@@ -53,7 +53,7 @@ static __forceinline__ __device__ void AtomicAdd3D(T* data,
                                                    IndexT W,
                                                    T delta) {
   if (InBounds3D(d, h, w, D, H, W)) {
-    phi::CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
+    CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
   }
 }
 

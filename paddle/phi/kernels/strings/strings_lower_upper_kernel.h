@@ -21,8 +21,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/strings/unary.h"
 #include "paddle/phi/kernels/strings/case_utils.h"
 
-using pstring = ::phi::dtype::pstring;
-
 namespace phi {
 namespace strings {
 

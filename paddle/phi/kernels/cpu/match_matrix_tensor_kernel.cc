@@ -110,14 +110,14 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
 
   auto& out_meta = out->meta();
   DenseTensorMeta new_out_meta(out_meta.dtype,
-                               common::make_ddim(out_dims_vec),
+                               make_ddim(out_dims_vec),
                                out_meta.layout,
                                out_meta.legacy_lod);
   out->set_meta(new_out_meta);
 
   auto& tmp_meta = tmp->meta();
   DenseTensorMeta new_tmp_meta(tmp_meta.dtype,
-                               common::make_ddim(tmp_dims_vec),
+                               make_ddim(tmp_dims_vec),
                                tmp_meta.layout,
                                tmp_meta.legacy_lod);
   tmp->set_meta(new_tmp_meta);

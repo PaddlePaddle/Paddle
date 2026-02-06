@@ -474,7 +474,7 @@ void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void ProgramInterpreter::BuildInplace() {
-  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput phi::DenseTensor
+  // NOTE(Ruibiao): coalesce_tensor_op outputs a FusedOutput DenseTensor
   // and a list of Output Tensors which are sliced from the FusedOutput. These
   // outputs should not be the outvar of the in-place var-pair since memory
   // reuse between FusedOutput and Output Tensors is assumed. For the following
@@ -1129,7 +1129,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     for (auto& vname : op->InputVars()) {
       auto* var = local_scope->FindVar(vname);
       if (var == nullptr) continue;
-      const phi::DenseTensor* tensor{nullptr};
+      const DenseTensor* tensor{nullptr};
       if (var->IsType<DenseTensor>()) {
         tensor = &var->Get<DenseTensor>();
       } else {
@@ -1145,7 +1145,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     for (auto& vname : op->OutputVars(true)) {
       auto* var = local_scope->FindVar(vname);
       if (var == nullptr) continue;
-      const phi::DenseTensor* tensor{nullptr};
+      const DenseTensor* tensor{nullptr};
       if (var->IsType<DenseTensor>()) {
         tensor = &var->Get<DenseTensor>();
       } else {
@@ -1435,8 +1435,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
   phi::RecordEvent record(
       "RecordStreamForGC", phi::TracerEventType::UserDefined, 10);
 
-  auto TensorRecordStream = [](phi::DenseTensor& tensor,
-                               const gpuStream_t& stream) {
+  auto TensorRecordStream = [](DenseTensor& tensor, const gpuStream_t& stream) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
       return;

@@ -91,7 +91,7 @@ void TileKernel(const Context& dev_ctx,
           vec_in_dims.size(),
           repeat_times.size()));
 
-  DDim new_in_dims = common::make_ddim(vec_in_dims);
+  DDim new_in_dims = make_ddim(vec_in_dims);
   DDim out_dims(new_in_dims);
 
   for (size_t i = 0; i < repeat_times.size(); ++i) {

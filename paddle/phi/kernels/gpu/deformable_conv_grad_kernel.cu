@@ -107,8 +107,7 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                            height,
                                            width);
 
-          phi::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
-                             weight * cur_top_grad);
+          CudaAtomicAdd(grad_im + cur_bottom_grad_pos, weight * cur_top_grad);
         }
       }
     }

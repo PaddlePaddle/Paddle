@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/auc_kernel.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -74,9 +72,9 @@ __global__ void AddDataKernel(const int64_t *label_data,
                    "The predict data must gather or equal 0.");
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
     if (label_data[i]) {
-      phi::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
+      CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
     } else {
-      phi::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+      CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
     }
   }
 }
