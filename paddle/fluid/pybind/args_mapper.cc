@@ -454,8 +454,8 @@ void FillDiagonalMapper(PyObject* args,
   const int max_args = 4;
   CheckParamsCount(nargs, remaining_kwargs, max_args);
 
-  PyObject* x_obj = GetItemFromArgsOrKWArgs(
-      args, 0, kwargs, {"x"}, nargs, &remaining_kwargs);
+  PyObject* x_obj =
+      GetItemFromArgsOrKWArgs(args, 0, kwargs, {"x"}, nargs, &remaining_kwargs);
   *x = CastPyArg2Value(x_obj, "fill_diagonal_", 0, false);
 
   PyObject* value_obj = GetItemFromArgsOrKWArgs(args,
