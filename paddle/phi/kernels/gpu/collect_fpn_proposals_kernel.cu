@@ -42,9 +42,7 @@ static inline int NumBlocks(const int N) {
 static __global__ void GetLengthLoD(const int nthreads,
                                     const int* batch_ids,
                                     int* length_lod) {
-  CUDA_KERNEL_LOOP(i, nthreads) {
-    phi::CudaAtomicAdd(length_lod + batch_ids[i], 1);
-  }
+  CUDA_KERNEL_LOOP(i, nthreads) { CudaAtomicAdd(length_lod + batch_ids[i], 1); }
 }
 
 template <typename T, typename Context>
@@ -139,7 +137,7 @@ void GPUCollectFpnProposalsOpKernel(
   DenseTensor index_in_t;
   index_in_t.Resize({total_roi_num});
   int* idx_in = dev_ctx.template Alloc<int>(&index_in_t);
-  funcs::ForRange<phi::GPUContext> for_range_total(dev_ctx, total_roi_num);
+  funcs::ForRange<GPUContext> for_range_total(dev_ctx, total_roi_num);
   for_range_total(funcs::RangeInitFunctor{0, 1, idx_in});
 
   DenseTensor keys_out_t;
@@ -190,7 +188,7 @@ void GPUCollectFpnProposalsOpKernel(
   DenseTensor batch_index_t;
   batch_index_t.Resize({real_post_num});
   int* batch_idx_in = dev_ctx.template Alloc<int>(&batch_index_t);
-  funcs::ForRange<phi::GPUContext> for_range_post(dev_ctx, real_post_num);
+  funcs::ForRange<GPUContext> for_range_post(dev_ctx, real_post_num);
   for_range_post(funcs::RangeInitFunctor{0, 1, batch_idx_in});
 
   DenseTensor out_id_t;
@@ -229,7 +227,7 @@ void GPUCollectFpnProposalsOpKernel(
   DenseTensor length_lod;
   length_lod.Resize({lod_size});
   int* length_lod_data = dev_ctx.template Alloc<int>(&length_lod);
-  funcs::SetConstant<phi::GPUContext, int> set_zero;
+  funcs::SetConstant<GPUContext, int> set_zero;
   set_zero(dev_ctx, &length_lod, static_cast<int>(0));
 
   int blocks = NumBlocks(real_post_num);

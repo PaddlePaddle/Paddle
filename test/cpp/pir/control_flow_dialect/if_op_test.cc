@@ -209,7 +209,7 @@ TEST(if_op_test, network_with_backward) {
 
   LOG(INFO) << program;
 
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program);
 
   auto place = phi::CPUPlace();
 #if defined(PADDLE_WITH_CUDA)

@@ -29,16 +29,15 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #endif
 
-#define OVERLOAD_PREFER_LAYOUT(op)                          \
-  template <>                                               \
-  common::DataLayout PreferLayoutImpl<op>(pir::Operation*); \
-  extern template common::DataLayout PreferLayoutImpl<op>(pir::Operation*);
+#define OVERLOAD_PREFER_LAYOUT(op)                  \
+  template <>                                       \
+  DataLayout PreferLayoutImpl<op>(pir::Operation*); \
+  extern template DataLayout PreferLayoutImpl<op>(pir::Operation*);
 
-#define OVERLOAD_REWRITE_BY_LAYOUT(op)                               \
-  template <>                                                        \
-  void RewriteByLayoutImpl<op>(pir::Operation*, common::DataLayout); \
-  extern template void RewriteByLayoutImpl<op>(pir::Operation*,      \
-                                               common::DataLayout);
+#define OVERLOAD_REWRITE_BY_LAYOUT(op)                       \
+  template <>                                                \
+  void RewriteByLayoutImpl<op>(pir::Operation*, DataLayout); \
+  extern template void RewriteByLayoutImpl<op>(pir::Operation*, DataLayout);
 
 #define OVERLOAD_RELEVANT_INPUTS(op)                                   \
   template <>                                                          \
@@ -61,10 +60,10 @@ namespace paddle {
 namespace dialect {
 
 template <typename ConcreteOp>
-common::DataLayout PreferLayoutImpl(pir::Operation* op) {
+DataLayout PreferLayoutImpl(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
-    return common::DataLayout::ALL_LAYOUT;
+    return DataLayout::ALL_LAYOUT;
   }
   return common::StringToDataLayout(data_format_attr.AsString());
 }
@@ -107,7 +106,7 @@ bool CanBeModifiedImpl(pir::Operation* op) {
 }
 
 template <typename ConcreteOp>
-void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
+void RewriteByInfermeta(pir::Operation* op, DataLayout new_layout) {
   std::vector<pir::Type> new_outputs = ConcreteOp::InferMeta(
       op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
   for (size_t i = 0; i < new_outputs.size(); ++i) {
@@ -119,17 +118,17 @@ void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
   auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   const pir::TransLayoutType trans_layout_type = [&] {
-    if (new_layout == common::DataLayout::NHWC) {
+    if (new_layout == DataLayout::NHWC) {
       return pir::TransLayoutType::NCHW2NHWC;
     }
-    if (new_layout == common::DataLayout::NHWC) {
+    if (new_layout == DataLayout::NHWC) {
       return pir::TransLayoutType::NHWC2NCHW;
     }
     return pir::TransLayoutType::INVALID;
   }();
 
   if (trans_layout_type != pir::TransLayoutType::INVALID) {
-    callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
+    callback = [&](pir::Value value, DataLayout new_layout) -> void {
       shape_analysis.UpdateShapeOrDataByTransLayout(value, trans_layout_type);
     };
   }
@@ -140,7 +139,7 @@ void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
 }
 
 template <typename ConcreteOp>
-void RewriteByLayoutImpl(pir::Operation* op, common::DataLayout new_layout) {
+void RewriteByLayoutImpl(pir::Operation* op, DataLayout new_layout) {
   if (!op->HasInterface<paddle::dialect::InferMetaInterface>()) {
     PADDLE_THROW(common::errors::Unimplemented(
         "Op %s should have a specialized RewriteByLayout function",
@@ -148,10 +147,9 @@ void RewriteByLayoutImpl(pir::Operation* op, common::DataLayout new_layout) {
   }
 
   if (op->HasAttribute("data_format")) {
-    op->set_attribute(
-        "data_format",
-        pir::StrAttribute::get(pir::IrContext::Instance(),
-                               common::DataLayoutToString(new_layout)));
+    op->set_attribute("data_format",
+                      pir::StrAttribute::get(pir::IrContext::Instance(),
+                                             DataLayoutToString(new_layout)));
   }
 
   RewriteByInfermeta<ConcreteOp>(op, new_layout);
@@ -213,6 +211,6 @@ class CombineOp;
 namespace paddle {
 namespace dialect {
 
-OVERLOAD_REWRITE_BY_LAYOUT(::pir::CombineOp);
+OVERLOAD_REWRITE_BY_LAYOUT(pir::CombineOp);
 }  // namespace dialect
 }  // namespace paddle

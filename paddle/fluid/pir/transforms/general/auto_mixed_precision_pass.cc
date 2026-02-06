@@ -304,7 +304,7 @@ class AutoMixedPrecisionPass : public Pass {
       const std::string& op_type,
       phi::Backend backend,
       phi::DataType data_type,
-      phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) const {
+      DataLayout layout = DataLayout::ALL_LAYOUT) const {
     const auto& kernels = phi::KernelFactory::Instance().kernels();
     if (kernels.count(op_type) == 0) {
       return false;
@@ -333,7 +333,7 @@ class AutoMixedPrecisionPass : public Pass {
       const std::string& op_type,
       phi::Backend backend,
       phi::DataType precision,
-      phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) const {
+      DataLayout layout = DataLayout::ALL_LAYOUT) const {
     auto& phi_op_type = op_type;
 
     bool support =
@@ -368,18 +368,18 @@ class AutoMixedPrecisionPass : public Pass {
       if (PhiKernelSupportPrecision(
               kernel_fn_str, phi::Backend::GPUDNN, precision)) {
         phi::KernelKey kernel_key(
-            phi::Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, precision);
+            phi::Backend::GPUDNN, DataLayout::ALL_LAYOUT, precision);
         return phi::KernelFactory::Instance().SelectKernel(kernel_fn_str,
                                                            kernel_key);
       }
       phi::KernelKey kernel_key(
-          phi::Backend::GPU, phi::DataLayout::ALL_LAYOUT, precision);
+          phi::Backend::GPU, DataLayout::ALL_LAYOUT, precision);
       return phi::KernelFactory::Instance().SelectKernel(kernel_fn_str,
                                                          kernel_key);
     }
     return phi::KernelFactory::Instance().SelectKernel(
         kernel_fn_str,
-        phi::KernelKey(backend, phi::DataLayout::ALL_LAYOUT, precision));
+        phi::KernelKey(backend, DataLayout::ALL_LAYOUT, precision));
   }
 
   bool IsBuiltinOp(Operation* op) const {
@@ -735,7 +735,7 @@ class AutoMixedPrecisionPass : public Pass {
     }
   }
 
-  std::vector<int64_t> ConvertDDimToVector(const common::DDim& ddim) {
+  std::vector<int64_t> ConvertDDimToVector(const DDim& ddim) {
     std::vector<int64_t> dims;
     for (int i = 0; i < ddim.size(); ++i) {
       dims.push_back(ddim[i]);

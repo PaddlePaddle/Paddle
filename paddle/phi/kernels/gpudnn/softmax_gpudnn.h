@@ -767,7 +767,7 @@ __global__ void WarpSoftmaxBackward(T* dst,
     break;
 
 /*
-  Wrapper of softmax formward with template instantiation on size of input.
+  Wrapper of softmax forward with template instantiation on size of input.
 */
 template <typename T, typename VecT, typename IndexType, bool LogMode>
 void SwitchWarpSoftmaxForward(const IndexType blocks,

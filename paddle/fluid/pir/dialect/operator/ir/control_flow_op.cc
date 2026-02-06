@@ -126,8 +126,8 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                               "The dtype in output[%d] of "
                               "true_block&false_block must be equal.",
                               i));
-        if (l_type.data_layout() != phi::DataLayout::UNDEFINED &&
-            r_type.data_layout() != phi::DataLayout::UNDEFINED) {
+        if (l_type.data_layout() != DataLayout::UNDEFINED &&
+            r_type.data_layout() != DataLayout::UNDEFINED) {
           PADDLE_ENFORCE_EQ(
               l_type.data_layout(),
               r_type.data_layout(),

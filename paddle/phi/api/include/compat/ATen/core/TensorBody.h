@@ -23,6 +23,7 @@
 #include <limits>
 #include <optional>
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
@@ -138,9 +139,18 @@ class Tensor : public TensorBase {
   Tensor& operator=(Tensor&& x) & noexcept {
     return operator=(static_cast<TensorBase&&>(x));
   }
-  Tensor& operator=(const Scalar& v) && { return fill_(v); }
-  Tensor& operator=(const Tensor& rhs) && { return copy_(rhs); }
-  Tensor& operator=(Tensor&& rhs) && { return copy_(rhs); }
+  Tensor& operator=(const Scalar& v) && {
+    fill_(v);
+    return *this;
+  }
+  Tensor& operator=(const Tensor& rhs) && {
+    copy_(rhs);
+    return *this;
+  }
+  Tensor& operator=(Tensor&& rhs) && {
+    copy_(rhs);
+    return *this;
+  }
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
@@ -175,6 +185,21 @@ class Tensor : public TensorBase {
   Tensor cpu() const {
     PaddlePlace place(phi::AllocationType::CPU);
     return tensor_.copy_to(place, true);
+  }
+
+  Tensor cuda() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PaddlePlace place(phi::AllocationType::GPU);
+    return tensor_.copy_to(place, true);
+#elif defined(PADDLE_WITH_XPU)
+    return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    return tensor_.copy_to(paddle::DefaultCustomPlace(), true);
+#else
+    PD_THROW(
+        "cuda() is not supported: no GPU/XPU/Custom device enabled "
+        "in this build.");
+#endif
   }
 
   const void* const_data_ptr() const {
@@ -367,6 +392,33 @@ class Tensor : public TensorBase {
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
+
+  bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
+    return phi::is_cuda_pinned_place(tensor_.place()) ||
+           phi::is_xpu_pinned_place(tensor_.place());
+  }
+
+  Tensor pin_memory(
+      ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (is_pinned(device)) {
+      return *this;
+    }
+
+    PaddlePlace current_place = tensor_.place();
+    PaddlePlace pinned_place;
+    if (phi::is_cpu_place(current_place)) {
+      // CPU place cannot be directly converted to pinned place
+      PD_THROW(
+          "pin_memory: Pinning memory is not supported for CPUPlace. "
+          "Please use CUDAPlace or XPUPlace tensor, or specify "
+          "CUDAPinnedPlace/XPUPinnedPlace as device.");
+    } else {
+      // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
+      // place
+      pinned_place = phi::GetPinnedPlace(current_place);
+    }
+    return tensor_.copy_to(pinned_place, true);
+  }
 
   // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
   // Tensor
@@ -702,10 +754,37 @@ class Tensor : public TensorBase {
   }
 #endif
 
+  // Deprecated packed_accessor for compatibility with PyTorch
+  // Use packed_accessor32 or packed_accessor64 instead
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() const& {
+    return this->template generic_packed_accessor<T, N, PtrTraits, index_t>();
+  }
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() && = delete;
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
-};
-
+};  // NOLINT(readability/braces)
 }  // namespace at
 namespace torch {
 using at::Tensor;

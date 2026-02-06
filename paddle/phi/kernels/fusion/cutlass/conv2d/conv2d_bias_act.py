@@ -138,7 +138,6 @@ def generate_sm75_1688():
     kernel_dict["stride_support"] = "cutlass::conv::StrideSupport::kStrided"
 
     # iterate over this loop
-    element_accums = ["cutlass::half_t", "float"]
     iterator_algorithms = [
         "cutlass::conv::IteratorAlgorithm::kOptimized",
         # "cutlass::conv::IteratorAlgorithm::kAnalytic",
