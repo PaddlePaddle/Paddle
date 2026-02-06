@@ -58,11 +58,11 @@ class PairwiseDistance(Layer):
               depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
-            >>> y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
+            >>> x = paddle.to_tensor([[1.0, 3.0], [3.0, 5.0]], dtype=paddle.float64)
+            >>> y = paddle.to_tensor([[5.0, 6.0], [7.0, 8.0]], dtype=paddle.float64)
             >>> dist = paddle.nn.PairwiseDistance()
             >>> distance = dist(x, y)
             >>> print(distance)
