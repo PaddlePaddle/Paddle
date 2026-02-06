@@ -828,6 +828,10 @@ void BroadcastKernel(const KPDevice &dev_ctx,
   if ((*outs)[0]->numel() == 0) {
     return;
   }
+  PADDLE_ENFORCE_LE_INT_MAX((*outs)[0]->numel(), "out->numel()");
+  for (int i = 0; i < (*outs)[0]->dims().size(); ++i) {
+    PADDLE_ENFORCE_LE_INT_MAX((*outs)[0]->dims()[i], "out.dim(i)");
+  }
   int max_rank = 0;
   int min_rank = DDim::kMaxRank;
   for (auto *in : ins) {

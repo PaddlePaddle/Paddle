@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -57,6 +58,7 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   int64_t numel = out->numel();
   T *out_data = dev_ctx.template Alloc<T>(out);
   if (numel <= 0) return;
+  PADDLE_ENFORCE_LE_INT_MAX(numel, "numel");
   size_t vec_size = std::min(4, phi::GetVectorizedSize(out_data));
 #ifdef PADDLE_WITH_XPU_KP
   size_t block = 64;
