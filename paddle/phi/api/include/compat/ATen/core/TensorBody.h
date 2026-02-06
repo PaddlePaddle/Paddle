@@ -544,10 +544,10 @@ class Tensor : public TensorBase {
   // Standard deviation functions
   Tensor std(int dim) const;
   Tensor std(bool unbiased = true) const;
-  Tensor std(at::OptionalIntArrayRef dim,
+  Tensor std(c10::optional<at::IntArrayRef> dim,
              bool unbiased = true,
              bool keepdim = false) const;
-  Tensor std(at::OptionalIntArrayRef dim,
+  Tensor std(c10::optional<at::IntArrayRef> dim,
              const ::std::optional<at::Scalar>& correction,
              bool keepdim = false) const;
 
