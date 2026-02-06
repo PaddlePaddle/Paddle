@@ -30,14 +30,10 @@
 #include <cuda_runtime_api.h>
 #endif
 
-namespace at {
 #include <c10/core/Device.h>
 #include <utility>
 #include <vector>
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/memory/malloc.h"
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
