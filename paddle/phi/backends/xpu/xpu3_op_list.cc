@@ -383,6 +383,10 @@ XPUOpMap& get_kl3_ops() {
       {"unfold", XPUKernelSet({FLOAT32, FLOAT16})},
       {"unfold_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"floor", XPUKernelSet({FLOAT32})},
+      {"frame",
+       XPUKernelSet({INT32, INT64, FLOAT32, FLOAT64, FLOAT16, BFLOAT16})},
+      {"frame_grad",
+       XPUKernelSet({INT32, INT64, FLOAT32, FLOAT64, FLOAT16, BFLOAT16})},
       {"ceil", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"gather_grad",
        XPUKernelSet(
