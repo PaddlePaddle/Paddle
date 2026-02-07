@@ -15,7 +15,6 @@
 import argparse
 
 from codegen_utils import (
-    FunctionGeneratorBase,
     GeneratorBase,
     ParsePythonAPIInfoFromYAML,
 )
@@ -83,25 +82,8 @@ SET_UNIFIED_FUNCTION_TEMPLATE = """
 
 # Unified map: list of (module_path, method_name, func) for all module paths
 unified_func_map = []
-# The python api info which not in ops.yaml
+# The python api info in python_api_info.yaml
 python_api_info_from_yaml = {}
-
-
-class MethodGenerator(FunctionGeneratorBase):
-    def __init__(self, forward_api_contents, namespace):
-        FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
-        self.need_parse_python_api_args = False
-        # Generated Results
-        self.Method_str = ""
-
-    def run(self):
-        # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
-        self.CollectOriginalForwardInfo()
-        if len(self.python_api_info) > 0:
-            self.need_parse_python_api_args = True
-            self.ParsePythonAPIInfo()
-            self.Method_str = GenerateMethod(self.forward_api_name)
-            ClassifyAPIByPrefix(self.python_api_info, self.forward_api_name)
 
 
 def ExtractPrefix(full_name):
@@ -154,14 +136,8 @@ class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
     def GenerateMonkeyPatchTensorMethods(self):
         self.MonkeyPatchTensorMethods_str += IMPORT_TEMPLATE
 
-        forward_api_list = self.forward_api_list
         method_str = ""
-        # some python api info in ops.yaml
-        for forward_api_content in forward_api_list:
-            f_generator = MethodGenerator(forward_api_content, None)
-            f_generator.run()
-            method_str += f_generator.Method_str
-        # some python api info not in ops.yaml but in python_api_info.yaml
+        # python api in python_api_info.yaml
         for ops_name, python_api_info in python_api_info_from_yaml.items():
             method_str += GenerateMethod(ops_name)
             ClassifyAPIByPrefix(python_api_info, ops_name)
