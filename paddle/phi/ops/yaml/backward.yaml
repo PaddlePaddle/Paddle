@@ -896,7 +896,7 @@
   forward : div_scale (Tensor x, Scalar scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0)
   output : Tensor(x_grad)
-  invoke : scale(out_grad, scale, 0.0f, true)
+  invoke : div_scale(out_grad, scale)
 
 - backward_op : dot_grad
   forward : dot (Tensor x, Tensor y) -> Tensor(out)

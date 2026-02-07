@@ -222,6 +222,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'straight_through_estimator',
     "multiply_grad",
     "scale_grad",
+    "div_scale_grad",
     "conv2d_grad",
 ]
 

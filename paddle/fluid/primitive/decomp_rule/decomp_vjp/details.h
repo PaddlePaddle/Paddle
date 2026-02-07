@@ -905,8 +905,9 @@ void div_scale_grad(const Tensor& out_grad,
                     const Scalar& scale,
                     Tensor* x_grad) {
   if (x_grad) {
+    auto scale_value = 1.0 / scale.to<double>();
     auto dx_res = primitive::scale<T>(
-        out_grad, scale, /*bias=*/0.0f, /*bias_after_scale=*/true);
+        out_grad, scale_value, /*bias=*/0.0f, /*bias_after_scale=*/true);
     set_output<T>(dx_res, x_grad);
   }
 }

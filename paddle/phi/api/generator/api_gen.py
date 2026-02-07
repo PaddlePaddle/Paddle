@@ -19,6 +19,7 @@ from api_base import PREFIX_TENSOR_NAME, BaseAPI, IsUsePredefinedOut
 
 backward_api_black_list = [
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
+    "div_scal_grad",
 ]
 
 inplace_out_type_map = {

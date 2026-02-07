@@ -117,6 +117,7 @@ PRIM_VJP = [
     'roll_grad',
     'rsqrt_grad',
     'scale_grad',
+    "div_scale_grad",
     'scatter_grad',
     'scatter_nd_add_grad',
     'sigmoid_grad',

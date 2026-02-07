@@ -62,6 +62,7 @@ black_ops_list = [
     "multiply",
     "multiply_grad",
     "scale_grad",
+    "div_scale_grad",
     "pull_sparse_v2_grad",
     "push_gpups_sparse",
 ]
