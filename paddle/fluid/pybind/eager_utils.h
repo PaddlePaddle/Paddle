@@ -62,7 +62,7 @@ static T PyObjectCast(PyObject* obj) {
   }
 }
 
-int TensorDtype2NumpyDtype(phi::DataType dtype);
+int TensorDtype2NumpyDtype(DataType dtype);
 
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
@@ -166,7 +166,7 @@ PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
-PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes);
+PyObject* ToPyObject(const std::vector<DataType>& dtypes);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(

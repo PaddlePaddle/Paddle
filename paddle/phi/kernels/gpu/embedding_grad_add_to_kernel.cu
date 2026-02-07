@@ -47,8 +47,7 @@ __global__ void EmbeddingGradAddTo(T* main_grad_out,
     const phi::bfloat16* token_out_grad = out_grad + idy * token_length;
     T* token_main_grad = main_grad_out + id * token_length;
     for (int64_t i = idx; i < token_length; i += blockDim.x) {
-      phi::CudaAtomicAdd(&token_main_grad[i],
-                         static_cast<T>(token_out_grad[i]));
+      CudaAtomicAdd(&token_main_grad[i], static_cast<T>(token_out_grad[i]));
     }
     idy += blockDim.y * gridDim.x;
   }

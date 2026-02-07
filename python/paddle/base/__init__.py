@@ -72,6 +72,7 @@ from .core import (  # noqa: F401
     Scope,
     XPUPinnedPlace,
     XPUPlace,
+    _check_last_cuda_error,
     _cuda_synchronize,
     _Scope,
     _set_warmup,

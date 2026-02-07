@@ -37,7 +37,7 @@ class ReduceAdd {
   template <typename tensor_t>
   __device__ void operator()(tensor_t* __restrict__ self_data,
                              const tensor_t* __restrict__ src_data) const {
-    phi::CudaAtomicAdd(self_data, *src_data);
+    CudaAtomicAdd(self_data, *src_data);
   }
 };
 static ReduceAdd reduce_add;
@@ -317,7 +317,7 @@ __global__ void GatherScatterGPUKernel(
   reduce_op(static_cast<tensor_t*>(self_data + replace_index_self),
             static_cast<const tensor_t*>(src_data + replace_index_src));
   if (atomic_cnt_buffer) {
-    phi::CudaAtomicAdd(atomic_cnt_buffer + replace_index_self, 1);
+    CudaAtomicAdd(atomic_cnt_buffer + replace_index_self, 1);
   }
 }
 
@@ -856,26 +856,26 @@ __global__ void ScatterGradPrePassKernel(
     // as the 2nd param for compute offset
     COMPUTE_OFFSET_DOUBLE_OUTPUT(replace_index_value, replace_index, tid, 2, 1)
     if (value_data[replace_index_value] == out_data[replace_index])
-      phi::CudaAtomicAdd(aux_buffer + replace_index, 1);
+      CudaAtomicAdd(aux_buffer + replace_index, 1);
   } else if constexpr (dispatch == GradDispatchTag::MeanInputGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
     atomicMax(aux_buffer + replace_index, tid);
-    phi::CudaAtomicAdd(aux_buffer + grad_numel + replace_index, 1);
+    CudaAtomicAdd(aux_buffer + grad_numel + replace_index, 1);
   } else if constexpr (dispatch == GradDispatchTag::ValueGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index_self, 2, tid, 3)
     atomicMax(aux_buffer + replace_index_self, tid);
   } else if constexpr (dispatch == GradDispatchTag::MeanValueGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index_self, 2, tid, 3)
-    phi::CudaAtomicAdd(aux_buffer + replace_index_self, 1);
+    CudaAtomicAdd(aux_buffer + replace_index_self, 1);
   } else if constexpr (dispatch == GradDispatchTag::MinMaxValueGrad) {
     COMPUTE_OFFSET_DOUBLE_OUTPUT(
         replace_index_grad, replace_index_self, tid, 1, 2)
     grad_data[replace_index_grad] = 0;
     if (include_self &&
         x_data[replace_index_self] == out_data[replace_index_self])
-      phi::CudaAtomicAdd(aux_buffer + replace_index_self, 1);
+      CudaAtomicAdd(aux_buffer + replace_index_self, 1);
     if (value_data[replace_index_grad] == out_data[replace_index_self])
-      phi::CudaAtomicAdd(aux_buffer + replace_index_self, 1);
+      CudaAtomicAdd(aux_buffer + replace_index_self, 1);
   }
 }
 

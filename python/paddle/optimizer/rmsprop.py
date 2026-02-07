@@ -129,7 +129,7 @@ class RMSProp(Optimizer):
             The default value is None.
 
     Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
