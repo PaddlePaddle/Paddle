@@ -98,7 +98,7 @@ class AvgPool1D(Layer):
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             >>> avg_pool1d = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
-            >>> pool_out = avg_pool1D(data)
+            >>> pool_out = avg_pool1d(data)
             >>> print(pool_out.shape)
             paddle.Size([1, 3, 16])
 
