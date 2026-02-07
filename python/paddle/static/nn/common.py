@@ -2379,14 +2379,28 @@ def bilinear_tensor_product(
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
+            >>> import numpy as np
             >>> paddle.enable_static()
 
-            >>> x = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
-            >>> y = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
-            >>> tensor = paddle.static.nn.bilinear_tensor_product(x, y, size=1000)
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     main_prog = paddle.static.Program()
+            ...     startup_prog = paddle.static.Program()
+            ...     with paddle.static.program_guard(main_prog, startup_prog):
+            ...         t1 = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
+            ...         t2 = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
+            ...         tensor = paddle.static.nn.bilinear_tensor_product(t1, t2, size=1000)
+            ...
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
+            ...     _ = exe.run(startup_prog)
+            ...
+            ...     x_np = np.random.rand(2, 5).astype("float32")
+            ...     y_np = np.random.rand(2, 4).astype("float32")
+            ...     res = exe.run(main_prog, feed={"t1": x_np, "t2": y_np}, fetch_list=[tensor])
+            ...     print(res[0].shape)
+            (2, 1000)
 
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
@@ -2722,8 +2736,7 @@ def batch_norm(
     outputs = {
         "Y": batch_norm_out,
         "MeanOut": mean_out,
-        "VarianceOut": variance_out,
-        "SavedMean": saved_mean,
+        "VarianceOut": variance_out,        "SavedMean": saved_mean,
         "SavedVariance": saved_variance,
     }
     if reserve_space is not None:
