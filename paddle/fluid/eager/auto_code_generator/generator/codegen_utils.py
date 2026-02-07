@@ -648,8 +648,6 @@ class FunctionGeneratorBase:
         )
 
         forward_returns_str = forward_api_contents['output']
-        if 'python_api' in forward_api_contents.keys():
-            self.python_api_info = forward_api_contents['python_api']
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         (
