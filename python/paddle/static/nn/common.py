@@ -2736,7 +2736,8 @@ def batch_norm(
     outputs = {
         "Y": batch_norm_out,
         "MeanOut": mean_out,
-        "VarianceOut": variance_out,        "SavedMean": saved_mean,
+        "VarianceOut": variance_out,       
+        "SavedMean": saved_mean,
         "SavedVariance": saved_variance,
     }
     if reserve_space is not None:
