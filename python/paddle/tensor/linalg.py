@@ -1355,22 +1355,33 @@ def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
     return out
 
 
+@ParamAliasDecorator({"x": ["input"], "y": ["other"], "axis": ["dim"]})
 def cross(
     x: Tensor,
     y: Tensor,
-    axis: int | None = None,
+    axis: int | None = 9,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the cross product between two tensors along an axis.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``,
+        ``other`` can be used as an alias for ``y``, and ``dim`` can be used as an alias for ``axis``.
+
     Args:
-        x (Tensor): The first input tensor.
-        y (Tensor): The second input tensor.
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``other``.
         axis (int, optional): The axis along which to compute the cross product.
             If None, it defaults to the first dimension found with size 3.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor.
+            Default is None.
 
     Returns:
         Tensor: The cross product of x and y.
@@ -1397,23 +1408,57 @@ def cross(
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if axis is None:
-        axis = K_DEFAULT_DIM
+    axis = K_DEFAULT_DIM if axis is None else axis
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cross(x, y, axis)
-    else:
-        helper = LayerHelper("cross", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = {}
-        attrs['dim'] = axis
-        helper.append_op(
-            type="cross",
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
+        result = _C_ops.cross(x, y, axis)
+        if out is not None:
+            paddle.assign(result, output=out)
+            return out
+        return result
+
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            "int32",
+            "int64",
+            "complex64",
+            "complex128",
+        ],
+        'cross',
+    )
+    check_variable_and_dtype(
+        y,
+        'y',
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            "int32",
+            "int64",
+            "complex64",
+            "complex128",
+        ],
+        'cross',
+    )
+    helper = LayerHelper("cross", **locals())
+    result = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="cross",
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': result},
+        attrs={'dim': axis},
+    )
+    if out is not None:
+        paddle.assign(result, output=out)
         return out
+    return result
 
 
 def cond(

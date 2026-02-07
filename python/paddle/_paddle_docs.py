@@ -2614,8 +2614,8 @@ add_doc_and_signature(
             >>> z2 = paddle.cross(x, y, axis=1)
             >>> print(z2)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 0., 0.],
-             [0., 0., 0.]])
+            [[0., 0., 1.],
+             [1., 0., 0.]])
 """,
     """
 def cross(
