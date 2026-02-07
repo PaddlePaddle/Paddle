@@ -2242,8 +2242,8 @@ class CosineSimilarity(Layer):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> x1 = paddle.to_tensor([[1.0, 2.0, 3.0], [2.0, 3.0, 4.0]], dtype="float32")
-            >>> x2 = paddle.to_tensor([[8.0, 3.0, 3.0], [2.0, 3.0, 4.0]], dtype="float32")
+            >>> x1 = paddle.to_tensor([[1.0, 2.0, 3.0], [2.0, 3.0, 4.0],], dtype="float32")
+            >>> x2 = paddle.to_tensor([[8.0, 3.0, 3.0], [2.0, 3.0, 4.0],], dtype="float32")
 
             >>> cos_sim_func = nn.CosineSimilarity(axis=0)
             >>> result = cos_sim_func(x1, x2)
@@ -2358,7 +2358,7 @@ class Embedding(Layer):
             >>> x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
             >>> embedding = paddle.nn.Embedding(4, 3, sparse=True)
 
-            >>> w0 = paddle.to_tensor([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]], dtype="float32")
+            >>> w0 = paddle.to_tensor([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0],], dtype="float32",)
             >>> embedding.weight.set_value(w0)
             >>> print(embedding.weight)
             Parameter containing:

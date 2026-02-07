@@ -526,7 +526,7 @@ class LayerList(Layer):
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
-            ...         self.linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
+            ...         self.linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)],)
             ...
             ...     def forward(self, x):
             ...         # LayerList can act as an iterable, or be indexed using ints

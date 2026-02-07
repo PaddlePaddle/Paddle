@@ -376,7 +376,7 @@ class CrossEntropyLoss(Layer):
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-            ...     weight=weight, reduction=reduction, soft_label=True, label_smoothing=0.0
+            ...     weight=weight, reduction=reduction, soft_label=True, label_smoothing=0.0,
             ... )
             >>> dy_ret = cross_entropy_loss(logits, labels)
             >>> print(dy_ret)
@@ -400,7 +400,7 @@ class CrossEntropyLoss(Layer):
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-            ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing
+            ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing,
             ... )
 
             >>> # integer labels

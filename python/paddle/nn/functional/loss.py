@@ -2353,17 +2353,30 @@ def margin_cross_entropy(
 
             >>> label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
 
-            >>> X = paddle.randn(shape=[batch_size, feature_length], dtype='float64')
+            >>> X = paddle.randn(
+            ...     shape=[batch_size, feature_length],
+            ...     dtype='float64',
+            ... )
             >>> X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
             >>> X = paddle.divide(X, X_l2)
 
-            >>> W = paddle.randn(shape=[feature_length, num_classes], dtype='float64')
+            >>> W = paddle.randn(
+            ...     shape=[feature_length, num_classes],
+            ...     dtype='float64',
+            ... )
             >>> W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
             >>> W = paddle.divide(W, W_l2)
 
             >>> logits = paddle.matmul(X, W)
             >>> loss, softmax = paddle.nn.functional.margin_cross_entropy(
-            ...     logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None
+            ...     logits,
+            ...     label,
+            ...     margin1=m1,
+            ...     margin2=m2,
+            ...     margin3=m3,
+            ...     scale=s,
+            ...     return_softmax=True,
+            ...     reduction=None,
             ... )
             >>> print(logits)
             Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=True,
@@ -2407,7 +2420,10 @@ def margin_cross_entropy(
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
 
-            >>> X = paddle.randn(shape=[batch_size, feature_length], dtype='float64')
+            >>> X = paddle.randn(
+            ...     shape=[batch_size, feature_length],
+            ...     dtype='float64',
+            ... )
             >>> X_list: List[paddle.Tensor] = []
             >>> dist.all_gather(X_list, X)
             >>> X = paddle.concat(X_list, axis=0)
@@ -2423,7 +2439,14 @@ def margin_cross_entropy(
 
             >>> logits = paddle.matmul(X, W)
             >>> loss, softmax = paddle.nn.functional.margin_cross_entropy(
-            ...     logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None
+            ...     logits,
+            ...     label,
+            ...     margin1=m1,
+            ...     margin2=m2,
+            ...     margin3=m3,
+            ...     scale=s,
+            ...     return_softmax=True,
+            ...     reduction=None,
             ... )
             >>> print(logits)
             >>> print(label)
