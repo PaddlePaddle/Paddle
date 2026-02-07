@@ -524,12 +524,6 @@ class HSigmoidLoss(Layer):
             >>> paddle.set_device('cpu')
             >>> paddle.seed(2023)
             >>> input = paddle.uniform([4, 3])
-            >>> print(input)
-            Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 0.73167229,  0.04029441, -0.48078126],
-             [ 0.81050646, -0.15199822, -0.18717426],
-             [ 0.94041789,  0.48874724,  0.03570259],
-             [ 0.46585739,  0.95573163, -0.91368192]])
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> m = paddle.nn.HSigmoidLoss(3, 6)
             >>> out = m(input, label)
