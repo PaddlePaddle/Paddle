@@ -40,7 +40,7 @@ void LgammaKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaLgammaFunctor<T>();
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 }  // namespace phi
 

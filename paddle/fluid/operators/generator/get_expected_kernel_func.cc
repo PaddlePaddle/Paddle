@@ -31,7 +31,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
     const framework::ExecutionContext& ctx) {
   // native reduce kernels don't support bf16
   // so oneDNN kernel is enforced in that case
-  if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
+  if (ctx.Input<DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
     return true;
 
   if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
@@ -40,7 +40,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
 
   auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
   const bool reduce_all = ctx.Attr<bool>("reduce_all");
-  int ndims = ctx.Input<phi::DenseTensor>("X")->dims().size();
+  int ndims = ctx.Input<DenseTensor>("X")->dims().size();
 
   if (reduce_all) {
     return true;
@@ -64,7 +64,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
 bool CanONEDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // oneDNN is supporting only unchangeable in size pool window
-  auto src_tz = common::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
+  auto src_tz = common::vectorize(ctx.Input<DenseTensor>("X")->dims());
   if (!ctx.HasAttr("ksize")) {
     return false;
   }
@@ -88,7 +88,7 @@ phi::KernelKey GetConcatExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   (void)op_ptr;
-  auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
+  auto inputs = ctx.MultiInput<DenseTensor>("X");
   auto input_data_type = framework::proto::VarType::Type(0);
   bool flag = false;
   for (auto* input : inputs) {
@@ -116,7 +116,7 @@ phi::KernelKey GetReduceExpectedKernelType(
   // choose cudnn kernel if the runtime supported.
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
 
-  if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
+  if (ctx.Input<DenseTensor>("X")->dims().size() > 5 ||
       !ReduceOpHasOptimizedOneDNNKernel(ctx)) {
     op_ptr->SetDnnFallback(true);
   }
@@ -141,7 +141,7 @@ phi::KernelKey GetReduceGradExpectedKernelType(
       (out_dtype >= 0)
           ? static_cast<framework::proto::VarType::Type>(out_dtype)
           : op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out"));
-  if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
+  if (ctx.Input<DenseTensor>("X")->dims().size() > 5) {
     op_ptr->SetDnnFallback(true);
   }
 
@@ -152,8 +152,7 @@ phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
-  kt.set_backend(
-      phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+  kt.set_backend(phi::TransToPhiBackend(ctx.Input<DenseTensor>("X")->place()));
   return kt;
 }
 
@@ -210,10 +209,10 @@ phi::KernelKey GetSgdExpectedKernelType(
   const auto* grad_var = ctx.InputVar("Grad");
 
   // supported cases
-  bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
-                                 grad_var->IsType<phi::SelectedRows>();
-  bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
-                              grad_var->IsType<phi::DenseTensor>();
+  bool dense_param_sparse_grad =
+      param_var->IsType<DenseTensor>() && grad_var->IsType<phi::SelectedRows>();
+  bool dense_param_and_grad =
+      param_var->IsType<DenseTensor>() && grad_var->IsType<DenseTensor>();
   if (!(dense_param_sparse_grad || dense_param_and_grad)) {
     op_ptr->SetDnnFallback(true);
   }
@@ -284,7 +283,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
                           ctx.GetPlace());
   }
   // NOTE: cuda pinned tensor need to copy its data to target place
-  auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
+  auto in_tensor = ctx.Input<DenseTensor>("Input");
   if (in_tensor->place().GetType() == phi::AllocationType::GPUPINNED) {
     return phi::KernelKey(framework::TransToProtoVarType(in_tensor->dtype()),
                           ctx.GetPlace());
@@ -326,7 +325,7 @@ phi::KernelKey GetPad3dExpectedKernelType(
   // only constant mode and non-blocked layouts are supported for oneDNN
   if (op_ptr->CanONEDNNBeUsed(ctx, input_data_type) &&
       ctx.Attr<std::string>("mode") == "constant" &&
-      ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
+      ctx.Input<DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
     return phi::KernelKey(phi::Backend::ONEDNN,
                           phi::DataLayout::ONEDNN,
                           phi::TransToPhiDataType(input_data_type));
@@ -375,14 +374,13 @@ phi::KernelKey GetInstanceNormExpectedKernelType(
     PADDLE_ENFORCE_EQ(
         in_param_type,
         framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+            ctx.Input<DenseTensor>("Scale")->dtype()),
         common::errors::InvalidArgument("Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
     PADDLE_ENFORCE_EQ(
         in_param_type,
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+        framework::TransToProtoVarType(ctx.Input<DenseTensor>("Bias")->dtype()),
         common::errors::InvalidArgument("Bias input should be of float type"));
   }
 
@@ -397,7 +395,7 @@ phi::KernelKey GetLayerNormExpectedKernelType(
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
   int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-  if (begin_norm_axis != ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+  if (begin_norm_axis != ctx.Input<DenseTensor>("X")->dims().size() - 1) {
     op_ptr->SetDnnFallback(true);
   }
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
@@ -416,7 +414,7 @@ phi::KernelKey GetConvExpectedKernelType(
       input_data_type != framework::proto::VarType::UINT8 &&
       input_data_type != framework::proto::VarType::BF16) {
     auto filter_data_type = framework::TransToProtoVarType(
-        ctx.Input<phi::DenseTensor>("Filter")->dtype());
+        ctx.Input<DenseTensor>("Filter")->dtype());
     PADDLE_ENFORCE_EQ(
         input_data_type,
         filter_data_type,

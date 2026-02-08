@@ -31,8 +31,8 @@ static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
   auto aPart = optim::GetFlattenExprs<T>(a);
   auto bPart = optim::GetFlattenExprs<T>(b);
 
-  std::sort(aPart.begin(), aPart.end(), optim::ComparePriority);
-  std::sort(bPart.begin(), bPart.end(), optim::ComparePriority);
+  std::sort(aPart.begin(), aPart.end(), optim::SortComparePriority);
+  std::sort(bPart.begin(), bPart.end(), optim::SortComparePriority);
 
   if (aPart.size() != bPart.size()) return false;
 

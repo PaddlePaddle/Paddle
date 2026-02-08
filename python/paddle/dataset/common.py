@@ -174,16 +174,16 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
     if not callable(dumper):
         raise TypeError("dumper should be callable.")
     lines = []
-    indx_f = 0
+    index_f = 0
     for i, d in enumerate(reader()):
         lines.append(d)
         if i >= line_count and i % line_count == 0:
-            with open(suffix % indx_f, "w") as f:
+            with open(suffix % index_f, "w") as f:
                 dumper(lines, f)
                 lines = []
-                indx_f += 1
+                index_f += 1
     if lines:
-        with open(suffix % indx_f, "w") as f:
+        with open(suffix % index_f, "w") as f:
             dumper(lines, f)
 
 

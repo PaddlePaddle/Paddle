@@ -332,7 +332,7 @@ class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
         self.dyfunc = while_loop_dyfunc_without_tensor
 
 
-class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
+class TestTransformWhileLoopWithConflictVar(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_dyfun_with_conflict_var
 

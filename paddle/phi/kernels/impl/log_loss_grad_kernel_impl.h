@@ -39,7 +39,7 @@ void LogLossGradKernel(const Context& dev_ctx,
   if (in_grad) {
     dev_ctx.template Alloc<T>(in_grad);
     auto dx = EigenVector<T>::Flatten(*in_grad);
-    phi::funcs::EigenLogLossGrad<std::decay_t<decltype(place)>, T>::Eval(
+    funcs::EigenLogLossGrad<std::decay_t<decltype(place)>, T>::Eval(
         place, dx, dl, prediction, label_out, epsilon);
   }
 }

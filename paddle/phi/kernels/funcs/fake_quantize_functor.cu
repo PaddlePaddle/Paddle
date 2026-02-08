@@ -29,7 +29,9 @@ struct QuantizeDataType<phi::float16> {
 
 template <typename T>
 __global__ void FindAbsMaxKernel(const T *in, const int64_t n, T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t bid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int tid = threadIdx.x;
 
   extern __shared__ char *shared_max_data_tmp[];
@@ -70,7 +72,9 @@ __global__ void ClipAndQuantKernel(const T *in,
                                    const int round_type,
                                    const int64_t n,
                                    T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t bid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int tid = threadIdx.x;
 
   using ComputeDataType = typename QuantizeDataType<T>::type;
@@ -155,20 +159,22 @@ __global__ void ClipAndQuantDequantKernel(const T *in,
                                           const int round_type,
                                           const int64_t n,
                                           T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t bid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int tid = threadIdx.x;
 
   using ComputeDataType = typename QuantizeDataType<T>::type;
 
   ComputeDataType s = static_cast<ComputeDataType>(scale[0]);
-  ComputeDataType inv_s = phi::funcs::inverse(s);
+  ComputeDataType inv_s = funcs::inverse(s);
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
   for (int64_t i = bid; i < n; i += blockDim.x * gridDim.x) {
     ComputeDataType x = static_cast<ComputeDataType>(in[i]);
     if (round_type == 0) {
       x = bin_cnt_t * inv_s * x;
-      x = phi::funcs::roundWithTiesToEven(x);
+      x = funcs::roundWithTiesToEven(x);
       ComputeDataType max_bound = bin_cnt_t;
       ComputeDataType min_bound = -bin_cnt_t - static_cast<ComputeDataType>(1);
       x = x > max_bound ? max_bound : x;
@@ -194,7 +200,7 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &dev_ctx,
   grid = (grid > block) ? block : grid;
 
   DenseTensor max;
-  max.Resize(common::make_ddim({grid}));
+  max.Resize(make_ddim({grid}));
   T *max_data = dev_ctx.template Alloc<T>(&max);
   FindAbsMaxKernel<T>
       <<<grid, block, 1024 * sizeof(T), dev_ctx.stream()>>>(in, num, max_data);
@@ -437,7 +443,9 @@ __global__ void ChannelClipAndQuantKernelQuantAxisN(const T *in,
                                                     const int nScale,
                                                     const int quant_stride,
                                                     T *out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType qmax_t = static_cast<ComputeDataType>(qmax);
   for (int64_t i = idx; i < n; i += blockDim.x * gridDim.x) {
@@ -530,7 +538,9 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis0(const T *in,
                                                            const int64_t num,
                                                            const int cout,
                                                            T *out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
@@ -565,7 +575,9 @@ __global__ void ChannelClipAndQuantDequantKernelQuantAxis1(const T *in,
                                                            const int64_t num,
                                                            const int64_t cout,
                                                            T *out) {
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using ComputeDataType = typename QuantizeDataType<T>::type;
   ComputeDataType bin_cnt_t = static_cast<ComputeDataType>(bin_cnt);
 
@@ -659,7 +671,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
   T *scale_arr = dev_ctx.template Alloc<T>(scales_arr);
   T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
 
-  phi::DenseTensor need_find_max, out_size;
+  DenseTensor need_find_max, out_size;
   need_find_max.Resize({1});
   out_size.Resize({1});
   int *find_max = dev_ctx.template Alloc<int>(&need_find_max);
@@ -676,7 +688,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
                                       out_size_data);
 
   int g_find_max;
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      &g_find_max,
                      gpu_place,
                      find_max,
@@ -685,14 +697,14 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
   dev_ctx.Wait();
   if (g_find_max) {
     int len;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &len,
                        gpu_place,
                        out_size_data,
                        sizeof(int),
                        dev_ctx.stream());
     dev_ctx.Wait();
-    phi::funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
+    funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
         dev_ctx, scale_arr, len, out_scale_data);
   }
 }

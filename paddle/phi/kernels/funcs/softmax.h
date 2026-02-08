@@ -23,8 +23,8 @@ class SoftmaxFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* X,
-                  phi::DenseTensor* Y);
+                  const DenseTensor* X,
+                  DenseTensor* Y);
 };
 
 template <typename DeviceContext, typename T, typename Enable = void>
@@ -32,9 +32,9 @@ class SoftmaxGradFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* y,
-                  const phi::DenseTensor* y_grad,
-                  phi::DenseTensor* x_grad);
+                  const DenseTensor* y,
+                  const DenseTensor* y_grad,
+                  DenseTensor* x_grad);
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -42,17 +42,17 @@ template <typename T, typename DeviceContext>
 class SoftmaxCUDNNFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor* X,
-                  phi::DenseTensor* Y);
+                  const DenseTensor* X,
+                  DenseTensor* Y);
 };
 
 template <typename T, typename DeviceContext>
 class SoftmaxGradCUDNNFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor* Y,
-                  const phi::DenseTensor* y_grad,
-                  phi::DenseTensor* x_grad);
+                  const DenseTensor* Y,
+                  const DenseTensor* y_grad,
+                  DenseTensor* x_grad);
 };
 
 #endif

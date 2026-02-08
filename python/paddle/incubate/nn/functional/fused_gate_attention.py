@@ -97,7 +97,7 @@ def fused_gate_attention(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -144,9 +144,10 @@ def fused_gate_attention(
             ...     nonbatched_bias=nonbatched_bias,
             ...     attn_mask=attn_mask,
             ...     has_gating=True,
-            ...     merge_qkv=True)
+            ...     merge_qkv=True,
+            ... )
             >>> print(output.shape)
-            [2, 4, 2, 4]
+            paddle.Size([2, 4, 2, 4])
 
     """
     if in_dynamic_mode():

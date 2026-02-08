@@ -17,7 +17,7 @@
 set -ex
 
 FFT_URL=$1
-FFT_DIR_NAME="xpufft"
+FFT_DIR_NAME="xpufft_ubuntu2004-x86_64"
 
 if ! [ -n "$FFT_URL" ]; then
   exit 0

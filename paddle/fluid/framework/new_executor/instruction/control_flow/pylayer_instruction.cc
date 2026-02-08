@@ -35,10 +35,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
-
-#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 COMMON_DECLARE_bool(check_cuda_error);
 
@@ -46,7 +43,7 @@ namespace paddle::framework {
 
 PyLayerInstruction::PyLayerInstruction(
     size_t id,
-    const phi::Place& place,
+    const Place& place,
     pir::Operation* op,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)

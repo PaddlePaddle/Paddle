@@ -117,14 +117,14 @@ void ArgsortKernel(const Context& dev_ctx,
   auto indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
   if (rank == 0) {
-    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
-  int64_t len_before = common::product(common::slice_ddim(in_dims, 0, axis));
+  int64_t len_before = common::product(slice_ddim(in_dims, 0, axis));
   int64_t len_after =
-      common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
+      common::product(slice_ddim(in_dims, axis + 1, in_dims.size()));
   std::vector<int64_t> permute_vec{0, 2, 1};
   std::vector<int64_t> data_shape{len_before, n, len_after};
 

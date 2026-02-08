@@ -71,8 +71,8 @@ class TestNumberCountAPI(unittest.TestCase):
             x = paddle.static.data('x', self.x.shape, dtype="int64")
             out = utils._number_count(x, self.upper_num)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': self.x}, fetch_list=[out])
-            assert np.allclose(res, self.out)
+            (res,) = exe.run(feed={'x': self.x}, fetch_list=[out])
+            np.testing.assert_allclose(res, self.out)
 
     def test_api_dygraph(self):
         paddle.disable_static()

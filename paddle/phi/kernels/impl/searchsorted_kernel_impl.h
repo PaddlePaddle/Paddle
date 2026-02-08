@@ -169,8 +169,8 @@ class SearchSortedFunctor {
   void apply() {
     const T1* sequence_data = sorted_sequence_->data<T1>();
     const T2* value_data = value_->data<T2>();
-    const phi::DDim& seq_dims = sorted_sequence_->dims();
-    const phi::DDim& val_dims = value_->dims();
+    const DDim& seq_dims = sorted_sequence_->dims();
+    const DDim& val_dims = value_->dims();
 
     bool is_1d_boundaries = seq_dims.size() == 1;
     int64_t val_size = 0;

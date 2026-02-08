@@ -19,16 +19,9 @@
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -103,7 +96,7 @@ struct OneHotGenerator<GPUContext, T> {
     DenseTensor input_tensor;
     input_tensor.Resize(out->dims());
     dev_ctx.template Alloc<T>(&input_tensor);
-    phi::Copy(dev_ctx, *out, dev_ctx.GetPlace(), false, &input_tensor);
+    Copy(dev_ctx, *out, dev_ctx.GetPlace(), false, &input_tensor);
     funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     OneHotCUDAKernel<T, thread_size>
         <<<block_size, thread_size, 0, dev_ctx.stream()>>>(
@@ -122,7 +115,9 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          MPType* noise,
                                          const float temperature,
                                          int64_t n) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int step = blockDim.x * gridDim.x;
   for (int64_t i = index; i < n; i += step) {
     MPType gumbel_noise = -log(-log(noise[i]));
@@ -141,7 +136,7 @@ struct GumbleNoiseGenerator<GPUContext, T> {
                         const float temperature) {
     DenseTensor random_tensor;
     int64_t size = size_to_axis * size_from_axis;
-    random_tensor.Resize(common::make_ddim({size}));
+    random_tensor.Resize(make_ddim({size}));
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType* random_data = dev_ctx.template Alloc<MPType>(&random_tensor);
 

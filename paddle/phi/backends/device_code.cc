@@ -45,8 +45,7 @@ void DeviceCodePool::Set(std::unique_ptr<DeviceCode>&& code) {
   codes_map.emplace(name, std::move(code));
 }
 
-DeviceCode* DeviceCodePool::Get(const phi::Place& place,
-                                const std::string& name) {
+DeviceCode* DeviceCodePool::Get(const Place& place, const std::string& name) {
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
     PADDLE_THROW(common::errors::NotFound(
@@ -65,7 +64,7 @@ DeviceCode* DeviceCodePool::Get(const phi::Place& place,
   return code_iter->second.get();
 }
 
-DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
+DeviceCodePool::DeviceCodePool(const std::vector<Place>& places) {
   PADDLE_ENFORCE_GT(places.size(),
                     0,
                     errors::InvalidArgument(
@@ -77,7 +76,7 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
     set.insert(p);
   }
   for (auto& p : set) {
-    if (p.GetType() == phi::AllocationType::GPU) {
+    if (p.GetType() == AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       device_codes_.emplace(p, DeviceCodeMap());
 #else
@@ -222,7 +221,7 @@ GPUDeviceCode::GPUDeviceCode(const Place& place,
                              const std::string& name,
                              const std::string& kernel)
     : module_(nullptr), function_(nullptr) {
-  if (place.GetType() != phi::AllocationType::GPU) {
+  if (place.GetType() != AllocationType::GPU) {
     PADDLE_THROW(common::errors::PermissionDenied(
         "GPUDeviceCode can only launch on GPU place."));
   }
@@ -256,10 +255,10 @@ bool GPUDeviceCode::Compile(bool include_path) {
   }
 
   // Compile the program for specified compute_capability
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      DeviceContextPool::Instance().Get(place_));
+  auto* dev_ctx =
+      reinterpret_cast<GPUContext*>(DeviceContextPool::Instance().Get(place_));
   int compute_capability = dev_ctx->GetComputeCapability();
-  std::vector<const char*> options = {"-std=c++11"};
+  std::vector<const char*> options = {"-std=c++17"};
   std::string include_option;
   if (include_path) {
     std::string cuda_include_path = FindCUDAIncludePath();
@@ -333,12 +332,12 @@ bool GPUDeviceCode::Compile(bool include_path) {
   }
 
   // Compile the program for specified compute_capability
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      DeviceContextPool::Instance().Get(place_));
+  auto* dev_ctx =
+      reinterpret_cast<GPUContext*>(DeviceContextPool::Instance().Get(place_));
   int compute_capability = dev_ctx->GetComputeCapability();
   std::string compute_flag =
       "--gpu-architecture=compute_" + std::to_string(compute_capability);
-  std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
+  std::vector<const char*> options = {"--std=c++17", compute_flag.c_str()};
   std::string include_option;
   if (include_path) {
     std::string cuda_include_path = FindCUDAIncludePath();
@@ -420,8 +419,8 @@ void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
       max_blocks,
       (static_cast<int>(n) + workload_per_block - 1) / workload_per_block);
 
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      DeviceContextPool::Instance().Get(place_));
+  auto* dev_ctx =
+      reinterpret_cast<GPUContext*>(DeviceContextPool::Instance().Get(place_));
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       dynload::hipModuleLaunchKernel(function_,

@@ -29,8 +29,8 @@ void ClipByNormKernel(const Context& dev_ctx,
                       const SelectedRows& x,
                       float max_norm,
                       SelectedRows* out) {
-  phi::SelectedRows merged_input;
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  SelectedRows merged_input;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, x, &merged_input);
   auto input = &(merged_input.value());
   out->set_rows(merged_input.rows());

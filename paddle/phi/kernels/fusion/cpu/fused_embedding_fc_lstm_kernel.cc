@@ -28,17 +28,17 @@ namespace phi {
       use_peepholes, is_reverse, use_seq, gate_activation, cell_activation,  \
       candidate_activation, hidden_out, cell_out, xx_out, batched_input_out, \
       batched_hidden_out, batched_cell_out, reordered_h0_out, reordered_c0_out
-#define OP_PARAM_DECLARE                                                     \
-  const Context &dev_ctx, const DenseTensor &ids_in,                         \
-      const DenseTensor &embeddings_in, const DenseTensor &weight_h_in,      \
-      const DenseTensor &bias_in, const paddle::optional<DenseTensor>&h0_in, \
-      const paddle::optional<DenseTensor>&c0_in, bool use_peepholes,         \
-      bool is_reverse, bool use_seq, const std::string &gate_activation,     \
-      const std::string &cell_activation,                                    \
-      const std::string &candidate_activation, DenseTensor *hidden_out,      \
-      DenseTensor *cell_out, DenseTensor *xx_out,                            \
-      DenseTensor *batched_input_out, DenseTensor *batched_hidden_out,       \
-      DenseTensor *batched_cell_out, DenseTensor *reordered_h0_out,          \
+#define OP_PARAM_DECLARE                                                      \
+  const Context &dev_ctx, const DenseTensor &ids_in,                          \
+      const DenseTensor &embeddings_in, const DenseTensor &weight_h_in,       \
+      const DenseTensor &bias_in, const optional<DenseTensor>&h0_in,          \
+      const optional<DenseTensor>&c0_in, bool use_peepholes, bool is_reverse, \
+      bool use_seq, const std::string &gate_activation,                       \
+      const std::string &cell_activation,                                     \
+      const std::string &candidate_activation, DenseTensor *hidden_out,       \
+      DenseTensor *cell_out, DenseTensor *xx_out,                             \
+      DenseTensor *batched_input_out, DenseTensor *batched_hidden_out,        \
+      DenseTensor *batched_cell_out, DenseTensor *reordered_h0_out,           \
       DenseTensor *reordered_c0_out
 
 template <typename T, typename Context>
@@ -50,12 +50,12 @@ class FusedEmbeddingFCLSTMKernel {
   auto& act_cell_str = cell_activation;                                      \
   auto& act_cand_str = candidate_activation;                                 \
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {                \
-    phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;      \
+    funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;           \
     act_gate = act_functor(act_gate_str);                                    \
     act_cell = act_functor(act_cell_str);                                    \
     act_cand = act_functor(act_cand_str);                                    \
   } else {                                                                   \
-    phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;  \
+    funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;       \
     act_gate = act_functor(act_gate_str);                                    \
     act_cell = act_functor(act_cell_str);                                    \
     act_cand = act_functor(act_cand_str);                                    \
@@ -88,7 +88,7 @@ class FusedEmbeddingFCLSTMKernel {
   /* diagonal weight*/                                            \
   const T* wc_data = bias->data<T>() + D4;                        \
   /* for peephole only*/                                          \
-  phi::DenseTensor checked_cell;                                  \
+  DenseTensor checked_cell;                                       \
   T* checked_cell_data = nullptr;                                 \
   if (use_peepholes) {                                            \
     /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/              \
@@ -177,7 +177,7 @@ class FusedEmbeddingFCLSTMKernel {
     T* xx_data = dev_ctx.template Alloc<T>(xx);
     T* h_out_data = dev_ctx.template Alloc<T>(hidden_out);
     T* c_out_data = dev_ctx.template Alloc<T>(cell_out);
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
@@ -288,8 +288,8 @@ class FusedEmbeddingFCLSTMKernel {
     dev_ctx.template Alloc<T>(hidden_out);
     dev_ctx.template Alloc<T>(cell_out);
 
-    phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
-    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+    funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
@@ -410,7 +410,7 @@ class FusedEmbeddingFCLSTMKernel {
 #undef MOVE_ONE_BATCH
 #undef DEFINE_CUR
 
-    phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+    funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
     batched_h_out->set_lod(batched_lod);
     to_seq(dev_ctx, *batched_h_out, hidden_out);
     batched_c_out->set_lod(batched_lod);

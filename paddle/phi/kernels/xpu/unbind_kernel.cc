@@ -33,7 +33,7 @@ void UnbindKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(outs[j]);
     y_ptrs.emplace_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
   }
-  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto x_shape = vectorize<int64_t>(x.dims());
   int r = xpu::unbind(dev_ctx.x_context(),
                       reinterpret_cast<const XPUType*>(x.data<T>()),
                       y_ptrs,

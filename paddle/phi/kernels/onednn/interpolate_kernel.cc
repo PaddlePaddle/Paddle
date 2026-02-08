@@ -33,10 +33,10 @@ KernelKey InterpolateGetKernelTypeForVar(
       (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = common::StringToDataLayout(data_layout);
+    auto dl = StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != DataLayout::kAnyLayout) {
+    if (dl != DataLayout::ANY) {
       return KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }
@@ -73,14 +73,14 @@ class InterpolateOneDNNHandler
 
 std::vector<int> ComputeOutputShape(
     const DenseTensor* x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale_attr) {
+    const std::vector<double>& scale_attr) {
   const auto& in_dims = x->dims();
   const DDim in_dhw_dims = slice_ddim(in_dims, 2, in_dims.size());
 
@@ -151,14 +151,14 @@ template <typename T, typename Context>
 void InterpolateKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
@@ -176,7 +176,7 @@ void InterpolateKernel(
                                                out_h,
                                                out_w,
                                                scale);
-  DDim dim_out = common::make_ddim(out_dims_vec);
+  DDim dim_out = make_ddim(out_dims_vec);
   out->Resize(dim_out);
 
   funcs::InterpolateOneDNNHandler<T> handler(
@@ -200,14 +200,14 @@ template <typename T, typename Context>
 void BilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners UNUSED,
     int align_mode UNUSED,
@@ -230,9 +230,9 @@ template <typename T, typename Context>
 void LegacyBilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -243,7 +243,7 @@ void LegacyBilinearInterpKernel(
     int align_mode UNUSED,
     DenseTensor* output) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);
@@ -267,14 +267,14 @@ template <typename T, typename Context>
 void NearestInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners UNUSED,
     int align_mode UNUSED,
@@ -297,9 +297,9 @@ template <typename T, typename Context>
 void LegacyNearestInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -310,7 +310,7 @@ void LegacyNearestInterpKernel(
     int align_mode UNUSED,
     DenseTensor* output) {
   const auto& dim_x = x.dims();
-  std::vector<float> scale_vec;
+  std::vector<double> scale_vec;
   if (scale > 0) {
     for (int i = 0; i < dim_x.size() - 2; i++) {
       scale_vec.push_back(scale);

@@ -91,6 +91,7 @@ class CompilationResult {
   std::vector<std::optional<std::string>> source_codes_;
   std::vector<std::optional<std::string>> source_ptxs_;
   int size_;
+  size_t hash_key_{0};
 };
 
 }  // namespace framework

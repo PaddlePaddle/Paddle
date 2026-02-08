@@ -92,7 +92,7 @@ int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
 
 class ReshardContext final {
  public:
-  ReshardContext(phi::DeviceContext* dev_ctx,
+  ReshardContext(DeviceContext* dev_ctx,
                  const DistTensor& in,
                  const TensorDistAttr& out_dist_attr,
                  DistTensor* out)
@@ -138,7 +138,7 @@ class ReshardContext final {
                                                axis);
   }
 
-  phi::DeviceContext* dev_ctx;
+  DeviceContext* dev_ctx;
   const DistTensor& in;
   const TensorDistAttr& out_dist_attr;
   DistTensor* out;
@@ -333,7 +333,7 @@ class PartialToShard final
   }
 };
 
-void ProcessPartialToReplicated(phi::DeviceContext* dev_ctx,
+void ProcessPartialToReplicated(DeviceContext* dev_ctx,
                                 const DistTensor& in,
                                 TensorDistAttr out_dist_attr,
                                 DistTensor* out) {
@@ -353,7 +353,7 @@ void ProcessPartialToReplicated(phi::DeviceContext* dev_ctx,
   }
 }
 
-void ProcessShardToReplicated(phi::DeviceContext* dev_ctx,
+void ProcessShardToReplicated(DeviceContext* dev_ctx,
                               const DistTensor& in,
                               TensorDistAttr out_dist_attr,
                               DistTensor* out) {
@@ -396,7 +396,7 @@ void ProcessShardToReplicated(phi::DeviceContext* dev_ctx,
   }
 }
 
-void ProcessReplicatedToPartial(phi::DeviceContext* dev_ctx,
+void ProcessReplicatedToPartial(DeviceContext* dev_ctx,
                                 const DistTensor& in,
                                 TensorDistAttr out_dist_attr,
                                 DistTensor* out) {
@@ -416,7 +416,7 @@ void ProcessReplicatedToPartial(phi::DeviceContext* dev_ctx,
   }
 }
 
-void ProcessReplicateOrPartialToShard(phi::DeviceContext* dev_ctx,
+void ProcessReplicateOrPartialToShard(DeviceContext* dev_ctx,
                                       const DistTensor& in,
                                       TensorDistAttr out_dist_attr,
                                       DistTensor* out) {
@@ -468,7 +468,7 @@ bool SameNdMeshReshardFunction::IsSuitable(
   return true;
 }
 
-void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void SameNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {

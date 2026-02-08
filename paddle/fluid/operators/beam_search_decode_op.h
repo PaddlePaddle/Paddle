@@ -43,7 +43,7 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
-        phi::DenseTensor out;
+        DenseTensor out;
         if (step_id.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
@@ -65,7 +65,7 @@ struct BeamSearchDecodeFunctor {
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
-        phi::DenseTensor out;
+        DenseTensor out;
         if (step_score.numel() > 0) {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();

@@ -35,7 +35,7 @@ void CIdentityKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
 
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 }
 
 }  // namespace phi

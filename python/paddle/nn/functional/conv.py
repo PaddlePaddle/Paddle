@@ -26,7 +26,7 @@ from paddle.device import (
 )
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -147,7 +147,11 @@ def _conv_nd(
     use_cudnn: bool = True,
     name: str | None = None,
 ) -> Tensor:
-    # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get(
+        "FLAGS_use_accuracy_compatible_kernel", False
+    )  # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
@@ -178,23 +182,36 @@ def _conv_nd(
             return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
-        pre_bias = _C_ops.depthwise_conv2d(
-            x,
-            weight,
-            stride,
-            padding,
-            padding_algorithm,
-            groups,
-            dilation,
-            data_format,
-        )
-        if bias is not None:
-            new_shape = [1] * len(x.shape)
-            new_shape[channel_dim] = -1
-            bias = bias.reshape(new_shape)
-            return _C_ops.add(pre_bias, bias)
+        if use_accuracy_compatible and is_compiled_with_cuda():
+            return _C_ops.depthwise_conv2d_bias(
+                x,
+                weight,
+                bias,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                data_format,
+            )
         else:
-            return pre_bias
+            pre_bias = _C_ops.depthwise_conv2d(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                data_format,
+            )
+            if bias is not None:
+                new_shape = [1] * len(x.shape)
+                new_shape[channel_dim] = -1
+                bias = bias.reshape(new_shape)
+                return _C_ops.add(pre_bias, bias)
+            else:
+                return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
@@ -214,6 +231,19 @@ def _conv_nd(
             return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
+
+    if in_dynamic_or_pir_mode() and op_type == "depthwise_conv3d":
+        return _C_ops.depthwise_conv3d_bias(
+            x,
+            weight,
+            bias,
+            stride,
+            padding,
+            padding_algorithm,
+            groups,
+            dilation,
+            data_format,
+        )
 
     if in_dynamic_mode():
         attrs = (
@@ -292,7 +322,7 @@ def _conv_nd(
     return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def conv1d(
     x: Tensor,
     weight: Tensor,
@@ -391,20 +421,36 @@ def conv1d(
         same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([[[4, 8, 1, 9],
-            ...                        [7, 2, 0, 9],
-            ...                        [6, 9, 2, 6]]], dtype="float32")
-            >>> w = paddle.to_tensor([[[9, 3, 4],
-            ...                        [0, 0, 7],
-            ...                        [2, 5, 6]],
-            ...                       [[0, 3, 4],
-            ...                        [2, 9, 7],
-            ...                        [5, 6, 8]]], dtype="float32")
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [4, 8, 1, 9],
+            ...             [7, 2, 0, 9],
+            ...             [6, 9, 2, 6],
+            ...         ],
+            ...     ],
+            ...     dtype="float32",
+            ... )
+            >>> w = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [9, 3, 4],
+            ...             [0, 0, 7],
+            ...             [2, 5, 6],
+            ...         ],
+            ...         [
+            ...             [0, 3, 4],
+            ...             [2, 9, 7],
+            ...             [5, 6, 8],
+            ...         ],
+            ...     ],
+            ...     dtype="float32",
+            ... )
 
             >>> y = F.conv1d(x, w)
             >>> print(y)
@@ -554,7 +600,7 @@ def conv1d(
     return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def conv2d(
     x: Tensor,
     weight: Tensor,
@@ -662,7 +708,7 @@ def conv2d(
         A Tensor representing the conv2d result, whose data type is the same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -673,7 +719,7 @@ def conv2d(
             >>> y_var = F.conv2d(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6])
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -909,7 +955,7 @@ def conv1d_transpose(
         `"NLC"`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1189,7 +1235,7 @@ def conv2d_transpose(
         transposed convolution result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1200,7 +1246,7 @@ def conv2d_transpose(
             >>> y_var = F.conv2d_transpose(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 10, 10]
+            paddle.Size([2, 6, 10, 10])
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1286,7 +1332,15 @@ def conv2d_transpose(
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
-    if num_channels == groups and num_channels != 1 and num_filters == 1:
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    if (
+        not use_accuracy_compatible
+        and num_channels == groups
+        and num_channels != 1
+        and num_filters == 1
+    ):
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
@@ -1369,7 +1423,7 @@ def conv2d_transpose(
     return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def conv3d(
     x: Tensor,
     weight: Tensor,
@@ -1474,7 +1528,7 @@ def conv3d(
         convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1485,7 +1539,7 @@ def conv3d(
             >>> y_var = F.conv3d(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 6, 6, 6]
+            paddle.Size([2, 6, 6, 6, 6])
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1531,6 +1585,17 @@ def conv3d(
     stride = convert_to_list(stride, 3, 'stride')
     dilation = convert_to_list(dilation, 3, 'dilation')
     op_type = "conv3d"
+    use_accuracy_compatible = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    if (
+        use_accuracy_compatible
+        and is_compiled_with_cuda()
+        and num_channels == groups
+        and num_channels != 1
+        and num_filters % num_channels == 0
+    ):
+        op_type = 'depthwise_conv3d'
 
     return _conv_nd(
         x,
@@ -1677,7 +1742,7 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1688,7 +1753,7 @@ def conv3d_transpose(
             >>> y_var = F.conv3d_transpose(x_var, w_var)
 
             >>> print(y_var.shape)
-            [2, 6, 10, 10, 10]
+            paddle.Size([2, 6, 10, 10, 10])
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:

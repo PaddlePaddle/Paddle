@@ -19,7 +19,7 @@
 namespace phi {
 namespace funcs {
 static inline std::vector<int32_t> GetOutputShape(const int axis,
-                                                  const phi::DDim &in_dims) {
+                                                  const DDim &in_dims) {
   if (in_dims.size() == 0) {
     return {1};
   }

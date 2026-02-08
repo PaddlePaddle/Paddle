@@ -666,14 +666,10 @@ void GridSampleGradKernel(const Context& dev_ctx,
                           DenseTensor* grid_grad) {
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (grid_grad) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(grid_grad->dims())),
-                            0,
-                            grid_grad);
+      Full<T, Context>(dev_ctx, grid_grad->dims(), 0, grid_grad);
     }
     return;
   }
@@ -695,13 +691,12 @@ void GridSampleGradKernel(const Context& dev_ctx,
 
     x_grad->Resize({n, c, in_h, in_w});
     dev_ctx.template Alloc<T>(x_grad);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
 
     if (grid_grad != nullptr) {
       grid_grad->Resize({n, out_h, out_w, 2});
       dev_ctx.template Alloc<T>(grid_grad);
-      phi::funcs::SetConstant<Context, T>()(
-          dev_ctx, grid_grad, static_cast<T>(0));
+      funcs::SetConstant<Context, T>()(dev_ctx, grid_grad, static_cast<T>(0));
     }
 
     DenseTensor grid_x, grid_y;
@@ -742,13 +737,12 @@ void GridSampleGradKernel(const Context& dev_ctx,
 
     x_grad->Resize({n, c, in_d, in_h, in_w});
     dev_ctx.template Alloc<T>(x_grad);
-    phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
+    funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
 
     if (grid_grad != nullptr) {
       grid_grad->Resize({n, out_d, out_h, out_w, 3});
       dev_ctx.template Alloc<T>(grid_grad);
-      phi::funcs::SetConstant<Context, T>()(
-          dev_ctx, grid_grad, static_cast<T>(0));
+      funcs::SetConstant<Context, T>()(dev_ctx, grid_grad, static_cast<T>(0));
     }
     DenseTensor grid_x, grid_y, grid_z;
     DenseTensor grid_x_scale, grid_y_scale, grid_z_scale;

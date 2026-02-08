@@ -157,6 +157,9 @@ ENV_SOT_ENABLE_0_SIZE_FALLBACK = BooleanEnvironmentVariable(
 ENV_SOT_SPECIALIZED_DIM_NUMBERS = StringEnvironmentVariable(
     "SOT_SPECIALIZED_DIM_NUMBERS", "0"
 )
+ENV_SOT_ENABLE_COMPILE_TIME_LIMIT = BooleanEnvironmentVariable(
+    "SOT_ENABLE_COMPILE_TIME_LIMIT", True
+)
 
 
 def update_ce_flags():

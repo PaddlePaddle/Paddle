@@ -36,7 +36,9 @@ __global__ void AdamaxGPUKernel(const T* param,
                                 MT* moment_out,
                                 MT* inf_norm_out,
                                 MT* master_param_out) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   MT lr = static_cast<MT>(learning_rate[0]);
   MT d_pow = static_cast<MT>(beta1_pow[0]);
@@ -73,7 +75,7 @@ void AdamaxKernel(const Context& dev_ctx,
                   const DenseTensor& moment,
                   const DenseTensor& inf_norm,
                   const DenseTensor& beta1_pow,
-                  const paddle::optional<DenseTensor>& master_param,
+                  const optional<DenseTensor>& master_param,
                   float beta1,
                   float beta2,
                   float epsilon,

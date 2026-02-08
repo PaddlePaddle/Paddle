@@ -212,6 +212,7 @@ def train_mlp(
                 use_pure_fp16,
                 level='O2',
                 dtype='bfloat16' if use_bfp16 else 'float16',
+                custom_black_list=['softmax_with_cross_entropy'],
             ):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(

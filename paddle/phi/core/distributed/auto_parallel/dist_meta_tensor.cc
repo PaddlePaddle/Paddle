@@ -18,7 +18,7 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-phi::DDim DistMetaTensor::dims() const {
+DDim DistMetaTensor::dims() const {
   // member values in tensor_ have higher priority than those in DistMetaTensor
   if (tensor_ != nullptr) {
     PADDLE_ENFORCE_EQ(this->is_dist(),

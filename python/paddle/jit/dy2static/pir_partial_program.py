@@ -42,6 +42,7 @@ from .utils import (
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
+    maybe_dynamic_shape_tensor,
     use_specialized_device,
 )
 
@@ -1246,6 +1247,7 @@ class PartialProgramLayer:
                     value.stop_gradient
                     and not value.place._equals(expected_place)
                     and not use_specialized_device()
+                    and not maybe_dynamic_shape_tensor(value)
                 ):
                     var = value._copy_to(expected_place, False)
                     var.stop_gradient = True

@@ -16,9 +16,9 @@ limitations under the License. */
 
 using phi::distributed::auto_parallel::str_join;
 
-#define EXTRACT_SHAPE_AND_DIST_ATTR_BASE(x)  \
-  auto x##_shape = phi::vectorize(x.dims()); \
-  int x##_ndim = x##_shape.size();           \
+#define EXTRACT_SHAPE_AND_DIST_ATTR_BASE(x) \
+  auto x##_shape = vectorize(x.dims());     \
+  int x##_ndim = x##_shape.size();          \
   const auto& x##_dist_attr_src = x.dist_attr();
 
 #define EXTRACT_SHAPE_AND_DIST_ATTR(x)                                 \

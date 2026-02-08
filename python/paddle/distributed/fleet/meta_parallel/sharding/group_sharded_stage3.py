@@ -24,6 +24,11 @@ from paddle import framework, nn
 from paddle.autograd import PyLayer
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import collective
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    ShardedWeight,
+    create_sharded_weight_with_new_local,
+)
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 
@@ -182,7 +187,11 @@ class GroupShardedStage3(nn.Layer):
             "Multiple optimizers are not supported now."
         )
         self._optim = _OptimizerWrapper(
-            optimizer, self._offload, self._group, self._update_params_slice
+            optimizer,
+            self._offload,
+            self._group,
+            self._update_params_slice,
+            self._sharded_state_dict,
         )
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
@@ -592,18 +601,20 @@ class GroupShardedStage3(nn.Layer):
             )
 
         def _forward_post_hook(layer, inputs, outputs):
+            if isinstance(outputs, paddle.Tensor):
+                outputs = (outputs,)
             return ForwardPostHooks.apply(
-                outputs,
-                layer,
-                self._order_tracer,
-                self._trainable_params,
-                self._param2buffer,
-                self._param2buffer_size,
-                self._rank,
-                self._group,
-                self._sync_comm,
-                self._offload,
-                task_flow,
+                *outputs,
+                layer=layer,
+                order_tracer=self._order_tracer,
+                trainable_params=self._trainable_params,
+                param2buffer=self._param2buffer,
+                param2buffer_size=self._param2buffer_size,
+                rank=self._rank,
+                group=self._group,
+                sync_comm=self._sync_comm,
+                offload=self._offload,
+                task_flow=task_flow,
             )
 
         # register previous forward hooks
@@ -693,18 +704,25 @@ class GroupShardedStage3(nn.Layer):
 
         return update_list
 
-    def get_all_parameters(self, convert2cpu=False):
+    def get_all_parameters(self, convert2cpu=False, with_freeze_param=False):
         """
         Get the full parameters and return the corresponding task flows.
         """
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
-        trainable_params = list(
-            filter(
-                lambda p: p.trainable and p not in self._unslice_params,
-                current_layer_params,
+        if with_freeze_param:
+            trainable_params = []
+            for param in current_layer_params:
+                if param.name in self._param2buffer_size:
+                    trainable_params.append(param)
+        else:
+            trainable_params = list(
+                filter(
+                    lambda p: p.trainable and p not in self._unslice_params,
+                    current_layer_params,
+                )
             )
-        )
+
         t_flow = _allgather_buffer(
             trainable_params,
             self._group,
@@ -848,6 +866,194 @@ class GroupShardedStage3(nn.Layer):
 
         self._optim.clear_grad = MethodType(_opt_clear, self._optim)
 
+    def init_slice_param(self):
+        for layer_id, params in self._trainable_params.items():
+            for param in params:
+                value = paddle.zeros(param.shape, dtype=param.dtype)
+                value._share_buffer_to(param)
+
+    def align_param_to_buffer_and_clear_slice_param(self):
+        for layer_id, params in self._trainable_params.items():
+            for param in params:
+                if param._is_initialized():
+                    param_shape = param.shape
+                    origin_state = param.stop_gradient
+                    param.stop_gradient = True
+                    start, end = self._param2buffer[param.name][self._rank]
+                    param.flatten_()
+                    param.stop_gradient = origin_state
+                    param_numel = param.numel().item()
+                    start = min(start, param_numel)
+                    end = min(end, param_numel)
+                    if end > start:
+                        tmp_tensor = param._slice(start, end).detach()
+                        buffer_slice = param.fw_storage._slice(
+                            0, end - start
+                        ).detach()
+                        buffer_slice.set_value(tmp_tensor)
+                        del buffer_slice
+                    param.get_tensor()._set_dims(param_shape)
+                    param._clear_data()
+
+    def init_optimizer_for_slice_param(self):
+        local_param_list = []
+        for param in self._optim._parameter_list:
+            if hasattr(param, "fw_storage"):
+                var = param.fw_storage
+                tmp_param = EagerParamBase(
+                    shape=var.shape, dtype=var.dtype, name="slice@" + param.name
+                )
+                local_param_list.append(tmp_param)
+            else:
+                local_param_list.append(param)
+        self._optim._parameter_list = local_param_list
+
+    def _sharded_state_dict(
+        self,
+        model_sharded_state_dict: ShardedStateDict,
+    ) -> ShardedStateDict:
+        """
+        Convert optimizer state dict to a sharded state dict based on model sharding information.
+
+        Args:
+            model_sharded_state_dict (dict): Sharded state dict of the model, containing tensor metadata.
+
+        Returns:
+            dict: A new optimizer state dict where weights are wrapped as ShardedWeight.
+        """
+
+        _FP32_MASTER = "fp32_master_0"
+        _MOMENT_NAME = "moment"
+        _optimizer_scalar_name = [
+            "beta1_pow_acc_0",
+            "beta2_pow_acc_0",
+        ]
+        _optimizer_non_scaler_name = [
+            "moment1_0",
+            "moment2_0",
+            "velocity_0",
+        ]
+
+        param_to_slice = {}
+        for param in self._ori_parameter_list:
+            if hasattr(param, "fw_storage"):
+                param_to_slice[param.name] = True
+            else:
+                param_to_slice[param.name] = False
+
+        def _create_sharded_weight(
+            unified_name, tensor, sharded_param, static_name
+        ):
+            if param_to_slice[static_name]:
+                padding_begin = sharded_param.local_tensor.numel().item()
+                slice_begin = min(padding_begin, self._rank * tensor.shape[0])
+                slice_end = min(
+                    padding_begin, (self._rank + 1) * tensor.shape[0]
+                )
+                if slice_begin == padding_begin or slice_end == padding_begin:
+                    local_tensor = paddle.slice(
+                        tensor,
+                        axes=[0],
+                        starts=[0],
+                        ends=[slice_end - slice_begin],
+                    )
+                else:
+                    local_tensor = tensor
+                return ShardedWeight(
+                    key=unified_name,
+                    local_tensor=local_tensor,
+                    local_shape=sharded_param.local_shape,
+                    global_shape=sharded_param.global_shape,
+                    global_offset=sharded_param.global_offset,
+                    is_flattened=True,
+                    flattened_range=slice(slice_begin, slice_end),
+                )
+            else:
+                return create_sharded_weight_with_new_local(
+                    unified_name, tensor, sharded_param
+                )
+
+        def _generate_base_static_name(vname):
+            if _FP32_MASTER in vname:
+                return tuple(vname.split("_" + _FP32_MASTER + "_", 1))
+            for name in _optimizer_scalar_name + _optimizer_non_scaler_name:
+                if vname.endswith(name):
+                    return vname[: -(len(name) + 1)], name
+            raise ValueError(f"Cannot split variable name: {vname}.")
+
+        optimizer_sharded_state_dict = {}
+        optimizer_state_dict = self._optim.state_dict()
+        # Build name mapping and remove non-tensor entries from optimizer state
+        static_to_struct_mapping = {}
+        model_sharded_state_dict = dict(
+            sorted(model_sharded_state_dict.items())
+        )
+        for k, v in model_sharded_state_dict.items():
+            # When shared weights exist, the v.local_tensor.name of shared parameters are identical, but only the first parameter has optimizer states. Therefore, only the key-value pairs of the first occurrence in the shared parameter group need to be retained.
+            if v.local_tensor.name not in static_to_struct_mapping:
+                static_to_struct_mapping[v.local_tensor.name] = k
+
+        master_weights = optimizer_state_dict.pop("master_weights", None)
+        optimizer_state_dict.pop("LR_Scheduler", None)
+        # Process main optimizer states
+        for key, tensor in optimizer_state_dict.items():
+            static_name, optim_state_type = _generate_base_static_name(key)
+            static_name = static_name.replace("slice@", "")
+            struct_name = static_to_struct_mapping[static_name]
+            sharded_weight = model_sharded_state_dict[struct_name]
+
+            unified_name = f"{struct_name}.{optim_state_type}"
+
+            # Determine tensor partitioning scheme
+            if _MOMENT_NAME in optim_state_type:
+                if tensor.is_dist():
+                    optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                        key=unified_name,
+                        local_tensor=tensor,
+                        local_shape=tensor.shape,
+                        global_shape=tensor.shape,
+                        global_offset=sharded_weight.global_offset,
+                    )
+                else:
+                    optimizer_sharded_state_dict[unified_name] = (
+                        _create_sharded_weight(
+                            unified_name, tensor, sharded_weight, static_name
+                        )
+                    )
+
+            else:  # Non-momentum parameters
+                optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                    key=unified_name,
+                    local_tensor=tensor,
+                    local_shape=(1,),
+                    global_shape=(1,),
+                    global_offset=(0,),
+                )
+
+        # Process master weights if using mixed precision
+        if master_weights is not None:
+            for key, tensor in master_weights.items():
+                key = key.replace("slice@", "")
+                struct_name = static_to_struct_mapping[key]
+                sharded_weight = model_sharded_state_dict[struct_name]
+                unified_name = f"{struct_name}.w_0"
+                if tensor.is_dist():
+                    optimizer_sharded_state_dict[unified_name] = ShardedWeight(
+                        key=unified_name,
+                        local_tensor=tensor,
+                        local_shape=tensor.shape,
+                        global_shape=tensor.shape,
+                        global_offset=sharded_weight.global_offset,
+                    )
+                else:
+                    optimizer_sharded_state_dict[unified_name] = (
+                        _create_sharded_weight(
+                            unified_name, tensor, sharded_weight, key
+                        )
+                    )
+
+        return optimizer_sharded_state_dict
+
 
 def ForwardPreHooks(
     layer,
@@ -903,7 +1109,7 @@ class ForwardPostHooks(PyLayer):
     @staticmethod
     def forward(
         ctx,
-        inputs,
+        *inputs,
         layer,
         order_tracer,
         trainable_params,
@@ -936,8 +1142,26 @@ class ForwardPostHooks(PyLayer):
         ctx.trainable_params = trainable_params
         ctx.param2buffer_size = param2buffer_size
         ctx.offload = offload
-
-        return inputs
+        inputs_list = []
+        grad_none = {}
+        tensor_count = 0
+        for input_tensor in inputs:
+            if isinstance(input_tensor, paddle.Tensor):
+                input_new = paddle.assign(input_tensor)
+                inputs_list.append(input_new)
+                input_new.stop_gradient = input_tensor.stop_gradient
+                if input_tensor.stop_gradient:
+                    grad_none[tensor_count] = True
+                else:
+                    grad_none[tensor_count] = False
+                tensor_count += 1
+            else:
+                inputs_list.append(input_tensor)
+        ctx.grad_none = grad_none
+        if len(inputs_list) == 1:
+            return inputs_list[0]
+        else:
+            return tuple(inputs_list)
 
     @staticmethod
     def backward(ctx, *args):
@@ -992,8 +1216,12 @@ class ForwardPostHooks(PyLayer):
                 sync_wait=sync_wait,
                 offload=offload,
             )
-
-        return args
+        grad_none = ctx.grad_none
+        args = list(args)
+        for i in range(len(args)):
+            if grad_none[i]:
+                args[i] = None
+        return tuple(args)
 
 
 class TaskFlow:
@@ -1086,7 +1314,7 @@ def _allgather_buffer(
         assert sync_wait
 
     for param in trainable_params:
-        if param.status == "all":
+        if hasattr(param, "status") and param.status == "all":
             param.use_count += 1
             continue
 
@@ -1176,13 +1404,16 @@ def _TensorWrapper(param):
     return tmp_param
 
 
-def _OptimizerWrapper(optimizer, offload, group, update_params_slice):
+def _OptimizerWrapper(
+    optimizer, offload, group, update_params_slice, sharded_state_dict
+):
     if not hasattr(optimizer, "_optim"):
         optimizer._optim = optimizer
         optimizer.offload = offload
         optimizer._group = group
         optimizer.update_scaler = None
         optimizer.update_slice = update_params_slice
+        optimizer.sharded_state_dict = sharded_state_dict
     return optimizer
 
 

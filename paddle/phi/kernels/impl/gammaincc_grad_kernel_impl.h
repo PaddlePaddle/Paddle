@@ -59,7 +59,7 @@ void GammainccGradKernel(const Context& dev_ctx,
   auto* y_data = y.data<T>();
   auto* dy_data =
       dev_ctx.template Alloc<T>(d_y, static_cast<size_t>(numel * sizeof(T)));
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   IgammaGradFunctor<T> functor(dout_data, y_data, x_data, dy_data, numel);
   for_range(functor);
 }

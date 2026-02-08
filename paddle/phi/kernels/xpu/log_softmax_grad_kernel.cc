@@ -34,11 +34,11 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (rank == 0) {
     dev_ctx.template Alloc<T>(x_grad);
-    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
     return;
   }
 
-  auto out_shape = common::vectorize<int64_t>(out.dims());
+  auto out_shape = vectorize<int64_t>(out.dims());
   dev_ctx.template Alloc<T>(x_grad);
   if (out.numel() == 0) return;
   int r = xpu::log_softmax_grad(

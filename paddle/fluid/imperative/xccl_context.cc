@@ -34,8 +34,8 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-static void XcclAllReduce(const phi::DenseTensor &src,
-                          phi::DenseTensor *dst,
+static void XcclAllReduce(const DenseTensor &src,
+                          DenseTensor *dst,
                           const phi::stream::stream_t &stream,
                           const phi::ccl::CCLComm &comm) {
   const auto &place = src.place();
@@ -173,12 +173,12 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
           .Get(ring_id, place);
   auto stream = use_calc_stream ? dev_ctx->stream() : comm->stream();
 
-  if (src.IsType<phi::DenseTensor>()) {
-    if (!dst->IsType<phi::DenseTensor>()) {
+  if (src.IsType<DenseTensor>()) {
+    if (!dst->IsType<DenseTensor>()) {
       dst->Clear();
     }
-    XcclAllReduce(src.Get<phi::DenseTensor>(),
-                  dst->GetMutable<phi::DenseTensor>(),
+    XcclAllReduce(src.Get<DenseTensor>(),
+                  dst->GetMutable<DenseTensor>(),
                   stream,
                   comm->comm());
   } else {
@@ -192,7 +192,7 @@ void XCCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void XCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  phi::DenseTensor *src_tensor = src->GetMutable<phi::DenseTensor>();
+  DenseTensor *src_tensor = src->GetMutable<DenseTensor>();
   const auto &place = src_tensor->place();
   platform::XCCLComm *comm =
       platform::XCCLCommContext::Instance(place_.GetDeviceType())

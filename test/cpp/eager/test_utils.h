@@ -42,7 +42,7 @@ inline paddle::Tensor CreateTensorWithValue(const phi::DDim& ddim,
 
   auto meta = egr::EagerUtils::autograd_meta(&out);
   if (is_leaf) {
-    auto accumulation_node = std::make_shared<egr::GradNodeAccumulation>(meta);
+    auto accumulation_node = std::make_shared<egr::GradNodeAccumulation>(out);
     meta->SetGradNode(accumulation_node);
     meta->SetStopGradient(false);
   }

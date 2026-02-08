@@ -26,7 +26,7 @@ void RnnKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<const DenseTensor*>& pre_state,
                const std::vector<const DenseTensor*>& weight_list,
-               const paddle::optional<DenseTensor>& sequence_length,
+               const optional<DenseTensor>& sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,
@@ -46,7 +46,7 @@ void RnnKernel(const Context& dev_ctx,
   dropout_state->Resize(out->dims());
   dev_ctx.template Alloc<uint8_t>(dropout_state);
 
-  phi::funcs::SetConstant<phi::XPUContext, uint8_t> ones;
+  funcs::SetConstant<phi::XPUContext, uint8_t> ones;
   ones(dev_ctx, dropout_state, static_cast<uint8_t>(1));
 
   PADDLE_ENFORCE_EQ(

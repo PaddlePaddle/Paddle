@@ -26,11 +26,11 @@ void SignKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto eigen_out = phi::EigenVector<T>::Flatten(*out);
-  auto eigen_x = phi::EigenVector<T>::Flatten(x);
+  auto eigen_out = EigenVector<T>::Flatten(*out);
+  auto eigen_x = EigenVector<T>::Flatten(x);
 
   auto& dev = *dev_ctx.eigen_device();
-  phi::funcs::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
+  funcs::EigenSign<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x);
 }
 

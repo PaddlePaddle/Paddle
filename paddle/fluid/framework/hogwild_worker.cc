@@ -33,15 +33,8 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
-#if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
-#endif
-
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/program_utils.h"
@@ -272,55 +265,11 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   }
 }
 int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  auto gpu_ps = PSGPUWrapper::GetInstance();
-  bool last_device = ((thread_num_ - 1) == thread_id_);
-  if (full_match) {
-    auto it = params2rootid_.find(name);
-    if (it == params2rootid_.end()) {
-      return -1;
-    }
-    if (use_gpu_graph_ && use_ps_gpu_) {
-      if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
-        free_param_vars_.insert(name);
-      }
-    }
-    if (it->second == nccl_rank_id_) {
-      return 1;
-    }
-    return 0;
-  } else {
-    // moment, acc
-    for (auto it = params2rootid_.begin(); it != params2rootid_.end(); ++it) {
-      if (strncmp(name.c_str(), it->first.c_str(), it->first.length()) != 0) {
-        continue;
-      }
-      if (use_gpu_graph_ && use_ps_gpu_) {
-        if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
-          free_param_vars_.insert(name);
-        }
-      }
-      if (it->second == nccl_rank_id_) {
-        return 1;
-      }
-      return 0;
-    }
-    return -1;
-  }
-#else
   return -1;
-#endif
 }
 void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
   nccl_rank_id_ =
       static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    auto gpu_ps = PSGPUWrapper::GetInstance();
-    nccl_rank_id_ = gpu_ps->GetNCCLRankId(nccl_rank_id_);
-    is_multi_node_ = (gpu_ps->GetRankNum() > 1);
-  }
-#endif
 
   auto &block = program.Block(0);
   auto all_desc = block.AllOps();
@@ -1307,85 +1256,17 @@ void HogwildWorker::TrainFilesWithProfiler() {
   }
   g_barrier.wait();
 
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-  bool train_mode = false;
-  bool is_multi_node = false;
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    train_mode = device_reader_->IsTrainMode();
-    auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    if (gloo->Size() > 1) {
-      is_multi_node = true;
-    }
-  }
-#endif
-
   timeline.Start();
   uint64_t total_inst = 0;
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    device_reader_->InitGraphTrainResource();
-  }
-#endif
 
   std::unique_ptr<GarbageCollector> gc = nullptr;
   int64_t max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
     gc = CreateGarbageCollector(place_, max_memory_size);
   }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-  std::unique_ptr<GPUParallelCopyer> copyer = nullptr;
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-    if (!offload_vars_.empty()) {
-      copyer.reset(new GPUParallelCopyer(
-          stream, thread_id_, FLAGS_gpugraph_parallel_stream_num));
-    }
-  }
-#endif
   bool infer_out_of_ins = false;
   while (true) {
     cur_batch = device_reader_->Next();
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-    if (use_gpu_graph_ && use_ps_gpu_) {
-      if (FLAGS_gpugraph_force_device_batch_num_equal) {
-        if (!CheckBatchNum(cur_batch)) {
-          break;
-        }
-      } else if (train_mode && is_multi_node) {
-        int pass_end = device_reader_->get_pass_end();
-        bool res = GetPassEnd(pass_end);
-        VLOG(2) << "reader pass end: " << pass_end
-                << ", hogwild worker pass end: " << res;
-        if (res) {
-          device_reader_->reset_pass_end();
-          VLOG(1) << "get all pass end, train pass will exit";
-          break;
-        }
-      } else if (!train_mode && sharding_mode_) {
-        auto pass_end = cur_batch <= 0;
-        bool all_pass_end = GetPassEnd(pass_end);
-        if (all_pass_end) {
-          break;
-        }
-        if (pass_end) {
-          infer_out_of_ins = true;
-          VLOG(0) << " card " << thread_id_ << " infer_out_of_ins ";
-        }
-      } else {
-        if (FLAGS_enable_exit_when_partial_worker && train_mode) {
-          if (cur_batch <= 0) {
-            quit_flag_.store(true, std::memory_order_relaxed);
-          }
-          g_barrier.wait();
-          if (quit_flag_.load(std::memory_order_relaxed) == true) {
-            break;
-          }
-        }
-      }
-    }
-#endif
     if (cur_batch <= 0 && !infer_out_of_ins) {
       break;
     }
@@ -1401,9 +1282,6 @@ void HogwildWorker::TrainFilesWithProfiler() {
         if (op->Type() == "c_broadcast") {
           op->Run(*thread_scope_, place_);
         }
-#ifdef PADDLE_WITH_HETERPS
-        dev_ctx_->Wait();
-#endif
         VLOG(3) << "Op " << op_names_[i] << " Finished";
         timeline.Pause();
         op_total_time[i] += timeline.ElapsedSec();
@@ -1417,29 +1295,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
         timeline.Start();
         auto &op = ops_[i];
         VLOG(3) << "Going to run op " << op_names_[i];
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-        auto it = offload_vars_.find(op.get());
-        if (use_gpu_graph_ && use_ps_gpu_) {
-          // offload
-          if (it != offload_vars_.end()) {
-            it->second.CopyInputs(
-                root_scope_, place_, thread_scope_, copyer.get());
-          }
-        }
-#endif
         op->Run(*thread_scope_, place_);
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-        if (use_gpu_graph_ && use_ps_gpu_) {
-          if (it != offload_vars_.end()) {
-            it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
-          }
-        }
-#endif
-#ifdef PADDLE_WITH_HETERPS
-        dev_ctx_->Wait();
-#endif
+
         VLOG(3) << "Op " << op_names_[i] << " Finished";
         timeline.Pause();
         op_total_time[i] += timeline.ElapsedSec();
@@ -1460,14 +1317,6 @@ void HogwildWorker::TrainFilesWithProfiler() {
     total_inst += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
-#ifdef PADDLE_WITH_HETERPS
-    dev_ctx_->Wait();
-    for (size_t i = 0; i < op_names_.size(); ++i) {
-      VLOG(1) << "card:" << thread_id_ << ", op: " << op_names_[i]
-              << ", mean time: " << op_total_time[i] / total_inst
-              << "s, total time:" << op_total_time[i] << "sec";
-    }
-#else
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
@@ -1483,7 +1332,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
             stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
-#endif
+
     if (gc) {
       gc->DirectClearCallback([this]() { thread_scope_->DropKids(); });
     } else {
@@ -1498,23 +1347,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
-
-#if defined PADDLE_WITH_PSCORE
-  if (thread_barrier_) {
-    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
-  }
-#endif
 }
 void HogwildWorker::TrainFiles() {
   platform::SetNumThreads(1);
   platform::Timer timeline;
   timeline.Start();
-#if defined(PADDLE_WITH_HETERPS) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-  platform::SetDeviceId(thread_id_);
-#elif defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_XPU_BKCL)
-  platform::SetXPUDeviceId(thread_id_);
-#endif
 
   int total_batch_num = 0;
   // how to accumulate fetched values here
@@ -1527,89 +1364,14 @@ void HogwildWorker::TrainFiles() {
   }
   g_barrier.wait();
 
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
-  platform::SetDeviceId(thread_id_);
-#endif
-  // while ((cur_batch = device_reader_->Next()) > 0) {
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-  bool is_multi_node = false;
-  bool train_mode = false;
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    train_mode = device_reader_->IsTrainMode();
-    auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    if (gloo->Size() > 1) {
-      is_multi_node = true;
-    }
-  }
-#endif
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    device_reader_->InitGraphTrainResource();
-  }
-#endif
-
   std::unique_ptr<GarbageCollector> gc = nullptr;
   int64_t max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
     gc = CreateGarbageCollector(place_, max_memory_size);
   }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-  std::unique_ptr<GPUParallelCopyer> copyer = nullptr;
-  if (use_gpu_graph_ && use_ps_gpu_) {
-    auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
-    if (!offload_vars_.empty()) {
-      copyer.reset(new GPUParallelCopyer(
-          stream, thread_id_, FLAGS_gpugraph_parallel_stream_num));
-    }
-  }
-#endif
   bool infer_out_of_ins = false;
   while (true) {
     cur_batch = device_reader_->Next();
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-    if (use_gpu_graph_ && use_ps_gpu_) {
-      if (FLAGS_gpugraph_force_device_batch_num_equal) {
-        if (!CheckBatchNum(cur_batch)) {
-          break;
-        }
-      } else if (train_mode && is_multi_node) {
-        bool sage_mode = device_reader_->GetSageMode();
-        if (!sage_mode) {
-          int pass_end = device_reader_->get_pass_end();
-          bool res = GetPassEnd(pass_end);
-          VLOG(2) << "reader pass end: " << pass_end
-                  << ", hogwild worker pass end: " << res;
-          if (res) {
-            device_reader_->reset_pass_end();
-            VLOG(1) << "get all pass end, train pass will exit";
-            break;
-          }
-        }
-      } else if (!train_mode && sharding_mode_) {
-        auto pass_end = cur_batch <= 0;
-        bool res = GetPassEnd(pass_end);
-        if (res) {
-          break;
-        }
-        if (pass_end) {
-          infer_out_of_ins = true;
-          VLOG(0) << " card " << thread_id_ << " infer_out_of_ins ";
-        }
-      } else {
-        if (FLAGS_enable_exit_when_partial_worker && train_mode) {
-          if (cur_batch <= 0) {
-            quit_flag_.store(true, std::memory_order_relaxed);
-          }
-          g_barrier.wait();
-          if (quit_flag_.load(std::memory_order_relaxed) == true) {
-            break;
-          }
-        }
-      }
-    }
-#endif
     if (cur_batch <= 0 && !infer_out_of_ins) {
       break;
     }
@@ -1624,31 +1386,11 @@ void HogwildWorker::TrainFiles() {
       }
     } else {
       for (auto &op : ops_) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-        auto it = offload_vars_.find(op.get());
-        if (use_gpu_graph_ && use_ps_gpu_) {
-          // offload
-          if (it != offload_vars_.end()) {
-            it->second.CopyInputs(
-                root_scope_, place_, thread_scope_, copyer.get());
-          }
-        }
-#endif
         if (FLAGS_gpugraph_enable_print_op_debug) {
           VLOG(0) << "thread id=" << thread_id_ << ", "
                   << op->DebugStringEx(thread_scope_);
         }
         op->Run(*thread_scope_, place_);
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
-    defined(PADDLE_WITH_PSCORE)
-        if (use_gpu_graph_ && use_ps_gpu_) {
-          // offload
-          if (it != offload_vars_.end()) {
-            it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
-          }
-        }
-#endif
         if (gc) {
           DeleteUnusedTensors(*thread_scope_, op.get(), unused_vars_, gc.get());
         }
@@ -1703,9 +1445,6 @@ void HogwildWorker::TrainFiles() {
       thread_scope_->DropKids();
     }
   }
-#ifdef PADDLE_WITH_HETERPS
-  dev_ctx_->Wait();
-#endif
   timeline.Pause();
   VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, batch_num: " << total_batch_num;
@@ -1713,12 +1452,6 @@ void HogwildWorker::TrainFiles() {
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
-
-#if defined PADDLE_WITH_PSCORE
-  if (thread_barrier_) {
-    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
-  }
-#endif
 }
 
 void HogwildWorker::PrintFetchVars() {

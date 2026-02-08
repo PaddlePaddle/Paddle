@@ -42,7 +42,7 @@ void MeanAllGradKernel(const Context& dev_ctx,
                     1,
                     common::errors::InvalidArgument(
                         "Mean Gradient Input Tensor len should be 1. But "
-                        "received Out@Grad's elements num is %d.",
+                        "received Out@GRAD's elements num is %d.",
                         out_grad.numel()));
   dev_ctx.template Alloc<T>(x_grad);
 

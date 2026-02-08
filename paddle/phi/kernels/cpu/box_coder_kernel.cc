@@ -172,7 +172,7 @@ void DecodeCenterSize(const DenseTensor *target_box,
 template <typename T, typename Context>
 void BoxCoderKernel(const Context &dev_ctx,
                     const DenseTensor &prior_box,
-                    const paddle::optional<DenseTensor> &prior_box_var,
+                    const optional<DenseTensor> &prior_box_var,
                     const DenseTensor &target_box,
                     const std::string &code_type_str,
                     bool normalized,
@@ -182,10 +182,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   // prior_box and prior_box_var have the same shape, so do not judge
   // prior_box_var
   if (prior_box.numel() == 0 || target_box.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(output_box->dims())),
-                          0,
-                          output_box);
+    Full<T, Context>(dev_ctx, output_box->dims(), 0, output_box);
     return;
   }
   if (!target_box.lod().empty()) {
@@ -215,24 +212,24 @@ void BoxCoderKernel(const Context &dev_ctx,
                           variance.size()));
   }
 
-  auto code_type = phi::funcs::GetBoxCodeType(code_type_str);
+  auto code_type = funcs::GetBoxCodeType(code_type_str);
   auto row = target_box.dims()[0];
   auto col = prior_box.dims()[0];
-  if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     col = target_box.dims()[1];
   }
   auto len = prior_box.dims()[1];
   output_box->Resize({row, col, len});
   dev_ctx.template Alloc<T>(output_box);
   T *output = output_box->data<T>();
-  if (code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+  if (code_type == funcs::BoxCodeType::kEncodeCenterSize) {
     EncodeCenterSize<T>(&target_box,
                         &prior_box,
                         prior_box_var.get_ptr(),
                         normalized,
                         variance,
                         output);
-  } else if (code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  } else if (code_type == funcs::BoxCodeType::kDecodeCenterSize) {
     if (prior_box_var) {
       if (axis == 0) {
         DecodeCenterSize<T, 0, 2>(&target_box,

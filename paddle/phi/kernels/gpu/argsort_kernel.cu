@@ -18,19 +18,12 @@
 #include <thrust/execution_policy.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -93,10 +86,13 @@ __global__ void merge_kernel(const T* A,
                              T* out,
                              IndType* out_ids,
                              bool descending) {
-  int64_t thread = blockDim.x * gridDim.x;
+  int64_t thread =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
   int64_t num_per_thread = (sizeA + sizeB + thread) / thread;
   for (int64_t offset = 0; offset < num_per_thread; offset++) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset * thread;
+    size_t idx =
+        static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+        static_cast<size_t>(threadIdx.x) + offset * thread;
     size_t total = sizeA + sizeB;
     if (idx >= total) return;
     size_t left = (idx > sizeB) ? idx - sizeB : 0;
@@ -189,19 +185,14 @@ static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
 // Sort by flag descending, True: descending. False: Ascending.
 // Default is false.
 template <typename T, typename IndType>
-void ArgFullSort(const phi::GPUContext& dev_ctx,
+void ArgFullSort(const GPUContext& dev_ctx,
                  const DenseTensor* input,
                  DenseTensor* output,
                  DenseTensor* indices,
                  const int64_t num_rows,
                  const int64_t num_cols,
                  const bool descending) {
-  PADDLE_ENFORCE_LE(num_cols,
-                    std::numeric_limits<int>::max(),
-                    ::common::errors::PreconditionNotMet(
-                        "The dimension being sorted should be less than "
-                        "2^31, but got %lld. Please check the input tensor. ",
-                        num_cols));
+  PADDLE_ENFORCE_LE_INT_MAX(num_cols, "num_cols");
 
   auto cu_stream = dev_ctx.stream();
   auto ComputeBlockSize = [](IndType col) {
@@ -284,7 +275,7 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
   }
 }
 template <typename T, typename IndType>
-void PerSort(const phi::GPUContext& dev_ctx,
+void PerSort(const GPUContext& dev_ctx,
              T* out_data,
              int64_t* ids_data,
              IndType start,
@@ -345,8 +336,8 @@ void ArgsortKernel(const Context& dev_ctx,
   if (rank == 0) {
     dev_ctx.template Alloc<T>(output);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
@@ -410,7 +401,7 @@ void ArgsortKernel(const Context& dev_ctx,
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     dev_ctx.template Alloc<int64_t>(indices);
     dev_ctx.template Alloc<T>(output);
@@ -432,7 +423,7 @@ void ArgsortKernel(const Context& dev_ctx,
       trans.push_back(i);
     }
     trans.push_back(axis);
-    phi::DDim trans_dims(in_dims);
+    DDim trans_dims(in_dims);
     for (int i = 0; i < trans.size(); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }
@@ -443,8 +434,8 @@ void ArgsortKernel(const Context& dev_ctx,
     // Do transpose
     TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

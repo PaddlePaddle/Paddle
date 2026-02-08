@@ -126,12 +126,10 @@ class Variable {
 
 inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
   phi::DenseTensor::InplaceVersion* version_counter_ptr(nullptr);
-  if (IsType<phi::DenseTensor>()) {
-    version_counter_ptr =
-        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
-  } else if (IsType<phi::DenseTensor>()) {
-    version_counter_ptr =
-        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
+  if (IsType<DenseTensor>()) {
+    version_counter_ptr = &GetMutable<DenseTensor>()->InplaceVersionCounter();
+  } else if (IsType<DenseTensor>()) {
+    version_counter_ptr = &GetMutable<DenseTensor>()->InplaceVersionCounter();
 
   } else if (IsType<phi::SelectedRows>()) {
     version_counter_ptr = &GetMutable<phi::SelectedRows>()

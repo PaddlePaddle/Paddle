@@ -33,7 +33,7 @@ class CustomAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  phi::Place place_;
+  Place place_;
   std::once_flag once_flag_;
 };
 

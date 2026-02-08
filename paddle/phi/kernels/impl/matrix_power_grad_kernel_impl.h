@@ -30,21 +30,21 @@ void MatrixPowerGradFunction(const DenseTensor* X,
   dev_ctx.template Alloc<T>(dX);
   const auto& x_dims = X->dims();
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   if (n == 0) {
     // \nabla X = O
-    phi::funcs::SetConstant<Context, T> zero;
+    funcs::SetConstant<Context, T> zero;
     zero(dev_ctx, dX, static_cast<T>(0));
     return;
   } else if (n == 1) {
     // \nabla X = \nabla Out
-    phi::Copy(dev_ctx, *dOut, dev_ctx.GetPlace(), false, dX);
+    Copy(dev_ctx, *dOut, dev_ctx.GetPlace(), false, dX);
     return;
   }
 
-  auto trans_desc = phi::funcs::CreateMatrixDescriptor(x_dims, 0, true);
-  auto no_trans_desc = phi::funcs::CreateMatrixDescriptor(x_dims, 0, false);
+  auto trans_desc = funcs::CreateMatrixDescriptor(x_dims, 0, true);
+  auto no_trans_desc = funcs::CreateMatrixDescriptor(x_dims, 0, false);
 
   if (n == -1) {
     // \nabla X = Out^{T} * \nabla Out * Out^{T}
@@ -74,10 +74,10 @@ void MatrixPowerGradFunction(const DenseTensor* X,
   int new_n = n;
   if (n > 0) {
     // newX = X
-    phi::Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
+    Copy(dev_ctx, *X, dev_ctx.GetPlace(), false, &new_x);
   } else {
     // newX = X^{-1}, n = -n
-    phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
+    funcs::MatrixInverseFunctor<Context, T> mat_inv;
     mat_inv(dev_ctx, *X, &new_x);
     new_n = -n;
   }
@@ -158,7 +158,7 @@ void MatrixPowerGradFunction(const DenseTensor* X,
 
   if (n > 0) {
     // \nabla X = \nabla newX
-    phi::Copy(dev_ctx, dx_new, dev_ctx.GetPlace(), false, dX);
+    Copy(dev_ctx, dx_new, dev_ctx.GetPlace(), false, dX);
   } else {
     // \nabla X = newX^{T} * \nabla newX * newX^{T}
     DenseTensor temp_dx;

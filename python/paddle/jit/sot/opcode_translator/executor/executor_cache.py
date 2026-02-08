@@ -25,6 +25,7 @@ from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_COMPILE_TIME_LIMIT,
     ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     ENV_SOT_UNSAFE_CACHE_FASTPATH,
@@ -183,6 +184,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
         enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
+        enable_compile_time_limit = ENV_SOT_ENABLE_COMPILE_TIME_LIMIT.get()
 
         if enable_unsafe_cache_fastpath and (
             self.is_fastpath_threshold_reached(code)
@@ -205,13 +207,19 @@ class OpcodeExecutorCache(metaclass=Singleton):
                 return guarded_fns[cache_index][0]
             else:
                 log(2, "[Cache] all guards missed (guard tree mode)\n")
-                if compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE:
+                if (
+                    enable_compile_time_limit
+                    and compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE
+                ):
                     log(
                         2,
                         "[Cache] Exceed max compile time per code, skip it\n",
                     )
                     return CustomCode(None, False)
-                if compile_time_total >= self.MAX_COMPILE_TIME_TOTAL:
+                if (
+                    enable_compile_time_limit
+                    and compile_time_total >= self.MAX_COMPILE_TIME_TOTAL
+                ):
                     log_once(
                         f"[SOT] Current total compile time is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, fallback new function to dygraph"
                     )
@@ -307,10 +315,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     )
 
         log(2, "[Cache] all guards missed\n")
-        if compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE:
+        if (
+            enable_compile_time_limit
+            and compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE
+        ):
             log(2, "[Cache] Exceed max compile time per code, skip it\n")
             return CustomCode(None, False)
-        if compile_time_total >= self.MAX_COMPILE_TIME_TOTAL:
+        if (
+            enable_compile_time_limit
+            and compile_time_total >= self.MAX_COMPILE_TIME_TOTAL
+        ):
             log_once(
                 f"[SOT] Current compile time total is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, fallback new function to dygraph"
             )

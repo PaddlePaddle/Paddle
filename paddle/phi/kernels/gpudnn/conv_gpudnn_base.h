@@ -31,8 +31,6 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
-
 template <typename T>
 using ScalingParamType =
     typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
@@ -104,9 +102,9 @@ struct ConvArgsBase {
   phi::backends::gpu::FilterDescriptor wdesc;
   phi::backends::gpu::ConvolutionDescriptor cdesc;
 
-  const phi::DenseTensor* x = nullptr;
-  const phi::DenseTensor* w = nullptr;
-  const phi::DenseTensor* o = nullptr;
+  const DenseTensor* x = nullptr;
+  const DenseTensor* w = nullptr;
+  const DenseTensor* o = nullptr;
 
   DataT cudnn_dtype;
 
@@ -121,18 +119,18 @@ struct ConvArgsBase {
   int group;
 
   // data format
-  GPUDNNDataLayout data_layout;
+  DataLayout data_layout;
 
   ConvArgsBase(const HandleT& h,
-               const phi::DenseTensor* x,
-               const phi::DenseTensor* w,
-               const phi::DenseTensor* o,
+               const DenseTensor* x,
+               const DenseTensor* w,
+               const DenseTensor* o,
                const std::vector<int> s,
                const std::vector<int> p,
                const std::vector<int> d,
                DataT dtype,
                int g,
-               GPUDNNDataLayout layout)
+               DataLayout layout)
       : handle(h),
         x(x),
         w(w),
@@ -165,16 +163,16 @@ struct ConvArgsBase {
   }
 };
 
-static inline void GetNCDHW(const phi::DDim& dims,
-                            const GPUDNNDataLayout& layout,
+static inline void GetNCDHW(const DDim& dims,
+                            const DataLayout& layout,
                             int* N,
                             int* C,
                             int* D,
                             int* H,
                             int* W) {
   *N = dims[0];
-  *C = layout == GPUDNNDataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == GPUDNNDataLayout::kNCHW ? 0 : 1;
+  *C = layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+  int i = layout == DataLayout::NCHW ? 0 : 1;
   if (dims.size() == 5) {
     *D = dims[2 - i];
     *H = dims[3 - i];
@@ -187,12 +185,12 @@ static inline void GetNCDHW(const phi::DDim& dims,
 }
 
 template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const phi::DenseTensor* input,
-                               phi::DenseTensor* out,
+static void RemovePaddingSlice(const GPUContext& dev_ctx,
+                               const DenseTensor* input,
+                               DenseTensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -216,7 +214,7 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *out, new_out_dims);
 
-  phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+  funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
 }
 

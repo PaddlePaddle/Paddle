@@ -45,7 +45,7 @@ void UnStackGradKernel(const Context &dev_ctx,
   thrust::device_vector<const T *> device_x_vec(x_datas);
   auto x_data_arr = device_x_vec.data().get();
 
-  phi::funcs::StackFunctorForRange(
+  funcs::StackFunctorForRange(
       dev_ctx, x_data_arr, x_grad_data, total_num, n, post);
 
   // Wait() must be called because device_x_vec may be destructed before

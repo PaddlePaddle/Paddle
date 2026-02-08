@@ -17,6 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
+
+# NOTE(Pan Zhaowu): Using legacy_linear to fulfill promise of high-level grad,
+# with no side-effects to other ops.
+# linear_v2's decomposed grad is fully tested in test_gradname_parse.py
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.autograd.ir_backward import grad
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
@@ -353,7 +358,7 @@ class TestBackward_6(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                r"The shape of grad_output\[0\] \[1, 3\] should be the same as the shape of output\[0\] \[4, 3\]",
+                r"The shape of grad_output\[0\] paddle.Size\(\[1, 3\]\) should be the same as the shape of output\[0\] paddle.Size\(\[4, 3\]\)",
             ):
                 x = paddle.randn(4, 2, requires_grad=True)
                 f = paddle.jit.to_static(
@@ -379,7 +384,7 @@ class TestBackward_6(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                r"The shape of grad_output\[0\] \[4\] should be the same as the shape of output\[0\] \[4, 3\]",
+                r"The shape of grad_output\[0\] paddle.Size\(\[4\]\) should be the same as the shape of output\[0\] paddle.Size\(\[4, 3\]\)",
             ):
                 x = paddle.randn(4, 2, requires_grad=True)
                 f = paddle.jit.to_static(

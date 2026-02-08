@@ -56,8 +56,8 @@ inline bool IsComplexDtype(const DataType& type) {
   return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
 }
 
-template <typename DeviceContext, typename T>
-inline void GetResidualsTensor(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void GetResidualsTensor(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const std::string& driver,
@@ -66,9 +66,12 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
                                DenseTensor* rank) {
   auto x_dims = x.dims();
   int dim_size = x_dims.size();
-  int m = x_dims[dim_size - 2];
-  int n = x_dims[dim_size - 1];
+  int64_t m = x_dims[dim_size - 2];
+  int64_t n = x_dims[dim_size - 1];
 
+  // Note(zrr1999): Although m and n are declared as int64_t, the rank tensor
+  // stores int values (see rank->data<int>() usage below), so effectively these
+  // dimensions are limited to int range in the current implementation.
   if (m > n && driver != "gelsy") {
     bool compute_residuals = true;
     if ((driver == "gelss" || driver == "gelsd") && rank->numel() != 0) {
@@ -91,21 +94,19 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
 
       auto sum_tensor = phi::Sum<T>(
           dev_ctx, pow_tensor, phi::IntArray({-2}), pow_tensor.dtype(), false);
-      phi::Copy<DeviceContext>(
-          dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
+      Copy<Context>(dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
       return;
     }
   }
 
   IntArray empty_shape({0});
-  DenseTensor empty_tensor = phi::Empty<T, DeviceContext>(dev_ctx, empty_shape);
-  phi::Copy<DeviceContext>(
-      dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
+  DenseTensor empty_tensor = Empty<T, Context>(dev_ctx, empty_shape);
+  Copy<Context>(dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
 #ifdef PADDLE_WITH_HIP
-template <typename DeviceContext, typename T>
-inline void BatchedOrmqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void BatchedOrmqr(const Context& dev_ctx,
                          bool left,
                          bool transpose,
                          int batch_size,
@@ -162,8 +163,8 @@ inline void BatchedOrmqr(const DeviceContext& dev_ctx,
 FUNC_WITH_TYPES(ORMQR_BATCH_INSTANCE);
 #endif
 #if defined(PADDLE_WITH_CUDA)
-template <typename DeviceContext, typename T>
-inline void BatchedOrmqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+inline void BatchedOrmqr(const Context& dev_ctx,
                          bool left,
                          bool transpose,
                          int batch_size,
@@ -201,7 +202,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSormqr_bufferSize(
       handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor info;
-  info.Resize(common::make_ddim({1}));
+  info.Resize(make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -211,7 +212,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
 
     handle = dev_ctx.cusolver_dn_handle();
     DenseTensor workspace;
-    workspace.Resize(common::make_ddim({lwork}));
+    workspace.Resize(make_ddim({lwork}));
     float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
     // compute ormgr
@@ -232,7 +233,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,
@@ -270,7 +271,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDormqr_bufferSize(
       handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor info;
-  info.Resize(common::make_ddim({1}));
+  info.Resize(make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -280,7 +281,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
 
     handle = dev_ctx.cusolver_dn_handle();
     DenseTensor workspace;
-    workspace.Resize(common::make_ddim({lwork}));
+    workspace.Resize(make_ddim({lwork}));
     double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
     // compute ormgr
@@ -301,7 +302,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
 
     // check the error info
     int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &info_h,
                        dev_ctx.GetPlace(),
                        info_d,

@@ -32,8 +32,8 @@ class IrSelectedRows
   IrSelectedRows() = default;
 
   IrSelectedRows(phi::DataType dtype,
-                 const phi::DDim& dims,
-                 phi::DataLayout layout,
+                 const DDim& dims,
+                 DataLayout layout,
                  LegacyLoD lod,
                  size_t offset = 0);
 
@@ -52,9 +52,9 @@ class IrSelectedRows
 
   int64_t numel() const override;
 
-  const phi::DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return dims_; }
 
-  void SetDims(const phi::DDim& dims) { dims_ = dims; }
+  void SetDims(const DDim& dims) { dims_ = dims; }
 
   const phi::Place& place() const override;
 
@@ -62,9 +62,9 @@ class IrSelectedRows
 
   void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
 
-  phi::DataLayout layout() const noexcept override { return layout_; }
+  DataLayout layout() const noexcept override { return layout_; }
 
-  void SetLayout(phi::DataLayout layout) { layout_ = layout; }
+  void SetLayout(DataLayout layout) { layout_ = layout; }
 
   const LegacyLoD& lod() const noexcept { return lod_; }
 
@@ -87,9 +87,9 @@ class IrSelectedRows
                      bool fake_alloc = false) override;
 
  private:
-  phi::DDim dims_;
+  DDim dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  phi::DataLayout layout_{phi::DataLayout::ANY};
+  DataLayout layout_{DataLayout::ANY};
   LegacyLoD lod_;
   size_t offset_{0};
 };

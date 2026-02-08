@@ -33,7 +33,7 @@ void MaxOutKernel(const Context& dev_ctx,
     axis += x.dims().size();
   }
 
-  phi::funcs::MaxOutFunctor<Context, T> maxout_forward;
+  funcs::MaxOutFunctor<Context, T> maxout_forward;
   maxout_forward(dev_ctx, x, out, groups, axis);
 }
 

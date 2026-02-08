@@ -75,7 +75,7 @@ def max_pool3d(
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -86,7 +86,7 @@ def max_pool3d(
             >>> strides = [1, 1, 1]
             >>> out = paddle.sparse.nn.functional.max_pool3d(sparse_x, kernel_sizes, stride=strides, padding=paddings)
             >>> print(out.shape)
-            [1, 2, 2, 2, 3]
+            paddle.Size([1, 2, 2, 2, 3])
     """
 
     assert in_dynamic_or_pir_mode(), (

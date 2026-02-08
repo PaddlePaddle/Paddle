@@ -48,7 +48,7 @@ void ErfinvKernel(const Context& dev_ctx,
   }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, ErfinvFunctor<T>());
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, ErfinvFunctor<T>());
 }
 
 }  // namespace phi

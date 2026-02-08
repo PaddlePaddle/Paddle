@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
 
 namespace phi {
 

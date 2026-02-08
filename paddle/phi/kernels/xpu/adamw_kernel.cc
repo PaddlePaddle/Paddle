@@ -55,8 +55,8 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          const DenseTensor& moment2,
                          const DenseTensor& beta1_pow,
                          const DenseTensor& beta2_pow,
-                         const paddle::optional<DenseTensor>& master_param,
-                         const paddle::optional<DenseTensor>& skip_update,
+                         const optional<DenseTensor>& master_param,
+                         const optional<DenseTensor>& skip_update,
                          const Scalar& beta1,
                          const Scalar& beta2,
                          const Scalar& epsilon,
@@ -100,12 +100,12 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   // skip_update=true, just copy input to output
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
-    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
-    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
     if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+      Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     }
     return;
   }
@@ -465,36 +465,35 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void AdamwDenseKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,  // UNUSED
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    float lr_ratio,
-    float coeff,
-    bool with_decay,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,  // UNUSED
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,  // UNUSED
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+void AdamwDenseKernel(const Context& dev_ctx,
+                      const DenseTensor& param,
+                      const DenseTensor& grad,
+                      const DenseTensor& learning_rate,
+                      const DenseTensor& moment1,
+                      const DenseTensor& moment2,
+                      const optional<DenseTensor>& moment2_max,  // UNUSED
+                      const DenseTensor& beta1_pow,
+                      const DenseTensor& beta2_pow,
+                      const optional<DenseTensor>& master_param,
+                      const optional<DenseTensor>& skip_update,
+                      const Scalar& beta1,
+                      const Scalar& beta2,
+                      const Scalar& epsilon,
+                      float lr_ratio,
+                      float coeff,
+                      bool with_decay,
+                      bool lazy_mode,
+                      int64_t min_row_size_to_use_multithread,
+                      bool multi_precision,
+                      bool use_global_beta_pow,
+                      bool amsgrad,  // UNUSED
+                      DenseTensor* param_out,
+                      DenseTensor* moment1_out,
+                      DenseTensor* moment2_out,
+                      DenseTensor* moment2_max_out,  // UNUSED
+                      DenseTensor* beta1_pow_out,
+                      DenseTensor* beta2_pow_out,
+                      DenseTensor* master_param_outs) {
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
@@ -646,12 +645,12 @@ void AdamwDenseKernel(
   }
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
-    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
-    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
     if (!use_global_beta_pow) {
-      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+      Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
     }
     return;
   }
@@ -665,8 +664,8 @@ void AdamwDenseKernel(
   DenseTensor xpu_beta1_pow;
   DenseTensor xpu_beta2_pow;
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
-    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
-    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
+    Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
+    Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
     dev_ctx.Wait();
     beta1_pow_ptr = xpu_beta1_pow.template data<float>();
     beta2_pow_ptr = xpu_beta2_pow.template data<float>();

@@ -43,6 +43,44 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
+
+inline bool FastContiguous(const int64_t &numel,
+                           const DDim &shape,
+                           const DDim &stride,
+                           const uint64_t &offset) {
+  if (offset != 0) {
+    return false;
+  }
+
+  // For large tensors (>16M elements), transpose + contiguous elementwise
+  // is faster than direct strided elementwise kernel
+  if (numel < 16777216LL) {
+    return false;
+  }
+
+  if (shape.size() < 2 || stride.size() < 2) {
+    return false;
+  }
+
+  auto tmp_shape = shape;
+  auto tmp_stride = stride;
+  auto vec_size = tmp_shape.size();
+
+  std::swap(tmp_shape[vec_size - 1], tmp_shape[vec_size - 2]);
+  std::swap(tmp_stride[vec_size - 1], tmp_stride[vec_size - 2]);
+
+  if (!(tmp_stride[vec_size - 1] == 1) ||
+      !(tmp_stride[vec_size - 2] == tmp_shape[vec_size - 1])) {
+    return false;
+  }
+
+  if (DenseTensorMeta::calc_strides(tmp_shape) == tmp_stride) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 #define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name, functor_name)          \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(const Context &dev_ctx,                             \
@@ -56,7 +94,20 @@ namespace phi {
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+                                                                              \
+    bool fast_contiguous = false;                                             \
+    if (FLAGS_force_stride_compute_contig_out) {                              \
+      bool x_fast =                                                           \
+          FastContiguous(x.numel(), x.dims(), x.strides(), x.offset());       \
+      bool y_fast =                                                           \
+          FastContiguous(y.numel(), y.dims(), y.strides(), y.offset());       \
+      fast_contiguous = x_fast || y_fast;                                     \
+    }                                                                         \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0 || y.numel() == 0) {                                   \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel || fast_contiguous || zero_size) {   \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
@@ -119,7 +170,11 @@ void AddStrideKernel(const Context &dev_ctx,
   }
   DenseTensor x_;
   DenseTensor y_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0 || y.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || x.dtype() != y.dtype() || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -154,28 +209,8 @@ void AddStrideKernel(const Context &dev_ctx,
     out->set_meta(meta);
   }
 
-  if (x_.dtype() == phi::DataType::FLOAT32 &&
-      y_.dtype() == phi::DataType::BFLOAT16) {
-    LaunchBinaryElementwiseStrideKernel<T, Context>(
-        dev_ctx,
-        x_,
-        y_,
-        funcs::MultiPrecisionAddFunctor<T, phi::bfloat16>(),
-        -1,
-        out);
-  } else if (x_.dtype() == phi::DataType::FLOAT32 &&
-             y_.dtype() == phi::DataType::FLOAT16) {
-    LaunchBinaryElementwiseStrideKernel<T, Context>(
-        dev_ctx,
-        x_,
-        y_,
-        funcs::MultiPrecisionAddFunctor<T, phi::float16>(),
-        -1,
-        out);
-  } else {
-    LaunchBinaryElementwiseStrideKernel<T, Context>(
-        dev_ctx, x_, y_, funcs::AddFunctor<T>(), -1, out);
-  }
+  LaunchBinaryElementwiseStrideKernel<T, Context>(
+      dev_ctx, x_, y_, funcs::AddFunctor<T>(), -1, out);
 }
 
 template <typename DataT, typename ParamT>
@@ -211,7 +246,11 @@ void ScaleStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {

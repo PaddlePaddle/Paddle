@@ -72,7 +72,7 @@ void TopkGradKernel(const Context& dev_ctx,
 
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 
@@ -81,7 +81,7 @@ void TopkGradKernel(const Context& dev_ctx,
 
     // assign the out_grad to input_grad directly
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
 
     // init the output grad with 0, because some input elements has no grad
@@ -105,8 +105,8 @@ void TopkGradKernel(const Context& dev_ctx,
       trans.emplace_back(i);
     }
     trans.emplace_back(axis);
-    phi::DDim trans_dims(out_dims);
-    phi::DDim trans_in_dims(in_dims);
+    DDim trans_dims(out_dims);
+    DDim trans_in_dims(in_dims);
     for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = out_dims[trans[i]];
       trans_in_dims[i] = in_dims[trans[i]];
@@ -125,8 +125,8 @@ void TopkGradKernel(const Context& dev_ctx,
         ndims, dev_ctx, out_grad, &trans_dO, trans);
     funcs::TransCompute<phi::CPUContext, int64_t>(
         ndims, dev_ctx, indices, &trans_ind, trans);
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
     const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
 
     // Assign the out_grad to transpose input_grad

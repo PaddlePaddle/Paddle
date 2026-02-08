@@ -76,6 +76,8 @@ class GeneralGrad {
         } else {
           // normal input
           (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
+          (input_target_nodes_inputtensor_map_)[target_node] =
+              std::make_shared<paddle::Tensor>(inputs[i]);
         }
       }
     }
@@ -335,9 +337,15 @@ class GeneralGrad {
                 pre_node_edge.SetGradNode(
                     copied_node_to_ending_node_map_[node]);
               } else {
-                auto autograd_meta = egr::AutogradMeta(edge_);
+                auto iter = input_target_nodes_inputtensor_map_.find(node);
+                PADDLE_ENFORCE_NE(
+                    iter,
+                    input_target_nodes_inputtensor_map_.end(),
+                    common::errors::Fatal("Cannot find fwd tensor for target "
+                                          "accumulation node."));
+                const paddle::Tensor& fwd_tensor = *(iter->second.get());
                 std::shared_ptr<GradNodeBase> shared_grad_node_accumulation =
-                    std::make_shared<egr::GradNodeAccumulation>(&autograd_meta);
+                    std::make_shared<egr::GradNodeAccumulation>(fwd_tensor);
                 pre_node_edge.SetGradNode(shared_grad_node_accumulation);
                 copied_node_to_ending_node_map_[node] =
                     shared_grad_node_accumulation;
@@ -615,6 +623,7 @@ class GeneralGrad {
   void Clear() {
     no_grad_var_nodes_inputmeta_map_.clear();
     input_target_nodes_inputmeta_map_.clear();
+    input_target_nodes_inputtensor_map_.clear();
     potential_startup_nodes_.clear();
     depending_nodes_.clear();
     results_map_.clear();
@@ -634,6 +643,9 @@ class GeneralGrad {
   // inputs's GradNode and GradNode's InputMeta.
   std::unordered_map<GradNodeBase*, AutogradMeta* /* InputMeta */>
       input_target_nodes_inputmeta_map_;
+  // Record the fwd tensor for init GradNodeAccumulation
+  std::unordered_map<GradNodeBase*, std::shared_ptr<paddle::Tensor>>
+      input_target_nodes_inputtensor_map_;
   // Record all the potential startup_nodes, will be changed.
   std::unordered_set<GradNodeBase*> potential_startup_nodes_;
   std::unordered_map<GradNodeBase* /* next node */,

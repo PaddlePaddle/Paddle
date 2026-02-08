@@ -43,9 +43,9 @@ template <typename Context, typename T>
 class ConcatFunctor {
  public:
   void operator()(const Context& context,
-                  const std::vector<phi::DenseTensor>& input,
+                  const std::vector<DenseTensor>& input,
                   int axis,
-                  phi::DenseTensor* output);
+                  DenseTensor* output);
 };
 
 /*
@@ -64,10 +64,10 @@ template <typename Context, typename T>
 class SplitFunctor {
  public:
   void operator()(const Context& context,
-                  const phi::DenseTensor& input,
-                  const std::vector<const phi::DenseTensor*>& ref_inputs,
+                  const DenseTensor& input,
+                  const std::vector<const DenseTensor*>& ref_inputs,
                   int axis,
-                  std::vector<phi::DenseTensor*>* outputs);
+                  std::vector<DenseTensor*>* outputs);
 };
 
 }  // namespace funcs

@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.incubate.nn.functional import swiglu as fused_swiglu_impl
+from paddle.nn.functional import swiglu as fused_swiglu_impl
 
 
 def swiglu(x, y, out_grad):

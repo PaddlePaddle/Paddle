@@ -32,43 +32,43 @@ class FlagcxCommContext final : public CommContext {
 
   flagcxComm_t GetFlagcxComm();
 
-  void Broadcast(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void Broadcast(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  int root,
                  flagcxStream_t stream);
 
-  void Send(const phi::DenseTensor& in_tensor,
+  void Send(const DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
             flagcxStream_t stream);
 
-  void Recv(phi::DenseTensor* out_tensor,
+  void Recv(DenseTensor* out_tensor,
             const int64_t& count,
             const int& peer,
             flagcxStream_t stream);
 
-  void ReduceScatter(phi::DenseTensor* out_tensor,
-                     const phi::DenseTensor& in_tensor,
+  void ReduceScatter(DenseTensor* out_tensor,
+                     const DenseTensor& in_tensor,
                      flagcxRedOp_t reduce_type,
                      flagcxStream_t stream);
 
-  void AllGather(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllGather(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  flagcxStream_t stream);
 
-  void AllReduce(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor,
+  void AllReduce(DenseTensor* out_tensor,
+                 const DenseTensor& in_tensor,
                  flagcxRedOp_t reduce_type,
                  flagcxStream_t stream);
 
-  void Reduce(phi::DenseTensor* out_tensor,
-              const phi::DenseTensor& in_tensor,
+  void Reduce(DenseTensor* out_tensor,
+              const DenseTensor& in_tensor,
               flagcxRedOp_t reduce_type,
               int root,
               flagcxStream_t stream);
 
-  void AllToAll(phi::DenseTensor* out_tensor,
-                const phi::DenseTensor& in_tensor,
+  void AllToAll(DenseTensor* out_tensor,
+                const DenseTensor& in_tensor,
                 flagcxStream_t stream);
 
   void GroupStart();

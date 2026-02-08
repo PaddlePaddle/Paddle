@@ -30,7 +30,10 @@ __global__ void CosSimDyKernel(const T* x_norm,
                                T* dy) {
   int grid_size = blockDim.x * gridDim.x;
   T y_norm_data = y_norm[0];
-  for (size_t row_id = blockIdx.x * blockDim.x + threadIdx.x; row_id < rows;
+  for (size_t row_id =
+           static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+           static_cast<size_t>(threadIdx.x);
+       row_id < rows;
        row_id += grid_size) {
     T xy_norm_prod = x_norm[row_id] * y_norm_data;
     T dz_data = dz[row_id];
@@ -43,7 +46,7 @@ __global__ void CosSimDyKernel(const T* x_norm,
     for (size_t i = 0; i < cols; ++i) {
       T dy_data = dz_data * (x_data[i] * reciprocal_xy_norm_prod -
                              z_data * y[i] * reciprocal_y_norm_square);
-      phi::CudaAtomicAdd(dy + i, dy_data);
+      CudaAtomicAdd(dy + i, dy_data);
     }
   }
 }

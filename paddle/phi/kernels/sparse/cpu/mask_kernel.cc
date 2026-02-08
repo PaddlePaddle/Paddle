@@ -41,8 +41,8 @@ void MaskCooCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& values = mask.values();
   const int sparse_dim = mask.sparse_dim();
 
-  DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
+  DenseTensor out_indices = EmptyLike<T>(dev_ctx, indices);
+  DenseTensor out_values = EmptyLike<T>(dev_ctx, values);
 
   // the out_indices is same as indices of mask
   phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &out_indices);
@@ -57,11 +57,11 @@ void MaskCooCPUKernel(const CPUContext& dev_ctx,
 
   std::vector<IntT> sparse_offsets(sparse_dim);
 
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       dims, sparse_dim, sparse_offsets.data());
 
   for (int64_t i = 0; i < non_zero_num; i++) {
-    int64_t index = phi::funcs::sparse::CoordinateToIndex<IntT>(
+    int64_t index = funcs::sparse::CoordinateToIndex<IntT>(
         indices_ptr, sparse_offsets.data(), non_zero_num, sparse_dim, i);
     memcpy(out_values_ptr + i * cols, x_ptr + index * cols, cols * sizeof(T));
   }
@@ -94,9 +94,9 @@ void MaskCsr2DCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& mask_crows = mask.crows();
   int64_t num_non_zeros = mask.nnz();
 
-  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
-  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+  DenseTensor out_cols = EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = Empty<T>(dev_ctx, {num_non_zeros});
 
   phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
   phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
@@ -128,9 +128,9 @@ void MaskCsr3DCPUKernel(const CPUContext& dev_ctx,
   const DenseTensor& mask_crows = mask.crows();
   int64_t num_non_zeros = mask.nnz();
 
-  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
-  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+  DenseTensor out_cols = EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = Empty<T>(dev_ctx, {num_non_zeros});
 
   phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
   phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
@@ -165,7 +165,7 @@ void MaskAsCsrKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const SparseCsrTensor& mask,
                      SparseCsrTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   if (x_dims.size() == 2) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
         mask.crows().dtype(), "MaskCsr2DCPUKernel", ([&] {
@@ -199,31 +199,31 @@ void MaskHelperCooCPUKernel(const CPUContext& dev_ctx,
 
   std::vector<IntT> sparse_offsets(sparse_dim), x_indices(x.nnz()),
       mask_out_indices(mask_indices.dims()[1]);
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     x.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     x_indices.data());
-  phi::funcs::sparse::FlattenIndices(mask_indices.data<IntT>(),
-                                     sparse_offsets.data(),
-                                     x.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     mask_out_indices.data());
+  funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                x.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                x_indices.data());
+  funcs::sparse::FlattenIndices(mask_indices.data<IntT>(),
+                                sparse_offsets.data(),
+                                x.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                mask_out_indices.data());
 
   std::unordered_map<IntT, uint64_t> x_indices_map;
   for (uint64_t i = 0; i < x_indices.size(); i++) {
     x_indices_map[x_indices[i]] = i;
   }
 
-  *out = phi::EmptyLike<T>(dev_ctx, x.values());
-  phi::funcs::SetConstant<CPUContext, T> set_zero;
+  *out = EmptyLike<T>(dev_ctx, x.values());
+  funcs::SetConstant<CPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
   const int64_t stride =

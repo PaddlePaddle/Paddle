@@ -143,10 +143,10 @@ class CudnnFusionOpCache {
     return instance;
   }
 
-  phi::funcs::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
+  funcs::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
     return &forward_cache_;
   }
-  phi::funcs::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
+  funcs::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
     return &backward_cache_;
   }
 
@@ -158,8 +158,8 @@ class CudnnFusionOpCache {
   CudnnFusionOpCache(const CudnnFusionOpCache &) {}
 
  private:
-  phi::funcs::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
-  phi::funcs::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
+  funcs::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
+  funcs::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
 };
 
 #endif  // CUDNN_VERSION >= 8000

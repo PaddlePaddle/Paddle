@@ -40,7 +40,7 @@ void FillKernel(const Context& dev_ctx,
     return;
   }
 
-  phi::funcs::SetConstant<Context, T> functor;
+  funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, out, value.to<T>());
 }
 

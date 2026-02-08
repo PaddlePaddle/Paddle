@@ -35,13 +35,19 @@
 
 namespace deep_gemm {
 
-enum class Layout { RowMajor, ColMajor };
+template <uint32_t kNumFormerIters, uint32_t kGap, uint32_t kEnd>
+__device__ __host__ void outer_launch_k_iterations(
+    const auto& inner_launch_k_iterations,
+    const auto& func,
+    uint32_t num_former_iters) {
+  if (num_former_iters == kNumFormerIters) {
+    inner_launch_k_iterations(func, cute::Int<kNumFormerIters>{});
+    return;
+  }
 
-template <uint32_t kNumTMAThreads, uint32_t kNumMathThreadsPerGroup>
-__device__ __host__ constexpr int get_num_threads_per_sm(int block_m) {
-  DG_STATIC_ASSERT(kNumMathThreadsPerGroup == 128,
-                   "Only support 128 threads per math group");
-  return (block_m == 64 ? 1 : 2) * kNumMathThreadsPerGroup + kNumTMAThreads;
+  if constexpr (kNumFormerIters + kGap <= kEnd)
+    outer_launch_k_iterations<kNumFormerIters + kGap, kGap, kEnd>(
+        inner_launch_k_iterations, func, num_former_iters);
 }
 
 template <uint32_t SHAPE_N,
@@ -49,16 +55,18 @@ template <uint32_t SHAPE_N,
           uint32_t BLOCK_M,
           uint32_t BLOCK_N,
           uint32_t BLOCK_K,
+          uint32_t BLOCK_N_PADDING,
+          uint32_t kSwizzleDMode,
           uint32_t kNumGroups,
           uint32_t kNumStages,
           uint32_t kNumTMAThreads,
           uint32_t kNumMathThreadsPerGroup,
           uint32_t kNumTMAMulticast,
+          bool kIsTMAMulticastOnA,
           GemmType kGemmType>
 __global__ void __launch_bounds__(
     get_num_threads_per_sm<kNumTMAThreads, kNumMathThreadsPerGroup>(BLOCK_M), 1)
-    fp8_gemm_kernel(__nv_bfloat16* gmem_d,
-                    float* scales_b,
+    fp8_gemm_kernel(float* scales_b,
                     int* grouped_layout,
                     uint32_t shape_m,
                     const __grid_constant__ CUtensorMap tensor_map_a,
@@ -69,17 +77,19 @@ __global__ void __launch_bounds__(
     defined(__CLION_IDE__)
   // Scaling checks
   DG_STATIC_ASSERT(BLOCK_K == 128, "Only support per-128-channel FP8 scaling");
-  DG_STATIC_ASSERT(ceil_div(BLOCK_N, BLOCK_K) == 1,
+  DG_STATIC_ASSERT(ceil_div(BLOCK_N, BLOCK_K) == 1 or
+                       (constexpr_gcd(BLOCK_N, BLOCK_K) == BLOCK_N - BLOCK_K),
                    "Too much B scales in a single block");
 
   // Types
   using WGMMA = typename FP8MMASelector<BLOCK_N>::type;
   using Barrier = cutlass::arch::ClusterTransactionBarrier;
+  DG_STATIC_ASSERT(BLOCK_M % WGMMA::M == 0, "Invalid block size");
 
   // Shared memory
-  static constexpr int kMustUseUniformedScaleB = (BLOCK_K % BLOCK_N == 0);
+  static constexpr bool kMustUseUniformedScaleB = (BLOCK_K % BLOCK_N == 0);
   static constexpr uint32_t SMEM_D_SIZE =
-      BLOCK_M * BLOCK_N * sizeof(__nv_bfloat16);
+      BLOCK_M * (BLOCK_N + BLOCK_N_PADDING) * sizeof(__nv_bfloat16);
   static constexpr uint32_t SMEM_A_SIZE_PER_STAGE =
       BLOCK_M * BLOCK_K * sizeof(__nv_fp8_e4m3);
   static constexpr uint32_t SMEM_B_SIZE_PER_STAGE =
@@ -102,16 +112,22 @@ __global__ void __launch_bounds__(
   const uint32_t warp_idx = __shfl_sync(0xffffffff, threadIdx.x / 32, 0);
   const uint32_t lane_idx = get_lane_id();
 
-  // Prefetch TMA descriptors at very beginning
+  // Prefetch TMA descriptors at the very beginning
   if (threadIdx.x == kNumMathThreads) {
+    // NOTES: `reinterpret_cast` must be here, or NVRTC will fail
     cute::prefetch_tma_descriptor(
-        reinterpret_cast<cute::TmaDescriptor const*>(&tensor_map_a));
+        reinterpret_cast<const cute::TmaDescriptor*>(&tensor_map_a));
     cute::prefetch_tma_descriptor(
-        reinterpret_cast<cute::TmaDescriptor const*>(&tensor_map_b));
+        reinterpret_cast<const cute::TmaDescriptor*>(&tensor_map_b));
     cute::prefetch_tma_descriptor(
-        reinterpret_cast<cute::TmaDescriptor const*>(&tensor_map_scales_a));
-    cute::prefetch_tma_descriptor(
-        reinterpret_cast<cute::TmaDescriptor const*>(&tensor_map_d));
+        reinterpret_cast<const cute::TmaDescriptor*>(&tensor_map_scales_a));
+
+    // `tensor_map_d` is only used in swizzling mode
+    // For the `kSwizzleDMode == 0 and BLOCK_N_PADDING == 0` case, it will be
+    // treated as padding mode
+    if constexpr (kSwizzleDMode > 0)
+      cute::prefetch_tma_descriptor(
+          reinterpret_cast<const cute::TmaDescriptor*>(&tensor_map_d));
   }
   __syncwarp();
 
@@ -133,7 +149,7 @@ __global__ void __launch_bounds__(
 
 // Fill shared memory pointers
 #pragma unroll
-  for (int i = 0; i < kNumStages; ++i) {
+  for (uint32_t i = 0; i < kNumStages; ++i) {
     smem_a[i] = reinterpret_cast<__nv_fp8_e4m3*>(smem_buffer + SMEM_D_SIZE +
                                                  i * SMEM_A_SIZE_PER_STAGE);
     smem_b[i] = reinterpret_cast<__nv_fp8_e4m3*>(
@@ -153,7 +169,7 @@ __global__ void __launch_bounds__(
   auto barrier_start_ptr = reinterpret_cast<Barrier*>(
       reinterpret_cast<uint8_t*>(smem_scales_b) + SMEM_SCALES_B_SIZE);
 #pragma unroll
-  for (int i = 0; i < kNumStages; ++i) {
+  for (uint32_t i = 0; i < kNumStages; ++i) {
     full_barriers[i] = barrier_start_ptr + i;
     empty_barriers[i] = barrier_start_ptr + kNumStages + i;
   }
@@ -161,8 +177,11 @@ __global__ void __launch_bounds__(
   // Initialize barriers
   DG_STATIC_ASSERT(kNumTMAMulticast <= 32, "Too many TMA multicast");
   if (threadIdx.x == kNumMathThreads) {
+// NOTES: we always use `lane_idx` to arrive for the `lane_idx`-th CTA in the
+// cluster, even with TMA multicast disabled, we want to make the behavior
+// aligned
 #pragma unroll
-    for (int i = 0; i < kNumStages; ++i) {
+    for (uint32_t i = 0; i < kNumStages; ++i) {
       full_barriers[i]->init(1);
       empty_barriers[i]->init(kNumTMAMulticast * kNumMathThreads / 32);
     }
@@ -178,20 +197,52 @@ __global__ void __launch_bounds__(
   // For pipeline unrolling
   struct DivisibleK {};
   struct NotDivisibleK {};
-  auto launch_k_iterations = [](const auto& func) {
-    if constexpr (SHAPE_K % kFullKOfAllStages == 0) {
-      for (int k_iter = 0; k_iter < kNumIterations; ++k_iter)
-        func(k_iter, DivisibleK{});
-    } else {
-      for (int k_iter = 0; k_iter < kNumIterations - 1; ++k_iter)
-        func(k_iter, DivisibleK{});
-      func(kNumIterations - 1, NotDivisibleK{});
-    }
-  };
+  struct SkipComputation {};
+  struct NotSkipComputation {};
+  auto launch_k_iterations =
+      [](const auto& func, bool skip_computation, uint32_t num_former_iters) {
+        constexpr bool kShouldOptimize =
+            BLOCK_K / constexpr_gcd(BLOCK_K, BLOCK_N) <= 4 and
+            not kMustUseUniformedScaleB;
+        constexpr uint32_t kGap = constexpr_gcd(BLOCK_K, BLOCK_N) / 8;
+        constexpr uint32_t kEnd = kShouldOptimize ? BLOCK_K / 8 : 0;
+
+        // NOTES: for too-many branches (> 5), we disable this optimization
+        // Otherwise, the compiler must know the dynamic variable
+        // `num_former_iters`'s real value
+        outer_launch_k_iterations<0, kGap, kEnd>(
+            [=](const auto& func, auto num_former_iters_type) {
+              if (skip_computation) {
+                for (uint32_t k_iter = 0; k_iter < kNumIterations; ++k_iter)
+                  func(k_iter,
+                       DivisibleK{},
+                       SkipComputation{},
+                       num_former_iters_type);
+              } else if (SHAPE_K % kFullKOfAllStages == 0) {
+                for (uint32_t k_iter = 0; k_iter < kNumIterations; ++k_iter)
+                  func(k_iter,
+                       DivisibleK{},
+                       NotSkipComputation{},
+                       num_former_iters_type);
+              } else {
+                for (uint32_t k_iter = 0; k_iter < kNumIterations - 1; ++k_iter)
+                  func(k_iter,
+                       DivisibleK{},
+                       NotSkipComputation{},
+                       num_former_iters_type);
+                func(kNumIterations - 1,
+                     NotDivisibleK{},
+                     NotSkipComputation{},
+                     num_former_iters_type);
+              }
+            },
+            func,
+            kShouldOptimize ? num_former_iters : 0);
+      };
 
   // Register reconfigurations
-  constexpr int kNumTMARegisters = 40;
-  constexpr int kNumMathRegisters = 232;
+  constexpr uint32_t kNumTMARegisters = 40;
+  constexpr uint32_t kNumMathRegisters = 232;
 
   // Block scheduler
   uint32_t m_block_idx, n_block_idx;
@@ -200,7 +251,8 @@ __global__ void __launch_bounds__(
                              BLOCK_M,
                              BLOCK_N,
                              kNumGroups,
-                             kNumTMAMulticast>(shape_m, grouped_layout);
+                             kNumTMAMulticast,
+                             kIsTMAMulticastOnA>(shape_m, grouped_layout);
 
   if (threadIdx.x >= kNumMathThreads) {
     // TMA warp-group for loading data
@@ -210,57 +262,80 @@ __global__ void __launch_bounds__(
     if (threadIdx.x == kNumMathThreads) {
       // Persistently schedule over blocks
       while (scheduler.get_next_block(m_block_idx, n_block_idx)) {
-        launch_k_iterations([&](int k_iter, auto type) {
-          constexpr bool kHasDivisibleStages =
-              std::is_same_v<decltype(type), DivisibleK>;
-          constexpr int kNumInnerStages =
-              kHasDivisibleStages ? kNumStages
-                                  : (SHAPE_K % kFullKOfAllStages) / BLOCK_K;
-          DG_STATIC_ASSERT(kNumInnerStages != 0,
-                           "Invalid number of inner stages");
+        launch_k_iterations(
+            [&](uint32_t k_iter, auto divisible_type, auto _, auto __) {
+              constexpr bool kHasDivisibleStages =
+                  std::is_same_v<decltype(divisible_type), DivisibleK>;
+              constexpr uint32_t kNumInnerStages =
+                  kHasDivisibleStages ? kNumStages
+                                      : (SHAPE_K % kFullKOfAllStages) / BLOCK_K;
 
+              // Assign TMA multicast number into A and B
+              // NOTES: there may be additional odd rows/columns or cases where
+              // multicast is not possible.
+              const bool is_tma_multicast_valid =
+                  scheduler.is_tma_multicast_valid(m_block_idx);
+              const uint32_t num_tma_multicast_a =
+                  (kIsTMAMulticastOnA and is_tma_multicast_valid)
+                      ? kNumTMAMulticast
+                      : 1;
+              const uint32_t num_tma_multicast_b =
+                  (not kIsTMAMulticastOnA and is_tma_multicast_valid)
+                      ? kNumTMAMulticast
+                      : 1;
+              DG_STATIC_ASSERT(kNumTMAMulticast <= 2,
+                               "Scheduler does not support > 2 TMA multicast");
+
+// NOTES: unrolling and `kNumInnerStages` are vital for performance, NVCC will
+// try to eliminate all shared memory pointers, e.g. `full_barriers` registers,
+// if all the access indices are constant
 #pragma unroll
-          for (uint32_t s = 0; s < kNumInnerStages; ++s) {
-            // Wait consumer release
-            empty_barriers[s]->wait(
-                (scheduler.current_iter * kNumIterations + k_iter + 1) & 1);
+              for (uint32_t s = 0; s < kNumInnerStages; ++s) {
+                // Wait consumer release
+                empty_barriers[s]->wait(
+                    (scheduler.current_iter * kNumIterations + k_iter + 1) & 1);
 
-            // Issue TMA A with broadcasting
-            auto& full_barrier = *full_barriers[s];
-            int k_idx = k_iter * kFullKOfAllStages + s * BLOCK_K;
-            tma_copy<kNumTMAMulticast>(
-                &tensor_map_a,
-                reinterpret_cast<uint64_t*>(&full_barrier),
-                smem_a[s],
-                k_idx,
-                scheduler.get_global_idx(shape_m, BLOCK_M, m_block_idx));
-            tma_copy<kNumTMAMulticast>(
-                &tensor_map_scales_a,
-                reinterpret_cast<uint64_t*>(&full_barrier),
-                smem_scales_a[s],
-                m_block_idx * BLOCK_M,
-                scheduler.get_global_idx(SHAPE_K_SCALES, 1, k_idx / BLOCK_K));
+                // Issue TMA A
+                auto& full_barrier = *full_barriers[s];
+                uint32_t k_idx = k_iter * kFullKOfAllStages + s * BLOCK_K;
+                tma_copy(
+                    &tensor_map_a,
+                    reinterpret_cast<uint64_t*>(&full_barrier),
+                    smem_a[s],
+                    k_idx,
+                    scheduler.get_global_idx(shape_m, BLOCK_M, m_block_idx),
+                    num_tma_multicast_a);
+                tma_copy(&tensor_map_scales_a,
+                         reinterpret_cast<uint64_t*>(&full_barrier),
+                         smem_scales_a[s],
+                         m_block_idx * BLOCK_M,
+                         scheduler.get_global_idx(
+                             SHAPE_K_SCALES, 1, k_idx / BLOCK_K),
+                         num_tma_multicast_a);
 
-            // Issue TMA B without broadcasting
-            tma_copy(&tensor_map_b,
-                     reinterpret_cast<uint64_t*>(&full_barrier),
-                     smem_b[s],
-                     k_idx,
-                     scheduler.get_global_idx<false>(
-                         SHAPE_N, BLOCK_N, n_block_idx, m_block_idx));
-            full_barrier.arrive_and_expect_tx(SMEM_A_SIZE_PER_STAGE +
-                                              SMEM_B_SIZE_PER_STAGE +
-                                              SMEM_SCALES_A_SIZE_PER_STAGE);
-          }
+                // Issue TMA B
+                tma_copy(&tensor_map_b,
+                         reinterpret_cast<uint64_t*>(&full_barrier),
+                         smem_b[s],
+                         k_idx,
+                         scheduler.get_global_idx<false>(
+                             SHAPE_N, BLOCK_N, n_block_idx, m_block_idx),
+                         num_tma_multicast_b);
+                full_barrier.arrive_and_expect_tx(SMEM_A_SIZE_PER_STAGE +
+                                                  SMEM_B_SIZE_PER_STAGE +
+                                                  SMEM_SCALES_A_SIZE_PER_STAGE);
+              }
 
 // Wait unaligned cases
 #pragma unroll
-          for (uint32_t s = kNumInnerStages; s < kNumStages; ++s) {
-            empty_barriers[s]->wait(
-                (scheduler.current_iter * kNumIterations + k_iter + 1) & 1);
-            full_barriers[s]->arrive();
-          }
-        });
+              for (uint32_t s = kNumInnerStages; s < kNumStages; ++s) {
+                empty_barriers[s]->wait(
+                    (scheduler.current_iter * kNumIterations + k_iter + 1) & 1);
+                full_barriers[s]->arrive();
+              }
+            },
+            false,
+            0);
       }
 
       // To safely deconstruct distributed shared barriers, we need another
@@ -312,138 +387,234 @@ __global__ void __launch_bounds__(
       cutlass::arch::NamedBarrier(kNumMathThreads).sync();
 
       // Accumulation for WGMMA or CUDA promotion
-      float accum[WGMMA::kNumAccum], final_accum[WGMMA::kNumAccum] = {0};
+      constexpr uint32_t WAVE_BLOCK_M =
+          WGMMA::M * get_num_math_warpgroups(BLOCK_M);
+      DG_STATIC_ASSERT(BLOCK_M % WAVE_BLOCK_M == 0, "Invalid block sizes");
+      float accum[WGMMA::kNumAccum],
+          final_accum[WGMMA::kNumAccum * (BLOCK_M / WAVE_BLOCK_M)] = {0};
 
       // Empty barrier arrival
-      auto empty_barrier_arrive = [&](int s) {
+      auto empty_barrier_arrive = [&](uint32_t s) {
         if constexpr (kNumTMAMulticast == 1) {
           lane_idx == 0 ? empty_barriers[s]->arrive() : void();
         } else {
-          lane_idx < kNumTMAMulticast ? empty_barriers[s]->arrive(lane_idx)
+          auto target_cta = scheduler.is_peer_cta_alive
+                                ? lane_idx
+                                : cute::block_rank_in_cluster();
+          lane_idx < kNumTMAMulticast ? empty_barriers[s]->arrive(target_cta)
                                       : void();
         }
       };
 
       // Launch MMAs
-      launch_k_iterations([&](int k_iter, auto type) {
-        constexpr bool kHasDivisibleStages =
-            std::is_same_v<decltype(type), DivisibleK>;
-        constexpr int kNumInnerStages =
-            kHasDivisibleStages ? kNumStages
-                                : (SHAPE_K % kFullKOfAllStages) / BLOCK_K;
-        DG_STATIC_ASSERT(kNumInnerStages != 0,
-                         "Invalid number of inner stages");
+      launch_k_iterations(
+          [&](uint32_t k_iter, auto divisible_type, auto skip_type, auto _) {
+            constexpr bool kSkipComputation =
+                std::is_same_v<decltype(skip_type), SkipComputation>;
+            constexpr bool kHasDivisibleStages =
+                std::is_same_v<decltype(divisible_type), DivisibleK>;
+            constexpr uint32_t kNumInnerStages =
+                kSkipComputation
+                    ? 0
+                    : (kHasDivisibleStages
+                           ? kNumStages
+                           : (SHAPE_K % kFullKOfAllStages) / BLOCK_K);
 
 #pragma unroll
-        for (int s = 0; s < kNumInnerStages; ++s) {
-          // Read B scales
-          float scale_b_0 = ld_shared(smem_scales_b + k_iter * kNumStages + s),
-                scale_b_1;
-          // NOTES: even some blocks do not need to read the second row, but we
-          // still load one to align with other blocks
-          if constexpr (not kMustUseUniformedScaleB)
-            scale_b_1 = ld_shared(smem_scales_b + k_iter * kNumStages + s +
-                                  SHAPE_K_SCALES);
+            for (uint32_t s = 0; s < kNumInnerStages; ++s) {
+              // Read B scales
+              float scale_b_0 =
+                        ld_shared(smem_scales_b + k_iter * kNumStages + s),
+                    scale_b_1;
+              // NOTES: even some blocks do not need to read the second row, but
+              // we still load one to align with other blocks
+              if constexpr (not kMustUseUniformedScaleB)
+                scale_b_1 = ld_shared(smem_scales_b + k_iter * kNumStages + s +
+                                      SHAPE_K_SCALES);
 
-          // Wait TMA arrivals
-          full_barriers[s]->wait(
-              (scheduler.current_iter * kNumIterations + k_iter) & 1);
+              // Wait TMA arrivals
+              full_barriers[s]->wait(
+                  (scheduler.current_iter * kNumIterations + k_iter) & 1);
 
-          // Read A scales
-          // NOTES: all shared memory read must be prior to `warpgroup_arrive`
-          // to avoid next scheduled block polluting the results
-          auto scale_a_0 = ld_shared(smem_scales_a[s] + r_0),
-               scale_a_1 = ld_shared(smem_scales_a[s] + r_1);
+// TODO: remove some useless computation for unaligned Ms
+#pragma unroll
+              for (uint32_t local_idx = 0; local_idx < BLOCK_M / WAVE_BLOCK_M;
+                   ++local_idx) {
+                auto m_offset = local_idx * WAVE_BLOCK_M;
+
+                // Read A scales
+                // NOTES: all shared memory read must be prior to
+                // `warpgroup_arrive` to avoid next scheduled block polluting
+                // the results
+                auto scale_a_0 = ld_shared(smem_scales_a[s] + r_0 + m_offset);
+                auto scale_a_1 = ld_shared(smem_scales_a[s] + r_1 + m_offset);
 
 // Commit WGMMA instructions
 #pragma unroll
-          for (int i = 0; i < WGMMA::kNumAccum; ++i)
-            warpgroup_fence_operand(accum[i]);
-          warpgroup_arrive();
+                for (uint32_t i = 0; i < WGMMA::kNumAccum; ++i)
+                  warpgroup_fence_operand(accum[i]);
+                warpgroup_arrive();
 #pragma unroll
-          for (int k = 0; k < BLOCK_K / WGMMA::K; ++k) {
-            auto desc_a = make_smem_desc(
-                smem_a[s] + math_wg_idx * WGMMA::M * BLOCK_K + k * WGMMA::K, 1);
-            auto desc_b = make_smem_desc(smem_b[s] + k * WGMMA::K, 1);
-            WGMMA::wgmma(desc_a, desc_b, accum, k);
-          }
-          warpgroup_commit_batch();
+                for (uint32_t k = 0; k < BLOCK_K / WGMMA::K; ++k) {
+                  auto desc_a = make_smem_desc(
+                      smem_a[s] +
+                          (math_wg_idx * WGMMA::M + m_offset) * BLOCK_K +
+                          k * WGMMA::K,
+                      1);
+                  auto desc_b = make_smem_desc(smem_b[s] + k * WGMMA::K, 1);
+                  WGMMA::wgmma(desc_a, desc_b, accum, k);
+                }
+                warpgroup_commit_batch();
 #pragma unroll
-          for (int i = 0; i < WGMMA::kNumAccum; ++i)
-            warpgroup_fence_operand(accum[i]);
-          warpgroup_wait<0>();
+                for (uint32_t i = 0; i < WGMMA::kNumAccum; ++i)
+                  warpgroup_fence_operand(accum[i]);
+                warpgroup_wait<0>();
 
-          // Notify barrier arrival
-          empty_barrier_arrive(s);
+                // Notify barrier arrival at the last warpgroup wave
+                if (local_idx == BLOCK_M / WAVE_BLOCK_M - 1)
+                  empty_barrier_arrive(s);
 
-          // Promote with scales
-          float scale_0_0 = scale_a_0 * scale_b_0,
-                scale_1_0 = scale_a_1 * scale_b_0;
-          float scale_0_1, scale_1_1;
-          if constexpr (not kMustUseUniformedScaleB)
-            scale_0_1 = scale_a_0 * scale_b_1,
-            scale_1_1 = scale_a_1 * scale_b_1;
+                // Promote with scales
+                // NOTES: making it as predicates is very important for
+                // performance, comparing to two loops
+                float scale_0_0 = scale_a_0 * scale_b_0,
+                      scale_1_0 = scale_a_1 * scale_b_0;
+                float scale_0_1, scale_1_1;
+                if constexpr (not kMustUseUniformedScaleB)
+                  scale_0_1 = scale_a_0 * scale_b_1,
+                  scale_1_1 = scale_a_1 * scale_b_1;
+
+                auto shifted_accum = final_accum + WGMMA::kNumAccum * local_idx;
 #pragma unroll
-          for (int i = 0; i < WGMMA::kNumAccum / 4; ++i) {
-            bool predicate = kMustUseUniformedScaleB or i < num_former_iters;
-            final_accum[i * 4 + 0] +=
-                (predicate ? scale_0_0 : scale_0_1) * accum[i * 4 + 0];
-            final_accum[i * 4 + 1] +=
-                (predicate ? scale_0_0 : scale_0_1) * accum[i * 4 + 1];
-            final_accum[i * 4 + 2] +=
-                (predicate ? scale_1_0 : scale_1_1) * accum[i * 4 + 2];
-            final_accum[i * 4 + 3] +=
-                (predicate ? scale_1_0 : scale_1_1) * accum[i * 4 + 3];
-          }
-        }
+                for (uint32_t i = 0; i < WGMMA::kNumAccum / 4; ++i) {
+                  // NOTES: for unrolled `num_former_iters` cases, we expect the
+                  // compiler to automatically make it a constant
+                  bool predicate =
+                      kMustUseUniformedScaleB or i < num_former_iters;
+                  shifted_accum[i * 4 + 0] +=
+                      (predicate ? scale_0_0 : scale_0_1) * accum[i * 4 + 0];
+                  shifted_accum[i * 4 + 1] +=
+                      (predicate ? scale_0_0 : scale_0_1) * accum[i * 4 + 1];
+                  shifted_accum[i * 4 + 2] +=
+                      (predicate ? scale_1_0 : scale_1_1) * accum[i * 4 + 2];
+                  shifted_accum[i * 4 + 3] +=
+                      (predicate ? scale_1_0 : scale_1_1) * accum[i * 4 + 3];
+                }
+              }
+            }
 
 // Wait unaligned cases
 #pragma unroll
-        for (uint32_t s = kNumInnerStages; s < kNumStages; ++s) {
-          full_barriers[s]->wait(
-              (scheduler.current_iter * kNumIterations + k_iter) & 1);
-          empty_barrier_arrive(s);
-        }
-      });
+            for (uint32_t s = kNumInnerStages; s < kNumStages; ++s) {
+              full_barriers[s]->wait(
+                  (scheduler.current_iter * kNumIterations + k_iter) & 1);
+              empty_barrier_arrive(s);
+            }
+          },
+          not scheduler.is_computation_valid(m_block_idx,
+                                             math_wg_idx * WGMMA::M),
+          num_former_iters);
 
-      // Write back to shared memory using STSM
+      // TMA checks
+      constexpr uint32_t kNumElemBytes = sizeof(nv_bfloat16);
+      constexpr uint32_t TMA_D_BLOCK_N =
+          kSwizzleDMode == 0 ? BLOCK_N : (kSwizzleDMode / kNumElemBytes);
+      constexpr uint32_t WGMMA_M_PER_WARP = WGMMA::M / 4;
+      DG_STATIC_ASSERT(BLOCK_M % 8 == 0, "Invalid swizzling atom");
+      DG_STATIC_ASSERT(
+          BLOCK_N % TMA_D_BLOCK_N == 0 and BLOCK_N / TMA_D_BLOCK_N <= 32,
+          "Unaligned TMA store or too many TMA store instructions");
+      DG_STATIC_ASSERT(TMA_D_BLOCK_N % 8 == 0, "Invalid TMA block N");
+      DG_STATIC_ASSERT(static_cast<uint32_t>(kSwizzleDMode > 0) +
+                               static_cast<uint32_t>(BLOCK_N_PADDING > 0) <=
+                           1,
+                       "Swizzling and padding are not compatible");
+
+      // Wait last TMA store to be finished
+      if (threadIdx.x < BLOCK_N / TMA_D_BLOCK_N) cute::tma_store_wait<0>();
+      cutlass::arch::NamedBarrier(kNumMathThreads).sync();
+
+      // Write back to shared memory using STSM and issue TMA stores
       DG_STATIC_ASSERT(WGMMA::kNumAccum % 4 == 0,
                        "Invalid STSM x2 vectorization");
 #pragma unroll
-      for (auto i = 0; i < WGMMA::kNumAccum / 8; ++i) {
-        SM90_U32x4_STSM_N<nv_bfloat162>::copy(
-            __float22bfloat162_rn(
-                {final_accum[i * 8 + 0], final_accum[i * 8 + 1]}),
-            __float22bfloat162_rn(
-                {final_accum[i * 8 + 2], final_accum[i * 8 + 3]}),
-            __float22bfloat162_rn(
-                {final_accum[i * 8 + 4], final_accum[i * 8 + 5]}),
-            __float22bfloat162_rn(
-                {final_accum[i * 8 + 6], final_accum[i * 8 + 7]}),
-            smem_d + (warp_idx * 16 + lane_idx % 16) * BLOCK_N + i * 16 +
-                8 * (lane_idx / 16));
-      }
-      if constexpr (WGMMA::kNumAccum % 8 != 0) {
-        SM90_U32x2_STSM_N<nv_bfloat162>::copy(
-            __float22bfloat162_rn({final_accum[WGMMA::kNumAccum / 8 * 8 + 0],
-                                   final_accum[WGMMA::kNumAccum / 8 * 8 + 1]}),
-            __float22bfloat162_rn({final_accum[WGMMA::kNumAccum / 8 * 8 + 2],
-                                   final_accum[WGMMA::kNumAccum / 8 * 8 + 3]}),
-            smem_d + (warp_idx * 16 + lane_idx % 16) * BLOCK_N +
-                WGMMA::kNumAccum / 8 * 16);
+      for (uint32_t local_idx = 0; local_idx < BLOCK_M / WAVE_BLOCK_M;
+           ++local_idx) {
+        auto m_offset = local_idx * WAVE_BLOCK_M;
+        auto shifted_accum = final_accum + WGMMA::kNumAccum * local_idx;
+#pragma unroll
+        for (auto i = 0; i < WGMMA::kNumAccum / 4; ++i) {
+          // Swizzle or padding into the correct address
+          uint8_t* smem_ptr = nullptr;
+          if constexpr (kSwizzleDMode > 0) {
+            // Calculate the swizzling atom offset and in-atom offset
+            constexpr uint32_t kNumBankGroupBytes = 16;
+            auto atom_offset = i / (TMA_D_BLOCK_N / 8),
+                 in_atom_offset = i % (TMA_D_BLOCK_N / 8);
+
+            // Calculate the index of the bank group to be written in the atom
+            auto bank_group_index =
+                in_atom_offset +
+                lane_idx * (kSwizzleDMode / kNumBankGroupBytes);
+
+            // Reshape the atom in another view and swizzle
+            //  - original: `(BLOCK_M, kSwizzleDMode / kNumBankGroupBytes)`
+            //  - new: `(BLOCK_M * kSwizzleDMode / kNumBankGroupBytes / 8, 8)`
+            constexpr bool kHasShortcut =
+                (kSwizzleDMode / kNumBankGroupBytes) == 8;
+            auto row = kHasShortcut ? (in_atom_offset / 8 + lane_idx)
+                                    : (bank_group_index / 8);
+            auto col = kHasShortcut ? (in_atom_offset) : (bank_group_index % 8);
+            col ^= row % (kSwizzleDMode / 16);
+
+            // Add back into the base pointer
+            // NOTES: think twice before modifying this, as changes may affect
+            // the number of instructions
+            smem_ptr =
+                reinterpret_cast<uint8_t*>(smem_d) +             // Base pointer
+                warp_idx * (WGMMA_M_PER_WARP * kSwizzleDMode) +  // Warp offset
+                m_offset * kSwizzleDMode +                       // Wave offset
+                atom_offset * BLOCK_M *
+                    kSwizzleDMode +  // Swizzle atom offset (constants)
+                row * (kNumBankGroupBytes * 8) +
+                col * kNumBankGroupBytes;  // In-atom offset
+          } else {
+            // No swizzling, just padding
+            // NOTES: padding must be zero for BF16 output
+            DG_STATIC_ASSERT(BLOCK_N_PADDING == 0,
+                             "Padding must be zero for BF16 output");
+            smem_ptr = reinterpret_cast<uint8_t*>(
+                smem_d +
+                (m_offset + warp_idx * WGMMA_M_PER_WARP + lane_idx) *
+                    (BLOCK_N + BLOCK_N_PADDING) +
+                i * 8);
+          }
+
+          // NOTES: only 16 lanes' addresses are used
+          SM90_U32x2_STSM_N<nv_bfloat162>::copy(
+              __float22bfloat162_rn(
+                  {shifted_accum[i * 4 + 0], shifted_accum[i * 4 + 1]}),
+              __float22bfloat162_rn(
+                  {shifted_accum[i * 4 + 2], shifted_accum[i * 4 + 3]}),
+              smem_ptr);
+        }
       }
       cute::tma_store_fence();
       cutlass::arch::NamedBarrier(kNumMathThreads).sync();
 
       // Use TMA store to write back to global memory
-      if (threadIdx.x == 0) {
+      // TODO: compatible with FP32 output
+      DG_STATIC_ASSERT(kNumMathThreads >= BLOCK_N / TMA_D_BLOCK_N,
+                       "Too many TMA blocks");
+      if (threadIdx.x < BLOCK_N / TMA_D_BLOCK_N) {
+        auto in_block_n_offset = threadIdx.x * TMA_D_BLOCK_N;
+        auto smem_ptr = smem_d + in_block_n_offset * BLOCK_M;
         cute::SM90_TMA_STORE_2D::copy(
             &tensor_map_d,
-            smem_d,
-            n_block_idx * BLOCK_N,
+            smem_ptr,
+            n_block_idx * BLOCK_N + in_block_n_offset,
             scheduler.get_global_idx(shape_m, BLOCK_M, m_block_idx));
         cute::tma_store_arrive();
-        cute::tma_store_wait<0>();
       }
       __syncwarp();
     }
@@ -453,166 +624,6 @@ __global__ void __launch_bounds__(
     DG_DEVICE_ASSERT(false and "This kernel only support sm_90a");
 #endif
 }
-
-template <uint32_t SHAPE_N,
-          uint32_t SHAPE_K,
-          uint32_t BLOCK_M,
-          uint32_t BLOCK_N,
-          uint32_t BLOCK_K,
-          uint32_t kNumGroups,
-          uint32_t kNumStages,
-          uint32_t kNumTMAMulticast,
-          GemmType kGemmType>
-class Gemm {
- private:
-  using Barrier = cuda::barrier<cuda::thread_scope_block>;
-
- public:
-  Gemm() = default;
-
-  static void run(__nv_bfloat16* gmem_d,
-                  float* scales_b,
-                  int* grouped_layout,
-                  uint32_t shape_m,
-                  const CUtensorMap& tma_a_desc,
-                  const CUtensorMap& tma_b_desc,
-                  const CUtensorMap& tma_scales_a_desc,
-                  const CUtensorMap& tma_d_desc,
-                  cudaStream_t stream,
-                  int num_sms,
-                  uint32_t smem_size) {
-    // NOTES: we must use 4 warps to do TMA, because `setmaxnreg.aligned`
-    // requires 4 warps
-    constexpr uint32_t kNumTMAThreads = 128;
-    constexpr uint32_t kNumMathThreadsPerGroup = 128;
-    auto kernel = fp8_gemm_kernel<SHAPE_N,
-                                  SHAPE_K,
-                                  BLOCK_M,
-                                  BLOCK_N,
-                                  BLOCK_K,
-                                  kNumGroups,
-                                  kNumStages,
-                                  kNumTMAThreads,
-                                  kNumMathThreadsPerGroup,
-                                  kNumTMAMulticast,
-                                  kGemmType>;
-    DG_HOST_ASSERT(
-        cudaFuncSetAttribute(kernel,
-                             cudaFuncAttributeMaxDynamicSharedMemorySize,
-                             smem_size) == cudaSuccess);
-
-    // Cluster launch
-    cudaLaunchConfig_t config;
-    config.gridDim = num_sms;
-    config.blockDim =
-        get_num_threads_per_sm<kNumTMAThreads, kNumMathThreadsPerGroup>(
-            BLOCK_M);
-    config.dynamicSmemBytes = smem_size;
-    config.stream = stream;
-
-    // Clusters for TMA multicast
-    // NOTES: `>= 4` cluster size will cause performance degradation
-    cudaLaunchAttribute attr;
-    attr.id = cudaLaunchAttributeClusterDimension;
-    attr.val.clusterDim = {kNumTMAMulticast, 1, 1};
-    config.attrs = &attr;
-    config.numAttrs = 1;
-
-    // Launch
-    auto status = cudaLaunchKernelEx(&config,
-                                     kernel,
-                                     gmem_d,
-                                     scales_b,
-                                     grouped_layout,
-                                     shape_m,
-                                     tma_a_desc,
-                                     tma_b_desc,
-                                     tma_scales_a_desc,
-                                     tma_d_desc);
-    DG_HOST_ASSERT(status == cudaSuccess);
-  }
-
-  template <typename T>
-  static CUtensorMap make_2d_tma_a_desc(T* global_address, uint32_t shape_m) {
-    return make_2d_tma_desc(
-        global_address,
-        Layout::RowMajor,
-        shape_m * (kGemmType == GemmType::GroupedMasked ? kNumGroups : 1),
-        SHAPE_K,
-        BLOCK_M,
-        BLOCK_K);
-  }
-
-  template <typename T>
-  static CUtensorMap make_2d_tma_b_desc(T* global_address) {
-    return make_2d_tma_desc(
-        global_address,
-        Layout::ColMajor,
-        SHAPE_K,
-        SHAPE_N * (kGemmType != GemmType::Normal ? kNumGroups : 1),
-        BLOCK_K,
-        BLOCK_N);
-  }
-
-  template <typename T>
-  static CUtensorMap make_2d_tma_d_desc(T* global_address, uint32_t shape_m) {
-    return make_2d_tma_desc(
-        global_address,
-        Layout::RowMajor,
-        shape_m * (kGemmType == GemmType::GroupedMasked ? kNumGroups : 1),
-        SHAPE_N,
-        min(BLOCK_M, shape_m),
-        BLOCK_N,
-        CUtensorMapSwizzle::CU_TENSOR_MAP_SWIZZLE_NONE);
-  }
-
-  template <typename T>
-  static CUtensorMap make_2d_tma_scales_a_desc(T* global_address,
-                                               uint32_t shape_m) {
-    // Make TMA aligned to 16 bytes
-    constexpr uint32_t kAlignment = 16 / sizeof(T);
-    shape_m = ceil_div(shape_m, kAlignment) * kAlignment;
-
-    return make_2d_tma_desc(
-        global_address,
-        Layout::ColMajor,
-        shape_m,
-        ceil_div(SHAPE_K, BLOCK_K) *
-            (kGemmType == GemmType::GroupedMasked ? kNumGroups : 1),
-        BLOCK_M,
-        1,
-        CUtensorMapSwizzle::CU_TENSOR_MAP_SWIZZLE_NONE);
-  }
-
-  template <typename T>
-  static CUtensorMap make_2d_tma_desc(
-      T* global_address,
-      Layout layout,
-      uint32_t gmem_rows,
-      uint32_t gmem_cols,
-      uint32_t smem_rows,
-      uint32_t smem_cols,
-      CUtensorMapSwizzle swizzle_type =
-          CUtensorMapSwizzle::CU_TENSOR_MAP_SWIZZLE_128B) {
-    if (layout == Layout::RowMajor) {
-      uint64_t gmem_dim[2] = {gmem_cols, gmem_rows};
-      uint32_t smem_dim[2] = {smem_cols, smem_rows};
-      return make_2d_tma_copy_desc(global_address,
-                                   gmem_dim,
-                                   gmem_cols * sizeof(T),
-                                   smem_dim,
-                                   swizzle_type);
-    } else {
-      uint64_t gmem_dim[2] = {gmem_rows, gmem_cols};
-      uint32_t smem_dim[2] = {smem_rows, smem_cols};
-      return make_2d_tma_copy_desc(global_address,
-                                   gmem_dim,
-                                   gmem_rows * sizeof(T),
-                                   smem_dim,
-                                   swizzle_type);
-    }
-  }
-};
 
 };  // namespace deep_gemm
 

@@ -65,8 +65,7 @@ void PoolRawKernel(const Context& dev_ctx,
                    const float norm_type,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -223,18 +222,17 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
                                const std::vector<int>& kernel_size,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
+                               const std::vector<int>& dilations,
                                bool global_pooling,
                                bool adaptive,
                                DenseTensor* out,
                                DenseTensor* mask) {
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T1, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T1, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<T2, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<T2, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }
@@ -242,24 +240,40 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
   std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
   std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
   std::vector<int64_t> strides_(strides.begin(), strides.end());
+  std::vector<int64_t> dilations_(dilations.begin(), dilations.end());
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
       paddings_[i] = 0;
       kernel_size_[i] = static_cast<int>(x.dims()[i + 2]);
+      dilations_[i] = 1;  // Reset dilation for global pooling
     }
   }
 
   switch (kernel_size_.size()) {
     case 2: {
       funcs::MaxPool2dWithIndexFunctor<Context, T1, T2> pool2d_forward;
-      pool2d_forward(
-          dev_ctx, x, kernel_size_, strides_, paddings_, adaptive, out, mask);
+      pool2d_forward(dev_ctx,
+                     x,
+                     kernel_size_,
+                     strides_,
+                     paddings_,
+                     dilations_,
+                     adaptive,
+                     out,
+                     mask);
     } break;
     case 3: {
       funcs::MaxPool3dWithIndexFunctor<Context, T1, T2> pool3d_forward;
-      pool3d_forward(
-          dev_ctx, x, kernel_size_, strides_, paddings_, adaptive, out, mask);
+      pool3d_forward(dev_ctx,
+                     x,
+                     kernel_size_,
+                     strides_,
+                     paddings_,
+                     dilations_,
+                     adaptive,
+                     out,
+                     mask);
     } break;
     default: {
       PADDLE_THROW(
@@ -284,11 +298,9 @@ void Pool2dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {  // for pooling_type == "avg"
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -332,8 +344,7 @@ void LPPool2dKernel(const Context& dev_ctx,
       }
     }
     if (need_zero) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
       return;
     }
   }
@@ -358,6 +369,7 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const std::vector<int>& kernel_size,
                               const std::vector<int>& strides,
                               const std::vector<int>& paddings,
+                              const std::vector<int>& dilations,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode UNUSED,
@@ -368,6 +380,7 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                                         kernel_size,
                                         strides,
                                         paddings,
+                                        dilations,
                                         global_pooling,
                                         adaptive,
                                         out,
@@ -390,11 +403,9 @@ void Pool3dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || (!adaptive && pooling_type == "avg")) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -419,6 +430,7 @@ void MaxPool3dWithIndexKernel(const Context& dev_ctx,
                               const std::vector<int>& kernel_size,
                               const std::vector<int>& strides,
                               const std::vector<int>& paddings,
+                              const std::vector<int>& dilations,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode UNUSED,
@@ -429,6 +441,7 @@ void MaxPool3dWithIndexKernel(const Context& dev_ctx,
                                         kernel_size,
                                         strides,
                                         paddings,
+                                        dilations,
                                         global_pooling,
                                         adaptive,
                                         out,
@@ -446,12 +459,10 @@ void FractionalMaxPoolRawKernel(const Context& dev_ctx,
                                 DenseTensor* mask) {
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T1, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T1, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<T2, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<T2, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }

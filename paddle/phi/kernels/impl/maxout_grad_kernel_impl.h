@@ -36,11 +36,11 @@ void MaxOutGradKernel(const Context& dev_ctx,
     axis += x.dims().size();
   }
 
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
     zero(dev_ctx, x_grad, static_cast<T>(0.0));
-    phi::funcs::MaxOutGradFunctor<Context, T> maxout_backward;
+    funcs::MaxOutGradFunctor<Context, T> maxout_backward;
     maxout_backward(dev_ctx, x, x_grad, out, out_grad, groups, axis);
   }
 }

@@ -25,7 +25,7 @@ namespace pir {
 ///
 class IR_API Parameter {
  public:
-  Parameter(void* data, size_t size, pir::Type type) {
+  Parameter(void* data, size_t size, Type type) {
     PADDLE_ENFORCE_EQ(
         data == nullptr && size > 0,
         false,
@@ -40,6 +40,12 @@ class IR_API Parameter {
 
   Parameter(const Parameter& param) {
     data_ = malloc(param.size_);
+    PADDLE_ENFORCE_NOT_NULL(
+        data_,
+        common::errors::ResourceExhausted(
+            "Failed to allocate memory for Parameter::data_, "
+            "requested size = %zu bytes.",
+            param.size_));
     memcpy(data_, param.data_, param.size_);
     size_ = param.size_;
     type_ = param.type_;
@@ -47,6 +53,12 @@ class IR_API Parameter {
 
   Parameter& operator=(const Parameter& param) {
     data_ = malloc(param.size_);
+    PADDLE_ENFORCE_NOT_NULL(
+        data_,
+        common::errors::ResourceExhausted(
+            "Failed to allocate memory for Parameter::data_, "
+            "requested size = %zu bytes.",
+            param.size_));
     memcpy(data_, param.data_, param.size_);
     size_ = param.size_;
     type_ = param.type_;

@@ -40,7 +40,7 @@ void IdentityLossGradKernel(const Context& dev_ctx,
       break;
     case 2:
       // none
-      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
       break;
     default:
       // error

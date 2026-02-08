@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/api/profiler/profiler_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/os_info.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 
@@ -101,7 +101,7 @@ RecordEvent::RecordEvent(const char *name,
                          uint32_t level,
                          const EventRole role) {
 #ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
   if (ProfilerHelper::g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name);
     is_pushed_ = true;
@@ -135,7 +135,7 @@ RecordEvent::RecordEvent(const std::string &name,
                          uint32_t level,
                          const EventRole role) {
 #ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
   if (ProfilerHelper::g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed_ = true;
@@ -168,7 +168,7 @@ RecordEvent::RecordEvent(const std::string &name,
                          uint32_t level,
                          const EventRole role) {
 #ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
   if (ProfilerHelper::g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed_ = true;
@@ -217,7 +217,7 @@ void RecordEvent::OriginalConstruct(const std::string &name,
 
 void RecordEvent::End() {
 #ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)
   if (ProfilerHelper::g_enable_nvprof_hook && is_pushed_) {
     dynload::nvtxRangePop();
     is_pushed_ = false;

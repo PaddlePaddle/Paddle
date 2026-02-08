@@ -287,7 +287,7 @@ static void CopyTensorIfDifferent(const Context& dev_ctx,
     if (src[i] != dst[i]) {
       VLOG(10) << "Copy Tensor " << i;
       phi::Place place = (use_src_place ? src[i]->place() : dev_ctx.GetPlace());
-      phi::Copy<Context>(dev_ctx, *(src[i]), place, false, dst[i]);
+      Copy<Context>(dev_ctx, *(src[i]), place, false, dst[i]);
     }
   }
 }
@@ -309,11 +309,11 @@ PADDLE_API void FusedAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const paddle::optional<std::vector<const DenseTensor*>>& moments2_max,
+    const optional<std::vector<const DenseTensor*>>& moments2_max,
     const std::vector<const DenseTensor*>& beta1_pows,
     const std::vector<const DenseTensor*>& beta2_pows,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_params,
-    const paddle::optional<DenseTensor>& skip_update,
+    const optional<std::vector<const DenseTensor*>>& master_params,
+    const optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -377,8 +377,7 @@ PADDLE_API void FusedAdamKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     DenseTensor skip_update_tensor;
-    phi::Copy(
-        dev_ctx, skip_update.get(), CPUPlace(), false, &skip_update_tensor);
+    Copy(dev_ctx, skip_update.get(), CPUPlace(), false, &skip_update_tensor);
     skip_update_value = skip_update_tensor.data<bool>()[0];
     VLOG(4) << "skip_update_value:" << skip_update_value;
   }

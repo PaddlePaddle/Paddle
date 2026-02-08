@@ -23,8 +23,7 @@
 
 namespace phi::distributed {
 
-void BKCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
-                                     int64_t dtype) {
+void BKCLDynamicCheck::CheckDataType(const DenseTensor& tensor, int64_t dtype) {
   PADDLE_ENFORCE_EQ(
       static_cast<int64_t>(tensor.dtype()),
       dtype,
@@ -32,7 +31,7 @@ void BKCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
           "Tensors in communication are expected to have the same data type."));
 }
 
-void BKCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
+void BKCLDynamicCheck::CheckDataType(const DenseTensor& tensor,
                                      int root_rank,
                                      int cur_rank,
                                      BKCLContext_t comm) {
@@ -61,8 +60,7 @@ void BKCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_free(dtype_device));
 }
 
-void BKCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
-                                  int64_t shape) {
+void BKCLDynamicCheck::CheckShape(const DenseTensor& tensor, int64_t shape) {
   PADDLE_ENFORCE_EQ(
       tensor.numel(),
       shape,
@@ -70,8 +68,8 @@ void BKCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
           "Tensors in communication are expected to have matching sizes."));
 }
 
-void BKCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
-                                  const phi::DenseTensor& in_tensor,
+void BKCLDynamicCheck::CheckShape(const DenseTensor& out_tensor,
+                                  const DenseTensor& in_tensor,
                                   const std::vector<int64_t>& in_size_each_rank,
                                   int cur_rank,
                                   int world_size,
@@ -116,8 +114,8 @@ void BKCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
 }
 
 void BKCLDynamicCheck::CheckAlltoAllShape(
-    const std::vector<phi::DenseTensor>& out_tensor,
-    const std::vector<phi::DenseTensor>& in_tensor,
+    const std::vector<DenseTensor>& out_tensor,
+    const std::vector<DenseTensor>& in_tensor,
     int cur_rank,
     int world_size,
     BKCLContext_t comm) {

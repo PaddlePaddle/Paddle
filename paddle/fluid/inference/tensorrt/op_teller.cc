@@ -737,7 +737,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != phi::DataLayout::kNCHW) return false;
+      if (data_layout != phi::DataLayout::NCHW) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -812,8 +812,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (desc.HasAttr("data_layout")) {
         auto data_layout = common::StringToDataLayout(
             PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-        if (data_layout != phi::DataLayout::kNCHW &&
-            data_layout != phi::DataLayout::kNHWC)
+        if (data_layout != phi::DataLayout::NCHW &&
+            data_layout != phi::DataLayout::NHWC)
           return false;
       }
       auto interp_method =
@@ -857,8 +857,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != phi::DataLayout::kNCHW &&
-          data_layout != phi::DataLayout::kNHWC)
+      if (data_layout != phi::DataLayout::NCHW &&
+          data_layout != phi::DataLayout::NHWC)
         return false;
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
@@ -887,10 +887,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bilinear_interp_v2") {
-      // trt 7011 result in test_solov2_trt_fp32.py TRT fp32 diff
-#if IS_TRT_VERSION_LT(7100)
-      return false;
-#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -955,8 +951,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != phi::DataLayout::kNCHW &&
-          data_layout != phi::DataLayout::kNHWC) {
+      if (data_layout != phi::DataLayout::NCHW &&
+          data_layout != phi::DataLayout::NHWC) {
         VLOG(3) << "The op_type " << op_type
                 << " is not NCHW or NHWC return false";
         return false;
@@ -1010,9 +1006,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
     if (op_type == "linear_interp_v2") {
-#if IS_TRT_VERSION_LT(7100)
-      return false;
-#endif
       std::vector<std::string> attrs{"data_layout",
                                      "interp_method",
                                      "align_corners",
@@ -1052,8 +1045,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       auto data_layout = common::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != phi::DataLayout::kNCHW &&
-          data_layout != phi::DataLayout::kNHWC) {
+      if (data_layout != phi::DataLayout::NCHW &&
+          data_layout != phi::DataLayout::NHWC) {
         VLOG(3) << "The op_type " << op_type
                 << " is not NCHW or NHWC return false";
         return false;
@@ -1670,13 +1663,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << desc.Output("Out").size();
         return false;
       }
-
-#if IS_TRT_VERSION_LT(7000)
-      if (desc.HasAttr("approximate")) {
-        VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
-      }
-#endif
     }
 
     if (op_type == "layer_norm") {
@@ -2154,8 +2140,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100)) || \
-    (IS_TRT_VERSION_LT(7200))
+#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100))
         VLOG(3) << "There are some bugs with trt 8.0";
         return false;
 #endif
@@ -2691,15 +2676,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-
-#if IS_TRT_VERSION_LT(8000)
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVarRecursive(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 0) {
-        return false;  // not supported 0 dim.
-      }
-#endif
     }
 
     if (op_type == "grid_sampler") {
@@ -3499,9 +3475,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                               with_dynamic_shape,
                               forbid_dynamic_op_enter_into_trt,
                               use_explicit_quantization)) {
-    SetOpConverterType(
-        node->Op(),
-        OpConverterType::CustomPluginCreater);  // typos: disable-line
+    SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreator);
     return true;
   }
   auto& custom_generic_plugin_teller = GetCustomGenericPluginTeller();

@@ -21,7 +21,7 @@ from os.path import dirname
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.incubate.nn.functional import swiglu
+from paddle.nn.functional import swiglu
 
 sys.path.append(dirname(__file__))
 

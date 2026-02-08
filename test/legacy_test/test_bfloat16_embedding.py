@@ -15,7 +15,6 @@ import unittest
 
 import numpy as np
 from op_test import is_custom_device
-from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn.functional as F
@@ -61,7 +60,7 @@ class BF16EmbeddingTest(unittest.TestCase):
     def test_main(self):
         if (
             not (paddle.is_compiled_with_cuda() or is_custom_device())
-            or get_cuda_version() < 11000
+            or paddle.is_compiled_with_rocm()
         ):
             return
 

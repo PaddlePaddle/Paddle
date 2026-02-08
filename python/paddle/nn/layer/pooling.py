@@ -15,7 +15,13 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
+
+from paddle.utils.decorator_utils import (
+    lp_pool_layer_decorator,
+    param_one_alias,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -85,16 +91,16 @@ class AvgPool1D(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
-            >>> pool_out = AvgPool1D(data)
+            >>> avg_pool1d = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
+            >>> pool_out = avg_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -198,17 +204,17 @@ class AvgPool2D(Layer):
         A callable object of AvgPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> # max pool2d
+            >>> # avg pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool2D = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
-            >>> output = AvgPool2D(input)
+            >>> avg_pool2d = nn.AvgPool2D(kernel_size=2, stride=2, padding=0)
+            >>> output = avg_pool2d(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
     """
 
@@ -308,17 +314,17 @@ class AvgPool3D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> # avg pool3d
             >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> AvgPool3D = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
-            >>> output = AvgPool3D(input)
+            >>> avg_pool3d = nn.AvgPool3D(kernel_size=2, stride=2, padding=0)
+            >>> output = avg_pool3d(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
 
     """
 
@@ -418,16 +424,16 @@ class LPPool1D(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> LPPool1D = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
-            >>> pool_out = LPPool1D(data)
+            >>> lp_pool1d = nn.LPPool1D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> pool_out = lp_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -439,6 +445,7 @@ class LPPool1D(Layer):
     data_format: DataLayout1D
     name: str | None
 
+    @lp_pool_layer_decorator
     def __init__(
         self,
         norm_type: float,
@@ -458,6 +465,7 @@ class LPPool1D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         out = F.lp_pool1d(
             x,
@@ -532,17 +540,17 @@ class LPPool2D(Layer):
         A callable object of LPPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> # lp pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> LPPool2D = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
-            >>> output = LPPool2D(input)
+            >>> lp_pool2d = nn.LPPool2D(norm_type=2, kernel_size=2, stride=2, padding=0)
+            >>> output = lp_pool2d(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
     """
 
@@ -554,6 +562,7 @@ class LPPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
+    @lp_pool_layer_decorator
     def __init__(
         self,
         norm_type: float,
@@ -573,6 +582,7 @@ class LPPool2D(Layer):
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.lp_pool2d(
             x,
@@ -619,6 +629,8 @@ class MaxPool1D(Layer):
             4. A list[int] or tuple(int) whose length is 2, It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or(0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation size is a tuple or list,
+            it must contain an integer. Default: 1.
         return_mask(bool, optional): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode(bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default False.
@@ -635,38 +647,45 @@ class MaxPool1D(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
-            >>> pool_out = MaxPool1D(data)
+            >>> max_pool1d = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
+            >>> pool_out = max_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
-            >>> MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            >>> pool_out, indices = MaxPool1D(data)
+            >>> max_pool1d = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> pool_out, indices = max_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> print(indices.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
+            >>> max_pool1d = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> pool_out = max_pool1d(data)
+            >>> print(pool_out.shape)
+            paddle.Size([1, 3, 15])
     """
 
     kernel_size: Size1
     stride: Size1 | None
     padding: _PaddingSizeMode | Size1 | Size2
+    dilation: Size1
     return_mask: bool
     ceil_mode: bool
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         kernel_size: Size1,
         stride: Size1 | None = None,
         padding: _PaddingSizeMode | Size1 | Size2 = 0,
+        dilation: Size1 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         name: str | None = None,
@@ -675,6 +694,7 @@ class MaxPool1D(Layer):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.ceil_mode = ceil_mode
         self.return_mask = return_mask
         self.name = name
@@ -685,6 +705,7 @@ class MaxPool1D(Layer):
             self.kernel_size,
             self.stride,
             self.padding,
+            self.dilation,
             self.return_mask,
             self.ceil_mode,
             self.name,
@@ -692,7 +713,7 @@ class MaxPool1D(Layer):
         return out
 
     def extra_repr(self) -> str:
-        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -716,7 +737,7 @@ class MaxPool2D(Layer):
         ..  math::
 
             Output(N_i, C_j, h, w) = \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1}
-                Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
+                Input(N_i, C_j, stride[0] \times h + m * dilation[0], stride[1] \times w + n * dilation[1])
 
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -733,6 +754,9 @@ class MaxPool2D(Layer):
             4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple or list, it must
+            contain two integers, (dilation_Height, dilation_Width). Otherwise, the dilation size
+            will be a square of an int. Default 1.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -751,40 +775,49 @@ class MaxPool2D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> # max pool2d
             >>> input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
-            >>> output = MaxPool2D(input)
+            >>> max_pool2d = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
+            >>> output = max_pool2d(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            >>> output, max_indices = MaxPool2D(input)
+            >>> max_pool2d = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> output, max_indices = max_pool2d(input)
             >>> print(output.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
-            [1, 3, 16, 16]
+            paddle.Size([1, 3, 16, 16])
+
+            >>> # for dilation (dilated max pooling)
+            >>> max_pool2d = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> output = max_pool2d(input)
+            >>> print(output.shape)
+            paddle.Size([1, 3, 15, 15])
     """
 
     kernel_size: Size2
     stride: Size2 | None
     padding: _PaddingSizeMode | Size2 | Size4
+    dilation: Size2
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout2D
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         kernel_size: Size2,
         stride: Size2 | None = None,
         padding: _PaddingSizeMode | Size2 | Size4 = 0,
+        dilation: Size2 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout2D = 'NCHW',
@@ -794,17 +827,20 @@ class MaxPool2D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.max_pool2d(
             x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -812,7 +848,7 @@ class MaxPool2D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -840,6 +876,11 @@ class MaxPool3D(Layer):
             4. A list[int] or tuple(int) whose length is \6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple or list, it must
+            contain three integers, (dilation_Depth, dilation_Height, dilation_Width). Otherwise, the dilation size
+            will be a cube of an int. Default 1.
+            Note: dilation is only supported on CPU currently. When dilation is not 1,
+            return_mask must be True.
         ceil_mode(bool, optional): ${ceil_mode_comment}
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`,
@@ -859,40 +900,49 @@ class MaxPool3D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> # max pool3d
             >>> input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
-            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
-            >>> output = MaxPool3D(input)
+            >>> max_pool3d = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
+            >>> output = max_pool3d(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
 
             >>> # for return_mask=True
-            >>> MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
-            >>> output, max_indices = MaxPool3D(input)
+            >>> max_pool3d = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
+            >>> output, max_indices = max_pool3d(input)
             >>> print(output.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
             >>> print(max_indices.shape)
-            [1, 2, 1, 16, 16]
+            paddle.Size([1, 2, 1, 16, 16])
+
+            >>> # for dilation (dilated max pooling)
+            >>> max_pool3d = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=2)
+            >>> output = max_pool3d(input)
+            >>> print(output.shape)
+            paddle.Size([1, 2, 1, 15, 15])
     """
 
     kernel_size: Size3
     stride: Size3 | None
     padding: _PaddingSizeMode | Size3 | Size6
+    dilation: Size3
     return_mask: bool
     ceil_mode: bool
     data_format: DataLayout3D
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         kernel_size: Size3,
         stride: Size3 | None = None,
         padding: _PaddingSizeMode | Size3 | Size6 = 0,
+        dilation: Size3 = 1,
         return_mask: bool = False,
         ceil_mode: bool = False,
         data_format: DataLayout3D = 'NCDHW',
@@ -902,17 +952,20 @@ class MaxPool3D(Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
+        self.dilation = dilation
         self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
         self.name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.max_pool3d(
             x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
+            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
             data_format=self.data_format,
@@ -920,7 +973,7 @@ class MaxPool3D(Layer):
         )
 
     def extra_repr(self) -> str:
-        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}, dilation={dilation}'.format(
             **self.__dict__
         )
 
@@ -952,7 +1005,7 @@ class AdaptiveAvgPool1D(Layer):
         A callable object for computing 1D adaptive average pooling.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # average adaptive pool1d
             >>> # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -970,10 +1023,10 @@ class AdaptiveAvgPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
-            >>> pool_out = AdaptiveAvgPool1D(data)
+            >>> adaptive_avg_pool1d = nn.AdaptiveAvgPool1D(output_size=16)
+            >>> pool_out = adaptive_avg_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
     """
 
     output_size: int
@@ -1032,7 +1085,7 @@ class AdaptiveAvgPool2D(Layer):
         A callable object of AdaptiveAvgPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive avg pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1054,9 +1107,9 @@ class AdaptiveAvgPool2D(Layer):
             >>> x = paddle.rand([2, 3, 32, 32])
 
             >>> adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=3)
-            >>> pool_out = adaptive_avg_pool(x = x)
+            >>> pool_out = adaptive_avg_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
     """
 
     def __init__(
@@ -1070,6 +1123,7 @@ class AdaptiveAvgPool2D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool2d(
             x,
@@ -1080,6 +1134,14 @@ class AdaptiveAvgPool2D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
+
+    @property
+    def output_size(self) -> Size2:
+        return self._output_size
+
+    @output_size.setter
+    def output_size(self, value: Size2) -> None:
+        self._output_size = value
 
 
 class AdaptiveAvgPool3D(Layer):
@@ -1127,7 +1189,7 @@ class AdaptiveAvgPool3D(Layer):
         A callable object of AdaptiveAvgPool3D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive avg pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -1152,9 +1214,9 @@ class AdaptiveAvgPool3D(Layer):
             >>> x = paddle.rand([2, 3, 8, 32, 32])
 
             >>> adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(output_size=3)
-            >>> pool_out = adaptive_avg_pool(x = x)
+            >>> pool_out = adaptive_avg_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
     """
 
     def __init__(
@@ -1168,6 +1230,7 @@ class AdaptiveAvgPool3D(Layer):
         self._data_format = data_format
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_avg_pool3d(
             x,
@@ -1178,6 +1241,14 @@ class AdaptiveAvgPool3D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self._output_size}'
+
+    @property
+    def output_size(self) -> Size3:
+        return self._output_size
+
+    @output_size.setter
+    def output_size(self, value: Size3) -> None:
+        self._output_size = value
 
 
 class AdaptiveMaxPool1D(Layer):
@@ -1200,8 +1271,7 @@ class AdaptiveMaxPool1D(Layer):
         Output(i) &= max(Input[lstart:lend])
 
     Parameters:
-        output_size(int): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain one int.
+        output_size(int|list|tuple): The pool kernel size. It can be an integer, or a list or tuple containing a single integer.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
@@ -1216,7 +1286,7 @@ class AdaptiveMaxPool1D(Layer):
           The data type is same as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # max adaptive pool1d
             >>> # suppose input data in shape of [N, C, L], `output_size` is m or [m],
@@ -1234,28 +1304,29 @@ class AdaptiveMaxPool1D(Layer):
             >>> import paddle.nn as nn
 
             >>> data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
-            >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
-            >>> pool_out = AdaptiveMaxPool1D(data)
+            >>> adaptive_max_pool1d = nn.AdaptiveMaxPool1D(output_size=16)
+            >>> pool_out = adaptive_max_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
             >>> # for return_mask = true
-            >>> AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
-            >>> pool_out, indices = AdaptiveMaxPool1D(data)
+            >>> adaptive_max_pool1d = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
+            >>> pool_out, indices = adaptive_max_pool1d(data)
             >>> print(pool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
             >>> print(indices.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
-    output_size: int
+    output_size: Size1
     return_mask: bool
     name: str | None
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
-        output_size: int,
+        output_size: Size1,
         return_mask: bool = False,
         name: str | None = None,
     ) -> None:
@@ -1271,6 +1342,14 @@ class AdaptiveMaxPool1D(Layer):
 
     def extra_repr(self) -> str:
         return f'output_size={self.output_size}, return_mask={self.return_mask}'
+
+    @property
+    def return_indices(self) -> bool:
+        return self.return_mask
+
+    @return_indices.setter
+    def return_indices(self, value: bool) -> None:
+        self.return_mask = value
 
 
 class AdaptiveMaxPool2D(Layer):
@@ -1310,7 +1389,7 @@ class AdaptiveMaxPool2D(Layer):
     Returns:
         A callable object of AdaptiveMaxPool2D.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive max pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1332,13 +1411,14 @@ class AdaptiveMaxPool2D(Layer):
             >>> x = paddle.rand([2, 3, 32, 32])
 
             >>> adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
-            >>> pool_out, indices = adaptive_max_pool(x = x)
+            >>> pool_out, indices = adaptive_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size2,
@@ -1350,6 +1430,7 @@ class AdaptiveMaxPool2D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_max_pool2d(
             x,
@@ -1362,6 +1443,14 @@ class AdaptiveMaxPool2D(Layer):
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
+
+    @property
+    def return_indices(self) -> bool:
+        return self._return_mask
+
+    @return_indices.setter
+    def return_indices(self, value: bool) -> None:
+        self._return_mask = value
 
 
 class AdaptiveMaxPool3D(Layer):
@@ -1405,7 +1494,7 @@ class AdaptiveMaxPool3D(Layer):
     Returns:
         A callable object of AdaptiveMaxPool3D.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # adaptive max pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -1431,16 +1520,17 @@ class AdaptiveMaxPool3D(Layer):
             >>> pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)
             >>> out = pool(x)
             >>> print(out.shape)
-            [2, 3, 4, 4, 4]
+            paddle.Size([2, 3, 4, 4, 4])
             >>> pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             >>> out, indices = pool(x)
             >>> print(out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size3,
@@ -1452,6 +1542,7 @@ class AdaptiveMaxPool3D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.adaptive_max_pool3d(
             x,
@@ -1464,6 +1555,14 @@ class AdaptiveMaxPool3D(Layer):
         return (
             f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
+
+    @property
+    def return_indices(self) -> bool:
+        return self._return_mask
+
+    @return_indices.setter
+    def return_indices(self, value: bool) -> None:
+        self._return_mask = value
 
 
 class MaxUnPool1D(Layer):
@@ -1503,7 +1602,7 @@ class MaxUnPool1D(Layer):
         A callable object of MaxUnPool1D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1511,13 +1610,13 @@ class MaxUnPool1D(Layer):
             >>> data = paddle.rand(shape=[1, 3, 16])
             >>> pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 3, 8]
+            paddle.Size([1, 3, 8])
             >>> print(indices.shape)
-            [1, 3, 8]
-            >>> Unpool1D = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
-            >>> unpool_out = Unpool1D(pool_out, indices)
+            paddle.Size([1, 3, 8])
+            >>> unpool1d = paddle.nn.MaxUnPool1D(kernel_size=2, padding=0)
+            >>> unpool_out = unpool1d(pool_out, indices)
             >>> print(unpool_out.shape)
-            [1, 3, 16]
+            paddle.Size([1, 3, 16])
 
     """
 
@@ -1545,7 +1644,22 @@ class MaxUnPool1D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            warnings.warn(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
         return F.max_unpool1d(
             x,
             indices,
@@ -1553,7 +1667,7 @@ class MaxUnPool1D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1605,7 +1719,7 @@ class MaxUnPool2D(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1613,13 +1727,13 @@ class MaxUnPool2D(Layer):
             >>> data = paddle.rand(shape=[1, 1, 6, 6])
             >>> pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 1, 3, 3]
+            paddle.Size([1, 1, 3, 3])
             >>> print(indices.shape)
-            [1, 1, 3, 3]
-            >>> Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
-            >>> unpool_out = Unpool2D(pool_out, indices)
+            paddle.Size([1, 1, 3, 3])
+            >>> unpool2d = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
+            >>> unpool_out = unpool2d(pool_out, indices)
             >>> print(unpool_out.shape)
-            [1, 1, 6, 6]
+            paddle.Size([1, 1, 6, 6])
 
     """
 
@@ -1647,7 +1761,23 @@ class MaxUnPool2D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            warnings.warn(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
+
         return F.max_unpool2d(
             x,
             indices,
@@ -1655,7 +1785,7 @@ class MaxUnPool2D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1707,7 +1837,7 @@ class MaxUnPool3D(Layer):
         A callable object of MaxUnPool3D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1715,13 +1845,13 @@ class MaxUnPool3D(Layer):
             >>> data = paddle.rand(shape=[1, 1, 4, 4, 6])
             >>> pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             >>> print(pool_out.shape)
-            [1, 1, 2, 2, 3]
+            paddle.Size([1, 1, 2, 2, 3])
             >>> print(indices.shape)
-            [1, 1, 2, 2, 3]
-            >>> Unpool3D = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
-            >>> unpool_out = Unpool3D(pool_out, indices)
+            paddle.Size([1, 1, 2, 2, 3])
+            >>> unpool3d = paddle.nn.MaxUnPool3D(kernel_size=2, padding=0)
+            >>> unpool_out = unpool3d(pool_out, indices)
             >>> print(unpool_out.shape)
-            [1, 1, 4, 4, 6]
+            paddle.Size([1, 1, 4, 4, 6])
 
     """
 
@@ -1749,7 +1879,22 @@ class MaxUnPool3D(Layer):
         self.output_size = output_size
         self.name = name
 
-    def forward(self, x: Tensor, indices: Tensor) -> Tensor:
+    @param_one_alias(["x", "input"])
+    def forward(
+        self,
+        x: Tensor,
+        indices: Tensor,
+        output_size: Sequence[int] | None = None,
+    ) -> Tensor:
+        if output_size:
+            warnings.warn(
+                "output_size in forward overrides output_size in __init__. "
+                "The output_size parameter in forward has higher priority.",
+                stacklevel=2,
+            )
+            valid_output_size = output_size
+        else:
+            valid_output_size = self.output_size
         return F.max_unpool3d(
             x,
             indices,
@@ -1757,7 +1902,7 @@ class MaxUnPool3D(Layer):
             stride=self.stride,
             padding=self.padding,
             data_format=self.data_format,
-            output_size=self.output_size,
+            output_size=valid_output_size,
             name=self.name,
         )
 
@@ -1818,7 +1963,7 @@ class FractionalMaxPool2D(Layer):
         A callable object of FractionalMaxPool2D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # fractional max pool2d
             >>> # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
@@ -1834,22 +1979,23 @@ class FractionalMaxPool2D(Layer):
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(kernel_size=2, output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3])
 
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool2D(output_size=[2, 3], return_mask=True)
             >>> pool_out, indices = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 2, 3]
+            paddle.Size([2, 3, 2, 3])
             >>> print(indices.shape)
-            [2, 3, 2, 3]
+            paddle.Size([2, 3, 2, 3])
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size2,
@@ -1865,6 +2011,7 @@ class FractionalMaxPool2D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.fractional_max_pool2d(
             x,
@@ -1934,7 +2081,7 @@ class FractionalMaxPool3D(Layer):
         A callable object of FractionalMaxPool3D.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # fractional max pool3d
             >>> # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
@@ -1950,22 +2097,23 @@ class FractionalMaxPool3D(Layer):
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
             >>> # overlapping: with `kernel_size`
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(kernel_size=2, output_size=3)
             >>> pool_out = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 3, 3, 3]
+            paddle.Size([2, 3, 3, 3, 3])
 
             >>> fractional_max_pool = paddle.nn.FractionalMaxPool3D(output_size=[2, 3, 3], return_mask=True)
             >>> pool_out, indices = fractional_max_pool(x=x)
             >>> print(pool_out.shape)
-            [2, 3, 2, 3, 3]
+            paddle.Size([2, 3, 2, 3, 3])
             >>> print(indices.shape)
-            [2, 3, 2, 3, 3]
+            paddle.Size([2, 3, 2, 3, 3])
     """
 
+    @param_one_alias(["return_mask", "return_indices"])
     def __init__(
         self,
         output_size: Size2,
@@ -1981,6 +2129,7 @@ class FractionalMaxPool3D(Layer):
         self._return_mask = return_mask
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.fractional_max_pool3d(
             x,

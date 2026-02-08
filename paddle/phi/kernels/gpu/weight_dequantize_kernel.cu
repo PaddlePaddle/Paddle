@@ -378,8 +378,14 @@ void WeightDequantize(const Context& dev_ctx,
                       const int32_t group_size,
                       DenseTensor* out) {
   using DataType = typename PDDataTypeTraits<T>::DataType;
-  int n = scale.dims()[0];
-  int k = x.dims()[1];
+  int64_t n = scale.dims()[0];
+
+  int64_t k = x.dims()[1];
+  // TODO(large-tensor): CUDA grid dims not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+  PADDLE_ENFORCE_LE_INT_MAX(k, "k");
+  unsigned int grid_y = static_cast<unsigned int>(n);
+
   PADDLE_ENFORCE_EQ(
       (k % NUMPERTHREAD == 0),
       true,
@@ -390,7 +396,7 @@ void WeightDequantize(const Context& dev_ctx,
   unsigned int block_dim_y = 1;
   unsigned int k_iteration =
       k % kperblock == 0 ? k / kperblock : k / kperblock + 1;
-  dim3 grid(1, n / block_dim_y);
+  dim3 grid(1, grid_y / block_dim_y);
   dim3 block(block_dim_x, block_dim_y);
   auto stream = dev_ctx.stream();
 

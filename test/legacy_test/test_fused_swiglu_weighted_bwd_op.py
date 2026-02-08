@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.nn.functional import swiglu
+from paddle.nn.functional import swiglu
 
 
 class TestFusedWeightedSwigluBwd(unittest.TestCase):

@@ -26,9 +26,9 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
       to,
       common::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
-  if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
+  if (from == DataLayout::NCHW && to == DataLayout::NHWC) {
     return {0, 2, 3, 1};
-  } else if (from == DataLayout::kNHWC && to == DataLayout::kNCHW) {
+  } else if (from == DataLayout::NHWC && to == DataLayout::NCHW) {
     return {0, 3, 1, 2};
   } else {
     PADDLE_THROW(

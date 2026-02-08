@@ -212,8 +212,14 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
       nv_type = nvinfer1::DataType::kHALF;
       break;
     case phi::DataType::INT32:
-    case phi::DataType::INT64:
       nv_type = nvinfer1::DataType::kINT32;
+      break;
+    case phi::DataType::INT64:
+#if IS_TRT_VERSION_GE(10000)
+      nv_type = nvinfer1::DataType::kINT64;
+#else
+      nv_type = nvinfer1::DataType::kINT32;
+#endif
       break;
     case phi::DataType::INT8:
       nv_type = nvinfer1::DataType::kINT8;

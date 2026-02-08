@@ -449,7 +449,7 @@ class TestRNNTLossAPICase(unittest.TestCase):
             dtype=np.float64,
         )
 
-    def test_functinal_api(self):
+    def test_functional_api(self):
         self.config()
 
         paddle.disable_static()

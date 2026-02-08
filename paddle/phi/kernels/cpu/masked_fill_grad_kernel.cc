@@ -36,12 +36,10 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0 || mask.numel() == 0) {
     // x shape [2, 1, 3], mask shape [2, 0, 3], x_grad shape [2, 1, 3]
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (v_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(v_grad->dims())), 0, v_grad);
+      Full<T, Context>(dev_ctx, v_grad->dims(), 0, v_grad);
     }
     return;
   }
@@ -51,13 +49,13 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   bool expand_x = false;
   bool expand_value = false;
   auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
+      vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
 
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
   DenseTensor value_grad_expand;
 
-  auto expanded_dims = common::make_ddim(expanded_size);
+  auto expanded_dims = make_ddim(expanded_size);
 
   if (mask.dims() != expanded_dims) {
     ExpandKernel<bool, Context>(

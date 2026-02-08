@@ -69,7 +69,7 @@ __global__ void GPUMaskedFillKernel(const T* input,
                                     const int64_t input_len,
                                     const int64_t batch_size,
                                     T* output) {
-  int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x);
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   if (idx >= (input_len / VecSize)) {
     return;
@@ -90,7 +90,7 @@ __global__ void GPUMaskedFillKernel(const T* input,
 }
 
 template <typename T>
-void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
+void DispatchMaskFillKernel(const GPUContext& dev_ctx,
                             const T* input,
                             const bool* mask,
                             const T* value,
@@ -120,7 +120,7 @@ void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
 
 template <typename T>
 void DispatchMaskFillOneValueKernel(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const T* input,
     const bool* mask,
     const T* value,
@@ -149,7 +149,7 @@ void DispatchMaskFillOneValueKernel(
 }
 
 template <typename T>
-void GPUMaskedFill(const phi::GPUContext& dev_ctx,
+void GPUMaskedFill(const GPUContext& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& mask,
                    const DenseTensor& value,
@@ -161,7 +161,7 @@ void GPUMaskedFill(const phi::GPUContext& dev_ctx,
   const T* value_data = value.data<T>();
   int64_t input_len = input.numel();
   int64_t mask_len = mask.numel();
-  int batch_size = input_len / mask_len;
+  int64_t batch_size = input_len / mask_len;
 
   int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(input_data), vec_size);
@@ -219,8 +219,8 @@ void MaskedFillKernel(const Context& dev_ctx,
   const auto& mask_dims = mask.dims();
 
   auto expanded_size =
-      common::vectorize(phi::funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
-  DDim expanded_dims = common::make_ddim(expanded_size);
+      vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
+  DDim expanded_dims = make_ddim(expanded_size);
 
   bool flag = funcs::CanDispatchMaskFillShortcut(x.dims(), mask.dims());
   if (expanded_dims != x_dims) flag = false;

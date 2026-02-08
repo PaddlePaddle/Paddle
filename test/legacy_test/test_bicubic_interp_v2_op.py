@@ -174,7 +174,7 @@ def bicubic_interp_np(
     align_corners=True,
     data_layout='kNCHW',
 ):
-    """trilinear interpolation implement in shape [N, C, H, W]"""
+    """bicubic interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:
@@ -185,24 +185,15 @@ def bicubic_interp_np(
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
 
-    ratio_h = ratio_w = 0.0
-    if out_h > 1:
+    def compute_ratio(in_size, out_size, scale, align_corners):
         if align_corners:
-            ratio_h = (in_h - 1.0) / (out_h - 1.0)
-        else:
-            if scale_h > 0:
-                ratio_h = 1.0 / scale_h
-            else:
-                ratio_h = 1.0 * in_h / out_h
+            if out_size <= 1:
+                return 0.0
+            return (in_size - 1.0) / (out_size - 1.0)
+        return 1.0 / scale if scale > 0 else in_size / out_size
 
-    if out_w > 1:
-        if align_corners:
-            ratio_w = (in_w - 1.0) / (out_w - 1.0)
-        else:
-            if scale_w > 0:
-                ratio_w = 1.0 / scale_w
-            else:
-                ratio_w = 1.0 * in_w / out_w
+    ratio_h = compute_ratio(in_h, out_h, scale_h, align_corners)
+    ratio_w = compute_ratio(in_w, out_w, scale_w, align_corners)
 
     out = np.zeros((batch_size, channel, out_h, out_w))
 
@@ -224,11 +215,11 @@ def bicubic_interp_np(
                 for j in range(channel):
                     coefficients = [0, 0, 0, 0]
                     for ii in range(4):
+                        access_y = int(max(min(input_y - 1 + ii, in_h - 1), 0))
                         access_x_0 = int(max(min(input_x - 1, in_w - 1), 0))
                         access_x_1 = int(max(min(input_x + 0, in_w - 1), 0))
                         access_x_2 = int(max(min(input_x + 1, in_w - 1), 0))
                         access_x_3 = int(max(min(input_x + 2, in_w - 1), 0))
-                        access_y = int(max(min(input_y - 1 + ii, in_h - 1), 0))
 
                         coefficients[ii] = cubic_interp1d(
                             input[i, j, access_y, access_x_0],
@@ -664,7 +655,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             expect_res = bicubic_interp_np(
                 x_data, out_h=12, out_w=12, align_corners=False
             )
-            for res in results:
+            for i, res in enumerate(results):
                 np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
         with base.dygraph.guard():

@@ -18,7 +18,11 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 
 namespace paddle::platform {
 
@@ -103,7 +107,11 @@ float CalculateEstOccupancy(uint32_t DeviceId,
                             int32_t BlockZ,
                             float BlocksPerSm) {
   float occupancy = 0.0;
+#ifdef PADDLE_WITH_XPU
+  std::vector<int> device_ids = GetXPUSelectedDevices();
+#else
   std::vector<int> device_ids = GetSelectedDevices();
+#endif
   if (DeviceId < device_ids.size()) {
     const gpuDeviceProp& device_property =
         GetDeviceProperties(static_cast<int>(DeviceId));

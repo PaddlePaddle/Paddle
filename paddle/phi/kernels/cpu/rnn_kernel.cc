@@ -64,11 +64,9 @@ struct SimpleRNNCell : Cell<T> {
                   DenseTensor* output UNUSED,
                   const DenseTensor* bias_hh UNUSED,
                   DenseTensor* weight_hh_gru UNUSED) const override {
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
-    auto mat_dim_a =
-        phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b =
-        phi::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    auto blas = funcs::GetBlas<CPUContext, T>(*dev_ctx);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -103,11 +101,10 @@ struct GRUCell : Cell<T> {
                   DenseTensor* output,
                   const DenseTensor* bias_hh,
                   DenseTensor* weight_hh_gru) const override {
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
-    auto mat_dim_a =
-        phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto blas = funcs::GetBlas<CPUContext, T>(*dev_ctx);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
     auto mat_dim_b =
-        phi::funcs::CreateMatrixDescriptor(weight_hh_gru->dims(), 0, true);
+        funcs::CreateMatrixDescriptor(weight_hh_gru->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -121,7 +118,7 @@ struct GRUCell : Cell<T> {
     size_t frame_size = init_h->dims()[2];
     size_t batch_size = init_h->dims()[1];
 
-    phi::funcs::GRUMetaValue<T> gru_value;
+    funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = weight_hh->data<T>();
     gru_value.state_weight = weight_hh->data<T>() + 2 * frame_size * frame_size;
     gru_value.reset_bias = bias_hh->data<T>() + 2 * frame_size;
@@ -131,10 +128,10 @@ struct GRUCell : Cell<T> {
     gru_value.output_value = output->data<T>();
     gru_value.prev_out_value = init_h->data<T>();
 
-    auto gate_act = phi::funcs::detail::GetActivationType("sigmoid_v2");
-    auto cand_act = phi::funcs::detail::GetActivationType("tanh_v2");
+    auto gate_act = funcs::detail::GetActivationType("sigmoid_v2");
+    auto cand_act = funcs::detail::GetActivationType("tanh_v2");
 
-    phi::funcs::GRUUnitFunctorV2<CPUContext, T>::compute(
+    funcs::GRUUnitFunctorV2<CPUContext, T>::compute(
         *dev_ctx, gru_value, frame_size, batch_size, cand_act, gate_act);
   }
 };
@@ -152,11 +149,9 @@ struct LSTMCell : Cell<T> {
                   DenseTensor* output,
                   const DenseTensor* bias_hh UNUSED,
                   DenseTensor* weight_hh_gru UNUSED) const override {
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
-    auto mat_dim_a =
-        phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b =
-        phi::funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    auto blas = funcs::GetBlas<CPUContext, T>(*dev_ctx);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
@@ -168,14 +163,14 @@ struct LSTMCell : Cell<T> {
                 input,
                 static_cast<T>(1.0));
 
-    phi::funcs::LstmMetaValue<T> lstm_value;
+    funcs::LstmMetaValue<T> lstm_value;
     lstm_value.check_ig = nullptr;
     lstm_value.check_fg = nullptr;
     lstm_value.check_og = nullptr;
 
-    auto gate_act = phi::funcs::detail::GetActivationType("sigmoid_v2");
-    auto cell_act = phi::funcs::detail::GetActivationType("tanh_v2");
-    auto cand_act = phi::funcs::detail::GetActivationType("tanh_v2");
+    auto gate_act = funcs::detail::GetActivationType("sigmoid_v2");
+    auto cell_act = funcs::detail::GetActivationType("tanh_v2");
+    auto cand_act = funcs::detail::GetActivationType("tanh_v2");
 
     size_t frame_size = init_h->dims()[2];
     size_t batch_size = init_h->dims()[1];
@@ -193,15 +188,15 @@ struct LSTMCell : Cell<T> {
     lstm_value.state_value = last_c->data<T>();
     lstm_value.state_active_value = last_c_act->data<T>();
     T cell_clip = 0.0;
-    phi::funcs::LstmUnitFunctor<CPUContext, T>::compute(*dev_ctx,
-                                                        lstm_value,
-                                                        frame_size,
-                                                        batch_size,
-                                                        cell_clip,
-                                                        gate_act,
-                                                        cell_act,
-                                                        cand_act,
-                                                        false);
+    funcs::LstmUnitFunctor<CPUContext, T>::compute(*dev_ctx,
+                                                   lstm_value,
+                                                   frame_size,
+                                                   batch_size,
+                                                   cell_clip,
+                                                   gate_act,
+                                                   cell_act,
+                                                   cand_act,
+                                                   false);
   }
 };
 
@@ -218,15 +213,16 @@ struct Layer {
                   bool is_test,
                   DenseTensor* cache_input) {
     // create the temp input for the X * W_ih^T + Bias_ih
-    const int& hidden_size = weight.dims()[0];  // NOLINT
+    const int64_t& hidden_size = weight.dims()[0];
+    // NOLINT
     cache_input->Resize(
-        common::make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
+        make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
     if (is_test) {
       dev_ctx.Alloc<T>(cache_input);
     }
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
-    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(input.dims(), 0, false);
-    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(weight.dims(), 0, true);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(input.dims(), 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(weight.dims(), 0, true);
     // convert the batch matmul to matmul, this operator could be speed faster
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
@@ -240,8 +236,8 @@ struct Layer {
 
     auto in =
         EigenMatrix<T>::Reshape(*cache_input, cache_input->dims().size() - 1);
-    auto bias_ih_tmp = EigenMatrix<T>::From(
-        bias_ih, common::make_ddim({1, bias_ih.dims()[0]}));
+    auto bias_ih_tmp =
+        EigenMatrix<T>::From(bias_ih, make_ddim({1, bias_ih.dims()[0]}));
     const int row_num = static_cast<int>(common::product(cache_input->dims()) /
                                          cache_input->dims()[2]);
     in = in + bias_ih_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
@@ -251,15 +247,15 @@ struct Layer {
       Copy(dev_ctx, bias_hh, CPUPlace(), false, &bias_hh_tmp);
       bias_hh_tmp.Resize({3, bias_hh_tmp.numel() / 3});
       auto bias_hh_tmp_unbind = Unbind(bias_hh_tmp);
-      phi::funcs::SetConstant<CPUContext, T> zero;
+      funcs::SetConstant<CPUContext, T> zero;
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
-      auto bias_hh_after_mask = EigenMatrix<T>::From(
-          bias_hh_tmp, common::make_ddim({1, bias_hh.dims()[0]}));
+      auto bias_hh_after_mask =
+          EigenMatrix<T>::From(bias_hh_tmp, make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_after_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     } else {
-      auto bias_hh_no_mask = EigenMatrix<T>::From(
-          bias_hh, common::make_ddim({1, bias_hh.dims()[0]}));
+      auto bias_hh_no_mask =
+          EigenMatrix<T>::From(bias_hh, make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_no_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     }
   }
@@ -275,8 +271,8 @@ struct Layer {
     // in the output, if mask flag is 0, we will return the zero data
     auto& place = *dev_ctx.eigen_device();
     auto out = EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
-    auto mask = EigenMatrix<T>::From(
-        mask_tensor, common::make_ddim({mask_tensor.dims()[1], 1}));
+    auto mask = EigenMatrix<T>::From(mask_tensor,
+                                     make_ddim({mask_tensor.dims()[1], 1}));
     auto pre_h = EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
     auto curr_h = EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
     auto mask_broadcast = mask.broadcast(
@@ -356,7 +352,7 @@ struct Layer {
     DenseTensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(common::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(make_ddim({time_step, input->dims()[1]}));
 
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
@@ -409,7 +405,7 @@ struct Layer {
            &weight_hh_tmp);
       weight_hh_tmp.Resize({3, weight_hh_tmp.numel() / 3});
       auto weight_hh_tmp_unbind = Unbind(weight_hh_tmp);
-      phi::funcs::SetConstant<CPUContext, T> zero;
+      funcs::SetConstant<CPUContext, T> zero;
       zero(dev_ctx, &weight_hh_tmp_unbind[2], static_cast<T>(0.0));
       weight_hh_tmp.Resize(vec[1 + offset * 4].dims());
     }
@@ -556,7 +552,7 @@ struct Layer {
     DenseTensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(common::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(make_ddim({time_step, input->dims()[1]}));
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -606,7 +602,7 @@ struct Layer {
            &weight_hh_tmp);
       weight_hh_tmp.Resize({3, weight_hh_tmp.numel() / 3});
       auto weight_hh_tmp_unbind = Unbind(weight_hh_tmp);
-      phi::funcs::SetConstant<CPUContext, T> zero;
+      funcs::SetConstant<CPUContext, T> zero;
       zero(dev_ctx, &weight_hh_tmp_unbind[2], static_cast<T>(0.0));
       weight_hh_tmp.Resize(vec[1 + offset * 4].dims());
     }
@@ -820,7 +816,7 @@ void RnnKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<const DenseTensor*>& pre_state,
                const std::vector<const DenseTensor*>& weight_list,
-               const paddle::optional<DenseTensor>& sequence_length,
+               const optional<DenseTensor>& sequence_length,
                float dropout_prob,
                bool is_bidirec,
                int input_size,
@@ -838,7 +834,7 @@ void RnnKernel(const Context& dev_ctx,
       if (dropout_state->numel() != out->numel()) dropout_state->clear();
     }
     const auto& out_dim = out->dims();
-    Full<uint8_t>(dev_ctx, {out_dim.Get(), out_dim.size()}, 1, dropout_state);
+    Full<uint8_t>(dev_ctx, out_dim, 1, dropout_state);
   }
 
   // init the output and allocate the memory
@@ -872,7 +868,7 @@ void RnnKernel(const Context& dev_ctx,
     gate_num = 1;
     RnnFunc<SimpleRNNCell<T,
                           funcs::ReluCPUFunctor,
-                          phi::funcs::detail::ActivationType::kReLU>,
+                          funcs::detail::ActivationType::kReLU>,
             Layer,
             SingleLayer,
             BidirLayer,
@@ -900,7 +896,7 @@ void RnnKernel(const Context& dev_ctx,
     gate_num = 1;
     RnnFunc<SimpleRNNCell<T,
                           funcs::TanhFunctor,
-                          phi::funcs::detail::ActivationType::kTanhV2>,
+                          funcs::detail::ActivationType::kTanhV2>,
             Layer,
             SingleLayer,
             BidirLayer,

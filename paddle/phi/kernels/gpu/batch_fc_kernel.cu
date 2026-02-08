@@ -81,7 +81,7 @@ void BatchFCCUDAKernel(const Context& dev_ctx,
   output->Resize({slot_pairs_num, ins_num, out_dim});
   T* out_data = dev_ctx.template Alloc<T>(output);
   // initialize
-  auto out_eigen = phi::EigenVector<T>::Flatten(*output);
+  auto out_eigen = EigenVector<T>::Flatten(*output);
   auto& place = *dev_ctx.eigen_device();
   out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
 
@@ -93,7 +93,7 @@ void BatchFCCUDAKernel(const Context& dev_ctx,
   int64_t strideA = ins_num * in_dim;
   int64_t strideB = in_dim * out_dim;
 
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.BatchedGEMM(transA,
                    transB,
                    ins_num,

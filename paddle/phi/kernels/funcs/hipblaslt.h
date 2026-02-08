@@ -134,10 +134,10 @@ inline hipDataType_t GetCublasLtDataType<phi::bfloat16>() {
 
 template <typename T>
 void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
-                       const phi::DenseTensor& mat_a,
-                       const phi::DenseTensor& mat_b,
-                       phi::DenseTensor* workspace,
-                       phi::DenseTensor* out) {
+                       const DenseTensor& mat_a,
+                       const DenseTensor& mat_b,
+                       DenseTensor* workspace,
+                       DenseTensor* out) {
   PADDLE_THROW(common::errors::Unimplemented(
       "FP8 matmul is not supported on HIP platform."));
 }

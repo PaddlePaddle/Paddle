@@ -37,13 +37,11 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using Dim = pir::DDim;
-  using DataLayout = pir::DataLayout;
   using LegacyLoD = std::vector<std::vector<size_t>>;
-  using ParamKey = std::tuple<Type, pir::DDim, DataLayout, LegacyLoD, size_t>;
+  using ParamKey = std::tuple<Type, DDim, DataLayout, LegacyLoD, size_t>;
 
   DenseTensorTypeStorage(Type dtype,
-                         const pir::DDim& dims,
+                         const DDim& dims,
                          DataLayout layout,
                          const LegacyLoD& lod,
                          size_t offset)
@@ -74,8 +72,8 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
     hash_value = detail::hash_combine(hash_value,
                                       std::hash<pir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = detail::hash_combine(hash_value,
-                                      std::hash<pir::DDim>()(std::get<1>(key)));
+    hash_value =
+        detail::hash_combine(hash_value, std::hash<DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = detail::hash_combine(
         hash_value,
@@ -107,7 +105,7 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   /// layout, lod, offset.
   ///
   pir::Type dtype_;
-  pir::DDim dims_;
+  DDim dims_;
   DataLayout layout_;
   LegacyLoD lod_;
   size_t offset_;
@@ -118,6 +116,12 @@ struct VectorTypeStorage : public TypeStorage {
 
   explicit VectorTypeStorage(const ParamKey& key) {
     data_ = reinterpret_cast<Type*>(malloc(key.size() * sizeof(Type)));
+    PADDLE_ENFORCE_NOT_NULL(
+        data_,
+        common::errors::ResourceExhausted(
+            "Failed to allocate memory for VectorTypeStorage::data_, "
+            "requested size = %zu bytes.",
+            size_ * sizeof(Type)));
     memcpy(reinterpret_cast<void*>(data_),
            reinterpret_cast<const void*>(key.data()),
            key.size() * sizeof(Type));

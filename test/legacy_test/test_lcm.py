@@ -95,6 +95,76 @@ class TestLcmAPI5(TestLcmAPI):
         self.y_shape = []
 
 
+class TestLcm(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.array([12, 18, 24]).astype(np.int32)
+        self.y_np = np.array([20, 24, 36]).astype(np.int32)
+        self.expected = np.lcm(self.x_np, self.y_np)
+
+    def test_lcm_with_y_parameter(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        x_clone = x.clone()
+        out = paddle.lcm(x_clone, y)
+        np.testing.assert_allclose(out.numpy(), self.expected, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_lcm_with_other_parameter(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        other = paddle.to_tensor(self.y_np)
+        x_clone = x.clone()
+        out = paddle.lcm(x_clone, other=other)
+        np.testing.assert_allclose(out.numpy(), self.expected, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_lcm_with_both_parameters_error(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        x_clone = x.clone()
+        other = paddle.to_tensor(self.y_np)
+        with self.assertRaises(TypeError):
+            out = paddle.lcm(x_clone, y, other=other)
+        paddle.enable_static()
+
+
+class TestLcmInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.array([12, 18, 24]).astype(np.int32)
+        self.y_np = np.array([20, 24, 36]).astype(np.int32)
+        self.expected = np.lcm(self.x_np, self.y_np)
+
+    def test_lcm_inplace_with_y_parameter(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        x_clone = x.clone()
+        out = paddle.lcm_(x_clone, y)
+        np.testing.assert_allclose(out.numpy(), self.expected, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_lcm_inplace_with_other_parameter(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        other = paddle.to_tensor(self.y_np)
+        x_clone = x.clone()
+        out = paddle.lcm_(x_clone, other=other)
+        np.testing.assert_allclose(out.numpy(), self.expected, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_lcm_inplace_with_both_parameters_error(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        other = paddle.to_tensor(self.y_np)
+        x_clone = x.clone()
+        with self.assertRaises(TypeError):
+            out = paddle.lcm_(x_clone, y, other=other)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

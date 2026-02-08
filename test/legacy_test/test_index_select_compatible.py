@@ -52,10 +52,10 @@ class TestIndexSelectAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.index_select(x, index, self.axis)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.index_select(x=x, index=index, axis=self.axis)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.index_select(input=x, index=index, dim=self.axis)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -99,9 +99,9 @@ class TestIndexSelectAPI_Compatibility(unittest.TestCase):
             )
             # Position args (args)
             out1 = paddle.index_select(x, index, self.axis)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.index_select(x=x, index=index, axis=self.axis)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.index_select(input=x, index=index, dim=self.axis)
             # Combined args and kwargs
             out4 = paddle.index_select(x, index, dim=self.axis)

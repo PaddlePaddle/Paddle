@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void MergeSelectedRowsKernel(const Context& dev_ctx,
                              const SelectedRows& x,
                              SelectedRows* out) {
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, x, out);
 }
 

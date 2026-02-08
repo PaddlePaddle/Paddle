@@ -41,12 +41,12 @@ if TYPE_CHECKING:
 __all__ = []
 
 _int_dtype_ = [
-    core.VarDesc.VarType.UINT8,
-    core.VarDesc.VarType.INT8,
-    core.VarDesc.VarType.INT16,
-    core.VarDesc.VarType.INT32,
-    core.VarDesc.VarType.INT64,
-    core.VarDesc.VarType.BOOL,
+    core.DataType.UINT8,
+    core.DataType.INT8,
+    core.DataType.INT16,
+    core.DataType.INT32,
+    core.DataType.INT64,
+    core.DataType.BOOL,
 ]
 
 
@@ -67,17 +67,17 @@ def sin(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.sin(sparse_x)
             >>> out
             Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
-                indices=[[0, 2]],
-                values=[-0.90929741,  0.84147102])
+                    indices=[[0, 2]],
+                    values=[-0.90929741,  0.84147096])
     """
     assert in_dynamic_or_pir_mode(), (
         "Currently, Sparse API only support dynamic mode or pir mode."
@@ -102,11 +102,11 @@ def tan(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.tan(sparse_x)
             >>> out
@@ -137,17 +137,17 @@ def asin(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.asin(sparse_x)
             >>> out
             Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
                 indices=[[0, 2]],
-                values=[nan       , 1.57079625])
+                values=[nan       , 1.57079637])
     """
     assert in_dynamic_or_pir_mode(), (
         "Currently, Sparse API only support dynamic mode or pir mode."
@@ -228,11 +228,11 @@ def sum(
         otherwise it's data type is the same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            >>> dense_x = paddle.to_tensor([[-2.0, 0.0], [1.0, 2.0]])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out1 = paddle.sparse.sum(sparse_x)
             >>> out1
@@ -322,11 +322,11 @@ def atan(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.atan(sparse_x)
             >>> out
@@ -357,11 +357,11 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.sinh(sparse_x)
             >>> out
@@ -392,11 +392,11 @@ def asinh(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.asinh(sparse_x)
             >>> out
@@ -427,11 +427,11 @@ def atanh(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.atanh(sparse_x)
             >>> out
@@ -462,11 +462,11 @@ def tanh(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.tanh(sparse_x)
             >>> out
@@ -497,11 +497,11 @@ def square(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.square(sparse_x)
             >>> out
@@ -532,11 +532,11 @@ def sqrt(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.sqrt(sparse_x)
             >>> out
@@ -567,7 +567,7 @@ def log1p(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -608,7 +608,7 @@ def cast(
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -652,7 +652,7 @@ def pow(x: Tensor, factor: float, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -687,7 +687,7 @@ def neg(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -722,7 +722,7 @@ def abs(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -753,7 +753,7 @@ def coalesce(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: return the SparseCooTensor after coalesced.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -793,11 +793,11 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([3.142, 0., -3.142])
+            >>> dense_x = paddle.to_tensor([3.142, 0.0, -3.142])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.rad2deg(sparse_x)
             >>> out
@@ -809,7 +809,7 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
         "Currently, Sparse API only support dynamic mode or pir mode."
     )
     if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
     return _C_ops.sparse_scale(x, 180.0 / np.pi, 0.0, True)
 
 
@@ -831,7 +831,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -847,7 +847,7 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
         "Currently, Sparse API only support dynamic mode or pir mode."
     )
     if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
+        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
     return _C_ops.sparse_scale(x, np.pi / 180.0, 0.0, True)
 
 
@@ -868,17 +868,17 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.expm1(sparse_x)
             >>> out
             Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
                 indices=[[0, 2]],
-                values=[-0.86466473,  1.71828187])
+                values=[-0.86466473,  1.71828175])
     """
     assert in_dynamic_or_pir_mode(), (
         "Currently, Sparse API only support dynamic mode or pir mode."
@@ -924,7 +924,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         Tensor: A reshaped Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -941,7 +941,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             >>> sp_out = paddle.sparse.reshape(sp_x, new_shape)
 
             >>> print(sp_out.shape)
-            [1, 2, 2, 3, 3]
+            paddle.Size([1, 2, 2, 3, 3])
 
     """
     if in_dynamic_or_pir_mode():
@@ -991,13 +991,13 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same shape as ``x``,  the bool result which shows every element of `x` whether it is `NaN` or not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
 
             >>> format = "coo"
-            >>> np_x = np.asarray([[[0., 0], [1., 2.]], [[0., 0], [3., float('nan')]]])
+            >>> np_x = np.asarray([[[0.0, 0.0], [1.0, 2.0]], [[0.0, 0.0], [3.0, float('nan')]]])
             >>> dense_x = paddle.to_tensor(np_x)
 
             >>> if format == "coo":
@@ -1007,7 +1007,7 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
             ...
             >>> sparse_out = paddle.sparse.isnan(sparse_x)
             >>> print(sparse_out)
-            Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(cpu), stop_gradient=True,
                    indices=[[0, 0, 1, 1],
                             [1, 1, 1, 1],
                             [0, 1, 0, 1]],
@@ -1061,7 +1061,7 @@ def slice(
         A Sparse Tensor. The data type is same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np

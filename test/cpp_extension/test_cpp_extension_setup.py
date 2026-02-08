@@ -39,13 +39,15 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             cmd += f' --install-lib={site_dir}'
         run_cmd(cmd)
 
-        custom_egg_path = [
+        custom_install_path = [
             x for x in os.listdir(site_dir) if 'custom_cpp_extension' in x
         ]
-        assert len(custom_egg_path) == 1, (
-            f"Matched egg number is {len(custom_egg_path)}."
+
+        assert len(custom_install_path) == 2, (
+            f"Matched egg number is {len(custom_install_path)}."
         )
-        sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
+
+        sys.path.append(os.path.join(site_dir, custom_install_path[0]))
         #################################
 
         # config seed

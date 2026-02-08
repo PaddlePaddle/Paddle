@@ -61,11 +61,7 @@ namespace py = pybind11;  // NOLINT
 namespace paddle::pybind {
 
 static bool PyCheckInteger(PyObject *obj) {
-#if PY_VERSION_HEX < 0x03000000
-  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
-#else
   return PyLong_Check(obj) && !PyBool_Check(obj);
-#endif
 }
 
 using paddle::distributed::auto_parallel::DistTensorSpec;
@@ -181,7 +177,7 @@ void BindAutoParallel(py::module *m) {
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                         tensor.impl());
                 auto res_dist = self.Eval(dev_ctx, *p_dist, dist_attr);
-                return paddle::Tensor(res_dist);
+                return Tensor(res_dist);
               },
               py::call_guard<py::gil_scoped_release>());
 

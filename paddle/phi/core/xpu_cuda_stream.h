@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
 
+using gpuStream_t = cudaStream_t;
+using gpuEvent_t = cudaEvent_t;
+
 namespace phi {
 
 // Currently, XpuCudaStream is used in python-side API only

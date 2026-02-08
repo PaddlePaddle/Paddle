@@ -30,7 +30,7 @@ void ScatterKernel(const Context &dev_ctx,
                    DenseTensor *out) {
   if (index.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   if (out && out->numel() == 0) {
@@ -38,7 +38,7 @@ void ScatterKernel(const Context &dev_ctx,
     return;
   }
   // In place output: Out = X, Out[Ids] = Updates
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
@@ -53,15 +53,15 @@ void ScatterKernel(const Context &dev_ctx,
                         phi::DataType::INT64));
   if (overwrite) {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssign<T, int32_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssign<T, int32_t>(dev_ctx, updates, index, out);
     } else {
-      phi::funcs::ScatterAssign<T, int64_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssign<T, int64_t>(dev_ctx, updates, index, out);
     }
   } else {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, updates, index, out);
     } else {
-      phi::funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, updates, index, out);
+      funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, updates, index, out);
     }
   }
 }

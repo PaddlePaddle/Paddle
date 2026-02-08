@@ -52,11 +52,7 @@ void ConvGradKernel(const Context& dev_ctx,
   if (input.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(filter_grad->dims())),
-          0,
-          filter_grad);
+      Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
     }
     return;
   }
@@ -66,12 +62,10 @@ void ConvGradKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           ("XPU doesn't support data_format is NDHWC in conv grad op.")));
 
-  phi::DDim in_data_dims =
-      common::slice_ddim(input.dims(), 2, input.dims().size());
-  phi::DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
-  std::vector<int64_t> filter_shape = common::vectorize<int64_t>(filter.dims());
+  DDim in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -242,12 +236,10 @@ void Conv3DGradKernel(const Context& dev_ctx,
   // that avoids modifying the variable in the Scope.
   if (!input_grad && !filter_grad) return;
 
-  phi::DDim in_data_dims =
-      common::slice_ddim(input.dims(), 2, input.dims().size());
-  phi::DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
-  std::vector<int64_t> filter_shape = common::vectorize<int64_t>(filter.dims());
+  DDim in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

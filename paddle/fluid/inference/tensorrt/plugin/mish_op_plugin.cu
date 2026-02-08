@@ -108,15 +108,9 @@ __global__ void mish_kernel<half>(float threshold,
 #endif
 }
 
-#if IS_TRT_VERSION_LT(8000)
-int MishPlugin::enqueue(int batchSize,
-                        const void* const* inputs,
-                        void** outputs,
-#else
 int MishPlugin::enqueue(int batchSize,
                         const void* const* inputs,
                         void* const* outputs,
-#endif
                         void* workspace,
                         cudaStream_t stream) TRT_NOEXCEPT {
   const auto& input_dims = this->getInputDims(0);

@@ -233,9 +233,7 @@ class LlamaMlp(nn.Layer):
         )
 
     def forward(self, x):
-        x = paddle.incubate.nn.functional.swiglu(
-            self.gate_proj(x), self.up_proj(x)
-        )
+        x = paddle.nn.functional.swiglu(self.gate_proj(x), self.up_proj(x))
         out = self.down_proj(x)
         return out
 

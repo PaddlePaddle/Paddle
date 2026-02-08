@@ -123,7 +123,7 @@ def fused_feedforward(
         Tensor: The output Tensor, the data type and shape is same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -135,7 +135,7 @@ def fused_feedforward(
             >>> linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
             >>> out = F.fused_feedforward(x, linear1_weight, linear2_weight)
             >>> print(out.shape)
-            [1, 8, 8]
+            paddle.Size([1, 8, 8])
     """
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
@@ -380,7 +380,7 @@ def fused_bias_dropout_residual_layer_norm(
         Tensor, The output Tensor, the data type and shape is same as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -394,10 +394,9 @@ def fused_bias_dropout_residual_layer_norm(
             >>> # linear bias: [embed_dim]
             >>> bias = paddle.rand(shape=[128], dtype="float32")
             >>> # output: [batch_size, seq_len, embed_dim]
-            >>> output = F.fused_bias_dropout_residual_layer_norm(
-            ...     x, residual, bias)
+            >>> output = F.fused_bias_dropout_residual_layer_norm(x, residual, bias)
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
 
     """
     seed = None
@@ -552,9 +551,9 @@ def fused_multi_head_attention(
         >>> out = matmul(out, qkv_weight) + qkv_bias
         >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
         >>> # extract q, k and v from out
-        >>> q = out[0:1,::] * (head_dim ** -0.5)
-        >>> k = out[1:2,::]
-        >>> v = out[2:3,::]
+        >>> q = out[0:1, ::] * (head_dim**-0.5)
+        >>> k = out[1:2, ::]
+        >>> v = out[2:3, ::]
         >>> out = matmul(q, k, transpose_y=True)
         >>> out = out + attn_mask
         >>> out = softmax(out)
@@ -627,7 +626,7 @@ def fused_multi_head_attention(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -649,11 +648,10 @@ def fused_multi_head_attention(
 
             >>> # output: [batch_size, seq_len, embed_dim]
             >>> output = F.fused_multi_head_attention(
-            ...     x, qkv_weight, linear_weight, False,
-            ...     None, None, None, None, 1e-5, qkv_bias,
-            ...     linear_bias, None, attn_mask)
+            ...     x, qkv_weight, linear_weight, False, None, None, None, None, 1e-5, qkv_bias, linear_bias, None, attn_mask
+            ... )
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
 
     seed = None
@@ -1103,7 +1101,7 @@ def fused_multi_transformer(
         >>> q = out[0:1, ::]
         >>> k = out[1:2, ::]
         >>> v = out[2:3, ::]
-        >>> out = q * k^t
+        >>> out = q * k ^ t
         >>> out = attn_mask + out
         >>> out = softmax(out)
         >>> out = dropout(out)
@@ -1115,7 +1113,7 @@ def fused_multi_transformer(
         ... else:
         ...     out = layer_norm(x + dropout(out + bias))
 
-        >>> residual = out;
+        >>> residual = out
         >>> if pre_layer_norm:
         ...     out = ffn_layer_norm(out)
         >>> out = ffn1_linear(out)
@@ -1204,7 +1202,7 @@ def fused_multi_transformer(
         Transformer layers, cache_kvs is inplace with input `cache_kvs`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on Flash Attention 2.')
             >>> import re
@@ -1232,11 +1230,11 @@ def fused_multi_transformer(
             >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
             >>> # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
-            >>> ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float16")
-            >>> ffn1_bias = paddle.rand(shape=(4*128,), dtype="float16")
+            >>> ffn1_weight = paddle.rand(shape=(128, 4 * 128), dtype="float16")
+            >>> ffn1_bias = paddle.rand(shape=(4 * 128,), dtype="float16")
 
             >>> # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
-            >>> ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float16")
+            >>> ffn2_weight = paddle.rand(shape=(4 * 128, 128), dtype="float16")
             >>> ffn2_bias = paddle.rand(shape=(128,), dtype="float16")
 
             >>> # self attention mask: [batch_size, 1, seq_len, seq_len]
@@ -1244,12 +1242,23 @@ def fused_multi_transformer(
 
             >>> # output: [batch_size, seq_len, embed_dim]
             >>> output = F.fused_multi_transformer(
-            ...     x, [ln_scale], [ln_bias], [qkv_weight], [qkv_bias],
-            ...     [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
-            ...     [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
-            ...     attn_mask=attn_mask)
+            ...     x,
+            ...     [ln_scale],
+            ...     [ln_bias],
+            ...     [qkv_weight],
+            ...     [qkv_bias],
+            ...     [linear_weight],
+            ...     [linear_bias],
+            ...     [ffn_ln_scale],
+            ...     [ffn_ln_bias],
+            ...     [ffn1_weight],
+            ...     [ffn1_bias],
+            ...     [ffn2_weight],
+            ...     [ffn2_bias],
+            ...     attn_mask=attn_mask,
+            ... )
             >>> print(output.shape)
-            [2, 4, 128]
+            paddle.Size([2, 4, 128])
     """
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(

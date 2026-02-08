@@ -35,7 +35,7 @@ void AssignPosKernel(const Context& dev_ctx,
   // from 0 to batch_size *
   // seq_len * topk
 
-  phi::DenseTensor cpu_eff_num_len;
+  DenseTensor cpu_eff_num_len;
   int64_t cpu_eff_num_len_data = 0;
   if (eff_num_len->place().GetType() == phi::AllocationType::CPU) {
     cpu_eff_num_len_data = eff_num_len->data<T>()[0];
@@ -47,7 +47,7 @@ void AssignPosKernel(const Context& dev_ctx,
   out->Resize({cpu_eff_num_len_data});
   dev_ctx.template Alloc<T>(out);
 
-  phi::DenseTensor numbers_cpu, cum_count_cpu;
+  DenseTensor numbers_cpu, cum_count_cpu;
   phi::Copy(dev_ctx, *numbers, phi::CPUPlace(), true, &numbers_cpu);
   phi::Copy(dev_ctx, *cum_count, phi::CPUPlace(), true, &cum_count_cpu);
   auto* numbers_data = numbers_cpu.data<T>();

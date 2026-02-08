@@ -39,8 +39,7 @@ void ConvKernel(const Context& dev_ctx,
                 const std::string& data_format,
                 DenseTensor* out) {
   if (input.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -58,11 +57,9 @@ void ConvKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           ("XPU does not support data_format is NDHWC in conv op.")));
 
-  phi::DDim in_data_dims =
-      common::slice_ddim(input.dims(), 2, input.dims().size());
-  phi::DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  DDim in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -91,8 +88,7 @@ void ConvKernel(const Context& dev_ctx,
   if (data_format == "NHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int64_t> filter_shape =
-        common::vectorize<int64_t>(filter.dims());
+    std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,
@@ -186,6 +182,10 @@ void Conv3DKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations_t,
                   const std::string& data_format,
                   DenseTensor* out) {
+  if (input.numel() == 0 || out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int64_t> dilations(dilations_t.begin(), dilations_t.end());
@@ -195,16 +195,15 @@ void Conv3DKernel(const Context& dev_ctx,
   // that avoids modifying the variable in the Scope.
   dev_ctx.template Alloc<T>(out);
 
-  phi::DDim in_data_dims;
+  DDim in_data_dims;
   if (data_format == "NDHWC") {
-    in_data_dims = common::slice_ddim(input.dims(), 1, input.dims().size() - 1);
+    in_data_dims = slice_ddim(input.dims(), 1, input.dims().size() - 1);
   } else {
-    in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
+    in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
   }
 
-  phi::DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   UpdatePaddingAndDilation<int64_t>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -235,8 +234,7 @@ void Conv3DKernel(const Context& dev_ctx,
   if (data_format == "NDHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int64_t> filter_shape =
-        common::vectorize<int64_t>(filter.dims());
+    std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,

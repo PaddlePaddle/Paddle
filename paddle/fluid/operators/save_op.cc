@@ -45,12 +45,11 @@ class SaveOp : public framework::OperatorWithKernel {
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(Tensor ) Input phi::DenseTensor and SelectedRows to be saved");
+    AddInput("X", "(Tensor ) Input DenseTensor and SelectedRows to be saved");
     AddComment(R"DOC(
 Save operator
 
-This operator will serialize and write phi::DenseTensor / SelectedRows variable to file on disk.
+This operator will serialize and write DenseTensor / SelectedRows variable to file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"

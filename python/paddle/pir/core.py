@@ -93,6 +93,9 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     DataType.INT32: 'int32',
     DataType.INT64: 'int64',
     DataType.UINT8: 'uint8',
+    DataType.UINT16: 'uint16',
+    DataType.UINT32: 'uint32',
+    DataType.UINT64: 'uint64',
     DataType.COMPLEX64: 'complex64',
     DataType.COMPLEX128: 'complex128',
     DataType.FLOAT8_E4M3FN: 'float8_e4m3fn',
@@ -168,7 +171,7 @@ def default_startup_program():
     Returns type:
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -199,7 +202,7 @@ def default_main_program():
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -210,7 +213,7 @@ def default_main_program():
             >>> out = paddle.add(x, y)
 
             >>> # print the number of blocks in the program, 1 in this case
-            >>> print(paddle.static.default_main_program().num_blocks) # 1
+            >>> print(paddle.static.default_main_program().num_blocks)  # 1
             >>> # print the default_main_program
             >>> print(paddle.static.default_main_program())
     """
@@ -272,7 +275,7 @@ def program_guard(main_program, startup_program=None):
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-1
 
             >>> import paddle
@@ -288,7 +291,7 @@ def program_guard(main_program, startup_program=None):
     to construct either of startup program or main program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example-2
 
             >>> import paddle
@@ -501,7 +504,7 @@ def _convert_into_value(tensor):
     Convert Tensor into Value.
     """
     import paddle
-    from paddle.jit.pir_dy2static.parameter_recorder import (
+    from paddle.jit.dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 
@@ -553,7 +556,7 @@ def set_state_dict(program, state_dict, scope=None):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static

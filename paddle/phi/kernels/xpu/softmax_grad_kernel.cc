@@ -28,7 +28,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const int rank = x_grad->dims().size();
-  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
+  const int calc_axis = funcs::CanonicalAxis(axis, rank);
 
   // allocate memory on device.
   dev_ctx.template Alloc<T>(x_grad);
@@ -38,7 +38,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
     return;
   }
 

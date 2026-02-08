@@ -122,7 +122,7 @@ function(register_onednn_kernel TARGET)
   if(${onednn_cc_srcs_len} EQUAL 0)
     message(
       FATAL_ERROR
-        "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_onednn_op.cc file"
+        "The OneDNN kernel file of ${TARGET} should contains at least one *.*_onednn_op.cc file"
     )
   endif()
   if(WITH_ONEDNN)
@@ -138,7 +138,7 @@ function(register_onednn_kernel TARGET)
     set(op_name "")
     find_register(${onednn_src} "REGISTER_OP_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
-      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, ONEDNN);\n")
     endif()
   endforeach()
 endfunction()
@@ -607,9 +607,9 @@ function(op_library TARGET)
     endforeach()
   endif()
 
-  # pybind USE_OP_DEVICE_KERNEL for MKLDNN
+  # pybind USE_OP_DEVICE_KERNEL for ONEDNN
   if(WITH_ONEDNN AND ${onednn_cc_srcs_len} GREATER 0)
-    # Append first implemented MKLDNN activation operator
+    # Append first implemented ONEDNN activation operator
     if(${ONEDNN_FILE} STREQUAL "activation_onednn_op")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
     else()

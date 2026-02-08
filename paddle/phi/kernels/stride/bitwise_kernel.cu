@@ -39,6 +39,10 @@ namespace phi {
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0 || y.numel() == 0) {                                   \
+      zero_size = true;                                                       \
+    }                                                                         \
     if (!FLAGS_use_stride_compute_kernel) {                                   \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
@@ -61,7 +65,7 @@ namespace phi {
       phi::name##Kernel<T, Context>(dev_ctx, x_, y_, out);                    \
       return;                                                                 \
     }                                                                         \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
       PADDLE_THROW(                                                           \
           common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
                                 "Kernel using DenseTensorIterator "           \
@@ -93,7 +97,11 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0 || y.numel() == 0) {                                   \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
@@ -158,7 +166,11 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {

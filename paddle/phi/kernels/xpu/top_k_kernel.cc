@@ -41,9 +41,9 @@ void TopkKernel(const Context& dev_ctx,
 
   const auto& in_dims = x.dims();
   if (in_dims.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
@@ -62,10 +62,8 @@ void TopkKernel(const Context& dev_ctx,
     indices->Resize(out_dims_);
   }
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
     return;
   }
   PADDLE_ENFORCE_GE(
@@ -90,7 +88,7 @@ void TopkKernel(const Context& dev_ctx,
 
   if (axis + 1 == in_dims.size()) {
     const int64_t row =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t col = in_dims[in_dims.size() - 1];
 
     int r =
@@ -145,8 +143,8 @@ void TopkKernel(const Context& dev_ctx,
     int64_t* trans_idx_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_data);
 
-    const int64_t row = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t row =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t col = trans_dims[trans_dims.size() - 1];
 
     // Do top k on transposed input

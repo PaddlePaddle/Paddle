@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
-os.environ["FLAGS_cudnn_deterministic"] = "1"
 
 import numpy as np
 from op_test import (
@@ -33,7 +30,7 @@ from paddle.incubate.nn.functional import (
     fused_dot_product_attention,
 )
 
-np.random.seed(2023)
+np.random.seed(2025)
 
 
 def skip_unit_test():

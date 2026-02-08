@@ -37,8 +37,8 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& scale,
+                     const optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -68,7 +68,7 @@ void BatchNormKernel(const Context& dev_ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = common::StringToDataLayout(data_layout_str);
+  auto data_layout = StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(
@@ -87,7 +87,7 @@ void BatchNormKernel(const Context& dev_ctx,
           x_dims.size()));
   const int N = static_cast<int>(x_dims[0]);
   const int C = static_cast<int>(
-      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // alloc memory
@@ -103,8 +103,8 @@ void BatchNormKernel(const Context& dev_ctx,
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
   // as NHWC format
-  if (x_dims.size() == 2 && data_layout == DataLayout::kNCHW) {
-    data_layout = DataLayout::kNHWC;
+  if (x_dims.size() == 2 && data_layout == DataLayout::NCHW) {
+    data_layout = DataLayout::NHWC;
   }
 
   if (!global_stats) {
@@ -127,12 +127,12 @@ void BatchNormKernel(const Context& dev_ctx,
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
       return;
     }
 
     switch (data_layout) {
-      case DataLayout::kNCHW: {
+      case DataLayout::NCHW: {
         ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
         for (int nc = 0; nc < N * C; ++nc) {
           saved_mean_e(nc % C) += x_arr.col(nc).sum();
@@ -145,7 +145,7 @@ void BatchNormKernel(const Context& dev_ctx,
         saved_variance_e /= N * sample_size;
         break;
       }
-      case DataLayout::kNHWC: {
+      case DataLayout::NHWC: {
         ConstEigenArrayMap<T> x_arr(x.data<T>(), C, N * sample_size);
         for (int i = 0; i < N * sample_size; ++i) {
           saved_mean_e += x_arr.col(i);
@@ -253,7 +253,7 @@ void BatchNormKernel(const Context& dev_ctx,
   }
 
   switch (data_layout) {
-    case DataLayout::kNCHW: {
+    case DataLayout::NCHW: {
       EigenArrayMap<T> y_arr(dev_ctx.template Alloc<T>(y), sample_size, N * C);
       ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
       for (int nc = 0; nc < N * C; ++nc) {
@@ -261,7 +261,7 @@ void BatchNormKernel(const Context& dev_ctx,
       }
       break;
     }
-    case DataLayout::kNHWC: {
+    case DataLayout::NHWC: {
       EigenArrayMap<T>(dev_ctx.template Alloc<T>(y), C, N * sample_size) =
           (ConstEigenArrayMap<T>(x.data<T>(), C, N * sample_size).colwise() *
            new_scale)

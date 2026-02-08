@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/baddbmm_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -43,6 +44,7 @@ void BaddbmmKernel(const Context& dev_ctx,
                    const DenseTensor& y,
                    float beta,
                    float alpha,
+                   DataType out_dtype,
                    DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -215,6 +217,11 @@ void BaddbmmKernel(const Context& dev_ctx,
                        x_dims[2] * y_dims[2]);
       // x_dims[2] == y_dims[1]
     }
+  }
+
+  // Handle out_dtype conversion if specified
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != out->dtype()) {
+    phi::CastKernel<T>(dev_ctx, *out, out_dtype, out);
   }
 }
 

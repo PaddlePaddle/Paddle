@@ -126,7 +126,7 @@ class UniformInitializer(Initializer):
                 self._low,
                 self._high,
                 self._seed,
-                _current_expected_place(),
+                var.place if var.place._type() else _current_expected_place(),
             )
             if var.dtype == core.VarDesc.VarType.FP16:
                 var_tmp = _C_ops.cast(out_var, var.dtype)

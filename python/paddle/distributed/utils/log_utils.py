@@ -29,6 +29,5 @@ def get_logger(log_level, name="root"):
         )
         log_handler.setFormatter(log_format)
         logger.addHandler(log_handler)
-    else:
-        logger.setLevel(log_level)
+
     return logger

@@ -65,7 +65,7 @@ void ShadowFeedKernel(const Context& dev_ctx,
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
-    phi::Copy<Context>(dev_ctx, x, target_place, true, out);
+    Copy<Context>(dev_ctx, x, target_place, true, out);
   }
 }
 
@@ -93,7 +93,7 @@ void PrintKernel(const Context& dev_ctx,
                  const std::string& print_phase,
                  bool is_forward,
                  DenseTensor* out) {
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, out);
+  Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, out);
   out->set_lod(x.lod());
 
   if ((is_forward && print_phase == kBackward) ||
@@ -105,7 +105,7 @@ void PrintKernel(const Context& dev_ctx,
   // if (first_n > 0 && ++times_ > first_n) return;
 
   // TODO(phlrain): support printed_var_name
-  phi::funcs::TensorFormatter formatter;
+  funcs::TensorFormatter formatter;
   const std::string& name = print_tensor_name ? "var" : "";
   formatter.SetPrintTensorType(print_tensor_type);
   formatter.SetPrintTensorShape(print_tensor_shape);

@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 using StringPairMap =
-    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+    std::unordered_map<std::string, std::pair<bool, DenseTensor>>;
 
 static void SaveInfoInTheTmpOp(
     ir::Graph* graph,
@@ -128,9 +128,9 @@ static void GetInfoFromTheTmpOp(ir::Graph* graph,
               fake_name.erase(unsigned_pos, unsigned_flag.length());
           auto scales_vector = PADDLE_GET_CONST(std::vector<float>,
                                                 op_desc->GetAttr(vector_name));
-          phi::DenseTensor tensor;
+          DenseTensor tensor;
           const int size = static_cast<int>(scales_vector.size());
-          auto data = tensor.mutable_data<double>({size}, phi::CPUPlace());
+          auto data = tensor.mutable_data<double>({size}, CPUPlace());
           std::copy(scales_vector.begin(), scales_vector.end(), data);
           auto pair = std::make_pair(is_unsigned, tensor);
           info_map->insert(std::make_pair(var_name, pair));

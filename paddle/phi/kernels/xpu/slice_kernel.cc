@@ -63,7 +63,7 @@ void SliceKernel(const Context& dev_ctx,
       }
     }
     if (is_same) {
-      phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
       return;
     }
   }
@@ -79,7 +79,7 @@ void SliceKernel(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
   slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);
@@ -175,7 +175,7 @@ void SliceKernel<phi::complex64, XPUContext>(
       }
     }
     if (is_same) {
-      phi::Copy<XPUContext>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+      Copy<XPUContext>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
       return;
     }
   }
@@ -191,7 +191,7 @@ void SliceKernel<phi::complex64, XPUContext>(
     }
   }
 
-  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
   slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);

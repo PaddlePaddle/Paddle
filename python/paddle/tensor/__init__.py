@@ -57,6 +57,7 @@ from .creation import (  # noqa: F401
     range,
     resize_,
     set_,
+    split_with_sizes,
     to_tensor,
     tril,
     tril_,
@@ -515,6 +516,7 @@ ge = greater_equal
 greater = gt
 sub = subtract
 sub_ = subtract_
+clamp_ = clip_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -947,6 +949,8 @@ tensor_method_func = [
     'gt',
     'greater',
     'clamp',
+    'clamp_',
+    'split_with_sizes',
 ]
 
 

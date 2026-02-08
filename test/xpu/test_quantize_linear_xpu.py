@@ -126,6 +126,25 @@ class TestQuantizeLinerAPI(unittest.TestCase):
             self.run_case("dequantize_linear", [10, 12, 15], axis, 4, -8, 7)
             self.run_case("dequantize_linear", [10, 12, 15], axis, 8, -128, 127)
 
+    def test_weight_only_linear_empty_batch_xpu(self):
+        paddle.disable_static()
+        paddle.set_device("xpu")
+
+        x = paddle.empty([0, 1, 512], dtype="float16")
+        weight_int32 = paddle.randint(low=-128, high=127, shape=[1024, 512])
+        weight = paddle.cast(weight_int32, "int8")
+        bias = paddle.zeros([1024], dtype="float16")
+        weight_scale = paddle.ones([1024], dtype="float16")
+
+        out = paddle.nn.quant.weight_only_linear(
+            x,
+            weight=weight,
+            bias=bias,
+            weight_scale=weight_scale,
+            weight_dtype="int8",
+        )
+        self.assertEqual(list(out.shape), [0, 1024])
+
 
 if __name__ == "__main__":
     unittest.main()

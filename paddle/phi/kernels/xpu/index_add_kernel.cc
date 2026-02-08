@@ -43,14 +43,14 @@ void IndexAddKernel(const Context& dev_ctx,
     return;
   }
   if (index.numel() == 0) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
   int dim = axis >= 0 ? axis : axis + input_dim.size();
-  auto input_vector = common::vectorize<int64_t>(input_dim);
+  auto input_vector = vectorize<int64_t>(input_dim);
   int64_t numel = add_value.numel();
   if (numel == 0) return;
   dev_ctx.template Alloc<T>(out);

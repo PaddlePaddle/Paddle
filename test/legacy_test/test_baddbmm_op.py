@@ -25,6 +25,7 @@ from op_test import (
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.framework import in_pir_mode
 
 
 class TestBaddBmmOp(OpTest):
@@ -199,7 +200,10 @@ class TestBaddBmmOpError(unittest.TestCase):
                 [[2]],
                 base.CPUPlace(),
             )
-            self.assertRaises(TypeError, paddle.baddbmm, input, x1, x2)
+            # After code sinking to C++, the error type changed from TypeError to ValueError
+            self.assertRaises(
+                (TypeError, ValueError), paddle.baddbmm, input, x1, x2
+            )
 
             paddle.enable_static()
             # The input dtype of baddbmm_op must be float32 or float64.
@@ -573,6 +577,156 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_api_out(self):
+        if in_pir_mode():
+            self.skipTest("PIR not support out tensor")
+        data_x = np.ones((2, 2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+        out = paddle.zeros((2, 2, 2), dtype='float32')
+        paddle_output = paddle.tensor.baddbmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha, out=out
+        )
+        numpy_output = data_beta * data_input + data_alpha * np.matmul(
+            data_x, data_y
+        )
+
+        # Check that the returned tensor is the same as the out tensor
+        self.assertIs(paddle_output, out)
+        # Check that the values are correct
+        np.testing.assert_allclose(numpy_output, out.numpy(), rtol=1e-05)
+
+        paddle.enable_static()
+
+    def test_api_alias(self):
+        data_x = np.ones((2, 2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+
+        # Test using original parameter names
+        paddle_output_original = paddle.tensor.baddbmm(
+            input=input, x=x, y=y, beta=data_beta, alpha=data_alpha
+        )
+
+        # Test using aliases
+        paddle_output_alias = paddle.tensor.baddbmm(
+            input=input, batch1=x, batch2=y, beta=data_beta, alpha=data_alpha
+        )
+
+        # Check that both outputs are the same
+        np.testing.assert_allclose(
+            paddle_output_original.numpy(),
+            paddle_output_alias.numpy(),
+            rtol=1e-05,
+        )
+
+        paddle.enable_static()
+
+    def test_api_out_dtype(self):
+        """Test out_dtype parameter for baddbmm"""
+        data_x = np.ones((2, 2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+
+        # Test with out_dtype=float64
+        paddle_output = paddle.tensor.baddbmm(
+            input=input,
+            x=x,
+            y=y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype=paddle.float64,
+        )
+        numpy_output = data_beta * data_input + data_alpha * np.matmul(
+            data_x, data_y
+        )
+
+        # Check that output dtype is float64
+        self.assertEqual(paddle_output.dtype, paddle.float64)
+        # Check that the values are correct
+        np.testing.assert_allclose(
+            numpy_output, paddle_output.numpy(), rtol=1e-05
+        )
+
+        # Test with out_dtype=None (should use input dtype)
+        paddle_output_none = paddle.tensor.baddbmm(
+            input=input,
+            x=x,
+            y=y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype=None,
+        )
+        self.assertEqual(paddle_output_none.dtype, paddle.float32)
+
+        paddle.enable_static()
+
+    def test_api_out_dtype_fp16(self):
+        """Test out_dtype parameter with float16"""
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
+            self.skipTest("CUDA is not available")
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("Float16 is not supported")
+
+        data_x = np.ones((2, 2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2, 2)).astype(np.float32)
+        data_alpha = 0.5
+        data_beta = 1.0
+
+        paddle.disable_static()
+        paddle.set_device('gpu')
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+
+        # Test with out_dtype=float16
+        paddle_output = paddle.tensor.baddbmm(
+            input=input,
+            x=x,
+            y=y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype=paddle.float16,
+        )
+
+        # Check that output dtype is float16
+        self.assertEqual(paddle_output.dtype, paddle.float16)
+
+        numpy_output = data_beta * data_input + data_alpha * np.matmul(
+            data_x, data_y
+        )
+        np.testing.assert_allclose(
+            numpy_output, paddle_output.numpy(), rtol=1e-02, atol=1e-02
+        )
+
+        paddle.enable_static()
+
 
 class TestBaddBmmBatch1Op(OpTest):
     # test basic
@@ -808,6 +962,42 @@ class TestBaddBmmUnderlineAPI(unittest.TestCase):
 
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-05
+        )
+
+        paddle.enable_static()
+
+    def test_api_alias(self):
+        data_x = np.ones((2, 2, 2)).astype(np.float32)
+        data_y = np.ones((2, 2, 2)).astype(np.float32)
+        data_input = np.ones((2, 2, 2)).astype(np.float32)
+        data_alpha = 0.1
+        data_beta = 1.0
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(data_x)
+        y = paddle.to_tensor(data_y)
+        input = paddle.to_tensor(data_input)
+
+        # Test using original parameter names
+        paddle_output_original = paddle.baddbmm_(
+            input=input.clone(), x=x, y=y, beta=data_beta, alpha=data_alpha
+        )
+
+        # Test using aliases
+        paddle_output_alias = paddle.baddbmm_(
+            input=input.clone(),
+            batch1=x,
+            batch2=y,
+            beta=data_beta,
+            alpha=data_alpha,
+        )
+
+        # Check that both outputs are the same
+        np.testing.assert_allclose(
+            paddle_output_original.numpy(),
+            paddle_output_alias.numpy(),
+            rtol=1e-05,
         )
 
         paddle.enable_static()

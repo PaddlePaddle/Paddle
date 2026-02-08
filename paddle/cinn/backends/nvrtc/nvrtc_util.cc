@@ -101,9 +101,7 @@ std::string Compiler::operator()(const std::string& code,
 
 Compiler::Compiler() {
   if (FLAGS_nvrtc_compile_to_cubin) {
-#if CUDA_VERSION >= 11010
     compile_to_cubin_ = true;
-#endif
   }
   VLOG(4) << "FLAGS_nvrtc_compile_to_cubin: " << FLAGS_nvrtc_compile_to_cubin
           << ", compile_to_cubin_: " << compile_to_cubin_;
@@ -155,7 +153,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   std::vector<std::string> compile_options;
   std::vector<const char*> param_cstrings{};
   nvrtcProgram prog;
-  std::string cc = "30";
+  std::string cc = "75";
   int major, minor;
   cudaError_t e1 =
       cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0);
@@ -166,7 +164,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     cc = std::to_string(major) + std::to_string(minor);
   } else {
     LOG(WARNING) << "cannot detect compute capability from your device, "
-                 << "fall back to compute_30.";
+                 << "fall back to compute_75.";
   }
   if (compile_to_cubin_) {
     compile_options.push_back("-arch=sm_" + cc);
@@ -290,9 +288,6 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
 
   return prefix_name_ + ".cubin";
 }
-
-// std::string Compiler::GetPtx() { return ReadFile(prefix_name_ + ".ptx",
-// std::ios::in); }
 
 void Compiler::CompileToPtx() {
   auto include_dir = cinn::common::Context::Global().runtime_include_dir();

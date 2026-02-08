@@ -298,10 +298,10 @@ class TestAmaxAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.amax(x, 1, True)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.amax(x=x, axis=1, keepdim=True)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.amax(input=x, dim=1, keepdim=True)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -335,9 +335,9 @@ class TestAmaxAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.amax(x, 1, True)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.amax(x=x, axis=1, keepdim=True)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.amax(input=x, dim=1, keepdim=True)
             # Combined args and kwargs
             out4 = paddle.amax(x, dim=1, keepdim=True)
@@ -381,10 +381,10 @@ class TestAminAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.amin(x, 1, True)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.amin(x=x, axis=1, keepdim=True)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.amin(input=x, dim=1, keepdim=True)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -418,9 +418,9 @@ class TestAminAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.amin(x, 1, True)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.amin(x=x, axis=1, keepdim=True)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.amin(input=x, dim=1, keepdim=True)
             # Combined args and kwargs
             out4 = paddle.amin(x, dim=1, keepdim=True)

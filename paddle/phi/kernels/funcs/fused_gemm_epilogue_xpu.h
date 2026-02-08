@@ -25,19 +25,19 @@ namespace funcs {
 
 template <typename T>
 void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
-                                         const phi::DenseTensor* dout,
-                                         const phi::DenseTensor* x,
-                                         const phi::DenseTensor* y,
-                                         const phi::DenseTensor* reserve_space,
+                                         const DenseTensor* dout,
+                                         const DenseTensor* x,
+                                         const DenseTensor* y,
+                                         const DenseTensor* reserve_space,
                                          int64_t M,
                                          int64_t N,
                                          int64_t K,
                                          bool trans_x,
                                          bool trans_y,
                                          const std::string& activation_grad,
-                                         phi::DenseTensor* dx,
-                                         phi::DenseTensor* dy,
-                                         phi::DenseTensor* dbias,
+                                         DenseTensor* dx,
+                                         DenseTensor* dy,
+                                         DenseTensor* dbias,
                                          bool use_addto_dx = false,
                                          bool use_addto_dy = false) {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -87,7 +87,7 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
       common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
   phi::XpuFcInfo info_forward;
   phi::GetFCInfo(
-      x_mat_dims, common::make_ddim({K, N}), trans_x, trans_y, &info_forward);
+      x_mat_dims, make_ddim({K, N}), trans_x, trans_y, &info_forward);
 
   // 2. fc_grad
   const XPUType* a_1 = reinterpret_cast<const XPUType*>(NULL);

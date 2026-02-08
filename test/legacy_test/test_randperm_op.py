@@ -396,12 +396,12 @@ class TestRandpermNewParams(unittest.TestCase):
 
         self.requires_grads = [True, False]
         self.dtypes = ["int32", "int64", "float32", "float64"]
-        self.pin_memorys = [False]
+        self.pin_memories = [False]
         if (
             paddle.device.is_compiled_with_cuda()
             and not paddle.device.is_compiled_with_rocm()
         ):
-            self.pin_memorys.append(True)
+            self.pin_memories.append(True)
 
     def test_device_parameter(self):
         """Test device parameter"""
@@ -432,7 +432,7 @@ class TestRandpermNewParams(unittest.TestCase):
             return
 
         with dygraph_guard():
-            for pin_memory in self.pin_memorys:
+            for pin_memory in self.pin_memories:
                 for device in ["gpu", "gpu:0", paddle.CUDAPlace(0)]:
                     x = paddle.randperm(
                         self.n,
@@ -462,21 +462,21 @@ class TestRandpermNewParams(unittest.TestCase):
 
     def test_parameter_combinations(self):
         """Test combinations of all parameters"""
-        pin_memorys = [False]
+        pin_memories = [False]
         if not paddle.device.is_compiled_with_cuda():
             # Skip combinations that require CUDA
             devices = [paddle.CPUPlace(), "cpu"]
         else:
             devices = [paddle.CPUPlace(), "cpu", paddle.CUDAPlace(0), "gpu"]
             if not paddle.device.is_compiled_with_rocm():
-                pin_memorys = [False, True]
+                pin_memories = [False, True]
 
         with dygraph_guard():
             for device, requires_grad, dtype, pin_memory in product(
                 devices,
                 self.requires_grads,
                 ["float32", "float64"],
-                pin_memorys,
+                pin_memories,
             ):
                 # Skip invalid combinations
                 if device in [paddle.CPUPlace(), "cpu"] and pin_memory:

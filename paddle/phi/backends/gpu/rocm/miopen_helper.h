@@ -68,14 +68,6 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= CUDNN_VERSION_COMPUTE(major, minor, patch))
 
-enum class DataLayout {  // Not use
-  kNHWC,
-  kNCHW,
-  kNCDHW,
-  kNDHWC,  // add, liyamei
-  kNCHW_VECT_C,
-};
-
 enum class PoolingMode {
   kMaximum,
   kMaximumDeterministic,
@@ -185,13 +177,13 @@ class CudnnDataType<float> {
 
 inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
   switch (order) {
-    case DataLayout::kNHWC:
+    case DataLayout::NHWC:
       return MIOPEN_TENSOR_NHWC;
-    case DataLayout::kNCHW:
+    case DataLayout::NCHW:
       return MIOPEN_TENSOR_NCHW;
-    case DataLayout::kNCDHW:
+    case DataLayout::NCDHW:
       return MIOPEN_TENSOR_NCHW;
-    case DataLayout::kNDHWC:
+    case DataLayout::NDHWC:
       return MIOPEN_TENSOR_NHWC;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -199,7 +191,6 @@ inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
   }
   return MIOPEN_TENSOR_NCHW;
 }
-
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
@@ -296,10 +287,10 @@ class ScopedDropoutDescriptor {
   }
 
   inline miopenDropoutDescriptor_t descriptor(const miopenHandle_t& handle,
-                                              const phi::Place& place,
+                                              const Place& place,
                                               bool initialized,
                                               float dropout_prob_,
-                                              phi::DenseTensor* dropout_state_,
+                                              DenseTensor* dropout_state_,
                                               int seed,
                                               size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test

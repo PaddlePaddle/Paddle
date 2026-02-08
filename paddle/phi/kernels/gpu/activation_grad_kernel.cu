@@ -103,6 +103,21 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);              \
   }
 
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(  \
+    name, functor_class, attr)                                  \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& x,                   \
+                        const DenseTensor& dout,                \
+                        double attr,                            \
+                        DenseTensor* dx) {                      \
+    funcs::functor_class<T> functor;                            \
+    auto attrs = functor.GetAttrs();                            \
+    *(attrs[0].second) = attr;                                  \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, &x, nullptr, &dout, dx, functor);              \
+  }
+
 #define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(         \
     name, functor_class, attr1, attr2)                          \
   template <typename T, typename Context>                       \
@@ -241,9 +256,9 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log10, CudaLog10GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Log1p, CudaLog1pGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, CudaSwishGradFunctor);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               CudaLeakyReluGradFunctor,
-                                               alpha);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      CudaLeakyReluGradFunctor,
+                                                      alpha);
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
                                                CudaSoftShrinkGradFunctor,
                                                lambda);
@@ -343,14 +358,14 @@ void PowGradKernel(const Context& dev_ctx,
                    const Scalar& factor,
                    DenseTensor* dx) {
   if (factor.to<double>() == 0) {
-    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
+    std::vector<int64_t> vec_dims = vectorize(dx->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), dx);
     return;
   }
   if (factor.to<double>() == 1) {
-    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
-    phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    std::vector<int64_t> vec_dims = vectorize(dx->dims());
+    Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     return;
   }
   if (factor.to<double>() == 2) {

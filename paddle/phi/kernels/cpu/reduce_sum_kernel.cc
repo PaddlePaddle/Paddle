@@ -41,18 +41,9 @@ void SumRawKernel(const Context& dev_ctx,
     // result is int64, but FullKernel out_dtype parameter is not used, we need
     // to set int64 explicitly.
     if (out_dtype == DataType::INT64) {
-      FullKernel<int64_t, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(out->dims())),
-          0,
-          out_dtype,  // not used
-          out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      FullKernel<T, Context>(dev_ctx,
-                             phi::IntArray(common::vectorize(out->dims())),
-                             0,
-                             out_dtype,  // not used
-                             out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -64,7 +55,7 @@ void SumRawKernel(const Context& dev_ctx,
       final_out_dtype = x.dtype();
     }
     if (final_out_dtype == DataType::FLOAT32) {
-      phi::Reduce<CPUContext, float, phi::funcs::SumFunctor>(
+      phi::Reduce<CPUContext, float, funcs::SumFunctor>(
           dev_ctx,
           x_fp32,
           reduce_all,
@@ -75,7 +66,7 @@ void SumRawKernel(const Context& dev_ctx,
     } else {
       DenseTensor intermediate_result;
       intermediate_result.set_meta(out->meta());
-      phi::Reduce<CPUContext, float, phi::funcs::SumFunctor>(
+      phi::Reduce<CPUContext, float, funcs::SumFunctor>(
           dev_ctx,
           x_fp32,
           reduce_all,
@@ -88,7 +79,7 @@ void SumRawKernel(const Context& dev_ctx,
           dev_ctx, intermediate_result, final_out_dtype, out);
     }
   } else {
-    phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
+    phi::Reduce<CPUContext, T, funcs::SumFunctor>(
         dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
   }
 }

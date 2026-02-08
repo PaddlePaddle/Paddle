@@ -24,41 +24,62 @@ namespace phi {
 using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
 using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
 
-enum XPU_FA_TGEMM {
+enum XPU_FA_DTYPE {
   FA_FLOAT = 0,
   FA_TFLOAT32,
   FA_FLOAT16,
+  FA_BFLOAT16,
+  FA_INT32,
 };
 
-template <typename T>
-XPU_FA_TGEMM get_flash_attn_tgemm() {
-  const char* xpu_paddle_fa_float16 =
-      std::getenv("XPU_PADDLE_FA_TGEMM_FLOAT16");
-  if (xpu_paddle_fa_float16 != nullptr &&
-      (std::is_same<phi::float16, T>::value ||
-       std::is_same<XPUTypeFP16, T>::value)) {
-    return XPU_FA_TGEMM::FA_FLOAT16;
-  } else if ((std::is_same<phi::bfloat16, T>::value ||
-              std::is_same<XPUTypeBF16, T>::value) &&
-             std::getenv("XPU_PADDLE_FA_BFLOAT16_XTE") != nullptr) {
-    return XPU_FA_TGEMM::FA_FLOAT16;
-  } else if (std::getenv("XPU_PADDLE_FA_TGEMM_FLOAT") != nullptr) {
-    return XPU_FA_TGEMM::FA_FLOAT;
+inline bool get_env_flag(const char* env_name) {
+  const char* env = std::getenv(env_name);
+  return env != nullptr && std::strcmp(env, "1") == 0;
+}
+
+template <typename T>  // for bfloat16 and float16
+XPU_FA_DTYPE get_flash_attn_tgemm() {
+  if (get_env_flag("XPU_PADDLE_FA_TGEMM_FLOAT16")) {
+    return XPU_FA_DTYPE::FA_FLOAT16;
+  } else if (get_env_flag("XPU_PADDLE_FA_TGEMM_FLOAT")) {
+    return XPU_FA_DTYPE::FA_FLOAT;
   } else {
-    return XPU_FA_TGEMM::FA_TFLOAT32;
+    return XPU_FA_DTYPE::FA_TFLOAT32;
   }
 }
 
-static void GenerateRNGState(
-    const XPUContext& dev_ctx,
-    const paddle::optional<DenseTensor>& fixed_seed_offset,
-    int64_t* seed_offset_data,
-    const std::string& rng_name,
-    const int64_t batch_size,
-    const int64_t num_heads) {
+template <>  // for float
+inline XPU_FA_DTYPE get_flash_attn_tgemm<float>() {
+  if (get_env_flag("XPU_PADDLE_FA_TGEMM_FLOAT")) {
+    return XPU_FA_DTYPE::FA_FLOAT;
+  } else {
+    return XPU_FA_DTYPE::FA_TFLOAT32;
+  }
+}
+
+template <typename T>  // for bfloat16 and float16
+XPU_FA_DTYPE get_flash_attn_taccum() {
+  if (get_env_flag("XPU_PADDLE_FA_TACCUM_FLOAT16")) {
+    return XPU_FA_DTYPE::FA_FLOAT16;
+  } else {
+    return XPU_FA_DTYPE::FA_FLOAT;
+  }
+}
+
+template <>  // for float
+inline XPU_FA_DTYPE get_flash_attn_taccum<float>() {
+  return XPU_FA_DTYPE::FA_FLOAT;
+}
+
+static void GenerateRNGState(const XPUContext& dev_ctx,
+                             const optional<DenseTensor>& fixed_seed_offset,
+                             int64_t* seed_offset_data,
+                             const std::string& rng_name,
+                             const int64_t batch_size,
+                             const int64_t num_heads) {
   if (fixed_seed_offset.get_ptr()) {
-    if ((fixed_seed_offset->place()).GetType() == phi::AllocationType::XPU) {
-      memory_utils::Copy(phi::CPUPlace(),
+    if ((fixed_seed_offset->place()).GetType() == AllocationType::XPU) {
+      memory_utils::Copy(CPUPlace(),
                          seed_offset_data,
                          fixed_seed_offset->place(),
                          fixed_seed_offset->data<int64_t>(),

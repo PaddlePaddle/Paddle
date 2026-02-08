@@ -34,7 +34,7 @@ inline void SubmPreProcess(const Context& dev_ctx,
                            const int half_kernel_size,
                            DenseTensor* kernel_grad,
                            DenseTensor* x_grad) {
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   const bool is_params_freezing = kernel_grad == nullptr;
   if (!is_params_freezing) {
     T* d_kernel_ptr = kernel_grad->data<T>();

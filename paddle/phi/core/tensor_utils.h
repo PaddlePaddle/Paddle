@@ -121,24 +121,23 @@ void Copy(const Context& dev_ctx,
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const phi::DeviceContext& ctx,
-                      phi::DenseTensor* dst);
+                      DenseTensor* dst);
 
 template <typename T>
 void TensorFromArray(const T* src,
                      const size_t& array_size,
                      const phi::DeviceContext& ctx,
-                     phi::DenseTensor* dst);
+                     DenseTensor* dst);
 
 template <typename T>
-void TensorToVector(const phi::DenseTensor& src,
+void TensorToVector(const DenseTensor& src,
                     const phi::DeviceContext& ctx,
                     std::vector<T>* dst);
 
-TEST_API phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
-                                          int num_col_dims);
+TEST_API DenseTensor ReshapeToMatrix(const DenseTensor& src, int num_col_dims);
 
 template <typename T>
-T GetValue(const phi::DenseTensor* x);
+T GetValue(const DenseTensor* x);
 
 template <typename T, typename Context>
 inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
@@ -154,6 +153,6 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
 }
 
 template <typename T = int32_t>
-std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x);
+std::vector<T> GetVectorFromTensor(const DenseTensor* x);
 
 }  // namespace phi

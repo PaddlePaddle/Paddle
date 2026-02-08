@@ -34,12 +34,14 @@ class QuantizeLinearOpConverter : public OpConverter {
         common::errors::NotFound("Can not find %s persistable var in scope.",
                                  op_desc.Input("Scale")[0]));
     auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
-    int n_scale = scale_t->numel();
+    int64_t n_scale = scale_t->numel();
     std::vector<float> scale_data(n_scale, 0.0f);
-    for (int i = 0; i < n_scale; ++i) {
+    for (int64_t i = 0; i < n_scale; ++i) {
       scale_data[i] = scale_t->data<float>()[i] / 127.0f;
     }
-    nvinfer1::Dims scale_dim{1, { n_scale }};
+    // TODO(large-tensor): nvinfer1::Dims not support int64
+    PADDLE_ENFORCE_LE_INT_MAX(n_scale, "n_scale");
+    nvinfer1::Dims scale_dim{1, { static_cast<int>(n_scale) }};
     auto* scale = AddConstantLayer(scale_data.data(), scale_dim);
 
     // Add quantize layer

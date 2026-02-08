@@ -16,10 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/common/memory_utils.h"
-// TODO(paddle-dev): move gpu_primitives.h to phi
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -81,9 +80,6 @@ void GPUGatherNd(const phi::GPUContext& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
-  const auto gplace = dev_ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
-
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
   auto input_dims = input.dims();
@@ -96,7 +92,7 @@ void GPUGatherNd(const phi::GPUContext& dev_ctx,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
   int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
@@ -155,9 +151,11 @@ __global__ void GatherGPUKernel(const T* input,
                                 int64_t input_index_dim_size,
                                 int64_t size) {
   int64_t block_size = blockDim.x;
-  int64_t idx = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  int64_t idx =
+      (static_cast<int64_t>(blockIdx.x) * block_size + threadIdx.x) * VecSize;
   int64_t outer_size = outer_dim_size * out_index_dim_size;
-  for (; idx < size; idx += gridDim.x * block_size * VecSize) {
+  for (; idx < size;
+       idx += static_cast<int64_t>(gridDim.x) * block_size * VecSize) {
     int64_t inner_dim_index = idx / outer_size;
     int64_t next_idx = idx % outer_size;
     int64_t index_dim_index = next_idx / outer_dim_size;
@@ -208,7 +206,7 @@ __global__ void GatherGradGPUKernel(const T* input,
     int64_t out_index =
         inner_dim_index * (outer_dim_size * out_index_dim_size) +
         index[index_dim_index] * outer_dim_size + out_dim_index;
-    phi::CudaAtomicAdd(out + out_index, *(input + idx));
+    CudaAtomicAdd(out + out_index, *(input + idx));
   }
 }
 
@@ -242,7 +240,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  auto out_dim = common::make_ddim(out_dim_vec);
+  auto out_dim = make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
   auto* out_data = dev_ctx.Alloc<T>(out);
@@ -329,7 +327,7 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
   auto* out_data = dev_ctx.Alloc<T>(out);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  phi::funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
+  funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_size);
   auto stream = dev_ctx.stream();

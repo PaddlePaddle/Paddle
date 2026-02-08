@@ -52,7 +52,7 @@ void ClipGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {x_grad};
   auto functor = ClipGradFunctor<T>(min_, max_);
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 #else
   int64_t numel = out_grad.numel();
   auto* d_x_data = dev_ctx.template Alloc<T>(x_grad);

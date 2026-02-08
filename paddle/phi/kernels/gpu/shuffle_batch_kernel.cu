@@ -53,19 +53,19 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   for (int i = 0; i < x.dims().size() - 1; i++) {
     elem_size *= x.dims()[i];
   }
-  shuffleidx->Resize(common::make_ddim({elem_size}));
+  shuffleidx->Resize(make_ddim({elem_size}));
 
   int64_t seed_int = 0;
   if (seed.initialized()) {
     const auto& seed_place = seed.place().GetType();
-    bool is_gpu_place = seed_place == phi::AllocationType::GPU ||
-                        seed_place == phi::AllocationType::CUSTOM;
+    bool is_gpu_place = seed_place == AllocationType::GPU ||
+                        seed_place == AllocationType::CUSTOM;
     if (is_gpu_place) {
       // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would
       // not be CUDAPlace in practice. This case would only happen in Python
       // op_test framework.
-      phi::DenseTensor tmp_tensor;
-      phi::Copy(dev_ctx, seed, phi::CPUPlace(), false, &tmp_tensor);
+      DenseTensor tmp_tensor;
+      Copy(dev_ctx, seed, CPUPlace(), false, &tmp_tensor);
       seed_int = *(tmp_tensor.data<int64_t>());
     } else {
       seed_int = *(seed.data<int64_t>());
@@ -87,7 +87,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   thrust::random::default_random_engine engine(seed_int);
   thrust::counting_iterator<int64_t> cnt_iter(0);
 #ifdef PADDLE_WITH_CUDA
-  phi::funcs::shuffle_copy_fixed(
+  funcs::shuffle_copy_fixed(
       thrust::detail::derived_cast(thrust::detail::strip_const(exec_policy)),
 #else
   thrust::shuffle_copy(exec_policy,
@@ -101,10 +101,9 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(out);
   ReorderFunctor<T, true> functor(
       x_data, shuffleidx_data, out_data, x_embed_size);
-  phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx,
-                                                  elem_size * x_embed_size);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, elem_size * x_embed_size);
   for_range(functor);
-  seed_out->Resize(common::make_ddim({1}));
+  seed_out->Resize(make_ddim({1}));
   auto* seed_out_data = dev_ctx.template HostAlloc<int64_t>(seed_out);
   *seed_out_data = engine();
 #endif

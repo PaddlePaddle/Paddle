@@ -38,12 +38,12 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
     auto N = w.dims()[0];
     auto D = w.dims()[1];
 
-    auto x_tmp = std::make_shared<phi::DenseTensor>();
+    auto x_tmp = std::make_shared<DenseTensor>();
     x_tmp->ShareDataWith(ids).Resize({K});
-    auto w_tmp = std::make_shared<phi::DenseTensor>();
+    auto w_tmp = std::make_shared<DenseTensor>();
     w_tmp->set_meta(w.meta());
     dev_ctx.Alloc(w_tmp.get(), w_tmp->dtype());
-    auto out_grad_tmp = std::make_shared<phi::DenseTensor>();
+    auto out_grad_tmp = std::make_shared<DenseTensor>();
     out_grad_tmp->ShareDataWith(out_grad).Resize({K, D});
     paddle::Tensor x_tensor(x_tmp), w_tensor(w_tmp),
         out_grad_tensor(out_grad_tmp);
@@ -71,7 +71,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                                          false,
                                          &w_grad_tensor);
     w_grad->ShareDataWith(
-        *reinterpret_cast<phi::DenseTensor*>(w_grad_tensor.impl().get()));
+        *reinterpret_cast<DenseTensor*>(w_grad_tensor.impl().get()));
 
   } else {
     PADDLE_THROW(common::errors::Unavailable(

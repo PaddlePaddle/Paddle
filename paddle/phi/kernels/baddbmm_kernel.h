@@ -25,6 +25,7 @@ void BaddbmmKernel(const Context& dev_ctx,
                    const DenseTensor& y,
                    float beta,
                    float alpha,
+                   DataType out_dtype,
                    DenseTensor* out);
 
 }  // namespace phi

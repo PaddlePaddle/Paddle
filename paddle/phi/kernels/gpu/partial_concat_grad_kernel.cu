@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include "paddle/phi/kernels/gpu/partial_concat_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #include "paddle/phi/common/memory_utils.h"
@@ -33,7 +33,9 @@ __global__ void ConcatPartialGradCUDAKernel(T **in,
                                             int64_t start_index,
                                             int64_t out_batch_len,
                                             int64_t part_length) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   while (id < all_length) {
     int64_t bs_id = id / out_batch_len;
     int64_t bs_index = id % out_batch_len;
@@ -75,7 +77,7 @@ void PartialConcatGradOpCUDAKernel(const Context &dev_ctx,
   auto &place = *dev_ctx.eigen_device();
   for (size_t i = 0; i < outs.size(); ++i) {
     dev_ctx.template Alloc<T>(outs[i]);
-    auto dxt = phi::EigenVector<T>::Flatten(*outs[i]);
+    auto dxt = EigenVector<T>::Flatten(*outs[i]);
     dxt.device(place) = dxt.constant(static_cast<T>(0));
   }
 
@@ -108,7 +110,7 @@ void PartialConcatGradOpCUDAKernel(const Context &dev_ctx,
 
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           tmp_out_array->ptr(),
-                          phi::CPUPlace(),
+                          CPUPlace(),
                           reinterpret_cast<void *>(out_data.data()),
                           out_data.size() * sizeof(T *),
                           dev_ctx.stream());

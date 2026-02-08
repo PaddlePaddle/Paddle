@@ -21,6 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/psroi_pool_grad_kernel.h"
 #include "paddle/phi/kernels/psroi_pool_kernel.h"
 
 namespace phi {
@@ -46,7 +47,9 @@ __global__ void GPUPSROIPoolBackward(const int64_t nthreads,
                                      const int pooled_width,
                                      const int* rois_batch_id_data,
                                      T* dx_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
   for (int64_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
@@ -97,7 +100,7 @@ __global__ void GPUPSROIPoolBackward(const int64_t nthreads,
     for (int ih = hstart; ih < hend; ++ih) {
       for (int iw = wstart; iw < wend; ++iw) {
         int input_index = ih * width + iw;
-        phi::CudaAtomicAdd(offset_dx_data + input_index, diff_val);
+        CudaAtomicAdd(offset_dx_data + input_index, diff_val);
       }
     }
   }
@@ -107,17 +110,20 @@ template <typename T, typename Context>
 void PsroiPoolGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
-                         const paddle::optional<DenseTensor>& rois_num,
+                         const optional<DenseTensor>& rois_num,
                          const DenseTensor& dout,
                          int pooled_height,
                          int pooled_width,
                          int output_channels,
                          float spatial_scale,
                          DenseTensor* dx) {
-  int rois_num_t = rois.dims()[0];
-  int input_channels = x.dims()[1];
-  int height = x.dims()[2];
-  int width = x.dims()[3];
+  int64_t rois_num_t = rois.dims()[0];
+
+  int64_t input_channels = x.dims()[1];
+
+  int64_t height = x.dims()[2];
+
+  int64_t width = x.dims()[3];
 
   if (dx) {
     // set roi batch id

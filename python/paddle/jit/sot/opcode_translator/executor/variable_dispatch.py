@@ -80,6 +80,7 @@ from .variables import (
     NumPyArrayVariable,
     NumPyVariable,
     RangeVariable,
+    SizeVariable,
     SliceVariable,
     SuperVariable,
     SymbolicVariable,
@@ -262,6 +263,78 @@ Dispatcher.register(
         tracker=GetAttrTracker(var, "__class__"),
     ),
 )
+
+# Size
+Dispatcher.register(
+    paddle.Size,
+    ("IterVariable",),
+    lambda var: SizeVariable(
+        var.to_list(),
+        graph=var.graph,
+        tracker=DummyTracker([var]),
+    ),
+)
+
+Dispatcher.register(
+    paddle.Size,
+    ("ContainerVariable",),
+    lambda var: SizeVariable(
+        list(var.get_wrapped_items()),
+        graph=var.graph,
+        tracker=DummyTracker([var]),
+    ),
+)
+
+Dispatcher.register(
+    operator.add,
+    ("SizeVariable", "ListVariable | TupleVariable | SizeVariable"),
+    lambda var, other: var.concat(other),
+)
+
+Dispatcher.register(
+    operator.add,
+    ("ListVariable | TupleVariable | SizeVariable", "SizeVariable"),
+    lambda var, other: SizeVariable.from_sequence_var(var).concat(other),
+)
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dispatch_size_sequence_eq(
+    lhs: SizeVariable, rhs: TupleVariable | ListVariable | SizeVariable
+):
+    if len(lhs) != len(rhs):
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+    size = len(lhs)
+    return ConstantVariable(
+        all(
+            Dispatcher.call(operator.eq, lhs[i], rhs[i]).get_py_value()
+            for i in range(size)
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dispatch_sequence_size_eq(
+    lhs: TupleVariable | ListVariable | SizeVariable, rhs: SizeVariable
+):
+    return Dispatcher.call(operator.eq, rhs, lhs)
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_size_sequence_ne(
+    lhs: SizeVariable, rhs: TupleVariable | ListVariable | SizeVariable
+):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_sequence_size_ne(
+    lhs: TupleVariable | ListVariable | SizeVariable, rhs: SizeVariable
+):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 # dict
 Dispatcher.register(
@@ -545,6 +618,12 @@ Dispatcher.register(
     operator.mul,
     ("ListVariable | TupleVariable", "ConstantVariable"),
     lambda var, other: var.repeat(other),
+)
+
+Dispatcher.register(
+    operator.mul,
+    ("ConstantVariable", "ListVariable | TupleVariable"),
+    lambda var, other: other.repeat(var),
 )
 
 

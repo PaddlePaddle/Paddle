@@ -60,7 +60,7 @@ SparseConvOptimPass::SparseConvOptimPass() {
 }
 
 void SparseConvOptimPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "sparse_conv_optim_partern";
+  const std::string pattern_name = "sparse_conv_optim_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
@@ -70,7 +70,7 @@ void SparseConvOptimPass::ApplyImpl(ir::Graph* graph) const {
       common::errors::InvalidArgument(
           "Scope in SparseConvOptimPass should not be null."));
   // Create pattern
-  patterns::SparseConvOptimPartern pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::SparseConvOptimPattern pattern(gpd.mutable_pattern(), pattern_name);
   pattern();
   int found_count = 0;
 

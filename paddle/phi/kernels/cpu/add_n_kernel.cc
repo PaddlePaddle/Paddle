@@ -48,11 +48,11 @@ void AddNKernel(const Context& dev_ctx,
     auto result = EigenVector<T>::Flatten(*out);
 
     if (!in_place) {
-      phi::funcs::SetConstant<Context, T> constant_functor;
+      funcs::SetConstant<Context, T> constant_functor;
       constant_functor(dev_ctx, out, static_cast<T>(0));
     }
 
-    phi::funcs::SelectedRowsAddToTensor<Context, T> functor;
+    funcs::SelectedRowsAddToTensor<Context, T> functor;
     size_t start = in_place ? 1 : 0;
     for (size_t i = start; i < in_num; i++) {
       if (DenseTensor::classof(x[i])) {
@@ -82,7 +82,7 @@ void AddNKernel(const Context& dev_ctx,
     auto result_mp = EigenVector<MPType>::Flatten(temp_out);
 
     // set temp_out
-    phi::funcs::SetConstant<Context, MPType> constant_functor;
+    funcs::SetConstant<Context, MPType> constant_functor;
     if (in_place && DenseTensor::classof(x[0]) && x[0]->initialized()) {
       auto& in_0 = *(static_cast<const DenseTensor*>(x[0]));
       if (in_0.numel()) {
@@ -95,7 +95,7 @@ void AddNKernel(const Context& dev_ctx,
       constant_functor(dev_ctx, &temp_out, static_cast<MPType>(0));
     }
 
-    phi::funcs::SelectedRowsAddToTensor<Context, MPType> functor;
+    funcs::SelectedRowsAddToTensor<Context, MPType> functor;
     size_t start = in_place ? 1 : 0;
     for (size_t i = start; i < in_num; i++) {
       if (DenseTensor::classof(x[i])) {

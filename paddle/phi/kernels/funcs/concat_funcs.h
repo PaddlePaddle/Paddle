@@ -34,10 +34,9 @@ static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   return axis > 0 ? axis : 0;
 }
 
-static inline phi::DDim ComputeAndCheckShape(
-    bool is_runtime,
-    const std::vector<phi::DDim>& inputs_dims,
-    const size_t axis) {
+static inline DDim ComputeAndCheckShape(bool is_runtime,
+                                        const std::vector<DDim>& inputs_dims,
+                                        const size_t axis) {
   const size_t n = inputs_dims.size();
   auto out_dims = inputs_dims[0];
   size_t in_zero_dims_size = out_dims.size();

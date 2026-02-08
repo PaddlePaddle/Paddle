@@ -40,15 +40,15 @@ void RenormGradKernel(const Context& dev_ctx,
   if (dx && dx->numel() == 0) {
     return;
   }
-  phi::funcs::RenormGradFunc(dev_ctx,
-                             x_data,
-                             dout_data,
-                             dx->data<T>(),
-                             p,
-                             dim,
-                             max_norm,
-                             dimension_each,
-                             input_dims,
-                             numel);
+  funcs::RenormGradFunc(dev_ctx,
+                        x_data,
+                        dout_data,
+                        dx->data<T>(),
+                        p,
+                        dim,
+                        max_norm,
+                        dimension_each,
+                        input_dims,
+                        numel);
 }
 }  // namespace phi

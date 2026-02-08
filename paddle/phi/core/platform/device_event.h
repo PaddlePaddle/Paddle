@@ -18,9 +18,7 @@
 /*
  * NOTE: Now we generate this file manually and will consider
  *  automatically generate it later. Just as 'paddle/fluid/pybind/pybind.h'
- *  for USE_OP from op_library macros, and
- * `paddle/fluid/inference/paddle_inference_pass.h`
- *  for USE_PASS from pass_library.
+ *  for USE_OP from op_library macros.
  */
 
 using ::paddle::platform::kCPU;

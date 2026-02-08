@@ -55,6 +55,7 @@ class OperationInfo {
   std::string name_;
   std::vector<ValueInfo> input_infos_;
   std::vector<ValueInfo> output_infos_;
+  std::vector<::symbol::ShapeOrDataDimExprs> output_infos_symbol_;
   std::vector<AttributeInfo> attr_infos_;
 };
 
@@ -111,6 +112,7 @@ class FusionInfo {
   FusionInfo(FusionInfo &&) = default;
 
   std::size_t hash() const;
+  std::string unique_fn_name() const { return unique_fn_name_; }
 
   bool operator==(const FusionInfo &other) const {
     return this->hash() == other.hash();
@@ -124,6 +126,7 @@ class FusionInfo {
 
   std::vector<FusionOpInfo> op_infos_;
   std::vector<::symbol::ShapeOrDataDimExprs> input_dim_exprs_;
+  std::vector<::symbol::ShapeOrDataDimExprs> output_dim_exprs_;
   std::shared_ptr<ProgramInfo> program_info_;
   std::size_t cached_hash_value_{0};
 

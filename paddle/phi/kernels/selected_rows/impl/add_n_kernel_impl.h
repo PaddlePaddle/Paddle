@@ -38,7 +38,7 @@ void AddNKernel(const Context &dev_ctx,
     return;
   }
 
-  std::vector<const phi::SelectedRows *> inputs;
+  std::vector<const SelectedRows *> inputs;
   SelectedRows temp_in0;
 
   if (in_place) {
@@ -73,7 +73,7 @@ void AddNKernel(const Context &dev_ctx,
     }
   }
   if (has_data) {
-    phi::funcs::scatter::MergeAdd<Context, T> merge_add;
+    funcs::scatter::MergeAdd<Context, T> merge_add;
     merge_add(dev_ctx, inputs, out);
 
     out->SyncIndex();
@@ -82,7 +82,7 @@ void AddNKernel(const Context &dev_ctx,
     // no data, just set a empty out tensor.
     auto *out_dense = out->mutable_value();
     out_dense->clear();
-    out_dense->Resize(common::make_ddim({0}));
+    out_dense->Resize(make_ddim({0}));
     dev_ctx.template Alloc<T>(out_dense);
   }
 }

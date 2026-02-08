@@ -29,15 +29,15 @@ static void LerpFunction(const Context& dev_ctx,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   const auto& out_dims = out->dims();
-  auto x_dims = phi::funcs::ExtendDims2Rank(x.dims(), D);
-  auto y_dims = phi::funcs::ExtendDims2Rank(y.dims(), D);
-  auto w_dims = phi::funcs::ExtendDims2Rank(weight.dims(), D);
+  auto x_dims = funcs::ExtendDims2Rank(x.dims(), D);
+  auto y_dims = funcs::ExtendDims2Rank(y.dims(), D);
+  auto w_dims = funcs::ExtendDims2Rank(weight.dims(), D);
   Eigen::DSizes<int, D> x_bcast_dims;
   Eigen::DSizes<int, D> y_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  phi::funcs::GetBroadcastDims<D>(x_dims, out_dims, &x_bcast_dims);
-  phi::funcs::GetBroadcastDims<D>(y_dims, out_dims, &y_bcast_dims);
-  phi::funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
+  funcs::GetBroadcastDims<D>(x_dims, out_dims, &x_bcast_dims);
+  funcs::GetBroadcastDims<D>(y_dims, out_dims, &y_bcast_dims);
+  funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
 
   auto eigen_x = phi::EigenTensor<T, D>::From(x, x_dims);
   auto eigen_y = phi::EigenTensor<T, D>::From(y, y_dims);
@@ -62,7 +62,7 @@ static void LerpFunctionZero(const Context& dev_ctx,
                              DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  auto dim = common::make_ddim(std::vector<int64_t>(1, 1));
+  auto dim = make_ddim(std::vector<int64_t>(1, 1));
   auto eigen_x = phi::EigenTensor<T, 1>::From(x, dim);
   auto eigen_y = phi::EigenTensor<T, 1>::From(y, dim);
   auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);

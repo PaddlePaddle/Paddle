@@ -45,7 +45,7 @@ def batch(
         generator
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> def reader():
@@ -55,7 +55,6 @@ def batch(
 
             >>> for data in batch_reader():
             ...     print(data)
-            ...
             [0, 1]
             [2, 3]
             [4, 5]

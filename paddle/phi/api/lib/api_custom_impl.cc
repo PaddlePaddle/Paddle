@@ -205,7 +205,11 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     }
     auto kernel_out = SetKernelOutput(&api_output);
     phi::MetaTensor meta_out(kernel_out);
+
+    std::vector<phi::MetaTensor*> output_metas_for_compact;
+    output_metas_for_compact.push_back(&meta_out);
     phi::AddNInferMeta(x_metas, &meta_out);
+    CheckAndDoCompact(output_metas_for_compact, "add_n");
 
     using kernel_signature =
         void (*)(const phi::DeviceContext&,
@@ -504,6 +508,10 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
   phi::MetaTensor meta_out_0(kernel_out_0, kernel_result.is_stride_kernel);
   phi::MetaTensor meta_out_1(kernel_out_1, kernel_result.is_stride_kernel);
 
+  std::vector<phi::MetaTensor*> output_metas_for_compact;
+  if (kernel_out_0) output_metas_for_compact.push_back(&meta_out_0);
+  if (kernel_out_1) output_metas_for_compact.push_back(&meta_out_1);
+
   phi::FusedGemmEpilogueInferMeta(MakeMetaTensor(*input_x),
                                   MakeMetaTensor(*input_y),
                                   MakeMetaTensor(*input_bias),
@@ -512,6 +520,7 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
                                   activation,
                                   kernel_out_0 ? &meta_out_0 : nullptr,
                                   kernel_out_1 ? &meta_out_1 : nullptr);
+  CheckAndDoCompact(output_metas_for_compact, "fused_gemm_epilogue");
 
   if (infer_shape_record_event != nullptr) {
     delete infer_shape_record_event;
@@ -1191,6 +1200,15 @@ std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> cudnn_lstm_grad_impl(
     kernel_out_3_metas[i] =
         kernel_out_3[i] ? &kernel_out_3_meta_vec[i] : nullptr;
   }
+
+  std::vector<phi::MetaTensor*> output_metas_for_compact;
+  if (kernel_out_0) output_metas_for_compact.push_back(&meta_out_0);
+  if (kernel_out_1) output_metas_for_compact.push_back(&meta_out_1);
+  if (kernel_out_2) output_metas_for_compact.push_back(&meta_out_1);
+  output_metas_for_compact.insert(output_metas_for_compact.end(),
+                                  kernel_out_3_metas.begin(),
+                                  kernel_out_3_metas.end());
+
   phi::CudnnLSTMGradInferMeta(MakeMetaTensor(*input_x),
                               MakeMetaTensor(*input_init_h),
                               MakeMetaTensor(*input_init_c),
@@ -1199,6 +1217,7 @@ std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> cudnn_lstm_grad_impl(
                               kernel_out_1 ? &meta_out_1 : nullptr,
                               kernel_out_2 ? &meta_out_2 : nullptr,
                               kernel_out_3_metas);
+  CheckAndDoCompact(output_metas_for_compact, "cudnn_lstm_grad");
 
   if (infer_shape_record_event != nullptr) {
     delete infer_shape_record_event;
@@ -1427,7 +1446,11 @@ void embedding_grad_impl(const Tensor& x,
     } else {
       auto* kernel_out = SetKernelOutput(weight_grad);
       phi::MetaTensor meta_out(kernel_out);
+
+      std::vector<phi::MetaTensor*> output_metas_for_compact;
+      output_metas_for_compact.push_back(&meta_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
+      CheckAndDoCompact(output_metas_for_compact, "embedding_grad");
       using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,

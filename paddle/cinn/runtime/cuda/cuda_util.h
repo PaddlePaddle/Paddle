@@ -91,7 +91,9 @@ void cinn_call_cuda_memcpy(void* v_args,
 
 void* cinn_get_item_in_cuda_kernel_args(void* v_args, int idx);
 
+extern "C" {
 void infer_shape_set_value(int row, int col, int64_t value, int64_t** v);
+}
 
 /**
  * Call a CUDA compiled kernel.
@@ -99,6 +101,7 @@ void infer_shape_set_value(int row, int col, int64_t value, int64_t** v);
  * @param kernel_fn the compiled PTX kernel.
  * @param args an array of cinn_pod_value_ts(consists of scalars and buffers).
  */
+extern "C" {
 void cinn_call_cuda_kernel(void* kernel_fn,
                            void* v_args,
                            int num_args,
@@ -110,13 +113,14 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int block_z,
                            int shared_memory_bytes,
                            void* stream);
-
+}
 /**
  * Call a CUDA compiled kernel with cooperative groups.
  *
  * @param kernel_fn the compiled PTX kernel.
  * @param args an array of cinn_pod_value_ts(consists of scalars and buffers).
  */
+extern "C" {
 void cinn_call_cuda_cooperative_kernel(void* kernel_fn,
                                        void* v_args,
                                        int num_args,
@@ -128,6 +132,7 @@ void cinn_call_cuda_cooperative_kernel(void* kernel_fn,
                                        int block_z,
                                        int shared_memory_bytes,
                                        void* stream);
+}
 
 void cinn_call_cublas(void* v_args,
                       int num_args,

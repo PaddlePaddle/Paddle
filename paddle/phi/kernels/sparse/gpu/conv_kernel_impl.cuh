@@ -1253,10 +1253,10 @@ void conv_forward_implicit_gemm_cuda(const phi::GPUContext &dev_ctx,
   bool allow_fp16 = compute_capability >= 75;
   bool is_half = _in_feats.dtype() == phi::DataType::FLOAT16;
 
-  int num_in_feats = _in_feats.dims()[0];
-  int num_in_channels = _in_feats.dims()[1];
+  int64_t num_in_feats = _in_feats.dims()[0];
+  int64_t num_in_channels = _in_feats.dims()[1];
 
-  int kernel_volume = _out_in_map.dims()[1];
+  int64_t kernel_volume = _out_in_map.dims()[1];
   auto out_in_map = const_cast<int *>(_out_in_map.data<int>());
 
   if (is_half) {

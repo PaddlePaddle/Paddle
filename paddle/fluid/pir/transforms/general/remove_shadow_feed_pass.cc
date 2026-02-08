@@ -28,13 +28,12 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
-namespace {
+namespace pir {
 
-std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(
-    pir::Operation *op) {
+std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(Operation *op) {
   std::unique_ptr<paddle::dialect::OpYamlInfoParser> op_info_parser(nullptr);
-  std::string op_name = op->dyn_cast<paddle::dialect::PhiKernelOp>().op_name();
-  auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+  std::string op_name = op->dyn_cast<PhiKernelOp>().op_name();
+  auto op_info = IrContext::Instance()->GetRegisteredOpInfo(op_name);
   if (op_info.HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
     auto impl =
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
@@ -58,15 +57,13 @@ phi::Place GetVarPlace(const paddle::framework::Variable *var,
   return place;
 }
 
-class RemoveShadowFeedPattern
-    : public pir::OpRewritePattern<paddle::dialect::PhiKernelOp> {
+class RemoveShadowFeedPattern : public OpRewritePattern<PhiKernelOp> {
  public:
-  explicit RemoveShadowFeedPattern(pir::IrContext *context,
-                                   const pir::Block *block,
+  explicit RemoveShadowFeedPattern(IrContext *context,
+                                   const Block *block,
                                    const phi::Place &place,
                                    const paddle::framework::Scope *scope)
-      : pir::OpRewritePattern<paddle::dialect::PhiKernelOp>::OpRewritePattern(
-            context),
+      : OpRewritePattern<PhiKernelOp>::OpRewritePattern(context),
         place_(place),
         scope_(scope),
         kwargs_map_() {
@@ -75,18 +72,17 @@ class RemoveShadowFeedPattern
     }
   }
 
-  bool IsSamePlaceShadowFeed(paddle::dialect::PhiKernelOp op) const {
+  bool IsSamePlaceShadowFeed(PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       auto *var = [&]() -> paddle::framework::Variable * {
         auto *defined_op = in.defining_op();
-        if (defined_op && defined_op->isa<paddle::dialect::PhiKernelOp>()) {
-          if (defined_op->dyn_cast<paddle::dialect::PhiKernelOp>()
-                  .kernel_name() != "data")
+        if (defined_op && defined_op->isa<PhiKernelOp>()) {
+          if (defined_op->dyn_cast<PhiKernelOp>().kernel_name() != "data")
             return nullptr;
           const auto &name = defined_op->attributes()
                                  .at("name")
-                                 .dyn_cast<pir::StrAttribute>()
+                                 .dyn_cast<StrAttribute>()
                                  .AsString();
           return scope_->FindVar(name);
         }
@@ -114,7 +110,7 @@ class RemoveShadowFeedPattern
       }
 
       int dst_place_type =
-          op.attribute("dst_place_type").dyn_cast<pir::Int32Attribute>().data();
+          op.attribute("dst_place_type").dyn_cast<Int32Attribute>().data();
       if (dst_place_type == 0) {
         dst_place = phi::CPUPlace();
       } else {
@@ -126,7 +122,7 @@ class RemoveShadowFeedPattern
     return false;
   }
 
-  bool IsTensorAttrShadowFeed(paddle::dialect::PhiKernelOp op) const {
+  bool IsTensorAttrShadowFeed(PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       if (!kwargs_map_.count(in)) {
@@ -135,7 +131,7 @@ class RemoveShadowFeedPattern
       auto out = op.result(0);
       if (out.use_count() == 1) {
         auto use_op = out.first_use().owner();
-        if (!use_op->isa<paddle::dialect::PhiKernelOp>()) {
+        if (!use_op->isa<PhiKernelOp>()) {
           return false;
         }
         auto op_info_parser = GetParser(use_op);
@@ -150,12 +146,12 @@ class RemoveShadowFeedPattern
     return false;
   }
 
-  bool Match(paddle::dialect::PhiKernelOp op) const override {
+  bool Match(PhiKernelOp op) const override {
     return IsSamePlaceShadowFeed(op) || IsTensorAttrShadowFeed(op);
   }
 
-  void Rewrite(paddle::dialect::PhiKernelOp op,
-               pir::PatternRewriter &rewriter) const override {  // NOLINT
+  void Rewrite(PhiKernelOp op,
+               PatternRewriter &rewriter) const override {  // NOLINT
     auto in = op.operand_source(0);
     auto out = op.result(0);
     in.set_type(out.type());
@@ -166,22 +162,20 @@ class RemoveShadowFeedPattern
  private:
   const phi::Place place_;
   const paddle::framework::Scope *scope_;
-  std::unordered_map<::pir::Value, std::string> kwargs_map_;
+  std::unordered_map<Value, std::string> kwargs_map_;
 };
 
-class RemoveShadowFeedPatternInference
-    : public pir::OpRewritePattern<paddle::dialect::PhiKernelOp> {
+class RemoveShadowFeedPatternInference : public OpRewritePattern<PhiKernelOp> {
  public:
-  explicit RemoveShadowFeedPatternInference(pir::IrContext *context)
-      : pir::OpRewritePattern<paddle::dialect::PhiKernelOp>::OpRewritePattern(
-            context) {}
+  explicit RemoveShadowFeedPatternInference(IrContext *context)
+      : OpRewritePattern<PhiKernelOp>::OpRewritePattern(context) {}
 
-  bool Match(paddle::dialect::PhiKernelOp op) const override {
+  bool Match(PhiKernelOp op) const override {
     return op.op_name() == "pd_op.shadow_feed";
   }
 
-  void Rewrite(paddle::dialect::PhiKernelOp op,
-               pir::PatternRewriter &rewriter) const override {  // NOLINT
+  void Rewrite(PhiKernelOp op,
+               PatternRewriter &rewriter) const override {  // NOLINT
     auto in = op.operand_source(0);
     auto out = op.result(0);
     in.set_type(out.type());
@@ -190,13 +184,12 @@ class RemoveShadowFeedPatternInference
   }
 };
 
-class RemoveShadowFeedPass : public pir::PatternRewritePass {
+class RemoveShadowFeedPass : public PatternRewritePass {
  public:
-  RemoveShadowFeedPass()
-      : pir::PatternRewritePass("remove_shadow_feed_pass", 0) {}
+  RemoveShadowFeedPass() : PatternRewritePass("remove_shadow_feed_pass", 0) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     if (Has("used_for_inference") && Get<bool>("used_for_inference")) {
       ps.Add<RemoveShadowFeedPatternInference>(context);
     } else {
@@ -208,23 +201,22 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
               "When using RemoveShadowFeedPass, block attribute is required!"
               "Use Set method to set the place attribute."));
       PADDLE_ENFORCE_EQ(
-          Has(pir::Pass::kPlaceAttr),
+          Has(Pass::kPlaceAttr),
           true,
           common::errors::InvalidArgument(
               "Pass initialize failed."
               "When using RemoveShadowFeedPass, place attribute is required!"
               "Use Set method to set the place attribute."));
       PADDLE_ENFORCE_EQ(
-          Has(pir::Pass::kParamScopeAttr),
+          Has(Pass::kParamScopeAttr),
           true,
           common::errors::InvalidArgument(
               "Pass initialize failed."
               "When using RemoveShadowFeedPass, scope attribute is required!"
               "Use Set method to set the scope attribute."));
-      auto block = &Get<const pir::Block>("top_block");
-      auto &place = Get<const phi::Place>(pir::Pass::kPlaceAttr);
-      auto scope =
-          &Get<const paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+      auto block = &Get<const Block>("top_block");
+      auto &place = Get<const phi::Place>(Pass::kPlaceAttr);
+      auto scope = &Get<const paddle::framework::Scope>(Pass::kParamScopeAttr);
       PADDLE_ENFORCE_NOT_NULL(
           block, common::errors::InvalidArgument("block can not be nullptr"));
       PADDLE_ENFORCE_NOT_NULL(
@@ -236,11 +228,7 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateRemoveShadowFeedPass() {
+std::unique_ptr<Pass> CreateRemoveShadowFeedPass() {
   return std::make_unique<RemoveShadowFeedPass>();
 }
 

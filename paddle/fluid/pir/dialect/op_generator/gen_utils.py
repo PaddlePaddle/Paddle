@@ -71,6 +71,10 @@ attr_types_map = {
         'const std::vector<float>&',
     ],
     'double': ['pir::DoubleAttribute', 'double'],
+    'double[]': [
+        'pir::ArrayAttribute<pir::DoubleAttribute>',
+        'const std::vector<double>&',
+    ],
     'bool': ['pir::BoolAttribute', 'bool'],
     'bool[]': [
         'pir::ArrayAttribute<pir::BoolAttribute>',

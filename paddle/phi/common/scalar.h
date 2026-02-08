@@ -101,7 +101,7 @@ class ScalarBase {
     data_.c128 = val;
   }
 
-  // The compatible method for fliud operators,
+  // The compatible method for fluid operators,
   // and it will be removed in the future.
   explicit ScalarBase(const std::string& str_value)
       : dtype_(DataType::FLOAT64) {
@@ -148,18 +148,18 @@ class ScalarBase {
       case DataType::FLOAT64:
         return static_cast<RT>(data_.f64);
       case DataType::FLOAT16:
-        if constexpr (std::is_same<RT, ::phi::complex64>::value) {
-          return ::phi::complex64(static_cast<float>(data_.f16));
-        } else if constexpr (std::is_same<RT, ::phi::complex128>::value) {
-          return ::phi::complex128(static_cast<double>(data_.f16));
+        if constexpr (std::is_same<RT, complex64>::value) {
+          return complex64(static_cast<float>(data_.f16));
+        } else if constexpr (std::is_same<RT, complex128>::value) {
+          return complex128(static_cast<double>(data_.f16));
         } else {
           return static_cast<RT>(data_.f16);
         }
       case DataType::BFLOAT16:
-        if constexpr (std::is_same<RT, ::phi::complex64>::value) {
-          return ::phi::complex64(static_cast<float>(data_.bf16));
-        } else if constexpr (std::is_same<RT, ::phi::complex128>::value) {
-          return ::phi::complex128(static_cast<double>(data_.bf16));
+        if constexpr (std::is_same<RT, complex64>::value) {
+          return complex64(static_cast<float>(data_.bf16));
+        } else if constexpr (std::is_same<RT, complex128>::value) {
+          return complex128(static_cast<double>(data_.bf16));
         } else {
           return static_cast<RT>(data_.bf16);
         }

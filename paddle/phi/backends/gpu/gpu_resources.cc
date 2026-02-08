@@ -93,6 +93,8 @@ void InitGpuProperties(Place place,
           {86, "Ampere"},
           {89, "Ada Lovelace"},
           {90, "Hopper"},
+          {100, "Blackwell"},
+          {120, "Blackwell"},
       };
       if (!arch_computing_mapping_table.count(*compute_capability)) {
         LOG(ERROR) << "Mismatched GPU Architecture: "
@@ -296,13 +298,9 @@ void DestroySolverHandle(solverHandle_t solver_handle) {
 }
 
 void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
-// ROCM is not yet supported
 #if defined(PADDLE_WITH_CUDA)
-// The generic APIs is supported from CUDA10.1
-#if CUDA_VERSION >= 11000
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(*handle, stream));
-#endif
 #elif defined(PADDLE_WITH_HIP)
   phi::dynload::rocsparse_create_handle(handle);
   phi::dynload::rocsparse_set_stream(*handle, stream);
@@ -311,12 +309,10 @@ void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
 
 void DestroySparseHandle(sparseHandle_t handle) {
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 11000
   if (handle != nullptr) {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseDestroy(handle));
     handle = nullptr;
   }
-#endif
 #elif defined(PADDLE_WITH_HIP)
   if (handle != nullptr) {
     phi::dynload::rocsparse_destroy_handle(handle);

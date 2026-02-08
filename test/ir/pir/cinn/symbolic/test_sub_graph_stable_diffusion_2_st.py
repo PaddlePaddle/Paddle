@@ -21,6 +21,10 @@ import numpy as np
 
 import paddle
 
+# NOTE(Pan Zhaowu): Using legacy linear to maintain the same behavior as the
+# matmul + add op.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 class LayerCase(paddle.nn.Layer):
     def __init__(self):

@@ -94,7 +94,7 @@ std::vector<int> GetValueIds(pir::Value value,
 
 phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                                        phi::DeviceContext* origin_dev_ctx,
-                                       const phi::Place& place,
+                                       const Place& place,
                                        const std::string& execution_stream,
                                        const int stream_priority) {
   auto& op_attributes = op->attributes();
@@ -161,7 +161,16 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
               ->GetDevContext());
       return dev_ctx;
     }
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    // If the current OP is inside a CUDAGraphOp,
+    // we must use the same device context as the parent CUDAGraphOp,
+    // mainly to ensure that cuda_graph_allocator_ is not nullptr.
+    // This is necessary for correct CUDA Graph capture and memory allocation.
+    if (op->GetParentOp()->isa<paddle::dialect::CudaGraphOp>()) {
+      VLOG(4) << "CudaGraphOp detected, using original device context";
+      return origin_dev_ctx;
+    }
+#endif
     // handle comm op
     if (op_attributes.count("ring_id") != 0) {
       int ring_id =
@@ -275,7 +284,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
   }
   return origin_dev_ctx;
 }
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place) {
   if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -533,16 +542,16 @@ void InsertInplacedExternalInputsToOuts(
   }
 }
 
-bool GetCondData(const phi::DenseTensor& cond) {
+bool GetCondData(const DenseTensor& cond) {
   if (phi::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
   // when phi::is_gpu_place(cond.place()) or
   // phi::is_xpu_place(cond.place()) is true
-  std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_cond{new DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
+  paddle::framework::TensorCopySync(cond, CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
@@ -626,9 +635,9 @@ void HandleForInplaceOp(pir::Operation* op,
 }
 
 void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
-  if (src_var->IsType<phi::DenseTensor>()) {
-    auto& src_tensor = src_var->Get<phi::DenseTensor>();
-    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+  if (src_var->IsType<DenseTensor>()) {
+    auto& src_tensor = src_var->Get<DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<DenseTensor>();
     tmp_dst_tensor->ShareBufferWith(src_tensor);
     return;
   } else if (src_var->IsType<phi::SelectedRows>()) {

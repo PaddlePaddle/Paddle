@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/utils/test_macros.h"
 
 COMMON_DECLARE_int32(call_stack_level);
@@ -26,21 +27,27 @@ namespace egr {
 class TEST_API GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
-    VLOG(5) << "Construct GradNodeAccumulation";
-    if (meta) {
-      weak_grad_ = meta->WeakGrad();
-    }
-
-    if (FLAGS_call_stack_level == 3) {
-      this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
-    }
-
+  explicit GradNodeAccumulation(const paddle::Tensor& fwd_tensor,
+                                bool need_set_meta = true)
+      : GradNodeBase(1, 1) {
+    VLOG(5) << "Construct GradNodeAccumulation(" << this << ")";
     SetDefaultGradInOutMeta();
+    if (need_set_meta) {
+      auto* meta = egr::EagerUtils::nullable_autograd_meta(fwd_tensor);
+      if (meta) {
+        weak_grad_ = meta->WeakGrad();
+      }
+      if (FLAGS_call_stack_level == 3) {
+        this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+      }
+      SetGradInMeta(fwd_tensor, 0);
+    }
   }
 
+  GradNodeAccumulation(const GradNodeAccumulation& other) = default;
+
   ~GradNodeAccumulation() override {
-    VLOG(5) << "Destruct GradNodeAccumulation";
+    VLOG(5) << "Destruct GradNodeAccumulation(" << this << ")";
   }
 
   // Functor: perform backward computations
@@ -67,8 +74,17 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
   void ApplyReduceHooks();
 
   std::shared_ptr<GradNodeBase> Copy() const override {
-    return std::shared_ptr<GradNodeAccumulation>(
-        new GradNodeAccumulation(nullptr));
+    // For accumulation node, don't need to real Copy
+    auto node = std::shared_ptr<GradNodeAccumulation>(
+        new GradNodeAccumulation(paddle::Tensor(), false));
+    auto src = InputMeta();
+    auto dst = node->MutableInputMeta();
+    dst.clear();
+    dst.reserve(src.size());
+    for (const auto& inner_vec : src) {
+      dst.emplace_back(inner_vec);
+    }
+    return node;
   }
 
   void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }

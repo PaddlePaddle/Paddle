@@ -62,12 +62,12 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 
   phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int>(
         dev_ctx, out_grad, index, x_grad, dim);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int64_t>(
         dev_ctx, out_grad, index, x_grad, dim);
@@ -97,7 +97,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
   for (int i = 0; i < x_grad->dims()[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(common::make_ddim({index_size}));
+  index.Resize(make_ddim({index_size}));
   phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
   const DenseTensor index_copy = index;
   IndexSelectGradInner<Context, T, int>(

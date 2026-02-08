@@ -128,10 +128,10 @@ class TestMatMulAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.matmul(x, y)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.matmul(x=x, y=y)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.matmul(input=x, other=y)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -166,9 +166,9 @@ class TestMatMulAPI_Compatibility(unittest.TestCase):
             )
             # Position args (args)
             out1 = paddle.matmul(x, y)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.matmul(x=x, y=y)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.matmul(input=x, other=y)
             # Combined args and kwargs
             out4 = paddle.matmul(x, other=y)

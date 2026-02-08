@@ -1523,7 +1523,7 @@ struct PirToPyCodeConverterHelper {
   std::string ConvertBlockSignatureAsArgs(const pir::Operation* op) {
     if (op->num_regions() == 0) return "";
     std::stringstream ss;
-    const auto& ConvertPostionalArgsAsQuotedString = [&](const auto& block) {
+    const auto& ConvertPositionalArgsAsQuotedString = [&](const auto& block) {
       std::stringstream ss;
       int idx = 0;
       for (const auto& value : block.args()) {
@@ -1547,7 +1547,7 @@ struct PirToPyCodeConverterHelper {
           if (j++ > 0) {
             ss << ",";
           }
-          ss << "[" << ConvertPostionalArgsAsQuotedString(block) << "]";
+          ss << "[" << ConvertPositionalArgsAsQuotedString(block) << "]";
         }
         ss << "]";
       }

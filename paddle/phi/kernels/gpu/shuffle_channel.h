@@ -34,7 +34,9 @@ __global__ void ShuffleChannel(const int nthreads,
                                int group_row,
                                int group_column,
                                int len) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int offset = blockDim.x * gridDim.x;
   for (size_t ii = index; ii < nthreads; ii += offset) {
     const int n = index / group_row / group_column / len;

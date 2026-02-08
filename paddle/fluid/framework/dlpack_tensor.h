@@ -38,10 +38,9 @@ TEST_API ::DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
                                      uint64_t flags = 0);
 ::DLManagedTensorVersioned* ToDLPackVersioned(const phi::DenseTensor& src,
                                               uint64_t flags = 0);
-void ToDLPackNonOwningImpl(const phi::DenseTensor& tensor,
-                           ::DLTensor& out);  // NOLINT
-TEST_API phi::DenseTensor FromDLPack(::DLManagedTensor* src);
-phi::DenseTensor FromDLPackVersioned(::DLManagedTensorVersioned* src);
+void ToDLPackNonOwningImpl(const phi::DenseTensor& tensor, ::DLTensor* out);
+TEST_API DenseTensor FromDLPack(::DLManagedTensor* src);
+DenseTensor FromDLPackVersioned(::DLManagedTensorVersioned* src);
 
 // A traits to support both DLManagedTensor and DLManagedTensorVersioned
 template <typename T>

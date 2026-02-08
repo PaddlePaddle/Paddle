@@ -23,24 +23,23 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void SyncBatchNormCooGradKernel(
-    const Context& dev_ctx,
-    const SparseCooTensor& x,
-    const DenseTensor& scale,
-    const DenseTensor& bias,
-    const DenseTensor& saved_mean,
-    const DenseTensor& saved_variance,
-    const paddle::optional<DenseTensor>& reserve_space,
-    const SparseCooTensor& y_grad,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    SparseCooTensor* x_grad,
-    DenseTensor* scale_grad,
-    DenseTensor* bias_grad);
+void SyncBatchNormCooGradKernel(const Context& dev_ctx,
+                                const SparseCooTensor& x,
+                                const DenseTensor& scale,
+                                const DenseTensor& bias,
+                                const DenseTensor& saved_mean,
+                                const DenseTensor& saved_variance,
+                                const optional<DenseTensor>& reserve_space,
+                                const SparseCooTensor& y_grad,
+                                float momentum,
+                                float epsilon,
+                                const std::string& data_layout,
+                                bool is_test,
+                                bool use_global_stats,
+                                bool trainable_statistics,
+                                SparseCooTensor* x_grad,
+                                DenseTensor* scale_grad,
+                                DenseTensor* bias_grad);
 
 }  // namespace sparse
 }  // namespace phi

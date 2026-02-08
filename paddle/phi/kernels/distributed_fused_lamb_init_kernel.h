@@ -18,6 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
 void DistributedFusedLambInitOpKernel(
@@ -48,5 +49,5 @@ void DistributedFusedLambInitOpKernel(
     std::vector<DenseTensor*> grad_out,
     DenseTensor* global_scale,
     DenseTensor* step);
-
+}  // namespace fusion
 }  // namespace phi

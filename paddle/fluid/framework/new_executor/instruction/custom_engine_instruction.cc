@@ -82,7 +82,7 @@ void BuildEngineInputOutputValue(pir::Operation *op,
 void BuildEngineValueMap(
     pir::Operation *op,
     ValueExecutionInfo *value_exec_info,
-    std::unordered_map<pir::Value, std::vector<phi::DenseTensor *>>
+    std::unordered_map<pir::Value, std::vector<DenseTensor *>>
         &engine_value_to_tensors,
     std::unordered_map<pir::Value, std::vector<std::string>>
         &engine_value_to_var_names) {
@@ -91,20 +91,19 @@ void BuildEngineValueMap(
     std::string var_name = kv.second;
 
     auto var = value_exec_info->GetVarByValue(value);
-    if (var->IsType<phi::DenseTensor>()) {
-      const phi::DenseTensor *tensor = &(var->Get<phi::DenseTensor>());
-      engine_value_to_tensors[value] = {const_cast<phi::DenseTensor *>(tensor)};
+    if (var->IsType<DenseTensor>()) {
+      const DenseTensor *tensor = &(var->Get<DenseTensor>());
+      engine_value_to_tensors[value] = {const_cast<DenseTensor *>(tensor)};
       engine_value_to_var_names[value] = {var_name};
       VLOG(6) << "Build engine value map for " << var_name;
     } else if (var->IsType<VariableRefArray>()) {
-      std::vector<phi::DenseTensor *> tensors;
+      std::vector<DenseTensor *> tensors;
       std::vector<std::string> var_names;
       auto &variable_array = var->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
-        if (variable_array[i]->IsType<phi::DenseTensor>()) {
-          const phi::DenseTensor *tensor =
-              &(variable_array[i]->Get<phi::DenseTensor>());
-          tensors.emplace_back(const_cast<phi::DenseTensor *>(tensor));
+        if (variable_array[i]->IsType<DenseTensor>()) {
+          const DenseTensor *tensor = &(variable_array[i]->Get<DenseTensor>());
+          tensors.emplace_back(const_cast<DenseTensor *>(tensor));
           auto var_name_i = value_exec_info->GetVarName(variable_array[i]);
           var_names.emplace_back(var_name_i);
           VLOG(6) << "Build engine value map for Variable[" << i
@@ -130,8 +129,8 @@ void BuildEngineValueMap(
 
 CustomEngineInstruction::CustomEngineInstruction(
     size_t id,
-    const phi::Place &place,
-    ::pir::Operation *op,
+    const Place &place,
+    pir::Operation *op,
     ValueExecutionInfo *value_exec_info,
     paddle::framework::interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {

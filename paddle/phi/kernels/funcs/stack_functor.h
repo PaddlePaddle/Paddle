@@ -64,7 +64,7 @@ static inline void StackFunctorForRange(const DeviceContext &dev_ctx,
                                         int total_num,
                                         int n,
                                         int post) {
-  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, total_num);
+  funcs::ForRange<DeviceContext> for_range(dev_ctx, total_num);
   for_range(StackFunctor<VecXType, T>(x, y, n, post));
 }
 
@@ -75,7 +75,7 @@ static inline void StackGradFunctorForRange(const DeviceContext &dev_ctx,
                                             int total_num,
                                             int n,
                                             int post) {
-  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, total_num);
+  funcs::ForRange<DeviceContext> for_range(dev_ctx, total_num);
   for_range(StackGradFunctor<VecDxType, T>(dx, dy, n, post));
 }
 

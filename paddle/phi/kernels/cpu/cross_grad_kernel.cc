@@ -93,11 +93,9 @@ void CrossGradKernel(const Context &dev_ctx,
 
   auto *input_y_conj_data = dev_ctx.template Alloc<T>(&y_conj);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::ConjFunctor<T> functor_x(
-      input_x.data<T>(), numel, input_x_conj_data);
-  phi::funcs::ConjFunctor<T> functor_y(
-      input_y.data<T>(), numel, input_y_conj_data);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ConjFunctor<T> functor_x(input_x.data<T>(), numel, input_x_conj_data);
+  funcs::ConjFunctor<T> functor_y(input_y.data<T>(), numel, input_y_conj_data);
   for_range(functor_x);
   for_range(functor_y);
 

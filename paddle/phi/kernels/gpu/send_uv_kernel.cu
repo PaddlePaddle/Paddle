@@ -46,8 +46,11 @@ __global__ void GraphSendUVCUDAKernel(const T* x_data,
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx =
+        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+        static_cast<int64_t>(threadIdx.x);
+    int64_t stride_x =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
 
     const T* x_off = x_data + src * x_len;
     const T* y_off = y_data + dst * y_len;
@@ -154,8 +157,7 @@ void SendUVKernel(const Context& dev_ctx,
 
   if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 

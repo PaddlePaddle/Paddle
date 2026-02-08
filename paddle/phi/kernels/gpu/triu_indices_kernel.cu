@@ -67,7 +67,9 @@ __global__ void triu_indices_kernel(T* out_data,
                                     int col,
                                     int rectangle_size,
                                     int triu_size) {
-  int linear_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t linear_index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   if (linear_index < triu_size) {
     T r, c;

@@ -71,8 +71,8 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
               used_var_names.find(var_desc->Name()) == used_var_names.end()) {
             // Transfer the dtypes of weight tensors
             std::vector<float16> fp16_data;
-            auto* tensor = scope->FindVar(var_desc->Name())
-                               ->GetMutable<phi::DenseTensor>();
+            auto* tensor =
+                scope->FindVar(var_desc->Name())->GetMutable<DenseTensor>();
             auto* data_ptr = tensor->data<float>();
             auto num_elem = tensor->numel();
 

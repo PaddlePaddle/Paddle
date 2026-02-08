@@ -47,7 +47,9 @@ namespace c10 {
   } while (false);
 
 // Check for a given boolean condition.
+#ifndef CHECK
 #define CHECK(condition) PD_CHECK(condition, "CHECK failed : ", #condition)
+#endif
 
 // TORCH_CHECK_OP macro definitions
 #define TORCH_CHECK_EQ(val1, val2) TORCH_CHECK_OP(val1, val2, ==)
@@ -80,3 +82,6 @@ inline void C10ThrowImpl(C10ErrorType err_type, const std::string& msg) {
 }
 
 #define C10_THROW_ERROR(err_type, msg) C10ThrowImpl(err_type, msg)
+
+// Deprecated attribute macro
+#define C10_DEPRECATED_MESSAGE(msg) [[deprecated(msg)]]

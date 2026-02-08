@@ -32,13 +32,13 @@ namespace phi {
 template <typename T, typename Context>
 void InstanceNormKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& scale,
-                        const paddle::optional<DenseTensor>& bias,
+                        const optional<DenseTensor>& scale,
+                        const optional<DenseTensor>& bias,
                         float epsilon_f,
                         DenseTensor* y,
                         DenseTensor* saved_mean,
                         DenseTensor* saved_variance) {
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  funcs::SetConstant<CPUContext, T> set_constant;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     set_constant(dev_ctx, y, static_cast<T>(0));

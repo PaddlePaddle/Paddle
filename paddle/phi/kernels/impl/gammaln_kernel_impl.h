@@ -45,7 +45,7 @@ void GammalnKernel(const Context& dev_ctx,
   if (numel == 0) {
     return;
   }
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   GammalnFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

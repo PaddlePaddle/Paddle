@@ -48,8 +48,8 @@ inline static size_t TotalSequenceLength(
   return total_seq_len;
 }
 
-inline static void CheckDims(const phi::DDim& seq_tensor_dims,
-                             const phi::DDim& pad_tensor_dims,
+inline static void CheckDims(const DDim& seq_tensor_dims,
+                             const DDim& pad_tensor_dims,
                              const phi::Vector<size_t>& seq_offset,
                              int64_t padded_seq_len UNUSED,
                              int64_t step_width UNUSED,
@@ -82,7 +82,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
 }
 
 /*
- * \brief   Padding/Unpadding phi::DenseTensor to/from normal Tensor of the
+ * \brief   Padding/Unpadding DenseTensor to/from normal Tensor of the
  * shape [max_sequence_length, num_sequences, sequence_width].
  *
  *  Padding sequence:
@@ -97,7 +97,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
  *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
  *
  * \param dev_ctx       device context of this functor.
- * \param seq           phi::DenseTensor which is stored in sequence format, the
+ * \param seq           DenseTensor which is stored in sequence format, the
  * shape is [total_sequence_length, sequence_width] where total_sequence_length
  * is the sum of all sequences' length. \param padding       Tensor which is
  * padded to the same length, the shape is [max_sequence_length, num_sequences,
@@ -109,9 +109,9 @@ template <typename DeviceContext, typename T>
 class PaddingDenseTensorFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& seq_tensor,
-                  phi::DenseTensor* pad_tensor,
-                  const phi::DenseTensor& pad_value,
+                  const DenseTensor& seq_tensor,
+                  DenseTensor* pad_tensor,
+                  const DenseTensor& pad_value,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -122,8 +122,8 @@ template <typename DeviceContext, typename T>
 class UnpaddingDenseTensorFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& pad_tensor,
-                  phi::DenseTensor* seq_tensor,
+                  const DenseTensor& pad_tensor,
+                  DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

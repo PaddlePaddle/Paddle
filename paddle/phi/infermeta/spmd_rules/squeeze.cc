@@ -241,7 +241,7 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo SqueezeGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad,
                               const IntArray& axis) {
-  auto shape = phi::vectorize(x.dims());
+  auto shape = vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
   return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }

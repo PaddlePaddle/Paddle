@@ -186,7 +186,7 @@ typedef unsigned warp_mask_t;
 template <typename T>
 __inline__ __device__ T WarpReduceSum(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_CUDA)
     val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
 #else
     val += __shfl_xor(val, mask, warpSize);
@@ -259,7 +259,7 @@ __inline__ __device__ T BlockReduceSumV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMax(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_CUDA)
     val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
     val = max(val, __shfl_xor(val, mask, warpSize));
@@ -282,7 +282,7 @@ __inline__ __device__ T WarpReduceMaxV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMin(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_CUDA)
     val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
     val = min(val, __shfl_xor(val, mask, warpSize));
@@ -294,7 +294,7 @@ __inline__ __device__ T WarpReduceMin(T val, warp_mask_t lane_mask) {
  * threads are less than warpSize.*/
 template <typename T>
 __inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t lane_mask) {
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_CUDA)
   T warp_val = __shfl_sync(lane_mask, val, 0, warpSize);
 #else
   T warp_val = __shfl(
@@ -303,7 +303,7 @@ __inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t lane_mask) {
   warp_val = val;
 
   for (int offset = HALF_WARP; offset > 0; offset >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_CUDA)
     warp_val =
         min(warp_val, __shfl_down_sync(lane_mask, warp_val, offset, warpSize));
 #else
@@ -403,7 +403,7 @@ __inline__ __device__ T PartialBlockReduceMin(T val, warp_mask_t mask) {
   __syncwarp();
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_CUDA)
   val = __shfl_sync(mask, shared[lane], 0, warpSize);
 #else
   val = __shfl(shared[lane], 0, warpSize);

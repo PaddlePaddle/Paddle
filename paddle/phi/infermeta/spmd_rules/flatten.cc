@@ -191,7 +191,7 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad) {
-  auto shape = phi::vectorize(x.dims());
+  auto shape = vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
   return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }

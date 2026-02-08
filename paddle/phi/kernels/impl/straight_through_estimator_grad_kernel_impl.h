@@ -31,7 +31,7 @@ void StraightThroughEstimatorGradKernel(const Context& dev_ctx,
 
   // Initialize dx as same as d_out
   dev_ctx.template Alloc<T>(d_x);
-  phi::Copy(dev_ctx, *d_out, dev_ctx.GetPlace(), false, d_x);
+  Copy(dev_ctx, *d_out, dev_ctx.GetPlace(), false, d_x);
 }
 
 }  // namespace phi

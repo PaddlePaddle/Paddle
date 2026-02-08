@@ -18,7 +18,6 @@ extern "C" {
 #endif
 
 #include <Python.h>
-#include "paddle/fluid/pybind/sot/cpython_internals.h"
 #include "paddle/fluid/pybind/sot/macros.h"
 
 #if SOT_IS_SUPPORTED

@@ -31,11 +31,7 @@ void ScatterNdAddGradKernel(const Context &dev_ctx,
       dev_ctx.template Alloc<T>(x_grad);
     }
     if (updates_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(updates_grad->dims())),
-          0,
-          updates_grad);
+      Full<T, Context>(dev_ctx, updates_grad->dims(), 0, updates_grad);
     }
     return;
   }
@@ -66,7 +62,7 @@ void ScatterNdAddGradKernel(const Context &dev_ctx,
           errors::InvalidArgument(
               "Size of the last dim of the index tensor [%d] should be 0",
               end_size));
-      auto remain_dims = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+      auto remain_dims = slice_ddim(index_dims, 0, index_dims_size - 1);
       int64_t remain_numel = common::product(remain_dims);
       int64_t updates_grad_numel = updates_grad->numel();
       int64_t out_grad_numel = out_grad.numel();
@@ -88,11 +84,11 @@ void ScatterNdAddGradKernel(const Context &dev_ctx,
       return;
     }
 
-    auto index_shape_vec = common::vectorize<int64_t>(index.dims());
+    auto index_shape_vec = vectorize<int64_t>(index.dims());
     if (index_shape_vec.size() == 1) {
       index_shape_vec.insert(index_shape_vec.begin(), 1);
     }
-    auto out_grad_shape_vec = common::vectorize<int64_t>(out_grad.dims());
+    auto out_grad_shape_vec = vectorize<int64_t>(out_grad.dims());
     xpu::VectorParam<int64_t> out_grad_shape_param = {
         out_grad_shape_vec.data(),
         static_cast<int64_t>(out_grad_shape_vec.size()),
@@ -124,7 +120,8 @@ PD_REGISTER_KERNEL(scatter_nd_add_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::ScatterNdAddGradKernel,
-                   float,
                    phi::float16,
+                   phi::bfloat16,
+                   float,
                    int,
                    int64_t) {}

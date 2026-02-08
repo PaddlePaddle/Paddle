@@ -1,0 +1,20 @@
+id: no-assert-with-numpy-testing
+valid:
+  - np.testing.assert_allclose(a, b)
+  - np.testing.assert_array_equal(a, b)
+  - np.testing.assert_allclose(a, b, rtol=1e-5, atol=1e-8)
+  - np.testing.assert_array_equal(a, b, err_msg="Arrays are not equal")
+  - assert paddle.allclose(a, b, rtol=1e-5)
+  - assert torch.array_equal(a, b)
+  - self.assertTrue(numpy)
+invalid:
+  - self.assertTrue(np.allclose(a, b))
+  - self.assertTrue(np.allclose(a, b, rtol=1e-5, atol=1e-8))
+  - self.assertTrue(np.array_equal(a, b))
+  - self.assertTrue(np.array_equal(a, b), "Arrays are not equal")
+  - self.assertEqual(something, np.allclose(a, b))
+  - self.assertEqual(np.allclose(a, b), something)
+  - self.assertEqual(np.array_equal(a, b), True)
+  - self.assertEqual(np.array_equal(a, b), True, err_msg="Arrays are not equal")
+  - assert np.allclose(a, b, rtol=1e-5)
+  - assert np.array_equal(a, b, err_msg="Arrays are not equal")

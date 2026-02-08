@@ -28,7 +28,7 @@ void RankAttentionKernel(const Context &dev_ctx,
                          DenseTensor *out UNUSED,
                          DenseTensor *ins_rank UNUSED) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       common::errors::Unimplemented("Rank Attention only supports GPU now."));
 }

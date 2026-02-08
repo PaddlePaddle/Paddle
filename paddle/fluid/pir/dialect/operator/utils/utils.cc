@@ -468,7 +468,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
   } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim shape_dim =
+    DDim shape_dim =
         shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     size_t shape_size = common::product(shape_dim);
     if (common::contain_unknown_dim(shape_dim)) {
@@ -494,7 +494,9 @@ const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap() {
       {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
       {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
       {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
-      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
+      {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"},
+      {"void*", "pir::PointerAttribute"},
+  };
   return attr_type_map;
 }
 
@@ -522,8 +524,8 @@ const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap() {
 
 const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
   static std::unordered_map<std::string, phi::Place> place_map{
-      {"cpu", phi::CPUPlace{}},
-      {"gpu", phi::GPUPlace{}},
+      {"cpu", CPUPlace{}},
+      {"gpu", GPUPlace{}},
       {"gpu_pinned", phi::GPUPinnedPlace{}},
       {"xpu", phi::XPUPlace{}},
       {"xpu_pinned", phi::XPUPinnedPlace{}},
@@ -533,19 +535,18 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
   return place_map;
 }
 
-const std::unordered_map<std::string, phi::DataLayout>&
-StringToDataLayoutMap() {
-  static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
-      {"NHWC", phi::DataLayout::kNHWC},
-      {"NCHW", phi::DataLayout::kNCHW},
-      {"Undefined", phi::DataLayout::kAnyLayout},
-      {"ONEDNN", phi::DataLayout::ONEDNN},
-      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
-      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
-      {"NDHWC", phi::DataLayout::kNDHWC},
-      {"NCDHW", phi::DataLayout::kNCDHW},
-      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
-      {"STRIDED", phi::DataLayout::STRIDED}};
+const std::unordered_map<std::string, DataLayout>& StringToDataLayoutMap() {
+  static std::unordered_map<std::string, DataLayout> data_layout_map{
+      {"NHWC", DataLayout::NHWC},
+      {"NCHW", DataLayout::NCHW},
+      {"Undefined", DataLayout::kAnyLayout},
+      {"ONEDNN", DataLayout::ONEDNN},
+      {"SPARSE_COO", DataLayout::SPARSE_COO},
+      {"SPARSE_CSR", DataLayout::SPARSE_CSR},
+      {"NDHWC", DataLayout::kNDHWC},
+      {"NCDHW", DataLayout::kNCDHW},
+      {"PSTRING_UNION", DataLayout::PSTRING_UNION},
+      {"STRIDED", DataLayout::STRIDED}};
   return data_layout_map;
 }
 
@@ -591,15 +592,15 @@ std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op) {
   return stop_gradients;
 }
 
-bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
-                            const std::vector<::pir::Value>& vec_output) {
+bool CanGroupOpRunCpuKernel(const std::vector<pir::Value>& vec_inputs,
+                            const std::vector<pir::Value>& vec_output) {
   for (size_t i = 0; i < vec_inputs.size(); ++i) {
     auto tmp_in = vec_inputs[i];
     if (!tmp_in || !tmp_in.type()) {
       continue;
     }
 
-    phi::DDim in_dims;
+    DDim in_dims;
 
     if (auto type_info =
             tmp_in.type()
@@ -634,7 +635,7 @@ bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
     if (out.type().isa<DenseTensorType>()) {
       auto type = out.type().dyn_cast<DenseTensorType>();
 
-      if (type.dtype().isa<::pir::BFloat16Type>()) {
+      if (type.dtype().isa<pir::BFloat16Type>()) {
         return false;
       }
 

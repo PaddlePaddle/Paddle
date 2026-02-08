@@ -24,6 +24,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.tensor.to_string import DEFAULT_PRINT_OPTIONS
 from paddle.utils.dlpack import DLDeviceType
 
 
@@ -237,7 +238,7 @@ class TestEagerTensor(unittest.TestCase):
                 np.testing.assert_array_equal(x.numpy(), expected_result)
 
                 numpy_array = np.random.randn(3, 4)
-                # covert core.DenseTensor to paddle.Tensor
+                # convert core.DenseTensor to paddle.Tensor
                 dense_tensor = paddle.base.core.DenseTensor()
                 place = paddle.base.framework._current_expected_place()
                 dense_tensor.set(numpy_array, place)
@@ -246,7 +247,7 @@ class TestEagerTensor(unittest.TestCase):
                 self.assertEqual(x.type, core.VarDesc.VarType.DENSE_TENSOR)
                 self.assertEqual(str(x.place), str(place))
 
-                # covert core.DenseTensor to paddle.Tensor
+                # convert core.DenseTensor to paddle.Tensor
                 x = paddle.to_tensor(numpy_array)
                 dlpack = x.value().get_tensor()._to_dlpack()
                 tensor_from_dlpack = paddle.base.core.from_dlpack(dlpack)
@@ -1337,6 +1338,72 @@ class TestEagerTensor(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
 
+    def test_tensor_str_complex64(self):
+        original_opt = copy.deepcopy(DEFAULT_PRINT_OPTIONS)
+        try:
+            paddle.disable_static(paddle.CPUPlace())
+            a = paddle.to_tensor(
+                [[1.5 + 1j, 1.0 - 2j], [0 - 3j, 0]], dtype="complex64"
+            ).cpu()
+            paddle.set_printoptions(precision=4)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+       [[(1.5000+1.0000j), (1.0000-2.0000j)],
+        [(0.0000-3.0000j), (0.0000+0.0000j)]])"""
+
+            self.assertEqual(a_str, expected)
+
+            paddle.set_printoptions(precision=4, sci_mode=True)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+       [[(1.5000e+00+1.0000e+00j), (1.0000e+00-2.0000e+00j)],
+        [(0.0000e+00-3.0000e+00j), (0.0000e+00+0.0000e+00j)]])"""
+
+            self.assertEqual(a_str, expected)
+        finally:
+            paddle.set_printoptions(
+                precision=original_opt.precision,
+                threshold=original_opt.threshold,
+                edgeitems=original_opt.edgeitems,
+                sci_mode=original_opt.sci_mode,
+                linewidth=original_opt.linewidth,
+            )
+
+    def test_tensor_str_complex128(self):
+        original_opt = copy.deepcopy(DEFAULT_PRINT_OPTIONS)
+        try:
+            paddle.disable_static(paddle.CPUPlace())
+            a = paddle.to_tensor(
+                [[1.5 + 1j, 1.0 - 2j], [0 - 3j, 0]], dtype="complex128"
+            ).cpu()
+            paddle.set_printoptions(precision=4)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+       [[(1.5000+1.0000j), (1.0000-2.0000j)],
+        [(0.0000-3.0000j), (0.0000+0.0000j)]])"""
+
+            self.assertEqual(a_str, expected)
+
+            paddle.set_printoptions(precision=4, sci_mode=True)
+            a_str = str(a)
+
+            expected = """Tensor(shape=[2, 2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+       [[(1.5000e+00+1.0000e+00j), (1.0000e+00-2.0000e+00j)],
+        [(0.0000e+00-3.0000e+00j), (0.0000e+00+0.0000e+00j)]])"""
+
+            self.assertEqual(a_str, expected)
+        finally:
+            paddle.set_printoptions(
+                precision=original_opt.precision,
+                threshold=original_opt.threshold,
+                edgeitems=original_opt.edgeitems,
+                sci_mode=original_opt.sci_mode,
+                linewidth=original_opt.linewidth,
+            )
+
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])
@@ -1345,6 +1412,20 @@ class TestEagerTensor(unittest.TestCase):
         expected = "paddle.float32"
 
         self.assertEqual(a_str, expected)
+
+    def test_tensor_dtype_compare(self):
+        a = paddle.randn([2], dtype="float32")
+        b = paddle.randn([2], dtype="float32")
+        c = paddle.randn([2], dtype="float64")
+
+        self.assertTrue(a.dtype == paddle.float32)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.dtype != paddle.float64)
+        self.assertTrue(a.dtype != c.dtype)
+        self.assertTrue(a.dtype is paddle.float32)
+        self.assertTrue(a.dtype is b.dtype)
+        self.assertTrue(a.dtype is not paddle.float64)
+        self.assertTrue(a.dtype is not c.dtype)
 
     def test___cuda_array_interface__(self):
         """test Tensor.__cuda_array_interface__"""
@@ -1591,6 +1672,17 @@ class TestEagerTensor(unittest.TestCase):
         # test for float scalar but format_spec is 'd', expected to raise ValueError
         paddle_scalar = paddle.uniform([], min=-100, max=100)
         self.assertRaises(ValueError, paddle_scalar.__format__, "3d")
+
+    def test_tensor_eq_unsupported_type(self):
+        a = paddle.empty([2])
+
+        # Compare with None
+        self.assertFalse(a == None)  # noqa: E711
+        self.assertTrue(a != None)  # noqa: E711
+
+        # Compare with other obj
+        self.assertFalse(a == object())
+        self.assertTrue(a != object())
 
 
 class TestEagerTensorSetitem(unittest.TestCase):
@@ -2177,6 +2269,58 @@ class TestSetDynamicAttributeToEagerTensorInstance(unittest.TestCase):
         tensor_instance._custom_flag = True
         self.assertEqual(tensor_instance._custom_flag, True)
         self.assertEqual(tensor_instance.__dict__["_custom_flag"], True)
+
+
+class TestListToTensor(unittest.TestCase):
+    def test_list_to_tensor_bfloat16(self):
+        a = [paddle.to_tensor(2, dtype=paddle.bfloat16)]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.bfloat16)
+        self.assertEqual(b[0], 2.0)
+
+    def test_list_to_tensor_float16(self):
+        a = [paddle.to_tensor(2, dtype=paddle.float16)]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float16)
+        self.assertEqual(b[0], 2.0)
+
+    def test_list_to_tensor_bfloat16_float32(self):
+        a = [
+            paddle.to_tensor(2, dtype=paddle.bfloat16),
+            paddle.to_tensor(2, dtype=paddle.float32),
+        ]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float32)
+        self.assertEqual(b[0], 2.0)
+        self.assertEqual(b[1], 2.0)
+
+    def test_list_to_tensor_float16_float32(self):
+        a = [
+            paddle.to_tensor(2, dtype=paddle.float16),
+            paddle.to_tensor(2, dtype=paddle.float32),
+        ]
+        b = paddle.to_tensor(a)
+        self.assertEqual(b.dtype, paddle.float32)
+        self.assertEqual(b[0], 2.0)
+        self.assertEqual(b[1], 2.0)
+
+
+class TestEagerTensorIndex(unittest.TestCase):
+    def test__index__with_0size_tensor(self):
+        with dygraph_guard():
+            x = paddle.randn([0])
+            l = [1, 2, 3]
+            with self.assertRaisesRegex(
+                AssertionError,
+                "only one element variable can be converted to python index.",
+            ):
+                l[x]
+
+    def test__index__with_non_scalar_tensor(self):
+        with dygraph_guard():
+            l = [1, 2, 3]
+            x = paddle.to_tensor([1]).reshape(1, 1, 1)
+            self.assertEqual(l[x], l[x.item()])
 
 
 if __name__ == "__main__":

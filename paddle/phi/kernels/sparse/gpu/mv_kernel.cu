@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/mv_kernel.h"
-
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -29,7 +26,7 @@ void MvKernelImpl(const Context& dev_ctx,
                   const TensorType& x,
                   const DenseTensor& vec,
                   DenseTensor* out) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   std::vector<int64_t> x_dim = common::vectorize(x.dims());
   std::vector<int64_t> vec_dim = common::vectorize(vec.dims());
   auto x_ndims = x_dim.size();
@@ -49,13 +46,10 @@ void MvKernelImpl(const Context& dev_ctx,
                         "suitable for mv operation, "
                         "x_dim[-1] must be equal to vec_dim[-1]."));
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
-  out->Resize(common::make_ddim(out_dim));
+  out->Resize(make_ddim(out_dim));
   dev_ctx.template Alloc<T>(out);
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMV(false, static_cast<T>(1), x, vec, static_cast<T>(0), out);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      " 'sparse.mv' use cusparseSpMV, which is supported from CUDA 11.0"));
 #endif
 }
 

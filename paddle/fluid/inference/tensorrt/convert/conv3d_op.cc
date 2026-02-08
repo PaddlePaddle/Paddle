@@ -49,11 +49,26 @@ void ConvertConv3d(TensorRTEngine* engine,
                         "The conv3d filter's dims size should be 5, but got %d",
                         Y_t->dims().size()));
 
-  const int n_output = Y_t->dims()[0];
-  const int n_input = Y_t->dims()[1];
-  const int filter_d = Y_t->dims()[2];
-  const int filter_h = Y_t->dims()[3];
-  const int filter_w = Y_t->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n_output = Y_t->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n_input = Y_t->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t filter_d = Y_t->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t filter_h = Y_t->dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t filter_w = Y_t->dims()[4];
+
   const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));

@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import TYPE_CHECKING
 
 from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
     AOAShardInfoContext,
@@ -25,9 +24,6 @@ from paddle.distributed.flex_checkpoint.aoa.macros import macro_registry
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedWeightDesc,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 
 class MacroContext:
@@ -41,6 +37,7 @@ class MacroContext:
             "layers.2.mlp.gate_up_fused_proj.weight",
             "layers.2.mlp.down_proj.weight",
             "layers.2.input_layernorm.weight",
+            "layers.1.mlp.gate_up_fused_proj.weight_test1",
             "layers.2.post_attention_layernorm.weight",
             "layers.1.experts.0.weight",
             "layers.0.qkv_proj.weight",
@@ -52,6 +49,8 @@ class MacroContext:
             "layers.2.experts.1.weight",
             "layers.2.self_attn.qkv_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.bias",
+            "layers.3.experts.0.up_gate_proj.weight",
+            "layers.3.experts.1.up_gate_proj.weight",
         }
 
         self.dst_keys = {
@@ -63,6 +62,7 @@ class MacroContext:
             "layers.0.input_layernorm.weight",
             "layers.0.post_attention_layernorm.weight",
             "layers.1.mlp.gate_up_fused_proj.weight",
+            "layers.1.mlp.gate_up_fused_proj.weight_test2",
             "layers.1.post_attention_layernorm.weight",
             "layers.0.experts.0.weight",
             "layers.0.experts.1.weight",
@@ -87,6 +87,8 @@ class MacroContext:
             "layers.2.self_attn.qkv_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.bias",
             "layers.2.mlp.gate_up_fused_proj.weight",
+            "layers.3.experts.0.up_gate_proj.weight",
+            "layers.3.experts.1.up_gate_proj.weight",
         }
 
         # Build _ShardInfo mapping for AOAShardInfoContext based on existing keys
@@ -106,41 +108,22 @@ class MacroContext:
                 shard_info[k] = descs
             return shard_info
 
-        source_state_shard_info = make_shard_info(self.source_keys, 2)
-        destination_state_shard_info = make_shard_info(self.dst_keys, 4)
+        self.source_state_shard_info = make_shard_info(self.source_keys, 2)
+        self.destination_state_shard_info = make_shard_info(self.dst_keys, 4)
 
         self._ctx = AOAShardInfoContext(
-            source_state_shard_info=source_state_shard_info,
-            destination_state_shard_info=destination_state_shard_info,
+            source_state_shard_info=self.source_state_shard_info,
+            destination_state_shard_info=self.destination_state_shard_info,
         )
 
-    def get_all_dst_state_keys(self) -> Iterable[str]:
-        return self._ctx.get_all_dst_state_keys()
-
-    def get_all_src_state_keys(self) -> Iterable[str]:
-        return self._ctx.get_all_src_state_keys()
-
-    def get_num_hidden_layers(
+    def set_aoa_config_reverse(
         self,
-        name_with_layer_id: str,
-        layer_id_macro_tag: str,
-    ) -> int:
-        return self._ctx.get_num_hidden_layers(
-            name_with_layer_id, layer_id_macro_tag
+    ):  # when aoa_config_reverse is True, the src and dst of AOAShardInfoContext are reversed
+        self._ctx = AOAShardInfoContext(
+            source_state_shard_info=self.destination_state_shard_info,
+            destination_state_shard_info=self.source_state_shard_info,
         )
-
-    def get_num_experts(
-        self, name_with_expert_id: str, expert_id_macro_tag: str
-    ) -> set:
-        return self._ctx.get_num_experts(
-            name_with_expert_id, expert_id_macro_tag
-        )
-
-    def get_src_state_shard_num(self, src_state_key: str) -> int:
-        return self._ctx.get_src_state_shard_num(src_state_key)
-
-    def get_dst_state_shard_num(self, dst_state_key: str) -> int:
-        return self._ctx.get_dst_state_shard_num(dst_state_key)
+        self._ctx.aoa_config_reverse = True
 
 
 def get_macro(macro_name):
@@ -152,7 +135,6 @@ def get_macro(macro_name):
 
 class TestMacro(unittest.TestCase):
     def setUp(self):
-        self.lexer = Lexer(MacroContext())
         self.macro_func = None
         self.source = None
         self.expected_expanded = None
@@ -166,10 +148,19 @@ class TestMacro(unittest.TestCase):
     def expected(self):
         raise NotImplementedError
 
-    def start_macro_test(self):
+    def start_macro_test(self, aoa_config_reverse: bool = False):
         self.macro_func = get_macro(self.macro_name())
         self.source = self.source_code()
         self.expected_expanded = self.expected()
+        self.ctx = MacroContext()
+        if aoa_config_reverse:
+            self.ctx.set_aoa_config_reverse()
+            self.lexer = Lexer(self.ctx._ctx)
+            self.lexer.apply_macro(
+                self.source, get_macro("get_var_mapping_chain_macro")
+            )
+        else:
+            self.lexer = Lexer(self.ctx._ctx)
         actual_expanded = self.lexer.apply_macro(self.source, self.macro_func)
         self.assertEqual(actual_expanded, self.expected_expanded)
 
@@ -192,7 +183,7 @@ class TestStarMacro(TestMacro):
 
 class TestLayerIdMacro(TestMacro):
     def macro_name(self):
-        return "layer_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight\n"
@@ -208,7 +199,7 @@ class TestLayerIdMacro(TestMacro):
 
 class Test_expert_id_Macro(TestMacro):
     def macro_name(self):
-        return "expert_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight"
@@ -223,6 +214,23 @@ class Test_expert_id_Macro(TestMacro):
         self.start_macro_test()
 
 
+class Test_ID_macro_reverse(TestMacro):
+    def macro_name(self):
+        return "id_macro"
+
+    def source_code(self):
+        return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight"
+
+    def expected(self):
+        return [
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight\n',
+        ]
+
+    def test(self):
+        self.start_macro_test(aoa_config_reverse=True)
+
+
 class TestFusedQkvOldMacro(TestMacro):
     def macro_name(self):
         return "fused_qkv_old_macro"
@@ -234,23 +242,6 @@ class TestFusedQkvOldMacro(TestMacro):
         return [
             'layers.2.self_attn.qkv_proj.weight -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
             'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.2.self_attn.qkv_proj.weight, axis=1',
-        ]
-
-    def test(self):
-        self.start_macro_test()
-
-
-class TestFusedFfnMacro(TestMacro):
-    def macro_name(self):
-        return "fused_ffn_macro"
-
-    def source_code(self):
-        return "layers.2.mlp.gate_up_fused_proj.weight -> layers.2.mlp.gate_up_fused_proj.weight, fused_ffn"
-
-    def expected(self):
-        return [
-            'layers.2.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
-            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.2.mlp.gate_up_fused_proj.weight, axis=1',
         ]
 
     def test(self):
@@ -278,7 +269,7 @@ class TestTransposeMacro(TestMacro):
 
 class TestFusedQKVMacro(TestMacro):
     def macro_name(self):
-        return "fused_qkv"
+        return "fused_qkv_macro"
 
     def source_code(self):
         return "layers.2.self_attn.qkv_proj.weight -> Q, K, V, fused_qkv, num_heads = 8, num_key_value_groups = 2"
@@ -297,7 +288,7 @@ class TestFusedQKVMacro(TestMacro):
 
 class TestFusedQKVMacro2(TestMacro):
     def macro_name(self):
-        return "fused_qkv"
+        return "fused_qkv_macro"
 
     def source_code(self):
         return "Q, K, V -> layers.2.self_attn.qkv_proj.weight, fused_qkv, num_heads = 8, num_key_value_groups = 8"
@@ -368,6 +359,61 @@ class TestFusedQkvOldMacro4(TestMacro):
         self.start_macro_test()
 
 
+class TestFusedQkvOldMacro5(TestMacro):
+    def macro_name(self):
+        return "fused_qkv_old_macro"
+
+    def source_code(self):
+        return "layers.2.self_attn.qkv_proj.bias -> layers.2.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
+
+    def expected(self):
+        return [
+            'layers.2.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.2.self_attn.qkv_proj.bias, axis=0',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestFusedQkvOldMacro6(TestMacro):
+    def macro_name(self):
+        return "fused_qkv_old_macro"
+
+    def source_code(self):
+        return [
+            "fused_qkv_old_test_name ->  A_TEST_NAME,fused_qkv_old, num_heads = 8, num_key_value_groups = 8 ",
+            "A_TEST_NAME ->  layers.2.self_attn.qkv_proj.weight",
+        ]
+
+    def expected(self):
+        return [
+            'fused_qkv_old_test_name -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7 -> A_TEST_NAME, axis=1',
+            'A_TEST_NAME ->  layers.2.self_attn.qkv_proj.weight',
+        ]
+
+    def test(self):
+        self.start_macro_test(aoa_config_reverse=True)
+
+
+class TestFusedFfnMacro(TestMacro):
+    def macro_name(self):
+        return "fused_ffn_macro"
+
+    def source_code(self):
+        return "layers.2.mlp.gate_up_fused_proj.weight -> layers.2.mlp.gate_up_fused_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.2.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.2.mlp.gate_up_fused_proj.weight, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
 class TestFusedFfnMacro2(TestMacro):
     def macro_name(self):
         return "fused_ffn_macro"
@@ -404,23 +450,6 @@ class TestFusedFfnMacro3(TestMacro):
         self.start_macro_test()
 
 
-class TestFusedQkvOldMacro5(TestMacro):
-    def macro_name(self):
-        return "fused_qkv_old_macro"
-
-    def source_code(self):
-        return "layers.2.self_attn.qkv_proj.bias -> layers.2.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
-
-    def expected(self):
-        return [
-            'layers.2.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
-            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.2.self_attn.qkv_proj.bias, axis=0',
-        ]
-
-    def test(self):
-        self.start_macro_test()
-
-
 class TestFusedFfnMacro4(TestMacro):
     def macro_name(self):
         return "fused_ffn_macro"
@@ -436,6 +465,27 @@ class TestFusedFfnMacro4(TestMacro):
 
     def test(self):
         self.start_macro_test()
+
+
+class TestFusedFfnMacro5(TestMacro):
+    def macro_name(self):
+        return "fused_ffn_macro"
+
+    def source_code(self):
+        return [
+            "layers.1.mlp.gate_up_fused_proj.weight_test1 -> A_TEST_NAME, fused_ffn ",
+            "A_TEST_NAME -> layers.1.mlp.gate_up_fused_proj.weight_test2",
+        ]
+
+    def expected(self):
+        return [
+            'layers.1.mlp.gate_up_fused_proj.weight_test1  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> A_TEST_NAME, axis=1',
+            'A_TEST_NAME -> layers.1.mlp.gate_up_fused_proj.weight_test2',
+        ]
+
+    def test(self):
+        self.start_macro_test(aoa_config_reverse=True)
 
 
 class TestLayerIdOffsetMacro(TestMacro):
@@ -455,9 +505,9 @@ class TestLayerIdOffsetMacro(TestMacro):
         self.start_macro_test()
 
 
-class TestLayerIdMacro_with_Fused_qkv_old_macro(TestMacro):
+class TestIdMacroCase0(TestMacro):
     def macro_name(self):
-        return "layer_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.$LAYER_ID.qkv_proj.weight->layers.$LAYER_ID.q_proj.weight,layer.$LAYER_ID.k_proj.weight,layer.$LAYER_ID.v_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4\n"
@@ -471,9 +521,9 @@ class TestLayerIdMacro_with_Fused_qkv_old_macro(TestMacro):
         self.start_macro_test()
 
 
-class Test_expert_id_Macro_with_Fused_ffn_macro(TestMacro):
+class TestIdMacroCase1(TestMacro):
     def macro_name(self):
-        return "expert_id_macro"
+        return "id_macro"
 
     def source_code(self):
         return "layers.5.experts.$EXPERT_ID.up_gate_proj.weight -> layers.5.experts.$EXPERT_ID.gate_proj.weight, layers.5.experts.$EXPERT_ID.up_proj.weight, fused_ffn"
@@ -482,6 +532,44 @@ class Test_expert_id_Macro_with_Fused_ffn_macro(TestMacro):
         return [
             'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,layers.5.experts.0.up_proj.weight,fused_ffn\n',
             'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,layers.5.experts.1.up_proj.weight,fused_ffn\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestIdMacroCase2(TestMacro):
+    def macro_name(self):
+        return "id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.experts.$EXPERT_ID.up_gate_proj.weight -> layers.$LAYER_ID.experts.$EXPERT_ID.gate_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.3.experts.0.up_gate_proj.weight->layers.3.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.0.up_gate_proj.weight->layers.5.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.3.experts.1.up_gate_proj.weight->layers.3.experts.1.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.1.up_gate_proj.weight->layers.5.experts.1.gate_proj.weight,fused_ffn\n',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestIdMacroCase3(TestMacro):
+    def macro_name(self):
+        return "id_macro"
+
+    def source_code(self):
+        return "layers.$LAYER_ID.experts.$EXPERT_ID.up_gate_proj.weight^T -> layers.$LAYER_ID.experts.$EXPERT_ID.gate_proj.weight, fused_ffn"
+
+    def expected(self):
+        return [
+            'layers.3.experts.0.up_gate_proj.weight^T->layers.3.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.0.up_gate_proj.weight^T->layers.5.experts.0.gate_proj.weight,fused_ffn\n',
+            'layers.3.experts.1.up_gate_proj.weight^T->layers.3.experts.1.gate_proj.weight,fused_ffn\n',
+            'layers.5.experts.1.up_gate_proj.weight^T->layers.5.experts.1.gate_proj.weight,fused_ffn\n',
         ]
 
     def test(self):

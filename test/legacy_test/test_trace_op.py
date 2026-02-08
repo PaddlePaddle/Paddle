@@ -266,6 +266,22 @@ class TestTraceAPIZerodimCase(unittest.TestCase):
                 np.testing.assert_allclose(result, target, rtol=1e-5)
 
 
+# Test alias for 'input'
+class TestTraceAlias(unittest.TestCase):
+    def test_alias(self):
+        with base.dygraph.guard():
+            x_np = np.random.random((3, 3)).astype("float32")
+            x = paddle.to_tensor(x_np)
+
+            # 1. Standard call
+            out_ref = paddle.trace(x)
+
+            # 2. Test alias: input -> x
+            out_alias = paddle.trace(input=x)
+
+            np.testing.assert_array_equal(out_ref.numpy(), out_alias.numpy())
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

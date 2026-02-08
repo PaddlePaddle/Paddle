@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& seed_tensor,
+                      const optional<DenseTensor>& seed_tensor,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
@@ -36,22 +36,22 @@ void DropoutRawKernel(const Context& dev_ctx,
   if (mask) {
     dev_ctx.template Alloc<uint8_t>(mask);
   }
-  phi::funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
-                                          is_test,
-                                          p.to<float>(),
-                                          upscale_in_train,
-                                          fix_seed,
-                                          seed,
-                                          x,
-                                          seed_tensor.get_ptr(),
-                                          mask,
-                                          out);
+  funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                     is_test,
+                                     p.to<float>(),
+                                     upscale_in_train,
+                                     fix_seed,
+                                     seed,
+                                     x,
+                                     seed_tensor.get_ptr(),
+                                     mask,
+                                     out);
 }
 
 template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& seed_tensor,
+                     const optional<DenseTensor>& seed_tensor,
                      const Scalar& p,
                      bool is_test,
                      const std::string& mode,
@@ -65,18 +65,18 @@ void DropoutNdKernel(const Context& dev_ctx,
   if (mask) {
     dev_ctx.template Alloc<uint8_t>(mask);
   }
-  phi::funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
-                                          is_test,
-                                          p.to<float>(),
-                                          upscale_in_train,
-                                          fix_seed,
-                                          seed,
-                                          x,
-                                          seed_tensor.get_ptr(),
-                                          mask,
-                                          out,
-                                          true,
-                                          axis);
+  funcs::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                     is_test,
+                                     p.to<float>(),
+                                     upscale_in_train,
+                                     fix_seed,
+                                     seed,
+                                     x,
+                                     seed_tensor.get_ptr(),
+                                     mask,
+                                     out,
+                                     true,
+                                     axis);
 }
 
 }  // namespace phi

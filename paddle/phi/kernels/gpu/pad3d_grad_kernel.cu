@@ -138,7 +138,7 @@ __global__ void Pad3DGradReflectNCDHW(const IndexType out_size,
     in_h = min(in_h, 2 * in_height - in_h - 2);
     in_w = min(in_w, 2 * in_width - in_w - 2);
 
-    phi::CudaAtomicAdd(
+    CudaAtomicAdd(
         &d_in_data[nc * in_depth * in_height * in_width +
                    in_d * in_height * in_width + in_h * in_width + in_w],
         d_out_data[out_index]);
@@ -181,11 +181,10 @@ __global__ void Pad3DGradReflectNDHWC(const IndexType out_size,
     in_d = min(in_d, in_depth * 2 - in_d - 2);
     in_h = min(in_h, in_height * 2 - in_h - 2);
     in_w = min(in_w, in_width * 2 - in_w - 2);
-    phi::CudaAtomicAdd(
-        &d_in_data[n * in_depth * in_height * in_width * channels +
-                   in_d * in_height * in_width * channels +
-                   in_h * in_width * channels + in_w * channels + c],
-        d_out_data[out_index]);
+    CudaAtomicAdd(&d_in_data[n * in_depth * in_height * in_width * channels +
+                             in_d * in_height * in_width * channels +
+                             in_h * in_width * channels + in_w * channels + c],
+                  d_out_data[out_index]);
   }
 }
 
@@ -219,7 +218,7 @@ __global__ void Pad3DGradReplicateNCDHW(const IndexType out_size,
     const IndexType in_w =
         min(in_width - 1, max(out_w - pad_left, static_cast<IndexType>(0)));
 
-    phi::CudaAtomicAdd(
+    CudaAtomicAdd(
         &d_in_data[nc * in_depth * in_height * in_width +
                    in_d * in_height * in_width + in_h * in_width + in_w],
         d_out_data[out_index]);
@@ -258,11 +257,10 @@ __global__ void Pad3DGradReplicateNDHWC(const IndexType out_size,
     const IndexType in_w =
         min(in_width - 1, max(out_w - pad_left, static_cast<IndexType>(0)));
 
-    phi::CudaAtomicAdd(
-        &d_in_data[n * in_depth * in_height * in_width * channels +
-                   in_d * in_height * in_width * channels +
-                   in_h * in_width * channels + in_w * channels + c],
-        d_out_data[out_index]);
+    CudaAtomicAdd(&d_in_data[n * in_depth * in_height * in_width * channels +
+                             in_d * in_height * in_width * channels +
+                             in_h * in_width * channels + in_w * channels + c],
+                  d_out_data[out_index]);
   }
 }
 
@@ -293,7 +291,7 @@ __global__ void Pad3DGradCircularNCDHW(const IndexType out_size,
     IndexType in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
     IndexType in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
 
-    phi::CudaAtomicAdd(
+    CudaAtomicAdd(
         &d_in_data[nc * in_depth * in_height * in_width +
                    in_d * in_height * in_width + in_h * in_width + in_w],
         d_out_data[out_index]);
@@ -329,11 +327,10 @@ __global__ void Pad3DGradCircularNDHWC(const IndexType out_size,
     IndexType in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
     IndexType in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
 
-    phi::CudaAtomicAdd(
-        &d_in_data[n * in_depth * in_height * in_width * channels +
-                   in_d * in_height * in_width * channels +
-                   in_h * in_width * channels + in_w * channels + c],
-        d_out_data[out_index]);
+    CudaAtomicAdd(&d_in_data[n * in_depth * in_height * in_width * channels +
+                             in_d * in_height * in_width * channels +
+                             in_h * in_width * channels + in_w * channels + c],
+                  d_out_data[out_index]);
   }
 }
 
@@ -343,7 +340,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value,
+                     double pad_value,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -355,7 +352,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
   if (x.numel() == 0) return;
 
-  phi::funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
+  funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
 
   const int64_t pad_left = pads[0];
   const int64_t pad_top = pads[2];

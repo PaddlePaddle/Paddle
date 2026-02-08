@@ -40,7 +40,7 @@ void UnbindKernel(const Context& dev_ctx,
     shape_refer.emplace_back(outs[j]);
   }
 
-  phi::funcs::SplitFunctor<Context, T> functor;
+  funcs::SplitFunctor<Context, T> functor;
   functor(dev_ctx, x, shape_refer, axis, &outs);
 }
 

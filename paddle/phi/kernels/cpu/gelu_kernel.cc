@@ -59,13 +59,13 @@ struct GeluFunctor {
       int n = std::min(x.size(), out.size());
 
       std::memset(out_data, 0, n * sizeof(T));
-      phi::funcs::CBlas<T>::AXPY(
+      funcs::CBlas<T>::AXPY(
           n, static_cast<T>(M_SQRT1_2), x_data, 1, out_data, 1);
-      phi::funcs::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
+      funcs::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
       for (int i = 0; i < n; i++) {
         out_data[i] += static_cast<T>(1);
       }
-      phi::funcs::CBlas<T>::VMUL(n, x_data, out_data, out_data);
+      funcs::CBlas<T>::VMUL(n, x_data, out_data, out_data);
       for (int i = 0; i < n; i++) {
         out_data[i] *= static_cast<T>(0.5);
       }

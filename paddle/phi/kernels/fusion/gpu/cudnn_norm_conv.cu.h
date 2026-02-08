@@ -37,7 +37,7 @@ struct NormConvolutionArgs {
     compute_type = phi::backends::gpu::CudnnDataType<float>::type;
   }
 
-  void Set(const phi::GPUContext &dev_ctx,
+  void Set(const GPUContext &dev_ctx,
            const std::vector<int> &input_shape,
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape,
@@ -60,7 +60,7 @@ struct NormConvolutionArgs {
             "The size of input_shape is expected to 4. But received "
             "input_shape's size is %d, input_shape is [%s].",
             input_shape.size(),
-            common::make_ddim(input_shape)));
+            make_ddim(input_shape)));
     PADDLE_ENFORCE_EQ(
         filter_shape.size(),
         4U,
@@ -68,14 +68,14 @@ struct NormConvolutionArgs {
             "The size of filter_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             filter_shape.size(),
-            common::make_ddim(filter_shape)));
+            make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
                           (filter_shape[1] == 1 || filter_shape[1] == 3),
                       true,
                       common::errors::InvalidArgument(
                           "The filter_shape is expected to store as nhwc, and "
                           "h = w = 1 or 3. But received filter_shape is [%s].",
-                          common::make_ddim(filter_shape)));
+                          make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ((filter_shape[0] % 32 == 0 && filter_shape[3] % 8 == 0),
                       true,
                       common::errors::InvalidArgument(
@@ -92,7 +92,7 @@ struct NormConvolutionArgs {
             "The size of output_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             output_shape.size(),
-            common::make_ddim(output_shape)));
+            make_ddim(output_shape)));
     is_support = IsSupport(dev_ctx, filter_shape, stride, dilation, group);
     PADDLE_ENFORCE_EQ(
         is_support,
@@ -132,7 +132,7 @@ struct NormConvolutionArgs {
     conv_desc.set(dtype, paddings, strides, dilations, false, group);
   }
 
-  bool IsSupport(const phi::GPUContext &dev_ctx,
+  bool IsSupport(const GPUContext &dev_ctx,
                  const std::vector<int> &filter_shape,
                  int stride,
                  int dilation,
@@ -175,7 +175,7 @@ struct NormConvolutionArgs {
 template <typename T>
 class CudnnNormConvolution {
  public:
-  CudnnNormConvolution(const phi::GPUContext &dev_ctx,
+  CudnnNormConvolution(const GPUContext &dev_ctx,
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
                        const std::vector<int> &output_shape,
@@ -194,12 +194,12 @@ class CudnnNormConvolution {
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const phi::GPUContext &dev_ctx,
-               const phi::DenseTensor &input,
-               const phi::DenseTensor &filter,
-               phi::DenseTensor *output,
-               phi::DenseTensor *sum,
-               phi::DenseTensor *sum_of_squares) {
+  void Forward(const GPUContext &dev_ctx,
+               const DenseTensor &input,
+               const DenseTensor &filter,
+               DenseTensor *output,
+               DenseTensor *sum,
+               DenseTensor *sum_of_squares) {
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
     CudnnFusionOp *fwd_op = GetForwardOp(dev_ctx);
@@ -238,8 +238,8 @@ class CudnnNormConvolution {
   }
 
  private:
-  CudnnFusionOp *GetForwardOp(const phi::GPUContext &dev_ctx) {
-    phi::funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
+  CudnnFusionOp *GetForwardOp(const GPUContext &dev_ctx) {
+    funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetForward());
 
     CudnnFusionOp *fwd_op = cache.GetAlgorithm(
@@ -294,7 +294,7 @@ class CudnnNormConvolution {
 template <typename T>
 class CudnnNormConvolutionGrad {
  public:
-  CudnnNormConvolutionGrad(const phi::GPUContext &dev_ctx,
+  CudnnNormConvolutionGrad(const GPUContext &dev_ctx,
                            const std::vector<int> &input_shape,
                            const std::vector<int> &filter_shape,
                            const std::vector<int> &output_shape,
@@ -314,12 +314,12 @@ class CudnnNormConvolutionGrad {
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const phi::GPUContext &dev_ctx,
-                const phi::DenseTensor &input,
-                const phi::DenseTensor &filter,
-                const phi::DenseTensor &output_grad,
-                phi::DenseTensor *input_grad,
-                phi::DenseTensor *filter_grad,
+  void Backward(const GPUContext &dev_ctx,
+                const DenseTensor &input,
+                const DenseTensor &filter,
+                const DenseTensor &output_grad,
+                DenseTensor *input_grad,
+                DenseTensor *filter_grad,
                 bool use_addto = false) {
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());
@@ -339,7 +339,7 @@ class CudnnNormConvolutionGrad {
   }
 
  private:
-  void BackwardFilter(const phi::GPUContext &dev_ctx,
+  void BackwardFilter(const GPUContext &dev_ctx,
                       T *output_grad_ptr,
                       T *input_ptr,
                       T *filter_grad_ptr) {
@@ -367,7 +367,7 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  void BackwardData(const phi::GPUContext &dev_ctx,
+  void BackwardData(const GPUContext &dev_ctx,
                     T *output_grad_ptr,
                     T *filter_ptr,
                     T *input_grad_ptr,
@@ -380,26 +380,26 @@ class CudnnNormConvolutionGrad {
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
     dev_ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionBackwardData(
-              cudnn_handle,
-              &alpha,
-              args_.filter_desc.desc(),
-              filter_ptr,
-              args_.out_desc.desc(),
-              output_grad_ptr,
-              args_.conv_desc.desc(),
-              dgrad_algo_,
-              cudnn_workspace_ptr,
-              workspace_size,
-              &beta,
-              args_.in_desc.desc(),
-              input_grad_ptr));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              dynload::cudnnConvolutionBackwardData(cudnn_handle,
+                                                    &alpha,
+                                                    args_.filter_desc.desc(),
+                                                    filter_ptr,
+                                                    args_.out_desc.desc(),
+                                                    output_grad_ptr,
+                                                    args_.conv_desc.desc(),
+                                                    dgrad_algo_,
+                                                    cudnn_workspace_ptr,
+                                                    workspace_size,
+                                                    &beta,
+                                                    args_.in_desc.desc(),
+                                                    input_grad_ptr));
         },
         workspace_size);
   }
 
-  CudnnFusionOp *GetBackwardFilterOp(const phi::GPUContext &dev_ctx) {
-    phi::funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
+  CudnnFusionOp *GetBackwardFilterOp(const GPUContext &dev_ctx) {
+    funcs::AlgorithmsCache<CudnnFusionOp *> &cache =
         *(CudnnFusionOpCache::Instance().GetBackward());
 
     CudnnFusionOp *wgrad_op = cache.GetAlgorithm(
@@ -441,11 +441,11 @@ class CudnnNormConvolutionGrad {
     return wgrad_op;
   }
 
-  size_t GetWorkspaceSizeBwdData(const phi::GPUContext &dev_ctx) {
+  size_t GetWorkspaceSizeBwdData(const GPUContext &dev_ctx) {
     size_t workspace_size = 0U;
     auto handle = dev_ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
+        dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle,
             args_.filter_desc.desc(),
             args_.out_desc.desc(),

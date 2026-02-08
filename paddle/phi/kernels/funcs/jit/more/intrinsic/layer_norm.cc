@@ -33,7 +33,7 @@ void LayerNorm(float* x,
   int block = YMM_FLOAT_BLOCK;
   const int rest = right % block;
   const int end = right - rest;
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
 #pragma omp parallel
   {
 #endif
@@ -58,7 +58,7 @@ void LayerNorm(float* x,
                          rest_mask & 0x2 ? 0xffffffff : 0,   // NOLINT
                          rest_mask & 0x1 ? 0xffffffff : 0);  // NOLINT
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
 #pragma omp for
 #endif
     for (int i = 0; i < height; ++i) {
@@ -170,7 +170,7 @@ void LayerNorm(float* x,
         }
       }
     }
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   }
 #endif
 }

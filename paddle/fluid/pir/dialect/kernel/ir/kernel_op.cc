@@ -139,6 +139,46 @@ phi::KernelKey CustomKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
 
+const char* PythonFunctionOp::attributes_name[attributes_num] = {  // NOLINT
+    "op_name",
+    "kernel_name",
+    "kernel_key"};
+
+void PythonFunctionOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: PythonFunctionOp.";
+  auto& attributes = this->attributes();
+
+  PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
+                     attributes.at("op_name").isa<pir::StrAttribute>(),
+                 common::errors::PreconditionNotMet(
+                     "Type of attribute: op_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
+                     attributes.at("kernel_name").isa<pir::StrAttribute>(),
+                 common::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
+                     attributes.at("kernel_key").isa<KernelAttribute>(),
+                 common::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_key is not right."));
+}
+
+std::string PythonFunctionOp::op_name() {
+  return attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+}
+
+std::string PythonFunctionOp::kernel_name() {
+  return attributes()
+      .at("kernel_name")
+      .dyn_cast<pir::StrAttribute>()
+      .AsString();
+}
+
+phi::KernelKey PythonFunctionOp::kernel_key() {
+  return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
+}
+
 #ifdef PADDLE_WITH_DNNL
 const char* OneDNNPhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
     "op_name",
@@ -264,6 +304,7 @@ phi::KernelKey OneDNNLegacyKernelOp::kernel_key() {
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PythonFunctionOp)
 #ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNPhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNMixedPhiKernelOp)

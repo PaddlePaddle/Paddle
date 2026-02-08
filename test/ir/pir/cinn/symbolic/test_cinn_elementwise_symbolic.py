@@ -82,7 +82,7 @@ class CINNSubGraphNetBinary(paddle.nn.Layer):
         return out
 
 
-class TestCinnSubGrapTril(unittest.TestCase):
+class TestCinnSubGraphTril(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -118,7 +118,7 @@ class TestCinnSubGrapTril(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapTrilBoolGE2Dim(unittest.TestCase):
+class TestCinnSubGraphTrilBoolGE2Dim(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -154,7 +154,7 @@ class TestCinnSubGrapTrilBoolGE2Dim(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapTrilDiagNeg(unittest.TestCase):
+class TestCinnSubGraphTrilDiagNeg(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -190,7 +190,7 @@ class TestCinnSubGrapTrilDiagNeg(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapTrilDiagPos(unittest.TestCase):
+class TestCinnSubGraphTrilDiagPos(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -226,7 +226,7 @@ class TestCinnSubGrapTrilDiagPos(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapIsInf(unittest.TestCase):
+class TestCinnSubGraphIsInf(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -262,7 +262,7 @@ class TestCinnSubGrapIsInf(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapIsFinite(unittest.TestCase):
+class TestCinnSubGraphIsFinite(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -298,7 +298,7 @@ class TestCinnSubGrapIsFinite(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapIsNan(unittest.TestCase):
+class TestCinnSubGraphIsNan(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -419,7 +419,7 @@ class TestCinnSubGraphIscloseTrue(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-class TestCinnSubGrapReciprocal(unittest.TestCase):
+class TestCinnSubGraphReciprocal(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """

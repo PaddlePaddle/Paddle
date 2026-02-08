@@ -159,11 +159,11 @@ def sum_net5(x):
 
 
 def swiglu_net1(x, y):
-    return paddle.incubate.nn.functional.swiglu(x, y)
+    return paddle.nn.functional.swiglu(x, y)
 
 
 def swiglu_net2(x):
-    return paddle.incubate.nn.functional.swiglu(x)
+    return paddle.nn.functional.swiglu(x)
 
 
 def swish_net(x):

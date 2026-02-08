@@ -29,7 +29,7 @@ void AssignKernel(const Context& dev_ctx,
 
 template <typename Context>
 void AssignRawKernel(const Context& dev_ctx,
-                     const paddle::optional<DenseTensor>& x,
+                     const optional<DenseTensor>& x,
                      DenseTensor* out) {
   if (x) {
     if (!x->IsInitialized()) {
@@ -40,7 +40,7 @@ void AssignRawKernel(const Context& dev_ctx,
   }
 }
 
-// Note: use `const paddle::optional<std::vector<const DenseTensor*>&> x`
+// Note: use `const optional<std::vector<const DenseTensor*>&> x`
 // as input if needed
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
@@ -106,7 +106,7 @@ void AssignValueKernel(const Context& dev_ctx,
                         dtype,
                         template_dtype));
   CopyVectorToTensor<T>(dev_ctx, values, out);
-  out->Resize(common::make_ddim(shape));
+  out->Resize(make_ddim(shape));
 }
 
 #ifdef _WIN32

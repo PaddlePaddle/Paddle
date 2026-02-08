@@ -69,8 +69,7 @@ void AllCloseKernel(const Context& dev_ctx,
                     bool equal_nan,
                     DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    phi::Full<bool, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), true, out);
+    Full<bool, Context>(dev_ctx, out->dims(), true, out);
     return;
   }
   double rtol_v, atol_v;

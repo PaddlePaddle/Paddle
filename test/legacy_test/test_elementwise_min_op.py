@@ -17,13 +17,12 @@ import unittest
 import numpy as np
 from op_test import (
     OpTest,
+    check_cudnn_version_and_compute_capability,
     convert_float_to_uint16,
-    is_custom_device,
     skip_check_grad_ci,
 )
 
 import paddle
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -315,12 +314,8 @@ class TestElementwiseMinFP16Op_broadcast_4(TestElementwiseFP16Op):
 
 
 @unittest.skipIf(
-    (core.is_compiled_with_cuda() or is_custom_device())
-    and (
-        core.cudnn_version() < 8100
-        or paddle.device.cuda.get_device_capability()[0] < 8
-    ),
-    "run test when gpu is available and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
+    not check_cudnn_version_and_compute_capability(8100, 8),
+    "only support compiled with CUDA or custom device, and for CUDA cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
 )
 class TestElementwiseBF16Op(OpTest):
     def init_data(self):

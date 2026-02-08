@@ -93,7 +93,7 @@ void AbsGradKernelImpl(const GPUContext& dev_ctx,
   std::vector<DenseTensor*> outs = {dx};
   dev_ctx.Alloc<T>(dx);
   AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
 }
 
 template <typename T, typename Context>
@@ -116,8 +116,8 @@ void AbsGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   auto* dx_data = dx->data<T>();
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
 
@@ -133,9 +133,8 @@ void AbsDoubleGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(ddout, static_cast<size_t>(numel * sizeof(T)));
   auto* ddout_data = ddout->data<T>();
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::AbsGradGradFunctor<T> functor(
-      ddx_data, x_data, ddout_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::AbsGradGradFunctor<T> functor(ddx_data, x_data, ddout_data, numel);
   for_range(functor);
 }
 

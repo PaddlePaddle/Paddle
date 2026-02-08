@@ -36,7 +36,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 2) {
     // input
@@ -46,7 +46,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
@@ -54,7 +54,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   }
 }
@@ -73,7 +73,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
@@ -84,7 +84,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
@@ -92,7 +92,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   }
 }
@@ -105,16 +105,16 @@ inline void TransToChannelFirst(const DeviceContext& dev_ctx,
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 4, 1, 2, 3};
-    phi::funcs::Transpose<DeviceContext, T, 5> trans5;
+    funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(dev_ctx, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 3, 1, 2};
-    phi::funcs::Transpose<DeviceContext, T, 4> trans4;
+    funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(dev_ctx, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
-    phi::funcs::Transpose<DeviceContext, T, 3> trans3;
+    funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(dev_ctx, *input, transformed_input, axis);
   }
 }
@@ -126,16 +126,16 @@ inline void TransToChannelLast(const DeviceContext& dev_ctx,
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 2, 3, 4, 1};
-    phi::funcs::Transpose<DeviceContext, T, 5> trans5;
+    funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(dev_ctx, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 2, 3, 1};
-    phi::funcs::Transpose<DeviceContext, T, 4> trans4;
+    funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(dev_ctx, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
-    phi::funcs::Transpose<DeviceContext, T, 3> trans3;
+    funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(dev_ctx, *input, transformed_input, axis);
   }
 }

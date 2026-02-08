@@ -80,7 +80,7 @@ class Model(paddle.nn.Layer):
 
 class LayerNorm2D(paddle.nn.LayerNorm):
     def __init__(self, *args, **kwargs):
-        super().__init__(args, *kwargs)
+        super().__init__(*args, **kwargs)
 
     def forward(self, x):
         x = x.transpose([0, 2, 3, 1])

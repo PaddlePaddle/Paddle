@@ -34,7 +34,7 @@ void LogLossKernel(const Context& dev_ctx,
   auto loss = EigenVector<T>::Flatten(*out);
   auto& place = *dev_ctx.eigen_device();
 
-  phi::funcs::EigenLogLoss<std::decay_t<decltype(place)>, T>::Eval(
+  funcs::EigenLogLoss<std::decay_t<decltype(place)>, T>::Eval(
       place, loss, prediction, label_out, epsilon);
 }
 

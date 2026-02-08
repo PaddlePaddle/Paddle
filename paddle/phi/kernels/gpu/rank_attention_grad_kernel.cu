@@ -54,23 +54,23 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
   int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
   // initialize out grad
   dev_ctx.template Alloc<T>(drank_para);
-  auto drank_para_eigen = phi::EigenVector<T>::Flatten(*drank_para);
+  auto drank_para_eigen = EigenVector<T>::Flatten(*drank_para);
   drank_para_eigen.device(place) = drank_para_eigen.constant(static_cast<T>(0));
 
   // copy data
-  phi::DenseTensor param_grad;
+  DenseTensor param_grad;
   param_grad.Resize({max_ins * block_matrix_row, para_col});
   dev_ctx.template Alloc<T>(&param_grad);
 
   // initialize
-  auto param_grad_eigen = phi::EigenVector<T>::Flatten(param_grad);
+  auto param_grad_eigen = EigenVector<T>::Flatten(param_grad);
   param_grad_eigen.device(place) = param_grad_eigen.constant(static_cast<T>(0));
   // get data ptr
   const T *input_help_data = input_help.data<T>();
   const T *ins_rank_data = ins_rank.data<T>();
   T *param_grad_data = param_grad.data<T>();
 
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   T alpha = 1;
   T beta = 0;
 

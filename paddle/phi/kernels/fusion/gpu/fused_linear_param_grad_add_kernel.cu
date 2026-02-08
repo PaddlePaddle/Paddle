@@ -36,7 +36,7 @@ template <typename T, typename MT, typename Context>
 void FusedLinearParamGradAddImpl(const Context &dev_ctx,
                                  const DenseTensor &x,
                                  const DenseTensor &dout,
-                                 const paddle::optional<DenseTensor> &dbias,
+                                 const optional<DenseTensor> &dbias,
                                  int64_t M,
                                  int64_t K,
                                  int64_t N,
@@ -48,7 +48,7 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
 
   const bool fuse_bias_grad = false;  // kIsMultiPrecision && dweight_out;
   if (dweight_out) {
-    phi::funcs::ComputeFusedGemmEpilogueBackward<T, T, MT>(
+    funcs::ComputeFusedGemmEpilogueBackward<T, T, MT>(
         dev_ctx,
         &dout,
         &x,
@@ -75,9 +75,9 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
   DenseTensor dbias_tmp_tensor;
   if (dbias) {
     if (kIsMultiPrecision) {
-      dbias_tmp_tensor = phi::EmptyLike<MT, Context>(dev_ctx, dbias.get());
+      dbias_tmp_tensor = EmptyLike<MT, Context>(dev_ctx, dbias.get());
     } else {
-      dbias_tmp_tensor = phi::EmptyLike<T, Context>(dev_ctx, dbias.get());
+      dbias_tmp_tensor = EmptyLike<T, Context>(dev_ctx, dbias.get());
     }
   }
   DenseTensor *dbias_tmp = !dbias ? dbias_out : &dbias_tmp_tensor;
@@ -136,8 +136,7 @@ static void PrintMeta(const DenseTensor *t, const char *name) {
 }
 
 template <int LogLevel = 10>
-static void PrintMeta(const paddle::optional<DenseTensor> &t,
-                      const char *name) {
+static void PrintMeta(const optional<DenseTensor> &t, const char *name) {
   const auto *t_ptr = t ? &(t.get()) : nullptr;
   PrintMeta<LogLevel>(t_ptr, name);
 }
@@ -146,8 +145,8 @@ template <typename T, typename Context>
 void FusedLinearParamGradAdd(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &dout,
-                             const paddle::optional<DenseTensor> &dweight,
-                             const paddle::optional<DenseTensor> &dbias,
+                             const optional<DenseTensor> &dweight,
+                             const optional<DenseTensor> &dbias,
                              bool multi_precision,
                              bool has_bias,
                              DenseTensor *dweight_out,
@@ -265,8 +264,8 @@ template <typename T, typename Context>
 void FusedLinearParamGradAdd(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &dout,
-                             const paddle::optional<DenseTensor> &dweight,
-                             const paddle::optional<DenseTensor> &dbias,
+                             const optional<DenseTensor> &dweight,
+                             const optional<DenseTensor> &dbias,
                              bool multi_precision,
                              bool has_bias,
                              DenseTensor *dweight_out,

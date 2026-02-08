@@ -61,18 +61,17 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        float threshold,
                        DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  auto dout = phi::EigenVector<T>::Flatten(out_grad);
-  auto out = phi::EigenVector<T>::Flatten(out_in);
-  auto dx = phi::EigenVector<T>::Flatten(*x_grad);
-  auto x = phi::EigenVector<T>::Flatten(x_in);
+  auto dout = EigenVector<T>::Flatten(out_grad);
+  auto out = EigenVector<T>::Flatten(out_in);
+  auto dx = EigenVector<T>::Flatten(*x_grad);
+  auto x = EigenVector<T>::Flatten(x_in);
   auto* eigen_dev = dev_ctx.eigen_device();
   SoftReluGradFunctor<T> functor;
   functor.SetAttrs(threshold);
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place =
-      (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) ||
-      (dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM);
+  bool is_gpu_place = (dev_ctx.GetPlace().GetType() == AllocationType::GPU) ||
+                      (dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM);
   if (use_32bit_index && is_gpu_place) {
     functor(*eigen_dev,
             To32BitIndex(x),

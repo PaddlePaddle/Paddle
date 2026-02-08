@@ -76,25 +76,24 @@ struct GeluGradFunctor {
       std::memset(second, 0, n * sizeof(T));
 
       // first = (0.5 * (1 + erf(x / sqrt(2))))
-      phi::funcs::CBlas<T>::AXPY(
-          n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
-      phi::funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
+      funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
+      funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
       for (int i = 0; i < n; i++) {
         first[i] += static_cast<T>(1);
       }
-      phi::funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
+      funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
 
       // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-      phi::funcs::CBlas<T>::VSQUARE(n, x_data, second);
-      phi::funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
-      phi::funcs::CBlas<T>::VEXP(n, second, second);
-      phi::funcs::CBlas<T>::VMUL(n, x_data, second, second);
-      phi::funcs::CBlas<T>::SCAL(
+      funcs::CBlas<T>::VSQUARE(n, x_data, second);
+      funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
+      funcs::CBlas<T>::VEXP(n, second, second);
+      funcs::CBlas<T>::VMUL(n, x_data, second, second);
+      funcs::CBlas<T>::SCAL(
           n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2), second, 1);
 
       // dx = dout * (first + second);
-      phi::funcs::CBlas<T>::VADD(n, first, second, first);
-      phi::funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
+      funcs::CBlas<T>::VADD(n, first, second, first);
+      funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
 
       std::free(first);
       std::free(second);

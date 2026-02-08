@@ -71,8 +71,8 @@ class DftiDescriptor {
 
 static DftiDescriptor plan_mkl_fft(const DataType in_dtype,
                                    const DataType out_dtype,
-                                   const phi::DDim& in_strides,
-                                   const phi::DDim& out_strides,
+                                   const DDim& in_strides,
+                                   const DDim& out_strides,
                                    const std::vector<int64_t>& signal_sizes,
                                    FFTNormMode normalization,
                                    bool forward) {

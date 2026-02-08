@@ -26,8 +26,8 @@
 
 namespace phi {
 
-template <typename DeviceContext, typename T>
-void BatchedGeqrf(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+void BatchedGeqrf(const Context& dev_ctx,
                   int batch_size,
                   int m,
                   int n,
@@ -37,8 +37,8 @@ void BatchedGeqrf(const DeviceContext& dev_ctx,
                   int a_stride,
                   int tau_stride);
 
-template <typename DeviceContext, typename T>
-void BatchedOrgqr(const DeviceContext& dev_ctx,
+template <typename Context, typename T>
+void BatchedOrgqr(const Context& dev_ctx,
                   int batch_size,
                   int m,
                   int n,

@@ -27,22 +27,22 @@ void FusedAttentionGradKernel(
     const DenseTensor &out_grad,
     const DenseTensor &x,
     const DenseTensor &qkv_weight,
-    const paddle::optional<DenseTensor> &qkv_bias,
-    const paddle::optional<DenseTensor> &qkv_bias_out,
-    const paddle::optional<DenseTensor> &src_mask,
-    const paddle::optional<DenseTensor> &src_mask_out,
+    const optional<DenseTensor> &qkv_bias,
+    const optional<DenseTensor> &qkv_bias_out,
+    const optional<DenseTensor> &src_mask,
+    const optional<DenseTensor> &src_mask_out,
     const DenseTensor &out_linear_weight,
-    const paddle::optional<DenseTensor> &out_linear_bias,
-    const paddle::optional<DenseTensor> &ln_scale,
-    const paddle::optional<DenseTensor> &ln_bias,
-    const paddle::optional<DenseTensor> &ln_scale_2,
-    const paddle::optional<DenseTensor> &ln_bias_2,
-    const paddle::optional<DenseTensor> &ln_out,
-    const paddle::optional<DenseTensor> &ln_mean,
-    const paddle::optional<DenseTensor> &ln_var,
-    const paddle::optional<DenseTensor> &ln_mean_2,
-    const paddle::optional<DenseTensor> &ln_var_2,
-    const paddle::optional<DenseTensor> &bias_dropout_residual_out,
+    const optional<DenseTensor> &out_linear_bias,
+    const optional<DenseTensor> &ln_scale,
+    const optional<DenseTensor> &ln_bias,
+    const optional<DenseTensor> &ln_scale_2,
+    const optional<DenseTensor> &ln_bias_2,
+    const optional<DenseTensor> &ln_out,
+    const optional<DenseTensor> &ln_mean,
+    const optional<DenseTensor> &ln_var,
+    const optional<DenseTensor> &ln_mean_2,
+    const optional<DenseTensor> &ln_var_2,
+    const optional<DenseTensor> &bias_dropout_residual_out,
     const DenseTensor &qkv_out,
     const DenseTensor &transpose_out_2,
     const DenseTensor &qk_out,
@@ -94,7 +94,7 @@ void FusedAttentionGradKernel(
 
   bool is_upscale_in_train_1 =
       (attn_dropout_implementation == "upscale_in_train");
-  const phi::DenseTensor *seed_1 = nullptr;
+  const DenseTensor *seed_1 = nullptr;
 
   phi::XPUDropoutParam attn_dropout_param;
   attn_dropout_param.initXPUDropoutParam(attn_dropout_rate,
@@ -111,6 +111,43 @@ void FusedAttentionGradKernel(
                                     dropout_fix_seed,
                                     seed_1,
                                     dropout_seed);
+  const auto input_x_dims = x.dims();
+  const auto qkv_w_dims = qkv_weight.dims();
+
+  int64_t batch_size = input_x_dims[0];
+  int64_t seq_len = input_x_dims[1];
+
+  if (batch_size == 0 || seq_len == 0) {
+    if (qkv_bias_grad) dev_ctx.template Alloc<T>(qkv_bias_grad);
+    if (qkv_bias_out_grad) dev_ctx.template Alloc<T>(qkv_bias_out_grad);
+    if (src_mask_out_grad) dev_ctx.template Alloc<T>(src_mask_out_grad);
+    if (out_linear_bias_grad) dev_ctx.template Alloc<T>(out_linear_bias_grad);
+
+    if (ln_scale_grad) dev_ctx.template Alloc<float>(ln_scale_grad);
+    if (ln_bias_grad) dev_ctx.template Alloc<float>(ln_bias_grad);
+    if (ln_scale_2_grad) dev_ctx.template Alloc<float>(ln_scale_2_grad);
+    if (ln_bias_2_grad) dev_ctx.template Alloc<float>(ln_bias_2_grad);
+
+    if (x_grad) dev_ctx.template Alloc<T>(x_grad);
+    if (qkv_weight_grad) dev_ctx.template Alloc<T>(qkv_weight_grad);
+    if (out_linear_weight_grad)
+      dev_ctx.template Alloc<T>(out_linear_weight_grad);
+
+    if (ln_out_grad) dev_ctx.template Alloc<T>(ln_out_grad);
+    if (bias_dropout_residual_out_grad)
+      dev_ctx.template Alloc<T>(bias_dropout_residual_out_grad);
+    if (qkv_out_grad) dev_ctx.template Alloc<T>(qkv_out_grad);
+    if (qktv_out_grad) dev_ctx.template Alloc<T>(qktv_out_grad);
+    if (transpose_out_2_grad) dev_ctx.template Alloc<T>(transpose_out_2_grad);
+    if (qk_out_grad) dev_ctx.template Alloc<T>(qk_out_grad);
+    if (softmax_out_grad) dev_ctx.template Alloc<T>(softmax_out_grad);
+    if (attn_dropout_out_grad) dev_ctx.template Alloc<T>(attn_dropout_out_grad);
+    if (fmha_out_grad) dev_ctx.template Alloc<T>(fmha_out_grad);
+    if (out_linear_out_grad) dev_ctx.template Alloc<T>(out_linear_out_grad);
+
+    return;
+  }
+
   // get inputs.
   const XPUTypeT *d_y_ptr =
       reinterpret_cast<const XPUTypeT *>(out_grad.data<T>());
@@ -164,15 +201,15 @@ void FusedAttentionGradKernel(
   XPUTypeT *d_x_ptr =
       reinterpret_cast<XPUTypeT *>(dev_ctx.template Alloc<T>(d_x));
 
-  const phi::DenseTensor *ln_out_p = ln_out.get_ptr();
-  const phi::DenseTensor *bias_dropout_residual_out_p =
+  const DenseTensor *ln_out_p = ln_out.get_ptr();
+  const DenseTensor *bias_dropout_residual_out_p =
       bias_dropout_residual_out.get_ptr();
 
-  const phi::DenseTensor *ln_scale_p = nullptr;
-  const phi::DenseTensor *ln_mean_p = nullptr;
-  const phi::DenseTensor *ln_var_p = nullptr;
-  phi::DenseTensor *d_ln_scale = nullptr;
-  phi::DenseTensor *d_ln_bias = nullptr;
+  const DenseTensor *ln_scale_p = nullptr;
+  const DenseTensor *ln_mean_p = nullptr;
+  const DenseTensor *ln_var_p = nullptr;
+  DenseTensor *d_ln_scale = nullptr;
+  DenseTensor *d_ln_bias = nullptr;
 
   const XPUTypeT *ln_out_ptr = NULL;
   const float *ln_scale_ptr = NULL;
@@ -206,11 +243,6 @@ void FusedAttentionGradKernel(
   d_ln_scale_ptr = dev_ctx.template Alloc<float>(d_ln_scale);
   d_ln_bias_ptr = dev_ctx.template Alloc<float>(d_ln_bias);
 
-  const auto input_x_dims = x.dims();
-  const auto qkv_w_dims = qkv_weight.dims();
-
-  int64_t batch_size = input_x_dims[0];
-  int64_t seq_len = input_x_dims[1];
   int64_t embed_dims = input_x_dims[2];
   int64_t num_heads = qkv_w_dims[1];
   int64_t head_dims = qkv_w_dims[2];

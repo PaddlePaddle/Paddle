@@ -31,10 +31,10 @@ void BmmKernel(const Context& dev_ctx,
     return;
   }
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(x.dims(), 0, false);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(y.dims(), 0, false);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(x.dims(), 0, false);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(y.dims(), 0, false);
 
   blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
 }

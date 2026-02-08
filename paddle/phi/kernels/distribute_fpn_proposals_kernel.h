@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
     const Context& dev_ctx,
     const DenseTensor& fpn_rois,
-    const paddle::optional<DenseTensor>& rois_num,
+    const optional<DenseTensor>& rois_num,
     int min_level,
     int max_level,
     int refer_level,

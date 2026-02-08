@@ -37,8 +37,8 @@
 namespace paddle::imperative {
 
 static const phi::Place &GetVarPlace(const framework::Variable &src) {
-  if (src.IsType<phi::DenseTensor>()) {
-    return src.Get<phi::DenseTensor>().place();
+  if (src.IsType<DenseTensor>()) {
+    return src.Get<DenseTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<phi::SelectedRows>()) {
     return src.Get<phi::SelectedRows>().value().place();
@@ -52,8 +52,8 @@ static const phi::Place &GetVarPlace(const framework::Variable &src) {
   }
 }
 
-static void AllReduce(const phi::DenseTensor &src,
-                      phi::DenseTensor *dst,
+static void AllReduce(const DenseTensor &src,
+                      DenseTensor *dst,
                       const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
   const auto &place = src.place();
@@ -224,14 +224,12 @@ void AllReduce(const framework::Variable &src,
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
 
-  if (src.IsType<phi::DenseTensor>()) {
-    if (!dst->IsType<phi::DenseTensor>()) {
+  if (src.IsType<DenseTensor>()) {
+    if (!dst->IsType<DenseTensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<phi::DenseTensor>(),
-              dst->GetMutable<phi::DenseTensor>(),
-              stream,
-              comm);
+    AllReduce(
+        src.Get<DenseTensor>(), dst->GetMutable<DenseTensor>(), stream, comm);
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {

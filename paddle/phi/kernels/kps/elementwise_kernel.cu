@@ -95,21 +95,22 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+#ifdef PADDLE_WITH_CUDA
+  if (x.dtype() == DataType::FLOAT32 &&
+      (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
+    if (x.numel() == 0 || y.numel() == 0) {
+      dev_ctx.template Alloc<float>(out);
+      return;
+    }
+    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
+    return;
+  }
+#endif
   if (x.numel() == 0 || y.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
-#ifdef PADDLE_WITH_CUDA
-  if (x.dtype() == phi::DataType::FLOAT32 &&
-      (y.dtype() == phi::DataType::BFLOAT16 ||
-       y.dtype() == phi::DataType::FLOAT16)) {
-    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
-  } else {
-#endif
-    phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-#ifdef PADDLE_WITH_CUDA
-  }
-#endif
+  phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>

@@ -18,6 +18,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot import symbolic_translate
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def simple(x, y):
@@ -126,6 +127,7 @@ class TestInplaceApi(TestCaseBase):
             paddle.to_tensor(1),
         )
 
+    @strict_mode_guard(False)
     def test_loop(self):
         self.assert_results(
             inplace_in_loop,

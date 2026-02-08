@@ -111,7 +111,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             if_grad_op = grad_outs[1][0].get_defining_op()
             self.assertEqual(if_grad_op.name(), "pd_op.if")
             with if_grad_op.as_if_op().true_block():
-                # check vjp interface for tupe_push_op
+                # check vjp interface for tuple_push_op
                 push_op = if_op.as_if_op().true_block().ops[-2]
                 self.assertEqual(push_op.name(), "cf.tuple_push")
                 self.assertEqual(has_vjp(push_op), True)

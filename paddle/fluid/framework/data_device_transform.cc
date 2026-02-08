@@ -15,9 +15,9 @@ limitations under the License. */
 
 namespace paddle::framework {
 
-void TransDataDevice(const phi::DenseTensor &in,
+void TransDataDevice(const DenseTensor &in,
                      const phi::Place &dst_place,
-                     phi::DenseTensor *out) {
+                     DenseTensor *out) {
   VLOG(3) << "DeviceTransform in, src_place " << in.place()
           << " dst_place: " << dst_place;
 

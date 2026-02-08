@@ -30,7 +30,7 @@ namespace paddle::framework::interpreter {
 
 bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                                const phi::KernelKey& expected_kernel_key,
-                               const phi::DenseTensor* tensor,
+                               const DenseTensor* tensor,
                                const std::string& var_name,
                                std::string* new_var_name,
                                std::vector<OpFuncNode>* op_func_nodes,
@@ -237,11 +237,10 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
 // Var is initialized && var contains tensor && tensor is initialized
 bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
-    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
+    if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetDenseTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<phi::TensorArray>()) {
-      return static_cast<const phi::DenseTensor*>(
-                 &(var->Get<phi::TensorArray>()[0]))
+      return static_cast<const DenseTensor*>(&(var->Get<phi::TensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -507,15 +506,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           const std::string var_name = argument_names[i];
           Variable* var = arguments->at(i);
 
-          const phi::DenseTensor* tensor_in = nullptr;
-          if (var->IsType<phi::DenseTensor>() ||
-              var->IsType<phi::SelectedRows>()) {
+          const DenseTensor* tensor_in = nullptr;
+          if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
             tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<phi::TensorArray>()) {
             if (var->Get<phi::TensorArray>().empty()) {
               continue;
             }
-            tensor_in = static_cast<const phi::DenseTensor*>(
+            tensor_in = static_cast<const DenseTensor*>(
                 &(var->Get<phi::TensorArray>()[0]));
           } else {
             continue;
@@ -530,15 +528,15 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               // Var without buffer may be needed
               // for some situation like InferShape().
               // In this situation We cannot skip Var analysis, as
-              // MKL-DNN shape of Var may differ from kNHWC Var
+              // ONEDNN shape of Var may differ from NHWC Var
               // In such situation corresponding resized Var
               // has to be created and registered
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&
-                  (var->IsType<phi::DenseTensor>() == true) &&
+                  (var->IsType<DenseTensor>() == true) &&
                   (expected_kernel_key.data_layout_ != DataLayout::ONEDNN)) {
                 VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
-                           "phi::DenseTensor , "
-                           "but kNHWC layout"
+                           "DenseTensor , "
+                           "but NHWC layout"
                         << parameter_name << " in Operator " << op_base->Type();
                 auto op = TransferLayout(
                     var_name,
@@ -574,7 +572,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               infer_varkernel_context.SetVarName(
                   const_cast<std::string*>(&parameter_name));
               infer_varkernel_context.SetDenseTensor(
-                  const_cast<phi::DenseTensor*>(tensor_in));
+                  const_cast<DenseTensor*>(tensor_in));
               kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
                   &infer_varkernel_context);
             }

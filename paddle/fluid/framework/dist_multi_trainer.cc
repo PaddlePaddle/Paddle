@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_PSCORE)
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
-#endif
-
 #include "paddle/fluid/framework/threadpool.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -67,11 +63,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 }
 
 void DistMultiTrainer::RegisterHeterCallback() {
-#ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
-#else
   auto fleet_ptr = FleetWrapper::GetInstance();
-#endif
   fleet_ptr->RegisterHeterCallback(
       [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }
@@ -190,13 +182,12 @@ void DistMultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    phi::DenseTensor *root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    DenseTensor *root_tensor = root_var->GetMutable<DenseTensor>();
     for (int j = 1; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
       Variable *thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
-      phi::DenseTensor *thread_tensor =
-          thread_var->GetMutable<phi::DenseTensor>();
+      DenseTensor *thread_tensor = thread_var->GetMutable<DenseTensor>();
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;
       }
@@ -224,18 +215,14 @@ void DistMultiTrainer::Finalize() {
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
-// flush local client push queue
-#ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
-#else
+  // flush local client push queue
   auto fleet_ptr_ = FleetWrapper::GetInstance();
-#endif
   fleet_ptr_->ClientFlush();
 }
 
 template <typename T>
-void DistMultiTrainer::MergeToRootScope(phi::DenseTensor *root_tensor,
-                                        phi::DenseTensor *tensor) {
+void DistMultiTrainer::MergeToRootScope(DenseTensor *root_tensor,
+                                        DenseTensor *tensor) {
   T *root_data = root_tensor->data<T>();
   T *data = tensor->data<T>();
   for (int i = 0; i < tensor->numel(); i++) {

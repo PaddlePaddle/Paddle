@@ -1210,51 +1210,44 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
         TypeError: If ``default`` is not None but it is not callable.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.switch_case doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 
             >>> def fn_1():
-            ...    return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
+            ...     return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
 
             >>> def fn_2():
-            ...    return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
+            ...     return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
 
             >>> def fn_3():
-            ...    return paddle.full(shape=[3], dtype='int32', fill_value=3)
+            ...     return paddle.full(shape=[3], dtype='int32', fill_value=3)
 
             >>> startup_program = paddle.static.default_startup_program()
             >>> main_program = paddle.static.default_main_program()
             >>> with paddle.static.program_guard(main_program, startup_program):
-            ...    index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
-            ...    index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
+            ...     index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
+            ...     index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
             ...
-            ...    out_1 = paddle.static.nn.switch_case(
-            ...        branch_index=index_1,
-            ...        branch_fns={1: fn_1, 2: fn_2},
-            ...        default=fn_3)
+            ...     out_1 = paddle.static.nn.switch_case(branch_index=index_1, branch_fns={1: fn_1, 2: fn_2}, default=fn_3)
             ...
-            ...    out_2 = paddle.static.nn.switch_case(
-            ...        branch_index=index_2,
-            ...        branch_fns=[(1, fn_1), (2, fn_2)],
-            ...        default=fn_3)
+            ...     out_2 = paddle.static.nn.switch_case(branch_index=index_2, branch_fns=[(1, fn_1), (2, fn_2)], default=fn_3)
             ...
-            ...    # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
-            ...    out_3 = paddle.static.nn.switch_case(
-            ...        branch_index=index_2,
-            ...        branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
+            ...     # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
+            ...     out_3 = paddle.static.nn.switch_case(branch_index=index_2, branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
             ...
-            ...    exe = paddle.static.Executor(paddle.CPUPlace())
-            ...    res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
-            ...    # Variable: fill_constant_1.tmp_0
-            ...    #   - message: The content of input layer:
-            ...    #   - lod: {}
-            ...    #   - place: Place(cpu)
-            ...    #   - shape: [2, 3]
-            ...    #   - layout: NCHW
-            ...    #   - dtype: int64
-            ...    #   - data: [3 3 3 3 3 3]
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
+            ...     res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
+            ...     # Variable: fill_constant_1.tmp_0
+            ...     #   - message: The content of input layer:
+            ...     #   - lod: {}
+            ...     #   - place: Place(cpu)
+            ...     #   - shape: [2, 3]
+            ...     #   - layout: NCHW
+            ...     #   - dtype: int64
+            ...     #   - data: [3 3 3 3 3 3]
 
             >>> print(res_1)
             [[1. 1.]]

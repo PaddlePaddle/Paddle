@@ -616,5 +616,61 @@ class Case10(LargeInput3DCase):
         self.numeric_grad_delta = 0.000001
 
 
+class TestGridSampleErrorMode1(unittest.TestCase):
+    def _test_case(self):
+        paddle.nn.functional.grid_sample(
+            paddle.randn([2, 3, 4, 5, 6], dtype="float32"),
+            paddle.randn([2, 7, 8, 9, 3], dtype="float32"),
+            mode="error_mode",
+            padding_mode="zeros",
+            align_corners=False,
+        )
+
+    def test_error(self):
+        self.assertRaises(ValueError, self._test_case)
+
+
+class TestGridSampleErrorMode2(unittest.TestCase):
+    def _test_case(self):
+        paddle.nn.functional.grid_sample(
+            paddle.randn([2, 3, 4, 5, 6], dtype="float32"),
+            paddle.randn([2, 7, 8, 9, 3], dtype="float32"),
+            mode="nearest",
+            padding_mode="error_mode",
+            align_corners=False,
+        )
+
+    def test_error(self):
+        self.assertRaises(ValueError, self._test_case)
+
+
+class TestGridSampleErrorMode3(unittest.TestCase):
+    def _test_case(self):
+        paddle.nn.functional.grid_sample(
+            paddle.randn([2, 3, 4, 5, 6], dtype="float32"),
+            paddle.randn([2, 7, 8, 9, 3], dtype="float32"),
+            mode="error_mode",
+            padding_mode="error_mode",
+            align_corners=False,
+        )
+
+    def test_error(self):
+        self.assertRaises(ValueError, self._test_case)
+
+
+class TestGridSampleErrorMode4(unittest.TestCase):
+    def _test_case(self):
+        paddle.nn.functional.grid_sample(
+            paddle.randn([2, 3, 4, 5, 6], dtype="float32"),
+            paddle.randn([2, 7, 8, 9, 3], dtype="float32"),
+            mode="nearest",
+            padding_mode="zeros",
+            align_corners=1,
+        )
+
+    def test_error(self):
+        self.assertRaises(TypeError, self._test_case)
+
+
 if __name__ == "__main__":
     unittest.main()

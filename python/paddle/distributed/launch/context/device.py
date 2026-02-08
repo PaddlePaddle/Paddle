@@ -16,6 +16,7 @@ import os
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
+from paddle.base.core import get_all_custom_device_type
 from paddle.device import get_available_custom_device
 
 
@@ -71,7 +72,11 @@ class Device:
         if self._dtype == DeviceType.IPU:
             return 'FLAGS_selected_ipus'
         if self._dtype == DeviceType.CUSTOM_DEVICE:
-            return 'FLAGS_selected_{}s'.format(os.getenv('PADDLE_XCCL_BACKEND'))
+            custom_device_types = get_all_custom_device_type()
+            device_type = (
+                str(custom_device_types[0]) if custom_device_types else ""
+            )
+            return f'FLAGS_selected_{device_type}s'
         return 'FLAGS_selected_devices'
 
     def get_selected_devices(self, devices=''):
@@ -85,20 +90,22 @@ class Device:
             return [str(self._labels.index(d)) for d in devs]
 
     def get_custom_device_envs(self):
+        custom_device_types = get_all_custom_device_type()
+        device_type = str(custom_device_types[0]) if custom_device_types else ""
         return {
             'PADDLE_DISTRI_BACKEND': 'xccl',
-            'PADDLE_XCCL_BACKEND': os.getenv('PADDLE_XCCL_BACKEND'),
+            'PADDLE_XCCL_BACKEND': device_type,
         }
 
     @classmethod
     def parse_device(self):
         dev = Device()
         visible_devices = None
-        if 'PADDLE_XCCL_BACKEND' in os.environ:
+        custom_device_types = get_all_custom_device_type()
+        if custom_device_types:
             dev._dtype = DeviceType.CUSTOM_DEVICE
-            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
-                os.getenv('PADDLE_XCCL_BACKEND').upper()
-            )
+            device_type = str(custom_device_types[0])
+            visible_devices_str = f'{device_type.upper()}_VISIBLE_DEVICES'
             if visible_devices_str in os.environ:
                 visible_devices = os.getenv(visible_devices_str)
         elif 'XPULINK_VISIBLE_DEVICES' in os.environ:
@@ -134,8 +141,9 @@ class Device:
         dev = Device()
         num = 0
         visible_devices = None
-        if 'PADDLE_XCCL_BACKEND' in os.environ:
-            custom_device_type = os.getenv('PADDLE_XCCL_BACKEND')
+        custom_device_types = get_all_custom_device_type()
+        if custom_device_types:
+            custom_device_type = str(custom_device_types[0])
             dev._dtype = DeviceType.CUSTOM_DEVICE
             num = get_custom_devices_count(custom_device_type)
             visible_devices_str = (

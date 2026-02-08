@@ -25,8 +25,8 @@ template <typename T, typename Context>
 void EditDistanceKernel(const Context& dev_ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
-                        const paddle::optional<DenseTensor>& hypslength,
-                        const paddle::optional<DenseTensor>& refslength,
+                        const optional<DenseTensor>& hypslength,
+                        const optional<DenseTensor>& refslength,
                         bool normalized,
                         DenseTensor* sequencenum,
                         DenseTensor* out) {

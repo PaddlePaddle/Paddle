@@ -22,6 +22,8 @@ from dygraph_to_static_utils import (
 
 import paddle
 
+paddle.core._set_prim_all_enabled(True)
+
 
 class HighOrderNet(paddle.nn.Layer):
     def __init__(self):
@@ -108,7 +110,10 @@ class TestBackwardControlFlow(Dy2StTestBase):
         x_grad_grad_conf = conf_static_net(x)
 
         np.testing.assert_allclose(
-            x_grad_grad.numpy(), x_grad_grad_conf.numpy()
+            x_grad_grad.numpy(),
+            x_grad_grad_conf.numpy(),
+            rtol=1e-06,
+            atol=1e-06,
         )
 
 

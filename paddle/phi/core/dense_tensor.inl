@@ -67,8 +67,6 @@ bool IsSharedBufferWith(const DenseTensor& src) const {
   return holder_ && holder_ == src.Holder();
 }
 
-const std::shared_ptr<phi::Allocation>& Holder() const { return holder_; }
-
 void set_offset(size_t offset) { meta_.offset = offset; }
 size_t offset() const { return meta_.offset; }
 
@@ -84,9 +82,6 @@ void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
 void set_type(phi::DataType type);
 
 InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
-
-/*! The internal of two tensors share the same memory block. */
-DenseTensor& ShareDataWith(const DenseTensor& src);
 
 /*! The internal of two tensors share the same memory block without checking the memory size for dist-tensor. */
 DenseTensor& ShareDataNoCheckWith(const DenseTensor& src);

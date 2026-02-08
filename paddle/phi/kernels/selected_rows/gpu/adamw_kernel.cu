@@ -68,12 +68,14 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
                                          bool lazy_mode,
                                          int ndim,
                                          bool amsgrad) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t id =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   MT lr = *lr_ * lr_ratio;
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
-        phi::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+        funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
     if (lazy_mode && row_idx < 0) {
       return;
     } else {
@@ -116,36 +118,35 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
 }
 
 template <typename T, typename Context>
-void AdamwDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const SelectedRows& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    float lr_ratio,
-    float coeff,
-    bool with_decay,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+void AdamwDenseParamSparseGradKernel(const Context& dev_ctx,
+                                     const DenseTensor& param,
+                                     const SelectedRows& grad,
+                                     const DenseTensor& learning_rate,
+                                     const DenseTensor& moment1,
+                                     const DenseTensor& moment2,
+                                     const optional<DenseTensor>& moment2_max,
+                                     const DenseTensor& beta1_pow,
+                                     const DenseTensor& beta2_pow,
+                                     const optional<DenseTensor>& master_param,
+                                     const optional<DenseTensor>& skip_update,
+                                     const Scalar& beta1,
+                                     const Scalar& beta2,
+                                     const Scalar& epsilon,
+                                     float lr_ratio,
+                                     float coeff,
+                                     bool with_decay,
+                                     bool lazy_mode,
+                                     int64_t min_row_size_to_use_multithread,
+                                     bool multi_precision,
+                                     bool use_global_beta_pow,
+                                     bool amsgrad,
+                                     DenseTensor* param_out,
+                                     DenseTensor* moment1_out,
+                                     DenseTensor* moment2_out,
+                                     DenseTensor* moment2_max_out,
+                                     DenseTensor* beta1_pow_out,
+                                     DenseTensor* beta2_pow_out,
+                                     DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
@@ -236,14 +237,14 @@ void AdamwDenseParamSparseGradKernel(
     }
   }
 
-  phi::SelectedRows tmp_grad_merge;
-  const phi::SelectedRows* grad_merge_ptr;
+  SelectedRows tmp_grad_merge;
+  const SelectedRows* grad_merge_ptr;
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+    funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -257,11 +258,13 @@ void AdamwDenseParamSparseGradKernel(
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     int threads = 512;
-    int ndim = param.numel();
-    int blocks = (ndim + threads - 1) / threads;
+    int64_t ndim = param.numel();
+    int64_t blocks = (ndim + threads - 1) / threads;
 
+    // NOTE(large-tensor): Kernel launch requires int type for grid dimension
+    PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
     SparseAdamWCUDAKernelREG<T, MPDType>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+        <<<static_cast<int>(blocks), threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             epsilon_,

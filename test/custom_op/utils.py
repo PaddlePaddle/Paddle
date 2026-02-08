@@ -37,7 +37,7 @@ for site_packages_path in getsitepackages():
         _get_all_paddle_includes_from_include_root(str(paddle_include_dir))
     )
 
-    paddle_libraries.append(str(Path(site_packages_path) / 'paddle' / 'libs'))
+    paddle_libraries.append(Path(site_packages_path) / 'paddle' / 'libs')
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']

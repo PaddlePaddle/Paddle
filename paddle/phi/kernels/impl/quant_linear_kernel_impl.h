@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void QuantLinearKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& w,
-                       const paddle::optional<DenseTensor>& bias,
+                       const optional<DenseTensor>& bias,
                        int in_num_col_dims,
                        const std::string& activation_type,
                        bool padding_weights,
@@ -51,7 +51,7 @@ void QuantLinearKernel(const Context& dev_ctx,
           in_mat_dims[1],
           in_mat_dims,
           w_dims0,
-          common::make_ddim({w_dims0, w_dims1})));
+          make_ddim({w_dims0, w_dims1})));
 
   output_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {
@@ -59,7 +59,7 @@ void QuantLinearKernel(const Context& dev_ctx,
   }
   output_dims.push_back(w_dims1);
 
-  y->Resize(common::make_ddim(output_dims));
+  y->Resize(make_ddim(output_dims));
   y->set_lod(x.lod());
 
   auto out_dims = y->dims();
@@ -76,7 +76,7 @@ void QuantLinearKernel(const Context& dev_ctx,
           "The weight's datatype is expected to be int8 when use quant. But "
           "received weight's datatype is %d",
           static_cast<int>(w.dtype())));
-  phi::funcs::FCInt8Functor<Context, T> fc;
+  funcs::FCInt8Functor<Context, T> fc;
   fc(dev_ctx,
      M,
      w_dims1,

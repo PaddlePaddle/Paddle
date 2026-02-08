@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import unittest
 
 import numpy as np
@@ -827,8 +828,6 @@ class TestlayernormStaticOp(unittest.TestCase):
 )
 class TestlayernormOpCPU(unittest.TestCase):
     def setUp(self):
-        import os
-
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         np.random.seed(20)
         batch = 16
@@ -973,8 +972,8 @@ class TestlayernormOpCPU(unittest.TestCase):
 )
 class TestlayernormStaticOpCPU(unittest.TestCase):
     def setUp(self):
-        import os
-
+        if core.is_compiled_with_xpu():
+            self.skipTest("CPU in XPU env not works with CUDA_VISIBLE_DEVICES")
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         np.random.seed(20)
         self.batch = 16

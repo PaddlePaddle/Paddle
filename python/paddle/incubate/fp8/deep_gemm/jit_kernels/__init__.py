@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The file has been adapted from DeepSeek DeepEP project
+# The file has been adapted from DeepSeek DeepGEMM project
 # Copyright (c) 2025 DeepSeek
-# Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+# Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
 from .gemm import gemm_fp8_fp8_bf16_nt  # noqa: F401
 from .m_grouped_gemm import (  # noqa: F401
@@ -27,4 +27,8 @@ from .utils import (  # noqa: F401
     get_m_alignment_for_contiguous_layout,
     get_num_sms,
     set_num_sms,
+)
+from .wgrad_gemm import (  # noqa: F401
+    k_grouped_wgrad_gemm_fp8_fp8_fp32_nt,
+    wgrad_gemm_fp8_fp8_fp32_nt,
 )

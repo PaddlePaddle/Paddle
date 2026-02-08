@@ -1760,10 +1760,10 @@ class BilinearInterpV2Pattern
       return false;
     }
     if (!has_scale_input && op->HasAttribute("scale")) {
-      std::vector<float> scale;
+      std::vector<double> scale;
       auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
       for (const auto &attr : scale_attr.AsVector()) {
-        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+        scale.push_back(attr.dyn_cast<pir::DoubleAttribute>().data());
       }
       if (scale.size() <= 1) {
         if (!op->HasAttribute("out_h") || !op->HasAttribute("out_w")) {
@@ -1854,10 +1854,10 @@ class NearestInterV2Pattern
 #endif
 
     if (op->HasAttribute("scale")) {
-      std::vector<float> scale;
+      std::vector<double> scale;
       auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
       for (const auto &attr : scale_attr.AsVector()) {
-        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+        scale.push_back(attr.dyn_cast<pir::DoubleAttribute>().data());
       }
       auto out_h = op->attribute<pir::Int32Attribute>("out_h").data();
       auto out_w = op->attribute<pir::Int32Attribute>("out_w").data();
@@ -2886,10 +2886,10 @@ class LinearInterpOpPattern
     }
 
     if (!has_scale_input || (has_scale_input && scale_shape != 1)) {
-      std::vector<float> scale;
+      std::vector<double> scale;
       auto scale_attr = op->attribute<pir::ArrayAttribute>("scale");
       for (const auto &attr : scale_attr.AsVector()) {
-        scale.push_back(attr.dyn_cast<pir::FloatAttribute>().data());
+        scale.push_back(attr.dyn_cast<pir::DoubleAttribute>().data());
       }
       if (scale.size() == 0) {
         if (!op->HasAttribute("out_w")) {

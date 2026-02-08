@@ -32,11 +32,9 @@
 #ifdef CINN_WITH_CUDA
 #include <cuda.h>
 
-#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 7050
+#if (defined(__CUDACC__) || defined(__CUDACC_RTC__))
 #define CINN_CUDA_FP16
 #include <cuda_fp16.h>
-
-#define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
 #endif  // __CUDACC__
 #endif  // CINN_WITH_CUDA
 

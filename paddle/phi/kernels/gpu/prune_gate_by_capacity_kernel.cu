@@ -35,8 +35,7 @@ __global__ void prune_gate_by_capacity_kernel(const T1* gate_idx_data,
                                               T2* expert_count_data,
                                               const int64_t batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size) {
-    auto orig_cap =
-        phi::CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
+    auto orig_cap = CudaAtomicAdd(expert_count_data + gate_idx_data[i], -1);
     if (orig_cap <= 0) {
       new_gate_idx_data[i] = -1;
     } else {
@@ -49,8 +48,8 @@ template <typename Context, typename T1>
 class PruneGateByCapacityFunctor {
  public:
   PruneGateByCapacityFunctor(const Context& dev_ctx,
-                             const phi::DenseTensor* gate_idx,
-                             phi::DenseTensor* expert_count_out,
+                             const DenseTensor* gate_idx,
+                             DenseTensor* expert_count_out,
                              T1* new_gate_idx_data)
       : dev_ctx_(dev_ctx),
         gate_idx_(gate_idx),
@@ -76,8 +75,8 @@ class PruneGateByCapacityFunctor {
 
  private:
   const Context& dev_ctx_;
-  const phi::DenseTensor* gate_idx_;
-  phi::DenseTensor* expert_count_out_;
+  const DenseTensor* gate_idx_;
+  DenseTensor* expert_count_out_;
   T1* new_gate_idx_data_;
 };
 
@@ -103,12 +102,11 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
                                DenseTensor* new_gate_idx) {
   auto* gate_idx_ptr = &gate_idx;
   // auto* expert_count_out =
-  // context.Output<phi::DenseTensor>("ExpertCountOut");
+  // context.Output<DenseTensor>("ExpertCountOut");
   auto* new_gate_idx_data = dev_ctx.template Alloc<T>(new_gate_idx);
 
-  phi::DenseTensor expert_count_out;
-  phi::Copy(
-      dev_ctx, expert_count, dev_ctx.GetPlace(), false, &expert_count_out);
+  DenseTensor expert_count_out;
+  Copy(dev_ctx, expert_count, dev_ctx.GetPlace(), false, &expert_count_out);
   PruneGateByCapacityFunctor<Context, T> functor(
       dev_ctx, gate_idx_ptr, &expert_count_out, new_gate_idx_data);
   VisitType(expert_count.type(), functor);

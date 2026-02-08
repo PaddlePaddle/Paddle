@@ -23,4 +23,9 @@ void NonZeroKernel(const Context& dev_ctx,
                    const DenseTensor& condition,
                    DenseTensor* out);
 
+template <typename T, typename Context>
+void RestrictNonZeroKernel(const Context& dev_ctx,
+                           const DenseTensor& condition,
+                           const int64_t total_true_num,
+                           DenseTensor* out);
 }  // namespace phi

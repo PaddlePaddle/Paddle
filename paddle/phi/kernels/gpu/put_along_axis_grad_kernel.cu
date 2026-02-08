@@ -47,19 +47,19 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   }
   const auto& index_type = index.dtype();
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (!include_self || reduce == "assign") {
       if (index_type == DataType::INT32) {
-        phi::funcs::gpu_scatter_input_grad_kernel<T, int32_t>(
+        funcs::gpu_scatter_input_grad_kernel<T, int32_t>(
             out_grad, axis, index, *x_grad, include_self, dev_ctx);
       } else {
-        phi::funcs::gpu_scatter_input_grad_kernel<T, int64_t>(
+        funcs::gpu_scatter_input_grad_kernel<T, int64_t>(
             out_grad, axis, index, *x_grad, include_self, dev_ctx);
       }
     } else if (reduce == "multiply" || reduce == "mul" || reduce == "amin" ||
                reduce == "amax") {
       if (index_type == DataType::INT32) {
-        phi::funcs::gpu_scatter_mul_min_max_input_grad_kernel<T, int32_t>(
+        funcs::gpu_scatter_mul_min_max_input_grad_kernel<T, int32_t>(
             out_grad,
             axis,
             index,
@@ -71,7 +71,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
             include_self,
             dev_ctx);
       } else {
-        phi::funcs::gpu_scatter_mul_min_max_input_grad_kernel<T, int64_t>(
+        funcs::gpu_scatter_mul_min_max_input_grad_kernel<T, int64_t>(
             out_grad,
             axis,
             index,
@@ -85,10 +85,10 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
       }
     } else if (reduce == "mean") {
       if (index_type == DataType::INT32) {
-        phi::funcs::gpu_scatter_mean_input_grad_kernel<T, int32_t>(
+        funcs::gpu_scatter_mean_input_grad_kernel<T, int32_t>(
             out_grad, axis, index, *x_grad, include_self, dev_ctx);
       } else {
-        phi::funcs::gpu_scatter_mean_input_grad_kernel<T, int64_t>(
+        funcs::gpu_scatter_mean_input_grad_kernel<T, int64_t>(
             out_grad, axis, index, *x_grad, include_self, dev_ctx);
       }
     }
@@ -102,46 +102,44 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     hipMemset(grad_data, 0, sizeof(T) * grad_size);
 #else
     // cudaMemset(grad_data, 0, sizeof(T) * grad_size);
-    phi::funcs::set_constant(dev_ctx, value_grad, 0);
+    funcs::set_constant(dev_ctx, value_grad, 0);
 #endif
     if (reduce == "assign") {
       if (index_type == DataType::INT32) {
-        phi::funcs::gpu_scatter_value_grad_kernel<T, int32_t>(
+        funcs::gpu_scatter_value_grad_kernel<T, int32_t>(
             out_grad, axis, index, *value_grad, include_self, dev_ctx);
       } else if (index_type == DataType::INT64) {
-        phi::funcs::gpu_scatter_value_grad_kernel<T, int64_t>(
+        funcs::gpu_scatter_value_grad_kernel<T, int64_t>(
             out_grad, axis, index, *value_grad, include_self, dev_ctx);
       }
     } else if (reduce == "add" || reduce == "mean") {
       if (index_type == DataType::INT32) {
-        phi::funcs::gpu_scatter_add_mean_value_grad_kernel<T, int32_t>(
-            out_grad,
-            axis,
-            index,
-            out,
-            x,
-            value,
-            *value_grad,
-            reduce,
-            include_self,
-            dev_ctx);
+        funcs::gpu_scatter_add_mean_value_grad_kernel<T, int32_t>(out_grad,
+                                                                  axis,
+                                                                  index,
+                                                                  out,
+                                                                  x,
+                                                                  value,
+                                                                  *value_grad,
+                                                                  reduce,
+                                                                  include_self,
+                                                                  dev_ctx);
       } else {
-        phi::funcs::gpu_scatter_add_mean_value_grad_kernel<T, int64_t>(
-            out_grad,
-            axis,
-            index,
-            out,
-            x,
-            value,
-            *value_grad,
-            reduce,
-            include_self,
-            dev_ctx);
+        funcs::gpu_scatter_add_mean_value_grad_kernel<T, int64_t>(out_grad,
+                                                                  axis,
+                                                                  index,
+                                                                  out,
+                                                                  x,
+                                                                  value,
+                                                                  *value_grad,
+                                                                  reduce,
+                                                                  include_self,
+                                                                  dev_ctx);
       }
     } else if (reduce == "mul" || reduce == "multiply" || reduce == "amin" ||
                reduce == "amax") {
       if (index_type == DataType::INT32) {
-        phi::funcs::gpu_scatter_mul_min_max_value_grad_kernel<T, int32_t>(
+        funcs::gpu_scatter_mul_min_max_value_grad_kernel<T, int32_t>(
             out_grad,
             axis,
             index,
@@ -153,7 +151,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
             include_self,
             dev_ctx);
       } else {
-        phi::funcs::gpu_scatter_mul_min_max_value_grad_kernel<T, int64_t>(
+        funcs::gpu_scatter_mul_min_max_value_grad_kernel<T, int64_t>(
             out_grad,
             axis,
             index,

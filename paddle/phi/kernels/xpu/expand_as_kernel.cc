@@ -27,7 +27,7 @@ void ExpandAs(const Context& dev_ctx,
               const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto vec_in_dims = common::vectorize<int64_t>(x.dims());
+  auto vec_in_dims = vectorize<int64_t>(x.dims());
   std::vector<int64_t> target_shape(target_shape_.begin(), target_shape_.end());
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -49,7 +49,7 @@ void ExpandAs(const Context& dev_ctx,
     }
   }
   if (target_shape.size() == 0) {
-    phi::DDim out_dims = common::make_ddim(target_shape);
+    DDim out_dims = make_ddim(target_shape);
     out->Resize(out_dims);
     dev_ctx.template Alloc<T>(out);
 
@@ -61,11 +61,11 @@ void ExpandAs(const Context& dev_ctx,
     return;
   }
 
-  phi::DDim out_dims = common::make_ddim(target_shape);
+  DDim out_dims = make_ddim(target_shape);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  auto out_shape = common::vectorize<int64_t>(out_dims);
+  auto out_shape = vectorize<int64_t>(out_dims);
 
   int r = 0;
 
@@ -86,7 +86,7 @@ void ExpandAs(const Context& dev_ctx,
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& y,
+                    const optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
   if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {

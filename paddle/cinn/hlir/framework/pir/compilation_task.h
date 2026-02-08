@@ -41,6 +41,8 @@ class GroupCompilationContext {
   void PrepareModuleBuilder();
   std::string PrintPredicate2Funcs() const;
   bool NeedCompileCX86Kernel() const { return need_x86_kernel_; }
+  void SetFusionHash(size_t fusion_hash) { fusion_hash_ = fusion_hash; }
+  size_t GetFusionHash() const { return fusion_hash_; }
 
  private:
   friend class CompilationTask;
@@ -60,6 +62,7 @@ class GroupCompilationContext {
   ir::Module::Builder module_builder_;
   ir::Module::Builder CX86_module_builder_;
   bool need_x86_kernel_{false};
+  size_t fusion_hash_{0};
 };
 
 class CompilationTask {

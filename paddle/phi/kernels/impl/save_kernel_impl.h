@@ -31,7 +31,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void SaveKernel(const Context& dev_ctx,
-                const phi::DenseTensor& x,
+                const DenseTensor& x,
                 const std::string& file_path,
                 bool overwrite,
                 bool save_as_fp16) {

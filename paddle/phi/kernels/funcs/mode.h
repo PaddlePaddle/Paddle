@@ -57,7 +57,7 @@ static int64_t ComputeBlockSize(int64_t col) {
 }
 
 static inline void GetDims(
-    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
+    const DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -152,7 +152,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
                           T* out_tensor,
                           int64_t* indices_tensor) {
   DenseTensor input_tmp;
-  input_tmp.Resize(common::make_ddim({num_rows, num_cols}));
+  input_tmp.Resize(make_ddim({num_rows, num_cols}));
   T* input_tmp_data = dev_ctx.Alloc<T>(&input_tmp);
   phi::Copy(dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, &input_tmp);
 

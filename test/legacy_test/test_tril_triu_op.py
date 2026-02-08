@@ -474,10 +474,10 @@ class TestTrilTriuAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.tril(x, 1)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.tril(x=x, diagonal=1)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.tril(input=x, diagonal=1)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -507,10 +507,10 @@ class TestTrilTriuAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.triu(x, -2)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.triu(x=x, diagonal=-2)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.triu(input=x, diagonal=-2)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -540,9 +540,9 @@ class TestTrilTriuAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.tril(x, 1)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.tril(x=x, diagonal=1)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.tril(input=x, diagonal=1)
             # Combined args and kwargs
             out4 = paddle.tril(x, diagonal=1)
@@ -568,9 +568,9 @@ class TestTrilTriuAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.triu(x, -2)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.triu(x=x, diagonal=-2)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.triu(input=x, diagonal=-2)
             # Combined args and kwargs
             out4 = paddle.triu(x, diagonal=-2)

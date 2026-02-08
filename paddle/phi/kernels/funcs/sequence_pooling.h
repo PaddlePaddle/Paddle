@@ -27,10 +27,10 @@ class SequencePoolFunctor {
   void operator()(const DeviceContext& dev_ctx,
                   const std::string pooltype,
                   T pad_value,
-                  const phi::DenseTensor& input,
-                  phi::DenseTensor* output,
+                  const DenseTensor& input,
+                  DenseTensor* output,
                   bool is_test = false,
-                  phi::DenseTensor* index = nullptr);
+                  DenseTensor* index = nullptr);
 };
 
 template <typename DeviceContext, typename T>
@@ -38,10 +38,10 @@ class SequencePoolGradFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const std::string pooltype,
-                  const phi::DenseTensor& out_grad,
-                  phi::DenseTensor* in_grad,
+                  const DenseTensor& out_grad,
+                  DenseTensor* in_grad,
                   /* max pool has index */
-                  const phi::DenseTensor* index = nullptr);
+                  const DenseTensor* index = nullptr);
 };
 
 }  // namespace funcs

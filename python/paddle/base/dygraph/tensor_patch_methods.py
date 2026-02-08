@@ -49,6 +49,8 @@ from .math_op_patch import monkey_patch_math_tensor
 if TYPE_CHECKING:
     from enum import IntEnum
 
+    from typing_extensions import CapsuleType
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 
@@ -107,7 +109,7 @@ def monkey_patch_tensor():
                                  be converted into framework.Variable. Default False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -194,7 +196,7 @@ def monkey_patch_tensor():
             value (Variable|np.ndarray): the new value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -313,10 +315,10 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> x = paddle.to_tensor(5.0, stop_gradient=False)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
@@ -331,7 +333,7 @@ def monkey_patch_tensor():
                 >>> print("{}".format(x.grad))
                 0.0
 
-                >>> grad_tensor=paddle.to_tensor(2.)
+                >>> grad_tensor = paddle.to_tensor(2.0)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
@@ -396,11 +398,11 @@ def monkey_patch_tensor():
             ndarray: Numpy value of the gradient of current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> x = paddle.to_tensor(5.0, stop_gradient=False)
                 >>> y = paddle.pow(x, 4.0)
                 >>> y.backward()
                 >>> print("grad of x: {}".format(x.gradient()))
@@ -424,12 +426,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
 
                 >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
-                >>> f = lambda x: 3*x+2
+                >>> f = lambda x: 3 * x + 2
                 >>> x.apply_(f)
                 >>> print(x)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -448,7 +451,6 @@ def monkey_patch_tensor():
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> x.apply_(f)
-
 
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
@@ -472,12 +474,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
 
                 >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
-                >>> f = lambda x: 3*x+2
+                >>> f = lambda x: 3 * x + 2
                 >>> y = x.apply(f)
                 >>> print(y)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -496,7 +499,6 @@ def monkey_patch_tensor():
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> y = x.apply(f)
-
 
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
@@ -534,22 +536,20 @@ def monkey_patch_tensor():
             TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> # hook function return None
                 >>> def print_hook_fn(grad):
                 ...     print(grad)
-                ...
                 >>> # hook function return Tensor
                 >>> def double_hook_fn(grad):
                 ...     grad = grad * 2
                 ...     return grad
-                ...
-                >>> x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
-                >>> y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
-                >>> z = paddle.to_tensor([1., 2., 3., 4.])
+                >>> x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0], stop_gradient=False)
+                >>> y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0], stop_gradient=False)
+                >>> z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
 
                 >>> # one Tensor can register multiple hooks
                 >>> h = x.register_hook(print_hook_fn)
@@ -755,8 +755,9 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
-                >>> x = paddle.to_tensor([1,2,3])
+                >>> x = paddle.to_tensor([1, 2, 3])
                 >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
@@ -773,7 +774,7 @@ def monkey_patch_tensor():
                 >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> y = paddle.to_tensor([4,5,6])
+                >>> y = paddle.to_tensor([4, 5, 6])
                 >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
@@ -894,7 +895,7 @@ def monkey_patch_tensor():
             ValueError: If the Tensor has more than one element, there must be coordinates.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -916,7 +917,7 @@ def monkey_patch_tensor():
                 >>> print(type(x.item()))
                 <class 'bool'>
 
-                >>> x = paddle.to_tensor(1+1j)
+                >>> x = paddle.to_tensor(1 + 1j)
                 >>> print(x.item())
                 (1+1j)
                 >>> print(type(x.item()))
@@ -948,7 +949,7 @@ def monkey_patch_tensor():
         **Notes: This is a read-only property**
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> var = paddle.ones(shape=[4, 2, 3], dtype="float32")
@@ -969,7 +970,7 @@ def monkey_patch_tensor():
         Returns(str): A readable string.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -994,11 +995,11 @@ def monkey_patch_tensor():
         Deep copy Tensor, it will always performs Tensor copy.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import copy
-                >>> x = paddle.to_tensor(2.)
+                >>> x = paddle.to_tensor(2.0)
                 >>> y = copy.deepcopy(x)
                 >>> print(x)
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1051,7 +1052,7 @@ def monkey_patch_tensor():
             ndarray: dtype is same as current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1159,12 +1160,24 @@ def monkey_patch_tensor():
     def cuda(
         self: Tensor, device_id: int | None = None, blocking: bool = True
     ) -> Tensor:
+        device_type = paddle.device.get_all_device_type()
+        if len(
+            device_type
+        ) > 0 and paddle.device.is_compiled_with_custom_device(device_type[-1]):
+            res_place_class = core.CustomPlace
+        elif paddle.device.is_compiled_with_xpu():
+            res_place_class = core.XPUPlace
+        elif paddle.device.is_compiled_with_cuda():
+            res_place_class = core.CUDAPlace
+        else:
+            raise ValueError("No available device found.")
+
         if device_id is None:
             res_place = framework._current_expected_place()
-            if not isinstance(res_place, core.CUDAPlace):
-                res_place = core.CUDAPlace(0)
+            if not isinstance(res_place, res_place_class):
+                res_place = res_place_class(0)
         elif isinstance(device_id, int):
-            res_place = core.CUDAPlace(device_id)
+            res_place = res_place_class(device_id)
         else:
             raise ValueError("device_id must be int|None")
 
@@ -1208,13 +1221,15 @@ def monkey_patch_tensor():
             Tensor: A DenseTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                 >>> values = [1, 2, 3, 4, 5]
                 >>> dense_shape = [3, 4]
-                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(
+                ...     paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape
+                ... )
                 >>> print(sparse_x.values())
                 Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1., 2., 3., 4., 5.])
@@ -1233,13 +1248,15 @@ def monkey_patch_tensor():
             Tensor: A DenseTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                 >>> values = [1, 2, 3, 4, 5]
                 >>> dense_shape = [3, 4]
-                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(
+                ...     paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape
+                ... )
                 >>> dense_x = sparse_x.to_dense()
                 >>> print(dense_x)
                 Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1256,13 +1273,15 @@ def monkey_patch_tensor():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Convert the current DenseTensor to SparseTensor in COO format.
+        Convert the current DenseTensor to SparseTensor in COO format. When the input is already a SparseCooTensor, this function will directly return
+        the input itself without performing any conversion.
+
 
         Returns:
             Tensor: A SparseCooTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
@@ -1274,6 +1293,8 @@ def monkey_patch_tensor():
                                 [1, 3, 2, 3]],
                        values=[1., 2., 3., 4.])
         """
+        if self.is_sparse_coo():
+            return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
@@ -1290,7 +1311,7 @@ def monkey_patch_tensor():
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3])
@@ -1318,7 +1339,7 @@ def monkey_patch_tensor():
             Tensor: return the SparseCooTensor after coalesced.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1368,6 +1389,32 @@ def monkey_patch_tensor():
             return DLDeviceType.kDLOneAPI, place.get_device_id()
         else:
             raise ValueError(f"Unsupported tensor place: {place}")
+
+    @property
+    def device(self: Tensor) -> str:
+        """
+        Return the device descriptor string indicating where the tensor is located.
+
+        Returns:
+            str: A string representing the device where the tensor resides.
+                 Possible formats include:
+                 - 'cpu' for CPU tensors
+                 - 'cuda:{device_id}' for GPU tensors (e.g., 'cuda:0')
+                 - 'xpu:{device_id}' for XPU tensors (e.g., 'xpu:0')
+                 - '{device_type}:{device_id}' for custom device tensors
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+
+                >>> # CPU tensor
+                >>> cpu_tensor = paddle.to_tensor([1, 2, 3]).to("cpu")
+                >>> print(cpu_tensor.device)
+                'cpu'
+        """
+        place = self.place
+        return paddle.device(place)
 
     @property
     def __cuda_array_interface__(self):
@@ -1449,7 +1496,7 @@ def monkey_patch_tensor():
         max_version: tuple[int, int] | None = None,
         dl_device: tuple[IntEnum, int] | None = None,
         copy: bool | None = None,
-    ):
+    ) -> CapsuleType:
         """
         Creates a DLPack capsule of the current tensor to be exported to other libraries.
         Args:
@@ -1470,24 +1517,67 @@ def monkey_patch_tensor():
         """
 
         if self.is_sparse():
-            raise AttributeError(
-                "Can't get __dlpack__ from a Tensor that requires gradients, "
-                "use tensor.detach() if gradients are not required."
+            raise BufferError(
+                "Can't get __dlpack__ from a Tensor from sparse storage."
             )
 
         if not self.stop_gradient:
-            raise RuntimeError(
+            raise BufferError(
                 "Can't get __dlpack__ from Tensor that requires gradients. "
                 "If gradients aren't required, use tensor.detach() to get a tensor without gradient."
             )
 
-        if stream is not None:
-            if self.place.is_gpu_place():
-                current_stream = paddle.device.cuda.current_stream()
-                if stream != current_stream:
-                    event = paddle.device.cuda.Event()
-                    event.record(current_stream)
-                    current_stream.synchronize()
+        if stream is not None and not isinstance(stream, int):
+            raise TypeError("stream must be an integer or None.")
+        elif self.place.is_gpu_place() and stream != -1:
+            is_rocm = paddle.is_compiled_with_rocm()
+            is_cuda = paddle.is_compiled_with_cuda()
+            if not (is_rocm or is_cuda):
+                raise RuntimeError(
+                    "DLPack with stream synchronization is only supported "
+                    "when Paddle is compiled with CUDA or ROCm."
+                )
+            if is_cuda and stream == 0:
+                raise ValueError(
+                    "For CUDA, stream=0 is ambiguityous, please use None for default stream."
+                )
+            if is_cuda and stream == 2:
+                raise ValueError(
+                    "For CUDA, stream=2 means per-thread default stream, which is not supported."
+                )
+            if is_rocm and stream in {1, 2}:
+                raise ValueError("For ROCm, stream=1 or 2 is not supported.")
+            if (
+                stream is None
+                # For CUDA, stream=1 means default stream
+                or (is_cuda and stream == 1)
+                # For ROCm, stream=0 means default stream
+                or (is_rocm and stream == 0)
+            ):
+                consumer_stream = paddle.device.Stream(
+                    stream_base=core._get_legacy_default_stream(
+                        paddle.framework._current_expected_place_().get_device_id()
+                    )
+                )
+            else:
+                assert stream > 2, "stream should be a valid stream pointer."
+                consumer_stream = paddle.device.get_stream_from_external(stream)
+
+            current_stream = paddle.device.current_stream()
+
+            def is_same_stream(
+                lhs: paddle.device.Stream, rhs: paddle.device.Stream
+            ) -> bool:
+                return (
+                    lhs.stream_base.raw_stream == rhs.stream_base.raw_stream
+                ) and (lhs.device == rhs.device)
+
+            if not is_same_stream(consumer_stream, current_stream):
+                event = paddle.device.Event()
+                event.record(current_stream)
+                consumer_stream.wait_event(event)
+        elif self.place.is_cpu_place():
+            assert stream is None, "CPU tensor stream must be None."
 
         if max_version is None or max_version[0] < 1:
             return self.get_tensor()._to_dlpack(dl_device=dl_device, copy=copy)
@@ -1505,7 +1595,7 @@ def monkey_patch_tensor():
                  returns the CUDA device id (e.g., 0 for `gpu:0`).
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
@@ -1536,9 +1626,6 @@ def monkey_patch_tensor():
             raise RuntimeError(
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
-
-    if not hasattr(core, "eager"):
-        return
 
     for method_name, method in (
         ("__bool__", __bool__),
@@ -1586,7 +1673,11 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
+        # For TVM FFI 0.1.0-0.1.4
         ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        # For TVM FFI 0.1.5+
+        ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
+        ("device", device),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

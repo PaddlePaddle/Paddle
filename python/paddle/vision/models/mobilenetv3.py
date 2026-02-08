@@ -312,7 +312,7 @@ class MobileNetV3Small(MobileNetV3):
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import MobileNetV3Small
@@ -324,7 +324,7 @@ class MobileNetV3Small(MobileNetV3):
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     def __init__(
@@ -370,7 +370,7 @@ class MobileNetV3Large(MobileNetV3):
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import MobileNetV3Large
@@ -382,7 +382,7 @@ class MobileNetV3Large(MobileNetV3):
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     def __init__(
@@ -477,7 +477,7 @@ def mobilenet_v3_small(
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import mobilenet_v3_small
@@ -495,7 +495,7 @@ def mobilenet_v3_small(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model = _mobilenet_v3(
         "mobilenet_v3_small", scale=scale, pretrained=pretrained, **kwargs
@@ -520,7 +520,7 @@ def mobilenet_v3_large(
         :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import mobilenet_v3_large
@@ -538,7 +538,7 @@ def mobilenet_v3_large(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model = _mobilenet_v3(
         "mobilenet_v3_large", scale=scale, pretrained=pretrained, **kwargs

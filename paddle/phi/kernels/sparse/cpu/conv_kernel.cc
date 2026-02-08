@@ -52,7 +52,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
 
   int count_tmp = is2D ? 4 : 5;
   std::vector<int> out_dims_vec(count_tmp, 1);
-  DDim out_dims = common::make_ddim(out_dims_vec);
+  DDim out_dims = make_ddim(out_dims_vec);
 
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
@@ -63,11 +63,11 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   if (subm) {
     // the out shape of subm_conv is same as input shape
     // reset the padding=kernel_size/2 and strides=1
-    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+    funcs::sparse::ResetSubmKernelSizeAndStrides(
         kernel.dims(), &subm_paddings, &subm_strides);
   }
 
-  phi::funcs::sparse::GetOutShape(
+  funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels =
       static_cast<int>(is2D ? kernel_dims[2] : kernel_dims[3]);
@@ -88,16 +88,16 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   int n = 0;
   bool need_product_rulebook = true;
   if (subm && !key.empty()) {
-    rulebook_ptr = phi::funcs::sparse::PrepareSubm<T, IntT, CPUContext>(
-        dev_ctx,
-        x,
-        key,
-        out_dims,
-        out,
-        h_counter_ptr,
-        h_offsets_ptr,
-        &n,
-        &need_product_rulebook);
+    rulebook_ptr =
+        funcs::sparse::PrepareSubm<T, IntT, CPUContext>(dev_ctx,
+                                                        x,
+                                                        key,
+                                                        out_dims,
+                                                        out,
+                                                        h_counter_ptr,
+                                                        h_offsets_ptr,
+                                                        &n,
+                                                        &need_product_rulebook);
   }
   if (need_product_rulebook) {
     DenseTensor tmp_rulebook;
@@ -117,7 +117,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
     n = static_cast<int>(tmp_rulebook.dims()[1]);
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
-    phi::funcs::sparse::SaveToTable(
+    funcs::sparse::SaveToTable(
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
@@ -126,10 +126,8 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
       x.dtype(), {n, in_channels}, DataLayout::NHWC);
   DenseTensorMeta out_features_meta(
       x.dtype(), {n, out_channels}, DataLayout::NHWC);
-  phi::DenseTensor in_features =
-      phi::Empty(dev_ctx, std::move(in_features_meta));
-  phi::DenseTensor out_features =
-      phi::Empty(dev_ctx, std::move(out_features_meta));
+  DenseTensor in_features = Empty(dev_ctx, std::move(in_features_meta));
+  DenseTensor out_features = Empty(dev_ctx, std::move(out_features_meta));
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
 
@@ -137,7 +135,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
       x.values().data<T>(), rulebook_ptr + n, n, in_channels, in_features_ptr);
 
   // 3. call gemm for every weight
-  auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   int offset = 0;
   for (int i = 0; i < kernel_size; i++) {
     h_offsets_ptr[i] = offset;

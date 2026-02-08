@@ -30,9 +30,9 @@ def parameterize(*params):
 class TestAudioFunctions(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self.initParmas()
+        self.initParams()
 
-    def initParmas(self):
+    def initParams(self):
         def get_wav_data(dtype: str, num_channels: int, num_frames: int):
             dtype_ = getattr(paddle, dtype)
             base = paddle.linspace(-1.0, 1.0, num_frames, dtype=dtype_) * 0.1

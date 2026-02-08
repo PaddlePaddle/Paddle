@@ -938,12 +938,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
             losses, startup_programs, parameter_list, no_grad_set
         )
 
-        fleet._origin_main_program = default_main_program().clone(
-            for_test=False
-        )
-        fleet._origin_startup_program = default_startup_program().clone(
-            for_test=False
-        )
+        fleet._origin_main_program = default_main_program().clone()
+        fleet._origin_startup_program = default_startup_program().clone()
 
         compiled_config = public.CompileTimeStrategy(
             fleet._origin_main_program,

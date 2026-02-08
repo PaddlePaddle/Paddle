@@ -39,7 +39,7 @@ class LeNet(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of LeNet model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import LeNet
@@ -50,7 +50,7 @@ class LeNet(nn.Layer):
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 10]
+            paddle.Size([1, 10])
     """
 
     num_classes: int

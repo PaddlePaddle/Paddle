@@ -24,7 +24,7 @@ namespace phi {
 namespace fusion {
 
 template <typename DeviceContext>
-static void MutableMultiTypeData(std::vector<phi::DenseTensor*>* var,
+static void MutableMultiTypeData(std::vector<DenseTensor*>* var,
                                  const std::vector<int>& data_type,
                                  const DeviceContext& dev_ctx) {
   for (size_t i = 0; i < var->size(); i++) {

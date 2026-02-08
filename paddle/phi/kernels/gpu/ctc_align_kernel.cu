@@ -60,7 +60,9 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
                                              const int64_t batch_size,
                                              T* output,
                                              T* output_length) {
-  int ind = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t ind =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (ind >= batch_size) return;
   int output_idx = ind * num_token;
   T prev_token = -1;
@@ -81,7 +83,7 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
 template <typename T, typename Context>
 void CTCAlignOpCUDAKernel(const Context& dev_ctx,
                           const DenseTensor& input,
-                          const paddle::optional<DenseTensor>& input_length,
+                          const optional<DenseTensor>& input_length,
                           int blank,
                           bool merge_repeated,
                           int padding_value,
@@ -147,7 +149,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
     if (host_out_lod0.back() == 0) {
       output->Resize({1, 1});
       dev_ctx.template Alloc<T>(output);
-      phi::funcs::SetConstant<phi::GPUContext, T> set_constant;
+      funcs::SetConstant<GPUContext, T> set_constant;
       set_constant(dev_ctx, output, -1);
     }
   }

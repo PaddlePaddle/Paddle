@@ -38,12 +38,11 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                          const std::string& padding_algorithm,
                          DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
@@ -107,10 +106,10 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
   DenseTensor transformed_input(input->type());
   DenseTensor transformed_output(output->type());
-  GPUDNNDataLayout layout;
+  DataLayout layout;
 
   if (data_format == str_NDHWC) {
-    layout = GPUDNNDataLayout::kNCDHW;
+    layout = DataLayout::NCDHW;
     std::vector<int> axis{0, 4, 1, 2, 3};
 
     // input
@@ -121,7 +120,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input.Resize(common::make_ddim(in_dims_vec));
+    transformed_input.Resize(make_ddim(in_dims_vec));
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 5> trans5;
@@ -135,11 +134,11 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
-    transformed_output.Resize(common::make_ddim(out_dims_vec));
+    transformed_output.Resize(make_ddim(out_dims_vec));
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
-    layout = GPUDNNDataLayout::kNCHW;
+    layout = DataLayout::NCHW;
 
     std::vector<int> axis{0, 3, 1, 2};
 
@@ -148,7 +147,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input.Resize(common::make_ddim(in_dims_vec));
+    transformed_input.Resize(make_ddim(in_dims_vec));
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 4> trans;
@@ -159,7 +158,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     out_dims_vec[1] = output->dims()[3];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
-    transformed_output.Resize(common::make_ddim(out_dims_vec));
+    transformed_output.Resize(make_ddim(out_dims_vec));
 #endif
   } else {
     layout = GetLayoutFromStr(data_format);
@@ -208,10 +207,10 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   char* pool_workspace;
-  size_t pool_workernel_size_ = 0;
+  size_t pool_worksize = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenPoolingGetWorkSpaceSizeV2(
-      cudnn_pool_desc, cudnn_output_desc, &pool_workernel_size_));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_workernel_size_));
+      cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::miopenPoolingForward(handle,
                                     cudnn_pool_desc,
@@ -223,7 +222,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                                     transformed_output_data,
                                     false,
                                     pool_workspace,
-                                    pool_workernel_size_));
+                                    pool_worksize));
   PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -268,11 +267,9 @@ void Pool2dGPUDNNKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {  // for pooling_type == "avg"
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -306,11 +303,9 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || (!adaptive && pooling_type == "avg")) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }

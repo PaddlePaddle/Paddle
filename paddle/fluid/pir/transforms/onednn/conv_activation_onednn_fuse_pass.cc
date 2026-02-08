@@ -24,7 +24,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -136,7 +136,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (activation_name_ == "leaky_relu_" ||
           activation_name_ == "leaky_relu") {
-        float negative_slope = match_ctx.Attr<float>("negative_slope");
+        auto negative_slope = match_ctx.Attr<double>("negative_slope");
         // leaky relu alpha is a positive number
         if (negative_slope <= 0.0) {
           return false;
@@ -530,13 +530,13 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class ConvActFusePass : public pir::PatternRewritePass {
+class ConvActFusePass : public PatternRewritePass {
  public:
   ConvActFusePass()
-      : pir::PatternRewritePass("conv_activation_mkldnn_fuse_pass", 2) {}
+      : PatternRewritePass("conv_activation_mkldnn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
 
     // This eleven activations have no extra attribute, can use the same pattern
     std::vector<std::string> supported_activations_name = {"abs",
@@ -590,10 +590,6 @@ class ConvActFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateConv2dActFusePass() {
   /**
    *   conv
@@ -609,4 +605,4 @@ std::unique_ptr<Pass> CreateConv2dActFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv_activation_onednn_fuse_pass, ConvActFusePass);
+REGISTER_IR_PASS(conv_activation_onednn_fuse_pass, pir::ConvActFusePass);

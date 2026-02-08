@@ -13,16 +13,8 @@
 // limitations under the License.
 
 #include <algorithm>
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/impl/sequence_softmax_kernel_impl.h"
 
@@ -70,8 +62,8 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
 }
 
 template <typename T>
-struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &dev_ctx,
+struct SequenceSoftmaxGradFunctor<GPUContext, T> {
+  void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &dout,
                   const DenseTensor &out,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/

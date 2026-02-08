@@ -67,7 +67,7 @@ void NonZeroKernel(const Context& dev_ctx,
     }
   }
   auto true_num = true_index.size();
-  out->Resize(common::make_ddim({static_cast<int64_t>(true_num), rank}));
+  out->Resize(make_ddim({static_cast<int64_t>(true_num), rank}));
   auto* out_ptr = dev_ctx.template Alloc<int64_t>(out);
 
   if (true_num == 0) {
@@ -82,7 +82,7 @@ void NonZeroKernel(const Context& dev_ctx,
 
   WhereIndexFunctor<int64_t> functor(
       true_index.data(), true_num, stride.data(), rank, out_ptr);
-  phi::funcs::ForRange<phi::CPUContext> for_range(dev_ctx, true_num);
+  funcs::ForRange<phi::CPUContext> for_range(dev_ctx, true_num);
   for_range(functor);
 }
 

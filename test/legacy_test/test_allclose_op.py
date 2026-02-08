@@ -158,25 +158,6 @@ class TestAllcloseError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_y_dtype)
 
-    def test_attr(self):
-        x = paddle.static.data(name='x', shape=[10, 10], dtype='float64')
-        y = paddle.static.data(name='y', shape=[10, 10], dtype='float64')
-
-        def test_rtol():
-            result = paddle.allclose(x, y, rtol=True)
-
-        self.assertRaises(TypeError, test_rtol)
-
-        def test_atol():
-            result = paddle.allclose(x, y, rtol=True)
-
-        self.assertRaises(TypeError, test_atol)
-
-        def test_equal_nan():
-            result = paddle.allclose(x, y, equal_nan=1)
-
-        self.assertRaises(TypeError, test_equal_nan)
-
 
 class TestAllcloseOpFp16(unittest.TestCase):
     def test_fp16(self):
@@ -507,6 +488,46 @@ class TestAllcloseOp_ZeroSize(OpTest):
 
     def test_check_output(self):
         self.check_output(check_pir=True)
+
+
+class TestAllcloseAlias(unittest.TestCase):
+    def test_alias(self):
+        paddle.disable_static()
+        x_np = np.array([10000.0, 1e-07]).astype("float32")
+        y_np = np.array([10000.1, 1e-08]).astype("float32")
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+
+        # Test with input and other
+        res1 = paddle.allclose(input=x, other=y, rtol=1e-05, atol=1e-08)
+        res2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
+
+        # Test with input and y
+        res3 = paddle.allclose(input=x, y=y, rtol=1e-05, atol=1e-08)
+
+        # Test with x and other
+        res4 = paddle.allclose(x=x, other=y, rtol=1e-05, atol=1e-08)
+
+        self.assertEqual(res1.item(), res2.item())
+        self.assertEqual(res1.item(), res3.item())
+        self.assertEqual(res1.item(), res4.item())
+        self.assertFalse(res1.item())
+
+        # Test with equal_nan
+        x_nan = paddle.to_tensor([1.0, float('nan')])
+        y_nan = paddle.to_tensor([1.0, float('nan')])
+
+        res_nan = paddle.allclose(input=x_nan, other=y_nan, equal_nan=True)
+        self.assertTrue(res_nan.item())
+
+    def test_tensor_method_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([10000.0, 1e-07])
+        y = paddle.to_tensor([10000.1, 1e-08])
+
+        # Test with other alias for y
+        res = x.allclose(other=y, rtol=1e-05, atol=1e-08)
+        self.assertFalse(res.item())
 
 
 if __name__ == "__main__":

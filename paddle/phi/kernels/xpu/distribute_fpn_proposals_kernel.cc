@@ -26,7 +26,7 @@ static void Sort(const XPUContext& dev_ctx,
                  DenseTensor* index_out) {
   auto* value_data = value.data<T>();
   auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
+  auto cpu_place = CPUPlace();
 
   DenseTensor scores_slice_cpu;
   scores_slice_cpu.Resize({value.numel()});
@@ -60,7 +60,7 @@ template <typename T, typename Context>
 void DistributeFpnProposalsKernel(
     const Context& dev_ctx,
     const DenseTensor& fpn_rois,
-    const paddle::optional<DenseTensor>& rois_num,
+    const optional<DenseTensor>& rois_num,
     int min_level,
     int max_level,
     int refer_level,
@@ -94,7 +94,7 @@ void DistributeFpnProposalsKernel(
   DenseTensor sub_lod_list;
   sub_lod_list.Resize({num_level, lod_size});
   int* sub_lod_list_data = dev_ctx.template Alloc<int>(&sub_lod_list);
-  phi::funcs::SetConstant<phi::XPUContext, int> set_zero;
+  funcs::SetConstant<phi::XPUContext, int> set_zero;
   set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
   DenseTensor target_lvls;

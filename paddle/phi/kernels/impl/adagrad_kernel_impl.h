@@ -20,24 +20,24 @@
 
 namespace phi {
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const DeviceContext& dev_ctx,
-                  const phi::SelectedRows& grad,
+  void operator()(const Context& dev_ctx,
+                  const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
                   DenseTensor* moment,
                   DenseTensor* param);
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct DenseAdagradFunctor {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
                   const DenseTensor& learning_rate,
-                  const paddle::optional<DenseTensor>& master_param,
+                  const optional<DenseTensor>& master_param,
                   float epsilon_t,
                   bool multi_precision,
                   DenseTensor* param_out_tensor,
@@ -45,10 +45,10 @@ struct DenseAdagradFunctor {
                   DenseTensor* master_param_outs);
 };
 
-template <typename DeviceContext, typename T>
-phi::SelectedRows SquareSelectedRows(const DeviceContext& dev_ctx,
-                                     const phi::SelectedRows& input) {
-  phi::SelectedRows out;
+template <typename Context, typename T>
+SelectedRows SquareSelectedRows(const Context& dev_ctx,
+                                const SelectedRows& input) {
+  SelectedRows out;
   out.set_rows(input.rows());
   out.set_height(input.height());
   out.mutable_value()->Resize(input.value().dims());
@@ -65,7 +65,7 @@ void AdagradDenseKernel(const Context& dev_ctx,
                         const DenseTensor& grad_t,
                         const DenseTensor& moment_t,
                         const DenseTensor& learning_rate,
-                        const paddle::optional<DenseTensor>& master_param,
+                        const optional<DenseTensor>& master_param,
                         float epsilon_t,
                         bool multi_precision,
                         DenseTensor* param_out_tensor,
@@ -91,8 +91,7 @@ void AdagradSparseKernel(const Context& dev_ctx,
                          const SelectedRows& grad_t,
                          const DenseTensor& moment_t,
                          const DenseTensor& learning_rate,
-                         const paddle::optional<DenseTensor>& master_param
-                             UNUSED,
+                         const optional<DenseTensor>& master_param UNUSED,
                          float epsilon_t,
                          bool multi_precision UNUSED,
                          DenseTensor* param_out,

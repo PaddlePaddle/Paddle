@@ -40,7 +40,7 @@ void XPUIndexElementwisePutWithTensorKernel(
     is_same_place = (input.place() == output->place());
   }
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t num_indices = 0;
@@ -60,8 +60,8 @@ void XPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -112,6 +112,7 @@ void XPUIndexElementwisePutWithTensorKernel(
       reinterpret_cast<const XPUType*>(in_ptr),  // XPU ptr
       reinterpret_cast<XPUType*>(out_ptr),       // XPU ptr
       index_ptrs_vec,                            // vec of XPU ptrs
+      input_dims,                                // CPU vec
       index_numel_vec,                           // CPU vec
       desired_shape,                             // CPU vec
       sizes_vec,                                 // CPU vec
@@ -142,7 +143,7 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
     is_same_place = (input.place() == output->place());
   }
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
   int64_t num_indices = 0;
@@ -150,8 +151,8 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
@@ -212,9 +213,10 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   // bool and int64_t index will be handled in XPU's op wrapper
   int r = xpu::index_elementwise_scalar<XPUType, XPUTypeIndexT>(
       dev_ctx.x_context(),
-      value_T,                              // scalar
       reinterpret_cast<XPUType*>(out_ptr),  // XPU ptr
+      value_T,                              // scalar
       index_ptrs_vec,                       // vec of XPU ptrs
+      input_dims,                           // CPU vec
       index_numel_vec,                      // CPU vec
       desired_shape,                        // CPU vec
       sizes_vec,                            // CPU vec
@@ -252,7 +254,7 @@ void IndexElementwisePutWithTensorKernel(
   }
   if (index.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }
@@ -296,7 +298,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
   }
   if (index.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }

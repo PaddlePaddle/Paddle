@@ -29,10 +29,12 @@ void AnyRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  using XPUType = typename XPUTypeTrait<T>::Type;
+  using Type = bool;
+
+  using XPUType = typename XPUTypeTrait<Type>::Type;
   auto f = [](xpu::Context* xpu_ctx,
-              const T* x,
-              T* y,
+              const Type* x,
+              Type* y,
               const std::vector<int64_t>& xdims,
               const std::vector<int64_t>& reduce_dims) {
     return xpu::reduce_any<XPUType>(xpu_ctx,
@@ -42,10 +44,23 @@ void AnyRawKernel(const Context& dev_ctx,
                                     reduce_dims);
   };
 
-  int r = XPUReduce<Context, T>(dev_ctx, x, dims, keep_dim, reduce_all, out, f);
+  int r = 0;
+  if (!std::is_same<T, bool>::value) {
+    auto x_bool = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::BOOL);
+    DenseTensor out_bool;
+    out_bool.Resize(out->dims());
+    r = XPUReduce<Context, Type>(
+        dev_ctx, x_bool, dims, keep_dim, reduce_all, out, f);
+  } else {
+    r = XPUReduce<Context, Type>(
+        dev_ctx, x, dims, keep_dim, reduce_all, out, f);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_any");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(any_raw, XPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+PD_REGISTER_KERNEL(
+    any_raw, XPU, ALL_LAYOUT, phi::AnyRawKernel, float, int, int64_t, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}

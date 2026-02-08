@@ -61,7 +61,9 @@ std::unordered_map<std::string, std::string> activation_type = {
     {paddle::dialect::SwishOp::name(), "swish"},
     {paddle::dialect::TanhOp::name(), "tanh"},
     {paddle::dialect::Tanh_Op::name(), "tanh"}};
+}  // namespace
 
+namespace pir {
 class FusedFcActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
   uint32_t benefit_;
@@ -148,7 +150,11 @@ class FusedFcActivationFusePattern : public paddle::drr::DrrPatternBase {
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     } else if (act_type_ == paddle::dialect::LeakyRelu_Op::name() ||
                act_type_ == paddle::dialect::LeakyReluOp::name()) {
-      fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      const auto &fuse_alpha = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> float {
+            return static_cast<float>(match_ctx.Attr<double>("fuse_alpha"));
+          });
+      fused_attrs["fuse_alpha"] = fuse_alpha;
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {
@@ -333,13 +339,12 @@ class FusedFcClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FcActivationFusePass : public pir::PatternRewritePass {
+class FcActivationFusePass : public PatternRewritePass {
  public:
-  FcActivationFusePass()
-      : pir::PatternRewritePass("fc_activation_fuse_pass", 2) {}
+  FcActivationFusePass() : PatternRewritePass("fc_activation_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     int benefit_idx = 1;
     for (auto act_op : act_ops) {
       ps.Add(paddle::drr::Create<FusedFcActivationFusePattern>(
@@ -356,14 +361,10 @@ class FcActivationFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFcActivationFusePass() {
   // onednn_op.fc + pd_op.relu(act) ->  onednn_op.fc
   return std::make_unique<FcActivationFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(fc_activation_fuse_pass, FcActivationFusePass);
+REGISTER_IR_PASS(fc_activation_fuse_pass, pir::FcActivationFusePass);

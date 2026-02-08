@@ -52,8 +52,8 @@ __global__ void IndexSampleGrad(const SampleIndexT* index,
       ElementIndexT in_idx = index_j * input_length + index_i;
       SampleIndexT sample_idx = index[index_idx];
       if (same_data_in_row) {
-        phi::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
-                           out_grad[sample_idx]);
+        CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                      out_grad[sample_idx]);
       } else {
         in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
       }
@@ -81,7 +81,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   auto input_num = x.numel();
   auto input_dim = x.dims();
   auto index_dim = index.dims();
@@ -89,7 +89,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
 
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
   if (batch_size == 0 || input_length == 0 || index_length == 0) {
     return;

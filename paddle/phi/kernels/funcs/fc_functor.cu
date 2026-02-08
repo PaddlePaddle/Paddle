@@ -63,7 +63,9 @@ struct FcTypeTraits<float16> {
 
 template <typename T, bool DoRelu>
 __global__ void bias_relu_v4(const int num, const T* bias, T* data, int K) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (tid < num) {
     int bias_idx = tid % K;
     const T bias_ptr = bias[bias_idx];
@@ -350,7 +352,7 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                     false,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
-  auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<DeviceContext, T>(dev_ctx);
   blas.GEMM(CblasNoTrans,
             CblasNoTrans,
             M,
@@ -397,8 +399,8 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   const int8_t* W = w_tensor->data<int8_t>();
 
   DenseTensor quant_x_tensor, quant_y_tensor;
-  quant_x_tensor.Resize(common::make_ddim({M, K}));
-  quant_y_tensor.Resize(common::make_ddim({M, N}));
+  quant_x_tensor.Resize(make_ddim({M, K}));
+  quant_y_tensor.Resize(make_ddim({M, N}));
   dev_ctx.template Alloc<int8_t>(&quant_x_tensor,
                                  quant_x_tensor.numel() * sizeof(int8_t));
   dev_ctx.template Alloc<int32_t>(&quant_y_tensor,
@@ -417,7 +419,7 @@ void FCInt8Functor<DeviceContext, T>::operator()(
       dev_ctx, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
 
   DenseTensor scale_weights_dev;
-  scale_weights_dev.Resize(common::make_ddim({N}));
+  scale_weights_dev.Resize(make_ddim({N}));
   dev_ctx.template Alloc<float>(&scale_weights_dev,
                                 scale_weights_dev.numel() * sizeof(float));
   float* scale_weights_dev_ptr = scale_weights_dev.data<float>();

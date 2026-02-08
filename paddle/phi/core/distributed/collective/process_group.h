@@ -64,11 +64,11 @@ class ProcessGroup {
 
     // TODO(sunyilun): methods below will be removed later
     Task(int rank,
-         const std::vector<phi::DenseTensor>& inputs UNUSED,
+         const std::vector<DenseTensor>& inputs UNUSED,
          CommType comm_type)
         : rank_(rank), comm_type_(comm_type) {}
     Task(int rank,
-         const std::vector<phi::DenseTensor>& inputs UNUSED,
+         const std::vector<DenseTensor>& inputs UNUSED,
          CommType comm_type,
          bool sync_op)
         : rank_(rank), comm_type_(comm_type), sync_op_(sync_op) {}
@@ -102,15 +102,14 @@ class ProcessGroup {
 
   virtual std::string GetBackendName() const = 0;
 
-  virtual phi::DeviceContext* GetDeviceContext(
-      const Place& place UNUSED) const {
+  virtual DeviceContext* GetDeviceContext(const Place& place UNUSED) const {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support get device_context.",
         GetBackendName()));
   }
 
-  virtual phi::DeviceContext* GetDeviceContext(
-      const Place& place UNUSED, bool use_calc_stream UNUSED) const {
+  virtual DeviceContext* GetDeviceContext(const Place& place UNUSED,
+                                          bool use_calc_stream UNUSED) const {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support get device_context.",
         GetBackendName()));
@@ -128,8 +127,8 @@ class ProcessGroup {
 
   // without stream APIs
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support all_gather with sync_op flag.",
@@ -137,8 +136,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       int64_t offset UNUSED,
       int64_t numel UNUSED,
       bool sync_op UNUSED) {
@@ -148,8 +147,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const AllreduceOptions& opts UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -158,8 +157,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const std::vector<int64_t>& out_size_each_rank UNUSED,
       const std::vector<int64_t>& in_size_each_rank UNUSED,
       bool sync_op UNUSED) {
@@ -169,8 +168,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors UNUSED,
-      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      std::vector<DenseTensor>* out_tensors UNUSED,
+      const std::vector<DenseTensor>& in_tensors UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support all_to_all with sync_op flag.",
@@ -184,8 +183,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const BroadcastOptions& opts UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -194,8 +193,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ReduceOptions& opts UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -204,8 +203,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> ReduceScatter(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ReduceScatterOptions& opts UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -214,8 +213,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ScatterOptions& opts UNUSED,
       bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -223,8 +222,7 @@ class ProcessGroup {
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor
-                                                       UNUSED,
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor UNUSED,
                                                    int src_rank UNUSED,
                                                    bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -232,8 +230,7 @@ class ProcessGroup {
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor
-                                                       UNUSED,
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor UNUSED,
                                                    int src_rank UNUSED,
                                                    int64_t offset UNUSED,
                                                    int64_t numel UNUSED,
@@ -243,21 +240,21 @@ class ProcessGroup {
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Send(
-      const phi::DenseTensor& tensor UNUSED,
-      int dst_rank UNUSED,
-      bool sync_op UNUSED) {
+  virtual std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor
+                                                       UNUSED,
+                                                   int dst_rank UNUSED,
+                                                   bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support send with sync_op flag.",
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Send(
-      const phi::DenseTensor& tensor UNUSED,
-      int dst_rank UNUSED,
-      int64_t offset UNUSED,
-      int64_t numel UNUSED,
-      bool sync_op UNUSED) {
+  virtual std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor
+                                                       UNUSED,
+                                                   int dst_rank UNUSED,
+                                                   int64_t offset UNUSED,
+                                                   int64_t numel UNUSED,
+                                                   bool sync_op UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support send with sync_op flag.",
         GetBackendName()));
@@ -265,8 +262,8 @@ class ProcessGroup {
 
   // stream APIs
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -276,8 +273,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       int64_t offset UNUSED,
       int64_t numel UNUSED,
       bool sync_op UNUSED,
@@ -289,8 +286,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const AllreduceOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -301,8 +298,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const std::vector<int64_t>& out_size_each_rank UNUSED,
       const std::vector<int64_t>& in_size_each_rank UNUSED,
       bool sync_op UNUSED,
@@ -314,8 +311,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors UNUSED,
-      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      std::vector<DenseTensor>* out_tensors UNUSED,
+      const std::vector<DenseTensor>& in_tensors UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -325,8 +322,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const BroadcastOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream) {
@@ -337,8 +334,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ReduceOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -349,8 +346,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> ReduceScatter(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ReduceScatterOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -361,8 +358,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ScatterOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -373,8 +370,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Gather(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const GatherOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -385,8 +382,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Gather(
-      std::vector<phi::DenseTensor>* gather_tensors_ptr UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      std::vector<DenseTensor>* gather_tensors_ptr UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const GatherOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -396,24 +393,24 @@ class ProcessGroup {
                                       GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      phi::DenseTensor* tensor UNUSED,
-      int src_rank UNUSED,
-      bool sync_op UNUSED,
-      bool use_calc_stream UNUSED) {
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor UNUSED,
+                                                   int src_rank UNUSED,
+                                                   bool sync_op UNUSED,
+                                                   bool use_calc_stream
+                                                       UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroup%s does not support recv with "
         "sync_op and use_calc_stream flag.",
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      phi::DenseTensor* tensor UNUSED,
-      int src_rank UNUSED,
-      int64_t offset UNUSED,
-      int64_t numel UNUSED,
-      bool sync_op UNUSED,
-      bool use_calc_stream UNUSED) {
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor UNUSED,
+                                                   int src_rank UNUSED,
+                                                   int64_t offset UNUSED,
+                                                   int64_t numel UNUSED,
+                                                   bool sync_op UNUSED,
+                                                   bool use_calc_stream
+                                                       UNUSED) {
     PADDLE_THROW(
         common::errors::Unimplemented("ProcessGroup%s does not support recv "
                                       "with sync_op and use_calc_stream flag.",
@@ -421,7 +418,7 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
-      const phi::DenseTensor& tensor UNUSED,
+      const DenseTensor& tensor UNUSED,
       int dst_rank UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
@@ -432,7 +429,7 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
-      const phi::DenseTensor& tensor UNUSED,
+      const DenseTensor& tensor UNUSED,
       int dst_rank UNUSED,
       int64_t offset UNUSED,
       int64_t numel UNUSED,
@@ -447,76 +444,95 @@ class ProcessGroup {
   // legacy APIs
   // TODO(liyurui): This API will be moved later
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& inputs,   // NOLINT
-      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      std::vector<DenseTensor>& inputs,   // NOLINT
+      std::vector<DenseTensor>& outputs,  // NOLINT
       const AllreduceOptions& options = AllreduceOptions()) {
     return AllReduce(outputs.data(), inputs.front(), options, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& inputs,   // NOLINT
-      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      std::vector<DenseTensor>& inputs,   // NOLINT
+      std::vector<DenseTensor>& outputs,  // NOLINT
       const AllreduceOptions& options,
       bool sync_op) {
     return AllReduce(outputs.data(), inputs.front(), options, sync_op);
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<DenseTensor>& inputs,   // NOLINT
+      std::vector<DenseTensor>& outputs,  // NOLINT
+      const AllreduceOptions& options,
+      bool use_calc_stream,
+      bool sync_op) {
+    return AllReduce(
+        outputs.data(), inputs.front(), options, use_calc_stream, sync_op);
+  }
+
   // TODO(sunyilun): methods below will be removed later
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& inputs,   // NOLINT
-      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      std::vector<DenseTensor>& inputs,   // NOLINT
+      std::vector<DenseTensor>& outputs,  // NOLINT
       const BroadcastOptions& options = BroadcastOptions()) {
     return Broadcast(outputs.data(), inputs.front(), options, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& inputs,   // NOLINT
-      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      std::vector<DenseTensor>& inputs,   // NOLINT
+      std::vector<DenseTensor>& outputs,  // NOLINT
       const BroadcastOptions& options,
       bool sync_op) {
     return Broadcast(outputs.data(), inputs.front(), options, sync_op);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& tensors, int dst_rank) {  // NOLINT
+      std::vector<DenseTensor>& tensors, int dst_rank) {  // NOLINT
     return Send(tensors.front(), dst_rank, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors, int src_rank) {  // NOLINT
+      std::vector<DenseTensor>& tensors, int src_rank) {  // NOLINT
     return Recv(&tensors.front(), src_rank, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,     // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors) {  // NOLINT
+      std::vector<DenseTensor>& in_tensors,     // NOLINT
+      std::vector<DenseTensor>& out_tensors) {  // NOLINT
     return AllGather(out_tensors.data(), in_tensors.front(), false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      std::vector<DenseTensor>& in_tensors,   // NOLINT
+      std::vector<DenseTensor>& out_tensors,  // NOLINT
       bool sync_op) {
     return AllGather(out_tensors.data(), in_tensors.front(), sync_op);
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<DenseTensor>& in_tensors,   // NOLINT
+      std::vector<DenseTensor>& out_tensors,  // NOLINT
+      bool use_calc_stream,
+      bool sync_op) {
+    return AllGather(
+        out_tensors.data(), in_tensors.front(), use_calc_stream, sync_op);
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>&,    // NOLINT
-      std::vector<phi::DenseTensor>&) {  // NOLINT
+      std::vector<DenseTensor>&,    // NOLINT
+      std::vector<DenseTensor>&) {  // NOLINT
     PADDLE_THROW(common::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>& ins,   // NOLINT
-      std::vector<phi::DenseTensor>& outs,  // NOLINT
+      std::vector<DenseTensor>& ins,   // NOLINT
+      std::vector<DenseTensor>& outs,  // NOLINT
       const ReduceOptions& opts) {
     return Reduce(outs.data(), ins.front(), opts, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& ins,   // NOLINT
-      std::vector<phi::DenseTensor>& outs,  // NOLINT
+      std::vector<DenseTensor>& ins,   // NOLINT
+      std::vector<DenseTensor>& outs,  // NOLINT
       const ScatterOptions& opts) {
     return Scatter(outs.data(), ins.front(), opts, false);
   }
@@ -562,14 +578,14 @@ class ProcessGroupMapFromGid {
   std::unordered_map<int, ProcessGroup*> map_;
 };
 
-static void CheckTensorContiguous(const phi::DenseTensor& tensor) {
+static void CheckTensorContiguous(const DenseTensor& tensor) {
   if (!tensor.meta().is_contiguous()) {
     PADDLE_THROW(
         common::errors::InvalidArgument("The tensor must be contiguous"));
   }
 }
 
-static void CheckTensorContiguous(const std::vector<phi::DenseTensor>& inputs) {
+static void CheckTensorContiguous(const std::vector<DenseTensor>& inputs) {
   for (const auto& tensor : inputs) {
     if (!tensor.meta().is_contiguous()) {
       PADDLE_THROW(

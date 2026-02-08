@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -134,46 +135,38 @@ class TestSigmoidFocalLoss(unittest.TestCase):
         reductions = ['sum', 'mean', 'none']
         alphas = [0.25, 0.5]
         gammas = [3, 0.0]
-        for place in places:
-            for reduction in reductions:
-                for alpha in alphas:
-                    for gamma in gammas:
-                        for normalizer_np in normalizer_nps:
-                            (static_result,) = test_static(
-                                place,
-                                logit_np,
-                                label_np,
-                                normalizer_np,
-                                alpha,
-                                gamma,
-                                reduction,
-                            )
-                            dy_result = test_dygraph(
-                                place,
-                                logit_np,
-                                label_np,
-                                normalizer_np,
-                                alpha,
-                                gamma,
-                                reduction,
-                            )
-                            expected = calc_sigmoid_focal_loss(
-                                logit_np,
-                                label_np,
-                                normalizer_np,
-                                alpha,
-                                gamma,
-                                reduction,
-                            )
-                            np.testing.assert_allclose(
-                                static_result, expected, rtol=1e-05
-                            )
-                            np.testing.assert_allclose(
-                                static_result, dy_result, rtol=1e-05
-                            )
-                            np.testing.assert_allclose(
-                                dy_result, expected, rtol=1e-05
-                            )
+        for place, reduction, alpha, gamma, normalizer_np in itertools.product(
+            places, reductions, alphas, gammas, normalizer_nps
+        ):
+            (static_result,) = test_static(
+                place,
+                logit_np,
+                label_np,
+                normalizer_np,
+                alpha,
+                gamma,
+                reduction,
+            )
+            dy_result = test_dygraph(
+                place,
+                logit_np,
+                label_np,
+                normalizer_np,
+                alpha,
+                gamma,
+                reduction,
+            )
+            expected = calc_sigmoid_focal_loss(
+                logit_np,
+                label_np,
+                normalizer_np,
+                alpha,
+                gamma,
+                reduction,
+            )
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_SigmoidFocalLoss_error(self):
         paddle.disable_static()

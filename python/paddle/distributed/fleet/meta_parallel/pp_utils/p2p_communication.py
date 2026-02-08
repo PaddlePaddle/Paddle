@@ -763,6 +763,15 @@ class P2pHelper:
                 meta.has_send_meta = self._use_cache
                 self._send_recv_meta_list.append(meta)
                 self._send_recv_meta = meta
+            elif not self._send_recv_meta_list[self._dynamic_cnt].has_send_meta:
+                meta = self._send_recv_meta_list[self._dynamic_cnt]
+                meta.send_meta(
+                    output_tensor,
+                    _hcg.get_pipe_parallel_group(),
+                    reverse=reverse,
+                )
+                meta.has_send_meta = self._use_cache
+                self._send_recv_meta = meta
             elif not skip_check_meta:
                 meta = self._send_recv_meta_list[self._dynamic_cnt]
                 meta.check_send_message(output_tensor)
@@ -1014,16 +1023,28 @@ class P2pHelper:
 
         need_increase_cnt = False
 
-        if output_tensor is not None:
-            self._send_meta(
-                output_tensor,
-                skip_check_meta=skip_check_meta,
-            )
-            need_increase_cnt = True
+        if _hcg.get_stage_id() % 2 == 0 or not self._dynamic_shape:
+            if output_tensor is not None:
+                self._send_meta(
+                    output_tensor,
+                    skip_check_meta=skip_check_meta,
+                )
+                need_increase_cnt = True
 
-        if recv_prev:
-            self._recv_meta()
-            need_increase_cnt = True
+            if recv_prev:
+                self._recv_meta()
+                need_increase_cnt = True
+        else:
+            if recv_prev:
+                self._recv_meta()
+                need_increase_cnt = True
+
+            if output_tensor is not None:
+                self._send_meta(
+                    output_tensor,
+                    skip_check_meta=skip_check_meta,
+                )
+                need_increase_cnt = True
 
         input_tensor, _, wait_handles = _p2p_helper(
             tensor_send_next=output_tensor,
@@ -1058,13 +1079,22 @@ class P2pHelper:
 
         if self._dynamic_shape:
             need_increase_cnt = False
-            if input_tensor_grad is not None:
-                self._send_meta(input_tensor_grad, reverse=True)
-                need_increase_cnt = True
+            if _hcg.get_stage_id() % 2 == 0:
+                if input_tensor_grad is not None:
+                    self._send_meta(input_tensor_grad, reverse=True)
+                    need_increase_cnt = True
 
-            if recv_next:
-                self._recv_meta(reverse=True)
-                need_increase_cnt = True
+                if recv_next:
+                    self._recv_meta(reverse=True)
+                    need_increase_cnt = True
+            else:
+                if recv_next:
+                    self._recv_meta(reverse=True)
+                    need_increase_cnt = True
+
+                if input_tensor_grad is not None:
+                    self._send_meta(input_tensor_grad, reverse=True)
+                    need_increase_cnt = True
 
         _, output_tensor_grad, wait_handles = _p2p_helper(
             tensor_send_next=None,

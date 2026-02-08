@@ -12,61 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The file has been adapted from DeepSeek DeepEP project
+# The file has been adapted from DeepSeek DeepGEMM project
 # Copyright (c) 2025 DeepSeek
-# Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+# Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
 import os
 import sys
 
 import paddle
-
-
-def bench(
-    fn, num_warmups: int = 5, num_tests: int = 10, high_precision: bool = False
-):
-    # Flush L2 cache with 256 MB data
-    paddle.device.cuda.synchronize()
-    cache = paddle.empty(int(256e6 // 4), dtype=paddle.int32)
-    cache.zero_()
-
-    # Warmup
-    for _ in range(num_warmups):
-        fn()
-
-    # Add a large kernel to eliminate the CPU launch overhead
-    if high_precision:
-        x = paddle.randn((8192, 8192), dtype=paddle.float32)
-        y = paddle.randn((8192, 8192), dtype=paddle.float32)
-        x @ y
-
-    # Testing
-    start_event = paddle.device.cuda.Event(enable_timing=True)
-    end_event = paddle.device.cuda.Event(enable_timing=True)
-    start_event.record()
-    for i in range(num_tests):
-        fn()
-    end_event.record()
-    paddle.cuda.synchronize()
-
-    return start_event.elapsed_time(end_event) / num_tests
-
-
-def get_cuda_home():
-    cuda_home = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
-    if cuda_home:
-        return cuda_home
-
-    try:
-        which_cmd = "which nvcc"
-
-        nvcc_path = os.popen(which_cmd).read().strip()
-        if nvcc_path:
-            return os.path.dirname(os.path.dirname(nvcc_path))
-    except Exception:
-        pass
-
-    return None
 
 
 class empty_suppress:

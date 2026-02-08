@@ -74,7 +74,7 @@ XpuEventResourcePool::XpuEventResourcePool() {
       if (xpu_event_query(event) == XPU_SUCCESS) {
         xpu_event_destroy(event);
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "event not finished, can not destroy"));
       }
     };

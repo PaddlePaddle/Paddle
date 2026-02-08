@@ -25,11 +25,11 @@ void AddPositionEncodingGradKernel(const Context& dev_ctx,
                                    float beta,
                                    DenseTensor* x_grad) {
   auto* dOut = &out_grad;
-  auto dout = phi::EigenVector<T>::Flatten(*dOut);
+  auto dout = EigenVector<T>::Flatten(*dOut);
 
   auto* dX = x_grad;
   dev_ctx.template Alloc<T>(dX);
-  auto dx = phi::EigenVector<T>::Flatten(*dX);
+  auto dx = EigenVector<T>::Flatten(*dX);
 
   auto* place = dev_ctx.eigen_device();
   dx.device(*place) = dout * static_cast<T>(alpha);

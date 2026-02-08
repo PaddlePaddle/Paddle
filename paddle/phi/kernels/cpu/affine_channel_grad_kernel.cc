@@ -50,12 +50,12 @@ void AffineChannelGradKernel(const Context& dev_ctx,
   auto* dscale = scale_grad;
   auto* dbias = bias_grad;
 
-  const phi::DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = x->dims();
   int N = static_cast<int>(dims[0]);
-  int C = static_cast<int>(
-      layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1]);
+  int C = static_cast<int>(layout == DataLayout::NCHW ? dims[1]
+                                                      : dims[dims.size() - 1]);
   int HxW = static_cast<int>(x->numel() / N / C);
 
   auto* dy_d = dy->data<T>();
@@ -68,7 +68,7 @@ void AffineChannelGradKernel(const Context& dev_ctx,
   EigenVectorArrayMap<T> dscale_e(dscale_d, C);
   EigenVectorArrayMap<T> dbias_e(dbias_d, C);
 
-  if (layout == phi::DataLayout::kNCHW) {
+  if (layout == DataLayout::NCHW) {
     // compute dscale and dbias
     int stride = C * HxW;
     auto* original_dy_d = dy_d;

@@ -41,7 +41,7 @@ SpmdInfo AddNInferSpmd(
     PADDLE_ENFORCE_EQ(ndim,
                       input_dims_mapping.size(),
                       common::errors::InvalidArgument(
-                          "AddNInferSpmd, The all input's dimmapping size "
+                          "AddNInferSpmd, The all input's dims_mapping size "
                           "should be the same as first input."));
     tensor_axes_to_dim_pairs.push_back(
         std::make_pair(axes, input_dims_mapping));

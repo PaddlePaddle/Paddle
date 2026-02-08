@@ -38,6 +38,7 @@ typeid_dict = {
     'int8': int(core.VarDesc.VarType.INT8),
     'uint8': int(core.VarDesc.VarType.UINT8),
     'float64': int(core.VarDesc.VarType.FP64),
+    'complex64': int(core.VarDesc.VarType.COMPLEX64),
 }
 
 

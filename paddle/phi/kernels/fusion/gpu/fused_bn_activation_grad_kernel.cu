@@ -68,8 +68,8 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                     common::errors::PreconditionNotMet(
                         "The Input dim size should be between 2 and 5"));
   int N, C, H, W, D;
-  const phi::DataLayout data_layout = phi::DataLayout::kNHWC;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  const DataLayout data_layout = DataLayout::NHWC;
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   // init output
   auto *d_x = x_grad;
@@ -96,17 +96,17 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   if ((N * H * W * D) == 1) {
     if (act_type == "relu") {
-      auto x_v = phi::EigenVector<T>::Flatten(x);
-      auto y_v = phi::EigenVector<T>::Flatten(y);
-      auto dx_v = phi::EigenVector<T>::Flatten(*d_x);
-      auto dy_v = phi::EigenVector<T>::Flatten(*d_y);
+      auto x_v = EigenVector<T>::Flatten(x);
+      auto y_v = EigenVector<T>::Flatten(y);
+      auto dx_v = EigenVector<T>::Flatten(*d_x);
+      auto dy_v = EigenVector<T>::Flatten(*d_y);
       auto &dev = *dev_ctx.eigen_device();
-      phi::funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
+      funcs::ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("Unsupported activation type"));
     }
-    phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
+    funcs::SetConstant<GPUContext, BatchNormParamType> functor;
     functor(dev_ctx, d_scale, static_cast<BatchNormParamType>(0));
     functor(dev_ctx, d_bias, static_cast<BatchNormParamType>(0));
     return;
@@ -119,10 +119,9 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
   cudnnTensorDescriptor_t bn_param_desc_;
   cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+      dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
   if (epsilon1 <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
     LOG(ERROR) << "Provided epsilon is smaller than "
                << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -130,13 +129,13 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
   }
   epsilon1 = std::max(epsilon1, CUDNN_BN_MIN_EPSILON);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
-      data_desc_,
-      CudnnDataType::type,
-      x_dims.size() > 3 ? x_dims.size() : 4,
-      dims.data(),
-      strides.data()));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cudnnSetTensorNdDescriptor(data_desc_,
+                                          CudnnDataType::type,
+                                          x_dims.size() > 3 ? x_dims.size() : 4,
+                                          dims.data(),
+                                          strides.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDeriveBNTensorDescriptor(
       bn_param_desc_, data_desc_, mode_));
 
   const auto *saved_mean_data = saved_mean.template data<BatchNormParamType>();
@@ -145,7 +144,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
 
   size_t workspace_size = 0;
   void *workspace_ptr = nullptr;
-  phi::DenseTensor workspace_tensor;
+  DenseTensor workspace_tensor;
   auto reserve_space_size = reserve_space.memory_size();
   cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ACTIVATION;
   phi::backends::gpu::ScopedActivationDescriptor scope_act_desc;
@@ -153,7 +152,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       scope_act_desc.descriptor<T>(act_type);
   // --------------- cudnn batchnorm workspace ---------------
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+      dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
           /*handle=*/dev_ctx.cudnn_handle(),
           /*mode=*/mode_,
           /*bnOps=*/bnOps_,
@@ -170,7 +169,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       (workspace_size + phi::SizeOf(x.dtype()) - 1) / phi::SizeOf(x.dtype()))});
   workspace_ptr = dev_ctx.template Alloc<T>(&workspace_tensor);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBatchNormalizationBackwardEx(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationBackwardEx(
       /*handle=*/dev_ctx.cudnn_handle(),
       /*mode=*/mode_,
       /*bnOps=*/bnOps_,
@@ -206,10 +205,9 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
       /*reserveSpaceSizeInBytes=*/reserve_space_size));
 
   // clean when exit.
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+      dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "

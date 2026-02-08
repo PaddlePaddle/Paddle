@@ -41,23 +41,13 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* singular_values) {
   using ValueType = phi::dtype::Real<T>;
   if (x.numel() == 0 || y.numel() == 0) {
-    if (solution)
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(solution->dims())),
-                       0,
-                       solution);
-    if (rank)
-      Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (solution) Full<T, Context>(dev_ctx, solution->dims(), 0, solution);
+    if (rank) Full<int64_t, Context>(dev_ctx, rank->dims(), 0, rank);
     if (residuals)
       GetResidualsTensor<Context, T>(
           dev_ctx, x, y, driver_string, solution, residuals, rank);
     if (singular_values)
-      Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(singular_values->dims())),
-          0,
-          singular_values);
+      Full<T, Context>(dev_ctx, singular_values->dims(), 0, singular_values);
     return;
   }
 
@@ -90,15 +80,15 @@ void LstsqKernel(const Context& dev_ctx,
   int ldb = std::max<int>(1, std::max(m, n));
 
   DenseTensor new_x;
-  new_x.Resize(common::make_ddim({batch_count, m, n}));
+  new_x.Resize(make_ddim({batch_count, m, n}));
   dev_ctx.template Alloc<T>(&new_x);
-  phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
-  solution->Resize(common::make_ddim({batch_count, std::max(m, n), nrhs}));
+  solution->Resize(make_ddim({batch_count, std::max(m, n), nrhs}));
   dev_ctx.template Alloc<T>(solution);
 
   if (m >= n) {
-    phi::Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, solution);
+    Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, solution);
   } else {
     auto* solu_data = solution->data<T>();
     auto* y_data = y.data<T>();
@@ -109,11 +99,10 @@ void LstsqKernel(const Context& dev_ctx,
     }
   }
 
-  DenseTensor input_x_trans = phi::TransposeLast2Dim<T>(dev_ctx, new_x);
-  DenseTensor input_y_trans = phi::TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
-  phi::Copy<Context>(
-      dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
+  DenseTensor input_x_trans = TransposeLast2Dim<T>(dev_ctx, new_x);
+  DenseTensor input_y_trans = TransposeLast2Dim<T>(dev_ctx, *solution);
+  Copy<Context>(dev_ctx, input_x_trans, dev_ctx.GetPlace(), true, &new_x);
+  Copy<Context>(dev_ctx, input_y_trans, dev_ctx.GetPlace(), true, solution);
 
   auto* x_vector = new_x.data<T>();
   auto* y_vector = solution->data<T>();
@@ -142,7 +131,7 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor jpvt;
   int* jpvt_data = nullptr;
   if (driver == LapackDriverType::Gelsy) {
-    jpvt.Resize(common::make_ddim({std::max<int>(1, n)}));
+    jpvt.Resize(make_ddim({std::max<int>(1, n)}));
     jpvt_data = dev_ctx.template Alloc<int>(&jpvt);
   }
 
@@ -153,59 +142,59 @@ void LstsqKernel(const Context& dev_ctx,
   int iwkopt = 0;
 
   if (driver == LapackDriverType::Gels) {
-    phi::funcs::lapackGels(
+    funcs::lapackGels(
         'N', m, n, nrhs, x_vector, lda, y_vector, ldb, &wkopt, lwork, &info);
   } else if (driver == LapackDriverType::Gelsd) {
-    phi::funcs::lapackGelsd(m,
-                            n,
-                            nrhs,
-                            x_vector,
-                            lda,
-                            y_vector,
-                            ldb,
-                            s_working_ptr,
-                            static_cast<ValueType>(rcond),
-                            &rank_32,
-                            &wkopt,
-                            lwork,
-                            &rwkopt,
-                            &iwkopt,
-                            &info);
+    funcs::lapackGelsd(m,
+                       n,
+                       nrhs,
+                       x_vector,
+                       lda,
+                       y_vector,
+                       ldb,
+                       s_working_ptr,
+                       static_cast<ValueType>(rcond),
+                       &rank_32,
+                       &wkopt,
+                       lwork,
+                       &rwkopt,
+                       &iwkopt,
+                       &info);
   } else if (driver == LapackDriverType::Gelsy) {
-    phi::funcs::lapackGelsy(m,
-                            n,
-                            nrhs,
-                            x_vector,
-                            lda,
-                            y_vector,
-                            ldb,
-                            jpvt_data,
-                            static_cast<ValueType>(rcond),
-                            &rank_32,
-                            &wkopt,
-                            lwork,
-                            &rwkopt,
-                            &info);
+    funcs::lapackGelsy(m,
+                       n,
+                       nrhs,
+                       x_vector,
+                       lda,
+                       y_vector,
+                       ldb,
+                       jpvt_data,
+                       static_cast<ValueType>(rcond),
+                       &rank_32,
+                       &wkopt,
+                       lwork,
+                       &rwkopt,
+                       &info);
   } else if (driver == LapackDriverType::Gelss) {
-    phi::funcs::lapackGelss(m,
-                            n,
-                            nrhs,
-                            x_vector,
-                            lda,
-                            y_vector,
-                            ldb,
-                            s_working_ptr,
-                            static_cast<ValueType>(rcond),
-                            &rank_32,
-                            &wkopt,
-                            lwork,
-                            &rwkopt,
-                            &info);
+    funcs::lapackGelss(m,
+                       n,
+                       nrhs,
+                       x_vector,
+                       lda,
+                       y_vector,
+                       ldb,
+                       s_working_ptr,
+                       static_cast<ValueType>(rcond),
+                       &rank_32,
+                       &wkopt,
+                       lwork,
+                       &rwkopt,
+                       &info);
   }
 
   lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
   DenseTensor work;
-  work.Resize(common::make_ddim({lwork}));
+  work.Resize(make_ddim({lwork}));
   T* work_data = dev_ctx.template Alloc<T>(&work);
 
   // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
@@ -220,7 +209,7 @@ void LstsqKernel(const Context& dev_ctx,
     } else if (driver == LapackDriverType::Gelsd) {
       rwork_len = std::max<int>(1, rwkopt);
     }
-    rwork.Resize(common::make_ddim({rwork_len}));
+    rwork.Resize(make_ddim({rwork_len}));
     rwork_data = dev_ctx.template Alloc<ValueType>(&rwork);
   }
 
@@ -228,7 +217,7 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor iwork;
   int* iwork_data = nullptr;
   if (driver == LapackDriverType::Gelsd) {
-    iwork.Resize(common::make_ddim({std::max<int>(1, iwkopt)}));
+    iwork.Resize(make_ddim({std::max<int>(1, iwkopt)}));
     iwork_data = dev_ctx.template Alloc<int>(&iwork);
   }
 
@@ -239,54 +228,54 @@ void LstsqKernel(const Context& dev_ctx,
     s_working_ptr = s_working_ptr ? &s_data[i * s_stride] : nullptr;
 
     if (driver == LapackDriverType::Gels) {
-      phi::funcs::lapackGels(
+      funcs::lapackGels(
           'N', m, n, nrhs, x_input, lda, y_input, ldb, work_data, lwork, &info);
     } else if (driver == LapackDriverType::Gelsd) {
-      phi::funcs::lapackGelsd(m,
-                              n,
-                              nrhs,
-                              x_input,
-                              lda,
-                              y_input,
-                              ldb,
-                              s_working_ptr,
-                              static_cast<ValueType>(rcond),
-                              &rank_32,
-                              work_data,
-                              lwork,
-                              rwork_data,
-                              iwork_data,
-                              &info);
+      funcs::lapackGelsd(m,
+                         n,
+                         nrhs,
+                         x_input,
+                         lda,
+                         y_input,
+                         ldb,
+                         s_working_ptr,
+                         static_cast<ValueType>(rcond),
+                         &rank_32,
+                         work_data,
+                         lwork,
+                         rwork_data,
+                         iwork_data,
+                         &info);
     } else if (driver == LapackDriverType::Gelsy) {
-      phi::funcs::lapackGelsy(m,
-                              n,
-                              nrhs,
-                              x_input,
-                              lda,
-                              y_input,
-                              ldb,
-                              jpvt_data,
-                              static_cast<ValueType>(rcond),
-                              &rank_32,
-                              work_data,
-                              lwork,
-                              rwork_data,
-                              &info);
+      funcs::lapackGelsy(m,
+                         n,
+                         nrhs,
+                         x_input,
+                         lda,
+                         y_input,
+                         ldb,
+                         jpvt_data,
+                         static_cast<ValueType>(rcond),
+                         &rank_32,
+                         work_data,
+                         lwork,
+                         rwork_data,
+                         &info);
     } else if (driver == LapackDriverType::Gelss) {
-      phi::funcs::lapackGelss(m,
-                              n,
-                              nrhs,
-                              x_input,
-                              lda,
-                              y_input,
-                              ldb,
-                              s_working_ptr,
-                              static_cast<ValueType>(rcond),
-                              &rank_32,
-                              work_data,
-                              lwork,
-                              rwork_data,
-                              &info);
+      funcs::lapackGelss(m,
+                         n,
+                         nrhs,
+                         x_input,
+                         lda,
+                         y_input,
+                         ldb,
+                         s_working_ptr,
+                         static_cast<ValueType>(rcond),
+                         &rank_32,
+                         work_data,
+                         lwork,
+                         rwork_data,
+                         &info);
     }
 
     PADDLE_ENFORCE_EQ(
@@ -298,8 +287,8 @@ void LstsqKernel(const Context& dev_ctx,
     if (rank_working_ptr) *rank_working_ptr = static_cast<int>(rank_32);
   }
 
-  DenseTensor tmp_s = phi::TransposeLast2Dim<T>(dev_ctx, *solution);
-  phi::Copy<Context>(dev_ctx, tmp_s, dev_ctx.GetPlace(), true, solution);
+  DenseTensor tmp_s = TransposeLast2Dim<T>(dev_ctx, *solution);
+  Copy<Context>(dev_ctx, tmp_s, dev_ctx.GetPlace(), true, solution);
 
   if (m > n) {
     auto* solu_data = solution->data<T>();
@@ -313,7 +302,7 @@ void LstsqKernel(const Context& dev_ctx,
   if (batch_count > 1) {
     solution->Resize(solution_dim);
   } else {
-    solution->Resize(common::make_ddim({n, nrhs}));
+    solution->Resize(make_ddim({n, nrhs}));
   }
 
   GetResidualsTensor<Context, T>(

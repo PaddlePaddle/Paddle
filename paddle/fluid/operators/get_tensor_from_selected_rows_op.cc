@@ -59,7 +59,7 @@ class GetTensorFromSelectedRowsKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *x = ctx.Input<phi::SelectedRows>("X");
-    auto *out = ctx.Output<phi::DenseTensor>("Out");
+    auto *out = ctx.Output<DenseTensor>("Out");
 
     out->Resize(x->value().dims());
     out->mutable_data(ctx.GetPlace(), x->value().type());

@@ -43,27 +43,28 @@ class SoftmaxEigen {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* X,
-                  phi::DenseTensor* Y) {
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
-    constexpr int kAxisDim = 1;
+                  const DenseTensor* X,
+                  DenseTensor* Y) {
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
+    constexpr int64_t kAxisDim = 1;
 
     auto logits = EigenMatrix<T>::From(*X);
     auto softmax = EigenMatrix<T>::From(*Y);
 
-    const int batch_size = logits.dimension(kBatchDim);
-    const int num_classes = logits.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
+    const int64_t batch_size = logits.dimension(kBatchDim);
+    const int64_t num_classes = logits.dimension(kClassDim);
+    const int64_t num_remain = num_classes / axis_dim;
 
-    Eigen::DSizes<int, 1> along_axis(kAxisDim);
-    Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-    Eigen::DSizes<int, 3> batch_one_remain(batch_size, 1, num_remain);
-    Eigen::DSizes<int, 3> one_axis_one(1, axis_dim, 1);
-    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int64_t, 1> along_axis(kAxisDim);
+    Eigen::DSizes<int64_t, 2> batch_classes(batch_size, num_classes);
+    Eigen::DSizes<int64_t, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int64_t, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int64_t, 3> batch_one_remain(batch_size, 1, num_remain);
+    Eigen::DSizes<int64_t, 3> one_axis_one(1, axis_dim, 1);
+    Eigen::DSizes<int64_t, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int64_t, 3> batch_axis_remain(
+        batch_size, axis_dim, num_remain);
 
     // For numerical stability, logits should be shifted by maximum number along
     // axis, calculate shifted_logits into softmax tensor for memory reuse.
@@ -104,27 +105,28 @@ class SoftmaxEigen<DeviceContext, phi::float16> {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* X,
-                  phi::DenseTensor* Y) {
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
-    constexpr int kAxisDim = 1;
+                  const DenseTensor* X,
+                  DenseTensor* Y) {
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
+    constexpr int64_t kAxisDim = 1;
 
     auto logits = EigenMatrix<phi::float16>::From(*X);
     auto softmax = EigenMatrix<phi::float16>::From(*Y);
 
-    const int batch_size = logits.dimension(kBatchDim);
-    const int num_classes = logits.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
+    const int64_t batch_size = logits.dimension(kBatchDim);
+    const int64_t num_classes = logits.dimension(kClassDim);
+    const int64_t num_remain = num_classes / axis_dim;
 
-    Eigen::DSizes<int, 1> along_axis(kAxisDim);
-    Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-    Eigen::DSizes<int, 3> batch_one_remain(batch_size, 1, num_remain);
-    Eigen::DSizes<int, 3> one_axis_one(1, axis_dim, 1);
-    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int64_t, 1> along_axis(kAxisDim);
+    Eigen::DSizes<int64_t, 2> batch_classes(batch_size, num_classes);
+    Eigen::DSizes<int64_t, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int64_t, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int64_t, 3> batch_one_remain(batch_size, 1, num_remain);
+    Eigen::DSizes<int64_t, 3> one_axis_one(1, axis_dim, 1);
+    Eigen::DSizes<int64_t, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int64_t, 3> batch_axis_remain(
+        batch_size, axis_dim, num_remain);
 
     // For numerical stability, logits should be shifted by maximum number along
     // axis, calculate shifted_logits into softmax tensor for memory reuse.
@@ -162,27 +164,28 @@ class SoftmaxEigen<DeviceContext, phi::bfloat16> {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* X,
-                  phi::DenseTensor* Y) {
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
-    constexpr int kAxisDim = 1;
+                  const DenseTensor* X,
+                  DenseTensor* Y) {
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
+    constexpr int64_t kAxisDim = 1;
 
     auto logits = EigenMatrix<phi::bfloat16>::From(*X);
     auto softmax = EigenMatrix<phi::bfloat16>::From(*Y);
 
-    const int batch_size = logits.dimension(kBatchDim);
-    const int num_classes = logits.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
+    const int64_t batch_size = logits.dimension(kBatchDim);
+    const int64_t num_classes = logits.dimension(kClassDim);
+    const int64_t num_remain = num_classes / axis_dim;
 
-    Eigen::DSizes<int, 1> along_axis(kAxisDim);
-    Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-    Eigen::DSizes<int, 3> batch_one_remain(batch_size, 1, num_remain);
-    Eigen::DSizes<int, 3> one_axis_one(1, axis_dim, 1);
-    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int64_t, 1> along_axis(kAxisDim);
+    Eigen::DSizes<int64_t, 2> batch_classes(batch_size, num_classes);
+    Eigen::DSizes<int64_t, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int64_t, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int64_t, 3> batch_one_remain(batch_size, 1, num_remain);
+    Eigen::DSizes<int64_t, 3> one_axis_one(1, axis_dim, 1);
+    Eigen::DSizes<int64_t, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int64_t, 3> batch_axis_remain(
+        batch_size, axis_dim, num_remain);
 
     // For numerical stability, logits should be shifted by maximum number along
     // axis, calculate shifted_logits into softmax tensor for memory reuse.
@@ -219,8 +222,8 @@ template <typename DeviceContext, typename T, typename Enable>
 void SoftmaxFunctor<DeviceContext, T, Enable>::operator()(
     const DeviceContext& dev_ctx,
     const int axis_dim,
-    const phi::DenseTensor* X,
-    phi::DenseTensor* Y) {
+    const DenseTensor* X,
+    DenseTensor* Y) {
   SoftmaxEigen<DeviceContext, T>()(dev_ctx, axis_dim, X, Y);
 }
 
@@ -233,21 +236,21 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* X,
-                  phi::DenseTensor* Y) {
+                  const DenseTensor* X,
+                  DenseTensor* Y) {
     const auto& in_dims = X->dims();
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
 
-    const int num_classes = in_dims[kClassDim];
-    const int batch_size = in_dims[kBatchDim];
-    const int num_remain = num_classes / axis_dim;
+    const int64_t num_classes = in_dims[kClassDim];
+    const int64_t batch_size = in_dims[kBatchDim];
+    const int64_t num_remain = num_classes / axis_dim;
 
     if (num_remain == 1 &&
         phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
       const T* in_data = X->data<T>();
       T* out_data = Y->data<T>();
-      for (int bs = 0; bs < batch_size; ++bs) {
+      for (int64_t bs = 0; bs < batch_size; ++bs) {
         T max_val = *std::max_element(in_data, in_data + num_classes);
         max_val *= static_cast<T>(-1);
         vec_add_bias<T, phi::backends::cpu::avx>(
@@ -276,25 +279,26 @@ class SoftmaxGradEigen {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* y,
-                  const phi::DenseTensor* y_grad,
-                  phi::DenseTensor* x_grad) {
+                  const DenseTensor* y,
+                  const DenseTensor* y_grad,
+                  DenseTensor* x_grad) {
     auto softmax = EigenMatrix<T>::From(*y);
     auto softmax_grad = EigenMatrix<T>::From(*y_grad);
     auto logits_grad = EigenMatrix<T>::From(*x_grad);
 
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
 
-    const int batch_size = softmax.dimension(kBatchDim);
-    const int num_classes = softmax.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
+    const int64_t batch_size = softmax.dimension(kBatchDim);
+    const int64_t num_classes = softmax.dimension(kClassDim);
+    const int64_t num_remain = num_classes / axis_dim;
 
-    Eigen::DSizes<int, 1> along_class(kClassDim);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
-    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int64_t, 1> along_class(kClassDim);
+    Eigen::DSizes<int64_t, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int64_t, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int64_t, 3> batch_axis_remain(
+        batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int64_t, 2> one_axis(1, axis_dim);
 
     auto dot = (softmax * softmax_grad)
                    .reshape(batch_axis_remain)
@@ -311,25 +315,26 @@ class SoftmaxGradEigen<DeviceContext, phi::float16> {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* y,
-                  const phi::DenseTensor* y_grad,
-                  phi::DenseTensor* x_grad) {
+                  const DenseTensor* y,
+                  const DenseTensor* y_grad,
+                  DenseTensor* x_grad) {
     auto softmax = EigenMatrix<phi::float16>::From(*y);
     auto softmax_grad = EigenMatrix<phi::float16>::From(*y_grad);
     auto logits_grad = EigenMatrix<phi::float16>::From(*x_grad);
 
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
 
-    const int batch_size = softmax.dimension(kBatchDim);
-    const int num_classes = softmax.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
+    const int64_t batch_size = softmax.dimension(kBatchDim);
+    const int64_t num_classes = softmax.dimension(kClassDim);
+    const int64_t num_remain = num_classes / axis_dim;
 
-    Eigen::DSizes<int, 1> along_class(kClassDim);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
-    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int64_t, 1> along_class(kClassDim);
+    Eigen::DSizes<int64_t, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int64_t, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int64_t, 3> batch_axis_remain(
+        batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int64_t, 2> one_axis(1, axis_dim);
 
     auto dot = (softmax * softmax_grad)
                    .reshape(batch_axis_remain)
@@ -345,25 +350,26 @@ class SoftmaxGradEigen<DeviceContext, phi::bfloat16> {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* y,
-                  const phi::DenseTensor* y_grad,
-                  phi::DenseTensor* x_grad) {
+                  const DenseTensor* y,
+                  const DenseTensor* y_grad,
+                  DenseTensor* x_grad) {
     auto softmax = EigenMatrix<phi::bfloat16>::From(*y);
     auto softmax_grad = EigenMatrix<phi::bfloat16>::From(*y_grad);
     auto logits_grad = EigenMatrix<phi::bfloat16>::From(*x_grad);
 
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
 
-    const int batch_size = softmax.dimension(kBatchDim);
-    const int num_classes = softmax.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
+    const int64_t batch_size = softmax.dimension(kBatchDim);
+    const int64_t num_classes = softmax.dimension(kClassDim);
+    const int64_t num_remain = num_classes / axis_dim;
 
-    Eigen::DSizes<int, 1> along_class(kClassDim);
-    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
-    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
-    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int64_t, 1> along_class(kClassDim);
+    Eigen::DSizes<int64_t, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int64_t, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int64_t, 3> batch_axis_remain(
+        batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int64_t, 2> one_axis(1, axis_dim);
 
     auto dot = (softmax * softmax_grad)
                    .reshape(batch_axis_remain)
@@ -378,9 +384,9 @@ template <typename DeviceContext, typename T, typename Enable>
 void SoftmaxGradFunctor<DeviceContext, T, Enable>::operator()(
     const DeviceContext& dev_ctx,
     const int axis_dim,
-    const phi::DenseTensor* y,
-    const phi::DenseTensor* y_grad,
-    phi::DenseTensor* x_grad) {
+    const DenseTensor* y,
+    const DenseTensor* y_grad,
+    DenseTensor* x_grad) {
   SoftmaxGradEigen<DeviceContext, T>()(dev_ctx, axis_dim, y, y_grad, x_grad);
 }
 
@@ -389,22 +395,22 @@ class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
  public:
   void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
-                  const phi::DenseTensor* y,
-                  const phi::DenseTensor* y_grad,
-                  phi::DenseTensor* x_grad) {
+                  const DenseTensor* y,
+                  const DenseTensor* y_grad,
+                  DenseTensor* x_grad) {
     const auto& out_dims = y->dims();
-    constexpr int kBatchDim = 0;
-    constexpr int kClassDim = 1;
-    const int num_classes = out_dims[kClassDim];
-    const int batch_size = out_dims[kBatchDim];
-    const int num_remain = num_classes / axis_dim;
+    constexpr int64_t kBatchDim = 0;
+    constexpr int64_t kClassDim = 1;
+    const int64_t num_classes = out_dims[kClassDim];
+    const int64_t batch_size = out_dims[kBatchDim];
+    const int64_t num_remain = num_classes / axis_dim;
 
     if (num_remain == 1 &&
         phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
       const T* out_data = y->data<T>();
       const T* out_grad = y_grad->data<T>();
       T* in_grad = x_grad->data<T>();
-      for (int bs = 0; bs < batch_size; ++bs) {
+      for (int64_t bs = 0; bs < batch_size; ++bs) {
         T scalar;
         vec_mul_reduce<T, phi::backends::cpu::avx>(
             num_classes, out_grad, out_data, &scalar);

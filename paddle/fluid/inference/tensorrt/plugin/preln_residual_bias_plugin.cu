@@ -41,7 +41,6 @@ inline int getSMVersion() {
   return prop.major * 10 + prop.minor;
 }
 
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
 #define FINAL_MASK 0xffffffff
 
 template <int UNROLL_FACTOR>
@@ -130,8 +129,6 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
                                    rows,                                     \
                                    half_n,                                   \
                                    epsilon);
-
-#endif
 
 using half = phi::dtype::float16;
 
@@ -303,14 +300,8 @@ bool PrelnResidualBiasPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
       return (in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-      PADDLE_THROW(
-          common::errors::Fatal("TRT plugin supported FP16 is not available "
-                                "while with_fp16 is set true."));
-#endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -426,7 +417,6 @@ int PrelnResidualBiasPluginDynamic::enqueue(
         stream);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
     VLOG(1) << "TRT Plugin DataType selected. PrelnResidualBias-->fp16";
     const half *input1 = static_cast<const half *>(inputs[0]);
     const half *input2 = static_cast<const half *>(inputs[1]);
@@ -532,14 +522,7 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           var,
           stream);
     }
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "The Ernie(Bert) tensorRT plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recompile it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
+
   } else {
     PADDLE_THROW(
         common::errors::Fatal("The PrelnResidualBias TRT Plugin's input type "
@@ -734,14 +717,8 @@ bool PIRPrelnResidualBiasPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
       return (in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-      PADDLE_THROW(
-          common::errors::Fatal("TRT plugin supported FP16 is not available "
-                                "while with_fp16 is set true."));
-#endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -857,7 +834,6 @@ int PIRPrelnResidualBiasPluginDynamic::enqueue(
         stream);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVAILABLE
     VLOG(1) << "TRT Plugin DataType selected. PrelnResidualBias-->fp16";
     const half *input1 = static_cast<const half *>(inputs[0]);
     const half *input2 = static_cast<const half *>(inputs[1]);
@@ -963,14 +939,7 @@ int PIRPrelnResidualBiasPluginDynamic::enqueue(
           var,
           stream);
     }
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "The Ernie(Bert) tensorRT plugin should be "
-        "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recompile it or try to use fp32 by set "
-        "config.SetTRTDynamicShapeInfo(min_input_shape, "
-        "max_input_shape, opt_input_shape, true"));
-#endif
+
   } else {
     PADDLE_THROW(
         common::errors::Fatal("The PrelnResidualBias TRT Plugin's input type "

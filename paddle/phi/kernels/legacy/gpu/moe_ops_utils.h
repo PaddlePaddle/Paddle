@@ -20,18 +20,6 @@
 
 namespace phi {
 
-#define CUDACHECK(cmd)                          \
-  do {                                          \
-    cudaError_t e = cmd;                        \
-    if (e != cudaSuccess) {                     \
-      printf("Failed: Cuda error %s:%d '%s'\n", \
-             __FILE__,                          \
-             __LINE__,                          \
-             cudaGetErrorString(e));            \
-      exit(EXIT_FAILURE);                       \
-    }                                           \
-  } while (0)
-
 namespace details {
 // --------      getWorkspaceSize      -------- //
 template <typename KeyT>
@@ -83,10 +71,9 @@ void topk_gating(const Context &dev_ctx,
   phi::CubKeyValueSorter sorter(stream);
 
   DenseTensor xpanded_source_row_to_expanded_dest_row_tensor =
-      phi::Empty<int, Context>(dev_ctx, IntArray({num_rows, k}));
+      Empty<int, Context>(dev_ctx, IntArray({num_rows, k}));
 
-  DenseTensor active_cnt_tensor =
-      phi::Empty<int, Context>(dev_ctx, IntArray({1}));
+  DenseTensor active_cnt_tensor = Empty<int, Context>(dev_ctx, IntArray({1}));
 
   int64_t bytes =
       phi::details::getWorkspaceSize<T>(num_rows,
@@ -97,7 +84,7 @@ void topk_gating(const Context &dev_ctx,
                                         sorter);
 
   DenseTensor ws_ptr_tensor =
-      phi::Empty<int8_t, Context>(dev_ctx, IntArray({bytes}));
+      Empty<int8_t, Context>(dev_ctx, IntArray({bytes}));
   int8_t *ws_ptr = ws_ptr_tensor.data<int8_t>();
 
   // Pointers

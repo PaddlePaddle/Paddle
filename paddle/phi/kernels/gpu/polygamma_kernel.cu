@@ -31,7 +31,7 @@ void PolygammaKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {out};
 
   auto functor = CudaPolygammaFunctor<T>(n);
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

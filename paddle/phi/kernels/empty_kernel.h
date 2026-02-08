@@ -36,7 +36,7 @@ void EmptyLikeKernel(const Context& dev_ctx,
 
 template <typename Context>
 DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
-  phi::DenseTensor dense_out;
+  DenseTensor dense_out;
   dense_out.set_meta(meta);
   dev_ctx.Alloc(&dense_out, dense_out.dtype());
   return dense_out;

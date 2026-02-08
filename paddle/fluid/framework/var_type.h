@@ -48,7 +48,7 @@ template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (var.Type()) {
     case proto::VarType::DENSE_TENSOR:
-      visitor(var.Get<phi::DenseTensor>());
+      visitor(var.Get<DenseTensor>());
       return;
     case proto::VarType::DENSE_TENSOR_ARRAY:
       visitor(var.Get<phi::TensorArray>());

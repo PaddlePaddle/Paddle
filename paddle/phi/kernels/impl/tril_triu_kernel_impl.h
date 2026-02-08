@@ -32,10 +32,9 @@ void TrilTriuKernel(const Context& dev_ctx,
   const auto& dims = x.dims();
   const auto H = dims[dims.size() - 2];
   const auto W = dims[dims.size() - 1];
-  phi::funcs::ForRange<Context> for_range(dev_ctx,
-                                          static_cast<size_t>(x.numel()));
+  funcs::ForRange<Context> for_range(dev_ctx, static_cast<size_t>(x.numel()));
 
-  phi::funcs::TrilTriuCompute<T> tril_triu_computer(
+  funcs::TrilTriuCompute<T> tril_triu_computer(
       x_data, diagonal, lower, H, W, out_data);
   for_range(tril_triu_computer);
 }

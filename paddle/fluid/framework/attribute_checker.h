@@ -247,7 +247,7 @@ class TypedAttrChecker {
                         true,
                         common::errors::InvalidArgument(
                             "Found Attribute('%s') with type(Variable), but it "
-                            "doesn't support phi::DenseTensor type.",
+                            "doesn't support DenseTensor type.",
                             attr_name_));
 
       VLOG(3) << "Found Attribute " << attr_name_ << " with type(Variable).";

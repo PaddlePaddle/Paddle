@@ -50,7 +50,7 @@ class PixelShuffle(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -59,7 +59,7 @@ class PixelShuffle(Layer):
             >>> pixel_shuffle = nn.PixelShuffle(3)
             >>> out = pixel_shuffle(x)
             >>> print(out.shape)
-            [2, 1, 12, 12]
+            paddle.Size([2, 1, 12, 12])
 
     """
 
@@ -118,7 +118,7 @@ class PixelUnshuffle(Layer):
         - **out**: 4-D tensor with shape of :math:`[N, r^2C, H/r, W/r]` or :math:`[N, H/r, W/r, r^2C]`, where :math:`r` is :attr:`downscale_factor`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -127,7 +127,7 @@ class PixelUnshuffle(Layer):
             >>> pixel_unshuffle = nn.PixelUnshuffle(3)
             >>> out = pixel_unshuffle(x)
             >>> print(out.shape)
-            [2, 9, 4, 4]
+            paddle.Size([2, 9, 4, 4])
 
     """
 

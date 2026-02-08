@@ -381,7 +381,7 @@ void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
                  const std::string& mode,
-                 float pad_value,
+                 double pad_value,
                  const std::string& data_format,
                  DenseTensor* out) {
   T value = static_cast<T>(pad_value);
@@ -407,8 +407,7 @@ void Pad3dKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    Full<T, Context>(dev_ctx, out->dims(), pad_value, out);
     return;
   }
 

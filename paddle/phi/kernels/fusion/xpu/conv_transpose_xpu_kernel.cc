@@ -22,10 +22,10 @@ namespace fusion {
 template <typename T, typename Context>
 void Conv2dTransposeXPUKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const paddle::optional<DenseTensor>& x_max,
+                              const optional<DenseTensor>& x_max,
                               const DenseTensor& filter,
                               const DenseTensor& filter_max,
-                              const paddle::optional<DenseTensor>& bias,
+                              const optional<DenseTensor>& bias,
                               const std::vector<int>& strides_,
                               const std::vector<int>& paddings_,
                               const std::vector<int>& output_padding,

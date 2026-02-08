@@ -31,7 +31,7 @@ void CConcatKernel(const Context& dev_ctx,
                    int rank,
                    int nranks,
                    int ring_id UNUSED,
-                   bool use_calc_stream UNUSED,
+                   bool use_calc_stream,
                    bool use_model_parallel UNUSED,
                    DenseTensor* out) {
   auto x = &x_in;
@@ -58,8 +58,8 @@ void CConcatKernel(const Context& dev_ctx,
                         rank,
                         nranks));
 
-  phi::DenseTensor temp_out;
-  phi::DDim temp_out_dims = x->dims();
+  DenseTensor temp_out;
+  DDim temp_out_dims = x->dims();
   temp_out_dims[0] *= nranks;
   temp_out.Resize(temp_out_dims);
   dev_ctx.template Alloc<T>(&temp_out);
@@ -68,11 +68,11 @@ void CConcatKernel(const Context& dev_ctx,
   if (map->has(rid)) {
     // Use ProcessGroup
     distributed::ProcessGroup* pg = map->get(rid);
-    std::vector<phi::DenseTensor> in_tensor;
-    std::vector<phi::DenseTensor> out_tensor;
+    std::vector<DenseTensor> in_tensor;
+    std::vector<DenseTensor> out_tensor;
     in_tensor.push_back(*x);
     out_tensor.push_back(temp_out);
-    auto task = pg->AllGather(in_tensor, out_tensor);
+    auto task = pg->AllGather(in_tensor, out_tensor, use_calc_stream, false);
     task->Wait();
   } else {
     auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
@@ -87,8 +87,14 @@ void CConcatKernel(const Context& dev_ctx,
     int64_t send_numel = x->numel();
     const T* send_buff = x->data<T>();
     T* recv_buff = temp_out.data<T>();
-    // should ExecutionContext for calc stream.
-    auto& stream = *dev_ctx.GetStream();
+
+    std::shared_ptr<phi::stream::Stream> stream;
+    if (use_calc_stream) {
+      stream = dev_ctx.GetStream();
+    } else {
+      stream = comm->GetStream();
+    }
+
     phi::DeviceManager::CCLAllGather(
         place.GetDeviceType(),
         reinterpret_cast<void*>(const_cast<T*>(send_buff)),
@@ -96,16 +102,16 @@ void CConcatKernel(const Context& dev_ctx,
         send_numel,
         x->dtype(),
         comm->GetXcclComm(),
-        stream.raw_stream());
+        stream->raw_stream());
   }
-  std::vector<phi::DenseTensor> inputs;
+  std::vector<DenseTensor> inputs;
   int axis = x->dims().size() - 1;
   auto out_dims = x->dims();
   out_dims[out_dims.size() - 1] *= nranks;
   int rows_per_tensor = x->dims()[0];
   int offset = 0;
   for (int i = 0; i < nranks; i++) {
-    phi::DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
+    DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
     inputs.emplace_back(temp);
     offset += rows_per_tensor;
   }
@@ -113,12 +119,12 @@ void CConcatKernel(const Context& dev_ctx,
   out->Resize(out_dims);
   std::vector<paddle::Tensor> inputs_t(inputs.size());
   for (size_t i = 0; i < inputs.size(); i++) {
-    auto t = std::make_shared<phi::DenseTensor>();
+    auto t = std::make_shared<DenseTensor>();
     t->ShareDataWith(inputs[i]);
     inputs_t[i].set_impl(t);
   }
   auto output = paddle::experimental::concat(inputs_t, axis);
-  out->ShareDataWith(*reinterpret_cast<phi::DenseTensor*>(output.impl().get()));
+  out->ShareDataWith(*reinterpret_cast<DenseTensor*>(output.impl().get()));
 }
 }  // namespace phi
 

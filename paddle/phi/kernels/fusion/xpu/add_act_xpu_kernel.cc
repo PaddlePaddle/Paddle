@@ -21,9 +21,9 @@ namespace fusion {
 template <typename T, typename Context>
 void AddActXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& x_max,
+                     const optional<DenseTensor>& x_max,
                      const DenseTensor& y,
-                     const paddle::optional<DenseTensor>& y_max,
+                     const optional<DenseTensor>& y_max,
                      int act_type,
                      DenseTensor* out,
                      DenseTensor* out_max) {

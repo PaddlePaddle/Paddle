@@ -58,9 +58,9 @@ using EnableIfNonInteger =
       indices_dim[dim_val] = 1;                                              \
       shallow_copied_inds.Resize(indices_dim);                               \
     }                                                                        \
-    phi::funcs::SetConstant<Context, T> functor;                             \
+    funcs::SetConstant<Context, T> functor;                                  \
     functor(dev_ctx, x_grad, static_cast<T>(0));                             \
-    phi::funcs::gpu_scatter_add_kernel<T, int64_t>(                          \
+    funcs::gpu_scatter_add_kernel<T, int64_t>(                               \
         *x_grad, dim_val, shallow_copied_inds, values_grad, true, dev_ctx);  \
   }                                                                          \
   template <typename T, typename Context, EnableIfInteger<T> = 0>            \
@@ -76,7 +76,7 @@ using EnableIfNonInteger =
     PADDLE_ENFORCE_EQ(                                                       \
         0,                                                                   \
         1,                                                                   \
-        phi::errors::InvalidArgument(                                        \
+        common::errors::InvalidArgument(                                     \
             "Integer type '%s' is not allowed to have stop_gradient=False.", \
             dtype_name.c_str()));                                            \
   }

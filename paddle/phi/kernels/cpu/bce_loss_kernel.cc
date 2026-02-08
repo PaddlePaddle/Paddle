@@ -47,9 +47,9 @@ void BCELossKernel(const Context& dev_ctx,
             "Illegal input, input must be less than or equal to 1"));
     out_data[i] =
         (label_data[i] - static_cast<T>(1)) *
-            std::max(phi::funcs::real_log(static_cast<T>(1) - x_data[i]),
+            std::max(funcs::real_log(static_cast<T>(1) - x_data[i]),
                      (T)(-100)) -
-        label_data[i] * std::max(phi::funcs::real_log(x_data[i]), (T)(-100));
+        label_data[i] * std::max(funcs::real_log(x_data[i]), (T)(-100));
   }
 }
 

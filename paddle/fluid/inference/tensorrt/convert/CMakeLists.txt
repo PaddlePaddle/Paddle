@@ -102,7 +102,7 @@ list(
   trans_layernorm_op.cc
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
-  generic_and_custom_plugin_creater.cc
+  generic_and_custom_plugin_creator.cc
   lookup_table_op.cc
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
@@ -177,7 +177,7 @@ endif()
 if(WIN32)
   nv_test(
     test_custom_plugin_creater
-    SRCS test_custom_plugin_creater.cc
+    SRCS test_custom_plugin_creator.cc
     DEPS paddle_framework
          tensorrt_converter
          phi
@@ -188,7 +188,7 @@ if(WIN32)
 elseif(WITH_CINN)
   nv_test(
     test_custom_plugin_creater
-    SRCS test_custom_plugin_creater.cc
+    SRCS test_custom_plugin_creator.cc
     DEPS paddle_framework
          tensorrt_converter
          phi
@@ -199,7 +199,7 @@ elseif(WITH_CINN)
 else()
   nv_test(
     test_custom_plugin_creater
-    SRCS test_custom_plugin_creater.cc
+    SRCS test_custom_plugin_creator.cc
     DEPS paddle_framework
          tensorrt_converter
          phi

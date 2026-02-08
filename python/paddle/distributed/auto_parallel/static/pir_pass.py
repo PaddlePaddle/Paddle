@@ -1592,7 +1592,7 @@ def fuse_attention_ffn_qkv_pass(
         if add_gate is not None and add_up is not None:
             fused_o = paddle.add(fused_o, fused_bias)
             fused_o.get_defining_op().copy_attrs_from(add_gate)
-        out = paddle.incubate.nn.functional.swiglu(fused_o)
+        out = paddle.nn.functional.swiglu(fused_o)
         out.get_defining_op().copy_attrs_from(pat[-1])
         pat[-1].result(0).replace_all_uses_with(out)
 

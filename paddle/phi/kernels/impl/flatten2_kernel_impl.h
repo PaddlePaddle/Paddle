@@ -35,10 +35,10 @@ void Flatten2Kernel(const Context &dev_ctx,
   auto *in = &x;
   auto x_dims = in->dims();
 
-  auto out_dims = common::make_ddim(phi::funcs::GetOutputShape(axes, x_dims));
+  auto out_dims = make_ddim(funcs::GetOutputShape(axes, x_dims));
 
   dev_ctx.Alloc(out, x.dtype());
-  phi::Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);
 }
 
@@ -53,10 +53,10 @@ void Flatten2GradKernel(const Context &dev_ctx,
   auto *d_out = &out_grad;
 
   auto xshape_dims = x_shape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = slice_ddim(xshape_dims, 1, xshape_dims.size());
 
   dev_ctx.Alloc(x_grad, out_grad.dtype());
-  phi::Copy(dev_ctx, *d_out, dev_ctx.GetPlace(), false, d_x);
+  Copy(dev_ctx, *d_out, dev_ctx.GetPlace(), false, d_x);
   d_x->Resize(x_dims);
 }
 }  // namespace phi

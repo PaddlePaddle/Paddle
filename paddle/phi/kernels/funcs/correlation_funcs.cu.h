@@ -68,7 +68,10 @@ __forceinline__ __device__ T blockReduceSum(T val) {
 
 template <typename T>
 __global__ void set_zero(T *x, int64_t num) {
-  for (int64_t i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < num;
        i += blockDim.x * gridDim.x)
     x[i] = static_cast<T>(0);
 }

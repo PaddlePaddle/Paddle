@@ -8,6 +8,14 @@ if(WITH_DISTRIBUTE
   set(DEEPEP_LIB deep_ep)
 endif()
 
+if(WITH_DISTRIBUTE
+   AND WITH_XPU
+   AND WITH_XPU_XRE5)
+  message(STATUS "Enable DeepEP alltoall communication.")
+  add_subdirectory(deep_ep_xpu)
+  set(DEEPEP_LIB deep_ep_xpu)
+endif()
+
 cc_library(
   process_group
   SRCS process_group.cc

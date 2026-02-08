@@ -34,12 +34,12 @@ template <typename T_X,
           typename Context>
 void FcXPUKernelImpl(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& x_max,
+                     const optional<DenseTensor>& x_max,
                      const DenseTensor& w,
-                     const paddle::optional<DenseTensor>& w_max,
-                     const paddle::optional<DenseTensor>& bias,
-                     const paddle::optional<DenseTensor>& scale_max,
-                     const paddle::optional<DenseTensor>& out_max_in,
+                     const optional<DenseTensor>& w_max,
+                     const optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& scale_max,
+                     const optional<DenseTensor>& out_max_in,
                      int in_num_col_dims,
                      bool transpose_x,
                      float alpha,
@@ -54,7 +54,11 @@ void FcXPUKernelImpl(const Context& dev_ctx,
   auto in_mat_dims = flatten_to_2d(x.dims(), in_num_col_dims);
   int m = in_mat_dims[0];
   int k = in_mat_dims[1];
-  int n = w.dims()[0];
+  int64_t n = w.dims()[0];
+
+  // NOTE(large-tensor): XPU fc_fusion API not support int64
+  PADDLE_ENFORCE_LE_INT_MAX(n, "n");
+
   auto* x_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* x_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
@@ -333,12 +337,12 @@ void FcXPUKernelImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void FcXPUKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const paddle::optional<DenseTensor>& x_max,
+                 const optional<DenseTensor>& x_max,
                  const DenseTensor& w,
-                 const paddle::optional<DenseTensor>& w_max,
-                 const paddle::optional<DenseTensor>& bias,
-                 const paddle::optional<DenseTensor>& scale_max,
-                 const paddle::optional<DenseTensor>& out_max_in,
+                 const optional<DenseTensor>& w_max,
+                 const optional<DenseTensor>& bias,
+                 const optional<DenseTensor>& scale_max,
+                 const optional<DenseTensor>& out_max_in,
                  int in_num_col_dims,
                  bool transpose_x,
                  float alpha,

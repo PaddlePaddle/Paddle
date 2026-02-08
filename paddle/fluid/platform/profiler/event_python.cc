@@ -127,7 +127,8 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   return host_python_node;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 ProfilerResult::ProfilerResult(
     std::unique_ptr<NodeTrees> tree,
     const ExtraInfo& extra_info,
@@ -168,7 +169,8 @@ void ProfilerResult::Save(const std::string& file_name,
   if (format == std::string("json")) {
     ChromeTracingLogger logger(file_name);
     logger.LogMetaInfo(version_, span_index_);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
     logger.LogDeviceProperty(device_property_map_);
 #endif
     tree_->LogMe(&logger);
@@ -176,7 +178,8 @@ void ProfilerResult::Save(const std::string& file_name,
   } else if (format == std::string("pb")) {
     SerializationLogger logger(file_name);
     logger.LogMetaInfo(version_, span_index_);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
     logger.LogDeviceProperty(device_property_map_);
 #endif
     tree_->LogMe(&logger);

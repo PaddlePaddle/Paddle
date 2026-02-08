@@ -29,7 +29,7 @@ void NumberCountKernel(const Context& dev_ctx,
   auto number_count = out;
   number_count->Resize({upper_range});
   dev_ctx.template Alloc<T>(number_count);
-  phi::DenseTensor cpu_tensor;
+  DenseTensor cpu_tensor;
   phi::Copy(dev_ctx, *numbers, phi::CPUPlace(), true, &cpu_tensor);
   std::vector<T> count(upper_range);
   for (auto i = 0; i < cpu_tensor.numel(); ++i) {

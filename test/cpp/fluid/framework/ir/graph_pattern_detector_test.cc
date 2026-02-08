@@ -81,7 +81,7 @@ TEST(PDPattern, AddEdge) {
   ASSERT_EQ(x.edges().front().second, b);
 }
 
-TEST(GraphPatternDetecter, MarkPDNodesInGraph) {
+TEST(GraphPatternDetector, MarkPDNodesInGraph) {
   GraphPatternDetector x;
   // mark o2, o3, v2
 
@@ -126,7 +126,7 @@ TEST(GraphPatternDetecter, MarkPDNodesInGraph) {
   ASSERT_EQ(subgraphs.size(), 1UL);
 }
 
-TEST(GraphPatternDetecter, MultiSubgraph) {
+TEST(GraphPatternDetector, MultiSubgraph) {
   ProgramDesc program;
   Graph graph(program);
   BuildGraph(&graph);

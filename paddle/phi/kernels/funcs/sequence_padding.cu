@@ -34,7 +34,9 @@ __global__ void SequencePaddingKernel(T* dst,
   size_t seq_idx = blockIdx.y;
   size_t seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
 
-  size_t step_idx = blockIdx.x * blockDim.y + threadIdx.y;
+  size_t step_idx =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.y) +
+      static_cast<size_t>(threadIdx.y);
   size_t seq_data_offset = (seq_offsets[seq_idx] + step_idx) * step_width;
   size_t pad_data_offset = layout == kBatchLengthWidth
                                ? (seq_idx * pad_seq_len + step_idx) * step_width
@@ -60,9 +62,9 @@ template <typename T>
 class PaddingDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& seq_tensor,
-                  phi::DenseTensor* pad_tensor,
-                  const phi::DenseTensor& pad_value,
+                  const DenseTensor& seq_tensor,
+                  DenseTensor* pad_tensor,
+                  const DenseTensor& pad_value,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -142,8 +144,8 @@ template <typename T>
 class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor& pad_tensor,
-                  phi::DenseTensor* seq_tensor,
+                  const DenseTensor& pad_tensor,
+                  DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

@@ -29,7 +29,7 @@ namespace phi {
 namespace funcs {
 
 template <typename DeviceContext, typename T>
-void call_gemm(const phi::funcs::BlasT<DeviceContext, T>& blas,
+void call_gemm(const funcs::BlasT<DeviceContext, T>& blas,
                const CBLAS_TRANSPOSE TransA,
                const CBLAS_TRANSPOSE TransB,
                const int M,
@@ -60,12 +60,12 @@ void call_gemm(const Context& dev_ctx,
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
   // auto& dev_ctx = dev_ctx.template device_context<phi::CPUContext>();
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
 template <typename DeviceContext, typename T>
-void call_gemm_with_lda(const phi::funcs::BlasT<DeviceContext, T>& blas,
+void call_gemm_with_lda(const funcs::BlasT<DeviceContext, T>& blas,
                         const CBLAS_TRANSPOSE TransA,
                         const CBLAS_TRANSPOSE TransB,
                         const int M,

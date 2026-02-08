@@ -307,6 +307,7 @@ void CommContextManager::CreateBKCLCommContext(
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::XPUContext> dev_ctx(new phi::XPUContext(
         phi::XPUPlace(CommContextManager::device_id), true));
+    dev_ctx->CreateStream();
     dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
         CommContextManager::device_id, dev_ctx->stream()));
     dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());

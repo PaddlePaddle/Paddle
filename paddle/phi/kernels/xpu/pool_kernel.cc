@@ -19,12 +19,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
-
-#ifdef PADDLE_WITH_XPU_XRE5
-#include "xpudnn/xpudnn.h"
-namespace xpudnn = baidu::xpu::xpudnn;
-#endif
-
 namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& dev_ctx,
@@ -42,11 +36,9 @@ void Pool2dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -106,22 +98,6 @@ void Pool2dKernel(const Context& dev_ctx,
       kernel_size[1] = in_w + paddings[2] + paddings[3];
     }
     if (pooling_type == "max") {
-#ifdef PADDLE_WITH_XPU_XRE5
-      r = xpudnn::max_pool2d<XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(x.data<T>()),
-          reinterpret_cast<XPUType*>(out->data<T>()),
-          index_data,
-          n,
-          c,
-          in_h,
-          in_w,
-          kernel_size,
-          strides,
-          paddings,
-          true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d");
-#else
       r = xpu::max_pool2d<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -135,8 +111,6 @@ void Pool2dKernel(const Context& dev_ctx,
           strides,
           paddings,
           true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d");
-#endif
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -151,7 +125,6 @@ void Pool2dKernel(const Context& dev_ctx,
           paddings,
           !exclusive,
           true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "avg_pool2d");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -170,7 +143,6 @@ void Pool2dKernel(const Context& dev_ctx,
           out_h,
           out_w,
           true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_max_pool2d");
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -183,12 +155,12 @@ void Pool2dKernel(const Context& dev_ctx,
           out_h,
           out_w,
           true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_avg_pool2d");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   }
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
 }
 
 template <typename T, typename Context>
@@ -207,11 +179,9 @@ void Pool3dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || pooling_type == "avg") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -345,19 +315,29 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const std::vector<int>& kernel_size_t,
                               const std::vector<int>& strides_t,
                               const std::vector<int>& paddings_t,
+                              const std::vector<int>& dilations_t,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode UNUSED,
                               DenseTensor* out,
                               DenseTensor* mask) {
+  // Check dilation support - XPU only supports dilation=1
+  for (size_t i = 0; i < dilations_t.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        dilations_t[i],
+        1,
+        common::errors::Unimplemented(
+            "MaxPool2dWithIndex on XPU currently does not support "
+            "dilation != 1. Got dilation[%d] = %d. Please use CPU device.",
+            static_cast<int>(i),
+            dilations_t[i]));
+  }
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<int, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<int, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }

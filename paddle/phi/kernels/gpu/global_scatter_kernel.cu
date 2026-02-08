@@ -32,8 +32,8 @@ struct GlobalScatterFunctor {
                   DenseTensor* out);
 };
 template <typename T>
-struct GlobalScatterFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct GlobalScatterFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& x_in,
                   const DenseTensor& local_count_in,
                   const DenseTensor& global_count_in,
@@ -57,21 +57,20 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
 
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
-    phi::DenseTensor cpu_local_count;
-    if (local_count->place().GetType() == phi::AllocationType::CPU) {
+    DenseTensor cpu_local_count;
+    if (local_count->place().GetType() == AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
-      phi::Copy(dev_ctx, *local_count, phi::CPUPlace(), true, &cpu_local_count);
+      Copy(dev_ctx, *local_count, CPUPlace(), true, &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
-    phi::DenseTensor cpu_global_count;
-    if (global_count->place().GetType() == phi::AllocationType::CPU) {
+    DenseTensor cpu_global_count;
+    if (global_count->place().GetType() == AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
-      phi::Copy(
-          dev_ctx, *global_count, phi::CPUPlace(), true, &cpu_global_count);
+      Copy(dev_ctx, *global_count, CPUPlace(), true, &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }
@@ -99,7 +98,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    DDim out_dims = make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -151,7 +150,7 @@ void GlobalScatterKernel(const Context& dev_ctx,
                          const DenseTensor& local_count,
                          const DenseTensor& global_count,
                          DenseTensor* out) {
-  GlobalScatterFunctor<phi::GPUContext, T> functor_;
+  GlobalScatterFunctor<GPUContext, T> functor_;
   functor_(dev_ctx, x, local_count, global_count, out);
 }
 

@@ -43,8 +43,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                            DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   dev_ctx.template Alloc<T>(out);
@@ -59,7 +58,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
   DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
 
 #ifdef PADDLE_WITH_XPU_XRE5
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> paddings_ =
       std::vector<int64_t>(paddings.begin(), paddings.end());
   std::vector<int64_t> dilations_ =
@@ -213,7 +212,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
   }
 #else
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> strides_ =
       std::vector<int64_t>(strides.begin(), strides.end());
   std::vector<int64_t> paddings_ =
@@ -379,16 +378,15 @@ void Conv3dTransposeKernel(const Context& dev_ctx,
            "NCDHW) or NHWC(in Python, it is specified as NDHWC) in "
            "conv3d_transpose op.")));
 
-  phi::DDim in_data_dims;
+  DDim in_data_dims;
   if (data_format == "NHWC") {
-    in_data_dims = common::slice_ddim(x.dims(), 1, x.dims().size() - 1);
+    in_data_dims = slice_ddim(x.dims(), 1, x.dims().size() - 1);
   } else {
-    in_data_dims = common::slice_ddim(x.dims(), 2, x.dims().size());
+    in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   }
-  phi::DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
 
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> paddings_ =
       std::vector<int64_t>(paddings.begin(), paddings.end());
   std::vector<int64_t> dilations_ =

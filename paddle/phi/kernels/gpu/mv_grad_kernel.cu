@@ -44,16 +44,10 @@ void MvGradKernel(const Context &dev_ctx,
   auto dvec = vec_grad;
   if (x.numel() == 0 || vec.numel() == 0) {
     if (dx) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(dx->dims())),
-                            static_cast<T>(0),
-                            dx);
+      Full<T, Context>(dev_ctx, dx->dims(), static_cast<T>(0), dx);
     }
     if (dvec) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(dvec->dims())),
-                            static_cast<T>(0),
-                            dvec);
+      Full<T, Context>(dev_ctx, dvec->dims(), static_cast<T>(0), dvec);
     }
     return;
   }
@@ -67,7 +61,7 @@ void MvGradKernel(const Context &dev_ctx,
   const T *vec_data = vec.data<T>();
   const T *dout_data = dout.data<T>();
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto stream = dev_ctx.stream();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n);
 

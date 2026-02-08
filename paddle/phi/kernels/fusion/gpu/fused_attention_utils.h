@@ -27,9 +27,9 @@ namespace phi {
 namespace fusion {
 
 template <typename T>
-static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
+static void AllReduce(DenseTensor &tensor,  // NOLINT
                       const int ring_id,
-                      const phi::GPUContext &dev_ctx) {
+                      const GPUContext &dev_ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   distributed::ProcessGroup *pg = nullptr;
@@ -57,10 +57,10 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 }
 
 template <typename T>
-static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
+static void AllReduce(DenseTensor &tensor,  // NOLINT
                       const int ring_id,
                       const int count UNUSED,
-                      const phi::GPUContext &dev_ctx) {
+                      const GPUContext &dev_ctx) {
   AllReduce<T>(tensor, ring_id, dev_ctx);
 }
 

@@ -50,12 +50,12 @@ void test_squeeze() {
   phi::CPUPlace cpu_place;
   // Prepare Op description
   framework::OpDesc desc;
-  // We assume it is kNHWC, so that can use this transformation
-  phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNHWC);
+  // We assume it is NHWC, so that can use this transformation
+  phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::NHWC);
   desc.SetType("squeeze2");
   desc.SetInput("X", {"squeeze-X"});
   desc.SetOutput("Out", {"squeeze-Out"});
-  // DataLayout::kNHWC will make it become {2, 3, 2, 1}
+  // DataLayout::NHWC will make it become {2, 3, 2, 1}
   AddVarToScope<float>("squeeze-X", &scope, {2, 2, 1, 3});
   AddVarToScope<float>("squeeze-Out", &scope, {2, 3, 2});
   // transform will make it become -1
@@ -75,11 +75,11 @@ void test_squeeze2() {
   // Prepare Op description
   framework::OpDesc desc;
   // We assume it is HNWC, so that can use this transformation
-  phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNHWC);
+  phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::NHWC);
   desc.SetType("squeeze2");
   desc.SetInput("X", {"squeeze-X"});
   desc.SetOutput("Out", {"squeeze-Out"});
-  // DataLayout::kNHWC will make it become {2, 1, 3, 2}
+  // DataLayout::NHWC will make it become {2, 1, 3, 2}
   AddVarToScope<float>("squeeze-X", &scope, {2, 3, 2, 1});
   AddVarToScope<float>("squeeze-Out", &scope, {2, 3, 2});
   // transform will make it become -3(1)

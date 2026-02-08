@@ -92,12 +92,11 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  phi::funcs::CheckAndUpdateSliceAttrs(
+  funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
-  auto slice_dims = phi::funcs::GetSliceDims(
+  auto slice_dims = funcs::GetSliceDims(
       in_dims, axes, starts_local, ends_local, &steps_local);
-  auto decrease_slice_dims =
-      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
+  auto decrease_slice_dims = funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -122,7 +121,7 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
 
   // Here copy data from input to avoid data loss at PE and Graph level.
@@ -191,7 +190,7 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
+  funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // do broadcasting
   auto f = [](xpu::Context* xpu_ctx,
@@ -232,8 +231,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = common::vectorize<int64_t>(out->dims());
-  auto slice_shape = common::vectorize<int64_t>(slice_dims);
+  auto out_shape = vectorize<int64_t>(out->dims());
+  auto slice_shape = vectorize<int64_t>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
@@ -413,10 +412,10 @@ void SetValueKernel(const Context& dev_ctx,
       reinterpret_cast<T*>(RAII_GUARD.alloc_l3_or_gm<XPUType>(values_size));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      value_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      value_data_uint8_cpu,
                      values_length);
-  auto value_dims = common::make_ddim(shape);
+  auto value_dims = make_ddim(shape);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,

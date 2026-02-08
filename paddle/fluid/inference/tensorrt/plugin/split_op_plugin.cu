@@ -133,15 +133,9 @@ __global__ void split_kernel(int nsegment,
 
 int SplitPlugin::enqueue(int batchSize,
                          const void* const* inputs,
-#if IS_TRT_VERSION_LT(8000)
-                         void** outputs,
-                         void* workspace,
-                         cudaStream_t stream) {
-#else
                          void* const* outputs,
                          void* workspace,
                          cudaStream_t stream) TRT_NOEXCEPT {
-#endif
   // this two thrust variables declared here , not with in .h
   // to avoid compiling error in cuda 11.6
   thrust::device_vector<int> d_segment_offsets = segment_offsets_;

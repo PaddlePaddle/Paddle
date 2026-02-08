@@ -29,10 +29,9 @@ void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const DenseTensor& w,
                                 const DenseTensor& label,
-                                const paddle::optional<DenseTensor>& path,
-                                const paddle::optional<DenseTensor>& code,
-                                const paddle::optional<DenseTensor>& bias
-                                    UNUSED,
+                                const optional<DenseTensor>& path,
+                                const optional<DenseTensor>& code,
+                                const optional<DenseTensor>& bias UNUSED,
                                 const DenseTensor& pre_out,
                                 const DenseTensor& out_grad,
                                 int num_classes,
@@ -54,12 +53,12 @@ void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
     is_custom = true;
   }
 
-  std::unique_ptr<phi::funcs::MatrixBitCodeFunctor<T>> bit_code;
+  std::unique_ptr<funcs::MatrixBitCodeFunctor<T>> bit_code;
   if (!is_custom) {
-    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new funcs::MatrixBitCodeFunctor<T>(
         num_classes, label.template data<int64_t>()));
   } else {
-    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new funcs::MatrixBitCodeFunctor<T>(
         *(path.get_ptr()), *(code.get_ptr()), label.template data<int64_t>()));
   }
 

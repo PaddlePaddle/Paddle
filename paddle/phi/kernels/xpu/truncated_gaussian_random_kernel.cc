@@ -56,7 +56,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   memory_utils::Copy(dev_ctx.GetPlace(),
                      data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      reinterpret_cast<void*>(data_cpu.get()),
                      size * sizeof(T));
 }

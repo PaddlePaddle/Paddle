@@ -28,6 +28,7 @@ from .basic import (  # noqa: F401
     ExceptionVariable,
     FunctionGlobalVariable,
     GlobalVariable,
+    InterpolationVariable,
     ModuleVariable,
     NullVariable,
     NumPyArrayVariable,
@@ -39,6 +40,7 @@ from .basic import (  # noqa: F401
     SliceVariable,
     SuperVariable,
     SymbolicVariable,
+    TemplateVariable,
     TensorVariable,
 )
 from .callable import (  # noqa: F401
@@ -64,6 +66,7 @@ from .container import (  # noqa: F401
     DictVariable,
     ListVariable,
     RangeVariable,
+    SizeVariable,
     TupleVariable,
 )
 from .iter import (  # noqa: F401

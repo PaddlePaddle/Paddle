@@ -183,7 +183,7 @@ void InitDenseTensorHolder(const Scope& scope,
                            const std::vector<int64_t>& dims,
                            const T* data) {
   auto var = scope.FindLocalVar(var_name);
-  auto tensor = var->GetMutable<phi::DenseTensor>();
+  auto tensor = var->GetMutable<DenseTensor>();
   auto* tensor_mem_ptr =
       tensor->mutable_data<T>(common::make_ddim(dims), place);
   if (data != nullptr) {

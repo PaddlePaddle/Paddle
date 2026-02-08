@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import itertools
 import unittest
 from functools import partial
 from typing import Any
@@ -66,45 +67,45 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.random([6, 6, 64, 64]).astype(np.float32)
 
-        for axes in [[0, 1], [1, 3], [2, 3]]:
-            for starts in [[0, 1]]:
-                for ends in [[2, 2], [5, 5], [1, -1]]:
-                    for decrease_axis in [[], [1], [2], [-1], [-100]]:
-                        for infer_flags in [[-1]]:
-                            dics = [
-                                {
-                                    "axes": axes,
-                                    "starts": starts,
-                                    "ends": ends,
-                                    "decrease_axis": decrease_axis,
-                                    "infer_flags": infer_flags,
-                                }
-                            ]
+        for axes, starts, ends, decrease_axis, infer_flags in itertools.product(
+            [[0, 1], [1, 3], [2, 3]],
+            [[0, 1]],
+            [[2, 2], [5, 5], [1, -1]],
+            [[], [1], [2], [-1], [-100]],
+            [[-1]],
+        ):
+            dics = [
+                {
+                    "axes": axes,
+                    "starts": starts,
+                    "ends": ends,
+                    "decrease_axis": decrease_axis,
+                    "infer_flags": infer_flags,
+                }
+            ]
 
-                            ops_config = [
-                                {
-                                    "op_type": "slice",
-                                    "op_inputs": {"Input": ["input_data"]},
-                                    "op_outputs": {
-                                        "Out": ["slice_output_data"]
-                                    },
-                                    "op_attrs": dics[0],
-                                }
-                            ]
-                            ops = self.generate_op_config(ops_config)
+            ops_config = [
+                {
+                    "op_type": "slice",
+                    "op_inputs": {"Input": ["input_data"]},
+                    "op_outputs": {"Out": ["slice_output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "input_data": TensorConfig(
-                                        data_gen=partial(generate_input1, dics)
-                                    )
-                                },
-                                outputs=["slice_output_data"],
-                            )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, dics)
+                    )
+                },
+                outputs=["slice_output_data"],
+            )
 
-                            yield program_config
+            yield program_config
 
     def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}

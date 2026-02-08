@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from paddle.utils.decorator_utils import param_one_alias, param_two_alias
+
 from .. import functional as F
 from .layers import Layer
 
@@ -68,6 +70,7 @@ class PairwiseDistance(Layer):
             [4.99999860, 4.99999860])
     """
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         p: float = 2.0,
@@ -81,6 +84,7 @@ class PairwiseDistance(Layer):
         self.keepdim = keepdim
         self.name = name
 
+    @param_two_alias(["x", "x1"], ["y", "x2"])
     def forward(self, x: paddle.Tensor, y: paddle.Tensor) -> paddle.Tensor:
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
@@ -95,3 +99,19 @@ class PairwiseDistance(Layer):
         if self.name is not None:
             main_str += ', name={name}'
         return main_str.format(**self.__dict__)
+
+    @property
+    def eps(self) -> float:
+        return self.epsilon
+
+    @eps.setter
+    def eps(self, value: float) -> None:
+        self.epsilon = value
+
+    @property
+    def norm(self) -> float:
+        return self.p
+
+    @norm.setter
+    def norm(self, value: float) -> None:
+        self.p = value

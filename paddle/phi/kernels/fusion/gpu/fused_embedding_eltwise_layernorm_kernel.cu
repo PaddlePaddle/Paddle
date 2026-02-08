@@ -65,15 +65,15 @@ void EmbeddingEltWiseLayerNormKernel(
     in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
   }
 
-  phi::memory_utils::Copy(phi::GPUPlace{},
+  phi::memory_utils::Copy(GPUPlace{},
                           in_ids_d,
-                          phi::CPUPlace{},
+                          CPUPlace{},
                           in1s.data(),
                           sizeof(int64_t) * input_num,
                           dev_ctx.stream());
-  phi::memory_utils::Copy(phi::GPUPlace{},
+  phi::memory_utils::Copy(GPUPlace{},
                           in_embs_d,
-                          phi::CPUPlace{},
+                          CPUPlace{},
                           in2s.data(),
                           sizeof(int64_t) * input_num,
                           dev_ctx.stream());
@@ -95,7 +95,7 @@ void EmbeddingEltWiseLayerNormKernel(
     const half* bias_new = reinterpret_cast<const half*>(bias_d);
     half* output_new = reinterpret_cast<half*>(output_d);
 
-    phi::funcs::EmbEltwiseLayerNormFunctor<half> emb_eltwise_layernorm_func;
+    funcs::EmbEltwiseLayerNormFunctor<half> emb_eltwise_layernorm_func;
     emb_eltwise_layernorm_func(batch,
                                seq_len,
                                hidden,
@@ -108,7 +108,7 @@ void EmbeddingEltWiseLayerNormKernel(
                                input_num,
                                dev_ctx.stream());
   } else {
-    phi::funcs::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
+    funcs::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
     emb_eltwise_layernorm_func(batch,
                                seq_len,
                                hidden,

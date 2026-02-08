@@ -31,37 +31,36 @@ class DenseTensor;
 
 namespace distributed {
 struct NCCLDynamicCheck {
-  static void CheckDataType(const phi::DenseTensor& tensor, int64_t dtype);
+  static void CheckDataType(const DenseTensor& tensor, int64_t dtype);
 
-  static void CheckDataType(const phi::DenseTensor& tensor,
+  static void CheckDataType(const DenseTensor& tensor,
                             int root_rank,
                             int cur_rank,
                             ncclComm_t comm);
 
-  static void CheckShape(const phi::DenseTensor& tensor, int64_t shape);
+  static void CheckShape(const DenseTensor& tensor, int64_t shape);
 
-  static void CheckShape(const phi::DenseTensor& tensor,
+  static void CheckShape(const DenseTensor& tensor,
                          int root_rank,
                          int cur_rank,
                          ncclComm_t comm);
 
-  static void CheckShape(const phi::DenseTensor& out_tensor,
-                         const phi::DenseTensor& in_tensor,
+  static void CheckShape(const DenseTensor& out_tensor,
+                         const DenseTensor& in_tensor,
                          const std::vector<int64_t>& in_size_each_rank,
                          int cur_rank,
                          int world_size,
                          ncclComm_t comm);
 
-  static void CheckAlltoAllShape(
-      const std::vector<phi::DenseTensor>& out_tensor,
-      const std::vector<phi::DenseTensor>& in_tensor,
-      int cur_rank,
-      int world_size,
-      ncclComm_t comm);
+  static void CheckAlltoAllShape(const std::vector<DenseTensor>& out_tensor,
+                                 const std::vector<DenseTensor>& in_tensor,
+                                 int cur_rank,
+                                 int world_size,
+                                 ncclComm_t comm);
 
   // can be used to check gather and all gather
-  static void CheckGatherShape(const phi::DenseTensor& in_tensor,
-                               const std::vector<phi::DenseTensor>& out_tensors,
+  static void CheckGatherShape(const DenseTensor& in_tensor,
+                               const std::vector<DenseTensor>& out_tensors,
                                int root_rank,
                                int cur_rank,
                                int world_size,

@@ -116,7 +116,7 @@ __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
     StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   const int bi = blockIdx.y;
   if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
     return;
@@ -677,7 +677,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 }
 
 template <typename T, typename LoadFunc, typename StoreFunc, bool WITH_INT8>
-void fmha_impl(const phi::GPUContext &dev_ctx,
+void fmha_impl(const GPUContext &dev_ctx,
                const Masked_multihead_attention_params<T> &params,
                int dim_head,
                LoadFunc load_func,
@@ -729,7 +729,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
     StoreFunc store_func) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
   const int bi = blockIdx.y;
   // Each Partition responsible for partial KeyCache and Value Cache Compute.
   const int partition_idx = blockIdx.z;
@@ -1441,7 +1441,7 @@ void dispatch_mbmmha_impl(const Masked_multihead_attention_params<T> &params,
 
 template <typename T, typename LoadFunc, typename ReduceStoreFunc>
 void dispatch_mbmmha_impl_headsize(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const Masked_multihead_attention_params<T> &params,
     int dim_head,
     LoadFunc load_func,
@@ -1467,13 +1467,13 @@ void dispatch_mbmmha_impl_headsize(
 }
 
 template <typename T>
-void DispatchMBMMHA(const phi::GPUContext &dev_ctx,
+void DispatchMBMMHA(const GPUContext &dev_ctx,
                     const cudaStream_t &stream,
-                    const phi::DenseTensor &qkv_tensor,
+                    const DenseTensor &qkv_tensor,
                     const Masked_multihead_attention_params<T> &params,
                     int num_head,
                     int dim_head,
-                    phi::DenseTensor *out_tensor) {
+                    DenseTensor *out_tensor) {
   // In Multi Block Mode, we store partial out val(type is T) into
   // params.partial_out. Then we do final reduce and postprocess (such quant to
   // int8.) to save in out_tensor.
@@ -1487,18 +1487,18 @@ void DispatchMBMMHA(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-void mbfmha(const phi::GPUContext &dev_ctx,
-            const phi::DenseTensor &qkv_tensor,
-            const phi::DenseTensor &qkv_bias_tensor,
-            const phi::DenseTensor *src_mask_tensor,
-            const phi::DenseTensor *cum_offsets_tensor,
-            const phi::DenseTensor *sequence_lengths_tensor,
-            const phi::DenseTensor *rotary_tensor,
-            phi::DenseTensor *cache_kv_tensor,
-            phi::DenseTensor *out_tensor,
-            phi::DenseTensor *partial_max_logits_tensor,
-            phi::DenseTensor *partial_expsum_tensor,
-            phi::DenseTensor *partial_out_tensor,
+void mbfmha(const GPUContext &dev_ctx,
+            const DenseTensor &qkv_tensor,
+            const DenseTensor &qkv_bias_tensor,
+            const DenseTensor *src_mask_tensor,
+            const DenseTensor *cum_offsets_tensor,
+            const DenseTensor *sequence_lengths_tensor,
+            const DenseTensor *rotary_tensor,
+            DenseTensor *cache_kv_tensor,
+            DenseTensor *out_tensor,
+            DenseTensor *partial_max_logits_tensor,
+            DenseTensor *partial_expsum_tensor,
+            DenseTensor *partial_out_tensor,
             int batch_size,
             int cache_batch_size,
             int seq_len,
@@ -1592,16 +1592,16 @@ void mbfmha(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-void fmha(const phi::GPUContext &dev_ctx,
-          const phi::DenseTensor &qkv_tensor,
-          const phi::DenseTensor &qkv_bias_tensor,
-          const phi::DenseTensor *src_mask_tensor,
-          const phi::DenseTensor *cum_offsets_tensor,
-          const phi::DenseTensor *sequence_lengths_tensor,
-          const phi::DenseTensor *rotary_tensor,
-          const phi::DenseTensor *beam_cache_offset_tensor,
-          phi::DenseTensor *cache_kv_tensor,
-          phi::DenseTensor *out_tensor,
+void fmha(const GPUContext &dev_ctx,
+          const DenseTensor &qkv_tensor,
+          const DenseTensor &qkv_bias_tensor,
+          const DenseTensor *src_mask_tensor,
+          const DenseTensor *cum_offsets_tensor,
+          const DenseTensor *sequence_lengths_tensor,
+          const DenseTensor *rotary_tensor,
+          const DenseTensor *beam_cache_offset_tensor,
+          DenseTensor *cache_kv_tensor,
+          DenseTensor *out_tensor,
           int batch_size,
           int cache_batch_size,
           int seq_len,
@@ -1756,7 +1756,7 @@ __global__ void write_cache_v_kernel(T *cache_v,
 }
 
 template <typename T>
-void write_cache_kv(const phi::GPUContext &dev_ctx,
+void write_cache_kv(const GPUContext &dev_ctx,
                     T *cache_k,
                     T *cache_v,
                     const T *k,
@@ -1804,7 +1804,10 @@ __global__ void gqa_write_cache_k_kernel(T *cache_k,
                                          const int64_t num_elems) {
   phi::AlignedVector<T, X_ELEMS> in_vec;
 
-  for (int64_t linear_idx = (blockIdx.x * blockDim.x + threadIdx.x) * X_ELEMS;
+  for (int64_t linear_idx = (static_cast<int64_t>(blockIdx.x) *
+                                 static_cast<int64_t>(blockDim.x) +
+                             static_cast<int64_t>(threadIdx.x)) *
+                            X_ELEMS;
        linear_idx < num_elems;
        linear_idx += blockDim.x * gridDim.x * X_ELEMS) {
     const int hidden_size = gqa_group_size * dim_head;
@@ -1841,7 +1844,10 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
                                          const int64_t num_elems) {
   phi::AlignedVector<T, X_ELEMS> in_vec;
 
-  for (int64_t linear_idx = (blockIdx.x * blockDim.x + threadIdx.x) * X_ELEMS;
+  for (int64_t linear_idx = (static_cast<int64_t>(blockIdx.x) *
+                                 static_cast<int64_t>(blockDim.x) +
+                             static_cast<int64_t>(threadIdx.x)) *
+                            X_ELEMS;
        linear_idx < num_elems;
        linear_idx += blockDim.x * gridDim.x * X_ELEMS) {
     const int hidden_size = gqa_group_size * dim_head;
@@ -1866,22 +1872,32 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
 
 template <typename T>
 void gqa_write_cachekv(
-    const phi::GPUContext &dev_ctx,
-    phi::DenseTensor *cache_kv_out,  // [2, cache_bsz, gqa_group_size,
+    const GPUContext &dev_ctx,
+    DenseTensor *cache_kv_out,       // [2, cache_bsz, gqa_group_size,
                                      // max_seq_len, dim_head] k need
-    const phi::DenseTensor
-        &unpadding_k,  // [token_num, gqa_group_size, dim_head]
-    const phi::DenseTensor &unpadding_v,
-    const phi::DenseTensor &padding_offsets,
-    const phi::DenseTensor &seq_lens,
+    const DenseTensor &unpadding_k,  // [token_num, gqa_group_size, dim_head]
+    const DenseTensor &unpadding_v,
+    const DenseTensor &padding_offsets,
+    const DenseTensor &seq_lens,
     const int seq_len) {
   constexpr int block_sz = 128;
   constexpr int x = VEC_16B / sizeof(T);
 
-  const int cache_bsz = cache_kv_out->dims()[1];
-  const int gqa_group_size = cache_kv_out->dims()[2];
-  const int max_seq_len = cache_kv_out->dims()[3];
-  const int dim_head = cache_kv_out->dims()[4];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t cache_bsz = cache_kv_out->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t gqa_group_size = cache_kv_out->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t max_seq_len = cache_kv_out->dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t dim_head = cache_kv_out->dims()[4];
 
   assert(dim_head % x == 0);
   PADDLE_ENFORCE_EQ(
@@ -1935,7 +1951,9 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                                                 const int size_per_head) {
   const int32_t hidden_size = head_num * size_per_head;
   const int32_t fused_hidden_size = 3 * hidden_size;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
 
@@ -1968,7 +1986,7 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
 }
 
 template <typename T>
-void qkv_transpose_split(const phi::GPUContext &dev_ctx,
+void qkv_transpose_split(const GPUContext &dev_ctx,
                          T *q_buf,
                          T *k_buf,
                          T *v_buf,
@@ -2023,7 +2041,9 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
   const int32_t offset = batch_size * seq_len * head_num * size_per_head;
   const int32_t hidden_size = head_num * size_per_head;
   const int32_t fused_hidden_size = 3 * hidden_size;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
@@ -2089,7 +2109,7 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
 }
 
 template <typename T>
-void qkv_bias_add_transpose_split(const phi::GPUContext &dev_ctx,
+void qkv_bias_add_transpose_split(const GPUContext &dev_ctx,
                                   T *q_buf,
                                   T *kv_buf,
                                   const T *qkv,
@@ -2156,7 +2176,9 @@ __global__ void gqa_fusedQKV_transpose_split_kernel(T *q_buf,
                                                     const int head_num,
                                                     const int size_per_head,
                                                     const int gqa_group_size) {
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
 
@@ -2199,7 +2221,7 @@ __global__ void gqa_fusedQKV_transpose_split_kernel(T *q_buf,
 }
 
 template <typename T>
-void gqa_qkv_transpose_split(const phi::GPUContext &dev_ctx,
+void gqa_qkv_transpose_split(const GPUContext &dev_ctx,
                              T *q_buf,
                              T *k_buf,
                              T *v_buf,
@@ -2319,7 +2341,7 @@ __global__ void RotaryKernel(const T *input,
 }
 
 template <typename T>
-void rotary_qk(const phi::GPUContext &dev_ctx,
+void rotary_qk(const GPUContext &dev_ctx,
                T *q,
                T *k,              // kv
                const T *q_input,  // q
@@ -2430,7 +2452,7 @@ __global__ void GetPaddingOffset(int *d_token_num,
   d_token_num[0] = total_seq_len;
 }
 
-void InvokeGetPaddingOffset(const phi::GPUContext &dev_ctx,
+void InvokeGetPaddingOffset(const GPUContext &dev_ctx,
                             int *h_token_num,
                             int *d_token_num,
                             int *padding_offset,
@@ -2469,7 +2491,7 @@ __global__ void RemovePadding(T *output_data,
 }
 
 template <typename T>
-void InvokeRemovePadding(const phi::GPUContext &dev_ctx,
+void InvokeRemovePadding(const GPUContext &dev_ctx,
                          T *output_data,
                          const T *input_data,
                          const int *padding_offset,
@@ -2496,7 +2518,7 @@ __global__ void RebuildPadding(T *output_data,
 }
 
 template <typename T>
-void InvokeRebuildPadding(const phi::GPUContext &dev_ctx,
+void InvokeRebuildPadding(const GPUContext &dev_ctx,
                           T *output_data,
                           const T *input_data,
                           const int *padding_offset,
@@ -2514,7 +2536,7 @@ __global__ void InitOutValueKernel(T *output_data,
                                    const T init_value) {
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
-  int64_t global_thread_idx = bid * blockDim.x + tid;
+  int64_t global_thread_idx = bid * static_cast<int64_t>(blockDim.x) + tid;
 
   for (int linear_index = global_thread_idx * VecSize,
            step = gridDim.x * blockDim.x * VecSize;
@@ -2527,7 +2549,7 @@ __global__ void InitOutValueKernel(T *output_data,
 }
 
 template <typename T>
-void InitValue(const phi::GPUContext &dev_ctx,
+void InitValue(const GPUContext &dev_ctx,
                T *output_data,
                const int64_t numel,
                const T init_value) {
@@ -2600,7 +2622,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc,
           typename LoadT = T>
-void LaunchActFFNGlu(const phi::GPUContext &dev_ctx,
+void LaunchActFFNGlu(const GPUContext &dev_ctx,
                      const T *bias,
                      const int token_num,
                      const int hid_dim,
@@ -2682,7 +2704,7 @@ template <typename T,
           typename LoadFunc,
           typename StoreFunc,
           typename LoadT = T>
-void LaunchBiasAct(const phi::GPUContext &dev_ctx,
+void LaunchBiasAct(const GPUContext &dev_ctx,
                    const T *bias,
                    const int token_num,
                    const int hid_dim,
@@ -2734,7 +2756,9 @@ __global__ void fused_transpose_split_kernel(
       batch_size * max_len_this_time * head_num * size_per_head;
   const int32_t hidden_size = head_num * size_per_head;
   const int32_t fused_hidden_size = 3 * hidden_size;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
@@ -2789,7 +2813,7 @@ __global__ void fused_transpose_split_kernel(
 }
 
 template <typename T>
-void TransposeSplit(const phi::GPUContext &dev_ctx,
+void TransposeSplit(const GPUContext &dev_ctx,
                     T *q_out,
                     T *k_out,
                     T *v_out,
@@ -2833,7 +2857,7 @@ void TransposeSplit(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-void TransposeSplit(const phi::GPUContext &dev_ctx,
+void TransposeSplit(const GPUContext &dev_ctx,
                     T *q_out,
                     T *k_out,
                     T *v_out,
@@ -2882,7 +2906,9 @@ __global__ void VariableLengthRotaryKernel(
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   const int hidden_size = num_head * last_dim;
   const int offset = 3 * hidden_size;
@@ -2940,7 +2966,7 @@ __global__ void VariableLengthRotaryKernel(
 
 template <typename T>
 void rotary_qk_variable(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     T *qkv,              // [token_num, 3, num_head, dim_head]
     const T *qkv_input,  // qkv
     const T *qkv_bias,
@@ -2997,7 +3023,9 @@ __global__ void GQAVariableLengthRotaryKernel(
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t global_thread_idx =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
+      static_cast<int64_t>(threadIdx.x);
   const int half_lastdim = last_dim / 2;
   // const int hidden_size = num_head * last_dim;
   const int offset = (num_head + 2 * gqa_group_size) * last_dim;
@@ -3053,7 +3081,7 @@ __global__ void GQAVariableLengthRotaryKernel(
 
 template <typename T>
 void gqa_rotary_qk_variable(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     T *qkv,              // [token_num, 3, num_head, dim_head]
     const T *qkv_input,  // qkv
     const T *qkv_bias,

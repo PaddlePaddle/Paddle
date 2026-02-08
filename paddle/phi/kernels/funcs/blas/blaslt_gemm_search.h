@@ -104,7 +104,7 @@ class CublasLtAlgoCache {
     }
     size_t workspace_size = heuristic_result.workspaceSize;
     auto workspace = phi::memory_utils::Alloc(
-        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 

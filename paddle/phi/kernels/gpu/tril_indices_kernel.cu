@@ -66,7 +66,9 @@ __global__ void tril_indices_kernel(T* out_data,
                                     int col,
                                     int trapezoid_size,
                                     int tril_size) {
-  int linear_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t linear_index =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
 
   if (linear_index < tril_size) {
     T r, c;

@@ -31,11 +31,11 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 namespace phi {
 
 template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context& dev_ctx,
-                                   const phi::DenseTensor& tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+DenseTensor Tensor2Contiguous(const Context& dev_ctx,
+                              const DenseTensor& tensor) {
+  DenseTensor dense_out;
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
                        phi::ContiguousKernel<data_t, Context>(
@@ -45,12 +45,12 @@ phi::DenseTensor Tensor2Contiguous(const Context& dev_ctx,
 }
 
 template <typename Context>
-phi::DenseTensor CheckMultipleUnsqueeze(const Context& dev_ctx,
-                                        const DenseTensor& out_grad,
-                                        const IntArray& dims,
-                                        const int ndim,
-                                        bool keep_dim) {
-  phi::DenseTensor res = out_grad;
+DenseTensor CheckMultipleUnsqueeze(const Context& dev_ctx,
+                                   const DenseTensor& out_grad,
+                                   const IntArray& dims,
+                                   const int ndim,
+                                   bool keep_dim) {
+  DenseTensor res = out_grad;
   if (dims.size() == 0 || keep_dim || ndim == 0) return res;
   std::vector<bool> axes(ndim, false);
 
@@ -60,7 +60,7 @@ phi::DenseTensor CheckMultipleUnsqueeze(const Context& dev_ctx,
   }
 
   for (int i = 0; i < axes.size(); i++) {
-    phi::DenseTensor tmp;
+    DenseTensor tmp;
     if (axes[i]) {
       UnsqueezeStridedKernel(dev_ctx, res, IntArray({i}), &tmp);
       res = tmp;
@@ -125,12 +125,18 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
 
   DenseTensor out_grad_;
 
-  if (FLAGS_use_stride_compute_kernel && out_grad.dims().size() > 0) {
-    phi::DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
-        dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
+  bool invalid = false;
+  std::vector<int64_t> out_dims;
+  std::vector<int64_t> out_strides;
 
-    std::vector<int64_t> out_dims;
-    std::vector<int64_t> out_strides;
+  if ((!FLAGS_use_stride_compute_kernel) || !(out_grad.dims().size() > 0) ||
+      (out_grad.dtype() != x.dtype())) {
+    invalid = true;
+  }
+
+  if (!invalid) {
+    DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
+        dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
 
     ExpandStrideKernel(common::vectorize<int64_t>(out_tmp.dims()),
                        common::vectorize<int64_t>(out_tmp.strides()),
@@ -138,6 +144,11 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
                        &out_dims,
                        &out_strides);
 
+    invalid = std::find(out_strides.begin(), out_strides.end(), 0) !=
+              out_strides.end();
+  }
+
+  if (!invalid) {
     auto meta = out_grad.meta();
     meta.dims = DDim(out_dims.data(), static_cast<int>(out_dims.size()));
     meta.strides =
@@ -165,11 +176,6 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-
-using float16 = phi::float16;
-using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(sum_grad,
                    GPU,

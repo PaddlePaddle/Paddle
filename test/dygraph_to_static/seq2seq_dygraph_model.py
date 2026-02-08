@@ -114,7 +114,7 @@ class BaseModel(paddle.nn.Layer):
         bias_attr = paddle.ParamAttr(initializer=zero_constant)
         forget_bias = 1.0
 
-        self.src_embeder = Embedding(
+        self.src_embedder = Embedding(
             self.src_vocab_size,
             self.hidden_size,
             weight_attr=paddle.ParamAttr(
@@ -122,7 +122,7 @@ class BaseModel(paddle.nn.Layer):
             ),
         )
 
-        self.tar_embeder = Embedding(
+        self.tar_embedder = Embedding(
             self.tar_vocab_size,
             self.hidden_size,
             sparse=False,
@@ -205,7 +205,7 @@ class BaseModel(paddle.nn.Layer):
         if src.shape[0] < self.batch_size:
             self.batch_size = src.shape[0]
 
-        src_emb = self.src_embeder(self._transpose_batch_time(src))
+        src_emb = self.src_embedder(self._transpose_batch_time(src))
 
         # NOTE: modify model code about `enc_hidden` and `enc_cell` to transform dygraph code successfully.
         # Because nested list can't be transformed now.
@@ -265,7 +265,7 @@ class BaseModel(paddle.nn.Layer):
             enc_hidden, enc_cell = new_enc_hidden, new_enc_cell
 
         dec_hidden, dec_cell = enc_hidden, enc_cell
-        tar_emb = self.tar_embeder(self._transpose_batch_time(tar))
+        tar_emb = self.tar_embedder(self._transpose_batch_time(tar))
         max_seq_len = tar_emb.shape[0]
         dec_output = []
         for step_idx in range(max_seq_len):
@@ -309,7 +309,7 @@ class BaseModel(paddle.nn.Layer):
         if src.shape[0] < self.batch_size:
             self.batch_size = src.shape[0]
 
-        src_emb = self.src_embeder(self._transpose_batch_time(src))
+        src_emb = self.src_embedder(self._transpose_batch_time(src))
         enc_hidden_0 = paddle.zeros(
             shape=[self.batch_size, self.hidden_size], dtype='float32'
         )
@@ -372,7 +372,7 @@ class BaseModel(paddle.nn.Layer):
         end_token_tensor = paddle.full(
             batch_beam_shape, self.beam_end_token, dtype="int64"
         )
-        step_input = self.tar_embeder(start_token_tensor)
+        step_input = self.tar_embedder(start_token_tensor)
         beam_finished = paddle.full(batch_beam_shape, 0, dtype="float32")
         beam_state_log_probs = paddle.to_tensor(
             [[0.0] + [-self.kinf] * (self.beam_size - 1)], dtype="float32"
@@ -482,7 +482,7 @@ class BaseModel(paddle.nn.Layer):
             dec_hidden, dec_cell = new_dec_hidden, new_dec_cell
             beam_finished = next_finished
             beam_state_log_probs = next_log_probs
-            step_input = self.tar_embeder(token_indices)
+            step_input = self.tar_embedder(token_indices)
             predicted_ids.append(token_indices)
             parent_ids.append(beam_indices)
 
@@ -532,7 +532,7 @@ class AttentionModel(paddle.nn.Layer):
         bias_attr = paddle.ParamAttr(initializer=zero_constant)
         forget_bias = 1.0
 
-        self.src_embeder = Embedding(
+        self.src_embedder = Embedding(
             self.src_vocab_size,
             self.hidden_size,
             weight_attr=paddle.ParamAttr(
@@ -541,7 +541,7 @@ class AttentionModel(paddle.nn.Layer):
             ),
         )
 
-        self.tar_embeder = Embedding(
+        self.tar_embedder = Embedding(
             self.tar_vocab_size,
             self.hidden_size,
             sparse=False,
@@ -713,7 +713,7 @@ class AttentionModel(paddle.nn.Layer):
         if src.shape[0] < self.batch_size:
             self.batch_size = src.shape[0]
 
-        src_emb = self.src_embeder(self._transpose_batch_time(src))
+        src_emb = self.src_embedder(self._transpose_batch_time(src))
 
         # NOTE: modify model code about `enc_hidden` and `enc_cell` to transform dygraph code successfully.
         # Because nested list can't be transformed now.
@@ -786,7 +786,7 @@ class AttentionModel(paddle.nn.Layer):
         # NOTE: set stop_gradient here, otherwise grad var is null
         input_feed.stop_gradient = True
         dec_hidden, dec_cell = enc_hidden, enc_cell
-        tar_emb = self.tar_embeder(self._transpose_batch_time(tar))
+        tar_emb = self.tar_embedder(self._transpose_batch_time(tar))
         max_seq_len = tar_emb.shape[0]
         dec_output = []
 

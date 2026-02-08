@@ -65,15 +65,9 @@ class SplitPlugin : public PluginTensorRTV2Ext {
 
   int initialize() TRT_NOEXCEPT override;
   void terminate() TRT_NOEXCEPT override;
-#if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batch_size,
-              const void* const* inputs,
-              void** outputs,
-#else
   int enqueue(int batch_size,
               const void* const* inputs,
               void* const* outputs,
-#endif
               void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
 

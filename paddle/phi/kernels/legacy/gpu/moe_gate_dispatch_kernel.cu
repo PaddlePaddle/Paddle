@@ -16,6 +16,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
+#include "paddle/phi/kernels/legacy/gpu/moe_gate_dispatch_kernel.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_ops_utils.h"
 
 namespace phi {
@@ -78,7 +79,7 @@ template <typename T, typename Context>
 void moe_dispatch_fwd(const Context &dev_ctx,
                       const DenseTensor &x,
                       const DenseTensor &gate_logits,
-                      const paddle::optional<DenseTensor> &corr_bias,
+                      const optional<DenseTensor> &corr_bias,
                       int64_t num_rows,
                       int64_t num_experts,
                       int64_t hidden_size,
@@ -113,7 +114,7 @@ template <typename T, typename Context>
 void MoeGateDispatchKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            const DenseTensor &gate_logits,
-                           const paddle::optional<DenseTensor> &corr_bias,
+                           const optional<DenseTensor> &corr_bias,
                            const int64_t k,
                            const int64_t capacity,
                            const bool use_pad,
@@ -128,8 +129,7 @@ void MoeGateDispatchKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<float>(combine_weights);
   dev_ctx.template Alloc<T>(y);
 
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+  Full<T, Context>(dev_ctx, y->dims(), 0, y);
   auto x_dims = x.dims();
   auto gate_logits_dims = gate_logits.dims();
 

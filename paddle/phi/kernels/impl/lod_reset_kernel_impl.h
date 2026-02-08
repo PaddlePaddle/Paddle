@@ -26,14 +26,14 @@ namespace phi {
 template <typename T, typename Context>
 void LodResetKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& y,
+                    const optional<DenseTensor>& y,
                     const std::vector<int>& target_lod,
                     bool append,
                     DenseTensor* out) {
   auto* in = &x;
   auto* lod_t = y.get_ptr();
 
-  phi::Copy(dev_ctx, *in, in->place(), false, out);
+  Copy(dev_ctx, *in, in->place(), false, out);
 
   std::vector<int> level0;
   if (lod_t) {
@@ -54,9 +54,9 @@ void LodResetKernel(const Context& dev_ctx,
       return;  // early return, since lod already set
     } else {
       auto* lod = lod_t->data<int>();
-      phi::DenseTensor lod_cpu;
+      DenseTensor lod_cpu;
       if (lod_t->place().GetType() == phi::AllocationType::GPU) {
-        phi::Copy(dev_ctx, *lod_t, phi::CPUPlace(), true, &lod_cpu);
+        Copy(dev_ctx, *lod_t, CPUPlace(), true, &lod_cpu);
         lod = lod_cpu.data<int>();
       }
       level0 = std::vector<int>(lod, lod + lod_t->numel());
@@ -85,7 +85,7 @@ void LodResetKernel(const Context& dev_ctx,
           "The last value of 'Target LoD''s last level LoD should be equal "
           "to the first dimension of Input(X). But received the 'Target LoD' "
           "is %s, Input(X)'s shape is %s.",
-          common::make_ddim(level0),
+          make_ddim(level0),
           in->dims()));
   for (size_t i = 0; i < level0.size() - 1; ++i) {
     PADDLE_ENFORCE_GE(level0[i + 1],
@@ -93,7 +93,7 @@ void LodResetKernel(const Context& dev_ctx,
                       common::errors::InvalidArgument(
                           "'Target LoD' should be an ascending "
                           "vector. But received the Target LoD is %s.",
-                          common::make_ddim(level0)));
+                          make_ddim(level0)));
   }
 
   // cast level0 to size_t
@@ -121,7 +121,7 @@ void LodResetGradKernel(const Context& dev_ctx,
   auto* d_out = &out_grad;
   auto* d_x = x_grad;
 
-  phi::Copy(dev_ctx, *d_out, d_out->place(), false, d_x);
+  Copy(dev_ctx, *d_out, d_out->place(), false, d_x);
 }
 
 }  // namespace phi

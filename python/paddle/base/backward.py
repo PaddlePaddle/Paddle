@@ -1959,8 +1959,8 @@ def _get_no_grad_set_value(no_grad_set):
 @overload
 def append_backward(
     loss: Tensor,
-    parameter_list: Sequence[Tensor | str] | None = ...,
-    no_grad_set: set[Tensor | str] | None = ...,
+    parameter_list: Sequence[Tensor] | None = ...,
+    no_grad_set: set[Tensor] | None = ...,
     callbacks: (
         Sequence[Callable[[Block, dict[str, Tensor | core.OpDesc]], None]]
         | None
@@ -1973,8 +1973,8 @@ def append_backward(
 @overload
 def append_backward(
     loss: Tensor,
-    parameter_list: Sequence[Tensor | str] | None = ...,
-    no_grad_set: set[Tensor | str] | None = ...,
+    parameter_list: Sequence[Tensor] | None = ...,
+    no_grad_set: set[Tensor] | None = ...,
     callbacks: (
         Sequence[Callable[[Block, dict[str, Tensor | core.OpDesc]], None]]
         | None
@@ -2008,90 +2008,108 @@ def append_backward(
 
     Parameters:
         loss(Tensor): The loss Tensor of the network.
-        parameter_list(list[Tensor|str]|tuple[Tensor|str], optional): List/Tuple of Parameters or Parameter.names
-                                           that need to be updated by optimizers.
-                                           If it is None, all parameters
-                                           will be updated.
-                                           Default: None.
-        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All Tensors with
-                               `stop_gradient=True` from all blocks will
-                               be automatically added into this set.
-                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
-                               Default: None.
-        callbacks(list[callable object]|tuple[callable object], optional): List/Tuple of callback functions.
-                                               The callbacks are used for
-                                               doing some custom jobs during
-                                               backward part building. All
-                                               callable objects in it will
-                                               be invoked once each time a
-                                               new gradient operator is added
-                                               into the program. The callable
-                                               object must have two input
-                                               parameters: ``block`` and ``context`` .
-                                               The ``block`` is the :ref:`api_guide_Block_en` which
-                                               the new gradient operator will
-                                               be added to. The ``context`` is a
-                                               map, whose keys are gradient
-                                               Tensor names and values are
-                                               corresponding original :ref:`api_guide_tensor_en` .
-                                               In addition to this, the ``context``
-                                               has another special key-value pair:
-                                               the key is string ``__current_op_desc__``
-                                               and the value is the op_desc of the
-                                               gradient operator who has just
-                                               triggered the callable object.
-                                               Default: None.
+        parameter_list(list[Tensor]|tuple[Tensor], optional): List/Tuple of
+            Parameters or Parameter.names that need to be updated by optimizers.
+            If it is None, all parameters will be updated. Default: None.
+        no_grad_set(set[Tensor], optional): Set of Tensors or Tensor.names in
+            the :ref:`api_guide_Block_en` 0 whose gradients should be ignored.
+            All Tensors with `stop_gradient=True` from all blocks will be automatically
+            added into this set. If this parameter is not None, the Tensors or
+            Tensor.names in this set will be added to the default set. Default: None.
+        callbacks(list[callable object]|tuple[callable object], optional): List/Tuple
+            of callback functions. The callbacks are used for doing some custom jobs
+            during backward part building. All callable objects in it will be invoked
+            once each time a new gradient operator is added into the program. The callable
+            object must have two input parameters: ``block`` and ``context`` . The ``block``
+            is the :ref:`api_guide_Block_en` which the new gradient operator will be added
+            to. The ``context`` is a map, whose keys are gradient Tensor names and values
+            are corresponding original :ref:`api_guide_tensor_en`. In addition to this, the
+            ``context`` has another special key-value pair: the key is string ``__current_op_desc__``
+            and the value is the op_desc of the gradient operator who has just triggered
+            the callable object. Default: None. This parameter already deprecated in PIR mode.
 
     Returns:
-        list of tuple ( :ref:`api_guide_tensor_en` , :ref:`api_guide_tensor_en` ): Pairs of parameter and its corresponding gradients.
+        list of tuple (:ref:`api_guide_tensor_en`, :ref:`api_guide_tensor_en`): Pairs of parameter and its corresponding gradients.
         The key is the parameter and the value is gradient Tensor.
 
-    Raises:
-        AssertionError: If ``loss`` is not an instance of Tensor.
-
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
-
             >>> paddle.enable_static()
-
-            >>> x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
-            >>> y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
-            >>> x_emb = paddle.static.nn.embedding(x, size=[100, 256])
-            >>> y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None, name='my_fc')
-            >>> loss = F.square_error_cost(input=y_predict, label=y)
-            >>> avg_loss = paddle.mean(loss)
-
-            >>> # Get all weights in main_program, not include bias.
-            >>> all_weights = [param for param in paddle.static.default_main_program().block(0).all_parameters() if 'w_' in param.name]
-            >>> all_weights_name = [w.name for w in all_weights]
-
-            >>> # return all param_grads needed to be updated if parameter_list set default None.
-            >>> p_g_list1 = paddle.static.append_backward(loss=avg_loss)
-            >>> # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
-
-            >>> # return the param_grads corresponding to parameter_list that can be list of param (Tensor).
-            >>> p_g_list2 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights)
-            >>> # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
-
-            >>> # parameter_list can be list of param.name (str).
-            >>> p_g_list3 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights_name)
-            >>> # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
-
-            >>> # no_grad_set can be set of Tensors that means grad will be cut off from these Tensors.
-            >>> p_g_list4 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
-            >>> # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
-
-            >>> # no_grad_set can be set of Tensor.name when the Tensor is created inside layers and can't be specified explicitly.
-            >>> p_g_list5 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
-            >>> # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
-
-            >>> # return [] because all param_grads are filtered by no_grad_set.
-            >>> p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
-
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     emb_layer = paddle.nn.Embedding(100, 256)
+            ...     fc_layer = paddle.nn.Linear(256, 1, name='my_fc')
+            ...     x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
+            ...     y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
+            ...
+            ...     x_emb = emb_layer(x)
+            ...     y_predict = fc_layer(x_emb)
+            ...     loss = F.square_error_cost(input=y_predict, label=y)
+            ...     avg_loss = paddle.mean(loss)
+            ...
+            ...     # Get all weights in main_program, not include bias.
+            ...     all_weights = [
+            ...         value
+            ...         for value in main_program.list_vars()
+            ...         if value.get_defining_op().name() == "builtin.parameter" and "w_" in value.name
+            ...     ]
+            ...     all_weights_name = [w.name for w in all_weights]
+            ...
+            ...     # return all param_grads needed to be updated if parameter_list set default None.
+            ...     p_g_list1 = paddle.static.append_backward(loss=avg_loss)
+            ...     print(p_g_list1)
+            ...     # output: [
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<1xf32>, stop_gradient=False), Value(define_op_name=pd_op.add_grad, index=1, dtype=tensor<1xf32>, stop_gradient=False)),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<256x1xf32>, stop_gradient=False), Value(define_op_name=pd_op.matmul_grad, index=1, dtype=tensor<256x1xf32>, stop_gradient=False)),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<100x256xf32>, stop_gradient=False), Value(define_op_name=pd_op.embedding_grad, index=0, dtype=tensor<100x256xf32>, stop_gradient=False))
+            ...     # ]
+            ...
+            ...     # return the param_grads corresponding to parameter_list that can be list of param (Tensor).
+            ...     p_g_list2 = paddle.static.append_backward(
+            ...         loss=avg_loss,
+            ...         parameter_list=all_weights,
+            ...     )
+            ...     # output: [
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<256x1xf32>, stop_gradient=False), Value(define_op_name=pd_op.matmul_grad, index=1, dtype=tensor<256x1xf32>, stop_gradient=False)),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<100x256xf32>, stop_gradient=False), Value(define_op_name=pd_op.embedding_grad, index=0, dtype=tensor<100x256xf32>, stop_gradient=False))
+            ...     # ]
+            ...
+            ...     # no_grad_set can be set of Tensors that means grad will be cut off from these Tensors.
+            ...     p_g_list3 = paddle.static.append_backward(
+            ...         loss=avg_loss,
+            ...         no_grad_set=set([x_emb]),
+            ...     )
+            ...     # output: [
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<1xf32>, stop_gradient=False), Value(define_op_name=pd_op.add_grad, index=1, dtype=tensor<1xf32>, stop_gradient=False)),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<256x1xf32>, stop_gradient=False), Value(define_op_name=pd_op.matmul_grad, index=1, dtype=tensor<256x1xf32>, stop_gradient=False)),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<100x256xf32>, stop_gradient=False), None)
+            ...     # ]
+            ...
+            ...     # no_grad_set can be set of Tensor.name when the Tensor is created inside layers and can't be specified explicitly.
+            ...     p_g_list4 = paddle.static.append_backward(
+            ...         loss=avg_loss,
+            ...         no_grad_set=set([fc_layer.bias]),
+            ...     )
+            ...     # output: [
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<1xf32>, stop_gradient=False), None),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<256x1xf32>, stop_gradient=False), Value(define_op_name=pd_op.matmul_grad, index=1, dtype=tensor<256x1xf32>, stop_gradient=False)),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<100x256xf32>, stop_gradient=False), Value(define_op_name=pd_op.embedding_grad, index=0, dtype=tensor<100x256xf32>, stop_gradient=False))
+            ...     # ]
+            ...
+            ...     # All gradients will be None when the parameter_list and no_grad_set cover all parameters.
+            ...     p_g_list5 = paddle.static.append_backward(
+            ...         loss=avg_loss,
+            ...         parameter_list=all_weights,
+            ...         no_grad_set=set(all_weights),
+            ...     )
+            ...     # output: [
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<256x1xf32>, stop_gradient=False), None),
+            ...     #   (Value(define_op_name=builtin.parameter, index=0, dtype=tensor<100x256xf32>, stop_gradient=False), None)
+            ...     # ]
     """
     if framework.in_pir_mode():
         return paddle.autograd.ir_backward.append_backward(
@@ -2752,21 +2770,21 @@ def gradients(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
-            >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
             >>> import paddle.nn.functional as F
 
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
-            >>> x.stop_gradient=False
-            >>> y = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+            >>> w = paddle.create_parameter(shape=[4, 2, 1, 1], dtype='float32')
+            >>> x.stop_gradient = False
+            >>> y = paddle.nn.functional.conv2d(x, w)
             >>> y = F.relu(y)
             >>> z = paddle.static.gradients([y], x)
             >>> print(z)
-            [var x@GRAD : DENSE_TENSOR.shape(-1, 2, 8, 8).dtype(float32).stop_gradient(False)]
+            [Value(define_op_name=pd_op.conv2d_grad, index=0, dtype=tensor<-1x2x8x8xf32>, stop_gradient=False)]
     """
     if framework.in_pir_mode():
         check_type(
@@ -2865,19 +2883,20 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
             ``fetch_list`` before run, see details in ``Executor``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
-            >>> img = static.data(name='image', shape=[None, 784])
-            >>> pred = static.nn.fc(x=img, size=10, activation='relu')
-            >>> loss = paddle.mean(pred)
-            >>> opt = paddle.optimizer.SGD(learning_rate=1e-3)
-            >>> opt_ops, pram_grads = paddle.base.backward.gradients_with_optimizer(static.default_main_program(), opt)
-            >>> print(opt_ops)
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     img = static.data(name='image', shape=[None, 784])
+            ...     pred = static.nn.fc(x=img, size=10, activation='relu')
+            ...     loss = paddle.mean(pred)
+            ...     opt = paddle.optimizer.SGD(learning_rate=1e-3)
+            ...     opt_ops, pram_grads = paddle.static.gradients_with_optimizer(static.default_main_program(), opt)
+            ...     print(opt_ops)
             [{ParamOut=['fc_0.b_0']} = sgd(inputs={Grad=['fc_0.b_0@GRAD'],
             LearningRate=['learning_rate_0'],
             MasterParam=[],

@@ -17,17 +17,10 @@
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 
-#include "paddle/phi/kernels/argsort_kernel.h"
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/argsort_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -64,7 +57,9 @@ static __global__ void FillFlattenGrad(const T* dO,
                                        const IndType* indices,
                                        int64_t size,
                                        T* dX) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int stride = blockDim.x * gridDim.x;
   for (int64_t i = index; i < size; i += stride) {
     dX[indices[i]] = dO[i];
@@ -88,7 +83,7 @@ static __global__ void FillGrad(const T* dO,
 }
 
 template <typename T, typename IndType>
-void ArgFullAssign(const phi::GPUContext& dev_ctx,
+void ArgFullAssign(const GPUContext& dev_ctx,
                    const DenseTensor* dO,
                    const DenseTensor* indices,
                    DenseTensor* dX,
@@ -122,7 +117,7 @@ void ArgFullAssign(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-void ArgFlattenAssign(const phi::GPUContext& dev_ctx,
+void ArgFlattenAssign(const GPUContext& dev_ctx,
                       const DenseTensor* dO,
                       const DenseTensor* indices,
                       int64_t size,
@@ -151,7 +146,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool stable,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
-  phi::funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
+  funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
   if (out_grad.numel() == 0) return;
   auto in_dims = in_grad->dims();
   auto rank = in_dims.size();
@@ -159,7 +154,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   int64_t size = in_grad->numel();
 
   if (rank == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
 
@@ -175,7 +170,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     ArgFullAssign<T, int64_t>(
         dev_ctx, &out_grad, &indices, in_grad, input_height, input_width);
@@ -190,7 +185,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
       trans.push_back(i);
     }
     trans.push_back(axis);
-    phi::DDim trans_dims(in_dims);
+    DDim trans_dims(in_dims);
     for (int i = 0; i < trans.size(); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }
@@ -204,8 +199,8 @@ void ArgsortGradKernel(const Context& dev_ctx,
     TransposeKernel<T, Context>(dev_ctx, out_grad, trans, &trans_dO);
     TransposeKernel<int64_t, Context>(dev_ctx, indices, trans, &trans_ind);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

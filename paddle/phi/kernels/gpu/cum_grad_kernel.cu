@@ -19,18 +19,11 @@
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 
 namespace phi {
 

@@ -1,0 +1,18 @@
+id: no-enable-to-static
+language: python
+severity: error
+message: |
+  Use `paddle.jit.enable_to_static` will caused some test run in dygraph mode. Recommended
+  to use `enable_to_static_guard` to avoid this problem.
+  If it is a false positive, please contact SigureMo (Recommend), DrRyanHuang or zrr1999 for more information.
+note: Use `enable_to_static_guard` to replace `paddle.jit.enable_to_static` in test files
+files:
+  - test/**
+
+rule:
+  any:
+    - pattern: $$$PREFIX.enable_to_static($$$ARGS)
+    - pattern: enable_to_static($$$ARGS)
+constraints:
+  PREFIX:
+    regex: (paddle\.jit|jit)

@@ -26,14 +26,14 @@ __device__ __forceinline__ half local_rsqrt(half num) { return hrsqrt(num); }
 #endif
 
 template <typename T, int TPB>
-__device__ inline void LayerNorm(const phi::funcs::kvp<T> &thread_data,
+__device__ inline void LayerNorm(const funcs::kvp<T> &thread_data,
                                  const int ld,
                                  const int offset,
                                  const T *bias,
                                  const T *scale,
                                  T *output,
                                  T eps) {
-  using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
+  using BlockReduce = cub::BlockReduce<funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -67,14 +67,13 @@ __global__ void SkipLayerNormKernel(int num,
   const T rld = T(1) / T(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<T> thread_data(0, 0);
+  funcs::kvp<T> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += TPB) {
     const int idx = offset + it;
     const T val = input1[idx] + input2[idx];
     const T rldval = rld * val;
-    thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<T>(rldval, rldval * val));
+    thread_data = pair_sum(thread_data, funcs::kvp<T>(rldval, rldval * val));
     output[idx] = val;
   }
   LayerNorm<T, TPB>(thread_data, hidden, offset, bias, scale, output, eps);
@@ -95,14 +94,13 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<half> thread_data(0, 0);
+  funcs::kvp<half> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += 256) {
     const int idx = offset + it;
     const half val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<half>(rldval, rldval * val));
+    thread_data = pair_sum(thread_data, funcs::kvp<half>(rldval, rldval * val));
     output[idx] = val;
   }
   LayerNorm<half, 256>(thread_data, hidden, offset, bias, scale, output, eps);
@@ -111,14 +109,14 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
 #endif  // @} End Half kernel: SkipLayerNormKernel
 
 template <typename T, typename T2, int TPB>
-__device__ inline void LayerNorm2(const phi::funcs::kvp<T> &thread_data,
+__device__ inline void LayerNorm2(const funcs::kvp<T> &thread_data,
                                   const int ld,
                                   const int offset,
                                   const T2 *bias,
                                   const T2 *scale,
                                   T2 *output,
                                   T eps) {
-  using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
+  using BlockReduce = cub::BlockReduce<funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -154,15 +152,15 @@ __global__ void SkipLayerNormKernel2(int num,
   const T rld = T(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<T> thread_data(0, 0);
+  funcs::kvp<T> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += TPB) {
     const int idx = offset + it;
     const T2 val2 = input1[idx] + input2[idx];
-    thread_data = pair_sum(
-        thread_data,
-        phi::funcs::kvp<T>(rld * (val2.x + val2.y),
-                           rld * val2.x * val2.x + rld * val2.y * val2.y));
+    thread_data =
+        pair_sum(thread_data,
+                 funcs::kvp<T>(rld * (val2.x + val2.y),
+                               rld * val2.x * val2.x + rld * val2.y * val2.y));
     output[idx] = val2;
   }
   LayerNorm2<T, T2, TPB>(thread_data, hidden, offset, bias, scale, output, eps);
@@ -183,15 +181,15 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<half> thread_data(0, 0);
+  funcs::kvp<half> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += 256) {
     const int idx = offset + it;
     const half2 val2 = input1[idx] + input2[idx];
     thread_data = pair_sum(
         thread_data,
-        phi::funcs::kvp<half>(rld * (val2.x + val2.y),
-                              rld * val2.x * val2.x + rld * val2.y * val2.y));
+        funcs::kvp<half>(rld * (val2.x + val2.y),
+                         rld * val2.x * val2.x + rld * val2.y * val2.y));
     output[idx] = val2;
   }
   LayerNorm2<half, half2, 256>(
@@ -202,14 +200,14 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
 
 template <typename T, int TPB>
 __device__ inline void LayerNormSmall(T val,
-                                      const phi::funcs::kvp<T> &thread_data,
+                                      const funcs::kvp<T> &thread_data,
                                       const int ld,
                                       const int idx,
                                       const T *bias,
                                       const T *scale,
                                       T *output,
                                       T eps) {
-  using BlockReduce = cub::BlockReduce<phi::funcs::kvp<T>, TPB>;
+  using BlockReduce = cub::BlockReduce<funcs::kvp<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
   __shared__ T rsigma;  // 1 / std.dev.
@@ -241,14 +239,13 @@ __global__ void SkipLayerNormSmallKernel(int num,
   const T rld = T(1) / T(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<T> thread_data(0, 0);
+  funcs::kvp<T> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   T val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const T rldval = rld * val;
-    thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<T>(rldval, rldval * val));
+    thread_data = pair_sum(thread_data, funcs::kvp<T>(rldval, rldval * val));
   }
   LayerNormSmall<T, TPB>(
       val, thread_data, hidden, idx, bias, scale, output, eps);
@@ -269,14 +266,13 @@ __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<half> thread_data(0, 0);
+  funcs::kvp<half> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<half>(rldval, rldval * val));
+    thread_data = pair_sum(thread_data, funcs::kvp<half>(rldval, rldval * val));
   }
   LayerNormSmall<half, 32>(
       val, thread_data, hidden, idx, bias, scale, output, eps);
@@ -296,14 +292,13 @@ __global__ void SkipLayerNormSmallKernel<half, 128>(int num,
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<half> thread_data(0, 0);
+  funcs::kvp<half> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<half>(rldval, rldval * val));
+    thread_data = pair_sum(thread_data, funcs::kvp<half>(rldval, rldval * val));
   }
   LayerNormSmall<half, 128>(
       val, thread_data, hidden, idx, bias, scale, output, eps);
@@ -323,14 +318,13 @@ __global__ void SkipLayerNormSmallKernel<half, 384>(int num,
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
-  phi::funcs::kvp<half> thread_data(0, 0);
+  funcs::kvp<half> thread_data(0, 0);
   const int idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
     const half rldval = rld * val;
-    thread_data =
-        pair_sum(thread_data, phi::funcs::kvp<half>(rldval, rldval * val));
+    thread_data = pair_sum(thread_data, funcs::kvp<half>(rldval, rldval * val));
   }
   LayerNormSmall<half, 384>(
       val, thread_data, hidden, idx, bias, scale, output, eps);

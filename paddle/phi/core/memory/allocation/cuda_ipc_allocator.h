@@ -32,13 +32,15 @@ namespace allocation {
 
 std::shared_ptr<void> GetIpcBasePtr(std::string handle);
 
+void IpcCollect();
+
 class CudaIpcAllocation : public Allocation {
  public:
   explicit CudaIpcAllocation(void *ptr,
                              size_t size,
                              int device_id,
                              std::shared_ptr<void> shared_ptr)
-      : Allocation(ptr, size, phi::GPUPlace(device_id)),
+      : Allocation(ptr, size, GPUPlace(device_id)),
         device_id_(std::move(device_id)),
         shared_ptr_(std::move(shared_ptr)) {}
 

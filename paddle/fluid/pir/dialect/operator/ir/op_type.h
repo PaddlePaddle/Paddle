@@ -38,9 +38,9 @@ class TEST_API SelectedRowsType
 
   const pir::Type &dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  const DataLayout &data_layout() const;
 
   const phi::LegacyLoD &lod() const;
 
@@ -56,8 +56,8 @@ class TEST_API SelectedRowsType
 
   static SelectedRowsType get(pir::IrContext *ctx,
                               Type dtype,
-                              const phi::DDim &dims,
-                              DataLayout layout = DataLayout::kNCHW,
+                              const DDim &dims,
+                              DataLayout layout = DataLayout::NCHW,
                               const phi::LegacyLoD &lod = {},
                               size_t offset = 0u) {
     return Base::get(ctx, dtype, dims, layout, lod, offset);
@@ -75,9 +75,9 @@ class IR_API DenseTensorArrayType
 
   const pir::Type &dtype() const;
 
-  const phi::DDim &dims() const;
+  const DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  const DataLayout &data_layout() const;
 
   ///
   /// \brief Implementation of 'classof' that compares the type id of
@@ -89,8 +89,8 @@ class IR_API DenseTensorArrayType
 
   static DenseTensorArrayType get(pir::IrContext *ctx,
                                   Type dtype,
-                                  const phi::DDim &dims,
-                                  DataLayout layout = DataLayout::kNCHW) {
+                                  const DDim &dims,
+                                  DataLayout layout = DataLayout::NCHW) {
     return Base::get(ctx, dtype, dims, layout);
   }
 };
@@ -106,9 +106,9 @@ class IR_API SparseCooTensorType
   static std::string name() { return "t_sparse_coo_tensor"; }
 
   pir::Type dtype() const;
-  const common::DDim &dims() const;
-  const common::DDim &non_zero_dims() const;
-  common::DataLayout data_layout() const;
+  const DDim &dims() const;
+  const DDim &non_zero_dims() const;
+  DataLayout data_layout() const;
   pir::DenseTensorType non_zero_indices() const;
   pir::DenseTensorType non_zero_elements() const;
   bool coalesced() const;
@@ -123,9 +123,9 @@ class IR_API SparseCooTensorType
 
   static SparseCooTensorType get(pir::IrContext *ctx,
                                  pir::Type dtype,
-                                 const common::DDim &dims,
-                                 const common::DDim &non_zero_dims,
-                                 common::DataLayout layout,
+                                 const DDim &dims,
+                                 const DDim &non_zero_dims,
+                                 DataLayout layout,
                                  pir::DenseTensorType non_zero_indices,
                                  pir::DenseTensorType non_zero_elements,
                                  bool coalesced = false) {
@@ -151,8 +151,8 @@ class IR_API SparseCsrTensorType
   static std::string name() { return "t_sparse_csr_tensor"; }
 
   pir::Type dtype() const;
-  const common::DDim &dims() const;
-  common::DataLayout data_layout() const;
+  const DDim &dims() const;
+  DataLayout data_layout() const;
   pir::DenseTensorType non_zero_crows() const;
   pir::DenseTensorType non_zero_cols() const;
   pir::DenseTensorType non_zero_elements() const;
@@ -167,8 +167,8 @@ class IR_API SparseCsrTensorType
 
   static SparseCsrTensorType get(pir::IrContext *ctx,
                                  pir::Type dtype,
-                                 const common::DDim &dims,
-                                 common::DataLayout layout,
+                                 const DDim &dims,
+                                 DataLayout layout,
                                  pir::DenseTensorType non_zero_crows,
                                  pir::DenseTensorType non_zero_cols,
                                  pir::DenseTensorType non_zero_elements) {
@@ -184,6 +184,13 @@ class IR_API SparseCsrTensorType
 
 }  // namespace dialect
 }  // namespace paddle
+
+namespace pir {
+using SelectedRowsType = paddle::dialect::SelectedRowsType;
+using DenseTensorArrayType = paddle::dialect::DenseTensorArrayType;
+using SparseCooTensorType = paddle::dialect::SparseCooTensorType;
+using SparseCsrTensorType = paddle::dialect::SparseCsrTensorType;
+}  // namespace pir
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)

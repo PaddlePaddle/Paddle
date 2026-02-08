@@ -49,7 +49,7 @@ void GlobalGatherKernel(const Context& dev_ctx,
   const int64_t* cpu_local_count_data;
   const int64_t* cpu_global_count_data;
   auto local_count_len = 0;
-  phi::DenseTensor cpu_local_count;
+  DenseTensor cpu_local_count;
   if (local_count->place().GetType() == phi::AllocationType::CPU) {
     cpu_local_count_data = local_count->data<int64_t>();
     local_count_len = local_count->numel();
@@ -58,7 +58,7 @@ void GlobalGatherKernel(const Context& dev_ctx,
     cpu_local_count_data = cpu_local_count.data<int64_t>();
     local_count_len = cpu_local_count.numel();
   }
-  phi::DenseTensor cpu_global_count;
+  DenseTensor cpu_global_count;
   if (global_count->place().GetType() == phi::AllocationType::CPU) {
     cpu_global_count_data = global_count->data<int64_t>();
   } else {
@@ -82,7 +82,7 @@ void GlobalGatherKernel(const Context& dev_ctx,
   for (auto i = 0; i < local_count_len; ++i) {
     fwd_count += cpu_local_count_data[i];
   }
-  phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+  DDim out_dims = make_ddim({fwd_count, in_feat});
   int64_t* expert_ptr = new int64_t[n_expert * nranks];
   expert_ptr[0] = 0;
   auto tot_experts = n_expert * nranks;

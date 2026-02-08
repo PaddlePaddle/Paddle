@@ -34,7 +34,7 @@ class DistMetaTensor : public MetaTensor {
   DistMetaTensor(TensorBase& tensor)  // NOLINT
       : MetaTensor(tensor) {}
   // For static mode only
-  DistMetaTensor(const phi::DDim& dims, const TensorDistAttr& dist_attr)
+  DistMetaTensor(const DDim& dims, const TensorDistAttr& dist_attr)
       : dims_(dims), dist_attr_(dist_attr) {}
 
   DistMetaTensor(DistMetaTensor&&) = default;
@@ -64,7 +64,7 @@ class DistMetaTensor : public MetaTensor {
    * These two members are read-only, and their values cannot be changed
    * after construction. To change their values, they need to be set
    * directly in tensor_*/
-  phi::DDim dims_;
+  DDim dims_;
   TensorDistAttr dist_attr_;
 };
 

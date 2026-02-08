@@ -28,7 +28,7 @@ void RangeFunc(const Context& dev_ctx,
                DenseTensor* out) {
   int64_t size =
       static_cast<int64_t>((end_value - start_value) / step_value + 1);
-  out->Resize(common::make_ddim({size}));
+  out->Resize(make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
     return;
@@ -66,7 +66,7 @@ void RangeKernel(const Context& dev_ctx,
   T step_value = step.to<T>();
   if constexpr (std::is_floating_point_v<T>) {
     if (std::isnan(end_value)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The end value of range cannot be NaN. Please check your input."));
     }
   }

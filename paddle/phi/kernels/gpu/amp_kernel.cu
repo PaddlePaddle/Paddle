@@ -146,16 +146,16 @@ __global__ void FusedFillIf(T** outs,
 }
 
 template <typename T>
-class LazyZeros<phi::GPUContext, T> {
+class LazyZeros<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const DenseTensor*>& xs,
                   const std::vector<DenseTensor*>& outs) {
     size_t xs_size = xs.size();
     if (xs_size == 0) return;
 
-    const auto& cpu_place = phi::CPUPlace();
+    const auto& cpu_place = CPUPlace();
     // alloc each tensor's start index and copy to device
     auto h_in_starts_mem =
         phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
@@ -218,9 +218,9 @@ class LazyZeros<phi::GPUContext, T> {
 };
 
 template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<phi::GPUContext, T, IsFoundInfOnCPU> {
+class UpdateLossScalingFunctor<GPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,
@@ -284,7 +284,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   size_t xs_size = xs.size();
   if (xs_size == 0) return;
 
-  const auto& cpu_place = phi::CPUPlace();
+  const auto& cpu_place = CPUPlace();
   // calculate each tensor's start index and copy to device
   auto h_starts_tensor =
       phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));

@@ -34,6 +34,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -47,10 +48,6 @@
 #else
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -144,7 +141,7 @@ bool IsCommunicationOp(const Instruction& instr) {
   return instr.OpBaseValid() && IsCommunicationOp(instr.OpBase());
 }
 
-bool IsCommunicationOp(const ::pir::Operation* op) {
+bool IsCommunicationOp(const pir::Operation* op) {
   return op->attributes().count("ring_id") != 0;
 }
 
@@ -406,7 +403,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
     auto& op_device = op_base->Attr<std::string>("op_device");
     if (op_device == "cpu" || phi::is_cpu_place(place)) {
       VLOG(3) << "Switch into CPUPlace by device_guard.";
-      expected_kernel_key->place_ = phi::CPUPlace();
+      expected_kernel_key->place_ = CPUPlace();
     } else if (op_device.find("gpu") != std::string::npos &&
                phi::is_gpu_place(place)) {
       // when the Op that does not have GPUKernel is assigned to GPU, the
@@ -415,7 +412,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportGPU()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = phi::CPUPlace();
+        expected_kernel_key->place_ = CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
@@ -430,7 +427,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportXPU()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = phi::CPUPlace();
+        expected_kernel_key->place_ = CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no XPU implementation. It will be assigned to CPUPlace.";
@@ -464,7 +461,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       if (op_base->SupportCustomDevice()) {
         expected_kernel_key->place_ = place;
       } else {
-        expected_kernel_key->place_ = phi::CPUPlace();
+        expected_kernel_key->place_ = CPUPlace();
         LOG_FIRST_N(WARNING, 1) << "Op(" << op_base->Type()
                                 << ") has no Custom Place implementation. It "
                                    "will be assigned to CPUPlace.";
@@ -1013,9 +1010,9 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->InputVars()) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
-        if (var->IsType<phi::DenseTensor>()) {
-          tensor = &var->Get<phi::DenseTensor>();
+        const DenseTensor* tensor{nullptr};
+        if (var->IsType<DenseTensor>()) {
+          tensor = &var->Get<DenseTensor>();
         } else {
           VLOG(6) << vname << " is not DenseTensor";
           continue;
@@ -1029,9 +1026,9 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
-        if (var->IsType<phi::DenseTensor>()) {
-          tensor = &var->Get<phi::DenseTensor>();
+        const DenseTensor* tensor{nullptr};
+        if (var->IsType<DenseTensor>()) {
+          tensor = &var->Get<DenseTensor>();
         } else {
           VLOG(6) << vname << "  is not DenseTensor";
           continue;
@@ -1103,9 +1100,9 @@ void BuildOpFuncList(const phi::Place& place,
         }
 
         VLOG(6) << "Erase variable " << var_name;
-        if (var->IsType<phi::DenseTensor>()) {
+        if (var->IsType<DenseTensor>()) {
           garbages->emplace_back(
-              var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+              var->GetMutable<DenseTensor>()->MoveMemoryHolder());
         } else if (var->IsType<phi::SelectedRows>()) {
           garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                      ->mutable_value()
@@ -1150,9 +1147,9 @@ void BuildOpFuncList(const phi::Place& place,
     auto* var = local_scope->FindVar(var_name);
     if (var == nullptr) continue;
     VLOG(6) << "Erase variable " << var_name;
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<DenseTensor>()) {
       garbages->emplace_back(
-          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+          var->GetMutable<DenseTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                  ->mutable_value()
@@ -1413,7 +1410,7 @@ void PrintValuesAndVariables(
     ret_variable_str += "(";
     if (!op.operands().empty()) {
       for (size_t i = 0; i < op.num_operands(); ++i) {
-        ::pir::Value in_value = op.operand(i).source();
+        pir::Value in_value = op.operand(i).source();
         if (value_2_var_name.count(in_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);
@@ -1502,13 +1499,13 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 }
 
 std::unordered_map<std::string, std::set<std::string>> GetNoNeedBufferValues(
-    const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
+    const std::unordered_map<std::string, std::shared_ptr<pir::Program>>&
         type_to_ir_program) {
   std::unordered_map<std::string, std::set<std::string>> shadow_output_values;
   std::set<std::string> no_need_buffer_vars;
 
   for (auto& pair : type_to_ir_program) {
-    std::shared_ptr<::pir::Program> program = pair.second;
+    std::shared_ptr<pir::Program> program = pair.second;
     // Iterate over the block_args and data_op output, and if all ops in all
     // programs using this value are of the no_need_buffer type, then insert
     // this value into the no_need_buffer set.

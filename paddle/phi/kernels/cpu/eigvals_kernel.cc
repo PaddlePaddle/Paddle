@@ -77,7 +77,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
 
   DenseTensor w;
   int64_t n_dim = input.dims()[1];
-  w.Resize(common::make_ddim({n_dim << 1}));
+  w.Resize(make_ddim({n_dim << 1}));
   T* w_data = dev_ctx.template Alloc<T>(&w);
 
   int64_t work_mem = static_cast<int64_t>(work->memory_size());
@@ -93,20 +93,20 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
           work_mem));
 
   int info = 0;
-  phi::funcs::lapackEig<T>('N',
-                           'N',
-                           static_cast<int>(n_dim),
-                           a.template data<T>(),
-                           static_cast<int>(n_dim),
-                           w_data,
-                           nullptr,
-                           1,
-                           nullptr,
-                           1,
-                           work->template data<T>(),
-                           static_cast<int>(work_mem / sizeof(T)),
-                           static_cast<T*>(nullptr),
-                           &info);
+  funcs::lapackEig<T>('N',
+                      'N',
+                      static_cast<int>(n_dim),
+                      a.template data<T>(),
+                      static_cast<int>(n_dim),
+                      w_data,
+                      nullptr,
+                      1,
+                      nullptr,
+                      1,
+                      work->template data<T>(),
+                      static_cast<int>(work_mem / sizeof(T)),
+                      static_cast<T*>(nullptr),
+                      &info);
 
   std::string name = "phi::backend::dynload::dgeev_";
   if (input.dtype() == DataType::FLOAT64) {
@@ -157,21 +157,20 @@ LapackEigvals(const Context& dev_ctx,
           rwork_mem));
 
   int info = 0;
-  phi::funcs::lapackEig<T, dtype::Real<T>>(
-      'N',
-      'N',
-      static_cast<int>(n_dim),
-      a.template data<T>(),
-      static_cast<int>(n_dim),
-      output->template data<T>(),
-      nullptr,
-      1,
-      nullptr,
-      1,
-      work->template data<T>(),
-      static_cast<int>(work_mem / sizeof(T)),
-      rwork->template data<dtype::Real<T>>(),
-      &info);
+  funcs::lapackEig<T, dtype::Real<T>>('N',
+                                      'N',
+                                      static_cast<int>(n_dim),
+                                      a.template data<T>(),
+                                      static_cast<int>(n_dim),
+                                      output->template data<T>(),
+                                      nullptr,
+                                      1,
+                                      nullptr,
+                                      1,
+                                      work->template data<T>(),
+                                      static_cast<int>(work_mem / sizeof(T)),
+                                      rwork->template data<dtype::Real<T>>(),
+                                      &info);
 
   std::string name = "phi::backend::dynload::cgeev_";
   if (input.dtype() == DataType::COMPLEX128) {
@@ -191,7 +190,7 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
     flattened_input_dims =
         common::flatten_to_3d(input_dims, last_dim - 1, last_dim);
   } else {
-    flattened_input_dims = common::make_ddim({1, n_dim, n_dim});
+    flattened_input_dims = make_ddim({1, n_dim, n_dim});
   }
 
   DenseTensor flattened_input;
@@ -215,7 +214,7 @@ void EigvalsKernel(const Context& dev_ctx,
   int64_t n_dim = x_matrices[0].dims()[1];
   int64_t n_batch = static_cast<int64_t>(x_matrices.size());
   DDim out_dims = out->dims();
-  out->Resize(common::make_ddim({n_batch, n_dim}));
+  out->Resize(make_ddim({n_batch, n_dim}));
   std::vector<DenseTensor> out_vectors = out->Split(1, 0);
 
   // query workspace size
@@ -239,11 +238,11 @@ void EigvalsKernel(const Context& dev_ctx,
 
   DenseTensor work, rwork;
 
-  work.Resize(common::make_ddim({lwork}));
+  work.Resize(make_ddim({lwork}));
   dev_ctx.template Alloc<T>(&work);
 
   if (IsComplexType(x.dtype())) {
-    rwork.Resize(common::make_ddim({n_dim << 1}));
+    rwork.Resize(make_ddim({n_dim << 1}));
     dev_ctx.template Alloc<dtype::Real<T>>(&rwork);
   }
 

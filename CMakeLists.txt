@@ -58,6 +58,11 @@ option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
 option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" ${WITH_XPU})
+option(WITH_MAGMA "Compile PaddlePaddle with Magma library" OFF)
+option(
+  WITH_SLEEF
+  "Compile PaddlePaddle with Sleef library for high precision math functions"
+  OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -72,6 +77,7 @@ option(WITH_PIP_TENSORRT "Paddle uses the tensorrt provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
 option(WITH_CPP_TEST "Compile PaddlePaddle skip cpp test" ON)
+option(WITH_FA_BUILD_WITH_CACHE "Compile PaddlePaddle with flash-attn cache" ON)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -345,12 +351,18 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_CUDNN_FRONTEND
-       "Compile with CUDNN Frontend API support (experimental)" OFF)
+       "Compile with CUDNN Frontend API support (experimental)" ON)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
+
+if(WIN32 OR NOT WITH_GPU)
+  set(WITH_CUDNN_FRONTEND
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
 
 if(WITH_RECORD_BUILDTIME)
   set_property(

@@ -56,7 +56,7 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
-  phi::funcs::ElementwiseKernel<T>(
+  funcs::ElementwiseKernel<T>(
       dev_ctx,
       inputs,
       &outputs,

@@ -31,9 +31,9 @@ void LogspaceKernel(const Context& dev_ctx,
                     DataType dtype,
                     DenseTensor* out) {
   int32_t num = number.data<int32_t>()[0];
-  auto start_t = phi::funcs::TransDataType(dev_ctx, start, dtype);
-  auto stop_t = phi::funcs::TransDataType(dev_ctx, stop, dtype);
-  auto base_t = phi::funcs::TransDataType(dev_ctx, base, dtype);
+  auto start_t = funcs::TransDataType(dev_ctx, start, dtype);
+  auto stop_t = funcs::TransDataType(dev_ctx, stop, dtype);
+  auto base_t = funcs::TransDataType(dev_ctx, base, dtype);
 
   T start_data = start_t.template data<T>()[0];
   T stop_data = stop_t.template data<T>()[0];
@@ -45,7 +45,7 @@ void LogspaceKernel(const Context& dev_ctx,
                                       "than 0, but received num is %d",
                                       num));
 
-  out->Resize(common::make_ddim({num}));
+  out->Resize(make_ddim({num}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (num > 1) {

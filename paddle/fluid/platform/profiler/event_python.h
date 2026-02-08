@@ -19,7 +19,11 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 #include "paddle/phi/core/platform/profiler/extra_info.h"
 
 namespace paddle {
@@ -138,7 +142,8 @@ struct HostPythonNode {
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
   explicit ProfilerResult(
       std::unique_ptr<NodeTrees> tree,
       const ExtraInfo& extra_info,
@@ -166,7 +171,8 @@ class ProfilerResult {
 
   std::string GetVersion() { return version_; }
   uint32_t GetSpanIndex() { return span_index_; }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
   std::map<uint32_t, gpuDeviceProp> GetDeviceProperty() {
     return device_property_map_;
   }
@@ -176,7 +182,8 @@ class ProfilerResult {
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
   std::shared_ptr<NodeTrees> tree_;
   ExtraInfo extra_info_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
   std::map<uint32_t, gpuDeviceProp> device_property_map_;
 #endif
   std::string version_;

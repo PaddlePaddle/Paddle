@@ -52,7 +52,7 @@ void StackGradKernel(const Context& dev_ctx,
   int total_num = static_cast<int>(out.numel());
   int post = total_num / (n * pre);
   auto dx_data_arr = dx_datas.data();
-  phi::funcs::StackGradFunctorForRange(
+  funcs::StackGradFunctorForRange(
       dev_ctx, dx_data_arr, dy_data, total_num, n, post);
 }
 

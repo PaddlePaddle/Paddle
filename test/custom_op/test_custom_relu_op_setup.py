@@ -167,13 +167,15 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             site_dir = site.getsitepackages()[1]
         else:
             site_dir = site.getsitepackages()[0]
-        custom_egg_path = [
+        custom_install_path = [
             x for x in os.listdir(site_dir) if 'custom_relu_module_setup' in x
         ]
-        assert len(custom_egg_path) == 2, (
-            f"Matched egg number is {len(custom_egg_path)}."
+
+        assert len(custom_install_path) == 2, (
+            f"Matched egg number is {len(custom_install_path)}."
         )
-        sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
+
+        sys.path.append(os.path.join(site_dir, custom_install_path[0]))
 
         # usage: import the package directly
         import custom_relu_module_setup
@@ -199,6 +201,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_all(self):
         self._test_static()
         self._test_dynamic()
+        self._test_debug_tools()
         self._test_static_save_and_load_inference_model()
         self._test_static_save_and_run_inference_predictor()
         self._test_double_grad_dynamic()
@@ -331,6 +334,27 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
                 if batch_id == 5:
                     break
+
+    def _test_debug_tools(self):
+        # Test the debug utils on custom op
+        # It is only necessary to test whether any error occur,
+        # and there is no need to verify the results
+        paddle.set_flags(
+            {"FLAGS_tensor_md5_checksum_output_path": "./tmp_md5.txt"}
+        )
+        with (
+            paddle.utils.capture_forward_subgraph_guard("./tmp_subgraph"),
+            paddle.utils.capture_backward_subgraph_guard("./tmp_debug_info"),
+        ):
+            x = paddle.randn([5, 5])
+            x.stop_gradient = False
+            y = paddle.randn([5, 5])
+            y.stop_gradient = False
+            z = x + y
+            func = self.custom_ops[0]
+            out = func(z)
+        loss = out.sum()
+        loss.backward()
 
 
 if __name__ == '__main__':

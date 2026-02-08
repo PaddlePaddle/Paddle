@@ -38,11 +38,26 @@ class DeformableConvOpConverter : public OpConverter {
     auto* filter_var = scope.FindVar(filter_name);
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
 
-    const int c_o = filter_tensor->dims()[0];
-    const int c_i = filter_tensor->dims()[1];
-    const int k_h = filter_tensor->dims()[2];
-    const int k_w = filter_tensor->dims()[3];
-    std::vector<int> kernel_dims = {c_o, c_i, k_h, k_w};
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t c_o = filter_tensor->dims()[0];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t c_i = filter_tensor->dims()[1];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t k_h = filter_tensor->dims()[2];
+
+    // TODO(large-tensor): downstream functors may still use int; guard until
+    // upgraded.
+    int64_t k_w = filter_tensor->dims()[3];
+
+    std::vector<int> kernel_dims = {static_cast<int>(c_o),
+                                    static_cast<int>(c_i),
+                                    static_cast<int>(k_h),
+                                    static_cast<int>(k_w)};
 
     auto strides =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));

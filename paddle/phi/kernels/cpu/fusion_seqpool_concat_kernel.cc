@@ -55,8 +55,8 @@ void FusionSeqPoolConcatKernel(const Context& dev_ctx,
     attr.type = phi::jit::SeqPoolType::kSqrt;
   }
   auto seqpool =
-      phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, phi::CPUPlace>::Cache()
-          .At(attr);
+      phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, CPUPlace>::Cache().At(
+          attr);
   size_t n = ins.size();
   size_t dst_step_size = n * w;
   for (size_t i = 0; i < n; ++i) {

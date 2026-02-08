@@ -43,8 +43,8 @@ using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& scale,
-                            const paddle::optional<DenseTensor>& bias UNUSED,
+                            const optional<DenseTensor>& scale,
+                            const optional<DenseTensor>& bias UNUSED,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             const DenseTensor& d_y,
@@ -52,7 +52,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                             DenseTensor* d_x,
                             DenseTensor* d_scale,
                             DenseTensor* d_bias) {
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  funcs::SetConstant<CPUContext, T> set_constant;
   dev_ctx.template Alloc<T>(d_x);
   if (x.numel() == 0) {
     if (d_scale) {
@@ -164,13 +164,13 @@ void InstanceNormGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void InstanceNormDoubleGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
-                                  const paddle::optional<DenseTensor>& scale,
+                                  const optional<DenseTensor>& scale,
                                   const DenseTensor& saved_mean,
                                   const DenseTensor& saved_variance,
                                   const DenseTensor& dy,
-                                  const paddle::optional<DenseTensor>& ddx,
-                                  const paddle::optional<DenseTensor>& ddscale,
-                                  const paddle::optional<DenseTensor>& ddbias,
+                                  const optional<DenseTensor>& ddx,
+                                  const optional<DenseTensor>& ddscale,
+                                  const optional<DenseTensor>& ddbias,
                                   float epsilon UNUSED,
                                   DenseTensor* dx,
                                   DenseTensor* dscale,
@@ -179,10 +179,10 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   const auto* ddScale = ddscale.get_ptr();
   const auto* ddX = ddx.get_ptr();
   const auto* ddBias = ddbias.get_ptr();
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  funcs::SetConstant<CPUContext, T> set_constant;
   const auto& x_dims = x.dims();
   int N = 0, C = 0, H = 0, W = 0, D = 0;
-  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   const int sample_size = static_cast<int>(x.numel() / N / C);
   const int NxC = N * C;
 

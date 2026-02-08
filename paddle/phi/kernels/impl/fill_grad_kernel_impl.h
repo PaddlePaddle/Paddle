@@ -30,7 +30,7 @@ void FillGradKernel(const Context& dev_ctx,
   if (in_grad) {
     dev_ctx.template Alloc<T>(in_grad);
 
-    phi::funcs::SetConstant<Context, T> functor;
+    funcs::SetConstant<Context, T> functor;
     functor(dev_ctx, in_grad, T(0));
   }
 }

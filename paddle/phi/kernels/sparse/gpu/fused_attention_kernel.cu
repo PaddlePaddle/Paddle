@@ -72,16 +72,16 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
       out_values[row_first + idx] = -std::numeric_limits<T>::infinity();
     }
   }
-  T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
+  T row_max_val = funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
 
   T exp_sum = 0;
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
-    auto functor = phi::funcs::CudaExpFunctor<T>();
+    auto functor = funcs::CudaExpFunctor<T>();
     T exp = functor(out_values[row_first + idx] - row_max_val);
     exp_sum += exp;
     out_values[row_first + idx] = exp;
   }
-  T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+  T row_exp_sum = funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
 
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     out_values[row_first + idx] = out_values[row_first + idx] / row_exp_sum;
@@ -89,16 +89,15 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
 }
 
 template <typename T, typename Context>
-void FusedAttentionCsrKernel(
-    const Context& dev_ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const SparseCsrTensor& sparse_mask,
-    const paddle::optional<DenseTensor>& key_padding_mask,
-    const paddle::optional<DenseTensor>& attn_mask,
-    DenseTensor* out,
-    SparseCsrTensor* softmax) {
+void FusedAttentionCsrKernel(const Context& dev_ctx,
+                             const DenseTensor& query,
+                             const DenseTensor& key,
+                             const DenseTensor& value,
+                             const SparseCsrTensor& sparse_mask,
+                             const optional<DenseTensor>& key_padding_mask,
+                             const optional<DenseTensor>& attn_mask,
+                             DenseTensor* out,
+                             SparseCsrTensor* softmax) {
 #if CUDA_VERSION >= 11080
   /* Check Shape */
   auto q_dim = query.dims();
@@ -187,7 +186,7 @@ void FusedAttentionCsrKernel(
   /* Step1: SDD Matmul, reuse matmul */
   SparseCsrTensor sdd_result;
   EmptyLikeCsrKernel<T, Context>(dev_ctx, sparse_mask, &sdd_result);
-  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(false,
                     true,
                     static_cast<T>(1 / std::sqrt(N)),
@@ -214,8 +213,7 @@ void FusedAttentionCsrKernel(
       q_dim[1],
       batch_nnz);
 
-  softmax->set_dims(
-      common::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
+  softmax->set_dims(make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
 #else
   PADDLE_THROW(common::errors::Unimplemented(

@@ -44,7 +44,7 @@ void IncrementKernel(const Context& dev_ctx,
   T* value_xpu = RAII_GUARD.alloc_l3_or_gm<T>(1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      value_xpu,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      reinterpret_cast<void*>(&value_as_t),
                      sizeof(T));
 

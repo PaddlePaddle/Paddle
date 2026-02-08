@@ -29,11 +29,12 @@ class GroupWiseWeightObserver(ObserverFactory):
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
     Examples:
-       .. code-block:: python
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import AbsMaxChannelWiseWeightObserver
-            quanter = AbsMaxChannelWiseWeightObserver()
-            q_config = QuantConfig(activation=None, weight=quanter)
+        .. code-block:: pycon
+
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import AbsMaxChannelWiseWeightObserver
+            >>> quanter = AbsMaxChannelWiseWeightObserver()
+            >>> q_config = QuantConfig(activation=None, weight=quanter)
     """
 
     def __init__(self, quant_bits=8, group_size=128):

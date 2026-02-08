@@ -50,7 +50,7 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
                     common::errors::InvalidArgument(
                         "The ndim of x in index_put should be "
                         "greater than or equal to the size of indices, "
-                        "but got x_ndim:[%d],indices_size:[%d].",
+                        "but got x_ndim:[%d], indices_size:[%d].",
                         x_ndim,
                         indices_size));
 
@@ -158,7 +158,7 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
       x_ndim,
       common::errors::InvalidArgument(
           "The ndim of out_grad in index_put_grad should be equal to the "
-          "ndim of x, but got out_grad_ndim:[%d],x_ndim:[%d].",
+          "ndim of x, but got out_grad_ndim:[%d], x_ndim:[%d].",
           out_grad_ndim,
           x_ndim));
   PADDLE_ENFORCE_GE(x_ndim,
@@ -166,7 +166,7 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
                     common::errors::InvalidArgument(
                         "The ndim of x in index_put should be "
                         "greater than or equal to the size of indices, "
-                        "but got x_ndim:[%d],indices_size:[%d].",
+                        "but got x_ndim:[%d], indices_size:[%d].",
                         x_ndim,
                         indices_size));
 

@@ -553,7 +553,7 @@ def _setitem_static(x, indices, values):
                 )
             if in_pir_mode():
                 # map var to the new output, for dy2static
-                from paddle.jit.pir_dy2static.parameter_recorder import (
+                from paddle.jit.dy2static.parameter_recorder import (
                     _global_inplace_map,
                 )
 
@@ -678,7 +678,7 @@ def _setitem_static(x, indices, values):
                 decrease_axes,
                 none_axes,
             )
-            from paddle.jit.pir_dy2static.parameter_recorder import (
+            from paddle.jit.dy2static.parameter_recorder import (
                 _global_inplace_map,
             )
 

@@ -102,6 +102,16 @@ class MixPrecisionOptimizer:
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
+        need_shard = any(
+            hasattr(p, '_need_shard') for p in self._parameter_list
+        )
+        if need_shard:
+            fleet.meta_parallel.sharding.group_sharded_fully_shard.FullyShardOptimizer(
+                self
+            )
+            self.step()
+            return
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:

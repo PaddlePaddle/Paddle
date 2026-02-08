@@ -917,12 +917,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
         no_fusion_sum_square_fp16 = []
         no_fusion_sum_square_fp32 = []
 
-        # fusion grad need to commnuicate in dp&mp
+        # fusion grad need to communicate in dp&mp
         sum_square_dist = []
         sum_square_dist_fp16 = []
         sum_square_dist_fp32 = []
 
-        # fusion grad only need to commnuicate in dp
+        # fusion grad only need to communicate in dp
         sum_square_not_dist = []
         sum_square_not_dist_fp16 = []
         sum_square_not_dist_fp32 = []

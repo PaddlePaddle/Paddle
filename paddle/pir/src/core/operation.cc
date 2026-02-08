@@ -54,7 +54,7 @@ Operation *Operation::Create(OperationArgument &&argument) {
 Operation *Operation::Create(const std::vector<Value> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<Type> &output_types,
-                             pir::OpInfo op_info,
+                             const pir::OpInfo &op_info,
                              size_t num_regions,
                              const std::vector<Block *> &successors,
                              bool verify) {

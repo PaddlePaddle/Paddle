@@ -28,7 +28,7 @@ template <typename T, typename Context>
 void WeightOnlyLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& weight,
-                            const paddle::optional<DenseTensor>& bias,
+                            const optional<DenseTensor>& bias,
                             const DenseTensor& weight_scale,
                             const std::string& weight_dtype,
                             const int32_t arch,
@@ -37,18 +37,17 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUTLASS)
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-       (arch == 89) || (arch == 90)),
+       (arch == 89) || (arch == 90) || (arch == 100)),
       true,
       common::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+          "Currently, arch only support 70, 75, 80, 86, 89, 90, 100."));
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Please compile with cutlass to make cutlass available"));
 #endif
 
   dev_ctx.template Alloc<T>(out);
-  Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+  Full<T, Context>(dev_ctx, out->dims(), 0, out);
   if (out->numel() == 0 || x.numel() == 0 || weight.numel() == 0) {
     return;
   }

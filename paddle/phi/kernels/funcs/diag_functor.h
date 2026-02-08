@@ -25,7 +25,7 @@
 namespace phi {
 namespace funcs {
 
-inline int64_t ComputeStride(int axis, phi::DDim dims) {
+inline int64_t ComputeStride(int axis, DDim dims) {
   int64_t size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
     size *= dims[i];
@@ -112,10 +112,11 @@ DenseTensor BatchDiag(const Context& dev_ctx, const DenseTensor& x, int batch) {
   for (int i = 0; i < num_dims - 1; ++i) {
     out_shape.push_back(x.dims()[i]);
   }
-  out.Resize(common::make_ddim(out_shape));
-  int order = x.dims()[num_dims - 1];
-  int stride_out = order * order;
-  int stride_in = order + 1;
+  out.Resize(make_ddim(out_shape));
+  int64_t order = x.dims()[num_dims - 1];
+
+  int64_t stride_out = order * order;
+  int64_t stride_in = order + 1;
   for (int64_t i = 0; i < batch; ++i) {
     for (int64_t j = 0; j < order; ++j) {
       out_data[i * order + j] = x_data[stride_out * i + stride_in * j];

@@ -21,18 +21,18 @@ namespace phi {
 template <typename T, typename Context>
 void SequencePoolGradKernel(const Context& dev_ctx,
                             const DenseTensor& x UNUSED,
-                            const paddle::optional<DenseTensor>& max_index,
+                            const optional<DenseTensor>& max_index,
                             const DenseTensor& out_grad,
                             bool is_test UNUSED,
                             const std::string& pooltype,
                             float pad_value UNUSED,
                             DenseTensor* x_grad) {
-  const phi::DenseTensor* index = nullptr;
+  const DenseTensor* index = nullptr;
   if (pooltype == "MAX") {
     index = max_index.get_ptr();
   }
   dev_ctx.template Alloc<T>(x_grad);
-  phi::funcs::SequencePoolGradFunctor<Context, T> pool;
+  funcs::SequencePoolGradFunctor<Context, T> pool;
   pool(dev_ctx, pooltype, out_grad, x_grad, index);
 }
 

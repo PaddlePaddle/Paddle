@@ -36,7 +36,7 @@ class Net(nn.Layer):
         return res
 
 
-class SimbolNet(nn.Layer):
+class SymbolNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -61,7 +61,7 @@ class CompareNet(nn.Layer):
         return z1, z2, z3, z4
 
 
-class SimbolCompareNet(nn.Layer):
+class SymbolCompareNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -106,7 +106,7 @@ class TestValueSymbol(unittest.TestCase):
     def symbol_net(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            net = SimbolNet()
+            net = SymbolNet()
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
             x.stop_gradient = False
@@ -164,7 +164,7 @@ class TestValueCompareSymbol(unittest.TestCase):
     def symbol_net(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            net = SimbolCompareNet()
+            net = SymbolCompareNet()
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
 

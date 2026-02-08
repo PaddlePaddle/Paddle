@@ -90,7 +90,8 @@ cc_library(
        variable_helper
        generated_op
        autograd_meta
-       hook_utils)
+       hook_utils
+       md5)
 
 # FIXME(Aurelius84): It seems utils library is depended in cycle, but
 # CMake only find it twice to deal cycle depend problem. If it is still

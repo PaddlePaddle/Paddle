@@ -44,8 +44,7 @@
 #endif
 
 namespace phi::distributed {
-void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
-                                     int64_t dtype) {
+void NCCLDynamicCheck::CheckDataType(const DenseTensor& tensor, int64_t dtype) {
   PADDLE_ENFORCE_EQ(
       static_cast<int64_t>(tensor.dtype()),
       dtype,
@@ -53,7 +52,7 @@ void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
           "Tensors in communication are expected to have the same data type."));
 }
 
-void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
+void NCCLDynamicCheck::CheckDataType(const DenseTensor& tensor,
                                      int root_rank,
                                      int cur_rank,
                                      ncclComm_t comm) {
@@ -83,8 +82,7 @@ void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(dtype_device));
 }
 
-void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
-                                  int64_t shape) {
+void NCCLDynamicCheck::CheckShape(const DenseTensor& tensor, int64_t shape) {
   PADDLE_ENFORCE_EQ(
       tensor.numel(),
       shape,
@@ -92,7 +90,7 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
           "Tensors in communication are expected to have matching sizes."));
 }
 
-void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
+void NCCLDynamicCheck::CheckShape(const DenseTensor& tensor,
                                   int root_rank,
                                   int cur_rank,
                                   ncclComm_t comm) {
@@ -125,8 +123,8 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(shape_device));
 }
 
-void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
-                                  const phi::DenseTensor& in_tensor,
+void NCCLDynamicCheck::CheckShape(const DenseTensor& out_tensor,
+                                  const DenseTensor& in_tensor,
                                   const std::vector<int64_t>& in_size_each_rank,
                                   int cur_rank,
                                   int world_size,
@@ -163,8 +161,8 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
 }
 
 void NCCLDynamicCheck::CheckAlltoAllShape(
-    const std::vector<phi::DenseTensor>& out_tensor,
-    const std::vector<phi::DenseTensor>& in_tensor,
+    const std::vector<DenseTensor>& out_tensor,
+    const std::vector<DenseTensor>& in_tensor,
     int cur_rank,
     int world_size,
     ncclComm_t comm) {
@@ -206,8 +204,8 @@ void NCCLDynamicCheck::CheckAlltoAllShape(
 }
 
 void NCCLDynamicCheck::CheckGatherShape(
-    const phi::DenseTensor& in_tensor,
-    const std::vector<phi::DenseTensor>& out_tensors,
+    const DenseTensor& in_tensor,
+    const std::vector<DenseTensor>& out_tensors,
     int root_rank,
     int cur_rank,
     int world_size,

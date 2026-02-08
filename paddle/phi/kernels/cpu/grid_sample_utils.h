@@ -75,12 +75,30 @@ void GetGridPointValue(const DenseTensor& input,
                        DenseTensor* output,
                        const DenseTensor& x,
                        const DenseTensor& y) {
-  const int n = input.dims()[0];
-  const int c = input.dims()[1];
-  const int in_h = input.dims()[2];
-  const int in_w = input.dims()[3];
-  const int out_h = x.dims()[1];
-  const int out_w = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = input.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = input.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_h = input.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_w = input.dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_h = x.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_w = x.dims()[2];
+
   auto x_t = EigenTensor<T, 3>::From(x);
   auto y_t = EigenTensor<T, 3>::From(y);
   auto output_t = EigenTensor<T, 4>::From(*output).setConstant((T)0);
@@ -110,12 +128,30 @@ void GetGridPointValue_nearest(const DenseTensor& input,
                                DenseTensor* output,
                                const DenseTensor& x,
                                const DenseTensor& y) {
-  const int n = input.dims()[0];
-  const int c = input.dims()[1];
-  const int in_h = input.dims()[2];
-  const int in_w = input.dims()[3];
-  const int out_h = x.dims()[1];
-  const int out_w = x.dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = input.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = input.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_h = input.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_w = input.dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_h = x.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_w = x.dims()[2];
+
   auto x_t = EigenTensor<T, 3>::From(x);
   auto y_t = EigenTensor<T, 3>::From(y);
   auto output_t = EigenTensor<T, 4>::From(*output).setConstant((T)0);
@@ -160,10 +196,22 @@ void AllNeighbors(const CPUContext& dev_ctx,
                   DenseTensor* v_es) {  // values
   auto& place = *dev_ctx.eigen_device();
 
-  const int c = input.dims()[1];
-  const int n = grid_x->dims()[0];
-  const int out_h = grid_x->dims()[1];
-  const int out_w = grid_x->dims()[2];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = input.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = grid_x->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_h = grid_x->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_w = grid_x->dims()[2];
+
   // calculate coords of 4 corner points
   x_w->Resize({n, out_h, out_w});
   x_e->Resize({n, out_h, out_w});
@@ -225,14 +273,38 @@ void Get3DGridPointValue(const DenseTensor& input,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& z) {
-  const int n = input.dims()[0];
-  const int c = input.dims()[1];
-  const int in_d = input.dims()[2];
-  const int in_h = input.dims()[3];
-  const int in_w = input.dims()[4];
-  const int out_d = x.dims()[1];
-  const int out_h = x.dims()[2];
-  const int out_w = x.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = input.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = input.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_d = input.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_h = input.dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_w = input.dims()[4];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_d = x.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_h = x.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_w = x.dims()[3];
+
   auto x_t = EigenTensor<T, 4>::From(x);
   auto y_t = EigenTensor<T, 4>::From(y);
   auto z_t = EigenTensor<T, 4>::From(z);
@@ -271,14 +343,38 @@ void Get3DGridPointValue_nearest(const DenseTensor& input,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  const DenseTensor& z) {
-  const int n = input.dims()[0];
-  const int c = input.dims()[1];
-  const int in_d = input.dims()[2];
-  const int in_h = input.dims()[3];
-  const int in_w = input.dims()[4];
-  const int out_d = x.dims()[1];
-  const int out_h = x.dims()[2];
-  const int out_w = x.dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = input.dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = input.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_d = input.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_h = input.dims()[3];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t in_w = input.dims()[4];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_d = x.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_h = x.dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_w = x.dims()[3];
+
   auto x_t = EigenTensor<T, 4>::From(x);
   auto y_t = EigenTensor<T, 4>::From(y);
   auto z_t = EigenTensor<T, 4>::From(z);
@@ -340,11 +436,26 @@ void All3DNeighbors(const CPUContext& dev_ctx,
                     DenseTensor* v_bes) {  // values
   auto& place = *dev_ctx.eigen_device();
 
-  const int c = input.dims()[1];
-  const int n = grid_x->dims()[0];
-  const int out_d = grid_x->dims()[1];
-  const int out_h = grid_x->dims()[2];
-  const int out_w = grid_x->dims()[3];
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t c = input.dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t n = grid_x->dims()[0];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_d = grid_x->dims()[1];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_h = grid_x->dims()[2];
+
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t out_w = grid_x->dims()[3];
+
   // calculate coords of 6 corner points
   x_w->Resize({n, out_d, out_h, out_w});
   x_e->Resize({n, out_d, out_h, out_w});

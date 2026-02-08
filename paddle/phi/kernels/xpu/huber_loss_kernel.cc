@@ -28,6 +28,7 @@ void HuberLossKernel(const Context& dev_ctx,
                      DenseTensor* residual) {
   auto residual_data = dev_ctx.template Alloc<T>(residual);
   auto out_data = dev_ctx.template Alloc<T>(out);
+  if (input.numel() == 0) return;
   auto in0_data = input.data<T>();
   auto in1_data = label.data<T>();
 

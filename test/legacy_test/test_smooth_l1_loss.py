@@ -468,6 +468,46 @@ class SmoothL1LossDivDelta(unittest.TestCase):
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
 
+class TestSmoothL1Loss_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.random.random([100, 200]).astype(np.float32)
+        self.label_np = np.random.random([100, 200]).astype(np.float32)
+        self.delta = np.random.rand()
+        self.place = get_device_place()
+        self.expected = smooth_l1_loss_np(
+            self.input_np, self.label_np, delta=self.delta
+        )
+
+    def test_HuberLoss_class_api(self):
+        with base.dygraph.guard():
+            # test paddle.nn.HuberLoss
+            huber_loss = paddle.nn.HuberLoss(reduction="mean", delta=self.delta)
+            # test forward param_one_alias(["label", "target"])
+            dy_ret = huber_loss(
+                paddle.to_tensor(self.input_np),
+                target=paddle.to_tensor(self.label_np),
+            )
+        np.testing.assert_allclose(dy_ret.numpy(), self.expected, rtol=1e-05)
+
+
+class SmoothL1Loss_ZeroSize_XPUSum(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+
+    def test_smooth_l1_loss_sum(self):
+        input_np = np.random.random([0, 102, 8]).astype(np.float32)
+        label_np = np.random.random([0, 102, 8]).astype(np.float32)
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
+
+        paddle.disable_static()
+        smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
+        input = paddle.to_tensor(input_np)
+        label = paddle.to_tensor(label_np)
+        dy_ret = smooth_l1_loss(input, label)
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

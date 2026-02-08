@@ -417,7 +417,7 @@ __device__ __forceinline__ void Reduce(T* out,
     // split into multiple threads
     if (block_reduce_y) {
 #pragma unroll
-      for (int i = 0; i < NY * NX; i++) {  // reduce along blockdim.y
+      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.y
         out[i] = details::BlockYReduce<T, ReduceFunctor>(out[i], reducer);
       }
     }
@@ -509,7 +509,7 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
 
 /*
  * @brief Complete the prefix and in the block, each thread calculates 2 data,
- * the size of out and in is 2, and BlockDim.x must be less then 512.
+ * the size of out and in is 2, and blockDim.x must be less then 512.
  *
  * @template paraments
  * InT: the type of input register.
@@ -569,7 +569,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 
 /*
  * @brief Sort data in this block, each thread calculates 2 data, the size of
- * out and in is 2, and BlockDim.x must be less then 512.
+ * out and in is 2, and blockDim.x must be less then 512.
  *
  * @template paraments
  * InT: the type of input register.
@@ -624,7 +624,7 @@ __device__ __forceinline__ void Sort(OutT* out,
 
 /*
  * @brief Sort data with data_index in this block, each thread calculates 2
- * data, the size of out and in is 2, and BlockDim.x must be less then 512.
+ * data, the size of out and in is 2, and blockDim.x must be less then 512.
  *
  * @template paraments
  * InT: The type of input register.

@@ -68,10 +68,10 @@ class HybridParallelInferenceHelper:
             ...         paddle.increment(x=step_idx, value=1.0)
             ...         paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
             ...     with paddle.base.device_guard(f'{device}:0'):
-            ...         pass # some code
+            ...         pass  # some code
             ...     with paddle.base.device_guard(f'{device}:1'):
-            ...         pass # some code
-            ...     with paddle.base.device_guard(f'{device}:{num_pp-1}'):
+            ...         pass  # some code
+            ...     with paddle.base.device_guard(f'{device}:{num_pp - 1}'):
             ...         # generate some data in while block and write to global lod_tensor_array
             ...         # that they are read in next while step.
             ...         # we will using send_v2 to send global lod_tensor_array to other pipeline and sync

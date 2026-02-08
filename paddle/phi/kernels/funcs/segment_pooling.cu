@@ -61,7 +61,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
         }
         if (j > 0) {
           if (last_segment_id == first_segment_id) {
-            phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+            CudaAtomicAdd(summed_ids + last_segment_id, sum);
           } else {
             *(summed_ids + last_segment_id) = sum;
           }
@@ -71,7 +71,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
       sum += T(1);
       last_segment_id = current_segment_id;
     }
-    phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+    CudaAtomicAdd(summed_ids + last_segment_id, sum);
   }
 }
 
@@ -112,8 +112,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
               last_segment_id * inner_dim_size + segment_offset;
 
           if (last_segment_id == first_segment_id) {
-            phi::CudaAtomicAdd(output + output_index,
-                               sum / *(summed_ids + last_segment_id));
+            CudaAtomicAdd(output + output_index,
+                          sum / *(summed_ids + last_segment_id));
           } else {
             *(output + output_index) = sum / *(summed_ids + last_segment_id);
           }
@@ -124,8 +124,7 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
       last_segment_id = current_segment_id;
     }
     Index output_index = last_segment_id * inner_dim_size + segment_offset;
-    phi::CudaAtomicAdd(output + output_index,
-                       sum / *(summed_ids + last_segment_id));
+    CudaAtomicAdd(output + output_index, sum / *(summed_ids + last_segment_id));
   }
 }
 
@@ -236,7 +235,7 @@ class SumPool {
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y + x; }
   DEVICE inline T atomic(T* address, const T val) {
-    return phi::CudaAtomicAdd(address, val);
+    return CudaAtomicAdd(address, val);
   }
 };
 
@@ -412,7 +411,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  const paddle::optional<DenseTensor>& summed_ids,
+                  const optional<DenseTensor>& summed_ids,
                   const std::string pooltype = "SUM") {
     if (pooltype == "MAX" || pooltype == "MIN") {
       SegmentPoolCUDAGradFunctor<T, IndexT>(
@@ -430,9 +429,9 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                      0,
                      dev_ctx.stream()>>>(
           mean_grad.data<T>(), summed_ids->data<T>(), len, dim);
-      phi::funcs::GPUGather<T, IndexT>(dev_ctx, mean_grad, segments, in_grad);
+      funcs::GPUGather<T, IndexT>(dev_ctx, mean_grad, segments, in_grad);
     } else if (pooltype == "SUM") {
-      phi::funcs::GPUGather<T, IndexT>(dev_ctx, out_grad, segments, in_grad);
+      funcs::GPUGather<T, IndexT>(dev_ctx, out_grad, segments, in_grad);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "

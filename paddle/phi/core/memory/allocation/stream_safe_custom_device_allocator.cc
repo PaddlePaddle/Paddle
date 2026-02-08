@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/memory/allocation/stream_safe_custom_device_allocator.h"
 #include <thread>
+#include "glog/logging.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/memory/allocation/stream_safe_custom_device_allocator.h"
 
 namespace paddle {
 namespace memory {
@@ -189,7 +190,7 @@ void StreamSafeCustomDeviceAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeCustomDeviceAllocator::ReleaseImpl(const phi::Place& place) {
+uint64_t StreamSafeCustomDeviceAllocator::ReleaseImpl(const Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeCustomDeviceAllocator*>& allocators =
       allocator_map_[place];
@@ -229,7 +230,7 @@ StreamSafeCustomDeviceAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeCustomDeviceAllocation::once_flag_;
 
-std::map<phi::Place, std::vector<StreamSafeCustomDeviceAllocator*>>
+std::map<Place, std::vector<StreamSafeCustomDeviceAllocator*>>
     StreamSafeCustomDeviceAllocator::allocator_map_;
 SpinLock StreamSafeCustomDeviceAllocator::allocator_map_lock_;
 

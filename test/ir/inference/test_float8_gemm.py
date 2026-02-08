@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import shutil
 import unittest
 
 import numpy as np
+from op_test import get_cuda_version
 
 import paddle
 from paddle.base import core
@@ -26,18 +25,6 @@ from paddle.inference import Config, PrecisionType, create_predictor
 # define the e4m3/e5m2 constants
 E4M3_MAX_POS = 448.0
 E5M2_MAX_POS = 57344.0
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def check_fp8_support() -> bool:

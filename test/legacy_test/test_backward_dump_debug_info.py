@@ -93,12 +93,12 @@ class TestDumpDebugInfo(unittest.TestCase):
             for entry in entries
             if os.path.isfile(os.path.join(directory, entry))
         ]
-        expect_keywards_in_file_name = [
+        expect_keywords_in_file_name = [
             "backward_graph.dot",
             "ref_forward_graph.dot",
             "call_stack.log",
         ]
-        for keywords in expect_keywards_in_file_name:
+        for keywords in expect_keywords_in_file_name:
             if not any(keywords in f for f in files):
                 raise AssertionError(
                     f"Error: File '{keywords}' not found in directory '{directory}'! "
@@ -144,6 +144,35 @@ paddle.base.core.set_vlog_level(4)
             text=True,
         )
 
+    def test_dump_call_stack(self):
+        code = """
+import os
+os.environ['FLAGS_dump_api_and_gradnode_python_stack_dir']="{dir}"
+import paddle
+x = paddle.randn([5, 5], dtype='float32')
+y = paddle.randn([5, 5], dtype='float32')
+x.stop_gradient = False
+y.stop_gradient = False
+z = x + y
+h = x * z
+w = h + y
+grads = paddle.autograd.backward(
+    [x, y],
+    [None, None],
+)
+paddle.base.core.set_vlog_level(4)
+        """
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(dir="./")],
+            capture_output=True,
+            text=True,
+        )
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(dir=".")],
+            capture_output=True,
+            text=True,
+        )
+
     def test_manual_vlog(self):
         if 'Windows' == platform.system():
             return
@@ -151,9 +180,34 @@ paddle.base.core.set_vlog_level(4)
 import os
 os.environ['GLOG_v'] = '6'
 os.environ['FLAGS_dump_grad_node_forward_stack_path']="call_stack.log"
+os.environ['FLAGS_call_stack_level']='3'
+os.environ['FLAGS_dump_api_python_stack_path']="forward_call_stack"
+
 import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
+
+# Pylayer indent log
+from paddle.autograd import PyLayer
+class cus_tanh(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        y = paddle.tanh(x)
+        # Pass tensors to backward.
+        ctx.save_for_backward(y)
+        return y
+    @staticmethod
+    def backward(ctx, dy):
+        # Get the tensors passed by forward.
+        y, = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))
+        return grad
+
+pylayer_input = paddle.rand([3, 4])
+pylayer_input.stop_gradient = False
+custom_tanh = cus_tanh.apply
+pylayer_output = custom_tanh(pylayer_input)
+pylayer_output.mean().backward()
 
 paddle.base.core.set_vlog_level({"backward":6, "*": 7})
 
@@ -248,6 +302,38 @@ class TestSetVlogLevelError(unittest.TestCase):
     def test_input_invalid(self):
         with self.assertRaises(ValueError):
             paddle.base.core.set_vlog_level("3")
+
+
+class TestVlogGuard(unittest.TestCase):
+    # Just run it for coverage ci and don't check the res
+    def test_guard(self):
+        with paddle.base.framework.vlog_guard(0):
+            x = paddle.randn([3, 3], dtype='float16')
+        with paddle.base.framework.vlog_guard({"api": 0}):
+            y = paddle.randn([3, 3], dtype='float16')
+
+    # Check the invalid input
+    def test_error(self):
+        def test_invalid_input():
+            with paddle.base.framework.vlog_guard("api"):
+                x = paddle.randn([3, 3], dtype='float16')
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+
+class TestBackwardVlogGuard(unittest.TestCase):
+    def test_guard(self):
+        x = paddle.randn([3, 3], dtype='float32')
+        y = paddle.randn([3, 3], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        with paddle.base.framework.backward_vlog_guard(4):
+            z = x + y
+            h = x * z
+            w = h + y
+        loss = w.sum()
+        loss.backward()
 
 
 if __name__ == "__main__":

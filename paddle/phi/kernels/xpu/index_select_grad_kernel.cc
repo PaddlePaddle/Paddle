@@ -29,8 +29,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                            DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x.dims(), 0, x_grad);
     return;
   }
   if (dim < 0) {
@@ -53,8 +52,8 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   const XPUType* out_grad_data =
       reinterpret_cast<const XPUType*>(out_grad.data<T>());
 
-  auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
-  auto x_grad_shape = common::vectorize<int64_t>(x_grad->dims());
+  auto out_grad_shape = vectorize<int64_t>(out_grad.dims());
+  auto x_grad_shape = vectorize<int64_t>(x_grad->dims());
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {
@@ -88,4 +87,5 @@ PD_REGISTER_KERNEL(index_select_grad,
                    ALL_LAYOUT,
                    phi::IndexSelectGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

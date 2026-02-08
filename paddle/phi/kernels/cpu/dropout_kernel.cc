@@ -31,7 +31,7 @@ void ComputeDropoutInference(const Context& dev_ctx,
   if (upscale_in_train) {
     const auto* X_data = x.data<T>();
     T* Y_data = dev_ctx.template Alloc<T>(y);
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
 #pragma omp parallel for
 #endif
     for (int i = 0; i < x.numel(); i++) {
@@ -48,7 +48,7 @@ void ComputeDropoutInference(const Context& dev_ctx,
 template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& seed_tensor,
+                      const optional<DenseTensor>& seed_tensor,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
@@ -114,7 +114,7 @@ void DropoutRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& seed_tensor,
+                     const optional<DenseTensor>& seed_tensor,
                      const Scalar& p,
                      bool is_test,
                      const std::string& mode,

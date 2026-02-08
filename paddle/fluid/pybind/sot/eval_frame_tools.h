@@ -32,6 +32,9 @@ PyObject* setup_codes_with_graph(PyObject* code_tuple);
 PyObject* no_skip_codes(PyObject* code_tuple);
 PyObject* skip_file_prefix(PyObject* filepath_tuple);
 
+void nvtx_push(const char* name);
+void nvtx_pop();
+
 #endif
 
 #ifdef __cplusplus

@@ -16,7 +16,7 @@ limitations under the License. */
 namespace phi::strings {
 
 void CreateInferMeta(const IntArray& shape, MetaTensor* out) {
-  const auto& out_dims = common::make_ddim(shape.GetData());
+  const auto& out_dims = make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(DataType::PSTRING);
   out->set_layout(DataLayout::PSTRING_UNION);

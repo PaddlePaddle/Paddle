@@ -45,7 +45,7 @@ void ClipSparseKernel(const Context& dev_ctx,
                     out,
                     errors::InvalidArgument("Inplace clip is not allowed "
                                             "when x is SelectedRows"));
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, x, out);
   auto* out_tensor = out->mutable_value();
   auto* out_data = out_tensor->data<T>();

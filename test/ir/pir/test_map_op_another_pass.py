@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import unittest
 
 import numpy as np
@@ -27,21 +25,9 @@ from paddle.pir.core import create_parameter
 paddle.enable_static()
 
 
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
-
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 8100,
-    "DepthwiseConv2ConvPattern requires CUDA >= 8100",
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "DepthwiseConv2ConvPattern requires CUDA",
 )
 class TestDepthwiseConv2ConvPattern(PassTest):
     r""" """

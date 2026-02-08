@@ -128,7 +128,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<phi::DenseTensor>() || var.IsType<phi::SelectedRows>();
+  return var.IsType<DenseTensor>() || var.IsType<phi::SelectedRows>();
 }
 
 const phi::DenseTensor* GetDenseTensorOrSelectedRowsValueFromVar(
@@ -589,9 +589,9 @@ class PADDLE_API ExecutionContext : public phi::KernelContext {
 #endif
 
   template <typename T, typename DevContext>
-  phi::DenseTensor AllocateTmpTensor(const phi::DDim& dim,
-                                     const DevContext& dev_ctx) const {
-    phi::DenseTensor tmp;
+  DenseTensor AllocateTmpTensor(const phi::DDim& dim,
+                                const DevContext& dev_ctx) const {
+    DenseTensor tmp;
     tmp.Resize(dim);
     dev_ctx.template Alloc<T>(&tmp);
     return tmp;
@@ -642,13 +642,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
-    return var->IsType<phi::DenseTensor>();
+    return var->IsType<DenseTensor>();
   }
 
   bool IsDenseTensorInputs(const std::string& name) const override {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
-      return var->IsType<phi::DenseTensor>();
+      return var->IsType<DenseTensor>();
     });
   }
 
@@ -691,7 +691,7 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto vars = ctx_.MultiOutputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
-      return var->IsType<phi::DenseTensor>();
+      return var->IsType<DenseTensor>();
     });
   }
 
@@ -717,11 +717,11 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
 
 template <>
 PADDLE_API const std::vector<const phi::DenseTensor*>
-ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const;
+ExecutionContext::MultiInput<DenseTensor>(const std::string& name) const;
 
 template <>
 PADDLE_API std::vector<phi::DenseTensor*>
-ExecutionContext::MultiOutput<phi::DenseTensor>(const std::string& name) const;
+ExecutionContext::MultiOutput<DenseTensor>(const std::string& name) const;
 
 class OpKernelBase {
  public:
@@ -823,7 +823,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   /* member functions for adapting to phi lib */
-  /** In the phi::DenseTensor calculation library, the new Kernel adopts a
+  /** In the DenseTensor calculation library, the new Kernel adopts a
    * clearer and more streamlined design. The arguments of the Kernel and the
    * input and output arguments registered in the original OpMaker do not match
    * in some cases, so we use map to record the arguments required by the

@@ -29,23 +29,22 @@ void FusedMultiTransformerINT8OpKernel(
     const std::vector<const DenseTensor *> &ln_scale,
     const std::vector<const DenseTensor *> &ln_bias,
     const std::vector<const DenseTensor *> &qkv_w,
-    const paddle::optional<std::vector<const DenseTensor *>> &qkv_bias_in,
-    const paddle::optional<std::vector<const DenseTensor *>> &cache_kv_in,
-    const paddle::optional<DenseTensor> &time_step_in,
-    const paddle::optional<DenseTensor> &src_mask_in,
+    const optional<std::vector<const DenseTensor *>> &qkv_bias_in,
+    const optional<std::vector<const DenseTensor *>> &cache_kv_in,
+    const optional<DenseTensor> &time_step_in,
+    const optional<DenseTensor> &src_mask_in,
     const std::vector<const DenseTensor *> &out_linear_w,
-    const paddle::optional<std::vector<const DenseTensor *>> &out_linear_bias,
+    const optional<std::vector<const DenseTensor *>> &out_linear_bias,
     const std::vector<const DenseTensor *> &ffn_ln_scale,
     const std::vector<const DenseTensor *> &ffn_ln_bias,
     const std::vector<const DenseTensor *> &ffn1_weight,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn1_bias,
+    const optional<std::vector<const DenseTensor *>> &ffn1_bias,
     const std::vector<const DenseTensor *> &ffn2_weight,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn2_bias,
-    const paddle::optional<std::vector<const DenseTensor *>> &qkv_out_scale,
-    const paddle::optional<std::vector<const DenseTensor *>>
-        &out_linear_out_scale,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn1_out_scale,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn2_out_scale,
+    const optional<std::vector<const DenseTensor *>> &ffn2_bias,
+    const optional<std::vector<const DenseTensor *>> &qkv_out_scale,
+    const optional<std::vector<const DenseTensor *>> &out_linear_out_scale,
+    const optional<std::vector<const DenseTensor *>> &ffn1_out_scale,
+    const optional<std::vector<const DenseTensor *>> &ffn2_out_scale,
     bool pre_layer_norm,
     float epsilon,
     float dropout_rate,
@@ -95,7 +94,7 @@ void FusedMultiTransformerINT8OpKernel(
 
   auto ln_compute = phi::fusion::AttnLayerNorm<T, T, int8_t>(
       dev_ctx, epsilon, bsz_seq, dim_embed);
-  phi::DenseTensor ln_mean, ln_var;
+  DenseTensor ln_mean, ln_var;
   ln_mean.Resize({{bsz_seq}});
   auto *ln_mean_data =
       dev_ctx.template Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
@@ -120,7 +119,7 @@ void FusedMultiTransformerINT8OpKernel(
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
   phi::fusion::AttnMatmulINT8<T> qkv_compute(
       dev_ctx, bsz_seq, output_size, input_size, compute_bias);
-  phi::DenseTensor qkv_out;
+  DenseTensor qkv_out;
   qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
   auto *qkv_out_data =
       dev_ctx.template Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
@@ -140,7 +139,7 @@ void FusedMultiTransformerINT8OpKernel(
   auto out_seq_len = seq_len;
   if (time_step) {
     PADDLE_ENFORCE_EQ(time_step->place(),
-                      phi::CPUPlace(),
+                      CPUPlace(),
                       common::errors::PreconditionNotMet(
                           "The place of input(TimeStep) must be CPUPlace."));
     // cache_seq_len
@@ -159,7 +158,7 @@ void FusedMultiTransformerINT8OpKernel(
     out_seq_len += time_step_value;
   }
 
-  phi::DenseTensor transpose_out_2, qk_out;
+  DenseTensor transpose_out_2, qk_out;
   transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
   auto *transpose_out_2_data = dev_ctx.template Alloc<T>(
       &transpose_out_2, transpose_out_2.numel() * sizeof(T));
@@ -168,9 +167,9 @@ void FusedMultiTransformerINT8OpKernel(
   auto *qk_out_data =
       dev_ctx.template Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
-  phi::DenseTensor softmax_out;
-  phi::DenseTensor attn_dropout_mask_out, attn_dropout_out;
-  phi::DenseTensor qktv_out, fmha_out;
+  DenseTensor softmax_out;
+  DenseTensor attn_dropout_mask_out, attn_dropout_out;
+  DenseTensor qktv_out, fmha_out;
   softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
   auto *softmax_out_data =
       dev_ctx.template Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
@@ -208,7 +207,7 @@ void FusedMultiTransformerINT8OpKernel(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
   auto ffn_ln_scales = ffn_ln_scale;
   auto ffn_ln_biases = ffn_ln_bias;
-  phi::DenseTensor bias_dropout_residual_out, dropout_mask_out;
+  DenseTensor bias_dropout_residual_out, dropout_mask_out;
   T *bias_dropout_residual_out_data = nullptr;
   if (pre_layer_norm) {
     bias_dropout_residual_out.Resize({{bsz, seq_len, dim_embed}});
@@ -228,7 +227,7 @@ void FusedMultiTransformerINT8OpKernel(
   int dim_ffn = ffn1_weight_dim[0];
   phi::fusion::AttnMatmulINT8<T> ffn1_linear_compute(
       dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
-  phi::DenseTensor ffn1_out;
+  DenseTensor ffn1_out;
   ffn1_out.Resize({{bsz_seq, dim_ffn}});
   auto *ffn1_out_data =
       dev_ctx.template Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
@@ -241,7 +240,7 @@ void FusedMultiTransformerINT8OpKernel(
   phi::fusion::FusedDropoutHelper<T, uint8_t>
       fused_act_dropout_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
-  phi::DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
+  DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
   ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
   auto *ffn1_dropout_out_data = dev_ctx.template Alloc<T>(
       &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
@@ -269,7 +268,7 @@ void FusedMultiTransformerINT8OpKernel(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 
   // []. init workspace for cublasLt transform
-  phi::DenseTensor input_workspace, output_workspace, cublaslt_workspace;
+  DenseTensor input_workspace, output_workspace, cublaslt_workspace;
   // for input and output transform data is CUBLASLT_ORDER_COL32 format,
   int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
       n_max = std::max({output_size, dim_embed, dim_ffn});
@@ -288,15 +287,15 @@ void FusedMultiTransformerINT8OpKernel(
 
   // calc
   auto *from_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
-  phi::DenseTensor *from_tensor = out;
-  phi::DenseTensor tmp_out;
+  DenseTensor *from_tensor = out;
+  DenseTensor tmp_out;
   tmp_out.Resize({{bsz, seq_len, dim_embed}});
   auto *tmp_out_data =
       dev_ctx.template Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
   auto *x_data = input_x->data<T>();
-  phi::DenseTensor *buf0 = nullptr;
-  phi::DenseTensor *buf1 = nullptr;
+  DenseTensor *buf0 = nullptr;
+  DenseTensor *buf1 = nullptr;
 
   // step0:  x   --> buf1
   // step1: buf1 --> buf0
@@ -330,10 +329,10 @@ void FusedMultiTransformerINT8OpKernel(
     }
 
     // step2. qkv
-    const phi::DenseTensor *qkv_bias =
+    const DenseTensor *qkv_bias =
         qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
     // NOTE: in decoder stage, bias is fused in fmha
-    const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
+    const DenseTensor *bias = time_step ? nullptr : qkv_bias;
     if (!pre_layer_norm && i == 0) {
       qkv_compute.ComputeForward(qkv_weights[i],
                                  input_x,
@@ -372,9 +371,8 @@ void FusedMultiTransformerINT8OpKernel(
     }
 
     // step3. fmha
-    const phi::DenseTensor *cache_kv =
-        cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
-    phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
+    const DenseTensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+    DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
     int cache_bsz = 0;
     if (cache_kv) {
@@ -383,7 +381,10 @@ void FusedMultiTransformerINT8OpKernel(
 
     if (time_step) {  // generation decoder stage
       // [2, batch_size, num_head, max_seq_len, head_size]
-      int max_seq_len = cache_kv->dims()[3];
+      int64_t max_seq_len = cache_kv->dims()[3];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+
       phi::fusion::fmha<T>(dev_ctx,
                            qkv_out,
                            *qkv_bias,
@@ -426,7 +427,10 @@ void FusedMultiTransformerINT8OpKernel(
       const T *v_ptr = k_ptr + k_size;
 
       // [2, bsz, num_head, max_seq_len, head_dim]
-      int max_seq_len = cache_kv_out->dims()[3];
+      int64_t max_seq_len = cache_kv_out->dims()[3];
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+
       T *cache_kv_data = cache_kv_out->data<T>();
       int64_t cache_k_size = bsz * num_head * max_seq_len * dim_head;
 

@@ -57,7 +57,7 @@ void BCELossKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins = {&input, &label};
   std::vector<DenseTensor*> outs = {out};
   auto functor = BCELossFunctor<T>();
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

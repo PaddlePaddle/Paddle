@@ -35,8 +35,8 @@ void FillDiagonalTensorKernel(const Context &dev_ctx,
                     x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-  std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> yshape = common::vectorize<int64_t>(y.dims());
+  std::vector<int64_t> xshape = vectorize<int64_t>(x.dims());
+  std::vector<int64_t> yshape = vectorize<int64_t>(y.dims());
 
   r = xpu::fill_diagonal_tensor(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType *>(x.data<T>()),

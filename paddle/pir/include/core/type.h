@@ -20,6 +20,7 @@
 #include "paddle/pir/include/core/storage_manager_support.h"
 #include "paddle/pir/include/core/type_base.h"
 #include "paddle/pir/include/core/type_id.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace pir {
 class TypeStorage;
@@ -125,7 +126,14 @@ class IR_API Type {
   bool IsIntOrIndex() const;
   bool IsIndex() const;
 
-  std::size_t hash() const { return std::hash<const void *>()(storage_); }
+  std::size_t hash() const {
+    if (!storage_) return 0;
+    std::ostringstream oss;
+    Print(oss);
+    std::string type_representation = oss.str();
+    std::size_t seed = std::hash<std::string>{}(type_representation);
+    return seed;
+  }
 
  protected:
   const Storage *storage_{nullptr};

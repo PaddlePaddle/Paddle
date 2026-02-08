@@ -164,15 +164,15 @@ struct KronGradOpFunctor {
     int64_t numel_x = x.numel();
     int64_t numel_y = y.numel();
 
-    const phi::DDim &dim_x = x.dims();
-    const phi::DDim &dim_y = y.dims();
-    const phi::DDim &dim_dout = dout.dims();
-    const phi::DDim stride_x =
-        dim_x.size() == 0 ? phi::DDim(dim_x) : common::stride(dim_x);
-    const phi::DDim stride_y =
-        dim_y.size() == 0 ? phi::DDim(dim_y) : common::stride(dim_y);
-    const phi::DDim stride_dout =
-        dim_dout.size() == 0 ? phi::DDim(dim_dout) : common::stride(dim_dout);
+    const DDim &dim_x = x.dims();
+    const DDim &dim_y = y.dims();
+    const DDim &dim_dout = dout.dims();
+    const DDim stride_x =
+        dim_x.size() == 0 ? DDim(dim_x) : common::stride(dim_x);
+    const DDim stride_y =
+        dim_y.size() == 0 ? DDim(dim_y) : common::stride(dim_y);
+    const DDim stride_dout =
+        dim_dout.size() == 0 ? DDim(dim_dout) : common::stride(dim_dout);
 
     const int64_t *p_stride_x = nullptr;
     const int64_t *p_stride_y = nullptr;
@@ -282,12 +282,10 @@ void KronGradKernel(const Context &dev_ctx,
                     DenseTensor *y_grad) {
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     return;
   }

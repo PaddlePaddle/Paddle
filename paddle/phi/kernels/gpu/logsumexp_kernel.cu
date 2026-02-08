@@ -56,8 +56,8 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   auto* in_x = &x;
   auto* out_y = out;
 
-  auto outdim = common::make_ddim(outdim_vec);
-  auto keeped_outdim = common::make_ddim(keeped_outdim_vec);
+  auto outdim = make_ddim(outdim_vec);
+  auto keeped_outdim = make_ddim(keeped_outdim_vec);
   out->Resize(outdim);
   dev_ctx.template Alloc<T>(out_y);
 
@@ -69,7 +69,7 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
 
   max_x.Resize(keeped_outdim);
   DenseTensor temp_x = Subtract<T, Context>(dev_ctx, *in_x, max_x);
-  phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
       dev_ctx, temp_x, out_y, kps::ExpFunctor<T>(), axis_vec);
 
   DenseTensor log_out;
@@ -89,8 +89,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool reduce_all,
                      DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), -INFINITY, out);
+    Full<T, Context>(dev_ctx, out->dims(), -INFINITY, out);
     return;
   }
   std::vector<int64_t> axis;
@@ -140,7 +139,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     }
   }
 
-  auto outdim = common::make_ddim(outdim_vec);
+  auto outdim = make_ddim(outdim_vec);
   if (compute_size <= 1024) {
     if (perm.size() != xdim.size())
       perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
@@ -150,9 +149,9 @@ void LogsumexpKernel(const Context& dev_ctx,
         (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
       transpose_x = x;
     } else {
-      transpose_x.Resize(common::make_ddim(transpose_shape));
+      transpose_x.Resize(make_ddim(transpose_shape));
       dev_ctx.template Alloc<T>(&transpose_x);
-      phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
+      funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     }
     dev_ctx.template Alloc<T>(out);
     using compute_type = typename ComputeType<T>::type;

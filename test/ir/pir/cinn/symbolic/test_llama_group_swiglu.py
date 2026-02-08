@@ -35,7 +35,7 @@ class TransposeReshapeNet(nn.Layer):
         super().__init__()
 
     def forward(self, x, y):
-        out = paddle.incubate.nn.functional.swiglu(x, y)
+        out = paddle.nn.functional.swiglu(x, y)
 
         return out
 

@@ -17,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -87,7 +88,7 @@ class IR_API IrContext {
   /// \param type_id The type id of the AbstractAttribute.
   /// \param abstract_attribute AbstractAttribute provided by user.
   ///
-  void RegisterAbstractAttribute(pir::TypeId type_id,
+  void RegisterAbstractAttribute(TypeId type_id,
                                  AbstractAttribute &&abstract_attribute);
 
   ///

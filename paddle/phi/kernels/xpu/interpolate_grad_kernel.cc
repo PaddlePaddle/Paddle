@@ -26,15 +26,15 @@ template <typename T, typename Context>
 void InterpolateGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -43,12 +43,12 @@ void InterpolateGradKernel(
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  float scale_h = -1;
-  float scale_w = -1;
+  double scale_h = -1;
+  double scale_w = -1;
   if (scale_tensor) {
     auto scale_data =
         funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
@@ -110,8 +110,8 @@ void InterpolateGradKernel(
     out_w = new_size[1];
   }
 
-  phi::DDim dim_grad;
-  if (data_layout == DataLayout::kNCHW) {
+  DDim dim_grad;
+  if (data_layout == DataLayout::NCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
     dim_grad = {n, in_h, in_w, c};
@@ -128,7 +128,7 @@ void InterpolateGradKernel(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   if (in_h == out_h && in_w == out_w) {
-    phi::Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy<Context>(dev_ctx, output_grad, dev_ctx.GetPlace(), false, x_grad);
     return;
   }
 
@@ -150,7 +150,7 @@ void InterpolateGradKernel(
                                  out_w,
                                  nearest,
                                  trans_mode,
-                                 (data_layout == DataLayout::kNCHW));
+                                 (data_layout == DataLayout::NCHW));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d_grad");
 }
 
@@ -158,15 +158,15 @@ template <typename T, typename Context>
 void BilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,
@@ -192,15 +192,15 @@ template <typename T, typename Context>
 void NearestInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
     int out_h,
     int out_w,
-    const std::vector<float>& scale,
+    const std::vector<double>& scale,
     const std::string& interp_method,
     bool align_corners,
     int align_mode,

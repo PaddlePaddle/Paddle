@@ -37,7 +37,6 @@ from paddle.base.dygraph.base import (
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
-from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -66,6 +65,7 @@ from .utils import (
     backend_guard,
     cuda_pinned_tensors_move_to_excepted_place,
     func_to_source_code,
+    graph_tracing_guard,
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
@@ -278,6 +278,7 @@ class CacheKey:
         'input_args_with_spec',
         'input_kwargs_with_spec',
         'class_instance',
+        'is_grad_enabled',
         'kwargs',
         '_spec_names_id',
         '_pir_flags',
@@ -305,6 +306,7 @@ class CacheKey:
         self.input_args_with_spec = input_args_with_spec
         self.input_kwargs_with_spec = input_kwargs_with_spec
         self.class_instance = class_instance
+        self.is_grad_enabled = paddle.is_grad_enabled()
         # NOTE: `kwargs` is usually not considered as basic member for `__hash__`
         self.kwargs = kwargs
         self._spec_names_id = _hash_spec_names(
@@ -363,6 +365,7 @@ class CacheKey:
                 is_train,
                 self._pir_flags,
                 use_pir_api(),
+                self.is_grad_enabled,
             )
         )
 
@@ -432,8 +435,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
         self._program_trans = ProgramTranslator()
         self._kwargs = kwargs
         self._training = True
-        self._cuda_graph_capture_mode = ""
-        self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
         # Note: Record the patched method name for rollback.
         self._patched_name = None
@@ -710,7 +711,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 self._dygraph_function, self._input_spec, **self._kwargs
             )
             copied_static_fn._training = self._training
-            copied_static_fn._cuda_graph_pool_id = self._cuda_graph_pool_id
             copied_static_fn._program_cache = self._program_cache
             copied_static_fn._descriptor_cache = self._descriptor_cache
             copied_static_fn._patched_name = self._patched_name
@@ -847,11 +847,6 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
                 partial_program_layer.training = self.class_instance.training
             else:
                 partial_program_layer.training = self._training
-
-            partial_program_layer._cuda_graph_capture_mode = (
-                self._cuda_graph_capture_mode
-            )
-            partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
 
             # 3. return outputs.
             try:
@@ -1273,8 +1268,7 @@ class ConcreteProgram:
 
         with (
             ir_static.program_guard(main_program, startup_program),
-            to_static_mode_guard(is_to_static=True),
-            static_op_arg_cast_guard(_convert_into_value),
+            graph_tracing_guard(main_program) as ctx,
         ):
             # 1. Adds `paddle.static.data` layers for input if needed
             static_inputs, program_inputs = (
@@ -1317,16 +1311,6 @@ class ConcreteProgram:
                         error_data.raise_new_exception()
                     raise
 
-            # 3. Gets all ParamBases and buffered VarBases in the function
-            from ..pir_dy2static.parameter_recorder import (
-                _global_inplace_map,
-                _global_parameter_recorder,
-            )
-
-            all_parameters_and_buffers = _global_parameter_recorder.pop(
-                main_program
-            )
-            _global_inplace_map.pop(main_program)
             if outputs is not None:
                 need_wrap_into_list = (
                     not isinstance(outputs, (tuple, list)) or len(outputs) == 1
@@ -1342,7 +1326,7 @@ class ConcreteProgram:
         return ConcreteProgram(
             inputs=program_inputs,
             outputs=outputs,
-            parameters=all_parameters_and_buffers,
+            parameters=ctx.get_params_with_values(),
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,

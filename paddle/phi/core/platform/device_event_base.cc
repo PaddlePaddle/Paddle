@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/platform/device_event_base.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/platform/device_event_cpu.h"
 

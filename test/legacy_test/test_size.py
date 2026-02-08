@@ -32,7 +32,7 @@ class TestPaddleSize(unittest.TestCase):
     def test_creation_size(self):
         size = paddle.Size()
         self.assertEqual(size, ())
-        self.assertIsInstance(size, tuple)
+        self.assertIsInstance(size, list)
         self.assertIsInstance(size, paddle.Size)
 
         size = paddle.Size([2, 3, 4])
@@ -139,18 +139,6 @@ class TestPaddleSize(unittest.TestCase):
         size = paddle.Size([])
         self.assertEqual(size.numel(), 1)  # Empty size has numel=1
 
-    def test_concat_method(self):
-        size1 = paddle.Size([1, 2])
-        size2 = (3, 4)
-        result = size1.__concat__(size2)
-        self.assertEqual(result, (1, 2, 3, 4))
-        self.assertIsInstance(result, paddle.Size)
-
-    def test_concat_invalid_type(self):
-        size = paddle.Size([1, 2])
-        with self.assertRaises(TypeError):
-            size.__concat__("invalid")  # string not allowed
-
     def test_reduce(self):
         size = paddle.Size([2, 3])
         reduced = size.__reduce__()
@@ -165,6 +153,132 @@ class TestPaddleSize(unittest.TestCase):
         y = paddle.Size([2, 3]).index(3, 0)
         self.assertEqual(x, 1)
         self.assertEqual(y, 1)
+
+
+class TestTensorShapeBehavior(unittest.TestCase):
+    def setUp(self):
+        self.tensor = paddle.randn([10, 20, 30])
+
+    def test_01_type_and_value(self):
+        s = self.tensor.shape
+
+        self.assertIsInstance(
+            s, paddle.Size, "Tensor.shape should be instance of paddle.Size"
+        )
+
+        self.assertEqual(
+            type(s),
+            paddle.Size,
+            "The exact type of Tensor.shape should be paddle.Size",
+        )
+
+        self.assertIsInstance(s, list, "paddle.Size should inherit from list")
+
+        self.assertEqual(s, [10, 20, 30])
+
+        self.assertEqual(len(s), 3)
+
+    def test_02_edge_cases_0d_and_1d(self):
+        scalar = paddle.to_tensor(100)
+        s_scalar = scalar.shape
+
+        self.assertEqual(type(s_scalar), paddle.Size)
+        self.assertEqual(s_scalar, [])
+        self.assertEqual(len(s_scalar), 0)
+
+        vector = paddle.to_tensor([1, 2, 3])
+        s_vector = vector.shape
+
+        self.assertEqual(type(s_vector), paddle.Size)
+        self.assertEqual(s_vector, [3])
+        self.assertEqual(len(s_vector), 1)
+
+    def test_03_indexing_and_slicing(self):
+        s = self.tensor.shape
+
+        self.assertEqual(s[0], 10)
+        self.assertEqual(s[-1], 30)
+        self.assertIsInstance(s[0], int)
+
+        s_slice = s[1:3]
+        self.assertEqual(s_slice, [20, 30])
+        self.assertIsInstance(s_slice, paddle.Size)
+
+        s_full_slice = s[:]
+        self.assertEqual(s_full_slice, [10, 20, 30])
+        self.assertIsInstance(s_full_slice, paddle.Size)
+        self.assertIsNot(s, s_full_slice)
+
+    def test_04_concatenation_add(self):
+        s = paddle.Size([1, 2])
+        result_ss = s + paddle.Size([3, 4])
+        self.assertEqual(result_ss, [1, 2, 3, 4])
+        self.assertEqual(type(result_ss), paddle.Size)
+
+        result_sl = s + [3, 4]  # noqa: RUF005
+        self.assertEqual(result_sl, [1, 2, 3, 4])
+        self.assertEqual(type(result_sl), paddle.Size)
+
+        result_ls = [0, 0] + s  # noqa: RUF005
+        self.assertEqual(result_ls, [0, 0, 1, 2])
+        self.assertEqual(type(result_ls), paddle.Size)
+
+        result_st = s + (3, 4)  # noqa: RUF005
+        self.assertEqual(result_st, [1, 2, 3, 4])
+        self.assertEqual(type(result_st), paddle.Size)
+
+        result_ts = (0, 0) + s  # noqa: RUF005
+        self.assertEqual(result_ts, [0, 0, 1, 2])
+        self.assertEqual(type(result_ts), paddle.Size)
+
+    def test_05_repetition_mul(self):
+        s = paddle.Size([1, 2])
+
+        result_sm = s * 3
+        self.assertEqual(result_sm, [1, 2, 1, 2, 1, 2])
+        self.assertEqual(type(result_sm), paddle.Size)
+
+        result_ms = 3 * s
+        self.assertEqual(result_ms, [1, 2, 1, 2, 1, 2])
+        self.assertEqual(type(result_ms), paddle.Size)
+
+    def test_06_custom_methods(self):
+        s = self.tensor.shape
+        self.assertTrue(hasattr(s, "numel"))
+        self.assertEqual(s.numel(), 10 * 20 * 30)
+
+        s_scalar = paddle.to_tensor(100).shape
+        self.assertEqual(s_scalar.numel(), 1)
+
+    def test_07_mutability_and_independence(self):
+        s = self.tensor.shape
+        original_shape_copy = list(s)  # [10, 20, 30]
+
+        try:
+            s.append(40)
+            s[0] = 99
+        except Exception as e:
+            self.fail(f"paddle.Size should support methods like list: {e}")
+
+        self.assertEqual(
+            s, [99, 20, 30, 40], "paddle.Size should support methods like list"
+        )
+
+        self.assertEqual(
+            self.tensor.shape,
+            original_shape_copy,
+            "Modifying a Size object should not modify the original tensor shape",
+        )
+
+        s_new = self.tensor.shape
+        self.assertEqual(
+            s_new,
+            original_shape_copy,
+            "Calling tensor.shape again should return the unmodified shape",
+        )
+        self.assertIsNot(
+            s, s_new, "Calling tensor.shape should return a new object"
+        )
 
 
 if __name__ == "__main__":

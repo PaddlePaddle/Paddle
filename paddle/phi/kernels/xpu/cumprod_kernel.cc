@@ -31,8 +31,11 @@ void CumprodKernel(const Context& dev_ctx,
   auto* x_data = x->data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
   DDim shape = x->dims();
-  std::vector<int64_t> xshape = common::vectorize<int64_t>(shape);
+  std::vector<int64_t> xshape = vectorize<int64_t>(shape);
 
+  if (input.numel() == 0) {
+    return;
+  }
   if (dim < 0) dim += xshape.size();
   if (shape.size() == 0) {
     int r =

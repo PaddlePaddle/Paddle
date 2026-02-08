@@ -23,17 +23,17 @@ template <typename Context, typename T>
 inline DenseTensor MatMul(const Context& dev_ctx,
                           const DenseTensor& matrix_a,
                           const DenseTensor& matrix_b,
-                          const phi::DDim& a_dim,
-                          const phi::DDim& b_dim) {
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+                          const DDim& a_dim,
+                          const DDim& b_dim) {
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   DenseTensor matrix_c;
-  phi::DDim c_dim = common::make_ddim({a_dim[0], b_dim[1]});
+  DDim c_dim = make_ddim({a_dim[0], b_dim[1]});
   matrix_c.Resize(c_dim);
   dev_ctx.template Alloc<T>(&matrix_c);
 
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_dim, 0, false);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_dim, 0, false);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a_dim, 0, false);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b_dim, 0, false);
   const T alpha = static_cast<T>(1.0);
   blas.MatMul(matrix_a.data<T>(),
               mat_dim_a,
@@ -62,7 +62,7 @@ inline DenseTensor MatMul(const Context& dev_ctx,
 template <typename Context, typename T>
 inline DenseTensor MatChainMul(const Context& dev_ctx,
                                const std::vector<const DenseTensor*>& ins,
-                               const std::vector<phi::DDim>& ins_dims,
+                               const std::vector<DDim>& ins_dims,
                                const std::vector<uint64_t>& order,
                                const uint64_t i,
                                const uint64_t j,
@@ -80,7 +80,7 @@ inline DenseTensor MatChainMul(const Context& dev_ctx,
                                          order[i * ins.size() + j],
                                          save_result,
                                          results);
-  phi::DDim a_dim = A.dims();
+  DDim a_dim = A.dims();
   if (i == order[i * ins.size() + j]) {
     a_dim = ins_dims[i];
   }
@@ -93,7 +93,7 @@ inline DenseTensor MatChainMul(const Context& dev_ctx,
                                          j,
                                          save_result,
                                          results);
-  phi::DDim b_dim = B.dims();
+  DDim b_dim = B.dims();
   if (j == order[i * ins.size() + j] + 1) {
     b_dim = ins_dims[j];
   }
@@ -110,7 +110,7 @@ inline DenseTensor MatChainMul(const Context& dev_ctx,
  */
 template <typename Context, typename T>
 std::vector<uint64_t> GetOrder(const std::vector<const DenseTensor*>& ins,
-                               const std::vector<phi::DDim>& ins_dims) {
+                               const std::vector<DDim>& ins_dims) {
   uint64_t n = ins.size();
   // p: save the ins shape, the ins[i] shape is (p[i], p[i+1])
   std::vector<uint64_t> p(n + 1);
@@ -146,7 +146,7 @@ template <typename Context, typename T>
 static inline DenseTensor MultiDotMatChainOrder(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& ins,
-    const std::vector<phi::DDim>& ins_dims,
+    const std::vector<DDim>& ins_dims,
     const bool save_result,
     std::vector<DenseTensor>* results) {
   auto order = GetOrder<Context, T>(ins, ins_dims);
@@ -156,14 +156,14 @@ static inline DenseTensor MultiDotMatChainOrder(
 
 template <typename Context, typename T>
 inline void GetDims(const std::vector<const DenseTensor*>& ins,
-                    std::vector<phi::DDim>* ins_dims) {
+                    std::vector<DDim>* ins_dims) {
   const auto n = ins.size();
   for (size_t i = 0; i < n; i++) {
     (*ins_dims)[i] = ins[i]->dims();
     if (i == 0 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = common::make_ddim({1, (*ins_dims)[i][0]});
+      (*ins_dims)[i] = make_ddim({1, (*ins_dims)[i][0]});
     } else if (i == n - 1 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = common::make_ddim({(*ins_dims)[i][0], 1});
+      (*ins_dims)[i] = make_ddim({(*ins_dims)[i][0], 1});
     }
   }
 }
@@ -175,10 +175,10 @@ void MultiDotKernel(const Context& dev_ctx,
   auto ins = x;
   dev_ctx.template Alloc<T>(out);
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   auto n = ins.size();
-  std::vector<phi::DDim> ins_dims(n);
+  std::vector<DDim> ins_dims(n);
   GetDims<Context, T>(ins, &ins_dims);
 
   // If any numel is 0, then return.
@@ -189,15 +189,14 @@ void MultiDotKernel(const Context& dev_ctx,
   if (size_0) {
     // For example: [2, 0], [0, 4] -> [2, 4]
     if (out && out->numel() > 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
   const T scale = static_cast<T>(1.0);
   if (n == 2) {
-    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
-    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
     blas.MatMul(*ins[0], mat_dim_a, *ins[1], mat_dim_b, scale, out, T(0));
   } else if (n == 3) {
     const auto Ma = ins_dims[0][0];
@@ -206,26 +205,26 @@ void MultiDotKernel(const Context& dev_ctx,
     const auto Nc = ins_dims[2][1];
     const uint64_t cost1 = Ma * Nb * (Ka + Nc);
     const uint64_t cost2 = Ka * Nc * (Nb + Ma);
-    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
-    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
-    auto mat_dim_c = phi::funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
+    auto mat_dim_c = funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
     if (cost1 < cost2) {
       DenseTensor tmp_out;
-      phi::DDim tmp_dim = common::make_ddim({Ma, Nb});
+      DDim tmp_dim = make_ddim({Ma, Nb});
       tmp_out.Resize(tmp_dim);
       dev_ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(
           *ins[0], mat_dim_a, *ins[1], mat_dim_b, scale, &tmp_out, T(0));
-      auto mat_dim_tmp = phi::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
+      auto mat_dim_tmp = funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
       blas.MatMul(tmp_out, mat_dim_tmp, *ins[2], mat_dim_c, scale, out, T(0));
     } else {
       DenseTensor tmp_out;
-      phi::DDim tmp_dim = common::make_ddim({Ka, Nc});
+      DDim tmp_dim = make_ddim({Ka, Nc});
       tmp_out.Resize(tmp_dim);
       dev_ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(
           *ins[1], mat_dim_b, *ins[2], mat_dim_c, scale, &tmp_out, T(0));
-      auto mat_dim_tmp = phi::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
+      auto mat_dim_tmp = funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
       blas.MatMul(*ins[0], mat_dim_a, tmp_out, mat_dim_tmp, scale, out, T(0));
     }
   } else {
@@ -248,16 +247,16 @@ void CalcGrad(const Context& dev_ctx,
               const DenseTensor& dout,
               const DenseTensor& A,
               const DenseTensor& B,
-              const phi::DDim& dout_dim,
-              const phi::DDim& a_dim,
-              const phi::DDim& b_dim,
+              const DDim& dout_dim,
+              const DDim& a_dim,
+              const DDim& b_dim,
               DenseTensor* dA,
               DenseTensor* dB) {
-  auto mat_dim_dout = phi::funcs::CreateMatrixDescriptor(dout_dim, 0, false);
-  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_dim, 0, true);
-  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_dim, 0, true);
+  auto mat_dim_dout = funcs::CreateMatrixDescriptor(dout_dim, 0, false);
+  auto mat_dim_a = funcs::CreateMatrixDescriptor(a_dim, 0, true);
+  auto mat_dim_b = funcs::CreateMatrixDescriptor(b_dim, 0, true);
   T alpha = static_cast<T>(1.0);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   blas.MatMul(A, mat_dim_a, dout, mat_dim_dout, alpha, dB, T(0));
   blas.MatMul(dout, mat_dim_dout, B, mat_dim_b, alpha, dA, T(0));
 }
@@ -279,8 +278,8 @@ void MatChainMulGrad(const Context& dev_ctx,
                      const DenseTensor& dout,
                      std::vector<DenseTensor*>* dx,
                      const std::vector<const DenseTensor*>& ins,
-                     const phi::DDim& dout_dim,
-                     const std::vector<phi::DDim>& ins_dims,
+                     const DDim& dout_dim,
+                     const std::vector<DDim>& ins_dims,
                      const std::vector<uint64_t>& order,
                      const uint64_t i,
                      const uint64_t j,
@@ -295,14 +294,14 @@ void MatChainMulGrad(const Context& dev_ctx,
   const auto left = order[i * n + j] + 1;
   // get the multi result of left sub chain
   const auto* A = &results[i * n + right];
-  phi::DDim a_dim = A->dims();
+  DDim a_dim = A->dims();
   if (i == right) {
     A = ins[i];
     a_dim = ins_dims[i];
   }
   // get the multi result of right sub chain
   const auto* B = &results[left * n + j];
-  phi::DDim b_dim = B->dims();
+  DDim b_dim = B->dims();
   if (left == j) {
     B = ins[j];
     b_dim = ins_dims[j];
@@ -324,8 +323,8 @@ template <typename Context, typename T>
 void MultiDotGradMatChainOrder(const Context& dev_ctx,
                                const DenseTensor& dout,
                                const std::vector<const DenseTensor*>& ins,
-                               const phi::DDim& dout_dim,
-                               const std::vector<phi::DDim>& ins_dims,
+                               const DDim& dout_dim,
+                               const std::vector<DDim>& ins_dims,
                                std::vector<DenseTensor*>* dx) {
   auto order = GetOrder<Context, T>(ins, ins_dims);
   auto n = ins.size();
@@ -345,7 +344,7 @@ void MultiDotGradKernel(const Context& dev_ctx,
   auto dout = out_grad;
   auto dx = x_grad;
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   bool size_0 = false;
   const auto n = ins.size();
@@ -359,31 +358,30 @@ void MultiDotGradKernel(const Context& dev_ctx,
   if (size_0) {
     for (size_t i = 0; i < n; i++) {
       if (dx[i]->numel() > 0) {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx[i]->dims())), 0, dx[i]);
+        Full<T, Context>(dev_ctx, dx[i]->dims(), 0, dx[i]);
       }
     }
     return;
   }
 
-  std::vector<phi::DDim> ins_dims(n);
+  std::vector<DDim> ins_dims(n);
   GetDims<Context, T>(ins, &ins_dims);
 
-  phi::DDim dout_dim = dout.dims();
+  DDim dout_dim = dout.dims();
   if (ins[0]->dims().size() == 1 && ins[n - 1]->dims().size() == 1) {
-    dout_dim = common::make_ddim({1, 1});
+    dout_dim = make_ddim({1, 1});
   } else if (ins[0]->dims().size() == 1) {
     if (dout_dim.size() == 1) {
-      dout_dim = common::make_ddim({1, dout_dim[0]});
+      dout_dim = make_ddim({1, dout_dim[0]});
     }
   } else if (ins[n - 1]->dims().size() == 1) {
     if (dout_dim.size() == 1) {
-      dout_dim = common::make_ddim({dout_dim[0], 1});
+      dout_dim = make_ddim({dout_dim[0], 1});
     }
   }
 
   T alpha = static_cast<T>(1);
-  auto mat_dim_dout = phi::funcs::CreateMatrixDescriptor(dout_dim, 0, false);
+  auto mat_dim_dout = funcs::CreateMatrixDescriptor(dout_dim, 0, false);
   if (n == 2) {
     CalcGrad<Context, T>(dev_ctx,
                          dout,
@@ -401,9 +399,9 @@ void MultiDotGradKernel(const Context& dev_ctx,
     const auto Nc = ins_dims[2][1];
     const uint64_t cost1 = Ma * Nb * (Ka + Nc);
     const uint64_t cost2 = Ka * Nc * (Nb + Ma);
-    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
-    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
-    auto mat_dim_c = phi::funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
+    auto mat_dim_a = funcs::CreateMatrixDescriptor(ins_dims[0], 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(ins_dims[1], 0, false);
+    auto mat_dim_c = funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
     if (cost1 < cost2) {
       DenseTensor tmp_out, tmp_dout;
       tmp_out.Resize({Ma, Nb});

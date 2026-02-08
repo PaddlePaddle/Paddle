@@ -216,7 +216,7 @@ def from_dlpack(
 
     if hasattr(dlpack, "__dlpack__"):
         kwargs = {}
-        kwargs["max_version"] = (1, 2)
+        kwargs["max_version"] = (1, 3)
         if copy is not None:
             kwargs["copy"] = copy
 

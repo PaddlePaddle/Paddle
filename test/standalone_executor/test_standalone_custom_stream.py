@@ -35,9 +35,9 @@ class TestCustomStream(unittest.TestCase):
       |     |           |              |
       |  elementwise_sub(cpu)          |
       |     |           |              |
-      |  tanh(cpu)     elementwise_add(s2)
+      |  silu(cpu)     elementwise_add(s2)
       |     |                  |
-    elementwise_sub(s1)      tanh(s2)
+    elementwise_sub(s1)      silu(s2)
                  |             |
                 elementwise_add(s2)
                         |

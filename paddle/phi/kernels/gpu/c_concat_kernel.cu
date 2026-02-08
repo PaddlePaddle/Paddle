@@ -60,8 +60,8 @@ void CConcatKernel(const Context& dev_ctx,
                         rank,
                         nranks));
 
-  phi::DenseTensor temp_out;
-  phi::DDim temp_out_dims = x->dims();
+  DenseTensor temp_out;
+  DDim temp_out_dims = x->dims();
   temp_out_dims[0] *= nranks;
   temp_out.Resize(temp_out_dims);
   dev_ctx.template Alloc<T>(&temp_out);
@@ -89,19 +89,19 @@ void CConcatKernel(const Context& dev_ctx,
   comm_ctx->AllGather(&temp_out, *x, stream);
 #endif
 
-  std::vector<phi::DenseTensor> inputs;
+  std::vector<DenseTensor> inputs;
   int axis = x->dims().size() - 1;
   auto out_dims = x->dims();
   out_dims[out_dims.size() - 1] *= nranks;
-  int rows_per_tensor = x->dims()[0];
-  int offset = 0;
+  int64_t rows_per_tensor = x->dims()[0];
+  int64_t offset = 0;
   for (int i = 0; i < nranks; i++) {
-    phi::DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
+    DenseTensor temp = temp_out.Slice(offset, offset + rows_per_tensor);
     inputs.emplace_back(temp);
     offset += rows_per_tensor;
   }
 
-  phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
+  funcs::ConcatFunctor<GPUContext, T> functor;
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   functor(dev_ctx, inputs, axis, out);
@@ -112,8 +112,6 @@ void CConcatKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(c_concat,
                    GPU,
                    ALL_LAYOUT,
@@ -124,14 +122,3 @@ PD_REGISTER_KERNEL(c_concat,
                    int64_t,
                    phi::bfloat16,
                    phi::float16) {}
-#else
-PD_REGISTER_KERNEL(c_concat,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CConcatKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::float16) {}
-#endif

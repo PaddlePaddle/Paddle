@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void WarpctcGradKernel(const Context& dev_ctx,
                        const DenseTensor& logits,
-                       const paddle::optional<DenseTensor>& logits_length,
+                       const optional<DenseTensor>& logits_length,
                        const DenseTensor& warpctcgrad,
                        const DenseTensor& loss_grad,
                        int blank,

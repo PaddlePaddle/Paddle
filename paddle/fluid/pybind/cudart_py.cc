@@ -169,7 +169,7 @@ void BindCudaRt(py::module* m) {
 #endif
 
   cudart.def("cudaMemGetInfo", [](int device) -> std::pair<size_t, size_t> {
-    const auto& place = phi::GPUPlace(device);
+    const auto& place = GPUPlace(device);
     platform::CUDADeviceGuard cuda_guard(place);
     size_t device_free = 0;
     size_t device_total = 0;
@@ -399,7 +399,7 @@ void BindCudaRt(py::module* m) {
       "cuda"
       "MemGetInfo",
       [](int device) -> std::pair<size_t, size_t> {
-        const auto& place = phi::GPUPlace(device);
+        const auto& place = GPUPlace(device);
         platform::CUDADeviceGuard cuda_guard(place);
         size_t device_free = 0;
         size_t device_total = 0;

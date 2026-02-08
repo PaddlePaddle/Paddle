@@ -163,7 +163,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& offset,
                               const DenseTensor& filter,
-                              const paddle::optional<DenseTensor>& mask,
+                              const optional<DenseTensor>& mask,
                               const DenseTensor& out_grad,
                               const std::vector<int>& strides,
                               const std::vector<int>& paddings,
@@ -176,32 +176,18 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    if (dx)
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    if (dx) Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     if (offset_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(offset_grad->dims())),
-          0,
-          offset_grad);
+      Full<T, Context>(dev_ctx, offset_grad->dims(), 0, offset_grad);
     if (filter_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(filter_grad->dims())),
-          0,
-          filter_grad);
-    if (mask_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(mask_grad->dims())),
-                            0,
-                            mask_grad);
+      Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
+    if (mask_grad) Full<T, Context>(dev_ctx, mask_grad->dims(), 0, mask_grad);
     return;
   }
 
   const int batch_size = static_cast<int>(x.dims()[0]);
 
-  DDim input_shape = common::slice_ddim(x.dims(), 1, x.dims().size());
+  DDim input_shape = slice_ddim(x.dims(), 1, x.dims().size());
   std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
   std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(common::vectorize(out_grad.dims()));
@@ -219,7 +205,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   DenseTensor col_buffer = Empty<T>(dev_ctx, col_buffer_shape_vec);
   DenseTensor output_buffer;
   output_buffer.ShareDataWith(out_grad).Resize(
-      common::make_ddim(output_buffer_shape_vec));
+      make_ddim(output_buffer_shape_vec));
 
   int64_t M =
       input_shape_vec[0] / groups * filter_shape_vec[2] * filter_shape_vec[3];
@@ -238,18 +224,15 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   DenseTensor col_buffer_3d;
   col_buffer_3d.ShareDataWith(col_buffer).Resize(col_buffer_3d_shape);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::SetConstant<Context, T> set_zero;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   int64_t input_dim = x.numel() / x.dims()[0];
   int64_t input_offset_dim = offset.numel() / offset.dims()[0];
   int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   if (filter_grad) {
-    Full<T>(dev_ctx,
-            {filter_grad_shape.Get(), filter_grad_shape.size()},
-            0,
-            filter_grad);
+    Full<T>(dev_ctx, filter_grad_shape, 0, filter_grad);
   }
 
   if (dx) {
@@ -276,15 +259,14 @@ void DeformableConvGradKernel(const Context& dev_ctx,
 
   for (int i = 0; i < batch_size / im2col_step; ++i) {
     DenseTensor out_grad_3d = out_grad_4d.Slice(i, i + 1).Resize(
-        common::slice_ddim(out_grad_4d.dims(), 1, out_grad_4d.dims().size()));
+        slice_ddim(out_grad_4d.dims(), 1, out_grad_4d.dims().size()));
     for (int g = 0; g < groups; ++g) {
       DenseTensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
-          common::slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
+          slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
       DenseTensor out_grad_3d_slice = out_grad_3d.Slice(g, g + 1).Resize(
-          common::slice_ddim(out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
-      DenseTensor col_buffer_3d_slice =
-          col_buffer_3d.Slice(g, g + 1).Resize(common::slice_ddim(
-              col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
+          slice_ddim(out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
+      DenseTensor col_buffer_3d_slice = col_buffer_3d.Slice(g, g + 1).Resize(
+          slice_ddim(col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
       blas.MatMul(weight_3d_slice,
                   true,
                   out_grad_3d_slice,
@@ -293,7 +275,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                   &col_buffer_3d_slice,
                   T(0.0));
     }
-    col_buffer.Resize(common::make_ddim(col_buffer_shape_vec));
+    col_buffer.Resize(make_ddim(col_buffer_shape_vec));
 
     T* col_buffer_ptr = col_buffer.data<T>();
     const T* input_ptr = x.data<T>();
@@ -411,14 +393,12 @@ void DeformableConvGradKernel(const Context& dev_ctx,
       DenseTensor dweight_3d = Empty<T>(
           dev_ctx, {filter_grad_shape.Get(), filter_grad_shape.size()});
       for (int g = 0; g < groups; ++g) {
-        DenseTensor out_grad_3d_slice =
-            out_grad_3d.Slice(g, g + 1).Resize(common::slice_ddim(
-                out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
-        DenseTensor col_buffer_3d_slice =
-            col_buffer_3d.Slice(g, g + 1).Resize(common::slice_ddim(
-                col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
+        DenseTensor out_grad_3d_slice = out_grad_3d.Slice(g, g + 1).Resize(
+            slice_ddim(out_grad_3d.dims(), 1, out_grad_3d.dims().size()));
+        DenseTensor col_buffer_3d_slice = col_buffer_3d.Slice(g, g + 1).Resize(
+            slice_ddim(col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
         DenseTensor dweight_3d_slice = dweight_3d.Slice(g, g + 1).Resize(
-            common::slice_ddim(dweight_3d.dims(), 1, dweight_3d.dims().size()));
+            slice_ddim(dweight_3d.dims(), 1, dweight_3d.dims().size()));
 
         blas.MatMul(out_grad_3d_slice,
                     false,

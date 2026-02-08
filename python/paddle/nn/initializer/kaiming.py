@@ -173,12 +173,19 @@ class MSRAInitializer(Initializer):
                     -limit,
                     limit,
                     self._seed,
-                    _current_expected_place(),
+                    var.place
+                    if var.place._type()
+                    else _current_expected_place(),
                 )
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
-                place = _current_expected_place()
+                # var.place._type() means undefined, happens when initializer is specified in ParamAttr
+                place = (
+                    var.place
+                    if var.place._type()
+                    else _current_expected_place()
+                )
                 out_var = _C_ops.gaussian(
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
                 )
@@ -302,7 +309,7 @@ class KaimingNormal(MSRAInitializer):
         It is recommended to set fan_in to None for most cases.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -356,7 +363,7 @@ class KaimingUniform(MSRAInitializer):
         It is recommended to set fan_in to None for most cases.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn

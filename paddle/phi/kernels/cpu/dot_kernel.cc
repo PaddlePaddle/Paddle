@@ -28,8 +28,7 @@ void DotKernel(const Context& dev_ctx,
                DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
     // x[2, 1], y[2, 0], out[2]
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   if (out->numel() <= 0) {

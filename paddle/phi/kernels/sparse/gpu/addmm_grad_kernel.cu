@@ -42,7 +42,7 @@ void AddmmCooDenseGradKernel(const Context& dev_ctx,
     blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
     blas.SCAL(input.numel(), beta, dinput->data<T>());
   }
-  DenseTensor dout_scale = phi::EmptyLike<T, Context>(dev_ctx, dout);
+  DenseTensor dout_scale = EmptyLike<T, Context>(dev_ctx, dout);
   blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
   blas.SCAL(dout.numel(), alpha, dout_scale.data<T>());
   MatmulCooDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);
@@ -68,7 +68,7 @@ void AddmmCsrDenseGradKernel(const Context& dev_ctx,
     blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
     blas.SCAL(input.numel(), beta, dinput->data<T>());
   }
-  DenseTensor dout_scale = phi::EmptyLike<T, Context>(dev_ctx, dout);
+  DenseTensor dout_scale = EmptyLike<T, Context>(dev_ctx, dout);
   blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
   blas.SCAL(dout.numel(), alpha, dout_scale.data<T>());
   MatmulCsrDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);

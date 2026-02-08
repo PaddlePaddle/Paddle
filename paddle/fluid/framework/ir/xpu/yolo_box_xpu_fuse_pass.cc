@@ -353,7 +353,7 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
     float offset_ = 0.f;
     if (with_left_ew_sub) {
       const auto& left_ew_sub_y_t =
-          scope->FindVar(left_ew_sub_y->Name())->Get<phi::DenseTensor>();
+          scope->FindVar(left_ew_sub_y->Name())->Get<DenseTensor>();
       auto left_ew_sub_y_dims = left_ew_sub_y_t.dims();
       PADDLE_ENFORCE_EQ(left_ew_sub_y_dims.size(),
                         1,

@@ -16,15 +16,11 @@
 
 #include <iterator>
 #include <random>
-#include <set>
-#include <string>
-#include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
@@ -34,14 +30,14 @@ template <typename T, typename Context>
 void NCEGradKernel(const Context &dev_ctx,
                    const DenseTensor &input_in,
                    const DenseTensor &label_in,
-                   const paddle::optional<DenseTensor> &bias_in,
+                   const optional<DenseTensor> &bias_in,
                    const DenseTensor &weight_in,
                    const DenseTensor &sample_logits_in,
                    const DenseTensor &sample_labels_in,
-                   const paddle::optional<DenseTensor> &sample_weight_in,
-                   const paddle::optional<DenseTensor> &custom_dist_probs,
-                   const paddle::optional<DenseTensor> &custom_dist_alias,
-                   const paddle::optional<DenseTensor> &custom_dist_alias_probs,
+                   const optional<DenseTensor> &sample_weight_in,
+                   const optional<DenseTensor> &custom_dist_probs,
+                   const optional<DenseTensor> &custom_dist_alias,
+                   const optional<DenseTensor> &custom_dist_alias_probs,
                    const DenseTensor &cost_grad,
                    int num_total_classes,
                    const std::vector<int> &custom_neg_classes,
@@ -66,7 +62,7 @@ void NCEGradKernel(const Context &dev_ctx,
   if (sample_weight != nullptr) {
     sample_weight_data = sample_weight->data<T>();
   }
-  int num_true_class = 1;
+  int64_t num_true_class = 1;
   if (label != nullptr) {
     num_true_class = label->dims()[1];
   }
@@ -138,7 +134,7 @@ void NCEGradKernel(const Context &dev_ctx,
   }
 
   //    T b = 1. / num_total_classes * num_neg_samples;
-  phi::DenseTensor sample_grad;  // tmp tensor
+  DenseTensor sample_grad;  // tmp tensor
   sample_grad.Resize(sample_labels->dims());
   T *sample_grad_data = dev_ctx.template Alloc<T>(&sample_grad);
 

@@ -13,10 +13,9 @@
 // limitations under the License.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator_v2.h"
-
 #include <algorithm>
 #include <mutex>  // NOLINT
-
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -32,7 +31,7 @@ namespace paddle::memory::allocation {
 AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
     const std::shared_ptr<Allocator> &underlying_allocator,
     size_t alignment,
-    phi::GPUPlace place,
+    GPUPlace place,
     size_t chunk_size,
     bool allow_free_idle_chunk,
     int extra_padding_size)

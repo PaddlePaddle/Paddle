@@ -47,7 +47,7 @@ void NonZeroKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "nonzero_count");
 
   int64_t true_num_cpu;
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      static_cast<void*>(&true_num_cpu),
                      dev_ctx.GetPlace(),
                      static_cast<void*>(true_num),
@@ -60,14 +60,14 @@ void NonZeroKernel(const Context& dev_ctx,
     true_num_cpu = numel;
   }
 
-  out->Resize(common::make_ddim({true_num_cpu, rank}));
+  out->Resize(make_ddim({true_num_cpu, rank}));
   auto* out_data = dev_ctx.template Alloc<int64_t>(out);
 
   if (true_num_cpu == 0) {
     return;
   }
 
-  auto condition_shape = common::vectorize<int64_t>(dims);
+  auto condition_shape = vectorize<int64_t>(dims);
   ret = xpu::nonzero_compute<XPUType, int64_t, int64_t>(dev_ctx.x_context(),
                                                         cond_data,
                                                         out_data,

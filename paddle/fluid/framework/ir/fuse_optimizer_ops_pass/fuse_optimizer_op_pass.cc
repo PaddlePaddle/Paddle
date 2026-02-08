@@ -402,7 +402,7 @@ void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
                       true,
                       common::errors::InvalidArgument(
                           "Currently the gradient(%s) type only should be "
-                          "phi::DenseTensor when "
+                          "DenseTensor when "
                           "fusing optimizer ops.",
                           grad_var_name));
     for (auto var : iter->second) {
@@ -513,7 +513,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
         iter != grad_vec.end(),
         true,
         common::errors::NotFound(
-            "Parameter@Grad(%s) is not found in gradient vector.", p_g.second));
+            "Parameter@GRAD(%s) is not found in gradient vector.", p_g.second));
     auto idx = std::distance(grad_vec.begin(), iter);
     grad_sort_idx.emplace_back(idx);
   }

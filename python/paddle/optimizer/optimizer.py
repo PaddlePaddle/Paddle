@@ -512,6 +512,8 @@ class Optimizer:
                         )
                 var.set_value(state_dict[var_tmp.name])
 
+    load_state_dict = set_state_dict
+
     def get_opti_var_name_list(self) -> list[str]:
         return self._opti_name_list
 
@@ -1321,14 +1323,24 @@ class Optimizer:
 
             if isinstance(parameters_and_grads, list):
                 with paddle.base.framework.dygraph_guard_if_declarative():
-                    self._create_accumulators(
-                        target_block,
-                        [
-                            p[0]
-                            for p in parameters_and_grads
-                            if not p[0].stop_gradient
-                        ],
-                    )
+                    _need_shard = False
+                    for param, _ in parameters_and_grads:
+                        if hasattr(param, '_need_shard_auto'):
+                            _need_shard = True
+                            break
+                    if _need_shard:
+                        paddle.distributed.auto_parallel.fully_shard.shard_accumulators(
+                            parameters_and_grads, self, target_block
+                        )
+                    else:
+                        self._create_accumulators(
+                            target_block,
+                            [
+                                p[0]
+                                for p in parameters_and_grads
+                                if not p[0].stop_gradient
+                            ],
+                        )
             else:
                 params_acc_dict = parameters_and_grads.copy()
                 params_acc_dict['params'] = [
@@ -1891,6 +1903,10 @@ class Optimizer:
         for p in param_list:
             p.clear_gradient(set_to_zero)
 
+    @framework.non_static_only
+    def zero_grad(self, set_to_none: bool = True) -> None:
+        self.clear_grad(set_to_zero=not set_to_none)
+
     @imperative_base.no_grad()
     def minimize(
         self,
@@ -2014,18 +2030,16 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if getattr(self, 'enable_tensor_fusion', False) or os.getenv(
-                    "FLAGS_enable_main_grad"
-                ) in [
-                    "True",
-                    "true",
-                    "1",
-                ]:
+                if getattr(self, 'enable_tensor_fusion', False):
                     if (
                         hasattr(param, "main_grad")
                         and param.main_grad is not None
                     ):
                         params_grads.append((param, param.main_grad))
+                elif (
+                    hasattr(param, "main_grad") and param.main_grad is not None
+                ):
+                    params_grads.append((param, param.main_grad))
                 else:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()

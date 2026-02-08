@@ -26,9 +26,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-constexpr char kCustomDialectPrefix[] = "custom_op.";  // NOLINT
-constexpr char kGradSuffix[] = "_grad";                // NOLINT
-constexpr char kDoubleGradSuffix[] = "_grad_grad";     // NOLINT
+constexpr char kCustomDialectPrefix[] = "custom_op.";      // NOLINT
+constexpr char kPythonOperatorDialectPrefix[] = "py_op.";  // NOLINT
+constexpr char kGradSuffix[] = "_grad";                    // NOLINT
+constexpr char kDoubleGradSuffix[] = "_grad_grad";         // NOLINT
 
 namespace detail {
 
@@ -146,6 +147,38 @@ inline static const OpMetaInfo& GetOpInfoByPirName(
       paddle::OpMetaInfoMap::Instance().GetMap().find(custom_name_prefix);
   if (map_iter == paddle::OpMetaInfoMap::Instance().GetMap().end()) {
     PADDLE_THROW("The info of custom op : " + custom_name + " is not exists!");
+  }
+  const auto& vec_op_meta = map_iter->second;
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
+    return vec_op_meta[2];
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
+    return vec_op_meta[1];
+  } else {
+    return vec_op_meta[0];
+  }
+}
+
+inline static const OpMetaInfo& GetPythonOperatorInfoByPirName(
+    const std::string& pir_op_name) {
+  auto custom_name = pir_op_name.substr(strlen(kPythonOperatorDialectPrefix));
+  int pos = custom_name.length();
+
+  if (custom_name[pos - 1] == '_') {
+    custom_name = custom_name.substr(0, pos - 1);
+  }
+
+  pos = custom_name.length();
+  if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kDoubleGradSuffix);
+  } else if (custom_name.find(kGradSuffix) != custom_name.npos) {
+    pos = custom_name.find(kGradSuffix);
+  }
+  auto custom_name_prefix = custom_name.substr(0, pos);
+  auto map_iter =
+      paddle::OpMetaInfoMap::Instance().GetMap().find(custom_name_prefix);
+  if (map_iter == paddle::OpMetaInfoMap::Instance().GetMap().end()) {
+    PADDLE_THROW("The info of custom python op : " + custom_name +
+                 " is not exists!");
   }
   const auto& vec_op_meta = map_iter->second;
   if (custom_name.find(kDoubleGradSuffix) != custom_name.npos) {

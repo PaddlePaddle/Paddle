@@ -31,7 +31,7 @@ void PruneGateByCapacityKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(new_gate_idx);
 
-  phi::DenseTensor expert_count_cpu, gate_idx_cpu;
+  DenseTensor expert_count_cpu, gate_idx_cpu;
   phi::Copy(dev_ctx, *expert_count, phi::CPUPlace(), true, &expert_count_cpu);
   phi::Copy(dev_ctx, *gate_idx, phi::CPUPlace(), true, &gate_idx_cpu);
   auto expert_count_data = expert_count_cpu.data<T>();

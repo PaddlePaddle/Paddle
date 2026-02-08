@@ -54,13 +54,13 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   for (int i = 0; i < input_dim[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(common::make_ddim({index_size}));
+  index.Resize(make_ddim({index_size}));
   DenseTensor x_copy = x;
   phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
 
-  auto output_dim = common::vectorize(x.dims());
+  auto output_dim = vectorize(x.dims());
   output_dim[dim] = index_size;
-  out->Resize(common::make_ddim(output_dim));
+  out->Resize(make_ddim(output_dim));
   phi::IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
 }
 
@@ -100,14 +100,14 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
     } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+      funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -122,15 +122,15 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     dev_ctx.template Alloc<T>(out);
     return;
   }
   auto x_copy = x;
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -145,12 +145,12 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+    funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -165,7 +165,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     IndexSelectInner<Context, T, int64_t>(dev_ctx, &x_copy, index, out, dim);
   }
 }

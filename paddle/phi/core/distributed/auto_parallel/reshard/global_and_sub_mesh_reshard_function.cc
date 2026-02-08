@@ -43,7 +43,7 @@ bool GlobalToSubMeshReshardFunction::IsSuitable(
   return true;
 }
 
-void GlobalToSubMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void GlobalToSubMeshReshardFunction::Eval(DeviceContext* dev_ctx,
                                           const DistTensor& in,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {
@@ -54,9 +54,9 @@ void GlobalToSubMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     SetValue(out, in_dense_value);
   } else {
     *(out->unsafe_mutable_value()) =
-        phi::DenseTensor(std::make_shared<phi::Allocation>(
-                             nullptr, 0, phi::distributed::GetDefaultPlace()),
-                         in.value().meta());
+        DenseTensor(std::make_shared<phi::Allocation>(
+                        nullptr, 0, phi::distributed::GetDefaultPlace()),
+                    in.value().meta());
   }
   SetDistProps(out, in.dims(), out_dist_attr);
 }
@@ -74,7 +74,7 @@ bool SubMeshToGlobalReshardFunction::IsSuitable(
   return true;
 }
 
-void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void SubMeshToGlobalReshardFunction::Eval(DeviceContext* dev_ctx,
                                           const DistTensor& in,
                                           const TensorDistAttr& out_dist_attr,
                                           DistTensor* out) {

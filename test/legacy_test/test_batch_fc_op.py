@@ -28,8 +28,8 @@ def np_cal_batchfc(input, w, bias):
     for slot in range(slot_pairs_num):
         res[slot, :] = np.dot(input[slot, :], w[slot, :])
     for slot in range(slot_pairs_num):
-        for bindx in range(out_dim):
-            res[slot, :, bindx] += bias[slot, bindx]
+        for b_index in range(out_dim):
+            res[slot, :, b_index] += bias[slot, b_index]
     return res
 
 

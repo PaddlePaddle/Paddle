@@ -81,6 +81,14 @@ class TestRandomGeneratorSetGetState(unittest.TestCase):
 
         assert_array_equal(x, generate_random_number_and_states(gen))
 
+    def test_generator(self):
+        g_cpu = paddle.Generator('cpu')
+        if core.is_compiled_with_cuda():
+            g_cuda = paddle.Generator(device='cuda')
+            g_cuda.set_state(g_cpu.get_state())
+        if core.is_compiled_with_xpu():
+            xpu = paddle.Generator(device='xpu')
+
 
 if __name__ == "__main__":
     unittest.main()

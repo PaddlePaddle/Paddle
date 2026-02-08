@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import itertools
 import unittest
 from functools import partial
 
@@ -48,54 +49,59 @@ class TrtConvertIndexSelectTest(TrtLayerAutoScanTest):
         def generate_input3(axis):
             return np.array([axis]).astype(np.int32)
 
-        for shape in [[32, 64, 16, 32]]:
-            for index in [[1, 4], [4, 8]]:
-                for axis in [0, 1, 2, 3]:
-                    for overwrite in [True, False]:
-                        for input in [
-                            {"X": ["input_data"], "Index": ["index_data"]}
-                        ]:
-                            for index_type_int32 in [True, False]:
-                                self.shape = shape
-                                self.axis = axis
-                                self.input_num = len(input)
-                                self.index_type_int32 = index_type_int32
-                                dics = [{"dim": axis}]
-                                ops_config = [
-                                    {
-                                        "op_type": "index_select",
-                                        "op_inputs": input,
-                                        "op_outputs": {"Out": ["output_data"]},
-                                        "op_attrs": dics[0],
-                                    }
-                                ]
-                                ops = self.generate_op_config(ops_config)
+        for (
+            shape,
+            index,
+            axis,
+            overwrite,
+            input,
+            index_type_int32,
+        ) in itertools.product(
+            [[32, 64, 16, 32]],
+            [[1, 4], [4, 8]],
+            [0, 1, 2, 3],
+            [True, False],
+            [{"X": ["input_data"], "Index": ["index_data"]}],
+            [True, False],
+        ):
+            self.shape = shape
+            self.axis = axis
+            self.input_num = len(input)
+            self.index_type_int32 = index_type_int32
+            dics = [{"dim": axis}]
+            ops_config = [
+                {
+                    "op_type": "index_select",
+                    "op_inputs": input,
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={},
-                                    inputs={
-                                        "index_data": TensorConfig(
-                                            data_gen=partial(
-                                                (
-                                                    generate_input2
-                                                    if index_type_int32
-                                                    else generate_input4
-                                                ),
-                                                index,
-                                            )
-                                        ),
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, shape
-                                            )
-                                        ),
-                                    },
-                                    outputs=["output_data"],
-                                    no_cast_list=["index_data"],
-                                )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "index_data": TensorConfig(
+                        data_gen=partial(
+                            (
+                                generate_input2
+                                if index_type_int32
+                                else generate_input4
+                            ),
+                            index,
+                        )
+                    ),
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, shape)
+                    ),
+                },
+                outputs=["output_data"],
+                no_cast_list=["index_data"],
+            )
 
-                                yield program_config
+            yield program_config
 
     def generate_dynamic_shape(self, attrs):
         if len(self.shape) == 1:

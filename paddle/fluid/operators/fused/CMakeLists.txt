@@ -21,17 +21,13 @@ if(WITH_XPU)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  # fused_bn_activation_op needs cudnn 7.4.1 above
-  # HIP not support bn act fuse in MIOPEN
-  if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))
-    op_library(fused_bn_activation_op)
-  endif()
   # HIP not support cudnnTransformTensor
   # HIP not support cudnnConvolutionBiasActivationForward
   op_library(fused_gate_attention_op)
   # fused_bn_add_activation
   # HIP not support bn act fuse in MIOPEN
-  if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))
+  if(NOT WITH_ROCM)
+    op_library(fused_bn_activation_op)
     op_library(fused_bn_add_activation_op)
   endif()
   # fused_dropout

@@ -82,7 +82,7 @@ void *cinn_get_item_in_cuda_kernel_args(void *v_args, int idx) {
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   return static_cast<void *>(&args[idx]);
 }
-
+extern "C" {
 void cinn_call_cuda_kernel(void *kernel_fn,
                            void *v_args,
                            int num_args,
@@ -119,7 +119,22 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   {
     cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                         cinn::utils::EventType::kInstruction);
-    CUDA_DRIVER_CALL(cuLaunchKernel(static_cast<CUfunction>(kernel_fn),
+    // Check CUDA function pointer validity
+    CUfunction cu_func = static_cast<CUfunction>(kernel_fn);
+    if (!cu_func) {
+      LOG(FATAL) << "Invalid CUDA function pointer";
+      return;
+    }
+
+    // Check current CUDA context
+    CUcontext ctx;
+    CUresult ctx_result = cuCtxGetCurrent(&ctx);
+    if (ctx_result != CUDA_SUCCESS || !ctx) {
+      LOG(FATAL) << "No valid CUDA context";
+      return;
+    }
+
+    CUDA_DRIVER_CALL(cuLaunchKernel(cu_func,
                                     grid_x,
                                     grid_y,
                                     grid_z,
@@ -132,7 +147,9 @@ void cinn_call_cuda_kernel(void *kernel_fn,
                                     nullptr))
   }
 }
+}
 
+extern "C" {
 void cinn_call_cuda_cooperative_kernel(void *kernel_fn,
                                        void *v_args,
                                        int num_args,
@@ -181,6 +198,7 @@ void cinn_call_cuda_cooperative_kernel(void *kernel_fn,
                                   static_cast<CUstream>(stream),
                                   kernel_args.data()))
   }
+}
 }
 
 void cinn_call_cublas(void *v_args,
@@ -2901,9 +2919,10 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   cudnnDestroyTensorDescriptor(out_desc);
   cudnnDestroyPoolingDescriptor(pooling_desc);
 }
-
+extern "C" {
 void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
   v[row][col] = value;
+}
 }
 void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
                             cinn_buffer_t *input,

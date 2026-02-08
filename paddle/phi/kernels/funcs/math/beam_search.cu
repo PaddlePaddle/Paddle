@@ -405,13 +405,13 @@ template <typename T>
 class BeamSearchFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* pre_ids,
-                  const phi::DenseTensor* pre_scores,
-                  const phi::DenseTensor* ids,
-                  const phi::DenseTensor* scores,
-                  phi::DenseTensor* selected_ids,
-                  phi::DenseTensor* selected_scores,
-                  phi::DenseTensor* parent_idx,
+                  const DenseTensor* pre_ids,
+                  const DenseTensor* pre_scores,
+                  const DenseTensor* ids,
+                  const DenseTensor* scores,
+                  DenseTensor* selected_ids,
+                  DenseTensor* selected_scores,
+                  DenseTensor* parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -431,7 +431,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
     // Reserve a big enough memory.
     auto selected_dims =
-        common::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
+        make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
     selected_ids->Resize(selected_dims);
     int64_t* selected_ids_data = dev_ctx.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(selected_dims);
@@ -522,7 +522,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     selected_scores->set_lod(selected_lod);
     if (selected_lod[1].back() < num_seqs * beam_size) {
       auto final_selected_dims =
-          common::make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
+          make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
       if (parent_idx) {

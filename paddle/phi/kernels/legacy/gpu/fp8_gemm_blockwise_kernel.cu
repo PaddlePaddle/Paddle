@@ -103,15 +103,15 @@ void cublas_gemm_blockwise_impl(const Context& dev_ctx,
       false,
       common::errors::InvalidArgument("Only transb == false is supported"));
   PADDLE_ENFORCE_EQ(A.place().GetType(),
-                    phi::AllocationType::GPU,
+                    AllocationType::GPU,
                     common::errors::InvalidArgument(
                         "Input tensor A must be on CUDA device."));
   PADDLE_ENFORCE_EQ(B.place().GetType(),
-                    phi::AllocationType::GPU,
+                    AllocationType::GPU,
                     common::errors::InvalidArgument(
                         "Input tensor B must be on CUDA device."));
   PADDLE_ENFORCE_EQ(D->place().GetType(),
-                    phi::AllocationType::GPU,
+                    AllocationType::GPU,
                     common::errors::InvalidArgument(
                         "Output tensor D must be on CUDA device."));
   PADDLE_ENFORCE_EQ(IsFp8Dtype(A.dtype()),

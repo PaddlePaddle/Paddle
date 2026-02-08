@@ -281,5 +281,36 @@ class TensorFillDiagonal_ZeroSize(unittest.TestCase):
         self._test_normal([0, 0])
 
 
+class TestFillDiagonalAlias(unittest.TestCase):
+    def test_alias_fill_value_success(self):
+        """
+        Test case: Verify that 'fill_value' can be used as an alias for 'value'.
+        """
+        # 1. Initialize data
+        x = paddle.zeros([4, 4], dtype='float32')
+        # 2. Use the new alias parameter 'fill_value'
+        # This aligns with PyTorch's API
+        x.fill_diagonal_(fill_value=5.0)
+        # 3. Verify results
+        x_np = x.numpy()
+        # Check if diagonal elements are updated correctly
+        for i in range(4):
+            self.assertEqual(x_np[i, i], 5.0)
+        # Check if off-diagonal elements remain 0
+        # (Manually reset diagonal to 0 and check if the whole matrix is 0)
+        np.fill_diagonal(x_np, 0)
+        self.assertTrue(np.all(x_np == 0))
+
+    def test_alias_conflict(self):
+        """
+        Test case: Verify that providing both 'value' and 'fill_value' raises an error.
+        To avoid ambiguity, specifying both parameters is prohibited.
+        """
+        x = paddle.zeros([3, 3], dtype='float32')
+        # Expect TypeError or ValueError when both arguments are provided
+        with self.assertRaises((ValueError, TypeError)):
+            x.fill_diagonal_(value=1.0, fill_value=2.0)
+
+
 if __name__ == '__main__':
     unittest.main()

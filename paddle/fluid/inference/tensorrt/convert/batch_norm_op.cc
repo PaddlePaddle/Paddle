@@ -70,7 +70,7 @@ class BatchNormOpConverter : public OpConverter {
     scale_tensor.Resize(Scale_t->dims());
     variance_tensor.Resize(Variance_t->dims());
 
-    phi::CPUPlace cpu_place;
+    CPUPlace cpu_place;
     // copy data from gpu to cpu
     paddle::framework::TensorCopySync((*Bias_t), cpu_place, &bias_tensor);
     paddle::framework::TensorCopySync((*Mean_t), cpu_place, &mean_tensor);
@@ -78,10 +78,10 @@ class BatchNormOpConverter : public OpConverter {
     paddle::framework::TensorCopySync(
         (*Variance_t), cpu_place, &variance_tensor);
 
-    auto* bias_data = bias_tensor.mutable_data<float>(phi::CPUPlace());
-    auto* mean_data = mean_tensor.mutable_data<float>(phi::CPUPlace());
-    auto* scale_data = scale_tensor.mutable_data<float>(phi::CPUPlace());
-    auto* variance_data = variance_tensor.mutable_data<float>(phi::CPUPlace());
+    auto* bias_data = bias_tensor.mutable_data<float>(CPUPlace());
+    auto* mean_data = mean_tensor.mutable_data<float>(CPUPlace());
+    auto* scale_data = scale_tensor.mutable_data<float>(CPUPlace());
+    auto* variance_data = variance_tensor.mutable_data<float>(CPUPlace());
 
     std::unique_ptr<phi::DenseTensor> combine_scale_tensor(
         new phi::DenseTensor());
@@ -92,9 +92,9 @@ class BatchNormOpConverter : public OpConverter {
     combine_bias_tensor->Resize(bias_tensor.dims());
 
     auto* combine_scale_data =
-        combine_scale_tensor->mutable_data<float>(phi::CPUPlace());
+        combine_scale_tensor->mutable_data<float>(CPUPlace());
     auto* combine_bias_data =
-        combine_bias_tensor->mutable_data<float>(phi::CPUPlace());
+        combine_bias_tensor->mutable_data<float>(CPUPlace());
 
     size_t ele_num = combine_scale_tensor->memory_size() / sizeof(float);
 

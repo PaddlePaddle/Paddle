@@ -16,8 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place, is_custom_device
-from test_sparse_attention_op import get_cuda_version
+from op_test import OpTest, get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F

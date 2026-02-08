@@ -1197,7 +1197,7 @@ if (BUILD_DOCUMENTATION)
   install(DIRECTORY "${out_source_DOCS_DIR}" DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif ()
 
-# Print a configuration summary. We want CXX and CXXFLAGS, but they are not includd in ALL.
+# Print a configuration summary. We want CXX and CXXFLAGS, but they are not included in ALL.
 if (CRYPTOPP_I386)
   message(STATUS "Platform: i386/i686")
 elseif (CRYPTOPP_AMD64)

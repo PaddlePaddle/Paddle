@@ -14,17 +14,26 @@
 
 #pragma once
 
+#include <ATen/core/TensorAccessor.h>
 #include <c10/core/Device.h>
+#include <c10/core/Layout.h>
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
+#include <c10/core/Storage.h>
+#include <c10/core/SymInt.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
 #include <utils/scalar_type_conversion.h>
+#include <algorithm>
+#include <iostream>
+#include <vector>
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -33,6 +42,26 @@ class PADDLE_API TensorBase {
  public:
   TensorBase() = default;
   TensorBase(const PaddleTensor& tensor) : tensor_(tensor){};  // NOLINT
+  TensorBase(const TensorBase&) = default;
+  TensorBase(TensorBase&&) noexcept = default;
+  ~TensorBase() noexcept = default;
+
+#if defined(_MSC_VER)
+  TensorBase& operator=(const TensorBase& x) & {
+    tensor_ = x.tensor_;
+    return *this;
+  }
+  TensorBase& operator=(TensorBase&& x) & noexcept {
+    tensor_ = std::move(x.tensor_);
+    return *this;
+  }
+#else
+  TensorBase& operator=(const TensorBase& x) & = default;
+  TensorBase& operator=(TensorBase&& x) & noexcept = default;
+#endif
+
+  TensorBase& operator=(const TensorBase&) && = delete;
+  TensorBase& operator=(TensorBase&&) && noexcept = delete;
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
@@ -61,8 +90,17 @@ class PADDLE_API TensorBase {
     }
     return tensor_.strides()[static_cast<int>(dim)];
   }
+
+  c10::SymInt sym_stride(int64_t dim) const {
+    return static_cast<c10::SymInt>(stride(dim));
+  }
+
   c10::IntArrayRef strides() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.strides());
+  }
+
+  c10::SymIntArrayRef sym_strides() const {
+    return c10::SymIntArrayRef(strides());
   }
 
   int64_t size(int64_t dim) const {
@@ -72,13 +110,21 @@ class PADDLE_API TensorBase {
     return tensor_.dims()[static_cast<int>(dim)];
   }
 
+  c10::SymInt sym_size(int64_t dim) const {
+    return static_cast<c10::SymInt>(size(dim));
+  }
+
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
   }
 
+  c10::SymIntArrayRef sym_sizes() const { return c10::SymIntArrayRef(sizes()); }
+
   int64_t numel() const { return tensor_.numel(); }
 
-  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
+  c10::SymInt sym_numel() const { return static_cast<c10::SymInt>(numel()); }
+
+  c10::ScalarType dtype() const {  // Should we use `caffe2::TypeMeta` here?
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
@@ -106,8 +152,58 @@ class PADDLE_API TensorBase {
     return tensor_.is_contiguous();
   }
 
+  bool is_non_overlapping_and_dense() const {
+    // Empty or scalar tensors are always non-overlapping and dense
+    if (numel() <= 1) {
+      return true;
+    }
+
+    // If the tensor is contiguous, it is non-overlapping and dense
+    if (tensor_.is_contiguous()) {
+      return true;
+    }
+
+    // For non-contiguous tensors, check if sorted strides form a valid dense
+    // layout
+    auto sizes_vec = sizes();
+    auto strides_vec = strides();
+    int64_t ndim = dim();
+
+    // Create a permutation sorted by strides (ascending order)
+    std::vector<int64_t> perm(ndim);
+    for (int64_t i = 0; i < ndim; ++i) {
+      perm[i] = i;
+    }
+    std::sort(perm.begin(), perm.end(), [&](int64_t a, int64_t b) {
+      return strides_vec[a] < strides_vec[b];
+    });
+
+    // Check if sorted strides form a valid dense layout without gaps/overlaps
+    int64_t expected_stride = 1;
+    for (int64_t i = 0; i < ndim; ++i) {
+      int64_t dim_idx = perm[i];
+      if (sizes_vec[dim_idx] == 0) {
+        return true;  // Empty tensor
+      }
+      if (sizes_vec[dim_idx] == 1) {
+        continue;  // Size-1 dimensions don't affect density
+      }
+      if (strides_vec[dim_idx] != expected_stride) {
+        return false;
+      }
+      expected_stride *= sizes_vec[dim_idx];
+    }
+    return true;
+  }
+
   c10::ScalarType scalar_type() const {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  }
+
+  bool has_names() const {
+    // In PyTorch, has_names() is used to check if any dimension has names.
+    // In Paddle, we don't support named dimension yet, so always return false.
+    return false;
   }
 
   c10::TensorOptions options() const {
@@ -124,6 +220,31 @@ class PADDLE_API TensorBase {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
     return *this;
   }
+
+  at::TensorBase to(
+      at::TensorOptions options = {},
+      bool non_blocking = false,
+      bool copy = false,
+      std::optional<at::MemoryFormat> memory_format = std::nullopt) const {
+    if (options.device_opt().has_value()) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "The `to` method with device option is not supported yet."));
+    }
+    if (memory_format.has_value()) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "The `to` method with memory_format option is not supported yet."));
+    }
+    return paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()));
+  }
+
+  bool is_complex() const { return at::isComplexType(this->scalar_type()); }
+
+  bool is_floating_point() const {
+    return at::isFloatingType(this->scalar_type());
+  }
+
+  bool is_signed() const { return at::isSignedType(this->scalar_type()); }
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
@@ -169,8 +290,145 @@ class PADDLE_API TensorBase {
 
   bool defined() const { return tensor_.defined(); }
 
-  PaddleTensor _PD_GetInner() const { return tensor_; }
-  PaddleTensor& _PD_GetInner() { return tensor_; }
+  Layout layout() const {
+    switch (tensor_.layout()) {
+      case common::DataLayout::STRIDED:
+      case common::DataLayout::NCHW:
+      case common::DataLayout::NHWC:
+      case common::DataLayout::NCDHW:
+      case common::DataLayout::NDHWC:
+        return c10::kStrided;
+      case common::DataLayout::SPARSE_COO:
+        return c10::kSparse;
+      case common::DataLayout::SPARSE_CSR:
+        return c10::kSparseCsr;
+      case common::DataLayout::ONEDNN:
+        return c10::kMkldnn;
+      default:
+        return c10::kStrided;
+    }
+  }
+
+  void reset() { tensor_.reset(); }
+
+  int64_t storage_offset() const {
+    // Paddle DenseTensor stores offset in meta_.offset (in bytes)
+    // We need to convert to element offset
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+    if (dense_tensor) {
+      size_t byte_offset = dense_tensor->meta().offset;
+      size_t element_size = SizeOf(tensor_.dtype());
+      return element_size > 0 ? static_cast<int64_t>(byte_offset / element_size)
+                              : 0;
+    }
+    return 0;
+  }
+
+  c10::SymInt sym_storage_offset() const {
+    return c10::SymInt(storage_offset());
+  }
+
+  bool has_storage() const { return tensor_.defined(); }
+
+  const Storage storage() const {
+    return Storage(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder());
+  }
+
+  bool is_alias_of(const at::TensorBase& other) const {
+    return this->storage().allocation() == other.storage().allocation();
+  }
+
+  // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
+  // type and
+  // dimension.
+  template <typename T, size_t N>
+  TensorAccessor<T, N> accessor() const& {
+    static_assert(
+        N > 0,
+        "accessor is used for indexing tensor, for scalars use *data_ptr<T>()");
+    TORCH_CHECK(dim() == N,
+                "TensorAccessor expected ",
+                N,
+                " dims but tensor has ",
+                dim());
+    T* ptr = nullptr;
+    if constexpr (std::is_const_v<T>) {
+      ptr = const_data_ptr<T>();
+    } else {
+      ptr = mutable_data_ptr<T>();
+    }
+    return TensorAccessor<T, N>(ptr, sizes().data(), strides().data());
+  }
+  template <typename T, size_t N>
+  TensorAccessor<T, N> accessor() && = delete;
+
+  // Return a `GenericPackedTensorAccessor` for CUDA `Tensor`s. You have to
+  // specify scalar type and dimension. You can optionally specify
+  // RestrictPtrTraits as a template parameter to cast the data pointer to a
+  // __restrict__ pointer. In order to use this, your CUDA kernel has to take a
+  // corresponding GenericPackedTensorAccessor as an argument.
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  GenericPackedTensorAccessor<T, N, PtrTraits, index_t>
+  generic_packed_accessor() const& {
+    static_assert(
+        N > 0,
+        "accessor is used for indexing tensor, for scalars use *data_ptr<T>()");
+    TORCH_CHECK(dim() == N,
+                "TensorAccessor expected ",
+                N,
+                " dims but tensor has ",
+                dim());
+    T* ptr = nullptr;
+    if constexpr (std::is_const_v<T>) {
+      ptr = const_data_ptr<T>();
+    } else {
+      ptr = mutable_data_ptr<T>();
+    }
+    return GenericPackedTensorAccessor<T, N, PtrTraits, index_t>(
+        static_cast<typename PtrTraits<T>::PtrType>(ptr),
+        sizes().data(),
+        strides().data());
+  }
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  GenericPackedTensorAccessor<T, N> generic_packed_accessor() && = delete;
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor32<T, N, PtrTraits> packed_accessor32() const& {
+    TORCH_CHECK(
+        numel() <= static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+        "numel needs to be smaller than int32_t max; otherwise, please use "
+        "packed_accessor64");
+    return generic_packed_accessor<T, N, PtrTraits, int32_t>();
+  }
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor32<T, N, PtrTraits> packed_accessor32() && = delete;
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor64<T, N, PtrTraits> packed_accessor64() const& {
+    return generic_packed_accessor<T, N, PtrTraits, int64_t>();
+  }
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits>
+  PackedTensorAccessor64<T, N, PtrTraits> packed_accessor64() && = delete;
+
+  const PaddleTensor& _PD_GetInner() const& { return tensor_; }
+  PaddleTensor& _PD_GetInner() & { return tensor_; }
+  PaddleTensor&& _PD_GetInner() && { return std::move(tensor_); }
 
  protected:
   PaddleTensor tensor_;

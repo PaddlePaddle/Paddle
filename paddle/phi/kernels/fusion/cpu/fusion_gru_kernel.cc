@@ -46,14 +46,14 @@ namespace phi::fusion {
                                   phi::jit::to_kerneltype(activation));      \
   phi::jit::gru_t one_step;                                                  \
   auto ComputeH1 =                                                           \
-      phi::jit::KernelFuncs<phi::jit::GRUH1Tuple<T>, phi::CPUPlace>::Cache() \
+      phi::jit::KernelFuncs<phi::jit::GRUH1Tuple<T>, CPUPlace>::Cache().At(  \
+          attr);                                                             \
+  auto ComputeHtPart1 =                                                      \
+      phi::jit::KernelFuncs<phi::jit::GRUHtPart1Tuple<T>, CPUPlace>::Cache() \
           .At(attr);                                                         \
-  auto ComputeHtPart1 = phi::jit::KernelFuncs<phi::jit::GRUHtPart1Tuple<T>,  \
-                                              phi::CPUPlace>::Cache()        \
-                            .At(attr);                                       \
-  auto ComputeHtPart2 = phi::jit::KernelFuncs<phi::jit::GRUHtPart2Tuple<T>,  \
-                                              phi::CPUPlace>::Cache()        \
-                            .At(attr);                                       \
+  auto ComputeHtPart2 =                                                      \
+      phi::jit::KernelFuncs<phi::jit::GRUHtPart2Tuple<T>, CPUPlace>::Cache() \
+          .At(attr);                                                         \
   const T* x_data = x.data<T>();                                             \
   const T* wx_data = weight_x.data<T>();                                     \
   const T* wh_data = weight_h.data<T>();                                     \
@@ -62,10 +62,10 @@ namespace phi::fusion {
 template <typename T, typename Context>
 void SeqCompute(const Context& dev_ctx,
                 const DenseTensor& x,
-                const paddle::optional<DenseTensor>& h0,
+                const optional<DenseTensor>& h0,
                 const DenseTensor& weight_x,
                 const DenseTensor& weight_h,
-                const paddle::optional<DenseTensor>& bias,
+                const optional<DenseTensor>& bias,
                 const std::string& activation,
                 const std::string& gate_activation,
                 const bool is_reverse,
@@ -82,9 +82,9 @@ void SeqCompute(const Context& dev_ctx,
   const T* wh_state_data = wh_data + D * D2;
   T* hidden_out_data = dev_ctx.template Alloc<T>(hidden);
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx,
      total_T,
      D3,
@@ -166,10 +166,10 @@ void SeqCompute(const Context& dev_ctx,
 template <typename T, typename Context>
 void BatchCompute(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& h0,
+                  const optional<DenseTensor>& h0,
                   const DenseTensor& weight_x,
                   const DenseTensor& weight_h,
-                  const paddle::optional<DenseTensor>& bias,
+                  const optional<DenseTensor>& bias,
                   const std::string& activation,
                   const std::string& gate_activation,
                   const bool is_reverse,
@@ -203,10 +203,10 @@ void BatchCompute(const Context& dev_ctx,
   T* batched_input_data = dev_ctx.template Alloc<T>(batched_input);
   T* batched_out_data = dev_ctx.template Alloc<T>(batched_out);
   dev_ctx.template Alloc<T>(hidden);
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
+  funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
 
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   if (M > D3) {
     fc(dev_ctx,
        total_T,
@@ -332,7 +332,7 @@ void BatchCompute(const Context& dev_ctx,
     batched_input_data = cur_batched_data;
   }
 
-  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
+  funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batched_out->set_lod(batched_lod);
   to_seq(dev_ctx, *batched_out, hidden);
 }
@@ -340,10 +340,10 @@ void BatchCompute(const Context& dev_ctx,
 template <typename T, typename Context>
 void FusionGRUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& h0,
+                     const optional<DenseTensor>& h0,
                      const DenseTensor& weight_x,
                      const DenseTensor& weight_h,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& bias,
                      const std::string& activation,
                      const std::string& gate_activation,
                      const bool is_reverse,

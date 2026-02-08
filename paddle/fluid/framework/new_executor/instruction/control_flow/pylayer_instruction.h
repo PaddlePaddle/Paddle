@@ -27,8 +27,8 @@ class ValueExecutionInfo;
 class PyLayerInstruction : public InstructionBase {
  public:
   PyLayerInstruction(size_t id,
-                     const phi::Place& place,
-                     ::pir::Operation* op,
+                     const Place& place,
+                     pir::Operation* op,
                      ValueExecutionInfo* value_exe_info,
                      interpreter::ExecutionConfig execution_config);
 
@@ -38,12 +38,12 @@ class PyLayerInstruction : public InstructionBase {
 
   const std::string& Name() const override { return name_; }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   PirInterpreter* ForwardInterpreter() const { return fwd_inter_; }
 
  private:
-  ::pir::Operation* op_;
+  pir::Operation* op_;
 
   std::string name_{"pylayer_instruction"};
 

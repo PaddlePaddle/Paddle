@@ -25,8 +25,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/strings/gpu/copy_utils.h"
 
-using pstring = ::phi::dtype::pstring;
-
 namespace phi {
 namespace strings {
 
@@ -45,8 +43,7 @@ void Copy(const Context& dev_ctx,
   const auto& src_place = src.place();
   auto dst_place = dst->place();
 
-  if (src_place == dst_place &&
-      src_place.GetType() == phi::AllocationType::CPU) {
+  if (src_place == dst_place && src_place.GetType() == AllocationType::CPU) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The src and dst string tensor are all "
         "CPU string tensor, you should call copy "
@@ -66,10 +63,10 @@ void Copy(const Context& dev_ctx,
 
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
-  if (src_place.GetType() == phi::AllocationType::GPU &&
-      dst_place.GetType() == phi::AllocationType::CPU) {
+  if (src_place.GetType() == AllocationType::GPU &&
+      dst_place.GetType() == AllocationType::CPU) {
     // Situation 1: gpu_place->cpu_place
-    DenseTensor gpu_serialized = phi::Empty<uint8_t, GPUContext>(dev_ctx, {1});
+    DenseTensor gpu_serialized = Empty<uint8_t, GPUContext>(dev_ctx, {1});
     phi::strings::SerializeOnGPU(dev_ctx, src, &gpu_serialized);
 
     DenseTensor cpu_serialized;
@@ -80,8 +77,8 @@ void Copy(const Context& dev_ctx,
 
     phi::strings::DeserializeOnCPU(dev_ctx, cpu_serialized, dst);
 
-  } else if (src_place.GetType() == phi::AllocationType::CPU &&
-             dst_place.GetType() == phi::AllocationType::GPU) {
+  } else if (src_place.GetType() == AllocationType::CPU &&
+             dst_place.GetType() == AllocationType::GPU) {
     // Situation 2: cpu_place->gpu_place
     DenseTensor cpu_serialized;
     cpu_serialized.Resize({1});
@@ -89,21 +86,20 @@ void Copy(const Context& dev_ctx,
 
     phi::strings::SerializeOnCPU(dev_ctx, src, &cpu_serialized);
 
-    DenseTensor gpu_serialized =
-        phi::EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
+    DenseTensor gpu_serialized = EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
     phi::Copy(
         dev_ctx, cpu_serialized, dev_ctx.GetPlace(), false, &gpu_serialized);
 
     phi::strings::DeserializeOnGPU(dev_ctx, gpu_serialized, dst);
-  } else if (src_place.GetType() == phi::AllocationType::GPU &&
-             dst_place.GetType() == phi::AllocationType::GPU) {
+  } else if (src_place.GetType() == AllocationType::GPU &&
+             dst_place.GetType() == AllocationType::GPU) {
     // Situation 3: gpu_place->gpu_place
     auto src_gpu_place = src_place;
     auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         ctx_place.GetType(),
-        phi::AllocationType::GPU,
+        AllocationType::GPU,
         common::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));

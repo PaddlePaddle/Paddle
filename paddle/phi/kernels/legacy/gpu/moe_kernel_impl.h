@@ -218,10 +218,9 @@ __global__ void softmax_kernel_v4(
     local_max = fmax(local_max, data[i]);
   }
 
-  float max_val =
-      blockDim.x <= 32
-          ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
-          : phi::funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
+  float max_val = blockDim.x <= 32
+                      ? funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
+                      : funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
   if (threadIdx.x == 0) {
     s_max = max_val;
   }
@@ -232,10 +231,9 @@ __global__ void softmax_kernel_v4(
     data[i] = __expf(data[i] - s_max);
     local_sum += data[i];
   }
-  float sum_val =
-      blockDim.x <= 32
-          ? phi::funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
-          : phi::funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
+  float sum_val = blockDim.x <= 32
+                      ? funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
+                      : funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
   if (threadIdx.x == 0) {
     s_mean = sum_val + 1e-6f;
     s_mean = __fdividef(1.0f, s_mean);
@@ -283,10 +281,9 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
         fmax(static_cast<float>(data[i].x), static_cast<float>(data[i].y)));
   }
 
-  float max_val =
-      blockDim.x <= 32
-          ? phi::funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
-          : phi::funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
+  float max_val = blockDim.x <= 32
+                      ? funcs::WarpReduceMax<float>(local_max, 0xFFFFFFFF)
+                      : funcs::BlockReduceMax<float>(local_max, 0xFFFFFFFF);
   if (threadIdx.x == 0) {
     s_max = max_val;
   }
@@ -300,10 +297,9 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
     local_sum += static_cast<float>(data[i].x + data[i].y);
   }
 
-  float sum_val =
-      blockDim.x <= 32
-          ? phi::funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
-          : phi::funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
+  float sum_val = blockDim.x <= 32
+                      ? funcs::WarpReduceSum<float>(local_sum, 0xFFFFFFFF)
+                      : funcs::BlockReduceSum<float>(local_sum, 0xFFFFFFFF);
 
   if (threadIdx.x == 0) {
     s_mean = sum_val + 1e-6f;
@@ -381,9 +377,9 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
     }
   }
   if (blockDim.x <= 32) {
-    phi::funcs::WarpReduceMaxV2<float, NUM>(local_max);
+    funcs::WarpReduceMaxV2<float, NUM>(local_max);
   } else {
-    phi::funcs::BlockReduceMaxV2<float, NUM>(local_max);
+    funcs::BlockReduceMaxV2<float, NUM>(local_max);
   }
 
   if (threadIdx.x == 0) {
@@ -414,10 +410,10 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
   }
 
   if (blockDim.x <= 32) {
-    phi::funcs::WarpReduceSumV2<float, NUM>(local_sum);
+    funcs::WarpReduceSumV2<float, NUM>(local_sum);
 
   } else {
-    phi::funcs::BlockReduceSumV2<float, NUM>(local_sum);
+    funcs::BlockReduceSumV2<float, NUM>(local_sum);
   }
 
   if (threadIdx.x == 0) {

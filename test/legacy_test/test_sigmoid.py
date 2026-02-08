@@ -43,10 +43,10 @@ class TestSigmoidAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.sigmoid(x)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.sigmoid(x=x)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.sigmoid(input=x)
         paddle_dygraph_out.append(out3)
         # Tensor method args
@@ -72,9 +72,9 @@ class TestSigmoidAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.sigmoid(x)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.sigmoid(x=x)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.sigmoid(input=x)
             # Tensor method args
             out4 = x.sigmoid()
@@ -111,10 +111,10 @@ class TestTensorSigmoidAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.Tensor.sigmoid(x)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.Tensor.sigmoid(x=x)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.Tensor.sigmoid(input=x)
         paddle_dygraph_out.append(out3)
         # Tensor method args
@@ -140,9 +140,9 @@ class TestTensorSigmoidAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.Tensor.sigmoid(x)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.Tensor.sigmoid(x=x)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.Tensor.sigmoid(input=x)
             # Tensor method args
             out4 = x.sigmoid()

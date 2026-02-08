@@ -187,7 +187,7 @@ __global__ void __launch_bounds__(512)
 
   // 2. Get expert index and offset of the current block
   if (threadIdx.x == 0 && threadIdx.y == 0) {
-    size_t idx_m = blockIdx.x * size_t(128);
+    size_t idx_m = static_cast<size_t>(blockIdx.x) * size_t(128);
     size_t off_m = 0, next_off_m = 0;
     size_t expert_idx;
     for (expert_idx = 0; expert_idx < num_experts; expert_idx++) {
@@ -236,7 +236,7 @@ template <typename T, typename Context>
 void FusedTransposeSplitQuantKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& input_scales,
+    const optional<DenseTensor>& input_scales,
     const std::vector<int64_t>& tokens_per_expert,
     bool pow_2_scales,
     std::vector<DenseTensor*> outs,

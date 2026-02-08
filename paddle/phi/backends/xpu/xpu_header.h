@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_XPU
 #include <map>
 #include <string>
 #include <unordered_map>
 
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "xpu/bkcl.h"
@@ -30,7 +30,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU_PLUGIN
 #include "xpu/plugin.h"
 #endif
-
+#ifdef PADDLE_WITH_XPU_FFT
+#include "fft/cuComplex.h"
+#endif
 namespace xpu = baidu::xpu::api;
 
 template <typename T>
@@ -107,4 +109,22 @@ class XPUCopyTypeTrait<uint8_t> {
   using Type = int8_t;
 };
 
+#ifdef PADDLE_WITH_XPU_FFT
+template <typename T>
+class XPUComplexTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class XPUComplexTypeTrait<float> {
+ public:
+  using Type = cuFloatComplex;
+};
+
+template <>
+class XPUComplexTypeTrait<double> {
+ public:
+  using Type = cuDoubleComplex;
+};
 #endif

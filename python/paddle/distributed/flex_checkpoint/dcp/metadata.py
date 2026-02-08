@@ -40,6 +40,8 @@ class LocalTensorIndex:
     global_offset: tuple[int]
     is_flattened: bool = False
     flattened_range: tuple[int] | None = None
+    replica_id: int | None = None
+    local_shape: tuple[int] | None = None
 
 
 @dataclass

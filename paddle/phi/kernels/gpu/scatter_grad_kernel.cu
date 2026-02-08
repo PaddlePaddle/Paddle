@@ -36,11 +36,7 @@ void ScatterGradKernel(const Context &dev_ctx,
       dev_ctx.template Alloc<T>(x_grad);
     }
     if (updates_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(updates_grad->dims())),
-          0,
-          updates_grad);
+      Full<T, Context>(dev_ctx, updates_grad->dims(), 0, updates_grad);
     }
     return;
   }
@@ -57,11 +53,11 @@ void ScatterGradKernel(const Context &dev_ctx,
                         phi::DataType::INT64));
 
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::GPUScatterGradForX<T, int32_t>(dev_ctx, index, x_grad);
+      funcs::GPUScatterGradForX<T, int32_t>(dev_ctx, index, x_grad);
     } else {
-      phi::funcs::GPUScatterGradForX<T, int64_t>(dev_ctx, index, x_grad);
+      funcs::GPUScatterGradForX<T, int64_t>(dev_ctx, index, x_grad);
     }
   }
 
@@ -69,9 +65,9 @@ void ScatterGradKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<T>(updates_grad);
     // Gradient by Gather: dUpdates = dO[Ids]
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::GPUGather<T, int32_t>(dev_ctx, out_grad, index, updates_grad);
+      funcs::GPUGather<T, int32_t>(dev_ctx, out_grad, index, updates_grad);
     } else {
-      phi::funcs::GPUGather<T, int64_t>(dev_ctx, out_grad, index, updates_grad);
+      funcs::GPUGather<T, int64_t>(dev_ctx, out_grad, index, updates_grad);
     }
   }
 }

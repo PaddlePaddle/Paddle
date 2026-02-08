@@ -37,9 +37,9 @@ void CEmbeddingKernel(const Context& dev_ctx,
     auto N = w.dims()[0];
     auto D = w.dims()[1];
 
-    auto x_tmp = std::make_shared<phi::DenseTensor>();
+    auto x_tmp = std::make_shared<DenseTensor>();
     x_tmp->ShareDataWith(ids).Resize({K});
-    auto w_tmp = std::make_shared<phi::DenseTensor>();
+    auto w_tmp = std::make_shared<DenseTensor>();
     w_tmp->ShareDataWith(w).Resize({N, D});
     paddle::Tensor x_tensor(x_tmp), w_tensor(w_tmp);
 
@@ -61,8 +61,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
                 paddle::experimental::embedding(
                     ids_tensor, w_tensor, -1, false),
                 {K, D}));
-    out->ShareDataWith(
-           *reinterpret_cast<phi::DenseTensor*>(out_tensor.impl().get()))
+    out->ShareDataWith(*reinterpret_cast<DenseTensor*>(out_tensor.impl().get()))
         .Resize(out_dims);
   } else {
     PADDLE_THROW(common::errors::Unavailable(

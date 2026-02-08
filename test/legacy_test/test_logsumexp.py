@@ -423,10 +423,10 @@ class TestLogsumexpAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle.logsumexp(x, [0, 1], True)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle.logsumexp(x=x, axis=[0, 1], keepdim=True)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle.logsumexp(input=x, dim=[0, 1], keepdim=True)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -456,9 +456,9 @@ class TestLogsumexpAPI_Compatibility(unittest.TestCase):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # Position args (args)
             out1 = paddle.logsumexp(x, [0, 1], True)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle.logsumexp(x=x, axis=[0, 1], keepdim=True)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle.logsumexp(input=x, dim=[0, 1], keepdim=True)
             # Combined args and kwargs
             out4 = paddle.logsumexp(x, dim=[0, 1], keepdim=True)

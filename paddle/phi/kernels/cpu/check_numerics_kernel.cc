@@ -49,15 +49,15 @@ void CheckNumericsKernel(const Context& dev_ctx,
   }
 
   std::string cpu_hint_str =
-      phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
-  phi::funcs::CheckNumericsCpuImpl(tensor.data<T>(),
-                                   tensor.numel(),
-                                   cpu_hint_str,
-                                   check_nan_inf_level,
-                                   "cpu",
-                                   output_dir,
-                                   stats_ptr,
-                                   values_ptr);
+      funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
+  funcs::CheckNumericsCpuImpl(tensor.data<T>(),
+                              tensor.numel(),
+                              cpu_hint_str,
+                              check_nan_inf_level,
+                              "cpu",
+                              output_dir,
+                              stats_ptr,
+                              values_ptr);
 }
 #ifdef _WIN32
 INSTANTIATE_CHECKNUMBERICS_KERNEL(float, CPUContext)

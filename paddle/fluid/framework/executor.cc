@@ -16,19 +16,17 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/common/flags.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/framework/trainer_desc.pb.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
-#include "paddle/common/flags.h"
-#include "paddle/fluid/framework/executor_gc_helper.h"
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(use_mkldnn);
@@ -71,8 +69,8 @@ Executor::Executor(const phi::Place& place) : place_(place) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_DNNL
-  // Clear mkl-dnn cache,
-  // this is needed to have mkl-dnn unit tests working
+  // Clear one-dnn cache,
+  // this is needed to have one-dnn unit tests working
   platform::ClearONEDNNCache(place_, this);
 #endif
 }

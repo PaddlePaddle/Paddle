@@ -28,7 +28,7 @@
 
 namespace pir {
 
-Json BuildAttrJsonPatch(const YAML::Node &action) {
+Json BuildAttrJsonPatch(const YAML::Node& action) {
   Json j_attr_type;
   if (!action["type"].IsDefined() && !action["data"].IsDefined()) {
     j_attr_type = nullptr;
@@ -37,12 +37,12 @@ Json BuildAttrJsonPatch(const YAML::Node &action) {
   }
   return j_attr_type;
 }
-std::string GetAttrName(const YAML::Node &action) {
+std::string GetAttrName(const YAML::Node& action) {
   Json j_attr;
   j_attr = GetAttrJson(action);
   return j_attr[ID];
 }
-Json GetAttrJson(const YAML::Node &action) {
+Json GetAttrJson(const YAML::Node& action) {
   Json json;
   std::string builtin_dialect = DialectIdMap::Instance()->GetCompressDialectId(
                                     pir::BuiltinDialect::name()) +
@@ -96,7 +96,8 @@ Json GetAttrJson(const YAML::Node &action) {
     if (!action.IsScalar() && action["data"].IsDefined()) {
       json[DATA] = action["data"].as<int64_t>();
     }
-  } else if (at_name == "pir::ArrayAttribute") {
+  } else if (at_name == "pir::ArrayAttribute" ||
+             at_name == "pir::ArrayAttribute<pir::DoubleAttribute>") {
     VLOG(8) << "Get ArrayAttribute name.";
     json[ID] = builtin_dialect + pir::ArrayAttribute::name();
     if (!action.IsScalar() && action["data"].IsDefined()) {
@@ -192,22 +193,27 @@ Json GetAttrJson(const YAML::Node &action) {
   return json;
 }
 
-std::string YamlStringToDataLayoutString(const std::string &layout) {
-  if (layout == "phi::DataLayout::kNHWC") {
+std::string YamlStringToDataLayoutString(const std::string& layout) {
+  if (layout == "phi::DataLayout::kNHWC" || layout == "phi::DataLayout::NHWC") {
     return "NHWC";
-  } else if (layout == "phi::DataLayout::kNCHW") {
+  } else if (layout == "phi::DataLayout::kNCHW" ||
+             layout == "phi::DataLayout::NCHW") {
     return "NCHW";
-  } else if (layout == "phi::DataLayout::kAnyLayout") {
+  } else if (layout == "phi::DataLayout::kAnyLayout" ||
+             layout == "phi::DataLayout::ANY") {
     return "Undefined(AnyLayout)";
-  } else if (layout == "phi::DataLayout::kMKLDNN") {
+  } else if (layout == "phi::DataLayout::kMKLDNN" ||
+             layout == "phi::DataLayout::ONEDNN") {
     return "ONEDNN";
   } else if (layout == "phi::DataLayout::SPARSE_COO") {
     return "SPARSE_COO";
   } else if (layout == "phi::DataLayout::SPARSE_CSR") {
     return "SPARSE_CSR";
-  } else if (layout == "phi::DataLayout::kNDHWC") {
+  } else if (layout == "phi::DataLayout::kNDHWC" ||
+             layout == "phi::DataLayout::NDHWC") {
     return "NDHWC";
-  } else if (layout == "phi::DataLayout::kNCDHW") {
+  } else if (layout == "phi::DataLayout::kNCDHW" ||
+             layout == "phi::DataLayout::NCDHW") {
     return "NCDHW";
   } else if (layout == "phi::DataLayout::PSTRING_UNION") {
     return "PSTRING_UNION";
@@ -219,7 +225,7 @@ std::string YamlStringToDataLayoutString(const std::string &layout) {
   }
 }
 
-phi::DataType YamlStringToDataType(const std::string &type) {
+phi::DataType YamlStringToDataType(const std::string& type) {
   phi::DataType dtype = phi::DataType::UNDEFINED;
   if (type == "phi::DataType::UNDEFINED") {
     dtype = phi::DataType::UNDEFINED;
@@ -265,7 +271,7 @@ phi::DataType YamlStringToDataType(const std::string &type) {
   return dtype;
 }
 
-Json BuildScalarAttribute(const YAML::Node &action) {
+Json BuildScalarAttribute(const YAML::Node& action) {
   Json content = Json::array();
   phi::DataType dtype = YamlStringToDataType(action["type"].as<std::string>());
   content.push_back(DataTypeToString(dtype));
@@ -310,17 +316,17 @@ Json BuildScalarAttribute(const YAML::Node &action) {
   return content;
 }
 
-Json BuildTypeJsonPatch(const YAML::Node &action) {
+Json BuildTypeJsonPatch(const YAML::Node& action) {
   Json json = GetTypeJson(action);
   return json;
 }
 
-std::string GetTypeName(const YAML::Node &action) {
+std::string GetTypeName(const YAML::Node& action) {
   Json json = GetTypeJson(action);
   return json[ID];
 }
 
-Json GetTypeJson(const YAML::Node &action) {
+Json GetTypeJson(const YAML::Node& action) {
   Json json;
   std::string builtin_dialect = DialectIdMap::Instance()->GetCompressDialectId(
                                     pir::BuiltinDialect::name()) +
@@ -415,7 +421,7 @@ Json GetTypeJson(const YAML::Node &action) {
   return json;
 }
 
-Json ParseOpPairPatches(const YAML::Node &root) {
+Json ParseOpPairPatches(const YAML::Node& root) {
   Json json_patch = Json::array();
   for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
@@ -470,7 +476,7 @@ Json ParseOpPairPatches(const YAML::Node &root) {
   return json_patch;
 }
 
-Json ParseOpPatches(const YAML::Node &root) {
+Json ParseOpPatches(const YAML::Node& root) {
   Json json_patch = Json::array();
   for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
@@ -569,7 +575,7 @@ Json ParseOpPatches(const YAML::Node &root) {
   return json_patch;
 }
 
-Json ParseTypePatches(const YAML::Node &root) {
+Json ParseTypePatches(const YAML::Node& root) {
   Json json_patch = Json::array();
   for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
@@ -598,7 +604,7 @@ Json ParseTypePatches(const YAML::Node &root) {
   return json_patch;
 }
 
-Json ParseAttrPatches(const YAML::Node &root) {
+Json ParseAttrPatches(const YAML::Node& root) {
   Json json_patch = Json::array();
   for (size_t i = 0; i < root.size(); i++) {
     // parse op_name
@@ -625,7 +631,7 @@ Json ParseAttrPatches(const YAML::Node &root) {
   return json_patch;
 }
 
-Json YamlParser(const std::string &version, const std::string &yaml_file) {
+Json YamlParser(const std::string& version, const std::string& yaml_file) {
   YAML::Node root;
   std::ifstream fin;
   if (yaml_file.empty()) {

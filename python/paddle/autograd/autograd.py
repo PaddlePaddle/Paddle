@@ -541,25 +541,25 @@ def jacobian(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x1 = paddle.randn([3, ])
-            >>> x2 = paddle.randn([3, ])
+            >>> x1 = paddle.randn([3])
+            >>> x2 = paddle.randn([3])
             >>> x1.stop_gradient = False
             >>> x2.stop_gradient = False
 
             >>> y = x1 + x2
 
             >>> J = paddle.autograd.jacobian(y, (x1, x2))
-            >>> J_y_x1 = J[0][:] # evaluate result of dy/dx1
-            >>> J_y_x2 = J[1][:] # evaluate result of dy/dx2
+            >>> J_y_x1 = J[0][:]  # evaluate result of dy/dx1
+            >>> J_y_x2 = J[1][:]  # evaluate result of dy/dx2
 
             >>> print(J_y_x1.shape)
-            [3, 3]
+            paddle.Size([3, 3])
             >>> print(J_y_x2.shape)
-            [3, 3]
+            paddle.Size([3, 3])
     """
 
     if batch_axis is not None and batch_axis != 0:
@@ -641,31 +641,31 @@ def hessian(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x1 = paddle.randn([3, ])
-            >>> x2 = paddle.randn([4, ])
+            >>> x1 = paddle.randn([3])
+            >>> x2 = paddle.randn([4])
             >>> x1.stop_gradient = False
             >>> x2.stop_gradient = False
 
             >>> y = x1.sum() + x2.sum()
 
             >>> H = paddle.autograd.hessian(y, (x1, x2))
-            >>> H_y_x1_x1 = H[0][0][:] # evaluate result of ddy/dx1x1
-            >>> H_y_x1_x2 = H[0][1][:] # evaluate result of ddy/dx1x2
-            >>> H_y_x2_x1 = H[1][0][:] # evaluate result of ddy/dx2x1
-            >>> H_y_x2_x2 = H[1][1][:] # evaluate result of ddy/dx2x2
+            >>> H_y_x1_x1 = H[0][0][:]  # evaluate result of ddy/dx1x1
+            >>> H_y_x1_x2 = H[0][1][:]  # evaluate result of ddy/dx1x2
+            >>> H_y_x2_x1 = H[1][0][:]  # evaluate result of ddy/dx2x1
+            >>> H_y_x2_x2 = H[1][1][:]  # evaluate result of ddy/dx2x2
 
             >>> print(H_y_x1_x1.shape)
-            [3, 3]
+            paddle.Size([3, 3])
             >>> print(H_y_x1_x2.shape)
-            [3, 4]
+            paddle.Size([3, 4])
             >>> print(H_y_x2_x1.shape)
-            [4, 3]
+            paddle.Size([4, 3])
             >>> print(H_y_x2_x2.shape)
-            [4, 4]
+            paddle.Size([4, 4])
     """
 
     if batch_axis is None:

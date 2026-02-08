@@ -24,7 +24,7 @@ namespace fusion {
 template <typename T, typename InType = T, typename OutType = T>
 class AttnLayerNorm {
  public:
-  AttnLayerNorm(const phi::GPUContext& dev_ctx,
+  AttnLayerNorm(const GPUContext& dev_ctx,
                 float epsilon,
                 int64_t batch_size,
                 int64_t feature_size)
@@ -36,11 +36,11 @@ class AttnLayerNorm {
   ~AttnLayerNorm() {}
 
   void ComputeForward(const InType* x_data,
-                      const phi::funcs::LayerNormParamType<T>* scale_data,
-                      const phi::funcs::LayerNormParamType<T>* bias_data,
+                      const funcs::LayerNormParamType<T>* scale_data,
+                      const funcs::LayerNormParamType<T>* bias_data,
                       OutType* y_data,
-                      phi::funcs::LayerNormParamType<T>* mean_data,
-                      phi::funcs::LayerNormParamType<T>* var_data,
+                      funcs::LayerNormParamType<T>* mean_data,
+                      funcs::LayerNormParamType<T>* var_data,
                       const float* dequant_out_scale_data = nullptr,
                       const int quant_out_scale_offset = 0,
                       const float quant_in_scale = 1.0,
@@ -48,15 +48,17 @@ class AttnLayerNorm {
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
+    // TODO(large-tensor): generic kernel launch uses int32 grid dim
+    PADDLE_ENFORCE_LE_INT_MAX(batch_size_, "batch_size");
 
-    switch (phi::funcs::GetDesiredBlockDim(feature_size_)) {
+    switch (funcs::GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
-          phi::funcs::LayerNormForward<T,
-                                       phi::funcs::LayerNormParamType<T>,
-                                       kBlockDim,
-                                       false,
-                                       InType,
-                                       OutType>
+          funcs::LayerNormForward<T,
+                                  funcs::LayerNormParamType<T>,
+                                  kBlockDim,
+                                  false,
+                                  InType,
+                                  OutType>
           <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
                                                   scale_data,
                                                   bias_data,
@@ -80,29 +82,28 @@ class AttnLayerNorm {
 
   void ComputeBackward(const T* x_data,
                        const T* d_y_data,
-                       const phi::funcs::LayerNormParamType<T>* scale_data,
-                       const phi::funcs::LayerNormParamType<T>* mean_data,
-                       const phi::funcs::LayerNormParamType<T>* var_data,
+                       const funcs::LayerNormParamType<T>* scale_data,
+                       const funcs::LayerNormParamType<T>* mean_data,
+                       const funcs::LayerNormParamType<T>* var_data,
                        T* d_x_data,
-                       phi::funcs::LayerNormParamType<T>* d_scale_data,
-                       phi::funcs::LayerNormParamType<T>* d_bias_data) {
-    phi::funcs::LayerNormBackward<T, phi::funcs::LayerNormParamType<T>>(
-        x_data,
-        d_y_data,
-        scale_data,
-        mean_data,
-        var_data,
-        d_x_data,
-        d_scale_data,
-        d_bias_data,
-        epsilon_,
-        batch_size_,
-        feature_size_,
-        dev_ctx_);
+                       funcs::LayerNormParamType<T>* d_scale_data,
+                       funcs::LayerNormParamType<T>* d_bias_data) {
+    funcs::LayerNormBackward<T, funcs::LayerNormParamType<T>>(x_data,
+                                                              d_y_data,
+                                                              scale_data,
+                                                              mean_data,
+                                                              var_data,
+                                                              d_x_data,
+                                                              d_scale_data,
+                                                              d_bias_data,
+                                                              epsilon_,
+                                                              batch_size_,
+                                                              feature_size_,
+                                                              dev_ctx_);
   }
 
  private:
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
 
   int64_t batch_size_;
   int64_t feature_size_;

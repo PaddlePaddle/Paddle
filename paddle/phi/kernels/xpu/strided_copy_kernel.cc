@@ -26,9 +26,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
-  phi::DenseTensorMeta meta = input.meta();
-  meta.strides = common::make_ddim(out_stride);
-  meta.dims = common::make_ddim(dims);
+  DenseTensorMeta meta = input.meta();
+  meta.strides = make_ddim(out_stride);
+  meta.dims = make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
 
@@ -77,10 +77,10 @@ void StridedCopyKernel(const Context& dev_ctx,
                                    input_data,
                                    output_data,
                                    data_size,
-                                   common::vectorize<int64_t>(input.dims()),
-                                   common::vectorize<int64_t>(out->dims()),
-                                   common::vectorize<int64_t>(input.strides()),
-                                   common::vectorize<int64_t>(out->strides()));
+                                   vectorize<int64_t>(input.dims()),
+                                   vectorize<int64_t>(out->dims()),
+                                   vectorize<int64_t>(input.strides()),
+                                   vectorize<int64_t>(out->strides()));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");
   }
 }
@@ -107,6 +107,27 @@ void StridedCopyKernel<phi::complex64, XPUContext>(
       dev_ctx, imag, dims, out_stride, offset, &imag_out);
   phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
+template <>
+void StridedCopyKernel<phi::complex128, XPUContext>(
+    const XPUContext& dev_ctx,
+    const DenseTensor& input,
+    const std::vector<int64_t>& dims,
+    const std::vector<int64_t>& out_stride,
+    int64_t offset,
+    DenseTensor* out) {
+  using T = phi::complex128;
+  dev_ctx.template Alloc<T>(out);
+  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
+  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
+  DenseTensor real_out, imag_out;
+  real_out.Resize(out->dims());
+  imag_out.Resize(out->dims());
+  StridedCopyKernel<double, XPUContext>(
+      dev_ctx, real, dims, out_stride, offset, &real_out);
+  StridedCopyKernel<double, XPUContext>(
+      dev_ctx, imag, dims, out_stride, offset, &imag_out);
+  phi::ComplexKernel<double>(dev_ctx, real_out, imag_out, out);
+}
 #endif
 
 }  // namespace phi
@@ -125,6 +146,7 @@ PD_REGISTER_KERNEL(strided_copy,
                    double,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::complex64,
+                   phi::complex128,
 #endif
                    phi::float16,
                    phi::bfloat16) {

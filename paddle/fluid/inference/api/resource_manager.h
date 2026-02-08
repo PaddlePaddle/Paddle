@@ -23,6 +23,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/utils/test_macros.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 

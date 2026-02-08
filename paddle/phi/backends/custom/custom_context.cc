@@ -25,6 +25,39 @@ limitations under the License. */
 
 namespace phi {
 
+void DnnWorkspaceHandle::RunFuncSync(
+    const std::function<void(void*)>& cudnn_func,
+    size_t required_workspace_bytes,
+    bool use_cached_allocation) {
+  bool need_realloc = required_workspace_bytes > WorkspaceSize();
+  if (need_realloc && !use_cached_allocation) {
+    void* workspace_ptr = nullptr;
+    size_t size = ((required_workspace_bytes + 255) >> 8) << 8;
+    std::lock_guard<std::mutex> guard(*mtx_);
+
+    workspace_ptr = device_->MemoryAllocate(size);
+    cudnn_func(workspace_ptr);
+    device_->SynchronizeStream(stream_);
+    device_->MemoryDeallocate(workspace_ptr, 1);
+    return;
+  }
+
+  RunFunc(cudnn_func, required_workspace_bytes);
+  if (need_realloc) {
+    // Release the workspace allocated in this running.
+    ResetWorkspace();
+  }
+}
+
+void DnnWorkspaceHandle::ResetWorkspace() { allocation_ = nullptr; }
+
+void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) return;
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = allocator_->Allocate(required_workspace_bytes);
+}
+
 struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
 
@@ -51,6 +84,10 @@ struct CustomContext::Impl {
       DeviceManager::DestroyBlasLtHandle(
           place_, reinterpret_cast<void*>(blaslt_handle_));
     }
+    if (dnn_handle_) {
+      DeviceManager::DestroyDnnHandle(place_,
+                                      reinterpret_cast<void*>(dnn_handle_));
+    }
   }
 
   void Init() {
@@ -66,8 +103,9 @@ struct CustomContext::Impl {
     eigen_device_ =
         reinterpret_cast<Eigen::GpuDevice*>(DeviceManager::InitEigenDevice(
             place_, stream_->raw_stream(), allocator_));
+    InitDnnWorkspace();
 
-    stream_.reset(new phi::stream::Stream());
+    stream_.reset(new stream::Stream());
     stream_->Init(place_);
   }
 
@@ -83,7 +121,7 @@ struct CustomContext::Impl {
     max_threads_per_block_ = DeviceManager::GetMaxThreadsPerBlock(place_);
     max_grid_dim_size_ = DeviceManager::GetMaxGridDimSize(place_);
 
-    stream_.reset(new phi::stream::Stream());
+    stream_.reset(new stream::Stream());
     stream_->Init(place_);
   }
 
@@ -91,19 +129,18 @@ struct CustomContext::Impl {
     owned_ = true;
     stream_owned_ = true;
     phi::DeviceGuard guard(place_);
+    InitDnnWorkspace();
   }
 
   const Place& GetPlace() const { return place_; }
 
-  phi::stream::stream_t stream() const {
-    return reinterpret_cast<phi::stream::stream_t>(stream_->raw_stream());
+  stream::stream_t stream() const {
+    return reinterpret_cast<stream::stream_t>(stream_->raw_stream());
   }
 
-  std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
+  std::shared_ptr<stream::Stream> GetStream() const { return stream_; }
 
-  void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
-    stream_ = stream;
-  }
+  void SetStream(std::shared_ptr<stream::Stream> stream) { stream_ = stream; }
 
   void SetEigenDevice(Eigen::GpuDevice* device) { eigen_device_ = device; }
 
@@ -133,18 +170,18 @@ struct CustomContext::Impl {
 
   void Wait() const { stream_->Wait(); }
 
-  void WaitEvent(phi::event::event_t ev) const {
+  void WaitEvent(event::event_t ev) const {
     event::Event event_(place_, ev);
     stream_->WaitEvent(&event_);
   }
 
-  void RecordEvent(phi::event::event_t ev,
+  void RecordEvent(event::event_t ev,
                    const std::function<void()>& callback) const {
     event::Event event_(place_, ev);
     stream_->RecordEvent(&event_, callback);
   }
 
-  void RecordEvent(phi::event::event_t ev) const {
+  void RecordEvent(event::event_t ev) const {
     event::Event event_(place_, ev);
     stream_->RecordEvent(&event_);
   }
@@ -157,7 +194,7 @@ struct CustomContext::Impl {
     std::call_once(flag_blas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_, reinterpret_cast<void**>(&blas_handle_), stream());
         } else {
           blas_handle_ = blas_handle_creator_();
@@ -166,20 +203,20 @@ struct CustomContext::Impl {
 
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tensor_core_handle_),
               stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
       }
 
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
-          phi::DeviceManager ::InitBlasHandle(
+          DeviceManager ::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
               stream());
@@ -187,7 +224,7 @@ struct CustomContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
       }
     });
@@ -231,7 +268,7 @@ struct CustomContext::Impl {
     std::call_once(flag_blaslt_, [&]() {
       if (!blaslt_handle_) {
         if (!blaslt_handle_creator_)
-          phi::DeviceManager::InitBlasLtHandle(
+          DeviceManager::InitBlasLtHandle(
               place_, reinterpret_cast<void**>(&blaslt_handle_));
         else
           blaslt_handle_ = blaslt_handle_creator_();
@@ -252,7 +289,7 @@ struct CustomContext::Impl {
     std::call_once(flag_cublas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_, reinterpret_cast<void**>(&blas_handle_), stream());
         } else {
           blas_handle_ = blas_handle_creator_();
@@ -260,19 +297,19 @@ struct CustomContext::Impl {
       }
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tensor_core_handle_),
               stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
       }
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
               stream());
@@ -280,7 +317,7 @@ struct CustomContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
       }
     });
@@ -299,7 +336,7 @@ struct CustomContext::Impl {
     std::call_once(flag_tensorcore_cublas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_, reinterpret_cast<void**>(&blas_handle_), stream());
         } else {
           blas_handle_ = blas_handle_creator_();
@@ -307,19 +344,19 @@ struct CustomContext::Impl {
       }
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tensor_core_handle_),
               stream());
         } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
       }
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
-          phi::DeviceManager::InitBlasHandle(
+          DeviceManager::InitBlasHandle(
               place_,
               reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
               stream());
@@ -327,7 +364,7 @@ struct CustomContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-        phi::DeviceManager::BlasSetMathMode(
+        DeviceManager::BlasSetMathMode(
             place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
       }
     });
@@ -338,6 +375,56 @@ struct CustomContext::Impl {
       std::lock_guard<std::mutex> guard(blas_mtx_);
       callback(blas_handle_);
     }
+  }
+
+  void InitDnnWorkspace() {
+    PADDLE_ENFORCE_NOT_NULL(allocator_,
+                            common::errors::InvalidArgument(
+                                "The device allocator for Custom context is "
+                                "nullptr. It must not be null."));
+    workspace_ = new DnnWorkspaceHandle(allocator_, stream(), place_);
+  }
+
+  void DestroyInternalWorkspace() {
+    if (owned_ && workspace_ != nullptr) {
+      delete workspace_;
+      workspace_ = nullptr;
+    }
+  }
+
+  DnnWorkspaceHandle GetDnnWorkspace() {
+    PADDLE_ENFORCE_NOT_NULL(allocator_,
+                            common::errors::InvalidArgument(
+                                "The device allocator for Custom context is "
+                                "nullptr. It must not be null."));
+    return DnnWorkspaceHandle(allocator_, stream(), place_);
+  }
+
+  dnnHandle_t GetDnnHandle() {
+    std::call_once(flag_dnn_, [&]() {
+      if (!dnn_handle_) {
+        if (!dnn_handle_creator_) {
+          phi::DeviceManager::InitDnnHandle(
+              place_, reinterpret_cast<void**>(&dnn_handle_), stream());
+        } else {
+          dnn_handle_ = dnn_handle_creator_();
+        }
+      }
+    });
+    return dnn_handle_;
+  }
+
+  void DestroyInternalDnnHandle() {
+    if (owned_ && dnn_handle_ != nullptr) {
+      phi::DeviceManager::DestroyDnnHandle(place_, dnn_handle_);
+      dnn_handle_ = nullptr;
+    }
+  }
+
+  void SetDnnHandle(dnnHandle_t handle) { dnn_handle_ = handle; }
+
+  void SetDnnHandle(std::function<dnnHandle_t()>&& handle_creator) {
+    dnn_handle_creator_ = std::move(handle_creator);
   }
 
   bool HasDnnAttr(const std::string& attr_name) const {
@@ -361,7 +448,7 @@ struct CustomContext::Impl {
 
   Place place_;
 
-  std::shared_ptr<phi::stream::Stream> stream_;
+  std::shared_ptr<stream::Stream> stream_;
 
   Allocator* allocator_{nullptr};
 
@@ -389,6 +476,11 @@ struct CustomContext::Impl {
       nullptr};
   cublasLtHandle_t blaslt_handle_{nullptr};
   std::function<cublasLtHandle_t()> blaslt_handle_creator_{nullptr};
+
+  dnnHandle_t dnn_handle_{nullptr};
+  std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
+
+  DnnWorkspaceHandle* workspace_{nullptr};
 
   static thread_local AttributeMap dnn_attrs_;
 
@@ -439,13 +531,13 @@ void CustomContext::PartialInitWithAllocator() {
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
-phi::stream::stream_t CustomContext::stream() const { return impl_->stream(); }
+stream::stream_t CustomContext::stream() const { return impl_->stream(); }
 
-std::shared_ptr<phi::stream::Stream> CustomContext::GetStream() const {
+std::shared_ptr<stream::Stream> CustomContext::GetStream() const {
   return impl_->GetStream();
 }
 
-void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+void CustomContext::SetStream(std::shared_ptr<stream::Stream> stream) {
 #if !defined(_WIN32)
   this->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                          .GetAllocator(impl_->GetPlace(), stream->raw_stream())
@@ -457,12 +549,12 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
 
 void CustomContext::Wait() const { return impl_->Wait(); }
 
-void CustomContext::RecordEvent(phi::event::event_t ev,
+void CustomContext::RecordEvent(event::event_t ev,
                                 const std::function<void()>& callback) const {
   impl_->RecordEvent(ev, callback);
 }
 
-void CustomContext::RecordEvent(phi::event::event_t ev) const {
+void CustomContext::RecordEvent(event::event_t ev) const {
   impl_->RecordEvent(ev);
 }
 
@@ -582,6 +674,26 @@ void CustomContext::CublasCall(
 void CustomContext::TensorCoreCublasCallIfAvailable(
     const std::function<void(cublasHandle_t)>& callback) const {
   impl_->TensorCoreCublasCallIfAvailable(callback);
+}
+
+dnnHandle_t CustomContext::cudnn_handle() const {
+  return impl_->GetDnnHandle();
+}
+
+DnnWorkspaceHandle CustomContext::cudnn_workspace_handle() const {
+  return impl_->GetDnnWorkspace();
+}
+
+void CustomContext::SetDnnHandle(dnnHandle_t handle) {
+  impl_->SetDnnHandle(handle);
+}
+
+void CustomContext::SetDnnHandle(std::function<dnnHandle_t()>&& func) {
+  impl_->SetDnnHandle(std::move(func));
+}
+
+void CustomContext::SetDnnWorkspaceHandle(DnnWorkspaceHandle* handle) {
+  impl_->workspace_ = handle;
 }
 
 bool CustomContext::HasDnnAttr(const std::string& attr_name) const {

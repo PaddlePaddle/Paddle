@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import itertools
 import unittest
 from functools import partial
 from typing import Any
@@ -32,55 +33,62 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
         def generate_input1(batch, attrs: list[dict[str, Any]]):
             return np.random.random([batch, 3, 64, 64]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for anchor_sizes in [[64.0, 128.0, 256.0, 512.0]]:
-                for aspect_ratios in [[0.5, 1, 2], [0.4, 1.2, 3]]:
-                    for variances in [
-                        [1.0, 1.0, 1.0, 1.0],
-                        [0.5, 1.0, 0.5, 1.0],
-                    ]:
-                        for stride in [[16.0, 16.0], [16.0, 32.0]]:
-                            for offset in [0.5, 0.8]:
-                                dics = [
-                                    {
-                                        "anchor_sizes": anchor_sizes,
-                                        "aspect_ratios": aspect_ratios,
-                                        "variances": variances,
-                                        "stride": stride,
-                                        "offset": offset,
-                                    }
-                                ]
+        for (
+            batch,
+            anchor_sizes,
+            aspect_ratios,
+            variances,
+            stride,
+            offset,
+        ) in itertools.product(
+            [1, 2, 4],
+            [[64.0, 128.0, 256.0, 512.0]],
+            [[0.5, 1, 2], [0.4, 1.2, 3]],
+            [
+                [1.0, 1.0, 1.0, 1.0],
+                [0.5, 1.0, 0.5, 1.0],
+            ],
+            [[16.0, 16.0], [16.0, 32.0]],
+            [0.5, 0.8],
+        ):
+            dics = [
+                {
+                    "anchor_sizes": anchor_sizes,
+                    "aspect_ratios": aspect_ratios,
+                    "variances": variances,
+                    "stride": stride,
+                    "offset": offset,
+                }
+            ]
 
-                                ops_config = [
-                                    {
-                                        "op_type": "anchor_generator",
-                                        "op_inputs": {"Input": ["input_data"]},
-                                        "op_outputs": {
-                                            "Anchors": ["output_anchors"],
-                                            "Variances": ["output_variances"],
-                                        },
-                                        "op_attrs": dics[0],
-                                    }
-                                ]
-                                ops = self.generate_op_config(ops_config)
+            ops_config = [
+                {
+                    "op_type": "anchor_generator",
+                    "op_inputs": {"Input": ["input_data"]},
+                    "op_outputs": {
+                        "Anchors": ["output_anchors"],
+                        "Variances": ["output_variances"],
+                    },
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={},
-                                    inputs={
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, batch, dics
-                                            )
-                                        )
-                                    },
-                                    outputs=[
-                                        "output_anchors",
-                                        "output_variances",
-                                    ],
-                                )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, batch, dics)
+                    )
+                },
+                outputs=[
+                    "output_anchors",
+                    "output_variances",
+                ],
+            )
 
-                                yield program_config
+            yield program_config
 
     def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}

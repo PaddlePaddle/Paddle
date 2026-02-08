@@ -43,8 +43,8 @@ void ConcatGradKernel(const Context& dev_ctx,
       nullptr,
       common::errors::InvalidArgument("The input should not be null."));
   auto axis = axis_scalar.to<int>();
-  axis = phi::funcs::ComputeAxis(static_cast<int64_t>(axis),
-                                 static_cast<int64_t>(x[0]->dims().size()));
+  axis = funcs::ComputeAxis(static_cast<int64_t>(axis),
+                            static_cast<int64_t>(x[0]->dims().size()));
   // get output tensor that the name is not kEmptyVarName
   std::vector<XPUType*> ptrs(outs.size());
   for (size_t j = 0; j < outs.size(); ++j) {

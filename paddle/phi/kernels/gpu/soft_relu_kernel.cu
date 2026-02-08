@@ -45,12 +45,11 @@ void SoftReluCudaKernel(const Context& dev_ctx,
                         float threshold,
                         DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  std::vector<const phi::DenseTensor*> ins = {&x};
-  std::vector<phi::DenseTensor*> outs = {out};
+  std::vector<const DenseTensor*> ins = {&x};
+  std::vector<DenseTensor*> outs = {out};
   CudaSoftReluFunctor<T> functor;
   functor.SetAttrs(threshold);
-  phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, functor);
+  funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs, functor);
 }
 }  // namespace phi
 

@@ -26,7 +26,7 @@ void LarsMomentumKernel(
     const std::vector<const DenseTensor*>& velocity,
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& grad,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const optional<std::vector<const DenseTensor*>>& master_param,
     const std::vector<float>& weight_decay_arr,
     float mu,
     float lars_coeff,
@@ -44,15 +44,15 @@ void LarsMomentumKernel(
     dev_ctx.template Alloc<T>(param_out[i]);
     dev_ctx.template Alloc<T>(velocity_out[i]);
 
-    auto p_out = phi::EigenVector<T>::Flatten(*(param_out[i]));
-    auto v_out = phi::EigenVector<T>::Flatten(*(velocity_out[i]));
-    auto p = phi::EigenVector<T>::Flatten(*(param[i]));
-    auto v = phi::EigenVector<T>::Flatten(*(velocity[i]));
+    auto p_out = EigenVector<T>::Flatten(*(param_out[i]));
+    auto v_out = EigenVector<T>::Flatten(*(velocity_out[i]));
+    auto p = EigenVector<T>::Flatten(*(param[i]));
+    auto v = EigenVector<T>::Flatten(*(velocity[i]));
     Eigen::TensorMap<Eigen::Tensor<const T, 1, 1>> g =
-        phi::EigenVector<T>::Flatten(*(grad[i]));
+        EigenVector<T>::Flatten(*(grad[i]));
     auto rescale_g = static_cast<T>(rescale_grad) * g;
 
-    phi::DenseTensor p_norm_t, g_norm_t;
+    DenseTensor p_norm_t, g_norm_t;
     p_norm_t.Resize({1});
     g_norm_t.Resize({1});
     dev_ctx.template Alloc<T>(&p_norm_t);

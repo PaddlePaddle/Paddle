@@ -97,7 +97,7 @@ SpmdInfo BmmGradInferSpmd(const DistMetaTensor& x,
   const auto x_shape = CheckBmmTensorMeta(x, "Input(X)", "BmmGradInferSpmd");
   const auto y_shape = CheckBmmTensorMeta(y, "Input(Y)", "BmmGradInferSpmd");
   const auto out_grad_shape =
-      CheckBmmTensorMeta(out_grad, "Output@Grad", "BmmGradInferSpmd");
+      CheckBmmTensorMeta(out_grad, "Output@GRAD", "BmmGradInferSpmd");
 
   CheckDimEqual(x_shape[2],
                 y_shape[1],
@@ -112,17 +112,17 @@ SpmdInfo BmmGradInferSpmd(const DistMetaTensor& x,
   CheckDimEqual(x_shape[0],
                 out_grad_shape[0],
                 "the batch dimension of Input(X)",
-                "the batch dimension of Output@Grad",
+                "the batch dimension of Output@GRAD",
                 "BmmGradInferSpmd");
   CheckDimEqual(x_shape[1],
                 out_grad_shape[1],
                 "the second dimension of Input(X)",
-                "the second dimension of Output@Grad",
+                "the second dimension of Output@GRAD",
                 "BmmGradInferSpmd");
   CheckDimEqual(y_shape[2],
                 out_grad_shape[2],
                 "the last dimension of Input(Y)",
-                "the last dimension of Output@Grad",
+                "the last dimension of Output@GRAD",
                 "BmmGradInferSpmd");
 
   VLOG(6)

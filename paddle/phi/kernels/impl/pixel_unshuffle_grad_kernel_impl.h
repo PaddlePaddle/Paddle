@@ -53,7 +53,7 @@ void PixelUnshuffleGradKernel(const Context& dev_ctx,
   } else {
     o.Resize({do_dims[0], do_dims[1], factor, do_dims[2], factor, dx_dims[3]});
   }
-  phi::funcs::Transpose<Context, T, 6> trans;
+  funcs::Transpose<Context, T, 6> trans;
   trans(dev_ctx, t, &o, axis);
   dx->Resize(dx_dims);
 }

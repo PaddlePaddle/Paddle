@@ -151,11 +151,18 @@ def query_npu_smi(query=None, index=None, dtype=None):
 
 
 def query_xpu_smi(query=None, index=None, dtype=None):
-    ret = []
+    if (
+        not hasattr(core, "get_xpu_device_count")
+        or core.get_xpu_device_count() == 0
+    ):
+        return []
     if not isinstance(dtype, list) or len(dtype) != len(query):
         dtype = [str] * len(query)
-
-    for dev_id in range(core.get_xpu_device_count()):
+    if not isinstance(index, list) or len(index) == 0:
+        index = list(range(core.get_xpu_device_count()))
+    ret = []
+    for dev_id in index:
+        dev_id = int(dev_id)
         utilization_xpu = core.get_xpu_device_utilization_rate(dev_id)
         mem_total = (
             core.get_xpu_device_total_memory(dev_id) / 1024 / 1024

@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #ifdef PADDLE_WITH_GFLAGS
 #include "gflags/gflags.h"
@@ -107,6 +108,9 @@
 namespace paddle {
 namespace flags {
 
+PADDLE_API void SetFlagsFromEnv(const std::vector<std::string>& flags,
+                                bool error_fatal);
+
 /**
  * @brief Parse commandline flags.
  *
@@ -126,6 +130,9 @@ PADDLE_API void AllowUndefinedFlags();
  * @brief Set Single flag value, return true if success.
  */
 bool SetFlagValue(const std::string& name, const std::string& value);
+
+PADDLE_API bool UpdateLinkedFlags(const std::string& name,
+                                  const std::string& value);
 
 /**
  * @brief Find flag by name, return true if found.
@@ -170,6 +177,15 @@ inline bool SetFlagValue(const char* name, const char* value) {
 }
 #else
 using paddle::flags::SetFlagValue;
+#endif
+#ifdef PADDLE_WITH_GFLAGS
+inline bool UpdateLinkedFlags(const std::string& name,
+                              const std::string& value) {
+  // Gflags does not support this feature.
+  return false;
+}
+#else
+using paddle::flags::UpdateLinkedFlags;
 #endif
 
 #ifdef PADDLE_WITH_GFLAGS

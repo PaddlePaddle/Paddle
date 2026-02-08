@@ -139,6 +139,8 @@ class ProcessMesh(core.ProcessMesh):
         shape: _NumpyShapeLike | None = None,
         process_ids: Iterable[Any] | None = None,
     ) -> None:
+        paddle.base.framework.global_var._in_auto_parallel_ = True
+
         # Use shape and process_ids just for compatibility
         # Users should not use these directly
         if mesh is None:
@@ -485,7 +487,7 @@ class ProcessMesh(core.ProcessMesh):
         self,
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
-        exc_traceback: TracebackType | None,
+        traceback: TracebackType | None,
     ) -> None:
         from .static.dist_op import DistributedOperator
         from .static.dist_tensor import DistributedTensor

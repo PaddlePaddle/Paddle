@@ -168,6 +168,7 @@ class BaseAPI:
             'float': 'float',
             'float[]': 'const std::vector<float>&',
             'double': 'double',
+            'double[]': 'const std::vector<double>&',
             'bool': 'bool',
             'bool[]': 'const std::vector<bool>&',
             'str': 'const std::string&',

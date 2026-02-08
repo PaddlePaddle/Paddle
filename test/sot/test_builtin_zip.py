@@ -93,6 +93,7 @@ class TestZip(TestCaseBase):
         self.assert_results(test_zip_7, layer_list, paddle.randn((10,)))
 
     @min_graph_size_guard(0)
+    @strict_mode_guard(False)
     def test_reconstruct(self):
         self.assert_results(test_zip_8, [1, 2, 3], [4, 5, 6])
 

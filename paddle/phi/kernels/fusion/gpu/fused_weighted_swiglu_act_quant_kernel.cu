@@ -338,13 +338,12 @@ void dispatch_fused_spaq(const phi::bfloat16 *x_data,
 }
 
 template <typename T, typename Context>
-void FusedWeightedSwigluActQuantKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x,
-    const paddle::optional<DenseTensor> &prob,
-    const bool using_pow2_scaling,
-    DenseTensor *out,
-    DenseTensor *scale) {
+void FusedWeightedSwigluActQuantKernel(const Context &dev_ctx,
+                                       const DenseTensor &x,
+                                       const optional<DenseTensor> &prob,
+                                       const bool using_pow2_scaling,
+                                       DenseTensor *out,
+                                       DenseTensor *scale) {
   // Arguments check
   PADDLE_ENFORCE_EQ(
       x.dtype(),

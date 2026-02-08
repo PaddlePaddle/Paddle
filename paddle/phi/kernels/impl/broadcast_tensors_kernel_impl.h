@@ -60,7 +60,7 @@ void ApplyBroadcast(const Context& dev_ctx,
       new_input_dims_vec[out_axis] = input_dims[in_axis];
     }
   }
-  auto new_input_dims = common::make_ddim(new_input_dims_vec);
+  auto new_input_dims = make_ddim(new_input_dims_vec);
 
   // Initialize input X with new_input_dims_vec, so it's rank-aligned with the
   // output
@@ -105,7 +105,7 @@ void BroadcastTensorsKernel(const Context& dev_ctx,
       case 0: {
         const DenseTensor* src = in_tensors[i];
         DenseTensor* dst = out_tensors[i];
-        phi::Copy(dev_ctx, *src, src->place(), false, dst);
+        Copy(dev_ctx, *src, src->place(), false, dst);
         break;
       }
         SWITCH_OUT_RANK_CASE(1)
@@ -114,10 +114,13 @@ void BroadcastTensorsKernel(const Context& dev_ctx,
         SWITCH_OUT_RANK_CASE(4)
         SWITCH_OUT_RANK_CASE(5)
         SWITCH_OUT_RANK_CASE(6)
+        SWITCH_OUT_RANK_CASE(7)
+        SWITCH_OUT_RANK_CASE(8)
+        SWITCH_OUT_RANK_CASE(9)
       default: {
         PADDLE_THROW(common::errors::InvalidArgument(
             "Target tensor rank out of range. "
-            "Maximum supported rank for broadcast is: 6"));
+            "Maximum supported rank for broadcast is: 9"));
       }
     }
   }

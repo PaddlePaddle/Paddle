@@ -30,10 +30,10 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'xpu'
+      workflow-name: "xpu"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,6 +45,7 @@ jobs:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_build
     runs-on:
       group: XPU-build
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run  container
         env:
@@ -107,6 +108,7 @@ jobs:
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ulimit -n 102400
@@ -127,6 +129,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop or target branch"
           bash ci/git_pull.sh $BRANCH
+          git submodule update
           '
 
       - name: Run build
@@ -183,6 +186,7 @@ jobs:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_test
     runs-on:
       group: Kunlun
+    timeout-minutes: 120
 
     steps:
       - name: Determine the runner

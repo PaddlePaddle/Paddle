@@ -112,7 +112,7 @@ class SqueezeNet(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import SqueezeNet
@@ -127,7 +127,7 @@ class SqueezeNet(nn.Layer):
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     version: str
@@ -264,7 +264,7 @@ def squeezenet1_0(
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.0 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import squeezenet1_0
@@ -279,7 +279,7 @@ def squeezenet1_0(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
@@ -300,7 +300,7 @@ def squeezenet1_1(
         :ref:`api_paddle_nn_Layer`. An instance of SqueezeNet v1.1 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import squeezenet1_1
@@ -315,6 +315,6 @@ def squeezenet1_1(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)

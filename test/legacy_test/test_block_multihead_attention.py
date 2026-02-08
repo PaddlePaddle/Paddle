@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -47,18 +45,6 @@ is_sm7x = (
 )
 
 is_sm_supported = is_sm8x or is_sm9x or is_sm7x
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def create_attn_mask(

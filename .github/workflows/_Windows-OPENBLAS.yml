@@ -25,7 +25,7 @@ jobs:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'win-openblas'
+      workflow-name: "win-openblas"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -35,7 +35,9 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: win-openblas
+    timeout-minutes: 120
     env:
+      PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
       WITH_CACHE: "OFF"
@@ -60,6 +62,7 @@ jobs:
     steps:
       - name: Download Paddle and clean env
         working-directory: ..
+        timeout-minutes: 30
         run: |
           whoami
           cd

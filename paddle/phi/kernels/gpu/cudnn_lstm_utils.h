@@ -42,7 +42,7 @@ inline bool is_continuous(const Type &weight_list) {
   return continuous;
 }
 
-inline int size_sum(const std::vector<const phi::DenseTensor *> &weight_list) {
+inline int size_sum(const std::vector<const DenseTensor *> &weight_list) {
   int size = 0;
   for (size_t i = 0; i < weight_list.size(); ++i) {
     auto in_size = weight_list[i]->numel();
@@ -55,8 +55,8 @@ template <typename T>
 inline void weight_to_tensor(
     const phi::Place &place,
     gpuStream_t stream,
-    const std::vector<const phi::DenseTensor *> &weight_list,
-    phi::DenseTensor *weight) {
+    const std::vector<const DenseTensor *> &weight_list,
+    DenseTensor *weight) {
   auto weight_data = weight->data<T>();
   int weight_offset = 0;
   for (size_t i = 0; i < weight_list.size(); ++i) {

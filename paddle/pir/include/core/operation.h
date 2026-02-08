@@ -72,10 +72,10 @@ class alignas(8) Operation final : public DoubleLevelContainer<Operation> {
   /// used in conjunction.
   ///
   PADDLE_API static Operation *Create(
-      const std::vector<pir::Value> &inputs,
+      const std::vector<Value> &inputs,
       const AttributeMap &attributes,
-      const std::vector<pir::Type> &output_types,
-      pir::OpInfo op_info,
+      const std::vector<Type> &output_types,
+      const OpInfo &op_info,
       size_t num_regions = 0,
       const std::vector<Block *> &successors = {},
       bool verify = true);
@@ -185,7 +185,7 @@ class alignas(8) Operation final : public DoubleLevelContainer<Operation> {
   void MoveTo(Block *block, Block::Iterator position);
 
   PADDLE_API void Print(std::ostream &os) const;
-  pir::OpInfo info() const { return info_; }
+  OpInfo info() const { return info_; }
   PADDLE_API std::string name() const;
 
   ///
@@ -242,7 +242,7 @@ class alignas(8) Operation final : public DoubleLevelContainer<Operation> {
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
-            pir::OpInfo op_info,
+            OpInfo op_info,
             uint32_t num_results,
             uint32_t num_operands,
             uint32_t num_regions,

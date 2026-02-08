@@ -651,6 +651,8 @@ class OpTest(unittest.TestCase):
                 and not is_custom_device_op_test()
                 and not cls.check_prim
                 and not cls.check_prim_pir
+                and os.environ.get('FLAG_SKIP_FLOAT64', '').lower()
+                not in ['1', 'true', 'on']
             ):
                 raise AssertionError(
                     f"This test of {cls.op_type} op needs check_grad with fp64 precision."
@@ -3833,7 +3835,7 @@ class OpTest(unittest.TestCase):
 
                 fetch_list_grad = []
                 for inputs_to_check_name in inputs_to_check:
-                    a = inputs_grad_dict[inputs_to_check_name].gradient()
+                    a = np.array(inputs_grad_dict[inputs_to_check_name].grad)
                     fetch_list_grad.append(a)
                 return fetch_list_grad
             else:

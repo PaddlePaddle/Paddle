@@ -37,13 +37,13 @@ class Chi2(Gamma):
         df (float or Tensor): The degree of freedom of the distribution, which should be non-negative. If the input data type is Tensor, it indicates the batch creation of distributions with multiple different parameters, and the `batch_shape` (refer to the :ref:`api_paddle_distribution_Distribution` base class) is the parameter.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> m = paddle.distribution.Chi2(paddle.to_tensor([1.0]))
             >>> sample = m.sample()
             >>> sample.shape
-            [1]
+            paddle.Size([1])
 
     """
 

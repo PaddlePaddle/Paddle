@@ -15,10 +15,13 @@
 #pragma once
 
 #include <string>
+#include <typeinfo>
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -46,18 +49,49 @@ struct TensorCheckerVisitor {
       : op_type(o), var_name(v), tensor(t), place(p) {}
 
   template <typename T>
-  void apply(
-      typename std::enable_if<std::is_integral<T>::value>::type* = 0) const {
+  typename std::enable_if<std::is_integral<T>::value>::type apply() const {
     VLOG(10) << var_name << " need not to check, it's type is not float point";
   }
 
   template <typename T>
-  void apply(typename std::enable_if<
-                 std::is_floating_point<T>::value ||
-                 std::is_same<T, ::phi::dtype::complex<float>>::value ||
-                 std::is_same<T, ::phi::dtype::complex<double>>::value>::type* =
-                 0) const {
-    auto* dev_ctx = reinterpret_cast<Context*>(
+  typename std::enable_if<std::is_floating_point<T>::value &&
+                          !std::is_same<T, phi::dtype::float16>::value &&
+                          !std::is_same<T, phi::dtype::bfloat16>::value>::type
+  apply() const {
+    do_check<T>();
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_same<T, phi::dtype::float16>::value ||
+                          std::is_same<T, phi::dtype::bfloat16>::value>::type
+  apply() const {
+    do_check<T>();
+  }
+
+  template <typename T>
+  typename std::enable_if<
+      std::is_same<T, ::phi::dtype::complex<float>>::value ||
+      std::is_same<T, ::phi::dtype::complex<double>>::value>::type
+  apply() const {
+    do_check<T>();
+  }
+
+  template <typename T>
+  typename std::enable_if<
+      !std::is_integral<T>::value && !std::is_floating_point<T>::value &&
+      !std::is_same<T, ::phi::dtype::complex<float>>::value &&
+      !std::is_same<T, ::phi::dtype::complex<double>>::value &&
+      !std::is_same<T, ::phi::dtype::float16>::value &&
+      !std::is_same<T, ::phi::dtype::bfloat16>::value>::type
+  apply() const {
+    VLOG(10) << "Skipping NaN/Inf check for unsupported type: "
+             << typeid(T).name();
+  }
+
+ private:
+  template <typename T>
+  void do_check() const {
+    auto* dev_ctx = reinterpret_cast<const Context*>(
         phi::DeviceContextPool::Instance().Get(tensor.place()));
 
     phi::DenseTensor stats;

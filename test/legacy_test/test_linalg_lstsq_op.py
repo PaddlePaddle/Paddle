@@ -338,7 +338,7 @@ class TestLinalgLstsqAPIError(unittest.TestCase):
             y = paddle.to_tensor(np.random.random(size=(5)), dtype=np.float32)
             out = paddle.linalg.lstsq(x, y, driver='gelsy')
 
-        def test_shape_dismatch():
+        def test_shape_mismatch():
             x = paddle.to_tensor(
                 np.random.random(size=(5, 10)), dtype=np.float32
             )
@@ -349,7 +349,7 @@ class TestLinalgLstsqAPIError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_x_bad_shape)
         self.assertRaises(ValueError, test_y_bad_shape)
-        self.assertRaises(ValueError, test_shape_dismatch)
+        self.assertRaises(ValueError, test_shape_mismatch)
 
 
 if __name__ == '__main__':

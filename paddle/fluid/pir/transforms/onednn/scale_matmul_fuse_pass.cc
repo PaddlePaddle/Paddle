@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class ScaleMatmulFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
@@ -252,13 +252,12 @@ class ScaleFusedMatmulFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class ScaleMatmulFusePass : public pir::PatternRewritePass {
+class ScaleMatmulFusePass : public PatternRewritePass {
  public:
-  ScaleMatmulFusePass()
-      : pir::PatternRewritePass("scale_matmul_fuse_pass", 2) {}
+  ScaleMatmulFusePass() : PatternRewritePass("scale_matmul_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     std::vector<bool> bool_set = {false, true};
     int benefit_idx = 5;
     for (auto as_x : bool_set) {
@@ -284,10 +283,6 @@ class ScaleMatmulFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateScaleMatmulFusePass() {
   // pd_op.scale + pd_op.matmul -> onednn_op.fused_matmul
   // pd_op.scale + onednn_op.fused_matmul -> onednn_op.fused_matmul
@@ -295,4 +290,4 @@ std::unique_ptr<Pass> CreateScaleMatmulFusePass() {
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(scale_matmul_fuse_pass, ScaleMatmulFusePass);
+REGISTER_IR_PASS(scale_matmul_fuse_pass, pir::ScaleMatmulFusePass);

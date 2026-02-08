@@ -29,7 +29,7 @@ void SliceCooCompute(const Context& dev_ctx,
                      const std::vector<int64_t>& starts,
                      const std::vector<int64_t>& ends,
                      SparseCooTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
 
   // Step1: Infer output dims
   auto out_dims = funcs::GetSliceDims<int64_t>(
@@ -55,8 +55,8 @@ void SliceCooCompute(const Context& dev_ctx,
   // Step3: Get the values and indices of output
   auto sparse_dim = static_cast<int64_t>(x.sparse_dim());
   DenseTensor out_indices =
-      phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
-  DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
+      Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
+  DenseTensor out_values = Empty<T, Context>(dev_ctx, {out_nnz});
 
   auto* out_indices_data = out_indices.data<int64_t>();
   auto* out_values_data = out_values.data<T>();
@@ -94,7 +94,7 @@ void SliceCooKernel(const Context& dev_ctx,
                     const phi::IntArray& starts,
                     const phi::IntArray& ends,
                     SparseCooTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   std::vector<int64_t> axes_vec = axes.GetData();
   std::vector<int64_t> starts_vec = starts.GetData();
   std::vector<int64_t> ends_vec = ends.GetData();
@@ -168,17 +168,16 @@ void SliceCsrTensor2D(const Context& dev_ctx,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
                       const std::vector<int64_t>& ends,
-                      const phi::DDim& out_dims,
+                      const DDim& out_dims,
                       SparseCsrTensor* out) {
   // Step1: Get nnz of out
   int64_t out_nnz =
       GetCsrNonZeroNumber(x, starts[0], ends[0], starts[1], ends[1], 0);
   // Step2: Set out
   int64_t out_n_rows = ends[0] - starts[0];
-  DenseTensor out_crows =
-      phi::Empty<int64_t, Context>(dev_ctx, {out_n_rows + 1});
-  DenseTensor out_cols = phi::Empty<int64_t, Context>(dev_ctx, {out_nnz});
-  DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
+  DenseTensor out_crows = Empty<int64_t, Context>(dev_ctx, {out_n_rows + 1});
+  DenseTensor out_cols = Empty<int64_t, Context>(dev_ctx, {out_nnz});
+  DenseTensor out_values = Empty<T, Context>(dev_ctx, {out_nnz});
   GetCsrSubMatrix<T>(x,
                      starts[0],
                      ends[0],
@@ -199,7 +198,7 @@ void SliceCsrTensor3D(const Context& dev_ctx,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
                       const std::vector<int64_t>& ends,
-                      const phi::DDim& out_dims,
+                      const DDim& out_dims,
                       SparseCsrTensor* out) {
   const auto* x_crows_data = x.crows().data<int64_t>();
   // Step1: Get nnz of out
@@ -223,9 +222,9 @@ void SliceCsrTensor3D(const Context& dev_ctx,
   // Step2: Set out
   const int64_t out_dim0 = out_dims[0], out_n_rows = out_dims[1];
   DenseTensor out_crows =
-      phi::Empty<int64_t, Context>(dev_ctx, {out_dim0 * (out_n_rows + 1)});
-  DenseTensor out_cols = phi::Empty<int64_t, Context>(dev_ctx, {out_nnz});
-  DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
+      Empty<int64_t, Context>(dev_ctx, {out_dim0 * (out_n_rows + 1)});
+  DenseTensor out_cols = Empty<int64_t, Context>(dev_ctx, {out_nnz});
+  DenseTensor out_values = Empty<T, Context>(dev_ctx, {out_nnz});
 
   x_cols_offset = 0;
   int64_t out_crows_offset = 0, out_cols_offset = 0;
@@ -259,7 +258,7 @@ void SliceCsrCompute(const Context& dev_ctx,
                      const std::vector<int64_t>& starts,
                      const std::vector<int64_t>& ends,
                      SparseCsrTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
 
   // Step1: Infer output dims
   auto out_dims = funcs::GetSliceDims<int64_t>(
@@ -292,7 +291,7 @@ void SliceCsrKernel(const Context& dev_ctx,
                     const phi::IntArray& starts,
                     const phi::IntArray& ends,
                     SparseCsrTensor* out) {
-  const phi::DDim& x_dims = x.dims();
+  const DDim& x_dims = x.dims();
   std::vector<int64_t> axes_vec = axes.GetData();
   std::vector<int64_t> starts_vec = starts.GetData();
   std::vector<int64_t> ends_vec = ends.GetData();

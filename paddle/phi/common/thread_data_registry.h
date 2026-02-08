@@ -84,33 +84,17 @@ class ThreadDataRegistry {
 // Lock types
 #if defined(__clang__) || defined(__GNUC__)  // CLANG or GCC
 #ifndef __APPLE__
-#if __cplusplus >= 201703L
   using LockType = std::shared_mutex;
   using SharedLockGuardType = std::shared_lock<std::shared_mutex>;
-#elif __cplusplus >= 201402L
-  using LockType = std::shared_timed_mutex;
-  using SharedLockGuardType = std::shared_lock<std::shared_timed_mutex>;
-#else
-  using LockType = std::mutex;
-  using SharedLockGuardType = std::lock_guard<std::mutex>;
-#endif
 // Special case : mac. https://github.com/facebook/react-native/issues/31250
 #else
   using LockType = std::mutex;
   using SharedLockGuardType = std::lock_guard<std::mutex>;
 #endif
 #elif defined(_MSC_VER)  // MSVC
-#if _MSVC_LANG >= 201703L
   using LockType = std::shared_mutex;
   using SharedLockGuardType = std::shared_lock<std::shared_mutex>;
-#elif _MSVC_LANG >= 201402L
-  using LockType = std::shared_timed_mutex;
-  using SharedLockGuardType = std::shared_lock<std::shared_timed_mutex>;
-#else
-  using LockType = std::mutex;
-  using SharedLockGuardType = std::lock_guard<std::mutex>;
-#endif
-#else  // other compilers
+#else                    // other compilers
   using LockType = std::mutex;
   using SharedLockGuardType = std::lock_guard<std::mutex>;
 #endif

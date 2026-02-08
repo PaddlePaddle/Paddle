@@ -22,7 +22,11 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 #include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle::platform {
@@ -553,7 +557,8 @@ void ChromeTracingLogger::LogMetaInfo(const std::string& version,
                                        span_index);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 void ChromeTracingLogger::LogDeviceProperty(
     const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
   // add device property information
@@ -627,7 +632,7 @@ void ChromeTracingLogger::LogDeviceProperty(
     device_nums -= 1;
   }
 #endif
-#if defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
   for (auto it = device_property_map.begin(); it != device_property_map.end();
        it++) {
     const gpuDeviceProp& device_property = it->second;

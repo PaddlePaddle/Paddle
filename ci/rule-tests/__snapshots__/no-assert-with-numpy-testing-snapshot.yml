@@ -1,0 +1,62 @@
+id: no-assert-with-numpy-testing
+snapshots:
+  assert np.allclose(a, b, rtol=1e-5):
+    labels:
+      - source: assert np.allclose(a, b, rtol=1e-5)
+        style: primary
+        start: 0
+        end: 35
+  assert np.array_equal(a, b, err_msg="Arrays are not equal"):
+    labels:
+      - source: assert np.array_equal(a, b, err_msg="Arrays are not equal")
+        style: primary
+        start: 0
+        end: 59
+  self.assertEqual(np.allclose(a, b), something):
+    labels:
+      - source: self.assertEqual(np.allclose(a, b), something)
+        style: primary
+        start: 0
+        end: 46
+  self.assertEqual(np.array_equal(a, b), True):
+    labels:
+      - source: self.assertEqual(np.array_equal(a, b), True)
+        style: primary
+        start: 0
+        end: 44
+  self.assertEqual(np.array_equal(a, b), True, err_msg="Arrays are not equal"):
+    labels:
+      - source: self.assertEqual(np.array_equal(a, b), True, err_msg="Arrays are not equal")
+        style: primary
+        start: 0
+        end: 76
+  self.assertEqual(something, np.allclose(a, b)):
+    labels:
+      - source: self.assertEqual(something, np.allclose(a, b))
+        style: primary
+        start: 0
+        end: 46
+  self.assertTrue(np.allclose(a, b)):
+    labels:
+      - source: self.assertTrue(np.allclose(a, b))
+        style: primary
+        start: 0
+        end: 34
+  self.assertTrue(np.allclose(a, b, rtol=1e-5, atol=1e-8)):
+    labels:
+      - source: self.assertTrue(np.allclose(a, b, rtol=1e-5, atol=1e-8))
+        style: primary
+        start: 0
+        end: 56
+  self.assertTrue(np.array_equal(a, b)):
+    labels:
+      - source: self.assertTrue(np.array_equal(a, b))
+        style: primary
+        start: 0
+        end: 37
+  self.assertTrue(np.array_equal(a, b), "Arrays are not equal"):
+    labels:
+      - source: self.assertTrue(np.array_equal(a, b), "Arrays are not equal")
+        style: primary
+        start: 0
+        end: 61

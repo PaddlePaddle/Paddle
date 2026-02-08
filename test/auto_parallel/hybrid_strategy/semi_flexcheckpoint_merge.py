@@ -131,9 +131,9 @@ class TestDistCheckpoint:
 
         return losses[0]
 
-    def dist_checkpoint(self, offload=False, safetensors=True):
-        model_path = os.path.join(self.temp_dir, '/model')
-        opt_path = os.path.join(self.temp_dir, '/opt')
+    def dist_checkpoint(self, offload=False, safetensors=True, unique_id=0):
+        model_path = os.path.join(self.temp_dir, f'model.{unique_id}')
+        opt_path = os.path.join(self.temp_dir, f'opt.{unique_id}')
 
         # Test checkpoint saving
         with paddle.LazyGuard():
@@ -191,10 +191,10 @@ class TestDistCheckpoint:
         )
 
     def test_dist_checkpoint(self):
-        self.dist_checkpoint(True, True)
-        self.dist_checkpoint(False, True)
-        self.dist_checkpoint(True, False)
-        self.dist_checkpoint(False, False)
+        self.dist_checkpoint(True, True, 0)
+        self.dist_checkpoint(False, True, 1)
+        self.dist_checkpoint(True, False, 2)
+        self.dist_checkpoint(False, False, 3)
 
     def count_files_in_temp_dir(self, single_path):
         if not os.path.exists(single_path):

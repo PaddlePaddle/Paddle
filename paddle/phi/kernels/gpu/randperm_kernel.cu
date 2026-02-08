@@ -16,14 +16,9 @@
 
 #ifdef __NVCC__
 #include <curand_kernel.h>
-
-#include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
-
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
 #endif
 
 #include "paddle/common/flags.h"
@@ -32,6 +27,7 @@ namespace cub = hipcub;
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/randint_kernel.h"
 
@@ -107,7 +103,7 @@ void RandpermKernel(const Context& dev_ctx,
     range_data[idx] = static_cast<T>(idx);
   });
 
-  out->Resize(common::make_ddim({n}));
+  out->Resize(make_ddim({n}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   // Refer to [Algorithm of randperm] https://osf.io/af2hy/ to

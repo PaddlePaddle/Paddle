@@ -43,7 +43,7 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
 #elif PADDLE_WITH_XPU_BKCL
     : ParallelContext(strategy, phi::XPUPlace(device_id))
 #else
-    : ParallelContext(strategy, phi::CPUPlace())
+    : ParallelContext(strategy, CPUPlace())
 #endif
 {
   // construct node_strategy_ from global strategy by selecting the
@@ -93,7 +93,7 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     inter_strategy_.trainer_endpoints_ = inter_endpoints;
 #ifdef PADDLE_WITH_GLOO
     inter_parallel_ctx_ =
-        std::make_shared<GLOOParallelContext>(inter_strategy_, phi::CPUPlace());
+        std::make_shared<GLOOParallelContext>(inter_strategy_, CPUPlace());
 #endif
   }
 
@@ -146,10 +146,10 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
   if (inter_parallel_ctx_ != nullptr) {
     // copy src to cpu
     // dst is now the src
-    auto src_tensor = dst->Get<phi::DenseTensor>();
+    auto src_tensor = dst->Get<DenseTensor>();
     framework::Variable src_cpu;
-    auto src_cpu_tensor = src_cpu.GetMutable<phi::DenseTensor>();
-    framework::TensorCopySync(src_tensor, phi::CPUPlace(), src_cpu_tensor);
+    auto src_cpu_tensor = src_cpu.GetMutable<DenseTensor>();
+    framework::TensorCopySync(src_tensor, CPUPlace(), src_cpu_tensor);
 
     // allreduce src/cpu to dst/cpu
     framework::Variable dst_cpu;
@@ -157,8 +157,8 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
     inter_parallel_ctx_->WaitComm(ring_id);
 
     // copy dst/cpu to dst
-    auto dst_cpu_tensor = dst_cpu.Get<phi::DenseTensor>();
-    auto dst_tensor = dst->GetMutable<phi::DenseTensor>();
+    auto dst_cpu_tensor = dst_cpu.Get<DenseTensor>();
+    auto dst_tensor = dst->GetMutable<DenseTensor>();
     framework::TensorCopySync(dst_cpu_tensor, dst_tensor->place(), dst_tensor);
 
     inter_parallel_ctx_->WaitComm(ring_id);

@@ -69,19 +69,19 @@ __global__ void SoftmaxGpuKernel(const IntT* x_crows,
       max_val = val;
     }
   }
-  T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
+  T row_max_val = funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
 
   T exp_sum = 0;
   for (int i = 0; i < kIteration; ++i) {
     int idx = non_zero_idx + i * warpSize;
     if (idx >= row_nnz) break;
 
-    auto functor = phi::funcs::CudaExpFunctor<T>();
+    auto functor = funcs::CudaExpFunctor<T>();
     T exp = functor(x_values[row_first + idx] - row_max_val);
     exp_sum += exp;
     out_values[row_first + idx] = exp;
   }
-  T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+  T row_exp_sum = funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
 
   for (int i = 0; i < kIteration; ++i) {
     int idx = non_zero_idx + i * warpSize;
@@ -158,7 +158,7 @@ __global__ void SoftmaxCooGPURawKernel(IntT* sorted_pool_indices,
       max_val = *cur_value;
     }
   }
-  T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
+  T row_max_val = funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
 
   T exp_sum = 0;
   for (int k = 0; k < kIteration; ++k) {
@@ -169,12 +169,12 @@ __global__ void SoftmaxCooGPURawKernel(IntT* sorted_pool_indices,
     auto cur_value = input_values + j + nvalues * i;
     auto cur_out_value = output_values + i * nvalues + j;
 
-    auto functor = phi::funcs::CudaExpFunctor<T>();
+    auto functor = funcs::CudaExpFunctor<T>();
     T exp = functor(*cur_value - row_max_val);
     exp_sum += exp;
     *cur_out_value = exp;
   }
-  T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+  T row_exp_sum = funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
   row_exp_sum = 1.0 / row_exp_sum;
 
   for (int k = 0; k < kIteration; ++k) {
@@ -224,7 +224,7 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
   DenseTensor pool_offsets;
   DenseTensor pool_sizes;
   std::tie(sorted_indices, pool_offsets, pool_sizes, std::ignore) =
-      phi::funcs::sparse::ComputePoolMax<T, IntT, Context, false>(
+      funcs::sparse::ComputePoolMax<T, IntT, Context, false>(
           dev_ctx, indices, values_2, sizes, nvalues, static_cast<IntT>(dim));
 
   auto pool_size = pool_offsets.dims()[0];

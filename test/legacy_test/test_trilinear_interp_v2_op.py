@@ -181,11 +181,11 @@ def trilinear_interp_np(
     batch_size, channel, in_d, in_h, in_w = input.shape
 
     def compute_ratio(in_size, out_size, scale, align_corners):
-        if out_size <= 1:
-            return 0.0
         if align_corners:
+            if out_size <= 1:
+                return 0.0
             return (in_size - 1.0) / (out_size - 1.0)
-        return 1.0 / scale if scale > 0 else 1.0 * in_size / out_size
+        return 1.0 / scale if scale > 0 else in_size / out_size
 
     ratio_d = compute_ratio(in_d, out_d, scale_d, align_corners)
     ratio_h = compute_ratio(in_h, out_h, scale_h, align_corners)
@@ -667,6 +667,7 @@ class TestTrilinearInterpOpUint8(OpTest):
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
 
+        scale_d = scale_h = scale_w = 0
         if self.scale:
             if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
@@ -690,9 +691,9 @@ class TestTrilinearInterpOpUint8(OpTest):
             out_d,
             out_h,
             out_w,
-            0,
-            0,
-            0,
+            scale_d,
+            scale_h,
+            scale_w,
             self.out_size,
             self.actual_shape,
             self.align_corners,
@@ -817,6 +818,18 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
         self.align_mode = 1
 
 
+class TestTrilinearInterpScale4(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 5, 7, 9]
+        self.out_d = 30
+        self.out_h = 20
+        self.out_w = 25
+        self.scale = 1.5
+        self.align_corners = False
+        self.align_mode = 0
+
+
 class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -847,6 +860,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         input_np = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'X': input_np}
 
+        scale_d = scale_h = scale_w = 0
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale:
@@ -892,9 +906,9 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
             out_d,
             out_h,
             out_w,
-            0,
-            0,
-            0,
+            scale_d,
+            scale_h,
+            scale_w,
             self.out_size,
             self.actual_shape,
             self.align_corners,

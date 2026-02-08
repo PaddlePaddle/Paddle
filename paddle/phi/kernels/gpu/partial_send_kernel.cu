@@ -19,7 +19,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/gpu/partial_send_kernel.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif

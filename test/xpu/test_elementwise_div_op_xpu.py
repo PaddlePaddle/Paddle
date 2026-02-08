@@ -219,6 +219,39 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                 (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
                 self.assertEqual((out_result == (2 / x)).all(), True)
 
+    class TestElementwiseDivBroadcastZeroSize(unittest.TestCase):
+        def test_rtruediv_with_scalar(self):
+            main_prog = base.Program()
+            startup_prog = base.Program()
+            with base.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name='x', dtype='float32', shape=[0, 1358]
+                )
+                x.stop_gradient = False
+                scalar = 1.0
+                out = scalar / x
+                loss = paddle.sum(out)
+                x_grad = paddle.static.gradients([loss], [x])[0]
+                exe = base.Executor(base.XPUPlace(0))
+                exe.run(startup_prog)
+                x_np = np.random.uniform(0.1, 100.0, size=(0, 1358)).astype(
+                    'float32'
+                )
+                out_np, x_grad_np = exe.run(
+                    main_prog,
+                    feed={'x': x_np},
+                    fetch_list=[out, x_grad],
+                )
+
+            self.assertEqual(out_np.shape, (0, 1358))
+            self.assertEqual(out_np.size, 0)
+            np.testing.assert_allclose(out_np, 1.0 / x_np, rtol=1e-06, atol=0.0)
+            self.assertEqual(x_grad_np.shape, (0, 1358))
+            self.assertEqual(x_grad_np.size, 0)
+            np.testing.assert_allclose(
+                x_grad_np, -1.0 / (x_np * x_np), rtol=1e-06, atol=0.0
+            )
+
 
 support_types = get_xpu_op_support_types('elementwise_div')
 for stype in support_types:

@@ -63,13 +63,27 @@ class VGG(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of VGG model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import VGG
             >>> from paddle.vision.models.vgg import make_layers
 
-            >>> vgg11_cfg = [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
+            >>> vgg11_cfg = [
+            ...     64,
+            ...     'M',
+            ...     128,
+            ...     'M',
+            ...     256,
+            ...     256,
+            ...     'M',
+            ...     512,
+            ...     512,
+            ...     'M',
+            ...     512,
+            ...     512,
+            ...     'M',
+            ... ]
 
             >>> features = make_layers(vgg11_cfg)  # type: ignore
 
@@ -79,7 +93,7 @@ class VGG(nn.Layer):
             >>> out = vgg11(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     num_classes: int
@@ -211,7 +225,7 @@ def vgg11(
         :ref:`api_paddle_nn_Layer`. An instance of VGG 11-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import vgg11
@@ -226,7 +240,7 @@ def vgg11(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model_name = 'vgg11'
     if batch_norm:
@@ -252,7 +266,7 @@ def vgg13(
         :ref:`api_paddle_nn_Layer`. An instance of VGG 13-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import vgg13
@@ -267,7 +281,7 @@ def vgg13(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model_name = 'vgg13'
     if batch_norm:
@@ -293,7 +307,7 @@ def vgg16(
         :ref:`api_paddle_nn_Layer`. An instance of VGG 16-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import vgg16
@@ -308,7 +322,7 @@ def vgg16(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model_name = 'vgg16'
     if batch_norm:
@@ -334,7 +348,7 @@ def vgg19(
         :ref:`api_paddle_nn_Layer`. An instance of VGG 19-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import vgg19
@@ -349,7 +363,7 @@ def vgg19(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     model_name = 'vgg19'
     if batch_norm:

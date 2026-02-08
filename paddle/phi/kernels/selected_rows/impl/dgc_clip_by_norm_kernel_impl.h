@@ -20,11 +20,11 @@ namespace phi {
 namespace sr {
 template <typename T, typename Context>
 void DGCClipByNormKernel(const Context& dev_ctx,
-                         const phi::SelectedRows& x_in,
+                         const SelectedRows& x_in,
                          const DenseTensor& current_step_in,
                          float max_norm,
                          float rampup_begin_step,
-                         phi::SelectedRows* out) {
+                         SelectedRows* out) {
   if (static_cast<int>(rampup_begin_step) < 0) {
     return;
   }
@@ -43,7 +43,7 @@ void DGCClipByNormKernel(const Context& dev_ctx,
   }
 
   auto* x = &x_in;
-  phi::SelectedRows* output_selected_rows = out;
+  SelectedRows* output_selected_rows = out;
   return phi::sr::ClipByNormKernel<T>(
       dev_ctx, *x, max_norm, output_selected_rows);
 }

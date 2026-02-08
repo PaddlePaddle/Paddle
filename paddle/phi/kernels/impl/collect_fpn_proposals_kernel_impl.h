@@ -61,8 +61,7 @@ void CollectFpnProposalsOpKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& multi_level_rois,
     const std::vector<const DenseTensor*>& multi_level_scores,
-    const paddle::optional<std::vector<const DenseTensor*>>&
-        multi_level_rois_num,
+    const optional<std::vector<const DenseTensor*>>& multi_level_rois_num,
     int post_nms_topn,
     DenseTensor* fpn_rois_out,
     DenseTensor* rois_num_out) {
@@ -93,7 +92,7 @@ void CollectFpnProposalsOpKernel(
           "is %d",
           multi_layer_rois.size(),
           multi_layer_scores.size()));
-  // Check if the lod information of two phi::DenseTensor is same
+  // Check if the lod information of two DenseTensor is same
   const int num_fpn_level = multi_layer_rois.size();
   std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
   for (int i = 0; i < num_fpn_level; ++i) {

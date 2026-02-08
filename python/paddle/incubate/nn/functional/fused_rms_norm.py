@@ -118,7 +118,7 @@ def fused_rms_norm(
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.rms_norm(
+        return _C_ops.fused_rms_norm_quant(
             x,
             bias,
             residual,
@@ -132,7 +132,7 @@ def fused_rms_norm(
             quant_min_bound,
         )
     # static mode
-    helper = LayerHelper('rms_norm', **locals())
+    helper = LayerHelper('fused_rms_norm_quant', **locals())
     out = None
     if quant_scale <= 0:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -156,7 +156,7 @@ def fused_rms_norm(
         inputs['bias'] = bias
 
     helper.append_op(
-        type='rms_norm',
+        type='fused_rms_norm_quant',
         inputs=inputs,
         attrs={
             "epsilon": epsilon,

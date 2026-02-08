@@ -24,10 +24,14 @@ void SignKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    return;
+  }
   auto xpu_context = dev_ctx.x_context();
   int r = xpu::sign(xpu_context, x.data<T>(), out->data<T>(), x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sign, XPU, ALL_LAYOUT, phi::SignKernel, float) {}
+PD_REGISTER_KERNEL(
+    sign, XPU, ALL_LAYOUT, phi::SignKernel, int32_t, int64_t, float) {}

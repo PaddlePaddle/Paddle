@@ -82,7 +82,6 @@ void AllReduceKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000
 PD_REGISTER_KERNEL(all_reduce,
                    GPU,
                    ALL_LAYOUT,
@@ -97,18 +96,3 @@ PD_REGISTER_KERNEL(all_reduce,
                    int64_t,
                    phi::bfloat16,
                    phi::float16) {}
-#else
-PD_REGISTER_KERNEL(all_reduce,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AllReduceKernel,
-                   float,
-                   double,
-                   int,
-                   bool,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int64_t,
-                   phi::float16) {}
-#endif

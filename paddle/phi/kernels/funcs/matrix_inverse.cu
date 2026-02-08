@@ -75,7 +75,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      tmp_gpu_ptrs_data->ptr(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      static_cast<void*>(cpu_ptrs.data()),
                      cpu_ptrs.size() * sizeof(T*),
                      dev_ctx.stream());
@@ -84,7 +84,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   int* gpu_info_ptr =
       reinterpret_cast<int*>(gpu_inv_pivot_info + cpu_ptrs.size());
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   std::vector<int> info;  // only for singular checking
   info.resize(batch_size);
   // This functions in cuBLAS is intended to be used for matrices of small
@@ -118,7 +118,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                       gpu_info_ptr,
                       batch_size);
   }
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      info.data(),
                      dev_ctx.GetPlace(),
                      gpu_info_ptr,

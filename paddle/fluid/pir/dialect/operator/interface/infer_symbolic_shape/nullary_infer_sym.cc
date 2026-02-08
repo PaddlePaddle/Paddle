@@ -245,13 +245,13 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
     const auto &dims = tensor_type.dims();
     if (dims.size() == 0) return true;
     if (dims.size() == 1) {
-      if (dims[0] >= 1 && dims[0] <= ::common::DDim::kMaxRank) {
+      if (dims[0] >= 1 && dims[0] <= DDim::kMaxRank) {
         return true;
       }
       return false;
     }
     if (common::contain_unknown_dim(dims)) return false;
-    if (common::product(dims) > ::common::DDim::kMaxRank) return false;
+    if (common::product(dims) > DDim::kMaxRank) return false;
 
     // only one dim is greater than one, and the other dims are 1
     int gt_one_dim_count = 0;
@@ -337,7 +337,11 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   symbol::DimExpr num_columns_dim;
   symbol::DimExpr num_rows_dim;
   if (op->HasAttribute("num_rows")) {
-    int num_rows_int = op->attribute<pir::Int64Attribute>("num_rows").data();
+    int64_t num_rows_int64 =
+        op->attribute<pir::Int64Attribute>("num_rows").data();
+    // TODO(large-tensor): num_rows may exceed INT_MAX
+    PADDLE_ENFORCE_LE_INT_MAX(num_rows_int64, "num_rows");
+    int num_rows_int = static_cast<int>(num_rows_int64);
     num_rows_dim = symbol::DimExpr(num_rows_int);
   } else if (op->operand_source(0)) {
     const auto &num_rows_shape_or_data =
@@ -351,8 +355,11 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   }
 
   if (op->HasAttribute("num_columns")) {
-    int num_columns_int =
+    int64_t num_columns_int64 =
         op->attribute<pir::Int64Attribute>("num_columns").data();
+    // TODO(large-tensor): num_columns may exceed INT_MAX
+    PADDLE_ENFORCE_LE_INT_MAX(num_columns_int64, "num_columns");
+    int num_columns_int = static_cast<int>(num_columns_int64);
     if (num_columns_int == -1) {
       num_columns_dim = num_rows_dim;
     } else {

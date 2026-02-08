@@ -170,24 +170,24 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   std::vector<IntT> sparse_offsets(sparse_dim), x_indices(x.nnz()),
       y_indices(y.nnz());
 
-  phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
+  funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     x.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     x_indices.data());
+  funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                x.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                x_indices.data());
 
-  phi::funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
-                                     sparse_offsets.data(),
-                                     y.nnz(),
-                                     sparse_dim,
-                                     0,
-                                     1,
-                                     y_indices.data());
+  funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
+                                sparse_offsets.data(),
+                                y.nnz(),
+                                sparse_dim,
+                                0,
+                                1,
+                                y_indices.data());
 
   std::vector<IntT> out_indices;
   std::vector<T> out_values_vec;
@@ -230,22 +230,21 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                          out_indices_vec.data());
 
   if (nnz == 0) {
-    phi::DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-    phi::DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.values());
+    DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x.indices());
+    DenseTensor out_values = EmptyLike<T>(dev_ctx, x.values());
     out->SetMember(out_indices, out_values, x.dims());
   } else {
-    DenseTensorMeta indices_meta(
-        phi::CppTypeToDataType<IntT>::Type(),
-        common::make_ddim(
-            {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
-        DataLayout::NCHW);
+    DenseTensorMeta indices_meta(phi::CppTypeToDataType<IntT>::Type(),
+                                 make_ddim({static_cast<int64_t>(sparse_dim),
+                                            static_cast<int64_t>(nnz)}),
+                                 DataLayout::NCHW);
     auto indices_dim = common::vectorize(
         slice_ddim(x.values().dims(), 1, x.values().dims().size()));
     indices_dim.insert(indices_dim.begin(), nnz);
     DenseTensorMeta values_meta(
-        x.dtype(), common::make_ddim(indices_dim), DataLayout::NCHW);
-    phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-    phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
+        x.dtype(), make_ddim(indices_dim), DataLayout::NCHW);
+    DenseTensor out_indices = Empty(dev_ctx, std::move(indices_meta));
+    DenseTensor out_values = Empty(dev_ctx, std::move(values_meta));
 
     std::memcpy(out_indices.data<IntT>(),
                 out_indices_vec.data(),

@@ -45,7 +45,7 @@ namespace py = pybind11;
 namespace reader = operators::reader;
 
 static paddle::optional<std::vector<int64_t>> DiffTensorShape(
-    const phi::DenseTensor &tensor,
+    const DenseTensor &tensor,
     const std::vector<int64_t> &target_shape,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
@@ -103,7 +103,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
 static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
-    const phi::DenseTensor &tensor,
+    const DenseTensor &tensor,
     const framework::VarDesc &var_desc,
     size_t num_places) {
   auto desc_shape = var_desc.GetShape();
@@ -127,7 +127,7 @@ template <typename QueueType>
 class MultiDeviceFeedReader {
  public:
   using ResultDictList =
-      std::vector<std::unordered_map<std::string, phi::DenseTensor>>;
+      std::vector<std::unordered_map<std::string, DenseTensor>>;
   using ResultList = std::vector<phi::TensorArray>;
 
   static constexpr bool kKeepOrder =
@@ -377,7 +377,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
             auto &tensor_list = result_list[0];
             std::vector<std::shared_ptr<imperative::VarBase>> var_list;
             var_list.reserve(tensor_list.size());
-            auto func = [](phi::DenseTensor &dense_tensor) {
+            auto func = [](DenseTensor &dense_tensor) {
               std::string act_name =
                   imperative::GetCurrentTracer()->GenerateUniqueName(
                       "generated_var");
@@ -386,8 +386,7 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
               new_var->SetType(framework::proto::VarType::DENSE_TENSOR);
               new_var->SetDataType(
                   framework::TransToProtoVarType(dense_tensor.dtype()));
-              auto *tensor =
-                  new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+              auto *tensor = new_var->MutableVar()->GetMutable<DenseTensor>();
               *tensor = std::move(dense_tensor);
               return new_var;
             };
@@ -408,7 +407,7 @@ void BindReader(py::module *module) {
   auto &m = *module;
 
   m.def("diff_tensor_shape",
-        [](const phi::DenseTensor &tensor,
+        [](const DenseTensor &tensor,
            const framework::VarDesc &var_desc,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
@@ -420,7 +419,7 @@ void BindReader(py::module *module) {
         });
 
   m.def("diff_tensor_shape",
-        [](const phi::DenseTensor &tensor,
+        [](const DenseTensor &tensor,
            const std::vector<int64_t> &target_shape,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShape(tensor, target_shape, num_places);

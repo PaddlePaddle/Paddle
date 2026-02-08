@@ -26,7 +26,7 @@ PHI_DEFINE_EXPORTED_bool(xpu_top_p_sampling_use_fp16,
                          false,
                          "use fp16 to improve the inference performance of "
                          "top_p_sampling xpu kernel");
-PHI_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_int32(
     xpu_top_p_sampling_heuristic_threshold,
     20,
     "threshold of heuristic method used for xpu_top_p_sampling, default 20; if "
@@ -40,9 +40,9 @@ template <typename T, typename Context>
 void TopPSamplingKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& ps,
-                        const paddle::optional<DenseTensor>& threshold,
-                        const paddle::optional<DenseTensor>& topp_seed,
-                        int random_seed,
+                        const optional<DenseTensor>& threshold,
+                        const optional<DenseTensor>& topp_seed,
+                        int64_t random_seed,
                         int k,
                         const std::string& mode,
                         DenseTensor* out,

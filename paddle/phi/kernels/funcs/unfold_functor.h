@@ -18,11 +18,15 @@ namespace phi {
 namespace funcs {
 
 //////// CalcOutputSize Functor ///////
-template <typename T = int>
-inline T CalcOutputSize(
-    T input_size, T filter_size, T dilation, T padding1, T padding2, T stride) {
-  const T dkernel = dilation * (filter_size - 1) + 1;
-  T output_size = (input_size + padding1 + padding2 - dkernel) / stride + 1;
+inline int64_t CalcOutputSize(int64_t input_size,
+                              int64_t filter_size,
+                              int64_t dilation,
+                              int64_t padding1,
+                              int64_t padding2,
+                              int64_t stride) {
+  const int64_t dkernel = dilation * (filter_size - 1) + 1;
+  int64_t output_size =
+      (input_size + padding1 + padding2 - dkernel) / stride + 1;
   return input_size == -1 ? -1 : output_size;
 }
 

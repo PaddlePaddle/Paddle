@@ -33,7 +33,7 @@ jobs:
     name: Coverage clone
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      workflow-name: 'coverage'
+      workflow-name: "coverage"
       clone_dir: Paddle-coverage
 
   build-docker:
@@ -50,6 +50,7 @@ jobs:
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
@@ -57,7 +58,8 @@ jobs:
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
-          CCACHE_DIR: "/root/.ccache/coverage"
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
@@ -76,7 +78,7 @@ jobs:
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
-          CCACHE_MAXSIZE: 200G
+          CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: 0.8
           ON_INFER: "ON"
           PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
@@ -90,7 +92,7 @@ jobs:
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
-            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/home/data/shared:/home/data/shared" \
             -v "/dev/shm:/dev/shm" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
@@ -103,6 +105,7 @@ jobs:
             -e GIT_PR_ID \
             -e CACHE_DIR \
             -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
             -e CTEST_PARALLEL_LEVEL \
@@ -133,6 +136,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           rm -rf * .[^.]*
@@ -151,6 +155,7 @@ jobs:
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
+          git submodule update
           '
 
       - name: Check bypass
@@ -249,13 +254,13 @@ jobs:
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
-
   test:
     name: Coverage test
     needs: [build, build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 240
     steps:
       - name: Check docker image and run container
         env:
@@ -329,6 +334,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

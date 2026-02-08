@@ -148,7 +148,7 @@ void LoadSeparatePersistables(framework::Executor* executor,
   num_threads = std::min(num_threads, persistable_vars.size() / chunk_size);
   size_t remains_size = persistable_vars.size() % num_threads;
   VLOG(4) << "Start Load with multi-thread: " << num_threads
-          << " chund size: " << chunk_size;
+          << " chunk size: " << chunk_size;
 
   auto load_handler = [&](const std::vector<framework::VarDesc*>& vars) {
     if (vars.empty()) {
@@ -273,7 +273,7 @@ void SaveVars(const framework::Scope& scope,
   op->SetAttr("file_path", dirname + "/param");
   op->CheckAttrs();
 
-  phi::CPUPlace place;
+  CPUPlace place;
   framework::Executor exe(place);
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }

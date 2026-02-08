@@ -40,12 +40,12 @@ def build_program():
         matmul_out = data @ weight
         bias = paddle.ones([1024, 2048], dtype='float32', name='bias')
         add_out = paddle.add(matmul_out, bias, name='add_out')
-        # add_out -> [sub] -> sub_out -> [tanh] -> tanh_out
+        # add_out -> [sub] -> sub_out -> [silu] -> silu_out
         sub_out = paddle.subtract(add_out, data, name='sub_out')
-        tanh_out = paddle.tanh(sub_out, name='tanh_out')
+        silu_out = paddle.nn.functional.silu(sub_out, name='silu_out')
         bias_1 = paddle.add(bias, sub_out, name='bias_1')
-        out_before = paddle.tanh(bias_1, name='out_before')
-        out_last = paddle.subtract(tanh_out, data, name='out_last')
+        out_before = paddle.nn.functional.silu(bias_1, name='out_before')
+        out_last = paddle.subtract(silu_out, data, name='out_last')
         out_last2 = out_last @ weight
 
         out = paddle.add(out_before, out_last2, name='out')
@@ -64,9 +64,9 @@ class TestManualEvent(unittest.TestCase):
       |     |           |              |
       |  elementwise_sub(s1)           |
       |     |           |              |
-      |  tanh(s1)     elementwise_add(s1)
+      |  silu(s1)     elementwise_add(s1)
       |     |                  |
-    elementwise_sub(s1)      tanh(s1)
+    elementwise_sub(s1)      silu(s1)
             |                  |
         matmul_v2(s1)          |
                  |             |    ---split prog----

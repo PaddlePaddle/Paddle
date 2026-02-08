@@ -26,11 +26,11 @@ template <typename Context, typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     const Context &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
   DenseTensor repeats_cpu_copy;
-  if (repeats.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+  if (repeats.place().GetType() != AllocationType::CPU) {
+    phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT *repeats_data =
-      repeats.place().GetType() == phi::AllocationType::CPU
+      repeats.place().GetType() == AllocationType::CPU
           ? repeats.data<RepeatsT>()
           : repeats_cpu_copy.data<RepeatsT>();
 
@@ -49,7 +49,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
@@ -76,7 +76,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
@@ -91,7 +91,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
     const DenseTensor &repeats,
     DenseTensor *index) {
   DenseTensor repeats_cpu_copy;
-  phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+  phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   const RepeatsT *repeats_data = repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
@@ -109,7 +109,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }

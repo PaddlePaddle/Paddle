@@ -23,13 +23,13 @@ template <typename T>
 class BeamSearchFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &dev_ctx UNUSED,
-                  const phi::DenseTensor *pre_ids,
-                  const phi::DenseTensor *pre_scores,
-                  const phi::DenseTensor *ids,
-                  const phi::DenseTensor *scores,
-                  phi::DenseTensor *selected_ids,
-                  phi::DenseTensor *selected_scores,
-                  phi::DenseTensor *parent_idx,
+                  const DenseTensor *pre_ids,
+                  const DenseTensor *pre_scores,
+                  const DenseTensor *ids,
+                  const DenseTensor *scores,
+                  DenseTensor *selected_ids,
+                  DenseTensor *selected_scores,
+                  DenseTensor *parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -64,8 +64,8 @@ class BeamSearchFunctor<phi::CPUContext, T> {
         0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
-    auto dims = common::make_ddim(
-        std::vector<int64_t>({static_cast<int>(num_instances), 1}));
+    auto dims =
+        make_ddim(std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
     auto *selected_ids_data = dev_ctx.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
@@ -154,7 +154,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * Pruning must one step later than finishing (thus pre_ids is needed here),
    * since the end tokens must be written out.
    */
-  void PruneEndBeams(const phi::DenseTensor *pre_ids,
+  void PruneEndBeams(const DenseTensor *pre_ids,
                      const phi::LegacyLoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
@@ -231,10 +231,10 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * For each source, select top beam_size records.
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
-      const phi::DenseTensor *pre_ids,
-      const phi::DenseTensor *pre_scores,
-      const phi::DenseTensor *ids,
-      const phi::DenseTensor *scores,
+      const DenseTensor *pre_ids,
+      const DenseTensor *pre_scores,
+      const DenseTensor *ids,
+      const DenseTensor *scores,
       size_t lod_level,
       size_t beam_size,
       int end_id,

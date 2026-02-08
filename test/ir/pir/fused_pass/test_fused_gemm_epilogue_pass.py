@@ -26,25 +26,10 @@ from paddle.base.framework import (
 
 np.random.seed(2013)
 
-import os
-import re
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
-    "core is not compiled with CUDA or nvcc version is less than11.6",
+    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestFusedGemm_epilogueAdd(unittest.TestCase):
     def test_fused_gemm_epilogue_add(self):

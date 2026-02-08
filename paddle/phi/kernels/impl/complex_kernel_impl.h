@@ -33,8 +33,8 @@ void ConjKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::ConjFunctor<T> functor(x_data, numel, out_data);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ConjFunctor<T> functor(x_data, numel, out_data);
   for_range(functor);
 }
 
@@ -51,8 +51,8 @@ void RealKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
       out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::RealFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 
@@ -69,8 +69,8 @@ void ImagKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
       out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::ImagFunctor<T> functor(x_data, out_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ImagFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 
@@ -104,16 +104,16 @@ void ComplexKernel(const Context& dev_ctx,
 // NOTE(chenfeiyu): be careful of the caveats of calling elementwise-related
 // facility functions
 #if defined(__NVCC__) || defined(__HIPCC__)
-  phi::funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
+  funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
       dev_ctx, x, y, RealAndImagToComplexFunctor<T>(), out);
 #else
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
-    phi::funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
+    funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
         dev_ctx, x, y, RealAndImagToComplexFunctor<T>(), out);
   } else {
-    phi::funcs::ElementwiseCompute<ImagAndRealToComplexFunctor<T>, T, C>(
+    funcs::ElementwiseCompute<ImagAndRealToComplexFunctor<T>, T, C>(
         dev_ctx, x, y, ImagAndRealToComplexFunctor<T>(), out);
   }
 #endif

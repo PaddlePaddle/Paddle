@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from collections import Counter
+from collections import Counter, OrderedDict
 
 import numpy as np
 from dygraph_to_static_utils import (
@@ -78,6 +78,39 @@ class TestCacheProgram2(TestCacheProgram):
         self.batch_num = 5
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')
+
+
+class TestCacheProgramWithDictInput(TestCacheProgram):
+    def setUp(self):
+        class DummyModel(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(3, 4)
+
+            def forward(self, x_dict):
+                x, y = x_dict["x"], x_dict["y"]
+                return (x * y).sum()
+
+        self.batch_num = 2
+        self.dygraph_class = DummyModel
+        self.data = [
+            {"x": paddle.randn(7, 3), "y": paddle.randn(1, 3)},
+            {"y": paddle.randn(1, 3), "x": paddle.randn(7, 3)},
+        ]
+
+    @test_ast_only
+    def test_cache(self):
+        static_net = paddle.jit.to_static(self.dygraph_class(), full_graph=True)
+        _ = static_net(self.data[0])
+        cache1 = OrderedDict({**static_net.forward._program_cache._caches})
+        _ = static_net(self.data[1])
+        cache2 = static_net.forward._program_cache._caches
+
+        self.assertEqual(
+            cache1,
+            cache2,
+            msg=f"\ncache1({cache1})\n should be equal to \ncache2({cache2})",
+        )
 
 
 class TestCacheProgramWithOptimizer(Dy2StTestBase):

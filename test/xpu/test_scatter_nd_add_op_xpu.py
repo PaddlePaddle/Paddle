@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -78,11 +79,15 @@ class XPUTestScatterNdAdd(XPUOpTestWrapper):
 
             self.init_data()  # only test float32 because of its register type
 
-            self.inputs = {
-                'X': self.x_np,
-                'Index': self.index_np,
-                'Updates': self.updates_np,
-            }
+            self.inputs = {"Index": self.index_np}
+            if self.dtype == np.uint16:
+                self.inputs["X"] = convert_float_to_uint16(self.x_np)
+                self.inputs["Updates"] = convert_float_to_uint16(
+                    self.updates_np
+                )
+            else:
+                self.inputs["X"] = self.x_np
+                self.inputs["Updates"] = self.updates_np
             output = numpy_scatter_nd_add(
                 self.x_np.copy(), self.index_np, self.updates_np
             )

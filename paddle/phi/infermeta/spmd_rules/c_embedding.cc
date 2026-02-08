@@ -131,9 +131,9 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
   t0_dims_mapping.emplace_back(-1);
   TensorDistAttr t0_dist_attr(x.dist_attr());
   t0_dist_attr.set_dims_mapping(t0_dims_mapping);
-  auto t0_shape = phi::vectorize(x.dims());
+  auto t0_shape = vectorize(x.dims());
   t0_shape.emplace_back(w_dst.dims()[0]);
-  DistMetaTensor t0(phi::make_ddim(t0_shape), t0_dist_attr);
+  DistMetaTensor t0(make_ddim(t0_shape), t0_dist_attr);
 
   // Step2: w_grad = einsum('...j, ...k -> jk', t0, out_grad_dst)
   // Step 2.1: Build Einsum Notation
@@ -182,13 +182,12 @@ SpmdInfo CEmbeddingGradInferSpmd(const DistMetaTensor& weight,
   VLOG(4) << "CEmbeddingGradInferSpmd:";
   VLOG(4) << "start_index: " << start_index;
   LogInputDistAttr("Weight",
-                   phi::vectorize(weight.dims()),
+                   vectorize(weight.dims()),
                    weight.dist_attr(),
                    w_dst.dist_attr());
-  LogInputDistAttr(
-      "X", phi::vectorize(x.dims()), x.dist_attr(), x_dst.dist_attr());
+  LogInputDistAttr("X", vectorize(x.dims()), x.dist_attr(), x_dst.dist_attr());
   LogInputDistAttr("OutGrad",
-                   phi::vectorize(out_grad.dims()),
+                   vectorize(out_grad.dims()),
                    out_grad.dist_attr(),
                    out_grad_dst.dist_attr());
   LogOutputDistAttr("WGrad", w_grad.dist_attr());

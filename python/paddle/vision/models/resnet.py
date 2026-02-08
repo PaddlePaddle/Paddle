@@ -242,11 +242,14 @@ class ResNet(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of ResNet model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import ResNet
-            >>> from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
+            >>> from paddle.vision.models.resnet import (
+            ...     BottleneckBlock,
+            ...     BasicBlock,
+            ... )
 
             >>> # build ResNet with 18 layers
             >>> resnet18 = ResNet(BasicBlock, 18)
@@ -255,7 +258,7 @@ class ResNet(nn.Layer):
             >>> resnet50 = ResNet(BottleneckBlock, 50)
 
             >>> # build Wide ResNet model
-            >>> wide_resnet50_2 = ResNet(BottleneckBlock, 50, width=64*2)
+            >>> wide_resnet50_2 = ResNet(BottleneckBlock, 50, width=64 * 2)
 
             >>> # build ResNeXt model
             >>> resnext50_32x4d = ResNet(BottleneckBlock, 50, width=4, groups=32)
@@ -264,7 +267,7 @@ class ResNet(nn.Layer):
             >>> out = resnet18(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     groups: int
@@ -430,7 +433,7 @@ def resnet18(pretrained=False, **kwargs: Unpack[_ResNetOptions]) -> ResNet:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 18-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnet18
@@ -445,7 +448,7 @@ def resnet18(pretrained=False, **kwargs: Unpack[_ResNetOptions]) -> ResNet:
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _resnet('resnet18', BasicBlock, 18, pretrained, **kwargs)
 
@@ -465,7 +468,7 @@ def resnet34(
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 34-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnet34
@@ -480,7 +483,7 @@ def resnet34(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _resnet('resnet34', BasicBlock, 34, pretrained, **kwargs)
 
@@ -500,7 +503,7 @@ def resnet50(
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 50-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnet50
@@ -515,7 +518,7 @@ def resnet50(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _resnet('resnet50', BottleneckBlock, 50, pretrained, **kwargs)
 
@@ -535,7 +538,7 @@ def resnet101(
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 101-layer.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnet101
@@ -550,7 +553,7 @@ def resnet101(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _resnet('resnet101', BottleneckBlock, 101, pretrained, **kwargs)
 
@@ -570,7 +573,7 @@ def resnet152(
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 152-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnet152
@@ -585,7 +588,7 @@ def resnet152(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)
 
@@ -605,7 +608,7 @@ def resnext50_32x4d(
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-50 32x4d model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnext50_32x4d
@@ -620,7 +623,7 @@ def resnext50_32x4d(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['groups'] = 32
     kwargs['width'] = 4
@@ -642,7 +645,7 @@ def resnext50_64x4d(
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-50 64x4d model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnext50_64x4d
@@ -657,7 +660,7 @@ def resnext50_64x4d(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['groups'] = 64
     kwargs['width'] = 4
@@ -679,7 +682,7 @@ def resnext101_32x4d(
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-101 32x4d model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnext101_32x4d
@@ -694,7 +697,7 @@ def resnext101_32x4d(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['groups'] = 32
     kwargs['width'] = 4
@@ -718,7 +721,7 @@ def resnext101_64x4d(
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-101 64x4d model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnext101_64x4d
@@ -733,7 +736,7 @@ def resnext101_64x4d(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['groups'] = 64
     kwargs['width'] = 4
@@ -757,7 +760,7 @@ def resnext152_32x4d(
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-152 32x4d model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnext152_32x4d
@@ -772,7 +775,7 @@ def resnext152_32x4d(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['groups'] = 32
     kwargs['width'] = 4
@@ -796,7 +799,7 @@ def resnext152_64x4d(
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-152 64x4d model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import resnext152_64x4d
@@ -811,7 +814,7 @@ def resnext152_64x4d(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['groups'] = 64
     kwargs['width'] = 4
@@ -835,7 +838,7 @@ def wide_resnet50_2(
         :ref:`api_paddle_nn_Layer`. An instance of Wide ResNet-50-2 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import wide_resnet50_2
@@ -850,7 +853,7 @@ def wide_resnet50_2(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['width'] = 64 * 2
     return _resnet('wide_resnet50_2', BottleneckBlock, 50, pretrained, **kwargs)
@@ -871,7 +874,7 @@ def wide_resnet101_2(
         :ref:`api_paddle_nn_Layer`. An instance of Wide ResNet-101-2 model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import wide_resnet101_2
@@ -886,7 +889,7 @@ def wide_resnet101_2(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     kwargs['width'] = 64 * 2
     return _resnet(

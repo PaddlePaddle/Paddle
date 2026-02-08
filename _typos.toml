@@ -4,13 +4,10 @@ extend-exclude = [
     "third_party",
     "patches",
     "build",
-    # Skip `intermidiate` check in these files
-    "test/cpp/eager/task_tests/CMakeLists.txt",
-    "test/cpp/eager/task_tests/hook_test_intermidiate.cc",
     # Skip `creater` check in these files
     "paddle/fluid/inference/tensorrt/convert/CMakeLists.txt",
-    "paddle/fluid/inference/tensorrt/convert/generic_and_custom_plugin_creater.cc",
-    "paddle/fluid/inference/tensorrt/convert/test_custom_plugin_creater.cc",
+    # Skip `exlucsive` check in these files for OldIR compatibility
+    "paddle/phi/ops/yaml/op_version.yaml",
 ]
 
 [default]
@@ -30,8 +27,10 @@ arange = "arange"
 astroid = 'astroid'
 cacl = 'cacl'
 CANN = 'CANN'
+certifi = "certifi"
 Clas = 'Clas'
 clen = 'clen'
+Copyer = 'Copyer'
 datas = 'datas'
 dota = 'dota'
 dout = "dout"
@@ -48,7 +47,7 @@ setp = 'setp'
 splited = 'splited'
 splitted = 'splitted'
 statis = 'statis'
-UNEXPECT = 'UNEXPECT'
 tood = 'tood'
+UNEXPECT = 'UNEXPECT'
 unpacket = "unpacket"
 vaccum = 'vaccum'

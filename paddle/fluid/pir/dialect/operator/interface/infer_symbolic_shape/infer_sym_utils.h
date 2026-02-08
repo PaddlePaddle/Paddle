@@ -39,21 +39,26 @@ struct AttributeTrait;
 
 template <>
 struct AttributeTrait<std::int64_t> {
-  using value_type = ::pir::Int64Attribute;
+  using value_type = pir::Int64Attribute;
 };
 
 template <>
 struct AttributeTrait<int> {
-  using value_type = ::pir::Int32Attribute;
+  using value_type = pir::Int32Attribute;
 };
 
 template <>
 struct AttributeTrait<float> {
-  using value_type = ::pir::FloatAttribute;
+  using value_type = pir::FloatAttribute;
+};
+
+template <>
+struct AttributeTrait<double> {
+  using value_type = pir::DoubleAttribute;
 };
 
 template <typename T = int64_t>
-std::vector<T> GetVectorAttr(const ::pir::Operation *op,
+std::vector<T> GetVectorAttr(const pir::Operation *op,
                              const std::string &name) {
   using value_type = typename AttributeTrait<T>::value_type;
 
@@ -64,10 +69,10 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
           "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
   const auto &val = attr_map.at(name);
 
-  PADDLE_ENFORCE(val.isa<::pir::ArrayAttribute>(),
+  PADDLE_ENFORCE(val.isa<pir::ArrayAttribute>(),
                  common::errors::PreconditionNotMet(
                      "axis Type MUST ArrayAttribute for [%s] op", op->name()));
-  auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
+  auto array_list = val.dyn_cast<pir::ArrayAttribute>().AsVector();
   std::vector<T> vec_res;
   if (array_list.size() > 0) {
     PADDLE_ENFORCE_EQ(array_list[0].isa<value_type>(),

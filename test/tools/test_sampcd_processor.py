@@ -212,7 +212,7 @@ class TestXdoctester(unittest.TestCase):
         docstring_input = """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -223,7 +223,7 @@ class TestXdoctester(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -232,7 +232,7 @@ class TestXdoctester(unittest.TestCase):
                     >>> print(1-1)
                     0
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     this is some blabla...
@@ -245,7 +245,7 @@ class TestXdoctester(unittest.TestCase):
         docstring_target = """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -256,7 +256,7 @@ class TestXdoctester(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -265,7 +265,7 @@ class TestXdoctester(unittest.TestCase):
                     >>> print(1-1)
                     0
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     this is some blabla...
@@ -306,7 +306,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -322,7 +322,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -339,7 +339,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -409,7 +409,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -423,7 +423,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -438,7 +438,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -517,7 +517,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -536,7 +536,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -555,7 +555,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -574,7 +574,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -592,7 +592,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -615,7 +615,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -713,7 +713,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -731,7 +731,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -749,7 +749,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -767,7 +767,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -784,7 +784,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -803,7 +803,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -822,7 +822,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -867,7 +867,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -887,7 +887,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -907,7 +907,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -921,7 +921,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -935,7 +935,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -949,7 +949,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -963,7 +963,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -977,7 +977,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1142,7 +1142,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1153,7 +1153,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1165,7 +1165,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_minus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1175,7 +1175,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1230,7 +1230,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1241,7 +1241,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1253,7 +1253,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_minus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1263,7 +1263,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1318,7 +1318,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1329,7 +1329,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1341,7 +1341,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_minus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1351,7 +1351,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1406,7 +1406,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1417,7 +1417,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1428,7 +1428,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     >>> print(1+2)
@@ -1439,7 +1439,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1450,7 +1450,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     >>> print(1+1)
@@ -1541,7 +1541,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1552,7 +1552,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1563,7 +1563,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     >>> print(1+2)
@@ -1574,7 +1574,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1585,7 +1585,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     >>> print(1+1)
@@ -1622,7 +1622,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1633,7 +1633,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1646,7 +1646,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     >>> print(1+2)
@@ -1657,7 +1657,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -1668,7 +1668,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-2
 
                     >>> print(1+1)
@@ -1727,7 +1727,7 @@ class TestGetTestResults(unittest.TestCase):
             'one_plus_one': """
             placeholder
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example-0
 
                 this is some blabla...
@@ -1822,7 +1822,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import numpy as np
                     >>> import paddle
@@ -1834,7 +1834,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import numpy as np
                     >>> import paddle
@@ -1868,7 +1868,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +TIMEOUT(10)
                     >>> import time
@@ -1879,7 +1879,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +TIMEOUT(10)
                     >>> import time
@@ -1890,7 +1890,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +TIMEOUT(10)
                     >>> # doctest: +SKIP('skip')
@@ -1902,7 +1902,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP('skip')
                     >>> # doctest: +TIMEOUT(10)
@@ -1914,7 +1914,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +TIMEOUT(10)
                     >>> # doctest: +SKIP('skip')
@@ -1926,7 +1926,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP('skip')
                     >>> # doctest: +TIMEOUT(10)
@@ -1938,13 +1938,13 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +TIMEOUT(10)
                     >>> import time
                     >>> time.sleep(0.1)
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +TIMEOUT(10)
                     >>> import time
@@ -2054,7 +2054,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle.base
             """,
@@ -2063,7 +2063,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> from paddle import fluid
@@ -2073,7 +2073,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP('reason')
                     >>> import os
@@ -2083,7 +2083,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP('reason')
                     >>> import os
@@ -2094,7 +2094,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP('reason')
                     >>> import os
@@ -2107,7 +2107,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP('reason')
                     >>> import os
@@ -2119,7 +2119,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +SKIP
                     >>> import os
@@ -2130,7 +2130,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import os
                     >>> # doctest: +SKIP()
@@ -2141,7 +2141,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import os
                     >>> # doctest: +SKIP('reason')
@@ -2154,7 +2154,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # import paddle.base
                     >>> import os
@@ -2164,7 +2164,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import os # doctest: +SKIP
                     >>> import sys
@@ -2246,7 +2246,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> # required: GPU
@@ -2257,7 +2257,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> # requires: GPU
@@ -2268,7 +2268,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> # require   :   GPU
@@ -2279,7 +2279,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> # require: GPU, xpu
@@ -2290,7 +2290,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> #require:gpu
@@ -2301,7 +2301,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> #require:
@@ -2312,7 +2312,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import sys
                     >>> #require: xpu
@@ -2384,7 +2384,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...
@@ -2405,7 +2405,7 @@ class TestGetTestResults(unittest.TestCase):
 
             Examples:
 
-                .. code-block:: python
+                .. code-block:: pycon
                     :name: code-example-1
 
                     this is some blabla...

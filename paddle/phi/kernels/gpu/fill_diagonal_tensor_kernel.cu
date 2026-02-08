@@ -51,7 +51,7 @@ void FillDiagonalTensorKernel(const Context &dev_ctx,
                               int dim2,
                               DenseTensor *out) {
   const int64_t kMaxBlockDim = 512;
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   T *out_data = dev_ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();
@@ -89,7 +89,7 @@ void FillDiagonalTensorKernel(const Context &dev_ctx,
 
   auto stream = dev_ctx.stream();
   DenseTensor tensor_tmp;
-  tensor_tmp.Resize(common::make_ddim({2 + fill_dims[0]}));
+  tensor_tmp.Resize(make_ddim({2 + fill_dims[0]}));
   int64_t *memory_block_cu = dev_ctx.template Alloc<int64_t>(&tensor_tmp);
   const auto gpu_place = dev_ctx.GetPlace();
   memory_utils::Copy(gpu_place,

@@ -56,9 +56,9 @@ void GatherNdKernel(const Context &dev_ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::CPUGatherNd<T, int>(dev_ctx, x, index, out);
+    funcs::CPUGatherNd<T, int>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::CPUGatherNd<T, int64_t>(dev_ctx, x, index, out);
+    funcs::CPUGatherNd<T, int64_t>(dev_ctx, x, index, out);
   }
 }
 

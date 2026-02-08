@@ -32,8 +32,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool reduce_all,
                      DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), -INFINITY, out);
+    Full<T, Context>(dev_ctx, out->dims(), -INFINITY, out);
     return;
   }
   auto xdim = x.dims();
@@ -75,8 +74,8 @@ void LogsumexpKernel(const Context& dev_ctx,
       keeped_outdim_vec.push_back(xdim[i]);
     }
   }
-  auto outdim = common::make_ddim(outdim_vec);
-  auto keeped_outdim = common::make_ddim(keeped_outdim_vec);
+  auto outdim = make_ddim(outdim_vec);
+  auto keeped_outdim = make_ddim(keeped_outdim_vec);
 
   // The XPU logsumexp api does not use xmax to normalize its input, so we
   // fallback to the non fusion impl currently.

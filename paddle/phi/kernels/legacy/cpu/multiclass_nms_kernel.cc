@@ -20,9 +20,9 @@ namespace phi {
 
 template <typename T>
 void SliceOneClass(const phi::DeviceContext& dev_ctx,
-                   const phi::DenseTensor& items,
+                   const DenseTensor& items,
                    const int class_id,
-                   phi::DenseTensor* one_class_item) {
+                   DenseTensor* one_class_item) {
   T* item_data = dev_ctx.template Alloc<T>(one_class_item);
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
@@ -42,8 +42,8 @@ void SliceOneClass(const phi::DeviceContext& dev_ctx,
 }
 
 template <typename T>
-void NMSFast(const phi::DenseTensor& bbox,
-             const phi::DenseTensor& scores,
+void NMSFast(const DenseTensor& bbox,
+             const DenseTensor& scores,
              const T score_threshold,
              const T nms_threshold,
              const T eta,
@@ -60,8 +60,7 @@ void NMSFast(const phi::DenseTensor& bbox,
   std::vector<T> scores_data(num_boxes);
   std::copy_n(scores.data<T>(), num_boxes, scores_data.begin());
   std::vector<std::pair<T, int>> sorted_indices;
-  phi::funcs::GetMaxScoreIndex(
-      scores_data, score_threshold, top_k, &sorted_indices);
+  funcs::GetMaxScoreIndex(scores_data, score_threshold, top_k, &sorted_indices);
 
   selected_indices->clear();
   T adaptive_threshold = nms_threshold;
@@ -75,18 +74,17 @@ void NMSFast(const phi::DenseTensor& bbox,
         T overlap = T(0.);
         // 4: [xmin ymin xmax ymax]
         if (box_size == 4) {
-          overlap =
-              phi::funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
-                                            bbox_data + kept_idx * box_size,
-                                            normalized);
+          overlap = funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
+                                             bbox_data + kept_idx * box_size,
+                                             normalized);
         }
         // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
         if (box_size == 8 || box_size == 16 || box_size == 24 ||
             box_size == 32) {
-          overlap = phi::funcs::PolyIoU<T>(bbox_data + idx * box_size,
-                                           bbox_data + kept_idx * box_size,
-                                           box_size,
-                                           normalized);
+          overlap = funcs::PolyIoU<T>(bbox_data + idx * box_size,
+                                      bbox_data + kept_idx * box_size,
+                                      box_size,
+                                      normalized);
         }
         keep = overlap <= adaptive_threshold;
       } else {
@@ -105,8 +103,8 @@ void NMSFast(const phi::DenseTensor& bbox,
 
 template <typename T, typename Context>
 void MultiClassNMS(const Context& dev_ctx,
-                   const phi::DenseTensor& scores,
-                   const phi::DenseTensor& bboxes,
+                   const DenseTensor& scores,
+                   const DenseTensor& bboxes,
                    const int scores_size,
                    std::map<int, std::vector<int>>* indices,
                    int* num_nmsed_out,
@@ -128,7 +126,7 @@ void MultiClassNMS(const Context& dev_ctx,
   int num_det = 0;
 
   int64_t class_num = scores_size == 3 ? scores.dims()[0] : scores.dims()[1];
-  phi::DenseTensor bbox_slice, score_slice;
+  DenseTensor bbox_slice, score_slice;
   for (int64_t c = 0; c < class_num; ++c) {
     if (c == background_label) continue;
     if (scores_size == 3) {
@@ -177,7 +175,7 @@ void MultiClassNMS(const Context& dev_ctx,
     // Keep top k results per image.
     std::stable_sort(score_index_pairs.begin(),
                      score_index_pairs.end(),
-                     phi::funcs::SortScorePairDescend<std::pair<int, int>>);
+                     funcs::SortScorePairDescend<std::pair<int, int>>);
     score_index_pairs.resize(keep_top_k);
 
     // Store the new indices.
@@ -200,11 +198,11 @@ void MultiClassNMS(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void MultiClassOutput(const Context& dev_ctx,
-                      const phi::DenseTensor& scores,
-                      const phi::DenseTensor& bboxes,
+                      const DenseTensor& scores,
+                      const DenseTensor& bboxes,
                       const std::map<int, std::vector<int>>& selected_indices,
                       const int scores_size,
-                      phi::DenseTensor* outs,
+                      DenseTensor* outs,
                       int* oindices = nullptr,
                       const int offset = 0) {
   int64_t class_num = scores.dims()[1];
@@ -218,7 +216,7 @@ void MultiClassOutput(const Context& dev_ctx,
   auto* bboxes_data = bboxes.data<T>();
   auto* odata = outs->data<T>();
   const T* sdata = nullptr;
-  phi::DenseTensor bbox;
+  DenseTensor bbox;
   bbox.Resize({scores.dims()[0], box_size});
   int count = 0;
   for (const auto& it : selected_indices) {
@@ -278,7 +276,7 @@ void MulticlassNMSv1Kernel(const Context& dev_ctx,
   int64_t box_dim = boxes->dims()[2];
   int64_t out_dim = box_dim + 2;
   int num_nmsed_out = 0;
-  phi::DenseTensor boxes_slice, scores_slice;
+  DenseTensor boxes_slice, scores_slice;
   int n = 0;
 
   n = static_cast<int>(score_size == 3 ? batch_size
@@ -353,7 +351,7 @@ void MulticlassNMSv1Kernel(const Context& dev_ctx,
       int64_t s = static_cast<int64_t>(batch_starts[i]);
       int64_t e = static_cast<int64_t>(batch_starts[i + 1]);
       if (e > s) {
-        phi::DenseTensor out = outs->Slice(s, e);
+        DenseTensor out = outs->Slice(s, e);
         MultiClassOutput<T>(dev_ctx,
                             scores_slice,
                             boxes_slice,

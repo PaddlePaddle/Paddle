@@ -34,8 +34,8 @@ void RealGradKernel(const Context& dev_ctx,
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
 }
 
@@ -52,8 +52,8 @@ void ImagGradKernel(const Context& dev_ctx,
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
 }
 
@@ -90,36 +90,34 @@ void ComplexGradKernel(const Context& dev_ctx,
       if (dx->numel() == 0) {
         dev_ctx.template Alloc<T>(dx);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+        Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       if (dy->numel() == 0) {
         dev_ctx.template Alloc<T>(dy);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;
   }
   // skip out in a hacky way
   auto out = dout;
-  phi::funcs::ElemwiseGradCompute<Context,
-                                  T,
-                                  ComplexGradForRealFunctor<T>,
-                                  ComplexGradForImagFunctor<T>,
-                                  C>(dev_ctx,
-                                     x,
-                                     y,
-                                     out,
-                                     dout,
-                                     /*axis*/ -1,
-                                     dx,
-                                     dy,
-                                     ComplexGradForRealFunctor<T>(),
-                                     ComplexGradForImagFunctor<T>());
+  funcs::ElemwiseGradCompute<Context,
+                             T,
+                             ComplexGradForRealFunctor<T>,
+                             ComplexGradForImagFunctor<T>,
+                             C>(dev_ctx,
+                                x,
+                                y,
+                                out,
+                                dout,
+                                /*axis*/ -1,
+                                dx,
+                                dy,
+                                ComplexGradForRealFunctor<T>(),
+                                ComplexGradForImagFunctor<T>());
 }
 
 }  // namespace phi

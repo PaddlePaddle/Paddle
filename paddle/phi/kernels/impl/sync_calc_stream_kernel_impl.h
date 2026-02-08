@@ -29,7 +29,7 @@ void SyncCalcStreamKernel(const Context &dev_ctx,
   phi::backends::gpu::GpuStreamSync(dev_ctx.stream());
 #elif defined(PADDLE_WITH_XPU_BKCL)
   auto place = dev_ctx.GetPlace();
-  PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
+  PADDLE_ENFORCE_EQ(place.GetType() == AllocationType::XPU,
                     true,
                     common::errors::PreconditionNotMet(
                         "Sync stream op can run on xpu place only for now."));

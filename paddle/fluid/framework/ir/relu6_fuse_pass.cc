@@ -71,7 +71,7 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
         scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     const auto& clip_max_t =
-        scope->GetVar(clip_max_node->Name())->Get<phi::DenseTensor>();
+        scope->GetVar(clip_max_node->Name())->Get<DenseTensor>();
     auto clip_max_t_dims = clip_max_t.dims();
     PADDLE_ENFORCE_EQ(
         clip_max_t_dims.size(),
@@ -80,7 +80,7 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
                                         "must equal 1",
                                         clip_max_t_dims.size()));
     const auto& clip_min_t =
-        scope->GetVar(clip_min_node->Name())->Get<phi::DenseTensor>();
+        scope->GetVar(clip_min_node->Name())->Get<DenseTensor>();
     auto clip_min_t_dims = clip_min_t.dims();
     PADDLE_ENFORCE_EQ(
         clip_min_t_dims.size(),

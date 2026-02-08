@@ -138,7 +138,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy
@@ -146,26 +146,32 @@ class Cauchy(distribution.Distribution):
                 >>> # init Cauchy with float
                 >>> rv = Cauchy(loc=0.1, scale=1.2)
                 >>> print(rv.sample([10]).shape)
-                [10]
+                paddle.Size([10])
 
                 >>> # init Cauchy with 0-Dim tensor
                 >>> rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
                 >>> print(rv.sample([10]).shape)
-                [10]
+                paddle.Size([10])
 
                 >>> # init Cauchy with N-Dim tensor
-                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> rv = Cauchy(
+                ...     loc=paddle.to_tensor(0.1),
+                ...     scale=paddle.to_tensor([1.0, 2.0]),
+                ... )
                 >>> print(rv.sample([10]).shape)
-                [10, 2]
+                paddle.Size([10, 2])
 
                 >>> # sample 2-Dim data
                 >>> rv = Cauchy(loc=0.1, scale=1.2)
                 >>> print(rv.sample([10, 2]).shape)
-                [10, 2]
+                paddle.Size([10, 2])
 
-                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> rv = Cauchy(
+                ...     loc=paddle.to_tensor(0.1),
+                ...     scale=paddle.to_tensor([1.0, 2.0]),
+                ... )
                 >>> print(rv.sample([10, 2]).shape)
-                [10, 2, 2]
+                paddle.Size([10, 2, 2])
         """
         name = name if name is not None else (self.name + '_sample')
         with paddle.no_grad():
@@ -185,7 +191,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy
@@ -193,26 +199,32 @@ class Cauchy(distribution.Distribution):
                 >>> # init Cauchy with float
                 >>> rv = Cauchy(loc=0.1, scale=1.2)
                 >>> print(rv.rsample([10]).shape)
-                [10]
+                paddle.Size([10])
 
                 >>> # init Cauchy with 0-Dim tensor
                 >>> rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
                 >>> print(rv.rsample([10]).shape)
-                [10]
+                paddle.Size([10])
 
                 >>> # init Cauchy with N-Dim tensor
-                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> rv = Cauchy(
+                ...     loc=paddle.to_tensor(0.1),
+                ...     scale=paddle.to_tensor([1.0, 2.0]),
+                ... )
                 >>> print(rv.rsample([10]).shape)
-                [10, 2]
+                paddle.Size([10, 2])
 
                 >>> # sample 2-Dim data
                 >>> rv = Cauchy(loc=0.1, scale=1.2)
                 >>> print(rv.rsample([10, 2]).shape)
-                [10, 2]
+                paddle.Size([10, 2])
 
-                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> rv = Cauchy(
+                ...     loc=paddle.to_tensor(0.1),
+                ...     scale=paddle.to_tensor([1.0, 2.0]),
+                ... )
                 >>> print(rv.rsample([10, 2]).shape)
-                [10, 2, 2]
+                paddle.Size([10, 2, 2])
         """
         name = name if name is not None else (self.name + '_rsample')
 

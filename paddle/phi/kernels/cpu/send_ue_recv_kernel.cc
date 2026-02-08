@@ -116,16 +116,19 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
                                          int64_t out_size,
                                          DenseTensor* out,
                                          DenseTensor* dst_count = nullptr) {
-  const int& index_size = src_index.dims()[0];  // NOLINT
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  const int64_t& index_size = src_index.dims()[0];
+  // NOLINT
   auto out_dims = out->dims();
   int64_t memset_size = 1;
-  std::vector<int64_t> dims_ = common::vectorize(out_dims);
+  std::vector<int64_t> dims_ = vectorize(out_dims);
   if (out_size <= 0) {
     dims_[0] = x.dims()[0];
   } else {
     dims_[0] = out_size;
   }
-  out->Resize(common::make_ddim(dims_));
+  out->Resize(make_ddim(dims_));
   for (auto dim : dims_) {
     memset_size *= dim;
   }
@@ -175,7 +178,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
       for (int i = 0; i < input_size; i++) {
         if (dst_count_data[i] == 0) continue;
         auto out_slice = out->Slice(i, i + 1);
-        auto eigen_out = phi::EigenVector<T>::Flatten(out_slice);
+        auto eigen_out = EigenVector<T>::Flatten(out_slice);
         eigen_out = eigen_out / static_cast<T>(dst_count_data[i]);
       }
     }
@@ -260,7 +263,7 @@ void SendUERecvKernel(const Context& dev_ctx,
 
   if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    std::vector<int64_t> dims_ = common::vectorize(out->dims());
+    std::vector<int64_t> dims_ = vectorize(out->dims());
     if (out_size_data[0] <= 0) {
       dims_[0] = x.dims()[0];
     } else {
@@ -271,13 +274,9 @@ void SendUERecvKernel(const Context& dev_ctx,
           out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
       dst_count->Resize({input_size});
     }
-    out->Resize(common::make_ddim(dims_));
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(dst_count->dims())),
-                            0,
-                            dst_count);
+    out->Resize(make_ddim(dims_));
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<int, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 

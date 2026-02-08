@@ -32,6 +32,7 @@ typedef struct {
   PyObject* non_differentiable;
   PyObject* not_inplace_tensors;
   bool materialize_grads;
+  bool grad_in_dtype_consistent;
   std::vector<bool> forward_input_tensor_is_duplicable;
   std::vector<bool> forward_output_tensor_is_duplicable;
   std::weak_ptr<egr::GradNodePyLayer> grad_node;

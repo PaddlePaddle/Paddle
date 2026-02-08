@@ -1496,14 +1496,14 @@ class PipelineParallel(MetaParallelBase):
             return
         if isinstance(output_tensor, (tuple, list)):
             for t in output_tensor:
-                if t is None:
+                if not isinstance(t, paddle.Tensor):
                     continue
                 host_tensor = (
                     t.pin_memory() if hasattr(t, "pin_memory") else t.cpu()
                 )
                 host_tensor._share_buffer_to(t)
         else:
-            if output_tensor is None:
+            if not isinstance(output_tensor, paddle.Tensor):
                 return
             host_tensor = (
                 output_tensor.pin_memory()

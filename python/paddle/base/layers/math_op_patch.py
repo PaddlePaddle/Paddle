@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import inspect
 import warnings
+from typing import TYPE_CHECKING
 
 from .. import core
 from ..dygraph.base import in_to_static_mode
@@ -23,6 +26,9 @@ from ..framework import (
     default_main_program,
     static_only,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -200,12 +206,12 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> x = paddle.static.data(name="x", shape=[2, 2], dtype='float32')
                 >>> y = x.cpu()
         """
         block = current_block(self)
@@ -247,12 +253,12 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
 
-                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> x = paddle.static.data(name="x", shape=[2, 2], dtype='float32')
                 >>> y = x.cpu()
                 >>> z = y.cuda()
         """
@@ -336,7 +342,7 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base as base
@@ -344,15 +350,14 @@ def monkey_patch_variable():
                 >>> startup_prog = paddle.static.Program()
                 >>> main_prog = paddle.static.Program()
                 >>> with base.program_guard(startup_prog, main_prog):
-                ...     original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
+                ...     original_variable = paddle.static.data(name="new_variable", shape=[2, 2], dtype='float32')
                 ...     new_variable = original_variable.astype('int64')
                 ...     print("new var's dtype is: {}".format(new_variable.dtype))
-                ...
                 new var's dtype is: paddle.int64
 
             In Dygraph Mode:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -361,10 +366,13 @@ def monkey_patch_variable():
                 >>> x = np.ones([2, 2], np.float32)
                 >>> with base.dygraph.guard():
                 ...     original_variable = paddle.to_tensor(x)
-                ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
+                ...     print(
+                ...         "original var's dtype is: {}, numpy dtype is {}".format(
+                ...             original_variable.dtype, original_variable.numpy().dtype
+                ...         )
+                ...     )
                 ...     new_variable = original_variable.astype('int64')
                 ...     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
-                ...
                 original var's dtype is: paddle.float32, numpy dtype is float32
                 new var's dtype is: paddle.int64, numpy dtype is int64
         """
@@ -506,7 +514,7 @@ def monkey_patch_variable():
             the dimension
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -528,7 +536,7 @@ def monkey_patch_variable():
             the dimension
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -550,7 +558,7 @@ def monkey_patch_variable():
             the dimension
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -573,7 +581,7 @@ def monkey_patch_variable():
         Setting requires_grad=True is equivalent to setting stop_gradient=False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.randn([2, 3])
@@ -597,6 +605,20 @@ def monkey_patch_variable():
                 f"requires_grad must be bool, but got {type(value)}"
             )
         self.stop_gradient = not value
+
+    def requires_grad_(self, requires_grad: bool = True) -> Tensor:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            requires_grad (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(requires_grad, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(requires_grad)}"
+            )
+        self.stop_gradient = not requires_grad
+        return self
 
     def _scalar_add_(var, value):
         return _scalar_op_(var, 1.0, value)
@@ -849,6 +871,7 @@ def monkey_patch_variable():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ("requires_grad", requires_grad),
+        ("requires_grad_", requires_grad_),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

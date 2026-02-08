@@ -38,11 +38,10 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
                                     const std::string& data_format,
                                     DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
   dev_ctx.template Alloc<T>(out);
 
@@ -71,13 +70,13 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
   auto filter_dims = filter_.dims();
 
   DDim in_data_dims;
-  if (data_layout != DataLayout::kNHWC) {
+  if (data_layout != DataLayout::NHWC) {
     in_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   } else {
     in_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 

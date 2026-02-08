@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_cuda_version, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -24,19 +22,6 @@ from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     flashmask_attention,
 )
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
-
 
 is_sm8x = (
     (core.is_compiled_with_cuda() or is_custom_device())
@@ -266,6 +251,8 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
 
         startend_row_indices = self.get_flashmask()
         mask = self.get_densemask()
+        # Note(xhy): ci no supports test on sm90 and blockmask only supports sm >= sm90
+        blockmask = None
         out = flashmask_attention(
             q,
             k,
@@ -273,6 +260,7 @@ class TestFlashMaskAttentionAPI(unittest.TestCase):
             startend_row_indices=startend_row_indices,
             dropout=self.dropout,
             causal=self.causal,
+            block_mask=blockmask,
         )
         out_ = attention_naive_with_mask(q_, k_, v_, mask)
         out.backward(ograd)

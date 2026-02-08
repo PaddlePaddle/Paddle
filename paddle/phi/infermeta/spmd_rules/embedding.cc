@@ -268,9 +268,9 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   t0_dims_mapping.emplace_back(-1);
   TensorDistAttr t0_dist_attr(x.dist_attr());
   t0_dist_attr.set_dims_mapping(t0_dims_mapping);
-  auto t0_shape = phi::vectorize(x.dims());
+  auto t0_shape = vectorize(x.dims());
   t0_shape.emplace_back(w_dst.dims()[0]);
-  DistMetaTensor t0(phi::make_ddim(t0_shape), t0_dist_attr);
+  DistMetaTensor t0(make_ddim(t0_shape), t0_dist_attr);
 
   // Step2: w_grad = einsum('...j, ...k -> jk', t0, out_grad_dst)
   // Step 2.1: Build Einsum Notation
@@ -323,22 +323,21 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   w_grad = DistMetaTensor(w_grad.dims(), w_grad_dist_attr);
 
   VLOG(6) << "EmbeddingGradInferSpmd:\n"
-          << "Input x shape: [" << str_join(phi::vectorize(x.dims()))
+          << "Input x shape: [" << str_join(vectorize(x.dims()))
           << "], src_dims_mapping: [" << str_join(x.dist_attr().dims_mapping())
           << "], dst_dims_mapping: ["
           << str_join(x_dst.dist_attr().dims_mapping()) << "]\n"
-          << "Input weight shape: [" << str_join(phi::vectorize(weight.dims()))
+          << "Input weight shape: [" << str_join(vectorize(weight.dims()))
           << "], src_dims_mapping: ["
           << str_join(weight.dist_attr().dims_mapping())
           << "], dst_dims_mapping: ["
           << str_join(w_dst.dist_attr().dims_mapping()) << "]\n"
-          << "Input out_grad shape: ["
-          << str_join(phi::vectorize(out_grad.dims()))
+          << "Input out_grad shape: [" << str_join(vectorize(out_grad.dims()))
           << "], src_dims_mapping: ["
           << str_join(out_grad.dist_attr().dims_mapping())
           << "], dst_dims_mapping: ["
           << str_join(out_grad_dst.dist_attr().dims_mapping()) << "]\n"
-          << "Output w_grad shape: [" << str_join(phi::vectorize(w_grad.dims()))
+          << "Output w_grad shape: [" << str_join(vectorize(w_grad.dims()))
           << "], dims_mapping: [" << str_join(w_grad.dist_attr().dims_mapping())
           << "]\n\n";
 

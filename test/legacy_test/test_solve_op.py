@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 
 from paddle import base
 
@@ -930,6 +930,82 @@ class TestSolveOpAPIZeroDimCase(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 run(place, x_shape=[10, 0, 0], y_shape=[10])
+
+
+class TestSolveAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = ['cpu', get_device_place()]
+        self.n = 4
+        self.shape_A = [self.n, self.n]
+        self.shape_B = [self.n, 1]
+        self.dtype = "float64"
+        self.init_data()
+
+    def init_data(self):
+        A = np.random.rand(*self.shape_A).astype(self.dtype)
+        self.np_A = np.dot(A, A.T) + np.eye(self.n)
+        self.np_B = np.random.rand(*self.shape_B).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(self.np_A)
+        B = paddle.to_tensor(self.np_B)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.linalg.solve(A, B)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.linalg.solve(x=A, y=B)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.linalg.solve(A=A, B=B)
+        paddle_dygraph_out.append(out3)
+        # Key words args for out
+        out4 = paddle.zeros_like(B)
+        paddle.linalg.solve(A, B, out=out4)
+        paddle_dygraph_out.append(out4)
+        # Numpy reference output
+        ref_out = np.linalg.solve(self.np_A, self.np_B)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-05, atol=1e-08
+            )
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            A = paddle.static.data(
+                name="A", shape=self.shape_A, dtype=self.dtype
+            )
+            B = paddle.static.data(
+                name="B", shape=self.shape_B, dtype=self.dtype
+            )
+            # Position args (args)
+            out1 = paddle.linalg.solve(A, B)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.linalg.solve(x=A, y=B)
+            # Key words args for torch compatibility
+            out3 = paddle.linalg.solve(A=A, B=B)
+            # Numpy reference output
+            ref_out = np.linalg.solve(self.np_A, self.np_B)
+
+            fetch_list = [out1, out2, out3]
+            for place in self.places:
+                exe = paddle.base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"A": self.np_A, "B": self.np_B},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, ref_out, rtol=1e-05, atol=1e-08
+                    )
 
 
 if __name__ == "__main__":

@@ -134,7 +134,7 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
       }
     }
   }
-  phi::funcs::FCFunctor<Context, T> fc;
+  funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx,
      x_dims[0],
      w_dims[1],

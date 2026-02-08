@@ -52,7 +52,7 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   size_t auto_growth_size(bool is_small, size_t chunk_size);
 
   // Release the memory block which is not used in pool.
-  uint64_t ReleaseImpl(const phi::Place &place) override {
+  uint64_t ReleaseImpl(const Place &place) override {
     // TODO(vivienfanghuagood): the next line may cause the process to deadlock.
     if (FLAGS_enable_auto_growth_allocator_add_lock) {
       std::lock_guard<SpinLock> guard(spinlock_);

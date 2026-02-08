@@ -22,6 +22,7 @@ import numpy as np
 import tvm_ffi.cpp
 
 import paddle
+from paddle.utils.dlpack import DLDeviceType
 
 if TYPE_CHECKING:
     from tvm_ffi import Module
@@ -145,6 +146,120 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         x = paddle.full((3,), 1.0, dtype='float32').cpu()
         y = mod.add_one_cpu(x)
         np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+
+class TestDLPackDataType(unittest.TestCase):
+    @staticmethod
+    def _paddle_dtype_to_tvm_ffi_dtype(paddle_dtype: paddle.dtype):
+        # Currently, our paddle.uint16 shows as 'paddle.bfloat16' in str(),
+        # We should use ml_dtypes to avoid this hack in the future.
+        if paddle_dtype == paddle.uint16:
+            return tvm_ffi.dtype("uint16")
+        dtype_str = str(paddle_dtype).split('.')[-1]
+        return tvm_ffi.dtype(dtype_str)
+
+    def test_dlpack_data_type_base_protocol(self):
+        for dtype in [
+            paddle.uint8,
+            paddle.uint16,
+            paddle.uint32,
+            paddle.uint64,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            tvm_ffi_dtype = TestDLPackDataType._paddle_dtype_to_tvm_ffi_dtype(
+                dtype
+            )
+            self.assertEqual(
+                dtype.__dlpack_data_type__(),
+                (
+                    tvm_ffi_dtype.type_code,
+                    tvm_ffi_dtype.bits,
+                    tvm_ffi_dtype.lanes,
+                ),
+            )
+
+    def test_data_type_as_input(self):
+        cpp_source = r"""
+            void check_dtype(tvm::ffi::TensorView x, DLDataType expected_dtype) {
+                TVM_FFI_ICHECK(x.dtype() == expected_dtype) << "dtype mismatch";
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='check_dtype'
+        )
+        for dtype in [
+            paddle.bool,
+            paddle.uint8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            x = paddle.zeros((10,), dtype=dtype).cpu()
+            mod.check_dtype(x, dtype)
+
+
+class TestDLPackDeviceType(unittest.TestCase):
+    def test_dlpack_device_type_base_protocol_from_place(self):
+        self.assertEqual(
+            paddle.CPUPlace().__dlpack_device__(),
+            (DLDeviceType.kDLCPU.value, 0),
+        )
+
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.CUDAPlace(0).__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+            self.assertEqual(
+                paddle.CUDAPinnedPlace().__dlpack_device__(),
+                (DLDeviceType.kDLCUDAHost.value, 0),
+            )
+
+    def test_dlpack_device_type_base_protocol_from_device(self):
+        self.assertEqual(
+            paddle.device('cpu').__dlpack_device__(),
+            (DLDeviceType.kDLCPU.value, 0),
+        )
+
+        if paddle.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.device('cuda:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+            self.assertEqual(
+                paddle.device('gpu:0').__dlpack_device__(),
+                (DLDeviceType.kDLCUDA.value, 0),
+            )
+
+    def test_dlpack_device_type_as_input(self):
+        cpp_source = r"""
+            void check_device(tvm::ffi::TensorView x, DLDevice expected_device) {
+                TVM_FFI_ICHECK(x.device().device_type == expected_device.device_type) << "device type mismatch";
+                TVM_FFI_ICHECK(x.device().device_id == expected_device.device_id) << "device id mismatch";
+            }
+        """
+        mod: Module = tvm_ffi.cpp.load_inline(
+            name='mod', cpp_sources=cpp_source, functions='check_device'
+        )
+
+        x_cpu = paddle.zeros((10,), dtype='float32').cpu()
+        mod.check_device(x_cpu, x_cpu.place)
+
+        if paddle.is_compiled_with_cuda():
+            x_gpu = paddle.zeros((10,), dtype='float32').cuda()
+            mod.check_device(x_gpu, x_gpu.place)
 
 
 if __name__ == '__main__':

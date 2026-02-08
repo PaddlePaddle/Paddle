@@ -71,7 +71,6 @@
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -86,12 +85,9 @@
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/graph.h"
-#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/metrics_py.h"
-#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -145,10 +141,6 @@
 
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
-#endif
-
-#if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
 #include "paddle/common/flags.h"
@@ -880,7 +872,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           },
           py::return_value_policy::reference);
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+      std::unordered_map<std::string, std::pair<bool, DenseTensor>>;
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

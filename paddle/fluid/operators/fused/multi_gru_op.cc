@@ -161,12 +161,11 @@ phi::KernelKey MultiGRUOp::GetExpectedKernelType(
 }
 
 void MultiGRUOpMaker::Make() {
-  AddInput(
-      "X",
-      "(phi::DenseTensor) the input is an DenseTensor, which support "
-      "variable-time length input sequence. The underlying tensor in "
-      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
-      "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput("X",
+           "(phi::DenseTensor) the input is an DenseTensor, which support "
+           "variable-time length input sequence. The underlying tensor in "
+           "this DenseTensor is a matrix with shape (T X M), where T is the "
+           "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("WeightX",
            "(MultiTensor) The FC weight with shape (M x 3D),"
            "where M is the dim size of x, D is the hidden size. ")

@@ -60,6 +60,9 @@ void EmbeddingGradKernel(const Context& dev_ctx,
   int64_t ym = ids_numel;
   int64_t n = d_table_t->dims()[1];
 
+  if (xm == 0 || ym == 0 || n == 0) {
+    return;
+  }
   int r = xpu::embedding_grad<XPUType, int64_t>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(d_output_data),
@@ -88,7 +91,7 @@ void EmbeddingSparseGradKernel(const Context& dev_ctx,
   ids_cpu.Resize(input.dims());
   dev_ctx.HostAlloc(&ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
   if (input.dtype() == phi::DataType::INT64) {
-    phi::Copy(dev_ctx, input, CPUPlace(), false, &ids_cpu);
+    Copy(dev_ctx, input, CPUPlace(), false, &ids_cpu);
 
     ids = CopyIdsToVector<int64_t, int64_t>(ids_cpu);
 

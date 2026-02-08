@@ -25,26 +25,26 @@ namespace phi {
 template <typename Context, typename T>
 struct SequenceSoftmaxFunctor {
   void operator()(const Context &dev_ctx,
-                  const phi::DenseTensor &x,
+                  const DenseTensor &x,
                   const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-                  phi::DenseTensor *out);
+                  DenseTensor *out);
 };
 
 template <typename Context, typename T>
 struct SequenceSoftmaxGradFunctor {
   void operator()(const Context &dev_ctx,
-                  const phi::DenseTensor &dout,
-                  const phi::DenseTensor &out,
+                  const DenseTensor &dout,
+                  const DenseTensor &out,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/
-                  phi::DenseTensor *dx);
+                  DenseTensor *dx);
 };
 
 template <typename T>
 struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
-                  const phi::DenseTensor &x,
+                  const DenseTensor &x,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/
-                  phi::DenseTensor *out) {
+                  DenseTensor *out) {
     size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
     T *out_data = dev_ctx.Alloc<T>(out);
@@ -64,10 +64,10 @@ struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
 template <typename T>
 struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
-                  const phi::DenseTensor &dout,
-                  const phi::DenseTensor &out,
+                  const DenseTensor &dout,
+                  const DenseTensor &out,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/
-                  phi::DenseTensor *dx) {
+                  DenseTensor *dx) {
     size_t height = ref_lod.size() - 1;
 
     const T *softmax_grad_data = dout.data<T>();
@@ -97,12 +97,12 @@ void SequenceSoftmaxKernel(const Context &dev_ctx,
 
   auto lod = x->lod();
   auto dims = x->dims();
-  PADDLE_ENFORCE_EQ(lod.empty(),
-                    false,
-                    common::errors::InvalidArgument(
-                        "Input(X) phi::DenseTensor of SequenceSoftmax "
-                        "operator does not contain "
-                        "LoD information."));
+  PADDLE_ENFORCE_EQ(
+      lod.empty(),
+      false,
+      common::errors::InvalidArgument("Input(X) DenseTensor of SequenceSoftmax "
+                                      "operator does not contain "
+                                      "LoD information."));
 
   const size_t level = lod.size() - 1;
   PADDLE_ENFORCE_EQ(

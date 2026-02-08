@@ -413,10 +413,10 @@ class TestArgmaxAPI_Compatibility(unittest.TestCase):
         # Position args (args)
         out1 = paddle_api(x, 1)
         paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
+        # Keywords args (kwargs) for paddle
         out2 = paddle_api(x=x, axis=1)
         paddle_dygraph_out.append(out2)
-        # Key words args for torch
+        # Keywords args for torch
         out3 = paddle_api(input=x, dim=1)
         paddle_dygraph_out.append(out3)
         # Combined args and kwargs
@@ -448,9 +448,9 @@ class TestArgmaxAPI_Compatibility(unittest.TestCase):
             paddle_api = eval(f"paddle.{api_name}")
             # Position args (args)
             out1 = paddle_api(x, 1)
-            # Key words args (kwargs) for paddle
+            # Keywords args (kwargs) for paddle
             out2 = paddle_api(x=x, axis=1)
-            # Key words args for torch
+            # Keywords args for torch
             out3 = paddle_api(input=x, dim=1)
             # Combined args and kwargs
             out4 = paddle_api(x, dim=1)

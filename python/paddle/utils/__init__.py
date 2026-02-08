@@ -22,8 +22,10 @@ from . import (  # noqa: F401
     layers_utils,
     unique_name,
 )
+from .bwd_graph_utils import capture_backward_subgraph_guard  # noqa: F401
 from .deprecated import deprecated
 from .environments import strtobool as strtobool
+from .fwd_graph_utils import capture_forward_subgraph_guard  # noqa: F401
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,
@@ -57,3 +59,13 @@ from .lazy_import import try_import
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 
 __all__ = ['deprecated', 'run_check', 'require_version', 'try_import']
+
+
+def __getattr__(name):
+    if name == "data":
+        from importlib import import_module
+
+        mod = import_module(".data", package=__name__)
+        globals()[name] = mod
+        return mod
+    raise AttributeError(f"module 'paddle.utils' has no attribute '{name}'")

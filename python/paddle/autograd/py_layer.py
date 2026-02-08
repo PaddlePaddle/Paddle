@@ -63,6 +63,76 @@ class PyLayerContext:
     not_inplace_tensors: tuple[Tensor, ...]
     non_differentiable: tuple[Tensor, ...]
     materialize_grads: bool
+    grad_in_dtype_consistent: bool
+
+    def set_grad_in_dtype_consistent(self, flag: bool) -> None:
+        """
+        Set whether to maintain gradient input dtype consistency between forward output and backward input.
+
+        Note:
+            This API should be called only inside `forward`.
+            By default, backward input gradients are automatically cast to match the dtype of forward outputs.
+            Set this to `False` to disable automatic casting and maintain original gradient dtypes in backward.
+
+        Args:
+            flag (bool): Whether to enable automatic dtype conversion in backward.
+                - `True`:  Cast backward input gradient to match forward output dtype (default behavior)
+                - `False`: Preserve original dtype of backward input gradient
+
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> from paddle.autograd import PyLayer
+                >>> paddle.seed(2025)
+                >>> class cus_tanh(PyLayer):
+                ...     @staticmethod
+                ...     def forward(ctx, x):
+                ...         y = paddle.tanh(x)
+                ...         # Pass tensors to backward.
+                ...         ctx.save_for_backward(y)
+                ...         # The gradient input in the backward process
+                ...         # will not be automatically cast to the dtype of the forward output.
+                ...         ctx.set_grad_in_dtype_consistent(False)
+                ...         return y
+                ...
+                ...     @staticmethod
+                ...     def backward(ctx, dy):
+                ...
+                ...         # Get the tensors passed by forward.
+                ...         y, = ctx.saved_tensor()
+                ...         grad = dy * (1 - paddle.square(y))
+                ...         return grad
+                ...
+                >>> class cus_tanh_cast_grad(PyLayer):
+                ...     @staticmethod
+                ...     def forward(ctx, x):
+                ...         y = paddle.tanh(x)
+                ...         # Pass tensors to backward.
+                ...         ctx.save_for_backward(y)
+                ...         return y
+                ...
+                ...     @staticmethod
+                ...     def backward(ctx, dy):
+                ...         # Get the tensors passed by forward.
+                ...         y, = ctx.saved_tensor()
+                ...         grad = dy * (1 - paddle.square(y))
+                ...         # The gradient input in cus_tanh be cast to bfloat16 manually,
+                ...         # and cus_tanh will not cast the gradient to the dtype of the forward output.
+                ...         grad = paddle.cast(grad,paddle.float16)
+                ...         return grad
+                ...
+                >>> x = paddle.randn([3,3]).astype("float32")
+                >>> x.stop_gradient = False
+                >>> y = cus_tanh.apply(x)
+                >>> z = cus_tanh_cast_grad.apply(y)
+                >>> z.sum().backward()
+
+        """
+        self.grad_in_dtype_consistent = flag
 
     def save_for_backward(self, *tensors: Tensor) -> None:
         """

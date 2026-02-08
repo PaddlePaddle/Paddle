@@ -62,29 +62,54 @@ inline std::vector<ir::IndexExpr> GetFlattenExprs(const ir::IndexExpr &expr) {
 }
 
 /*!
- * \brief Compare the priority of the two expressions. this func follows the
+ * \brief Compare the priority of the two expressions. This function follows the
  * above rules:
- * 1. if lhs = var, rhs = const,    return true;
- * 2. if lhs = const, rhs = var,    return false;
- * 3. if lhs = var, rhs = var,      return lhs_var_name <= lhs_var_name;
- * 4. if lhs.length > rhs.length,   return true;
- * 5. if lhs.length == rhs.length,  return lhs_type <= rhs_type; (Add < Mul <
- * Div < Mod)
- * 6. if lhs.length < rhs.length    return false;
+ * 1. if lhs = var, rhs = const,    return 1 (lhs > rhs);
+ * 2. if lhs = const, rhs = var,    return -1 (lhs < rhs);
+ * 3. if lhs = var, rhs = var,      return comparison result of lhs_var_name and
+ * rhs_var_name (0 if equal, -1 if lhs < rhs, 1 if lhs > rhs);
+ * 4. if lhs.length > rhs.length,   return 1 (lhs > rhs);
+ * 5. if lhs.length == rhs.length,  return comparison result of lhs_type and
+ * rhs_type (Add < Mul < Div < Mod, 0 if equal, -1 if lhs < rhs, 1 if lhs >
+ * rhs);
+ * 6. if lhs.length < rhs.length    return -1 (lhs < rhs);
  *
  * For example:
- * 1. `ComparePriority(S0, 2)` return true;
- * 2. `ComparePriority(S0, S0)` return true;
- * 2. `ComparePriority(S0, S1)` return false;
- * 3. `ComparePriority(S0, S1 + 1)` return false;
- * 4. `ComparePriority(S0 % 2, S1 + 1)` return false;
+ * 1. `ComparePriority(S0, 2)` return 1 (lhs > rhs);
+ * 2. `ComparePriority(S0, S0)` return 0 (equal);
+ * 3. `ComparePriority(S0, S1)` return -1 (lhs < rhs) if S0 < S1;
+ * 4. `ComparePriority(S0, S1 + 1)` return -1 (lhs < rhs);
+ * 5. `ComparePriority(S0 % 2, S1 + 1)` return -1 (lhs < rhs);
  *
  * \param lhs The left hand side expression to be compared.
  * \param rhs The right hand side expression to be compared.
- * \return A boolean value indicating whether the priority of `lhs` is higher
- * than `rhs`.
+ * \return An integer value indicating the comparison result:
+ *         - 1: lhs has strictly higher priority than rhs
+ *         - 0: lhs and rhs have equal priority
+ *         - -1: lhs has strictly lower priority than rhs
  */
-bool ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs);
+int ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs);
+
+/*!
+ * \brief Comparison function for sorting expressions by priority. This function
+ * follows the strict weak ordering requirement for std::sort by calling
+ * ComparePriority and converting its result to a boolean.
+ *
+ * This function implements the ordering such that:
+ * - If ComparePriority(lhs, rhs) returns 1, returns true (lhs should come
+ * before rhs)
+ * - If ComparePriority(lhs, rhs) returns 0 or -1, returns false (lhs should not
+ * come before rhs)
+ *
+ * This ensures that expressions are sorted in descending priority order, with
+ * higher priority expressions coming first in the sorted sequence.
+ *
+ * \param lhs The left hand side expression to be compared.
+ * \param rhs The right hand side expression to be compared.
+ * \return A boolean value indicating whether lhs should come before rhs in the
+ *         sorted sequence according to the priority rules.
+ */
+bool SortComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs);
 
 /*!
  * \brief Determines whether there are sub-parts in the `expr` that can be

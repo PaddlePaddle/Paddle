@@ -75,7 +75,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
         optimizer.minimize(cost)
 
         pserver_startup_program = fleet.startup_program
-        pserver_mian_program = fleet.main_program
+        pserver_main_program = fleet.main_program
 
 
 if __name__ == "__main__":

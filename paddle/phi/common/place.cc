@@ -49,6 +49,15 @@ const char *AllocationTypeStr(AllocationType type) {
   }
 }
 
+std::ostream &operator<<(std::ostream &os, AllocationType type) {
+  os << AllocationTypeStr(type);
+  return os;
+}
+
+bool operator==(AllocationType lhs, AllocationType rhs) {
+  return static_cast<int>(lhs) == static_cast<int>(rhs);
+}
+
 Place::Place(AllocationType type, const std::string &dev_type)
     : device(0),
       alloc_type_(type),
@@ -180,6 +189,11 @@ bool is_ipu_place(const Place &p) {
 
 TEST_API bool is_cpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CPU;
+}
+
+bool is_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::GPUPINNED ||
+         p.GetType() == phi::AllocationType::XPUPINNED;
 }
 
 bool is_cuda_pinned_place(const Place &p) {

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -53,27 +54,29 @@ def corr(
     D = 2 * d + 1
     output = np.zeros((B, D * D, H, W), dtype=np.float32)
 
-    for b in range(B):
-        for i in range(H):
-            for j in range(W):
-                for k in range(-d, d + 1):
-                    for l in range(-d, d + 1):
-                        x1_index = i + pad_size
-                        y1_index = j + pad_size
-                        x2_index = x1_index + k
-                        y2_index = y1_index + l
-                        output[b, l + d + D * (k + d), i, j] = np.mean(
-                            rinput1[
-                                b,
-                                x1_index : x1_index + K,
-                                y1_index : y1_index + K,
-                            ]
-                            * rinput2[
-                                b,
-                                x2_index : x2_index + K,
-                                y2_index : y2_index + K,
-                            ]
-                        )
+    for b, i, j, k, l in itertools.product(
+        range(B),
+        range(H),
+        range(W),
+        range(-d, d + 1),
+        range(-d, d + 1),
+    ):
+        x1_index = i + pad_size
+        y1_index = j + pad_size
+        x2_index = x1_index + k
+        y2_index = y1_index + l
+        output[b, l + d + D * (k + d), i, j] = np.mean(
+            rinput1[
+                b,
+                x1_index : x1_index + K,
+                y1_index : y1_index + K,
+            ]
+            * rinput2[
+                b,
+                x2_index : x2_index + K,
+                y2_index : y2_index + K,
+            ]
+        )
 
     return output
 

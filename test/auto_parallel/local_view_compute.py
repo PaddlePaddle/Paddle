@@ -73,10 +73,12 @@ def masked_lm_loss_func(pred, label, global_local_loss_list_item=None):
         lossmask[8:16] = 1
 
     pred_sub = pred[:, 0:1]  # shape [B,1]
-    label_float = paddle.cast(label, 'float32')  # shape [B,1]
+    # NOTE(Pan Zhaowu): Using float64 as golden to provide more
+    # persuasive result.
+    label_float = paddle.cast(label, 'float64')  # shape [B,1]
     raw_loss = paddle.abs(pred_sub - label_float)
-    lossmask_ = lossmask.reshape([-1]).cast('float32')
-    raw_loss_flat = raw_loss.reshape([-1]).cast('float32')
+    lossmask_ = lossmask.reshape([-1]).cast('float64')
+    raw_loss_flat = raw_loss.reshape([-1]).cast('float64')
 
     masked_lm_loss_sum = paddle.sum(raw_loss_flat * lossmask_)
     valid_count = paddle.sum(lossmask_)

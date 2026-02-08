@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/core/platform/device_type.h"
@@ -61,13 +62,7 @@ limitations under the License. */
 
 #include <map>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/stream.h"
-
-#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
-#include "unsupported/Eigen/CXX11/Tensor"
-#endif
 
 namespace Eigen {
 struct DefaultDevice;
@@ -96,6 +91,11 @@ class IPUDeviceContext
   const Place& GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
+
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "IPUDeviceContext does not support cudnn_handle()."));
+  }
 
   static const char* name() { return "IPUDeviceContext"; }
 

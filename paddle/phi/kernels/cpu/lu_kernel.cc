@@ -36,18 +36,9 @@ void LUKernel(const Context& dev_ctx,
                         "but got pivots=False"));
 
   if (x.numel() == 0) {
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(infos->dims())),
-                            static_cast<int>(0),
-                            infos);
-    phi::Full<int, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(pivots->dims())),
-                            static_cast<int>(0),
-                            pivots);
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(0),
-                          out);
+    Full<int, Context>(dev_ctx, infos->dims(), static_cast<int>(0), infos);
+    Full<int, Context>(dev_ctx, pivots->dims(), static_cast<int>(0), pivots);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(0), out);
     return;
   }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
@@ -59,13 +50,13 @@ void LUKernel(const Context& dev_ctx,
   int n = static_cast<int>(outdims[outrank - 2]);
   int lda = std::max(1, m);
 
-  auto ipiv_dims = common::slice_ddim(outdims, 0, outrank - 1);
+  auto ipiv_dims = slice_ddim(outdims, 0, outrank - 1);
   ipiv_dims[outrank - 2] = std::min(m, n);
   pivots->Resize(ipiv_dims);
   dev_ctx.template Alloc<int>(pivots);
   auto ipiv_data = pivots->data<int>();
 
-  auto info_dims = common::slice_ddim(outdims, 0, outrank - 2);
+  auto info_dims = slice_ddim(outdims, 0, outrank - 2);
   infos->Resize(info_dims);
   dev_ctx.template Alloc<int>(infos);
   auto info_data = infos->data<int>();
@@ -78,7 +69,7 @@ void LUKernel(const Context& dev_ctx,
     auto out_data_item = &out_data[b * m * n];
     int* info_data_item = &info_data[b];
     int* ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-    phi::funcs::lapackLu<T>(
+    funcs::lapackLu<T>(
         m, n, out_data_item, lda, ipiv_data_item, info_data_item);
   }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, *out);

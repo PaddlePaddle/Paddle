@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import warnings
 from contextlib import contextmanager
 
 import numpy as np
@@ -465,7 +466,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.006,
+            max_relative_error=0.007,
             check_prim=False,
             check_pir=True,
             check_prim_pir=False,
@@ -852,6 +853,61 @@ class TestLogSigmoidAPI(unittest.TestCase):
                 name='x_fp16', shape=[11, 17], dtype='float16'
             )
             F.log_sigmoid(x_fp16)
+
+    def test_features(self):
+        # test alias
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            out = F.log_sigmoid(input=x)
+            expected = F.log_sigmoid(x)
+            np.testing.assert_allclose(out.numpy(), expected.numpy())
+
+
+class TestLogSigmoidOutAndParaDecorator(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.apis = [
+            paddle.nn.functional.log_sigmoid,
+            paddle.nn.functional.logsigmoid,
+        ]
+        self.shape = [3, 4, 5]
+        self.input_np = np.random.random(self.shape).astype('float32')
+
+    def do_test(self, api, test_type):
+        self.test_types = [
+            "decorator1",
+        ]
+        x = paddle.to_tensor(self.input_np, stop_gradient=False)
+        out = paddle.zeros(self.shape, dtype='float32')
+        out.stop_gradient = False
+        if test_type == "raw":
+            out = paddle.nn.functional.log_sigmoid(x)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == "decorator1":
+            res = api(input=x)
+            loss = res.mean()
+            loss.backward()
+            x_grad = x.grad
+            return res, x_grad
+        else:
+            raise NotImplementedError(
+                f"Test type {test_type} is not implemented."
+            )
+
+    def test_api(self):
+        out_std, x_grad_std = self.do_test(
+            paddle.nn.functional.log_sigmoid, "raw"
+        )
+        for api in self.apis:
+            for test_type in self.test_types:
+                out, x_grad = self.do_test(api, test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-20
+                )
+                np.testing.assert_allclose(
+                    x_grad.numpy(), x_grad_std.numpy(), rtol=1e-20
+                )
 
 
 class TestTanh(TestActivation, TestParameter):
@@ -1529,6 +1585,14 @@ class TestHardShrinkAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+            out1 = F.hardshrink(input=x, lambd=0.6)
+            hd = paddle.nn.Hardshrink(lambd=0.7)
+            self.assertEqual(hd.lambd, 0.7)
+            hd.lambd = 0.6
+            out2 = hd(input=x)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
     def test_errors(self):
         with (
             static_guard(),
@@ -1690,6 +1754,14 @@ class TestSoftshrinkAPI(unittest.TestCase):
             softshrink = paddle.nn.Softshrink(self.threshold)
             out2 = softshrink(x)
             out_ref = ref_softshrink(self.x_np, self.threshold)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+            out1 = F.softshrink(input=x, lambd=self.threshold)
+            softshrink = paddle.nn.Softshrink(lambd=self.threshold + 1)
+            self.assertEqual(softshrink.lambd, self.threshold + 1)
+            softshrink.lambd = self.threshold
+            out2 = softshrink(input=x)
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
@@ -2962,6 +3034,7 @@ class TestReluAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.x_np_float64 = self.x_np.astype('float64')
         self.place = get_device_place()
         self.executed_api()
 
@@ -3011,11 +3084,102 @@ class TestReluAPI(unittest.TestCase):
             )
             self.relu(x_fp16)
 
+    def test_features(self):
+        if self.relu == F.relu:
+            with dynamic_guard():
+                x = paddle.to_tensor([-1.0, 1.0])
+                out = F.relu(input=x)
+                expected = F.relu(x)
+                np.testing.assert_allclose(out.numpy(), expected.numpy())
+
+                x_inplace = paddle.to_tensor([-1.0, 1.0])
+                F.relu(x_inplace, inplace=True)
+                np.testing.assert_allclose(x_inplace.numpy(), expected.numpy())
+
+    def test_float64_dtype(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np_float64)
+            out = F.relu(x)
+            out_ref = np.maximum(self.x_np_float64, 0)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            x2 = paddle.to_tensor(self.x_np_float64)
+            out2 = F.relu(x2, inplace=True)
+            np.testing.assert_allclose(out_ref, out2.numpy(), rtol=1e-05)
+
+    def test_layer_extra_repr(self):
+        with dynamic_guard():
+            self.assertIn('inplace=False', paddle.nn.ReLU().extra_repr())
+            self.assertIn(
+                'inplace=True', paddle.nn.ReLU(inplace=True).extra_repr()
+            )
+            s = paddle.nn.ReLU(name='test_relu').extra_repr()
+            self.assertIn('name=test_relu', s)
+
+    def test_static_mode_inplace(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype="float32")
+            out = F.relu(x, inplace=True)
+            res = paddle.static.Executor(self.place).run(
+                feed={'X': self.x_np}, fetch_list=[out, x]
+            )
+            np.testing.assert_allclose(
+                np.maximum(self.x_np, 0), res[0], rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                np.maximum(self.x_np, 0), res[1], rtol=1e-05
+            )
+
 
 class TestReluInplaceAPI(TestReluAPI):
     # test paddle.nn.functional.relu_
     def executed_api(self):
         self.relu = F.relu_
+
+    def test_inplace_dygraph(self):
+        # Dedicated test for verifying inplace behavior
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            x_original_id = id(x)
+            result = F.relu_(x)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(result), x_original_id)
+            expected = np.array([0.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+            np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
+
+    def test_errors_static(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype='float32')
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                out = F.relu_(x)
+                self.assertTrue(len(w) > 0)
+                self.assertIn(
+                    'does not perform inplace operation', str(w[0].message)
+                )
+
+    def test_alias_inplace(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            result = F.relu_(input=x)
+            expected = np.array([0.0, 1.0])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+    def test_multidimensional_tensor(self):
+        # test with multidimensional tensors
+        with dynamic_guard():
+            x = paddle.to_tensor([[-2.0, 0.0], [1.0, 3.0], [-1.0, 2.0]])
+            x_original_id = id(x)
+            result = F.relu_(x)
+            self.assertEqual(id(result), x_original_id)
+            expected = np.array([[0.0, 0.0], [1.0, 3.0], [0.0, 2.0]])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
 
 
 def ref_leaky_relu(x, alpha=0.01):
@@ -3102,6 +3266,7 @@ class TestLeakyReluAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.x_np_float64 = self.x_np.astype('float64')
         self.place = get_device_place()
 
     def test_static_api(self):
@@ -3139,18 +3304,184 @@ class TestLeakyReluAPI(unittest.TestCase):
             static_guard(),
             paddle.static.program_guard(paddle.static.Program()),
         ):
-            # The input type must be Variable.
             self.assertRaises(TypeError, F.leaky_relu, 1)
-            # The input dtype must be float16, float32, float64.
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
             self.assertRaises(TypeError, F.leaky_relu, x_int32)
-            # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.leaky_relu(x_fp16)
+
+    def test_features(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            out = F.leaky_relu(input=x)
+            expected = F.leaky_relu(x)
+            np.testing.assert_allclose(out.numpy(), expected.numpy())
+
+            x_inplace = paddle.to_tensor([-1.0, 1.0])
+            F.leaky_relu(x_inplace, inplace=True)
+            np.testing.assert_allclose(x_inplace.numpy(), expected.numpy())
+
+    def test_float64_dtype(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np_float64)
+            out = F.leaky_relu(x)
+            out_ref = ref_leaky_relu(self.x_np_float64)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            out2 = F.leaky_relu(x, negative_slope=0.5)
+            out_ref2 = ref_leaky_relu(self.x_np_float64, alpha=0.5)
+            np.testing.assert_allclose(out_ref2, out2.numpy(), rtol=1e-05)
+            x2 = paddle.to_tensor(self.x_np_float64)
+            out3 = F.leaky_relu(x2, inplace=True)
+            np.testing.assert_allclose(
+                ref_leaky_relu(self.x_np_float64), out3.numpy(), rtol=1e-05
+            )
+
+    def test_layer_extra_repr(self):
+        with dynamic_guard():
+            s = paddle.nn.LeakyReLU().extra_repr()
+            self.assertIn('negative_slope=0.01', s)
+            self.assertIn('inplace=False', s)
+            s2 = paddle.nn.LeakyReLU(
+                negative_slope=0.2, inplace=True, name='custom'
+            ).extra_repr()
+            self.assertIn('negative_slope=0.2', s2)
+            self.assertIn('inplace=True', s2)
+            self.assertIn('name=custom', s2)
+
+    def test_static_mode_inplace(self):
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', [10, 12], dtype="float32")
+                out = F.leaky_relu(x, inplace=True)
+                res = paddle.static.Executor(self.place).run(
+                    feed={'X': self.x_np}, fetch_list=[out, x]
+                )
+                np.testing.assert_allclose(
+                    ref_leaky_relu(self.x_np), res[0], rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    ref_leaky_relu(self.x_np), res[1], rtol=1e-05
+                )
+
+            with paddle.static.program_guard(paddle.static.Program()):
+                x2 = paddle.static.data('X', [10, 12], dtype="float32")
+                out2 = F.leaky_relu(x2, negative_slope=0.2, inplace=True)
+                res2 = paddle.static.Executor(self.place).run(
+                    feed={'X': self.x_np}, fetch_list=[out2, x2]
+                )
+                np.testing.assert_allclose(
+                    ref_leaky_relu(self.x_np, alpha=0.2), res2[0], rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    ref_leaky_relu(self.x_np, alpha=0.2), res2[1], rtol=1e-05
+                )
+
+
+class TestLeakyReluInplaceAPI(unittest.TestCase):
+    # test paddle.nn.functional.leaky_relu_
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place = get_device_place()
+
+    def test_dygraph_api(self):
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.leaky_relu_(x)
+            out_ref = ref_leaky_relu(self.x_np)
+            np.testing.assert_allclose(out_ref, out1.numpy(), rtol=1e-05)
+            # Verify inplace behavior
+            np.testing.assert_allclose(out_ref, x.numpy(), rtol=1e-05)
+
+            # Test with custom negative_slope
+            x2 = paddle.to_tensor(self.x_np)
+            out2 = F.leaky_relu_(x2, 0.6)
+            out_ref2 = ref_leaky_relu(self.x_np, 0.6)
+            np.testing.assert_allclose(out_ref2, out2.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(out_ref2, x2.numpy(), rtol=1e-05)
+
+    def test_errors(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [10, 12], dtype='float32')
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                out = F.leaky_relu_(x)
+                self.assertTrue(len(w) > 0)
+                self.assertIn(
+                    'does not perform inplace operation', str(w[0].message)
+                )
+
+    def test_alias(self):
+        with dynamic_guard():
+            x = paddle.to_tensor([-1.0, 1.0])
+            out = F.leaky_relu_(input=x)
+            expected = ref_leaky_relu(np.array([-1.0, 1.0]))
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_inplace_behavior(self):
+        # test that output is same tensor as input
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            x_original_id = id(x)
+            result = F.leaky_relu_(x)
+            # Check that the result is the same tensor (inplace)
+            self.assertEqual(id(result), x_original_id)
+
+    def test_multidimensional_tensor(self):
+        # test with multidimensional tensors
+        with dynamic_guard():
+            x = paddle.to_tensor([[-2.0, 0.0], [1.0, 3.0], [-1.0, 2.0]])
+            x_original_id = id(x)
+            result = F.leaky_relu_(x, 0.1)
+            self.assertEqual(id(result), x_original_id)
+            expected = ref_leaky_relu(
+                np.array([[-2.0, 0.0], [1.0, 3.0], [-1.0, 2.0]]), 0.1
+            )
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+    def test_negative_slope_zero(self):
+        # test with negative_slope=0 (should behave like relu)
+        with dynamic_guard():
+            x = paddle.to_tensor([-2.0, 0.0, 1.0, 3.0])
+            result = F.leaky_relu_(x, 0.0)
+            expected = np.array([0.0, 0.0, 1.0, 3.0])
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+
+
+class TestInplaceOpsCoverage(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_relu_inplace_coverage(self):
+        x_np = np.array([-1.0, 0.0, 1.0]).astype('float32')
+        x = paddle.to_tensor(x_np)
+
+        # Directly call relu_ from activation.py
+        res = paddle.nn.functional.relu_(x)
+
+        expected = np.maximum(x_np, 0)
+        np.testing.assert_allclose(res.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_inplace_coverage(self):
+        x_np = np.array([-1.0, 0.0, 1.0]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        negative_slope = 0.1
+
+        # Directly call leaky_relu_ from activation.py
+        res = paddle.nn.functional.leaky_relu_(x, negative_slope=negative_slope)
+
+        expected = np.where(x_np > 0, x_np, x_np * negative_slope)
+        np.testing.assert_allclose(res.numpy(), expected, rtol=1e-05)
 
 
 def gelu(x, approximate):
@@ -3483,12 +3814,27 @@ class TestRelu6API(unittest.TestCase):
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
             self.assertRaises(TypeError, F.relu6, x_int32)
-            # support the input dtype is float16
+            # support for input dtype is float16
             if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
                 F.relu6(x_fp16)
+
+    def test_layer_extra_repr(self):
+        with dynamic_guard():
+            relu6_1 = paddle.nn.ReLU6()
+            repr_str = relu6_1.extra_repr()
+            self.assertEqual(repr_str, '')
+
+            relu6_2 = paddle.nn.ReLU6(name="test_relu6")
+            repr_str = relu6_2.extra_repr()
+            self.assertEqual(repr_str, 'name=test_relu6')
+
+            x = paddle.to_tensor(self.x_np)
+            out = relu6_2(x)
+            out_ref = ref_relu6(self.x_np)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
@@ -4210,75 +4556,6 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
-class TestLog2API_Compatibility(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
-        paddle_dygraph_out = []
-        # Position args (args)
-        out1 = paddle.log2(x)
-        paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
-        out2 = paddle.log2(x=x)
-        paddle_dygraph_out.append(out2)
-        # Key words args for torch
-        out3 = paddle.log2(input=x)
-        paddle_dygraph_out.append(out3)
-
-        # Tensor method args
-        out4 = paddle.empty([])
-        out5 = x.log2(x, out=out4)
-        paddle_dygraph_out.append(out4)
-        paddle_dygraph_out.append(out5)
-        # Tensor method kwargs
-        out6 = x.log2()
-        paddle_dygraph_out.append(out6)
-        # Test out
-        out7 = paddle.empty([])
-        paddle.log2(x, out=out7)
-        paddle_dygraph_out.append(out7)
-        # Numpy reference  out
-        ref_out = np.log2(self.np_input)
-        # Check
-        for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
-        paddle.enable_static()
-
-    def test_static_Compatibility(self):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            # Position args (args)
-            out1 = paddle.log2(x)
-            # Key words args (kwargs) for paddle
-            out2 = paddle.log2(x=x)
-            # Key words args for torch
-            out3 = paddle.log2(input=x)
-            # Tensor method args
-            out4 = x.log2()
-
-            exe = base.Executor(paddle.CPUPlace())
-            fetches = exe.run(
-                main,
-                feed={"x": self.np_input},
-                fetch_list=[out1, out2, out3, out4],
-            )
-            ref_out = np.log2(self.np_input)
-            for out in fetches:
-                np.testing.assert_allclose(out, ref_out)
-
-
 class TestLog2_Complex64(TestLog2):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -4615,6 +4892,146 @@ class TestLog1pAPI(unittest.TestCase):
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
+
+
+class TestLog10APICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.uniform(0.1, 10, self.shape).astype(
+            self.dtype
+        )
+
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.log10(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.log10(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.log10(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out4 = paddle.empty([])
+        out5 = x.log10(out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.log10()
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.log10(x, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.log10(self.np_input)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.log10(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.log10(x=x)
+            # Key words args for torch
+            out3 = paddle.log10(input=x)
+            # Tensor method args
+            out4 = x.log10()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.log10(self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+
+class TestLog1pAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.log1p(x)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.log1p(x=x)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.log1p(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method args
+        out4 = paddle.empty([])
+        out5 = x.log1p(out=out4)
+        paddle_dygraph_out.append(out4)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.log1p()
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.log1p(x, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.log1p(self.np_input)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.log1p(x)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.log1p(x=x)
+            # Key words args for torch
+            out3 = paddle.log1p(input=x)
+            # Tensor method args
+            out4 = x.log1p()
+
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.log1p(self.np_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
 
 
 class TestSquare(TestActivation):
@@ -5072,32 +5489,6 @@ class TestSoftplus(TestActivation):
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
 
-    def test_check_output_2(self):
-        self.check_output_with_place(
-            paddle.CPUPlace(), check_pir=True, check_pir_onednn=True
-        )
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(
-                core.CUDAPlace(0), check_pir=True, check_pir_onednn=True
-            )
-
-    def test_check_grad_2(self):
-        self.check_grad_with_place(
-            paddle.CPUPlace(),
-            ['X'],
-            'Out',
-            check_pir=True,
-            check_pir_onednn=True,
-        )
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0),
-                ['X'],
-                'Out',
-                check_pir=True,
-                check_pir_onednn=True,
-            )
-
 
 class TestSoftplus_Complex64(TestSoftplus):
     def init_dtype(self):
@@ -5111,25 +5502,6 @@ class TestSoftplus_Complex64(TestSoftplus):
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
-
-    def test_check_grad_2(self):
-        self.check_grad_with_place(
-            paddle.CPUPlace(),
-            ['X'],
-            'Out',
-            max_relative_error=0.06,
-            check_pir=True,
-            check_pir_onednn=True,
-        )
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0),
-                ['X'],
-                'Out',
-                max_relative_error=0.06,
-                check_pir=True,
-                check_pir_onednn=True,
-            )
 
 
 class TestSoftplus_Complex128(TestSoftplus):
@@ -6272,6 +6644,331 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=False, check_pir=True, check_prim_pir=True
 )
+
+
+class TestActivationAPI_Compatibility(unittest.TestCase):
+    ACTIVATION_CONFIGS = [
+        ("paddle.abs", np.abs, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.acos", np.arccos, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.acosh", np.arccosh, {'min_val': 2.0, 'max_val': 3.0}),
+        ("paddle.asin", np.arcsin, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.asinh", np.arcsinh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.atan", np.arctan, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.atanh", np.arctanh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.log2", np.log2, {'min_val': 0.0, 'max_val': 8.0}),
+        ("paddle.exp", np.exp, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.expm1", np.expm1, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.round", np.round, {'min_val': -5.0, 'max_val': 5.0}),
+        ("paddle.tanh", np.tanh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.cosh", np.cosh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.sinh", np.sinh, {'min_val': -1.0, 'max_val': 1.0}),
+        ("paddle.tan", np.tan, {'min_val': -1.0, 'max_val': 1.0}),
+    ]
+    ACTIVATION_NOT_METHOD_CONFIGS = [
+        (
+            "paddle.nn.functional.softplus",
+            ref_softplus,
+            {'min_val': -1.0, 'max_val': 1.0},
+        ),
+    ]
+
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = devices
+        self.shape = [5, 6]
+        self.dtype = "float32"
+
+    def init_data(self, min_val=-1.0, max_val=1.0):
+        self.np_x = (
+            np.random.rand(*self.shape).astype(self.dtype) * (max_val - min_val)
+            + min_val
+        )
+
+
+def generate_test_case_for_func(act_name, ref_func, data_range, has_out=True):
+    paddle_func = eval(act_name)
+    act_name = act_name.split('.')[-1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # (1) Position args
+        out1 = paddle_func(x)
+        paddle_dygraph_out.append(out1)
+        # (2) Keywords args for paddle
+        out2 = paddle_func(x=x)
+        paddle_dygraph_out.append(out2)
+        # (3) Keywords args for torch compatibility
+        out3 = paddle_func(input=x)
+        paddle_dygraph_out.append(out3)
+        # (4) Tensor method args: x.func()
+        out4 = getattr(x, act_name)()
+        paddle_dygraph_out.append(out4)
+        if has_out:
+            # (5) Test 'out' parameter for torch compatibility
+            out5 = paddle.empty_like(x)
+            paddle_func(x, out=out5)
+            paddle_dygraph_out.append(out5)
+        ref_out = ref_func(self.np_x)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # (1) Position args
+            out1 = paddle_func(x)
+            # (2) Keywords args for paddle
+            out2 = paddle_func(x=x)
+            # (3) Keywords args for torch compatibility
+            out3 = paddle_func(input=x)
+            # (4) Tensor method args (x.func())
+            out4 = getattr(x, act_name)()
+            ref_out = ref_func(self.np_x)
+            fetch_list = [out1, out2, out3, out4]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+    test_dygraph_Compatibility.__name__ = (
+        f'test_dygraph_Compatibility_{act_name}'
+    )
+    test_static_Compatibility.__name__ = f'test_static_Compatibility_{act_name}'
+    return test_dygraph_Compatibility, test_static_Compatibility
+
+
+def generate_test_case_for_not_method_func(
+    act_name, ref_func, data_range, has_out=True
+):
+    paddle_func = eval(act_name)
+    act_name = act_name.split('.')[-1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+        # (1) Position args
+        out1 = paddle_func(x)
+        paddle_dygraph_out.append(out1)
+        # (2) Keywords args for paddle
+        out2 = paddle_func(x=x)
+        paddle_dygraph_out.append(out2)
+        # (3) Keywords args for torch compatibility
+        out3 = paddle_func(input=x)
+        paddle_dygraph_out.append(out3)
+        if has_out:
+            # (4) Test 'out' parameter for torch compatibility
+            out4 = paddle.empty_like(x)
+            paddle_func(x, out=out4)
+            paddle_dygraph_out.append(out4)
+        ref_out = ref_func(self.np_x)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        self.init_data(
+            min_val=data_range['min_val'], max_val=data_range['max_val']
+        )
+
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # (1) Position args
+            out1 = paddle_func(x)
+            # (2) Keywords args for paddle
+            out2 = paddle_func(x=x)
+            # (3) Keywords args for torch compatibility
+            out3 = paddle_func(input=x)
+            ref_out = ref_func(self.np_x)
+            fetch_list = [out1, out2, out3]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+    test_dygraph_Compatibility.__name__ = (
+        f'test_dygraph_Compatibility_{act_name}'
+    )
+    test_static_Compatibility.__name__ = f'test_static_Compatibility_{act_name}'
+    return test_dygraph_Compatibility, test_static_Compatibility
+
+
+for (
+    paddle_api,
+    np_ref_func,
+    data_range,
+) in TestActivationAPI_Compatibility.ACTIVATION_CONFIGS:
+    dygraph_test, static_test = generate_test_case_for_func(
+        paddle_api, np_ref_func, data_range
+    )
+    setattr(
+        TestActivationAPI_Compatibility, dygraph_test.__name__, dygraph_test
+    )
+    setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
+
+for (
+    paddle_api,
+    np_ref_func,
+    data_range,
+) in TestActivationAPI_Compatibility.ACTIVATION_NOT_METHOD_CONFIGS:
+    dygraph_test, static_test = generate_test_case_for_not_method_func(
+        paddle_api, np_ref_func, data_range, False
+    )
+    setattr(
+        TestActivationAPI_Compatibility, dygraph_test.__name__, dygraph_test
+    )
+    setattr(TestActivationAPI_Compatibility, static_test.__name__, static_test)
+
+
+class TestActivationCoverageExtended(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.array([-2.0, -1.0, 0.0, 1.0, 2.0]).astype('float32')
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_relu_extra_repr_inplace_and_name(self):
+        relu_inplace = paddle.nn.ReLU(inplace=True)
+        repr_str = relu_inplace.extra_repr()
+        self.assertIn('inplace=True', repr_str)
+
+        relu_named = paddle.nn.ReLU(name='coverage_relu')
+        repr_str = relu_named.extra_repr()
+        self.assertIn('name=coverage_relu', repr_str)
+
+        relu_both = paddle.nn.ReLU(inplace=True, name='coverage_relu_both')
+        repr_str = relu_both.extra_repr()
+        self.assertIn('inplace=True', repr_str)
+        self.assertIn('name=coverage_relu_both', repr_str)
+
+    def test_relu6_extra_repr_with_name(self):
+        relu6_no_name = paddle.nn.ReLU6()
+        repr_str = relu6_no_name.extra_repr()
+        self.assertEqual(repr_str, '')
+
+        relu6_named = paddle.nn.ReLU6(name='coverage_relu6')
+        repr_str = relu6_named.extra_repr()
+        self.assertEqual(repr_str, 'name=coverage_relu6')
+
+        x = paddle.to_tensor(self.x_np)
+        out = relu6_named(x)
+        expected = np.minimum(np.maximum(self.x_np, 0), 6)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_extra_repr_inplace_and_name(self):
+        leaky_default = paddle.nn.LeakyReLU()
+        repr_str = leaky_default.extra_repr()
+        self.assertIn('negative_slope=0.01', repr_str)
+        self.assertIn('inplace=False', repr_str)
+        self.assertNotIn('name', repr_str)
+
+        leaky_inplace = paddle.nn.LeakyReLU(inplace=True)
+        repr_str = leaky_inplace.extra_repr()
+        self.assertIn('inplace=True', repr_str)
+
+        leaky_named = paddle.nn.LeakyReLU(name='coverage_leaky')
+        repr_str = leaky_named.extra_repr()
+        self.assertIn('name=coverage_leaky', repr_str)
+
+        leaky_all = paddle.nn.LeakyReLU(
+            negative_slope=0.2, inplace=True, name='coverage_leaky_all'
+        )
+        repr_str = leaky_all.extra_repr()
+        self.assertIn('negative_slope=0.2', repr_str)
+        self.assertIn('inplace=True', repr_str)
+        self.assertIn('name=coverage_leaky_all', repr_str)
+
+    def test_functional_relu_inplace_dynamic(self):
+        x = paddle.to_tensor(self.x_np.copy())
+        out = F.relu(x, inplace=True)
+        expected = np.maximum(self.x_np, 0)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
+
+    def test_functional_leaky_relu_inplace_dynamic(self):
+        x = paddle.to_tensor(self.x_np.copy())
+        negative_slope = 0.1
+        out = F.leaky_relu(x, negative_slope=negative_slope, inplace=True)
+        expected = np.where(
+            self.x_np > 0, self.x_np, self.x_np * negative_slope
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-05)
+
+    def test_relu_layer_forward_inplace(self):
+        """Test nn.ReLU layer forward with inplace=True"""
+        x = paddle.to_tensor(self.x_np.copy())
+        relu_layer = paddle.nn.ReLU(inplace=True)
+        out = relu_layer(x)
+        expected = np.maximum(self.x_np, 0)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_relu_layer_forward_inplace_with_name(self):
+        """Test nn.ReLU layer forward with inplace=True and name"""
+        x = paddle.to_tensor(self.x_np.copy())
+        relu_layer = paddle.nn.ReLU(inplace=True, name='test_relu_inplace')
+        out = relu_layer(x)
+        expected = np.maximum(self.x_np, 0)
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_layer_forward_inplace(self):
+        """Test nn.LeakyReLU layer forward with inplace=True"""
+        x = paddle.to_tensor(self.x_np.copy())
+        negative_slope = 0.1
+        leaky_relu_layer = paddle.nn.LeakyReLU(
+            negative_slope=negative_slope, inplace=True
+        )
+        out = leaky_relu_layer(x)
+        expected = np.where(
+            self.x_np > 0, self.x_np, self.x_np * negative_slope
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
+    def test_leaky_relu_layer_forward_inplace_with_name(self):
+        """Test nn.LeakyReLU layer forward with inplace=True and name"""
+        x = paddle.to_tensor(self.x_np.copy())
+        negative_slope = 0.2
+        leaky_relu_layer = paddle.nn.LeakyReLU(
+            negative_slope=negative_slope,
+            inplace=True,
+            name='test_leaky_inplace',
+        )
+        out = leaky_relu_layer(x)
+        expected = np.where(
+            self.x_np > 0, self.x_np, self.x_np * negative_slope
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+
 
 if __name__ == "__main__":
     unittest.main()

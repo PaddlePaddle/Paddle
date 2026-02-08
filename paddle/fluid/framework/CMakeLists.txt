@@ -450,16 +450,13 @@ if(WITH_DISTRIBUTE)
          trainer_factory.cc
          trainer.cc
          data_feed_factory.cc
-         heterxpu_trainer.cc
          data_feed.cc
          device_worker.cc
          hogwild_worker.cc
-         hetercpu_worker.cc
          ps_gpu_worker.cc
          ps_gpu_trainer.cc
          downpour_worker.cc
          downpour_worker_opt.cc
-         data_feed.cu
          pull_dense_worker.cc
          section_worker.cc
          device_worker_factory.cc
@@ -469,10 +466,7 @@ if(WITH_DISTRIBUTE)
          glog
          framework_io
          fleet_wrapper
-         heter_wrapper
-         ps_gpu_wrapper
-         box_wrapper
-         metrics
+         gloo_wrapper
          densetensor_printer
          feed_fetch_method
          feed_hook
@@ -489,16 +483,13 @@ else()
          trainer_factory.cc
          trainer.cc
          data_feed_factory.cc
-         heterxpu_trainer.cc
          data_feed.cc
          device_worker.cc
          hogwild_worker.cc
-         hetercpu_worker.cc
          ps_gpu_worker.cc
          ps_gpu_trainer.cc
          downpour_worker.cc
          downpour_worker_opt.cc
-         data_feed.cu
          pull_dense_worker.cc
          section_worker.cc
          device_worker_factory.cc
@@ -508,9 +499,6 @@ else()
          glog
          framework_io
          fleet_wrapper
-         heter_wrapper
-         ps_gpu_wrapper
-         box_wrapper
          densetensor_printer
          feed_fetch_method
          feed_hook
@@ -551,11 +539,6 @@ cc_library(
   SRCS dlpack_tensor.cc
   DEPS dlpack phi)
 
-cc_library(
-  op_compatible_info
-  SRCS op_compatible_info.cc
-  DEPS string_helper proto_desc)
-
 # Get the current working branch
 execute_process(
   COMMAND git rev-parse --abbrev-ref HEAD
@@ -577,7 +560,7 @@ configure_file(commit.h.in commit.h)
 
 cc_library(
   custom_operator
-  SRCS custom_operator.cc
+  SRCS custom_operator.cc python_operator.cc
   DEPS tensor
        attribute
        op_registry

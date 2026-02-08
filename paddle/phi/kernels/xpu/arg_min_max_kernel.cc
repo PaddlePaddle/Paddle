@@ -51,14 +51,14 @@ void ArgMaxKernel(const Context& dev_ctx,
   DDim x_dims;
   int64_t axis_val = axis.to<int64_t>();
   if (flatten) {
-    x_dims = common::make_ddim({x.numel()});
+    x_dims = make_ddim({x.numel()});
     // if flatten, the axis just as 0
     axis_val = 0;
   } else {
     x_dims = x.dims();
     if (axis_val < 0) axis_val += x_dims.size();
   }
-  auto xdims_vec = common::vectorize<int64_t>(x_dims);
+  auto xdims_vec = vectorize<int64_t>(x_dims);
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.numel() == 0) return;
@@ -134,14 +134,14 @@ void ArgMinKernel(const Context& dev_ctx,
   DDim x_dims;
   int64_t axis_val = axis.to<int64_t>();
   if (flatten) {
-    x_dims = common::make_ddim({x.numel()});
+    x_dims = make_ddim({x.numel()});
     // If flatten, the axis just as 0
     axis_val = 0;
   } else {
     x_dims = x.dims();
     if (axis_val < 0) axis_val += x_dims.size();
   }
-  auto xdims_vec = common::vectorize<int64_t>(x_dims);
+  auto xdims_vec = vectorize<int64_t>(x_dims);
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.numel() == 0) return;

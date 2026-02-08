@@ -18,19 +18,19 @@
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
-#ifdef __NVCC__
-#include <cub/cub.cuh>
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
+#include "paddle/phi/kernels/funcs/cumprod.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/inclusive_scan.h"
+
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -43,7 +43,7 @@ __global__ void MatrixRowReverse(const T* matrix_data,
   for (int64_t bx = blockIdx.x; bx < grid_size; bx += gridDim.x) {
     for (int64_t block_offset = 0; block_offset < reverse_size;
          block_offset += item_per_block) {
-      int64_t reverse_offset = block_offset + threadIdx.x;
+      int64_t reverse_offset = block_offset + static_cast<int64_t>(threadIdx.x);
       int64_t src_offset = bx * reverse_size + reverse_offset;
       int64_t dst_offset =
           bx * reverse_size + (reverse_size - reverse_offset - 1);
@@ -69,8 +69,8 @@ __global__ void MatrixTranspose(T* odata,
   for (; block_i < wblocks * hblocks; block_i += gridDim.x) {
     int64_t block_y = block_i / wblocks;
     int64_t block_x = block_i % wblocks;
-    int64_t x = block_x * TILE_DIM + threadIdx.x;
-    int64_t y = block_y * TILE_DIM + threadIdx.y;
+    int64_t x = block_x * TILE_DIM + static_cast<int64_t>(threadIdx.x);
+    int64_t y = block_y * TILE_DIM + static_cast<int64_t>(threadIdx.y);
 
     for (int j = 0; j < TILE_DIM; j += BLOCK_ROWS) {
       if (x < width && (y + j) < height) {
@@ -342,7 +342,7 @@ void ScanKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     out->Resize(raw_dims);
     return;
   }
@@ -464,6 +464,39 @@ void CumsumKernel(const Context& dev_ctx,
                                     std::is_same<T, phi::complex128>::value,
                                 ComplexSum,
                                 cub::Sum>::type;
+  if (FLAGS_use_accuracy_compatible_kernel && !exclusive) {
+    if (out && out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    dev_ctx.template Alloc<T>(out);
+
+    size_t outer_dim = 1;
+    size_t mid_dim = 1;
+    size_t inner_dim = 1;
+
+    if (flatten) {
+      mid_dim = x.numel();
+    } else {
+      GetCumprodDimInfo(
+          x.dims(), axis.to<int>(), &outer_dim, &mid_dim, &inner_dim);
+    }
+
+    const T* x_data = x.data<T>();
+    T* out_data = out->data<T>();
+
+    funcs::InclusiveScan(x_data,
+                         out_data,
+                         outer_dim,
+                         mid_dim,
+                         inner_dim,
+                         static_cast<T>(0),
+                         funcs::AddFunctor<T>(),
+                         /*reverse=*/reverse,
+                         dev_ctx);
+
+    return;
+  }
   auto op = Op();
   ScanKernel<T, Context, Op>(
       dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);

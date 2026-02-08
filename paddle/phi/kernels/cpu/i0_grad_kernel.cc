@@ -35,7 +35,7 @@ void I0GradKernel(const Context& dev_ctx,
   auto* out_grad_data = out_grad.data<T>();
   auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
+  funcs::ForRange<Context> for_range(dev_ctx, size);
   I0GradFunctor<T> functor(x_data, out_grad_data, x_grad_data, size);
   for_range(functor);
 }

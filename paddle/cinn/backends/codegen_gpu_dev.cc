@@ -170,7 +170,7 @@ void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
 
   auto axis_range_assumption_stmts = op->PrepareAxisRangeAssumptionStmts();
   auto alloca_temp_buffer_stmts = op->PrepareAllocTempBufferStmts();
-  auto temp_buffer_alia_stmts = GenerateBufferAliasStmts(op, op->temp_bufs);
+  auto temp_buffer_alias_stmts = GenerateBufferAliasStmts(op, op->temp_bufs);
   auto alias_var_stmts = op->CudaAliasVarStmts();
   auto dealloc_temp_buffer_stmts =
       FilterDeallocTempBuffers(op->PrepareDeallocTempBufferStmts());
@@ -180,7 +180,7 @@ void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
       std::end(new_body_stmts), std::begin(field__), std::end(field__));
   APPEND_TO_NEW_BODY_STMTS(axis_range_assumption_stmts)
   APPEND_TO_NEW_BODY_STMTS(alloca_temp_buffer_stmts)
-  APPEND_TO_NEW_BODY_STMTS(temp_buffer_alia_stmts)
+  APPEND_TO_NEW_BODY_STMTS(temp_buffer_alias_stmts)
   APPEND_TO_NEW_BODY_STMTS(alias_var_stmts)
   APPEND_TO_NEW_BODY_STMTS(op->body_block->stmts())
   APPEND_TO_NEW_BODY_STMTS(dealloc_temp_buffer_stmts);

@@ -28,7 +28,7 @@ __global__ void limit_by_capacity_impl(
     wid = i / n_expert;
     eid = i % n_expert;
     auto proposal = expc[wid * n_expert + eid];
-    auto cap_left = phi::CudaAtomicAdd(cap + eid, proposal * (-1));
+    auto cap_left = CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
     } else if (cap_left >= 0) {
@@ -53,8 +53,8 @@ void LimitByCapacityKernel(const Context& dev_ctx,
   auto out_data = dev_ctx.template Alloc<T>(Out);
   const T* ec_data = expert_count_ptr->data<T>();
 
-  phi::DenseTensor capacity_copy;
-  phi::Copy(dev_ctx, capacity, dev_ctx.GetPlace(), false, &capacity_copy);
+  DenseTensor capacity_copy;
+  Copy(dev_ctx, capacity, dev_ctx.GetPlace(), false, &capacity_copy);
   T* cap_data = dev_ctx.template Alloc<T>(&capacity_copy);
 
   limit_by_capacity_impl<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(

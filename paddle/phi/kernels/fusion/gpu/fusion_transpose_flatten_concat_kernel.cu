@@ -49,17 +49,15 @@ void TransposeFlattenConcatFusionKernel(
 
   cudnnTensorDescriptor_t in_desc;
   cudnnTensorDescriptor_t out_desc;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&in_desc));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&out_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&in_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&out_desc));
   cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
   auto handle = dev_ctx.cudnn_handle();
 
   T* odata = out->data<T>();
   for (auto& item : x) {
-    auto perm_shape = phi::funcs::GetPermuteShape(trans_axis, item->dims());
+    auto perm_shape = funcs::GetPermuteShape(trans_axis, item->dims());
     int osize = 1;
     auto idims = item->dims();
     for (int i = 0; i < rank; i++) {
@@ -90,30 +88,28 @@ void TransposeFlattenConcatFusionKernel(
       dims_y[i] = 1;
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
         in_desc, cudnn_dtype, max_dim, dims_y.data(), stride_x.data()));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
         out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()));
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnTransformTensor(
-        handle,
-        CudnnDataType<T>::kOne(),
-        in_desc,
-        static_cast<const void*>(item->data<T>()),
-        CudnnDataType<T>::kZero(),
-        out_desc,
-        static_cast<void*>(odata)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnTransformTensor(handle,
+                                      CudnnDataType<T>::kOne(),
+                                      in_desc,
+                                      static_cast<const void*>(item->data<T>()),
+                                      CudnnDataType<T>::kZero(),
+                                      out_desc,
+                                      static_cast<void*>(odata)));
     if (concat_axis == 0) {
       odata += osize;
     } else {
-      auto flat_shape = phi::funcs::GetFlattenShape(flatten_axis, perm_shape);
+      auto flat_shape = funcs::GetFlattenShape(flatten_axis, perm_shape);
       odata += flat_shape[1];
     }
   }
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(in_desc));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(out_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(in_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(out_desc));
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "The fusion_transpose_flatten_concat operator is not supported on HIP."));

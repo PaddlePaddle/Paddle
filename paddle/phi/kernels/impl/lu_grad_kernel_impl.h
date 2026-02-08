@@ -32,7 +32,7 @@ void LUGradKernel(const Context& dev_ctx,
                   DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   if (x_grad->numel() == 0) return;
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   auto xdims = x.dims();
   int xrank = xdims.size();
@@ -61,9 +61,9 @@ void LUGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&phi_L);
   phi_U.Resize(UmHdims);
   dev_ctx.template Alloc<T>(&phi_U);
-  auto mat_dim_l = phi::funcs::CreateMatrixDescriptor(LmHdims, 0, false);
-  auto mat_dim_u = phi::funcs::CreateMatrixDescriptor(UmHdims, 0, false);
-  auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(graddims, 0, false);
+  auto mat_dim_l = funcs::CreateMatrixDescriptor(LmHdims, 0, false);
+  auto mat_dim_u = funcs::CreateMatrixDescriptor(UmHdims, 0, false);
+  auto mat_dim_g = funcs::CreateMatrixDescriptor(graddims, 0, false);
   blas.MatMul(L_narrow_mH,
               mat_dim_l,
               grad_narrow,
@@ -82,28 +82,28 @@ void LUGradKernel(const Context& dev_ctx,
 
   auto phil_rank = LmHdims.size();
   auto phiu_rank = UmHdims.size();
-  phi::funcs::ForRange<Context> l_for_range(dev_ctx, phi_L.numel());
-  phi::funcs::TrilTriuCompute<T> tril_computer(phi_L.data<T>(),
-                                               -1,
-                                               true,
-                                               LmHdims[phil_rank - 2],
-                                               LmHdims[phil_rank - 1],
-                                               phi_L.data<T>());
+  funcs::ForRange<Context> l_for_range(dev_ctx, phi_L.numel());
+  funcs::TrilTriuCompute<T> tril_computer(phi_L.data<T>(),
+                                          -1,
+                                          true,
+                                          LmHdims[phil_rank - 2],
+                                          LmHdims[phil_rank - 1],
+                                          phi_L.data<T>());
   l_for_range(tril_computer);
 
-  phi::funcs::ForRange<Context> u_for_range(dev_ctx, phi_U.numel());
-  phi::funcs::TrilTriuCompute<T> triu_computer(phi_U.data<T>(),
-                                               0,
-                                               false,
-                                               UmHdims[phiu_rank - 2],
-                                               UmHdims[phiu_rank - 1],
-                                               phi_U.data<T>());
+  funcs::ForRange<Context> u_for_range(dev_ctx, phi_U.numel());
+  funcs::TrilTriuCompute<T> triu_computer(phi_U.data<T>(),
+                                          0,
+                                          false,
+                                          UmHdims[phiu_rank - 2],
+                                          UmHdims[phiu_rank - 1],
+                                          phi_U.data<T>());
   u_for_range(triu_computer);
 
   Tensor_Add<Context, T>(dev_ctx, phi_L, phi_U, &phi);
   psi.Resize(xdims);
   dev_ctx.template Alloc<T>(&psi);
-  phi::funcs::SetConstant<Context, T> setter;
+  funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, &psi, static_cast<T>(0));
 
   std::vector<int64_t> axes = {xrank - 2, xrank - 1};
@@ -126,10 +126,10 @@ void LUGradKernel(const Context& dev_ctx,
 
       Tensor_Conj<Context, T>(dev_ctx, U_complement_mH, &U_complement_mH);
 
-      auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(
-          U_grad_complement.dims(), 0, false);
+      auto mat_dim_g =
+          funcs::CreateMatrixDescriptor(U_grad_complement.dims(), 0, false);
       auto mat_dim_u =
-          phi::funcs::CreateMatrixDescriptor(U_complement_mH.dims(), 0, false);
+          funcs::CreateMatrixDescriptor(U_complement_mH.dims(), 0, false);
       auto phidims = UmHdims;
       phidims[UmHdims.size() - 2] = k;
       phidims[UmHdims.size() - 1] = k;
@@ -147,9 +147,8 @@ void LUGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(&phi_complement_l);
       const auto H = phidims[phidims.size() - 2];
       const auto W = phidims[phidims.size() - 1];
-      phi::funcs::ForRange<Context> x_for_range(dev_ctx,
-                                                phi_complement.numel());
-      phi::funcs::TrilTriuCompute<T> tril_computer(
+      funcs::ForRange<Context> x_for_range(dev_ctx, phi_complement.numel());
+      funcs::TrilTriuCompute<T> tril_computer(
           phi_complement.data<T>(), -1, true, H, W, phi_complement_l.data<T>());
       x_for_range(tril_computer);
 
@@ -201,9 +200,8 @@ void LUGradKernel(const Context& dev_ctx,
     phi::TriangularSolveKernel<T, Context>(
         dev_ctx, L_narrow_mH, psi, true, false, true, &psi_tmp);
 
-    auto mat_dim_p = phi::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
-    auto mat_dim_b =
-        phi::funcs::CreateMatrixDescriptor(psi_tmp.dims(), 0, false);
+    auto mat_dim_p = funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(psi_tmp.dims(), 0, false);
     blas.MatMul(Pmat,
                 mat_dim_p,
                 psi_tmp,
@@ -222,9 +220,9 @@ void LUGradKernel(const Context& dev_ctx,
     Tensor_Conj<Context, T>(dev_ctx, L_complement_mH, &L_complement_mH);
 
     auto mat_dim_g =
-        phi::funcs::CreateMatrixDescriptor(L_grad_complement.dims(), 0, false);
+        funcs::CreateMatrixDescriptor(L_grad_complement.dims(), 0, false);
     auto mat_dim_u =
-        phi::funcs::CreateMatrixDescriptor(L_complement_mH.dims(), 0, false);
+        funcs::CreateMatrixDescriptor(L_complement_mH.dims(), 0, false);
     auto phidims = LmHdims;
     phidims[LmHdims.size() - 2] = k;
     phidims[LmHdims.size() - 1] = k;
@@ -242,8 +240,8 @@ void LUGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&phi_complement_u);
     const auto H = phidims[phidims.size() - 2];
     const auto W = phidims[phidims.size() - 1];
-    phi::funcs::ForRange<Context> x_for_range(dev_ctx, phi_complement.numel());
-    phi::funcs::TrilTriuCompute<T> triu_computer(
+    funcs::ForRange<Context> x_for_range(dev_ctx, phi_complement.numel());
+    funcs::TrilTriuCompute<T> triu_computer(
         phi_complement.data<T>(), 0, false, H, W, phi_complement_u.data<T>());
     x_for_range(triu_computer);
 
@@ -288,8 +286,8 @@ void LUGradKernel(const Context& dev_ctx,
 
     psi_tmp.Resize(psi.dims());
     dev_ctx.template Alloc<T>(&psi_tmp);
-    auto mat_dim_p = phi::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
-    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(psi.dims(), 0, false);
+    auto mat_dim_p = funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
+    auto mat_dim_b = funcs::CreateMatrixDescriptor(psi.dims(), 0, false);
     blas.MatMul(Pmat,
                 mat_dim_p,
                 psi,

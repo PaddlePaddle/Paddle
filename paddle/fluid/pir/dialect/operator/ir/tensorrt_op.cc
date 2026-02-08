@@ -237,8 +237,8 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
       out_types.push_back(pir::DenseTensorType::get(
           pir::IrContext::Instance(),
           TransToIrDataType(outputs_dtype[i]),
-          phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
-          phi::DataLayout::kNCHW,
+          DDim(outputs_shape[i].data(), outputs_shape[i].size()),
+          DataLayout::NCHW,
           phi::LegacyLoD(),
           0));
     }
@@ -248,7 +248,7 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   argument_outputs.push_back(out_vector_type);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void TensorRTEngineOp::VerifySig() {

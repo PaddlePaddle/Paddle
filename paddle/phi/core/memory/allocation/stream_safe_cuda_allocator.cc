@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include <thread>
+#include "glog/logging.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -161,7 +162,7 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    phi::GPUPlace place,
+    GPUPlace place,
     gpuStream_t default_stream,
     bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
@@ -243,7 +244,7 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
   }
 }
 
-uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const phi::Place& place) {
+uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
   if (UNLIKELY(in_cuda_graph_capturing_)) {
     VLOG(7) << "Memory release forbidden in CUDA Graph Capturing";
     return 0;
@@ -257,6 +258,17 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const phi::Place& place) {
   }
   VLOG(8) << "Release " << released_size << " bytes memory from all streams";
   return released_size;
+}
+
+size_t StreamSafeCUDAAllocator::CompactImpl(const Place& place) {
+  std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
+  VLOG(4) << "enter StreamSafeCUDAAllocator compact!!";
+  std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
+  size_t compact_free_size = 0;
+  for (StreamSafeCUDAAllocator* allocator : allocators) {
+    compact_free_size += allocator->underlying_allocator_->Compact(place_);
+  }
+  return compact_free_size;
 }
 
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
@@ -285,7 +297,7 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
 
 thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
-std::map<phi::Place, std::vector<StreamSafeCUDAAllocator*>>
+std::map<Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;
 SpinLock StreamSafeCUDAAllocator::allocator_map_lock_;
 

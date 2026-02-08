@@ -464,6 +464,38 @@ class TestDtypesLowPrecision(unittest.TestCase):
                 self.assertEqual(x.data_ptr(), o_v2.data_ptr())
 
 
+class TestDtypesUnsignedInt(unittest.TestCase):
+    @dygraph_guard()
+    def test_dlpack_unsigned_int(self):
+        dtypes = [
+            paddle.uint8,
+            paddle.uint16,
+            paddle.uint32,
+            paddle.uint64,
+        ]
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+            places.append(paddle.CUDAPinnedPlace())
+        for dtype in dtypes:
+            for place in places:
+                data = np.random.randint(low=0, high=100, size=(2, 3, 4))
+                x = paddle.to_tensor(data, place=place).cast(dtype)
+                dlpack_v1 = paddle.to_dlpack(x)
+                o_v1 = paddle.from_dlpack(dlpack_v1)
+                dlpack_v2 = paddle.to_dlpack(x)
+                o_v2 = paddle.from_dlpack(dlpack_v2)
+                self.assertEqual(x.dtype, o_v1.dtype)
+                self.assertEqual(x.dtype, o_v2.dtype)
+                np.testing.assert_allclose(x.numpy(), o_v1.numpy(), rtol=1e-05)
+                np.testing.assert_allclose(x.numpy(), o_v2.numpy(), rtol=1e-05)
+                self.assertEqual(str(x.place), str(o_v1.place))
+                self.assertEqual(str(x.place), str(o_v2.place))
+
+                self.assertEqual(x.data_ptr(), o_v1.data_ptr())
+                self.assertEqual(x.data_ptr(), o_v2.data_ptr())
+
+
 class TestCopySemanticDLPackProtocol(unittest.TestCase):
     @dygraph_guard()
     def test_dlpack_same_place_cpu(self):

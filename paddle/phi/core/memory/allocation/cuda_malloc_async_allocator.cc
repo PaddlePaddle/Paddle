@@ -21,6 +21,8 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 
+#include "glog/logging.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -138,7 +140,7 @@ size_t CUDAMallocAsyncAllocation::Free() {
 
 CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    const phi::GPUPlace& place,
+    const GPUPlace& place,
     gpuStream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(place),
@@ -157,7 +159,7 @@ CUDAMallocAsyncAllocator::CUDAMallocAsyncAllocator(
   });
 }
 
-uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const phi::Place& place) {
+uint64_t CUDAMallocAsyncAllocator::ReleaseImpl(const Place& place) {
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     VLOG(7) << "Memory release forbidden in CUDA Graph Captruing";
     return 0;
@@ -312,7 +314,7 @@ phi::Allocation* CUDAMallocAsyncAllocator::AllocateImpl(size_t size) {
       &ptr, size, place_.device, default_stream_);
   if (LIKELY(result == gpuSuccess)) {
     auto* allocation = new CUDAMallocAsyncAllocation(
-        ptr, size, phi::Place(place_), default_stream_, free_stream_);
+        ptr, size, Place(place_), default_stream_, free_stream_);
     VLOG(10) << "Allocate " << allocation->ptr() << " with allocator "
              << (this);
 

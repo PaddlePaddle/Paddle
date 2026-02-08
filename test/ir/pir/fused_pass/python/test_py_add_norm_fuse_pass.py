@@ -111,8 +111,8 @@ class TestRmsNormFusePattern(PassTest):
 
         begin_norm_axis = res.ComputeAttr(compute_begin_norm_axis)
 
-        rms_norm = res.Op(
-            "pd_op.rms_norm",
+        fused_rms_norm_quant = res.Op(
+            "pd_op.fused_rms_norm_quant",
             {
                 "epsilon": pat.Attr("bias"),
                 "begin_norm_axis": begin_norm_axis,
@@ -123,7 +123,7 @@ class TestRmsNormFusePattern(PassTest):
             },
         )
 
-        rms_norm(
+        fused_rms_norm_quant(
             [
                 res.Tensor("x"),
                 res.InputNoneTensor(),
@@ -188,7 +188,7 @@ class TestRmsNormFusePattern(PassTest):
                                     "pd_op.scale": 0,
                                     "pd_op.rsqrt": 0,
                                     "pd_op.multiply": 0,
-                                    "pd_op.rms_norm": 1,
+                                    "pd_op.fused_rms_norm_quant": 1,
                                 }
 
                                 yield [main_prog, start_prog], False

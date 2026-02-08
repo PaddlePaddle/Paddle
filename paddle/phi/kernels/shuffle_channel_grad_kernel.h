@@ -20,9 +20,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ShuffleChannelGradOpKernel(const Context& dev_ctx,
-                                const DenseTensor& out_grad,
-                                int group,
-                                DenseTensor* x_grad);
+void ShuffleChannelGradOpCUDAKernel(const Context& dev_ctx,
+                                    const DenseTensor& out_grad,
+                                    int group,
+                                    DenseTensor* x_grad);
 
 }  // namespace phi

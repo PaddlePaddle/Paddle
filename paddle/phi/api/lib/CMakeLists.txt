@@ -335,6 +335,7 @@ collect_srcs(
   SRCS
   tensor.cc
   op_meta_info.cc
+  native_meta_tensor.cc
   context_pool.cc
   tensor_utils.cc
   kernel_dispatch.cc

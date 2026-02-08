@@ -101,6 +101,7 @@ from .framework.dtype import (
     pstring,
     raw,
     uint8,
+    uint16,
     uint32,
     uint64,
 )
@@ -176,6 +177,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    compat as compat,
     cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
@@ -198,6 +200,7 @@ from paddle import (
     sparse as sparse,
     static as static,
     sysconfig as sysconfig,
+    testing as testing,
     vision as vision,
 )
 
@@ -207,7 +210,6 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
-    compat as compat,
     fft as fft,
     functional as functional,
     hub as hub,
@@ -226,12 +228,26 @@ from .amp import (
     get_autocast_gpu_dtype,
     is_autocast_enabled,
 )
+from .amp.auto_cast import autocast
+from .audio.functional.window import (  # noqa: F401
+    bartlett_window,
+    blackman_window,
+    hamming_window,
+    hann_window,
+    kaiser_window,
+)
 from .autograd import (
     enable_grad,
     grad,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
+)
+from .base.core import Size
+from .compat import (
+    disable_torch_proxy as disable_compat,
+    enable_torch_proxy as enable_compat,
+    use_torch_proxy_guard as use_compat_guard,  # noqa: F401
 )
 from .device import (  # noqa: F401
     Event,
@@ -269,6 +285,7 @@ from .framework import (  # noqa: F401
     set_default_dtype,
 )
 from .framework.random import (
+    Generator,
     get_cuda_rng_state,
     get_rng_state,
     seed,
@@ -281,9 +298,12 @@ from .hapi import (
     summary,
 )
 from .nn.functional import (
+    adaptive_avg_pool1d,
     conv1d,
     conv2d,
     conv3d,
+    group_norm,
+    layer_norm,
 )
 from .nn.functional.distance import (
     pdist,
@@ -723,7 +743,6 @@ from .tensor.search import (
     where,
     where_,
 )
-from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -820,6 +839,33 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         if is_compiled_with_cinn():
             cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
             set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
+
+            def _preload_nvidia_lib(nvidia_package_path: str, lib_glob: str):
+                import ctypes
+                import glob
+
+                from .version import cuda as cuda_version
+
+                cuda_major_version = cuda_version().split('.')[0]
+
+                lib_paths = []
+                lib_paths += glob.glob(
+                    os.path.join(
+                        nvidia_package_path,
+                        f'cu{cuda_major_version}',
+                        'lib',
+                        lib_glob,
+                    )
+                )
+                lib_paths += glob.glob(
+                    os.path.join(nvidia_package_path, 'lib', lib_glob)
+                )
+
+                for lib_path in lib_paths:
+                    ctypes.CDLL(lib_path)
+                    break
+
+            _preload_nvidia_lib(nvidia_package_path, "libnvrtc-builtins.so.*")
 
     elif (
         platform.system() == 'Windows'
@@ -971,7 +1017,6 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
-
 __all__ = [
     'block_diag',
     'gt',
@@ -980,6 +1025,7 @@ __all__ = [
     'finfo',
     'dtype',
     'uint8',
+    'uint16',
     'uint32',
     'uint64',
     'int8',
@@ -1479,8 +1525,15 @@ __all__ = [
     'conv1d',
     'conv2d',
     'conv3d',
+    'group_norm',
+    'layer_norm',
     'manual_seed',
     'softmax',
+    'Generator',
+    'adaptive_avg_pool1d',
+    'autocast',
+    'enable_compat',
+    'disable_compat',
 ]
 import os
 

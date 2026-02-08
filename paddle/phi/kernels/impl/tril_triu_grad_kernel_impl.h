@@ -33,9 +33,9 @@ void TrilTriuGradKernel(const Context& dev_ctx,
   const auto H = dims[dims.size() - 2];
   const auto W = dims[dims.size() - 1];
 
-  phi::funcs::ForRange<Context> for_range(
-      dev_ctx, static_cast<size_t>(out_grad.numel()));
-  phi::funcs::TrilTriuCompute<T> tril_triu_grad_computer(
+  funcs::ForRange<Context> for_range(dev_ctx,
+                                     static_cast<size_t>(out_grad.numel()));
+  funcs::TrilTriuCompute<T> tril_triu_grad_computer(
       dout_data, diagonal, lower, H, W, dx_data);
   for_range(tril_triu_grad_computer);
 }

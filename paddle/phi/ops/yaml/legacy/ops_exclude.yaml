@@ -52,7 +52,13 @@
 - kthvalue
 - linspace
 - logspace
+- bicubic_interp
+- nearest_interp
+- linear_interp
+- bilinear_interp
+- trilinear_interp
 - lp_pool2d
+- leaky_relu
 - matrix_rank
 - matrix_rank_tol
 - max
@@ -99,3 +105,5 @@
 - zeros
 - zeros_like
 - logit
+- pad3d
+- top_p_sampling

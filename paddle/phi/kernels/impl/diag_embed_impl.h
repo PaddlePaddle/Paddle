@@ -78,7 +78,7 @@ void DiagEmbedKernel(const Context& dev_ctx,
   if (out && out->numel() == 0) {
     return;
   }
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
 
   set_zero(dev_ctx, out, static_cast<T>(0.0));
 
@@ -118,7 +118,7 @@ void DiagEmbedKernel(const Context& dev_ctx,
   const int64_t* strides_arr = strides.data();
 #endif
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, x.numel());
+  funcs::ForRange<Context> for_range(dev_ctx, x.numel());
   DiagEmbedFunctor<T> functor(input_data,
                               x.numel(),
                               dims_arr,

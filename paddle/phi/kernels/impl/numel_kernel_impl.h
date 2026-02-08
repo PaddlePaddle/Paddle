@@ -25,14 +25,14 @@ void NumelKernel(const Context& dev_ctx,
   auto place = dev_ctx.GetPlace();
   auto out_data = dev_ctx.template Alloc<int64_t>(out);
 
-  if (place == phi::CPUPlace()) {
+  if (place == CPUPlace()) {
     out_data[0] = input.numel();
   } else {
     DenseTensor cpu_tensor;
     cpu_tensor.Resize(out->dims());
     auto cpu_data = dev_ctx.template HostAlloc<int64_t>(&cpu_tensor);
     cpu_data[0] = input.numel();
-    phi::Copy(dev_ctx, cpu_tensor, place, false, out);
+    Copy(dev_ctx, cpu_tensor, place, false, out);
   }
 }
 

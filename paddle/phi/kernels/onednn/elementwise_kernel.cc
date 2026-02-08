@@ -36,12 +36,11 @@ KernelKey ElementwiseGetKernelTypeForVar(
     // When elementwise is first oneDNN op (there was some non oneDNN op
     // previously)
     // then we also need to rotate shape NHWC -> NCWH
-    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-        (tensor.layout() != phi::DataLayout::ONEDNN) &&
-        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-            phi::DataLayout::kNHWC) {
+    if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+        (tensor.layout() != DataLayout::ONEDNN) &&
+        OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC) {
       return phi::KernelKey(
-          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
+          tensor.place(), DataLayout::NHWC, expected_kernel_type.dtype());
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());

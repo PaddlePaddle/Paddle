@@ -23,8 +23,8 @@ namespace phi {
 template <typename T, typename TW, typename Context>  // TW for scale and bias
 void LayerNormGradImpl(const Context& dev_ctx,
                        const DenseTensor& x,
-                       const paddle::optional<DenseTensor>& scale,
-                       const paddle::optional<DenseTensor>& bias,
+                       const optional<DenseTensor>& scale,
+                       const optional<DenseTensor>& bias,
                        const DenseTensor& mean,
                        const DenseTensor& variance,
                        const DenseTensor& out_grad,
@@ -36,16 +36,8 @@ void LayerNormGradImpl(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (scale_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(scale_grad->dims())),
-          0,
-          scale_grad);
-    if (bias_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(bias_grad->dims())),
-                            0,
-                            bias_grad);
+      Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
+    if (bias_grad) Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
     return;
   }
   const auto* scale_ptr = scale.get_ptr();
@@ -99,8 +91,8 @@ void LayerNormGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void LayerNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& scale,
+                         const optional<DenseTensor>& bias,
                          const DenseTensor& mean,
                          const DenseTensor& variance,
                          const DenseTensor& out_grad,

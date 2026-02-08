@@ -308,8 +308,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
     max = cur;
   } else if (fabs(removed - max) < 1e-6) {
     int size = static_cast<int>((it > window_size) ? window_size : it);
-    phi::funcs::FindAbsMaxFunctor<Context, T>()(
-        dev_ctx, scale_arr_data, size, &max);
+    funcs::FindAbsMaxFunctor<Context, T>()(dev_ctx, scale_arr_data, size, &max);
   }
   T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
   out_scale_data[0] = max;
@@ -324,7 +323,7 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
     int round_type,
     DenseTensor *out) {
   T s = scale.data<T>()[0];
-  T inv_s = phi::funcs::inverse(s);
+  T inv_s = funcs::inverse(s);
 
   phi::Transform<CPUContext> trans;
   if (round_type == 0) {
@@ -332,8 +331,8 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
           in.data<T>(),
           in.data<T>() + in.numel(),
           dev_ctx.template Alloc<T>(out),
-          phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
-    auto out_e = phi::EigenVector<T>::Flatten(*out);
+          funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
+    auto out_e = EigenVector<T>::Flatten(*out);
     out_e.device(*dev_ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
   } else {
     trans(dev_ctx,
@@ -341,7 +340,7 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
           in.data<T>() + in.numel(),
           dev_ctx.template Alloc<T>(out),
           phi::ClipFunctor<T>(-s, s));
-    auto out_e = phi::EigenVector<T>::Flatten(*out);
+    auto out_e = EigenVector<T>::Flatten(*out);
     out_e.device(*dev_ctx.eigen_device()) =
         (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
   }

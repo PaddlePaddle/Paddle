@@ -169,7 +169,7 @@ class SelectedRows : public TensorBase,
   bool initialized() const override { return impl_->initialized(); }
 
  private:
-  std::shared_ptr<phi::SelectedRowsImpl> impl_{nullptr};
+  std::shared_ptr<SelectedRowsImpl> impl_{nullptr};
 };
 
 }  // namespace phi

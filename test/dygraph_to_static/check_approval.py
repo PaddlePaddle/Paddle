@@ -106,6 +106,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_partial_program_hook.py",
         "test_jit_backend.py",
         "test_dygraph_to_static_utils.py",
+        "test_python_op.py",
     ],
 }
 

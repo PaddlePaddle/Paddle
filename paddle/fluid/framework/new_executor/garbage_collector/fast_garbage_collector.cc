@@ -32,8 +32,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     return;
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+  if (var->IsType<DenseTensor>()) {
+    Add(var->GetMutable<DenseTensor>()->MoveMemoryHolder());
   } else if (
       var->IsType<
           operators::reader::

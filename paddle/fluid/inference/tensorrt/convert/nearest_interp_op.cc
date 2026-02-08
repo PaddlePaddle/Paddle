@@ -30,7 +30,7 @@ class NearestInterpolateOpConverter : public OpConverter {
     auto input = engine_->GetITensor(input_name);
 
     auto data_layout = !op_desc.HasAttr("data_layout")
-                           ? phi::DataLayout::kNCHW
+                           ? phi::DataLayout::NCHW
                            : common::StringToDataLayout(PADDLE_GET_CONST(
                                  std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
@@ -67,8 +67,8 @@ class NearestInterpolateOpConverter : public OpConverter {
       bool with_dynamic = true;
 
       if (!with_dynamic) {
-        int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
-        int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
+        int h_axis = (data_layout == phi::DataLayout::NCHW) + with_dynamic;
+        int w_axis = (data_layout == phi::DataLayout::NCHW) + 1 + with_dynamic;
 
         scale_h =
             static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
@@ -79,11 +79,11 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     scales.push_back(1.f);
 
-    if (data_layout == phi::DataLayout::kNCHW) {
+    if (data_layout == phi::DataLayout::NCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
-    } else if (data_layout == phi::DataLayout::kNHWC) {
+    } else if (data_layout == phi::DataLayout::NHWC) {
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);

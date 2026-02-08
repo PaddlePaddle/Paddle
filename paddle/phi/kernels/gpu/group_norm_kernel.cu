@@ -216,12 +216,14 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
   // The instance in the batch.
   __shared__ float2 smem[THREADS_PER_BLOCK];
   int32_t ni = blockIdx.z;
-  int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x);
   if (ci >= params.c) {
     return;
   }
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -265,14 +267,15 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci =
-      blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x) * THREADS_PER_CHANNEL;
   if (ci >= params.c || threadIdx.x * THREADS_PER_CHANNEL >= params.cPerBlock) {
     return;
   }
   int32_t gj = ci / params.cPerGroup;
   int32_t cj = ci % params.cPerGroup;
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
@@ -416,7 +419,8 @@ inline __device__ void GroupNormCompute(int64_t dhwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
     float src_data = phi::__2float<T>(params.srcX[offset]);
     if (params.srcR != nullptr) {
       auto gi = ci / params.cPerGroup;
@@ -458,7 +462,8 @@ inline __device__ void GroupNormCompute<phi::float16, 2>(
   // Iterate over the activations to compute the sums.
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -513,7 +518,8 @@ inline __device__ void GroupNormCompute<__half, 2>(
   // Iterate over the activations to compute the sums.
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -568,7 +574,8 @@ inline __device__ void GroupNormCompute<phi::bfloat16, 2>(
   // Iterate over the activations to compute the sums.
   for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset =
+        static_cast<int64_t>(blockIdx.z) * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __nv_bfloat162 h2 =
@@ -616,8 +623,9 @@ __global__ void groupNormNDHWCScaleKernel(
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci =
-      blockIdx.x * params.cPerBlock + threadIdx.x * THREADS_PER_CHANNEL;
+  int64_t ci = static_cast<int64_t>(blockIdx.x) *
+                   static_cast<int64_t>(params.cPerBlock) +
+               static_cast<int64_t>(threadIdx.x) * THREADS_PER_CHANNEL;
 
   // The group that thread works on and the channel in the group (modulus).
   int32_t gi = ci / params.cPerGroup;
@@ -642,7 +650,7 @@ __global__ void groupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = static_cast<int64_t>(blockIdx.y) * params.dhwPerBlock;
   // The last activation loaded by that block.
   int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
   GroupNormCompute<T, THREADS_PER_CHANNEL>(
@@ -708,9 +716,9 @@ template class PADDLE_API groupNormNDHWCScale<half>;
 template <typename T, typename Context>
 void GroupNormNDHWCKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& residual,
-                          const paddle::optional<DenseTensor>& scale,
-                          const paddle::optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& residual,
+                          const optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& bias,
                           float epsilon,
                           int groups,
                           const std::string& data_layout_str,
@@ -719,8 +727,8 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
                           DenseTensor* residual_out,
                           DenseTensor* mean,
                           DenseTensor* var) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  if (data_layout != DataLayout::kNHWC) {
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
+  if (data_layout != DataLayout::NHWC) {
     PD_THROW("data_layout only supports NHWC and NDHWC");
   }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -928,8 +936,8 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
       // WarpReduce will result in all zeros. It seems to be an internal problem
       // of hipcub on DCU.
       if (blockDim.x < phi::kps::details::kWarpSize) {
-        phi::CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
-        phi::CudaAtomicAdd(&var[bid * groups + gid], x_var);
+        CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
+        CudaAtomicAdd(&var[bid * groups + gid], x_var);
       } else {
         CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
         CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
@@ -974,7 +982,7 @@ __global__ void GroupNormForward(const T* x,
         AccT val;
         int64_t hid, wid;
         int64_t index = (bid * C + ccid) * imsize + imid;
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           val = static_cast<AccT>(x[index]);
         } else {
           hid = imid / W;
@@ -988,7 +996,7 @@ __global__ void GroupNormForward(const T* x,
         if (flags & kHasBias) {
           val += static_cast<AccT>(bias[ccid]);
         }
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == DataLayout::NCHW) {
           y[index] = static_cast<T>(val);
         } else {
           y[(bid * H + hid) * W * C + wid * C + ccid] = static_cast<T>(val);
@@ -1012,17 +1020,17 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     AccT* mean,
     AccT* variance,
     const DataLayout data_layout) {
-  const auto input_ddim = common::make_ddim(input_shape);
+  const auto input_ddim = make_ddim(input_shape);
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? input_ddim[1]
-                                        : input_ddim[input_ddim.size() - 1]);
+      (data_layout == DataLayout::NCHW ? input_ddim[1]
+                                       : input_ddim[input_ddim.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
-      (data_layout == DataLayout::kNCHW ? input_ddim[input_ddim.size() - 1]
-                                        : input_ddim[input_ddim.size() - 2]);
+      (data_layout == DataLayout::NCHW ? input_ddim[input_ddim.size() - 1]
+                                       : input_ddim[input_ddim.size() - 2]);
 
   int64_t image_size = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < input_ddim.size(); ++i) {
       image_size *= input_ddim[i];
     }
@@ -1037,7 +1045,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
             groups,
             std::min(input_ddim[0], max_grid_x));
   dim3 threads(block_size, 1, 1);
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int64_t size = group_size * image_size;  // group element size
     const int max_num_threads = 1024;
@@ -1106,8 +1114,8 @@ template class PADDLE_API GroupNormDirectCUDAFunctor<half, float>;
 template <typename T, typename Context>
 void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
-                                const paddle::optional<DenseTensor>& scale,
-                                const paddle::optional<DenseTensor>& bias,
+                                const optional<DenseTensor>& scale,
+                                const optional<DenseTensor>& bias,
                                 float epsilon,
                                 int groups,
                                 const std::string& data_layout_str,
@@ -1115,17 +1123,16 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                 DenseTensor* mean,
                                 DenseTensor* var) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
   const auto x_dims = x.dims();
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
-      (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
-                                        : x_dims[x_dims.size() - 2]);
+      (data_layout == DataLayout::NCHW ? x_dims[x_dims.size() - 1]
+                                       : x_dims[x_dims.size() - 2]);
 
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<AccT>(mean);
@@ -1134,8 +1141,8 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   DenseTensor temp_var;
   temp_var.Resize(var->dims());
   dev_ctx.template Alloc<AccT>(&temp_var);
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+  funcs::SetConstant<GPUContext, T> set_zero;
+  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
   auto* mean_data = mean->data<AccT>();
@@ -1148,7 +1155,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
   int64_t imsize = 1;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= x_dims[i];
     }
@@ -1165,7 +1172,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
             groups,
             std::min(max_grid_z, x_dims[0]));
   dim3 threads(block_size, 1, 1);
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout == DataLayout::NCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int64_t size = group_size * imsize;
     const int max_num_threads = 1024;
@@ -1225,8 +1232,8 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void GroupNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& scale,
+                     const optional<DenseTensor>& bias,
                      float epsilon,
                      int groups,
                      const std::string& data_layout_str,
@@ -1236,20 +1243,17 @@ void GroupNormKernel(const Context& dev_ctx,
   if (y && y->numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     if (mean) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+      Full<T, Context>(dev_ctx, mean->dims(), 0, mean);
     }
     if (var) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+      Full<T, Context>(dev_ctx, var->dims(), 0, var);
     }
     return;
   }
   using std::is_same;
   if (is_same<T, phi::float16>::value && data_layout_str == "NHWC") {
-    const paddle::optional<DenseTensor>& residual =
-        paddle::optional<DenseTensor>(paddle::none);
-    phi::DenseTensor empty_tensor;
+    const optional<DenseTensor>& residual = optional<DenseTensor>(paddle::none);
+    DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::float16, Context>(dev_ctx,
                                                 x,
                                                 residual,
@@ -1268,9 +1272,8 @@ void GroupNormKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_CUDA_BF16
   if (is_same<T, phi::bfloat16>::value && data_layout_str == "NHWC") {
-    const paddle::optional<DenseTensor>& residual =
-        paddle::optional<DenseTensor>(paddle::none);
-    phi::DenseTensor empty_tensor;
+    const optional<DenseTensor>& residual = optional<DenseTensor>(paddle::none);
+    DenseTensor empty_tensor;
     GroupNormNDHWCKernel<phi::bfloat16, Context>(dev_ctx,
                                                  x,
                                                  residual,

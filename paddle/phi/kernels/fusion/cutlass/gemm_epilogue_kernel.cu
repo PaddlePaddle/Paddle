@@ -33,7 +33,7 @@ template <typename T, typename Context>
 void GemmEpilogueKernel(const Context& dev_ctx,
                         const DenseTensor& input,
                         const DenseTensor& w,
-                        const paddle::optional<DenseTensor>& bias,
+                        const optional<DenseTensor>& bias,
                         const int in_num_col_dims,
                         const std::string& activation_type,
                         const bool padding_weights,
@@ -56,9 +56,9 @@ void GemmEpilogueKernel(const Context& dev_ctx,
                         "In gemm_epilogue kernel, weight_dims should be 2."));
   // gemm_epilogue_out should be reshape since can not get lod in infershape
   std::vector<int64_t> output_dims;
-  phi::funcs::FCOutputSize(
+  funcs::FCOutputSize(
       input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
-  out->Resize(common::make_ddim(output_dims));
+  out->Resize(make_ddim(output_dims));
   out->set_lod(input.lod());
 
   dev_ctx.template Alloc<T>(out);
@@ -164,7 +164,7 @@ void GemmEpilogueKernel(const Context& dev_ctx,
       workspace,
   };
 
-  void* dlhandler = phi::dynload::GetCutlassGemmEpilogueHandle();
+  void* dlhandler = dynload::GetCutlassGemmEpilogueHandle();
   func gemm_epilogue_func = NULL;
   PADDLE_ENFORCE_NOT_NULL(
       dlhandler,

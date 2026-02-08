@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context, typename T, typename InputT>
 void BincountInner(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const paddle::optional<DenseTensor>& weights,
+                   const optional<DenseTensor>& weights,
                    int64_t minlength,
                    DenseTensor* out) {
   const DenseTensor* input = &x;
@@ -34,11 +34,10 @@ void BincountInner(const Context& dev_ctx,
   auto input_numel = input->numel();
 
   if (input_data == nullptr) {
-    phi::DDim out_dim{minlength};
+    DDim out_dim{minlength};
     output->Resize(out_dim);
     // Since minlength may >0 , so fill with 0.
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<int64_t, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
 
@@ -53,7 +52,7 @@ void BincountInner(const Context& dev_ctx,
                         1L;
   output_size = std::max(output_size, minlength);
 
-  phi::DDim out_dim{output_size};
+  DDim out_dim{output_size};
   output->Resize(out_dim);
 
   bool has_weights = weights.is_initialized();
@@ -62,14 +61,14 @@ void BincountInner(const Context& dev_ctx,
     const T* weights_data = weights->data<T>();
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
-      phi::funcs::SetConstant<Context, float>()(
+      funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
       for (int64_t i = 0; i < input_numel; i++) {
         output_data[input_data[i]] += static_cast<float>(weights_data[i]);
       }
     } else {
       double* output_data = dev_ctx.template Alloc<double>(output);
-      phi::funcs::SetConstant<Context, double>()(
+      funcs::SetConstant<Context, double>()(
           dev_ctx, output, static_cast<double>(0));
       for (int64_t i = 0; i < input_numel; i++) {
         output_data[input_data[i]] += static_cast<double>(weights_data[i]);
@@ -78,7 +77,7 @@ void BincountInner(const Context& dev_ctx,
 
   } else {
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(
+    funcs::SetConstant<Context, int64_t>()(
         dev_ctx, output, static_cast<int64_t>(0));
     for (int64_t i = 0; i < input_numel; i++) {
       output_data[input_data[i]] += 1L;
@@ -89,7 +88,7 @@ void BincountInner(const Context& dev_ctx,
 template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& weights,
+                    const optional<DenseTensor>& weights,
                     const Scalar& minlength,
                     DenseTensor* out) {
   int64_t int_minlength = minlength.to<int64_t>();

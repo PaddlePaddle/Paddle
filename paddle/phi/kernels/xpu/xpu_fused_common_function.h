@@ -21,7 +21,7 @@ struct XPUDropoutParam {
   bool is_upscale_in_train;
   bool is_test;
   bool fix_seed;
-  const phi::DenseTensor *tensor_seed;
+  const DenseTensor *tensor_seed;
   int seed_val;
 
   XPUDropoutParam() {
@@ -37,7 +37,7 @@ struct XPUDropoutParam {
                            bool is_upscale_in_train_,
                            bool is_test_,
                            bool fix_seed_,
-                           const phi::DenseTensor *tensor_seed,
+                           const DenseTensor *tensor_seed,
                            int seed_val_) {
     dropout_prob = dropout_prob_;
     is_upscale_in_train = is_upscale_in_train_;

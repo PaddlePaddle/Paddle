@@ -72,6 +72,7 @@ from .core import (  # noqa: F401
     Scope,
     XPUPinnedPlace,
     XPUPlace,
+    _check_last_cuda_error,
     _cuda_synchronize,
     _Scope,
     _set_warmup,
@@ -164,8 +165,8 @@ def __bootstrap__():
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
-    if os.getenv('MKL_NUM_THREADS', None) is None:
-        os.environ['MKL_NUM_THREADS'] = str(int(0.8 * os.cpu_count()))
+    if os.getenv('NVIDIA_TF32_OVERRIDE', None) is None:
+        os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
     flag_prefix = "FLAGS_"
     read_env_flags = [
@@ -198,6 +199,7 @@ def __bootstrap__():
     # don't init_p2p when in unittest to save time.
     core.init_memory_method()
     core.init_devices()
+    core.init_gflags_from_env()
     core.init_tensor_operants()
     core.init_default_kernel_signatures()
 

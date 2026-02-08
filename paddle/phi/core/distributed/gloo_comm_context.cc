@@ -41,8 +41,8 @@ GlooCommContext::GlooCommContext(
   gloo_context_->connectFullMesh(*store, device);
 }
 
-void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void GlooCommContext::Broadcast(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 int root,
                                 uint32_t tag) {
   // gloo only uses CPU now
@@ -63,8 +63,8 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
   gloo::broadcast(opts);
 }
 
-void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void GlooCommContext::AllGather(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 uint32_t tag) {
   // gloo only uses CPU now
 
@@ -76,8 +76,8 @@ void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
   gloo::allgather(opts);
 }
 
-void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void GlooCommContext::AllReduce(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 int reduce_type,
                                 uint32_t tag) {
   gloo::AllreduceOptions opts(gloo_context_);
@@ -89,8 +89,8 @@ void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
   gloo::allreduce(opts);
 }
 
-void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
-                             const phi::DenseTensor& in_tensor,
+void GlooCommContext::Reduce(DenseTensor* out_tensor,
+                             const DenseTensor& in_tensor,
                              int reduce_type,
                              int root,
                              uint32_t tag) {
@@ -104,8 +104,8 @@ void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
   gloo::reduce(opts);
 }
 
-void GlooCommContext::Gather(phi::DenseTensor* out_tensor,
-                             const phi::DenseTensor& in_tensor,
+void GlooCommContext::Gather(DenseTensor* out_tensor,
+                             const DenseTensor& in_tensor,
                              int src,
                              uint32_t tag) {
   gloo::GatherOptions opts(gloo_context_);
@@ -119,8 +119,8 @@ void GlooCommContext::Gather(phi::DenseTensor* out_tensor,
   gloo::gather(opts);
 }
 
-void GlooCommContext::Scatter(phi::DenseTensor* out_tensor,
-                              const phi::DenseTensor& in_tensor,
+void GlooCommContext::Scatter(DenseTensor* out_tensor,
+                              const DenseTensor& in_tensor,
                               int src,
                               int size,
                               uint32_t tag) {
@@ -143,7 +143,7 @@ void GlooCommContext::Barrier() {
   gloo::barrier(opts);
 }
 
-void GlooCommContext::Send(const phi::DenseTensor& in_tensor,
+void GlooCommContext::Send(const DenseTensor& in_tensor,
                            int dst,
                            uint32_t tag) {
   SendRecvOptions opts(gloo_context_);
@@ -155,9 +155,7 @@ void GlooCommContext::Send(const phi::DenseTensor& in_tensor,
   send_recv(&opts);
 }
 
-void GlooCommContext::Recv(phi::DenseTensor* out_tensor,
-                           int src,
-                           uint32_t tag) {
+void GlooCommContext::Recv(DenseTensor* out_tensor, int src, uint32_t tag) {
   SendRecvOptions opts(gloo_context_);
   const auto& dtype = out_tensor->dtype();
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);

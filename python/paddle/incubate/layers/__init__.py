@@ -14,8 +14,6 @@
 
 from . import nn  # noqa: F401
 from .nn import (  # noqa: F401
-    _pull_box_sparse,
-    _pull_gpups_sparse,
     batch_fc,
     correlation,
     fused_bn_add_act,

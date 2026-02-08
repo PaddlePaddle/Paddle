@@ -37,9 +37,9 @@ class CopyMatrixRowsFunctor {
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& src,
+                  const DenseTensor& src,
                   phi::Vector<size_t> index_lod,
-                  phi::DenseTensor* dst,
+                  DenseTensor* dst,
                   bool is_src_index);
 };
 
@@ -61,8 +61,8 @@ class DenseTensor2BatchFunctor {
 
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& lod_tensor,
-                  phi::DenseTensor* batch,
+                  const DenseTensor& lod_tensor,
+                  DenseTensor* batch,
                   bool is_cal_batch_lod,
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
@@ -177,8 +177,8 @@ template <typename DeviceContext, typename T>
 class Batch2DenseTensorFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor& batch,
-                  phi::DenseTensor* lod_tensor) const {
+                  const DenseTensor& batch,
+                  DenseTensor* lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(
         in_lod.size(),

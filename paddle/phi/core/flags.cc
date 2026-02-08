@@ -31,4 +31,18 @@
 PHI_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
                           phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
                           "cuDNN convolution workspace limit in MB unit.");
+
+#ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
+PHI_DEFINE_EXPORTED_bool(
+    mem_efficient_attn_available,
+    true,
+    "Weather memory efficient attention is available on the current device.");
+#endif
+
+#ifdef PADDLE_WITH_FLASHATTN
+PHI_DEFINE_EXPORTED_bool(
+    flash_attn_available,
+    true,
+    "Weather flash attention is available on the current device.");
+#endif
 #endif

@@ -19,7 +19,7 @@
 namespace phi {
 namespace funcs {
 
-inline void HashOutputSize(const phi::DDim& in_dims,
+inline void HashOutputSize(const DDim& in_dims,
                            std::vector<int64_t>& out_dims,  // NOLINT
                            int num_hash) {
   out_dims.reserve(in_dims.size() + 1);

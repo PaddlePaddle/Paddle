@@ -143,7 +143,10 @@ class TestDistPPTraining(unittest.TestCase):
                 return True
 
             with paddle.amp.auto_cast(
-                enable=True, dtype='bfloat16', level='O2'
+                enable=True,
+                dtype='bfloat16',
+                level='O2',
+                custom_black_list=['softmax_with_cross_entropy'],
             ):
                 loss_a = model_a(img, label)
             scaler_a.scale(loss_a).backward()
@@ -152,7 +155,10 @@ class TestDistPPTraining(unittest.TestCase):
             scheduler_a.step()
 
             with paddle.amp.auto_cast(
-                enable=True, dtype='bfloat16', level='O2'
+                enable=True,
+                dtype='bfloat16',
+                level='O2',
+                custom_black_list=['softmax_with_cross_entropy'],
             ):
                 loss_b = model_b.train_batch(
                     [img, label], optimizer_b, scheduler_b, scaler=scaler_b

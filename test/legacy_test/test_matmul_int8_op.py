@@ -14,8 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import is_custom_device
-from test_sparse_attention_op import get_cuda_version
+from op_test import get_cuda_version, is_custom_device
 
 import paddle
 from paddle.base import core

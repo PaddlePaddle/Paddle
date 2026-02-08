@@ -23,7 +23,7 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'ELU(alpha=0.2)')
 
         module = nn.CELU(0.2)
-        self.assertEqual(str(module), 'CELU(alpha=0.2)')
+        self.assertEqual(str(module), 'CELU(alpha=0.2, inplace=False)')
 
         module = nn.GELU(True)
         self.assertEqual(str(module), 'GELU(approximate=True)')
@@ -48,6 +48,12 @@ class TestLayerPrint(unittest.TestCase):
             'PReLU(num_parameters=1, data_format=NCHW, init=0.25, dtype=float32, name=PReLU)',
         )
 
+        module = nn.RReLU(lower=0.1, upper=0.3, inplace=True)
+        self.assertEqual(
+            str(module),
+            'RReLU(lower=0.1, upper=0.3, training=True, dtype=float32, inplace=True)',
+        )
+
         module = nn.ReLU()
         self.assertEqual(str(module), 'ReLU()')
 
@@ -57,7 +63,7 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.SELU()
         self.assertEqual(
             str(module),
-            'SELU(scale=1.0507009873554805, alpha=1.6732632423543772)',
+            'SELU(scale=1.0507009873554805, alpha=1.6732632423543772, inplace=False)',
         )
 
         module = nn.LeakyReLU()
@@ -67,7 +73,7 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Sigmoid()')
 
         module = nn.Hardsigmoid()
-        self.assertEqual(str(module), 'Hardsigmoid()')
+        self.assertEqual(str(module), 'Hardsigmoid(inplace=False)')
 
         module = nn.Softplus()
         self.assertEqual(str(module), 'Softplus(beta=1, threshold=20)')
@@ -79,7 +85,10 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Softsign()')
 
         module = nn.Swish()
-        self.assertEqual(str(module), 'Swish()')
+        self.assertEqual(str(module), 'Swish(inplace=False)')
+
+        module = nn.Mish()
+        self.assertEqual(str(module), 'Mish(inplace=False)')
 
         module = nn.Tanhshrink()
         self.assertEqual(str(module), 'Tanhshrink()')
@@ -141,7 +150,8 @@ class TestLayerPrint(unittest.TestCase):
 
         module = nn.Dropout(p=0.5)
         self.assertEqual(
-            str(module), 'Dropout(p=0.5, axis=None, mode=upscale_in_train)'
+            str(module),
+            'Dropout(p=0.5, axis=None, mode=upscale_in_train, inplace=False)',
         )
 
         module = nn.Dropout2D(p=0.5)
@@ -167,7 +177,8 @@ class TestLayerPrint(unittest.TestCase):
 
         module = nn.ZeroPad2D(padding=[1, 0, 1, 2])
         self.assertEqual(
-            str(module), 'ZeroPad2D(padding=[1, 0, 1, 2], data_format=NCHW)'
+            str(module),
+            'ZeroPad2D(padding=[1, 0, 1, 2], mode=constant, value=0.0, data_format=NCHW)',
         )
 
         module = nn.Pad3D(padding=[1, 0, 1, 2, 0, 0], mode='constant')
@@ -293,19 +304,22 @@ class TestLayerPrint(unittest.TestCase):
             str(module), 'AvgPool3D(kernel_size=2, stride=2, padding=0)'
         )
 
-        module = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool1D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
-        module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool2D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
-        module = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool3D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
         module = nn.AdaptiveAvgPool1D(output_size=16)
@@ -383,7 +397,7 @@ class TestLayerPrint(unittest.TestCase):
             nn.Tanh(name="Tanh"),
             module1,
             nn.Conv3D(4, 6, (3, 3, 3)),
-            nn.MaxPool3D(kernel_size=2, stride=2, padding=0),
+            nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1),
             nn.GELU(True),
         )
         self.assertEqual(
@@ -395,7 +409,7 @@ class TestLayerPrint(unittest.TestCase):
             '(3): Sequential(\n    (conv1): Conv2D(1, 20, kernel_size=[5, 5], data_format=NCHW)\n    (relu1): ReLU()\n'
             '    (conv2): Conv2D(20, 64, kernel_size=[5, 5], data_format=NCHW)\n    (relu2): ReLU()\n  )\n  '
             '(4): Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)\n  '
-            '(5): MaxPool3D(kernel_size=2, stride=2, padding=0)\n  '
+            '(5): MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1)\n  '
             '(6): GELU(approximate=True)\n)',
         )
 

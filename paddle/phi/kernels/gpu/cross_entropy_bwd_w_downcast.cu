@@ -12,23 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/cross_entropy_grad_kernel.h"
-
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cross_entropy_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax.h"
@@ -56,7 +48,9 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelVectorized(
   using VecT = typename phi::AlignedVector<LogitT, VEC_SIZE>;
   using SoftmaxVecT = typename phi::AlignedVector<T, VEC_SIZE>;
 
-  int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t tid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int64_t vec_id = tid * VEC_SIZE;
 
   // Ensure we don't exceed bounds
@@ -136,17 +130,18 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelWarp(
   const int threads_per_warp = 32;
   const int threads_per_block = warps_per_block * threads_per_warp;
 
-  int tid = blockIdx.x * threads_per_block + threadIdx.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * threads_per_block +
+                static_cast<int64_t>(threadIdx.x);
   int warp_id = threadIdx.x / threads_per_warp;
   int lane_id = threadIdx.x % threads_per_warp;
 
   // Process multiple elements per thread using warp-level parallelism
   int64_t elements_per_thread =
-      (n * dim * d + gridDim.x * threads_per_block - 1) /
-      (gridDim.x * threads_per_block);
+      (n * dim * d + static_cast<int64_t>(gridDim.x) * threads_per_block - 1) /
+      (static_cast<int64_t>(gridDim.x) * threads_per_block);
 
   for (int e = 0; e < elements_per_thread; ++e) {
-    int64_t idx = tid + e * gridDim.x * threads_per_block;
+    int64_t idx = tid + e * static_cast<int64_t>(gridDim.x) * threads_per_block;
     if (idx >= n * dim * d) break;
 
     int64_t idx_n = idx / (d * dim);
@@ -227,7 +222,7 @@ void CrossEntropyWithSoftmaxBwdWithDowncastGPUKernel(
     DenseTensor* logits_grad) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
-      phi::AllocationType::GPU,
+      AllocationType::GPU,
       common::errors::Unavailable("softmax_with_cross_entropy operator's "
                                   "CUDA kernel only runs on GPU device."));
 
@@ -239,11 +234,11 @@ void CrossEntropyWithSoftmaxBwdWithDowncastGPUKernel(
   logit_grad_data = dev_ctx.template Alloc<LogitT>(logit_grad);
 
   const int rank = logit_grad->dims().size();
-  const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  const int axis_v = funcs::CanonicalAxis(axis, rank);
+  int64_t axis_dim = logit_grad->dims()[axis_v];
 
-  const int64_t n = phi::funcs::SizeToAxis(axis_v, logit_grad->dims());
-  const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
+  const int64_t n = funcs::SizeToAxis(axis_v, logit_grad->dims());
+  const int64_t d = funcs::SizeFromAxis(axis_v, logit_grad->dims());
   const int64_t remain = d / axis_dim;
 
   const T* softmax_data = softmax.data<T>();

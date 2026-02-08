@@ -66,8 +66,8 @@ void BKCLCommContext::SetCommEvent(
   comm_event_ = std::move(comm_event);
 }
 
-void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void BKCLCommContext::Broadcast(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 int root,
                                 XPUStream stream) {
   CommStaticCheck::SameShape(*out_tensor,
@@ -96,8 +96,8 @@ void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
 #endif
 }
 
-void BKCLCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void BKCLCommContext::AllGather(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 XPUStream stream) {
   phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
                                                      in_tensor,
@@ -123,8 +123,8 @@ void BKCLCommContext::AllGather(phi::DenseTensor* out_tensor,
 #endif
 }
 
-void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
-                                    const phi::DenseTensor& in_tensor,
+void BKCLCommContext::ReduceScatter(DenseTensor* out_tensor,
+                                    const DenseTensor& in_tensor,
                                     BKCLOp reduce_type,
                                     XPUStream stream) {
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
@@ -155,8 +155,8 @@ void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
 }
 
 #if defined(PADDLE_WITH_FLAGCX)
-void BKCLCommContext::Scatter(phi::DenseTensor* out_tensor,
-                              const phi::DenseTensor& in_tensor,
+void BKCLCommContext::Scatter(DenseTensor* out_tensor,
+                              const DenseTensor& in_tensor,
                               int root,
                               XPUStream stream) {
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
@@ -177,7 +177,7 @@ void BKCLCommContext::Scatter(phi::DenseTensor* out_tensor,
 }
 #endif
 
-void BKCLCommContext::Send(const phi::DenseTensor& in_tensor,
+void BKCLCommContext::Send(const DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
                            XPUStream stream) {
@@ -205,7 +205,7 @@ void BKCLCommContext::Send(const phi::DenseTensor& in_tensor,
           << " to " << peer;
 }
 
-void BKCLCommContext::Recv(phi::DenseTensor* out_tensor,
+void BKCLCommContext::Recv(DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
                            XPUStream stream) {
@@ -232,8 +232,8 @@ void BKCLCommContext::Recv(phi::DenseTensor* out_tensor,
           << common::product(out_tensor->dims()) << " from " << peer;
 }
 
-void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor,
+void BKCLCommContext::AllReduce(DenseTensor* out_tensor,
+                                const DenseTensor& in_tensor,
                                 BKCLOp reduce_type,
                                 XPUStream stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
@@ -263,8 +263,8 @@ void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
 #endif
 }
 
-void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
-                               const phi::DenseTensor& in_tensor,
+void BKCLCommContext::AllToAll(DenseTensor* out_tensor,
+                               const DenseTensor& in_tensor,
                                XPUStream stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
@@ -291,14 +291,13 @@ void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
 #endif
 }
 
-void BKCLCommContext::AllToAllUnequalSplit(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
-    const phi::DenseTensor& out_size_tensor,
-    const phi::DenseTensor& out_offset_tensor,
-    const phi::DenseTensor& in_size_tensor,
-    const phi::DenseTensor& in_offset_tensor,
-    XPUStream stream) {
+void BKCLCommContext::AllToAllUnequalSplit(DenseTensor* out_tensor,
+                                           const DenseTensor& in_tensor,
+                                           const DenseTensor& out_size_tensor,
+                                           const DenseTensor& out_offset_tensor,
+                                           const DenseTensor& in_size_tensor,
+                                           const DenseTensor& in_offset_tensor,
+                                           XPUStream stream) {
   auto in_size_ptr = reinterpret_cast<const size_t*>(in_size_tensor.data());
   auto in_offset_ptr = reinterpret_cast<const size_t*>(in_offset_tensor.data());
   auto out_size_ptr = reinterpret_cast<const size_t*>(out_size_tensor.data());
@@ -332,8 +331,8 @@ void BKCLCommContext::AllToAllUnequalSplit(
 #endif
 }
 
-void BKCLCommContext::Reduce(phi::DenseTensor* out_tensor,
-                             const phi::DenseTensor& in_tensor,
+void BKCLCommContext::Reduce(DenseTensor* out_tensor,
+                             const DenseTensor& in_tensor,
                              BKCLOp reduce_type,
                              int root,
                              XPUStream stream) {

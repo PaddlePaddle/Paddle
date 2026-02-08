@@ -53,7 +53,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
 #endif
     }
-#if IS_TRT_VERSION_GE(8000)
     if (align_corners == true) {
       layer->setCoordinateTransformation(
           nvinfer1::ResizeCoordinateTransformation::kALIGN_CORNERS);
@@ -61,10 +60,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       layer->setCoordinateTransformation(
           nvinfer1::ResizeCoordinateTransformation::kHALF_PIXEL);
     }
-#endif
-#if !IS_TRT_VERSION_GE(8000)
-    layer->setAlignCorners(align_corners);
-#endif
     auto in_dim = input->getDimensions();
     float scale_h = -1.f;
     float scale_w = -1.f;
@@ -91,8 +86,8 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     // axis are different in static/dynamic mode
     bool with_dynamic = true;
-    int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
-    int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
+    int h_axis = (data_layout == phi::DataLayout::NCHW) + with_dynamic;
+    int w_axis = (data_layout == phi::DataLayout::NCHW) + 1 + with_dynamic;
 
     if (scale_w > 0. && scale_h > 0.) {
       out_h = static_cast<int>(in_dim.d[h_axis] * scale_h);
@@ -130,11 +125,11 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     std::vector<float> scales;
     scales.push_back(1.f);
-    if (data_layout == phi::DataLayout::kNCHW) {
+    if (data_layout == phi::DataLayout::NCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
-    } else if (data_layout == phi::DataLayout::kNHWC) {
+    } else if (data_layout == phi::DataLayout::NHWC) {
       scales.push_back(scale_h);
       scales.push_back(scale_w);
       scales.push_back(1.f);
@@ -145,10 +140,10 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       auto* input_shape = Shape(input);
       outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
 
-      if (data_layout == phi::DataLayout::kNCHW) {
+      if (data_layout == phi::DataLayout::NCHW) {
         outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
         outsize_itensors.push_back(outsize_tensor);
-      } else if (data_layout == phi::DataLayout::kNHWC) {
+      } else if (data_layout == phi::DataLayout::NHWC) {
         outsize_itensors.push_back(outsize_tensor);
         outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
       }

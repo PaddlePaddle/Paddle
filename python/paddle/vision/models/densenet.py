@@ -255,7 +255,7 @@ class DenseNet(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import DenseNet
@@ -267,7 +267,7 @@ class DenseNet(nn.Layer):
             >>> out = densenet(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
 
     num_classes: int
@@ -412,7 +412,7 @@ def densenet121(
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 121-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import densenet121
@@ -427,7 +427,7 @@ def densenet121(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _densenet('densenet121', 121, pretrained, **kwargs)
 
@@ -447,7 +447,7 @@ def densenet161(
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 161-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import densenet161
@@ -462,7 +462,7 @@ def densenet161(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _densenet('densenet161', 161, pretrained, **kwargs)
 
@@ -482,7 +482,7 @@ def densenet169(
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 169-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import densenet169
@@ -497,7 +497,7 @@ def densenet169(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _densenet('densenet169', 169, pretrained, **kwargs)
 
@@ -517,7 +517,7 @@ def densenet201(
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 201-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import densenet201
@@ -531,7 +531,7 @@ def densenet201(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _densenet('densenet201', 201, pretrained, **kwargs)
 
@@ -551,7 +551,7 @@ def densenet264(
         :ref:`api_paddle_nn_Layer`. An instance of DenseNet 264-layer model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import densenet264
@@ -566,6 +566,6 @@ def densenet264(
             >>> out = model(x)
 
             >>> print(out.shape)
-            [1, 1000]
+            paddle.Size([1, 1000])
     """
     return _densenet('densenet264', 264, pretrained, **kwargs)

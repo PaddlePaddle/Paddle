@@ -20,19 +20,19 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RmsNormGradKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const paddle::optional<DenseTensor>& bias,
-                       const paddle::optional<DenseTensor>& residual,
-                       const DenseTensor& norm_weight,
-                       const paddle::optional<DenseTensor>& norm_bias,
-                       const DenseTensor& inv_var,
-                       const DenseTensor& out_grad,
-                       const float epsilon,
-                       const int begin_norm_axis,
-                       const float quant_scale,
-                       DenseTensor* x_grad,
-                       DenseTensor* norm_weight_grad,
-                       DenseTensor* norm_bias_grad);
+void RmsNormQuantGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const optional<DenseTensor>& bias,
+                            const optional<DenseTensor>& residual,
+                            const DenseTensor& norm_weight,
+                            const optional<DenseTensor>& norm_bias,
+                            const DenseTensor& inv_var,
+                            const DenseTensor& out_grad,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            const float quant_scale,
+                            DenseTensor* x_grad,
+                            DenseTensor* norm_weight_grad,
+                            DenseTensor* norm_bias_grad);
 
 }  // namespace phi

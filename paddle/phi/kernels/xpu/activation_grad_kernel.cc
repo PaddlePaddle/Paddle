@@ -67,6 +67,21 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);       \
   }
 
+#define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX( \
+    name, functor_class, attr)                                 \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& dout,               \
+                        double attr,                           \
+                        DenseTensor* dx) {                     \
+    functor_class<T> functor;                                  \
+    auto attrs = functor.GetAttrs();                           \
+    *(attrs[0].second) = static_cast<float>(attr);             \
+    ActivationGradXPUImpl<T, Context, functor_class<T>>(       \
+        dev_ctx, &x, nullptr, &dout, dx, functor);             \
+  }
+
 #define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(  \
     name, functor_class, attr1, attr2)                   \
   template <typename T, typename Context>                \
@@ -183,7 +198,7 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
         dev_ctx.x_context(), tmp, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-    auto x_dims = common::vectorize<int64_t>(x->dims());
+    auto x_dims = vectorize<int64_t>(x->dims());
 
     // use [1] to replace [], because xpu not support []
     if (x_dims.size() == 0) {
@@ -467,9 +482,9 @@ void PowGradKernel(const Context& dev_ctx,
   T* x_grad = dx->data<T>();
 
   // check dims: all dims should equal
-  auto x_dims = common::vectorize<int64_t>(x.dims());
-  auto dy_dims = common::vectorize<int64_t>(dout.dims());
-  auto dx_dims = common::vectorize<int64_t>(dx->dims());
+  auto x_dims = vectorize<int64_t>(x.dims());
+  auto dy_dims = vectorize<int64_t>(dout.dims());
+  auto dx_dims = vectorize<int64_t>(dx->dims());
   PADDLE_ENFORCE_EQ(x_dims,
                     dy_dims,
                     errors::PreconditionNotMet("x_dims should match dy_dims."));
@@ -660,9 +675,9 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, XPUCosGradFunctor);
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                XPUMishGradFunctor,
                                                threshold);
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
-                                               XPULeakyReluGradFunctor,
-                                               alpha);
+DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_DOUBLE_ATTRS_DEPX(LeakyRelu,
+                                                      XPULeakyReluGradFunctor,
+                                                      alpha);
 
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  XPUHardSigmoidGradFunctor,

@@ -17,14 +17,8 @@ limitations under the License. */
 #include <cfloat>
 #include <string>
 #include <vector>
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
 #include "paddle/common/layout.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
@@ -56,7 +50,7 @@ namespace funcs {
 //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
 //          axis=(n,h,w)))
 
-template <typename T, int BlockDim, phi::DataLayout layout>
+template <typename T, int BlockDim, DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     const T *x,
     const T *mean,
@@ -95,7 +89,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     T ddx_mul_x_sub_mean_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -131,7 +125,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     if (ddx != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dx[index] +=
@@ -150,7 +144,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     if (ddscale != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dx[index] += (dy[index] * var_val - dy_sum_val / inner_size * var_val -
@@ -165,7 +159,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
 // math: ddy = (x - mean) * inv_var * ddscale + ddbias +
 //           scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
 //           np.mean(ddx * (x - mean), axis=(n,h,w)))
-template <typename T, int BlockDim, phi::DataLayout layout>
+template <typename T, int BlockDim, DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     const T *x,
     const T *mean,
@@ -195,7 +189,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     T ddx_mul_x_sub_mean_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -215,7 +209,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddx != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += scale[i] * var_val *
@@ -228,7 +222,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddscale != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += (x[index] - mean_val) * var_val * ddscale[i];
@@ -238,7 +232,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddbias != nullptr) {
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += ddbias[i];
@@ -250,7 +244,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
 // math: dscale = inv_var * (dy - np.mean(dy, axis=(n,h,w) - (x-mean) *
 //            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(n,h,w)))) *
 //            ddx
-template <typename T, int BlockDim, phi::DataLayout layout>
+template <typename T, int BlockDim, DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
     const T *x,
     const T *mean,
@@ -279,7 +273,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
     T var_val = variance[i];
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T dy_i = dy[index];
@@ -300,7 +294,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
       T dscale_tmp = 0;
       for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int64_t index =
-            layout == phi::DataLayout::kNCHW
+            layout == DataLayout::NCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dscale_tmp += ddx[index] * var_val *
@@ -320,7 +314,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
 }
 
 // math: dscale = np.sum(ddx * dy, axis=(n,h,w)) * inv_var
-template <typename T, int BlockDim, phi::DataLayout layout>
+template <typename T, int BlockDim, DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
     const T *ddx,
     const T *variance,
@@ -340,7 +334,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
     T ddx_mul_dy_sum = 0;
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int64_t index =
-          layout == phi::DataLayout::kNCHW
+          layout == DataLayout::NCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -361,7 +355,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
 }
 
 // math: dx = ddscale * dy * inv_var
-template <typename T, phi::DataLayout layout>
+template <typename T, DataLayout layout>
 __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
                                               const T *ddscale,
                                               const T *variance,
@@ -370,12 +364,13 @@ __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
                                               const int sample_size,
                                               const int64_t num,
                                               T *dx) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   if (ddscale != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
-      const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+      const int c = layout == DataLayout::NCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       dx[i] = dy[i] * ddscale[c] * inv_var;
     }
@@ -384,7 +379,7 @@ __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
 
 // math: ddy = scale * ddx * inv_var + ddbias +
 //             ddscale * (x - mean) * inv_var
-template <typename T, phi::DataLayout layout>
+template <typename T, DataLayout layout>
 __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
                                                const T *scale,
                                                const T *mean,
@@ -397,13 +392,14 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
                                                const int sample_size,
                                                const int64_t num,
                                                T *ddy) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
 
   if (ddx != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
-      const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+      const int c = layout == DataLayout::NCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       ddy[i] += ddx[i] * scale[c] * inv_var;
     }
@@ -411,8 +407,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   __syncthreads();
   if (ddscale != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
-      const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+      const int c = layout == DataLayout::NCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       ddy[i] += (x[i] - mean[c]) * inv_var * ddscale[c];
     }
@@ -420,8 +415,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   __syncthreads();
   if (ddbias != nullptr) {
     for (int64_t i = gid; i < num; i += stride) {
-      const int c =
-          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
+      const int c = layout == DataLayout::NCHW ? i / sample_size % C : i % C;
       ddy[i] += ddbias[c];
     }
   }
@@ -430,21 +424,21 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
 template <typename DeviceContext, typename T>
 void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                            const DataLayout data_layout,
-                           const phi::DenseTensor *X,
-                           const phi::DenseTensor *Scale,
-                           const phi::DenseTensor *dY,
-                           const phi::DenseTensor *Saved_mean,
-                           const phi::DenseTensor *Saved_variance,
-                           const phi::DenseTensor *Mean,
-                           const phi::DenseTensor *Variance,
+                           const DenseTensor *X,
+                           const DenseTensor *Scale,
+                           const DenseTensor *dY,
+                           const DenseTensor *Saved_mean,
+                           const DenseTensor *Saved_variance,
+                           const DenseTensor *Mean,
+                           const DenseTensor *Variance,
                            const double epsilon,
                            const bool use_global_stats,
-                           const phi::DenseTensor *ddX,
-                           const phi::DenseTensor *ddScale,
-                           const phi::DenseTensor *ddBias,
-                           phi::DenseTensor *dX,
-                           phi::DenseTensor *dScale,
-                           phi::DenseTensor *ddY) {
+                           const DenseTensor *ddX,
+                           const DenseTensor *ddScale,
+                           const DenseTensor *ddBias,
+                           DenseTensor *dX,
+                           DenseTensor *dScale,
+                           DenseTensor *ddY) {
   const T *x_data = X->data<T>();
   const T *dy_data = dY->data<T>();
   const T *ddx_data = (ddX == nullptr ? nullptr : ddX->data<T>());
@@ -452,15 +446,15 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   const T *ddscale_data = (ddScale == nullptr ? nullptr : ddScale->data<T>());
   const T *ddbias_data = (ddBias == nullptr ? nullptr : ddBias->data<T>());
 
-  phi::funcs::SetConstant<DeviceContext, T> set_constant;
+  funcs::SetConstant<DeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
+  const int C =
+      (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int N = x_dims[0];
   const int64_t num = X->numel();
   const int sample_size = num / N / C;
-  phi::DenseTensor scale_tmp;
+  DenseTensor scale_tmp;
   if (!Scale) {
     scale_tmp.Resize({C});
     dev_ctx.template Alloc<T>(&scale_tmp);
@@ -494,8 +488,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     T *dx_data = dev_ctx.template Alloc<T>(dX);
     set_constant(dev_ctx, dX, static_cast<T>(0));
     if (use_global_stats) {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDXWithGlobal<T, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDXWithGlobal<T, DataLayout::NHWC>
             <<<grid1, block, 0, dev_ctx.stream()>>>(dy_data,
                                                     ddscale_data,
                                                     variance_data,
@@ -505,7 +499,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     num,
                                                     dx_data);
       } else {
-        DoubleGradComputeDXWithGlobal<T, DataLayout::kNCHW>
+        DoubleGradComputeDXWithGlobal<T, DataLayout::NCHW>
             <<<grid1, block, 0, dev_ctx.stream()>>>(dy_data,
                                                     ddscale_data,
                                                     variance_data,
@@ -516,8 +510,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     dx_data);
       }
     } else {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDX<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDX<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -531,7 +525,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    epsilon,
                                                    dx_data);
       } else {
-        DoubleGradComputeDX<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDX<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -551,8 +545,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     T *dscale_data = dev_ctx.template Alloc<T>(dScale);
     set_constant(dev_ctx, dScale, static_cast<T>(0));
     if (use_global_stats) {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                    variance_data,
                                                    dy_data,
@@ -562,7 +556,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    sample_size,
                                                    dscale_data);
       } else {
-        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                    variance_data,
                                                    dy_data,
@@ -573,8 +567,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    dscale_data);
       }
     } else {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDScale<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDScale<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -586,7 +580,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    epsilon,
                                                    dscale_data);
       } else {
-        DoubleGradComputeDScale<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDScale<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -604,8 +598,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     T *ddy_data = dev_ctx.template Alloc<T>(ddY);
     set_constant(dev_ctx, ddY, static_cast<T>(0));
     if (use_global_stats) {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDDYWithGlobal<T, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDDYWithGlobal<T, DataLayout::NHWC>
             <<<grid1, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                     scale_data,
                                                     mean_data,
@@ -619,7 +613,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     num,
                                                     ddy_data);
       } else {
-        DoubleGradComputeDDYWithGlobal<T, DataLayout::kNCHW>
+        DoubleGradComputeDDYWithGlobal<T, DataLayout::NCHW>
             <<<grid1, block, 0, dev_ctx.stream()>>>(ddx_data,
                                                     scale_data,
                                                     mean_data,
@@ -634,8 +628,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                     ddy_data);
       }
     } else {
-      if (data_layout == DataLayout::kNHWC) {
-        DoubleGradComputeDDY<T, block, DataLayout::kNHWC>
+      if (data_layout == DataLayout::NHWC) {
+        DoubleGradComputeDDY<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -649,7 +643,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
                                                    epsilon,
                                                    ddy_data);
       } else {
-        DoubleGradComputeDDY<T, block, DataLayout::kNCHW>
+        DoubleGradComputeDDY<T, block, DataLayout::NCHW>
             <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
                                                    mean_data,
                                                    variance_data,
@@ -756,12 +750,12 @@ void SetLaunchConfigInfoForChannelLast(const Context &dev_ctx,
   const int64_t MAX_GRID_SIZE = 128;
   const int64_t WARP_SIZE = 32;
 
-  int block_x = std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
-  int block_y = std::min(phi::funcs::details::GetLastPow2(
-                             static_cast<int64_t>(N) * H * W * D / 16),
-                         static_cast<int64_t>(block_size / block_x));
+  int block_x = std::min(funcs::details::GetLastPow2(C), WARP_SIZE);
+  int block_y = std::min(
+      funcs::details::GetLastPow2(static_cast<int64_t>(N) * H * W * D / 16),
+      static_cast<int64_t>(block_size / block_x));
   if (block_x * block_y != block_size) {
-    block_x = std::min(phi::funcs::details::GetLastPow2(C),
+    block_x = std::min(funcs::details::GetLastPow2(C),
                        static_cast<int64_t>(block_size / block_y));
   }
   int grid_x = (C + block_x - 1) / block_x;
@@ -775,8 +769,8 @@ void SetLaunchConfigInfoForChannelLast(const Context &dev_ctx,
   grid->y = grid_y;
 
   if (grid->y > 1) {
-    *block_data_tensor = phi::Empty<BnT, Context>(dev_ctx, {2 * C * grid->y});
-    *flag_tensor = phi::Empty<int, Context>(dev_ctx, {grid->x});
+    *block_data_tensor = Empty<BnT, Context>(dev_ctx, {2 * C * grid->y});
+    *flag_tensor = Empty<int, Context>(dev_ctx, {grid->x});
 
     *block_data_ptr = block_data_tensor->data<BnT>();
     *flag_ptr = flag_tensor->data<int>();

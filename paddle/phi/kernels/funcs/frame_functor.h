@@ -35,22 +35,22 @@ struct FrameFunctor {
     const auto* input_data = input->data<T>();
     auto* output_data = output->data<T>();
 
-    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
     if (!is_grad) {
-      phi::funcs::Seq2ColFunctor<T> functor(input_data,
-                                            output_data,
-                                            seq_length,
-                                            frame_length,
-                                            n_frames,
-                                            hop_length);
+      funcs::Seq2ColFunctor<T> functor(input_data,
+                                       output_data,
+                                       seq_length,
+                                       frame_length,
+                                       n_frames,
+                                       hop_length);
       for_range(functor);
     } else {
-      phi::funcs::Col2SeqFunctor<T> functor(input_data,
-                                            output_data,
-                                            seq_length,
-                                            frame_length,
-                                            n_frames,
-                                            hop_length);
+      funcs::Col2SeqFunctor<T> functor(input_data,
+                                       output_data,
+                                       seq_length,
+                                       frame_length,
+                                       n_frames,
+                                       hop_length);
       for_range(functor);
     }
   }

@@ -89,24 +89,32 @@ class TestFusedDotProductAttentionStatic(unittest.TestCase):
         paddle.seed(312)
 
         # call fused_dot_product_attention in static mode
-        with paddle.static.program_guard(paddle.static.Program()):
-            q = paddle.static.data(
-                name="q", shape=self.q_shape, dtype=self.dtype
-            )
-            k = paddle.static.data(
-                name="k", shape=self.kv_shape, dtype=self.dtype
-            )
-            v = paddle.static.data(
-                name="v", shape=self.kv_shape, dtype=self.dtype
-            )
-            mask = paddle.static.data(
-                name="mask", shape=self.mask_shape, dtype=self.dtype
-            )
+        # Use OldIrGuard to disable PIR mode for legacy static graph test
+        from paddle.pir_utils import OldIrGuard
 
-            outs = fused_dot_product_attention(q, k, v, mask)
+        with OldIrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                q = paddle.static.data(
+                    name="q", shape=self.q_shape, dtype=self.dtype
+                )
+                k = paddle.static.data(
+                    name="k", shape=self.kv_shape, dtype=self.dtype
+                )
+                v = paddle.static.data(
+                    name="v", shape=self.kv_shape, dtype=self.dtype
+                )
+                mask = paddle.static.data(
+                    name="mask", shape=self.mask_shape, dtype=self.dtype
+                )
+
+                outs = fused_dot_product_attention(q, k, v, mask)
 
             exe = paddle.static.Executor(self.place)
+            exe.run(startup_program)
             out_s = exe.run(
+                main_program,
                 feed={
                     "q": q_data.astype('float16'),
                     "k": k_data.astype('float16'),
@@ -117,37 +125,41 @@ class TestFusedDotProductAttentionStatic(unittest.TestCase):
             )
             np.testing.assert_allclose(out_s[0], out0)
 
-        # call cudnn_flash_attention in static mode
-        with paddle.static.program_guard(paddle.static.Program()):
-            q = paddle.static.data(
-                name="q", shape=self.q_shape, dtype=self.dtype
-            )
-            k = paddle.static.data(
-                name="k", shape=self.kv_shape, dtype=self.dtype
-            )
-            v = paddle.static.data(
-                name="v", shape=self.kv_shape, dtype=self.dtype
-            )
-            mask = paddle.static.data(
-                name="mask", shape=self.mask_shape, dtype=self.dtype
-            )
+            # call cudnn_flash_attention in static mode
+            main_program2 = paddle.static.Program()
+            startup_program2 = paddle.static.Program()
+            with paddle.static.program_guard(main_program2, startup_program2):
+                q = paddle.static.data(
+                    name="q", shape=self.q_shape, dtype=self.dtype
+                )
+                k = paddle.static.data(
+                    name="k", shape=self.kv_shape, dtype=self.dtype
+                )
+                v = paddle.static.data(
+                    name="v", shape=self.kv_shape, dtype=self.dtype
+                )
+                mask = paddle.static.data(
+                    name="mask", shape=self.mask_shape, dtype=self.dtype
+                )
 
-            outs = cudnn_flash_attention(
-                q,
-                k,
-                v,
-                mask,
-                None,
-                None,
-                1.0,
-                0.0,
-                True,
-                None,
-                "post_scale_bias",
-            )
+                outs = cudnn_flash_attention(
+                    q,
+                    k,
+                    v,
+                    mask,
+                    None,
+                    None,
+                    1.0,
+                    0.0,
+                    True,
+                    None,
+                    "post_scale_bias",
+                )
 
-            exe = paddle.static.Executor(self.place)
-            out_s = exe.run(
+            exe2 = paddle.static.Executor(self.place)
+            exe2.run(startup_program2)
+            out_s = exe2.run(
+                main_program2,
                 feed={
                     "q": q_data.astype('float16'),
                     "k": k_data.astype('float16'),

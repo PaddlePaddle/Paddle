@@ -33,7 +33,7 @@ void UnpoolGrad(const Context& dev_ctx,
                 DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* output_grad_data = out_grad.data<T>();
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const int batch_size = static_cast<int>(x.dims()[0]);
   const int input_height = static_cast<int>(x.dims()[2]);
@@ -102,7 +102,7 @@ void Unpool3dGrad(const Context& dev_ctx,
                   DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* output_grad_data = out_grad.data<T>();
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
 
   const int batch_size = static_cast<int>(x.dims()[0]);

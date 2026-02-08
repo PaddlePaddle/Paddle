@@ -32,8 +32,8 @@ struct RmsFunctor {
              const DenseTensor &grad,
              const DenseTensor &moment,
              const DenseTensor &learning_rate,
-             const paddle::optional<DenseTensor> &mean_grad_opt,
-             const paddle::optional<DenseTensor> &master_param,
+             const optional<DenseTensor> &mean_grad_opt,
+             const optional<DenseTensor> &master_param,
              float epsilon_t,
              float decay_t,
              float momentum_t,
@@ -67,8 +67,7 @@ struct SparseRmspropGradFunctor {
         row_count_(row_count) {}
 
   HOSTDEVICE inline T operator()(int64_t idx) const {
-    auto row_idx =
-        phi::funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
+    auto row_idx = funcs::BinarySearch(rows_, row_count_, idx / row_numel_);
     return row_idx >= 0 ? grad_[row_idx * row_numel_ + idx % row_numel_]
                         : static_cast<T>(0);
   }
@@ -185,8 +184,8 @@ void RmspropDenseKernel(const Context &dev_ctx,
                         const DenseTensor &grad,
                         const DenseTensor &moment,
                         const DenseTensor &learning_rate,
-                        const paddle::optional<DenseTensor> &mean_grad_opt,
-                        const paddle::optional<DenseTensor> &master_param,
+                        const optional<DenseTensor> &mean_grad_opt,
+                        const optional<DenseTensor> &master_param,
                         float epsilon_t,
                         float decay_t,
                         float momentum_t,
@@ -224,9 +223,8 @@ void RmspropSparseKernel(const Context &dev_ctx,
                          const SelectedRows &grad,
                          const DenseTensor &moment,
                          const DenseTensor &learning_rate,
-                         const paddle::optional<DenseTensor> &mean_grad_opt,
-                         const paddle::optional<DenseTensor> &master_param
-                             UNUSED,
+                         const optional<DenseTensor> &mean_grad_opt,
+                         const optional<DenseTensor> &master_param UNUSED,
                          float epsilon_t,
                          float decay_t,
                          float momentum_t,
@@ -262,9 +260,9 @@ void RmspropSparseKernel(const Context &dev_ctx,
           "MeanSquare and MeanSquareOut must be the same Tensor"));
   size_t limit = static_cast<size_t>(ms_tensor.numel());
 
-  phi::SelectedRows tmp_merged_grad;
-  phi::SelectedRows *merged_grad = &tmp_merged_grad;
-  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  SelectedRows tmp_merged_grad;
+  SelectedRows *merged_grad = &tmp_merged_grad;
+  funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, grad, merged_grad);
 
   funcs::ForRange<Context> for_range(dev_ctx, limit);

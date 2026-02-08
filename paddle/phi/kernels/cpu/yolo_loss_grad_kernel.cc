@@ -121,7 +121,7 @@ void YoloLossGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& gt_box,
                         const DenseTensor& gt_label,
-                        const paddle::optional<DenseTensor>& gt_score,
+                        const optional<DenseTensor>& gt_score,
                         const DenseTensor& objectness_mask,
                         const DenseTensor& gt_match_mask,
                         const DenseTensor& loss_grad,
@@ -174,8 +174,7 @@ void YoloLossGradKernel(const Context& dev_ctx,
   if (!(gt_score.is_initialized())) {
     gtscore.Resize({n, b});
     dev_ctx.template Alloc<T>(&gtscore);
-    phi::funcs::SetConstant<Context, T>()(
-        dev_ctx, &gtscore, static_cast<T>(1.0));
+    funcs::SetConstant<Context, T>()(dev_ctx, &gtscore, static_cast<T>(1.0));
     gt_score_data = gtscore.data<T>();
   } else {
     gt_score_data = gt_score.get_ptr()->data<T>();

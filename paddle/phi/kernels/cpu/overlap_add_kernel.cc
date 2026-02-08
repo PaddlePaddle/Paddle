@@ -42,21 +42,20 @@ void OverlapAddKernel(const Context& dev_ctx,
   DenseTensor x_(x.type());
   x_ = x;
 
-  phi::DDim preserved_dims;
+  DDim preserved_dims;
   if (out_rank > 2) {
     // Save dims used to flatten both input and output tensors and restore
     // output tensor.
-    phi::DDim x_resized_dims;
-    phi::DDim out_resized_dims;
+    DDim x_resized_dims;
+    DDim out_resized_dims;
     if (axis == 0) {
-      preserved_dims =
-          common::slice_ddim(out->dims(), 1, static_cast<int>(out_rank));
+      preserved_dims = slice_ddim(out->dims(), 1, static_cast<int>(out_rank));
       x_resized_dims = {
           n_frames, frame_length, common::product(preserved_dims)};
       out_resized_dims = {seq_length, common::product(preserved_dims)};
     } else {
       preserved_dims =
-          common::slice_ddim(out->dims(), 0, static_cast<int>(out_rank) - 1);
+          slice_ddim(out->dims(), 0, static_cast<int>(out_rank) - 1);
       x_resized_dims = {
           common::product(preserved_dims), frame_length, n_frames};
       out_resized_dims = {common::product(preserved_dims), seq_length};
@@ -74,33 +73,33 @@ void OverlapAddKernel(const Context& dev_ctx,
       trans_out = *out;
 
       std::vector<int> perm_x{1, 0};
-      auto x_dims_vec = common::vectorize(x_.dims());
+      auto x_dims_vec = vectorize(x_.dims());
       for (int i = 0; i < x_.dims().size(); ++i) {
         x_dims_vec[i] = x_.dims()[perm_x[i]];
       }
-      trans_x.Resize(common::make_ddim(x_dims_vec));
+      trans_x.Resize(make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
     } else {
       std::vector<int> perm_out{1, 0};
-      auto out_dims_vec = common::vectorize(out->dims());
+      auto out_dims_vec = vectorize(out->dims());
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
-      trans_out.Resize(common::make_ddim(out_dims_vec));
+      trans_out.Resize(make_ddim(out_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
 
       std::vector<int> perm_x{2, 1, 0};
-      auto x_dims_vec = common::vectorize(x_.dims());
+      auto x_dims_vec = vectorize(x_.dims());
       for (int i = 0; i < x_.dims().size(); ++i) {
         x_dims_vec[i] = x_.dims()[perm_x[i]];
       }
-      trans_x.Resize(common::make_ddim(x_dims_vec));
+      trans_x.Resize(make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
     }
   } else {
@@ -120,7 +119,7 @@ void OverlapAddKernel(const Context& dev_ctx,
   // Transpose output in case axis is 0.
   if (axis == 0 && out_rank > 1U) {
     std::vector<int> perm_out{1, 0};
-    phi::funcs::TransCompute<Context, T>(
+    funcs::TransCompute<Context, T>(
         perm_out.size(), dev_ctx, trans_out, out, perm_out);
   }
 
@@ -140,7 +139,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       restored_out_shape.push_back(seq_length);
     }
 
-    out->Resize(common::make_ddim(restored_out_shape));
+    out->Resize(make_ddim(restored_out_shape));
   }
 }
 

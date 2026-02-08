@@ -26,7 +26,7 @@ void SquaredL2NormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto x_ptr = x.template data<T>();
   auto numel = x.numel();
-  return phi::funcs::SquaredL2Norm(dev_ctx, x_ptr, out->data<T>(), numel);
+  return funcs::SquaredL2Norm(dev_ctx, x_ptr, out->data<T>(), numel);
 }
 
 }  // namespace phi

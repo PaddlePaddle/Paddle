@@ -28,8 +28,9 @@ void FrameKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   const size_t x_rank = x.dims().size();
   const size_t out_rank = out->dims().size();
-  const int n_frames = (axis == 0) ? out->dims()[0] : out->dims()[out_rank - 1];
-  const int seq_length = (axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1];
+  const int64_t n_frames =
+      (axis == 0) ? out->dims()[0] : out->dims()[out_rank - 1];
+  const int64_t seq_length = (axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1];
   // When the number of input dims is larger than 2, it needs to copy
   // from x to resize input into 2d and output into 3d. Moreover, output
   // dims will be restored at the last step.
@@ -42,12 +43,12 @@ void FrameKernel(const Context& dev_ctx,
     DDim x_resized_dims;
     DDim out_resized_dims;
     if (axis == 0) {
-      preserved_dims = common::slice_ddim(x_tmp.dims(), 1, x_rank);
+      preserved_dims = slice_ddim(x_tmp.dims(), 1, x_rank);
       x_resized_dims = {seq_length, common::product(preserved_dims)};
       out_resized_dims = {
           n_frames, frame_length, common::product(preserved_dims)};
     } else {
-      preserved_dims = common::slice_ddim(x_tmp.dims(), 0, x_rank - 1);
+      preserved_dims = slice_ddim(x_tmp.dims(), 0, x_rank - 1);
       x_resized_dims = {common::product(preserved_dims), seq_length};
       out_resized_dims = {
           common::product(preserved_dims), frame_length, n_frames};
@@ -69,10 +70,10 @@ void FrameKernel(const Context& dev_ctx,
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
-      trans_out.Resize(common::make_ddim(out_dims_vec));
+      trans_out.Resize(make_ddim(out_dims_vec));
 
       dev_ctx.template Alloc<T>(&trans_out);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     } else {
       std::vector<int> perm_x{1, 0};
@@ -80,9 +81,9 @@ void FrameKernel(const Context& dev_ctx,
       for (int i = 0; i < x_tmp.dims().size(); ++i) {
         x_dims_vec[i] = x_tmp.dims()[perm_x[i]];
       }
-      trans_x.Resize(common::make_ddim(x_dims_vec));
+      trans_x.Resize(make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_tmp, &trans_x, perm_x);
 
       std::vector<int> perm_out{2, 1, 0};
@@ -90,9 +91,9 @@ void FrameKernel(const Context& dev_ctx,
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
-      trans_out.Resize(common::make_ddim(out_dims_vec));
+      trans_out.Resize(make_ddim(out_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out);
-      phi::funcs::TransCompute<Context, T>(
+      funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     }
   } else {
@@ -100,14 +101,14 @@ void FrameKernel(const Context& dev_ctx,
     trans_out = *out;
   }
 
-  phi::funcs::FrameFunctor<Context, T>()(dev_ctx,
-                                         &trans_x,
-                                         &trans_out,
-                                         seq_length,
-                                         frame_length,
-                                         n_frames,
-                                         hop_length,
-                                         /*is_grad*/ false);
+  funcs::FrameFunctor<Context, T>()(dev_ctx,
+                                    &trans_x,
+                                    &trans_out,
+                                    seq_length,
+                                    frame_length,
+                                    n_frames,
+                                    hop_length,
+                                    /*is_grad*/ false);
 
   // Transpose output in case axis is 0.
   if (axis == 0) {
@@ -139,7 +140,7 @@ void FrameKernel(const Context& dev_ctx,
       restored_out_shape.push_back(n_frames);
     }
 
-    out->Resize(common::make_ddim(restored_out_shape));
+    out->Resize(make_ddim(restored_out_shape));
   }
 }
 

@@ -14,10 +14,11 @@
 
 #include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
 
+#include "glog/logging.h"
+
 namespace paddle::memory::allocation {
 
-ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const phi::Place& p)
-    : place_(p) {
+ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const Place& p) : place_(p) {
   if (phi::is_gpu_place(place_)) {
     buddy_allocator_ = std::make_unique<memory::detail::BuddyAllocator>(
         std::unique_ptr<memory::detail::SystemAllocator>(
@@ -41,7 +42,7 @@ std::shared_ptr<ThreadLocalAllocatorImpl> ThreadLocalCUDAAllocatorPool::Get(
           "The position of device should be less than the size of devices."));
   std::call_once(*init_flags_[pos], [this, pos, gpu_id] {
     platform::SetDeviceId(devices_[pos]);
-    allocators_[pos].reset(new ThreadLocalAllocatorImpl(phi::GPUPlace(gpu_id)));
+    allocators_[pos].reset(new ThreadLocalAllocatorImpl(GPUPlace(gpu_id)));
   });
   return allocators_[pos];
 }

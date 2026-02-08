@@ -56,7 +56,7 @@ class Orthogonal(Initializer):
         A parameter initialized by orthogonal initialized.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

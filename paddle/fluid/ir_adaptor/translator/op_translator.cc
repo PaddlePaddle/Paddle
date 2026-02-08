@@ -1085,6 +1085,90 @@ struct CastOpTranscriber : public OpTranscriber {
   }
 };
 
+struct LeakyReLUOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "alpha") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      }
+    }
+
+    return attribute_map;
+  }
+};
+
+struct InterpolateOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (legacy_attr_name == "scale") {
+          // Convert scale from float array to double array
+          if (new_attr.isa<pir::ArrayAttribute>()) {
+            auto array_attr = new_attr.dyn_cast<pir::ArrayAttribute>();
+            auto array_vec = array_attr.AsVector();
+            if (!array_vec.empty() && array_vec[0].isa<pir::FloatAttribute>()) {
+              std::vector<pir::Attribute> double_attrs;
+              double_attrs.reserve(array_vec.size());
+              for (const auto& attr : array_vec) {
+                double_attrs.push_back(pir::DoubleAttribute::get(
+                    ctx,
+                    static_cast<double>(
+                        attr.dyn_cast<pir::FloatAttribute>().data())));
+              }
+              new_attr = pir::ArrayAttribute::get(ctx, double_attrs);
+            }
+          }
+        }
+        attribute_map[info.name] = new_attr;
+      }
+    }
+
+    return attribute_map;
+  }
+};
+
 struct Conv2dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -2212,7 +2296,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
                                           op_desc.Type(),
                                           var_name.substr(0, 1)));
       std::vector<int64_t> shape = var_desc->GetShape();
-      DenseTensorTypeStorage::Dim dim = common::make_ddim(shape);
+      common::DDim dim = common::make_ddim(shape);
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
@@ -3249,10 +3333,8 @@ struct RandIntOpTranscriber : public OpTranscriber {
         static_cast<paddle::framework::proto::VarType::Type>(dtype_attr_val);
 
     pir::Type dtype = type_translator[var_type](ctx, *var);
-    paddle::dialect::DenseTensorTypeStorage::Dim dim =
-        common::make_ddim(var->GetShape());
-    paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
+    common::DDim dim = common::make_ddim(var->GetShape());
+    DataLayout layout = DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LegacyLoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
@@ -3791,9 +3873,9 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   pir::Value xshape_value;
   VLOG(10) << "create data op for " << input_xshape_name;
   auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
-  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto dtype = phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
-  // NOTE(dev): GrapOp depends on X instead of XShape, so we need
+  // NOTE(dev): GraphOp depends on X instead of XShape, so we need
   // erase first element in xshape.
   shape_vec.erase(shape_vec.begin());
   xshape_value = builder
@@ -3828,7 +3910,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   PADDLE_ENFORCE_EQ(
       input_outgrad_value.type().isa<paddle::dialect::DenseTensorType>(),
       true,
-      ::common::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "input type must be DenseTensorType, but received: %s.",
           input_outgrad_value.type()));
 
@@ -3995,6 +4077,43 @@ struct LogitOpTranscriber : public OpTranscriber {
   }
 };
 
+struct Pad3dOpTranscriber : public OpTranscriber {
+  pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    pir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+      VLOG(10) << "[op: " << op_desc.Type()
+               << "][attr] from: " << legacy_attr_name << " to: " << info.name;
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        pir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        if (info.name == "pad_value") {
+          new_attr = pir::DoubleAttribute::get(
+              ctx,
+              static_cast<double>(
+                  new_attr.dyn_cast<pir::FloatAttribute>().data()));
+        }
+        attribute_map[info.name] = new_attr;
+      } else {
+        this->HandleNonexistentAttribute(ctx, &attribute_map, info);
+      }
+    }
+    return attribute_map;
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -4007,6 +4126,28 @@ OpTranslator::OpTranslator() {
   special_handlers["batch_norm"] = BatchNormOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
+  special_handlers["leaky_relu"] = LeakyReLUOpTranscriber();
+  special_handlers["leaky_relu_grad"] = LeakyReLUOpTranscriber();
+  special_handlers["bilinear_interp"] = InterpolateOpTranscriber();
+  special_handlers["bilinear_interp_grad"] = InterpolateOpTranscriber();
+  special_handlers["nearest_interp"] = InterpolateOpTranscriber();
+  special_handlers["nearest_interp_grad"] = InterpolateOpTranscriber();
+  special_handlers["trilinear_interp"] = InterpolateOpTranscriber();
+  special_handlers["trilinear_interp_grad"] = InterpolateOpTranscriber();
+  special_handlers["bicubic_interp"] = InterpolateOpTranscriber();
+  special_handlers["bicubic_interp_grad"] = InterpolateOpTranscriber();
+  special_handlers["linear_interp"] = InterpolateOpTranscriber();
+  special_handlers["linear_interp_grad"] = InterpolateOpTranscriber();
+  special_handlers["bilinear_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["bilinear_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["nearest_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["nearest_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["trilinear_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["trilinear_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["bicubic_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["bicubic_interp_v2_grad"] = InterpolateOpTranscriber();
+  special_handlers["linear_interp_v2"] = InterpolateOpTranscriber();
+  special_handlers["linear_interp_v2_grad"] = InterpolateOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
   special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
@@ -4111,5 +4252,7 @@ OpTranslator::OpTranslator() {
   special_handlers["softplus_grad"] = SoftPlusOpTranscriber();
   special_handlers["logit"] = LogitOpTranscriber();
   special_handlers["logit_grad"] = LogitOpTranscriber();
+  special_handlers["pad3d"] = Pad3dOpTranscriber();
+  special_handlers["pad3d_grad"] = Pad3dOpTranscriber();
 }
 }  // namespace paddle::translator

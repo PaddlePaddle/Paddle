@@ -87,6 +87,30 @@ class Test_calculate_gain(unittest.TestCase):
             )
 
 
+class TestCAlFanINOUT(unittest.TestCase):
+    def test_cal_fan_in_and_out(self):
+        x = paddle.tensor.randn([10])
+        x_expected = (10, 10)
+        self.assertEqual(
+            x_expected,
+            paddle.nn.init._calculate_fan_in_and_fan_out(x),
+        )
+
+        y = paddle.tensor.randn([10, 10])
+        y_expected = (10, 10)
+        self.assertEqual(
+            y_expected,
+            paddle.nn.init._calculate_fan_in_and_fan_out(y),
+        )
+
+        z = paddle.randn([10, 10, 10])
+        z_expected = (100, 100)
+        self.assertEqual(
+            z_expected,
+            paddle.nn.init._calculate_fan_in_and_fan_out(z),
+        )
+
+
 class Test_kaiming_uniform_(unittest.TestCase):
     def check_kaiming_uniform(
         self, tensor, a=0, mode='fan_in', nonlinearity='leaky_relu'

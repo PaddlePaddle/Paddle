@@ -12,25 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __NVCC__
-#include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-
+#include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "glog/logging.h"
-
 #include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
@@ -54,7 +46,7 @@ using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-template <typename T, phi::DataLayout layout>
+template <typename T, DataLayout layout>
 static __global__ void BNForwardInference(const T *x,
                                           const BatchNormParamType<T> *mean,
                                           const BatchNormParamType<T> *variance,
@@ -65,11 +57,13 @@ static __global__ void BNForwardInference(const T *x,
                                           const int64_t HxW,
                                           const double epsilon,
                                           T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   int64_t num = HxW * N * C;
   for (int64_t i = gid; i < num; i += stride) {
-    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int c = layout == DataLayout::NCHW ? i / HxW % C : i % C;
     BatchNormParamType<T> x_sub_mean =
         static_cast<BatchNormParamType<T>>(x[i]) - mean[c];
     BatchNormParamType<T> inv_var = 1 / sqrt(variance[c] + epsilon);
@@ -82,13 +76,15 @@ static __global__ void InverseVariance(const BatchNormParamType<T> *variance,
                                        const double epsilon,
                                        const int C,
                                        BatchNormParamType<T> *inv_variance) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t tid =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (tid < C) {
     inv_variance[tid] = 1 / sqrt(variance[tid] + epsilon);
   }
 }
 
-template <typename T, phi::DataLayout layout>
+template <typename T, DataLayout layout>
 static __global__ void BN1DForwardInference(
     const T *x,
     const BatchNormParamType<T> *mean,
@@ -100,18 +96,20 @@ static __global__ void BN1DForwardInference(
     const int64_t HxW,
     const double epsilon,
     T *y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t gid =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   int stride = blockDim.x * gridDim.x;
   int64_t num = static_cast<int64_t>(N) * C * HxW;
   for (int64_t i = gid; i < num; i += stride) {
-    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int c = layout == DataLayout::NCHW ? i / HxW % C : i % C;
     BatchNormParamType<T> x_sub_mean =
         static_cast<BatchNormParamType<T>>(x[i]) - mean[c];
     y[i] = static_cast<T>(scale[c] * x_sub_mean * inv_variance[c] + bias[c]);
   }
 }
 
-template <typename T, int BlockDim, phi::DataLayout layout>
+template <typename T, int BlockDim, DataLayout layout>
 static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     const T *x,
     const BatchNormParamType<T> *scale,
@@ -140,7 +138,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int64_t index = layout == phi::DataLayout::kNCHW
+      const int64_t index = layout == DataLayout::NCHW
                                 ? (j / HxW * C + i) * HxW + j % HxW
                                 : j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -167,7 +165,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     __syncthreads();
 
     for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int64_t index = layout == phi::DataLayout::kNCHW
+      const int64_t index = layout == DataLayout::NCHW
                                 ? (j / HxW * C + i) * HxW + j % HxW
                                 : j * outer_size + i;
       BatchNormParamType<T> x_sub_mean =
@@ -233,12 +231,18 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -329,14 +333,20 @@ static __global__ void BNForwardTraining2DChannelLastWriteRes(
   int outer_loop_stride = gridDim.x * blockDim.x;
   int inner_loop_stride = gridDim.y * blockDim.y;
 
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> mean_val = compute_mean[i];
     BatchNormParamType<T> inv_var_val = compute_inv_var[i];
     BatchNormParamType<T> scale_val = scale[i];
     BatchNormParamType<T> bias_val = bias[i];
 
-    for (int64_t j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.y) *
+                         static_cast<int64_t>(blockDim.y) +
+                     static_cast<int64_t>(threadIdx.y);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = j * outer_size + i;
       BatchNormParamType<T> x_sub_mean =
@@ -374,12 +384,18 @@ static __global__ void BNForwardTraining2DCompStat(
   int outer_loop_stride = gridDim.y * blockDim.y;
   int inner_loop_stride = gridDim.x * blockDim.x;
 
-  for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+           static_cast<int64_t>(threadIdx.y);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
-    for (int64_t j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.x) *
+                         static_cast<int64_t>(blockDim.x) +
+                     static_cast<int64_t>(threadIdx.x);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -497,14 +513,20 @@ static __global__ void BNForwardTraining2DWriteRes(
   int outer_loop_stride = gridDim.y * blockDim.y;
   int inner_loop_stride = gridDim.x * blockDim.x;
 
-  for (int i = blockIdx.y * blockDim.y + threadIdx.y; i < outer_size;
+  for (int64_t i =
+           static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y) +
+           static_cast<int64_t>(threadIdx.y);
+       i < outer_size;
        i += outer_loop_stride) {
     BatchNormParamType<T> mean_val = compute_mean[i];
     BatchNormParamType<T> inv_var_val = compute_inv_var[i];
     BatchNormParamType<T> scale_val = scale[i];
     BatchNormParamType<T> bias_val = bias[i];
 
-    for (int64_t j = blockIdx.x * blockDim.x + threadIdx.x; j < inner_size;
+    for (int64_t j = static_cast<int64_t>(blockIdx.x) *
+                         static_cast<int64_t>(blockDim.x) +
+                     static_cast<int64_t>(threadIdx.x);
+         j < inner_size;
          j += inner_loop_stride) {
       const int64_t index = (j / HxW * C + i) * HxW + j % HxW;
       BatchNormParamType<T> x_sub_mean =
@@ -519,8 +541,8 @@ void BatchNormKernel(const Context &dev_ctx,
                      const DenseTensor &x,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
-                     const paddle::optional<DenseTensor> &scale,
-                     const paddle::optional<DenseTensor> &bias,
+                     const optional<DenseTensor> &scale,
+                     const optional<DenseTensor> &bias,
                      bool is_test,
                      float momentum,
                      float epsilon_f,
@@ -533,7 +555,7 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
-  phi::DenseTensor tmp_reserve_space;
+  DenseTensor tmp_reserve_space;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     if (mean_out) dev_ctx.template Alloc<T>(mean_out);
@@ -548,7 +570,7 @@ void BatchNormKernel(const Context &dev_ctx,
   }
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -564,15 +586,15 @@ void BatchNormKernel(const Context &dev_ctx,
 
   dev_ctx.template Alloc<T>(y);
   int N, C, H, W, D;
-  phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+  funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
   auto *Scale = scale.get_ptr();
   auto *Bias = bias.get_ptr();
 
-  phi::DenseTensor new_scale;
-  phi::DenseTensor new_bias;
+  DenseTensor new_scale;
+  DenseTensor new_bias;
 
   if (Scale) {
     new_scale = scale.get();
@@ -588,28 +610,28 @@ void BatchNormKernel(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   auto compute_format =
-      data_layout == DataLayout::kNHWC
-          ? (FLAGS_batch_norm_use_miopen == true ? DataLayout::kNCHW
-                                                 : DataLayout::kNHWC)
-          : DataLayout::kNCHW;
+      data_layout == DataLayout::NHWC
+          ? (FLAGS_batch_norm_use_miopen == true ? DataLayout::NCHW
+                                                 : DataLayout::NHWC)
+          : DataLayout::NCHW;
 
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // HIP do not support compute format of NHWC
-// auto compute_format = DataLayout::kNCHW;
+// auto compute_format = DataLayout::NCHW;
 #else
   const bool fast_nhwc_batch_norm =
       test_mode ||
       (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
 
-  auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
-                            ? DataLayout::kNHWC
-                            : DataLayout::kNCHW;
+  auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::NHWC
+                            ? DataLayout::NHWC
+                            : DataLayout::NCHW;
 #endif
 
   DenseTensor transformed_x(x.type());
   DenseTensor transformed_y(y->type());
 
-  if (data_layout == DataLayout::kNHWC && compute_format == DataLayout::kNCHW &&
+  if (data_layout == DataLayout::NHWC && compute_format == DataLayout::NCHW &&
       x_dims.size() > 2) {
     VLOG(3) << "Transform input tensor from NHWC to NCHW.";
     ResizeToChannelFirst<Context, T>(dev_ctx, &x, &transformed_x);
@@ -677,7 +699,7 @@ void BatchNormKernel(const Context &dev_ctx,
   VLOG(3) << "Setting descriptors.";
   std::vector<int> dims;
   std::vector<int> strides;
-  if (compute_format == DataLayout::kNCHW) {
+  if (compute_format == DataLayout::NCHW) {
     dims = {N, C, H, W, D};
     strides = {C * H * W * D, H * W * D, W * D, D, 1};
   } else {
@@ -764,7 +786,7 @@ void BatchNormKernel(const Context &dev_ctx,
     const int grid_size = std::min(
         (static_cast<int64_t>(N) * C * H * W * D + block_size - 1) / block_size,
         max_grid);
-    if (compute_format == DataLayout::kNCHW) {
+    if (compute_format == DataLayout::NCHW) {
       if (FLAGS_batch_norm_use_miopen == true) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::miopenBatchNormalizationForwardInference(
@@ -789,7 +811,7 @@ void BatchNormKernel(const Context &dev_ctx,
                     est_var->template data<BatchNormParamType<T>>())),
                 epsilon));
       } else {
-        BNForwardInference<T, DataLayout::kNCHW>
+        BNForwardInference<T, DataLayout::NCHW>
             <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
                 transformed_x.template data<T>(),
                 est_mean->template data<BatchNormParamType<T>>(),
@@ -803,7 +825,7 @@ void BatchNormKernel(const Context &dev_ctx,
                 transformed_y.template data<T>());
       }
     } else {
-      BNForwardInference<T, DataLayout::kNHWC>
+      BNForwardInference<T, DataLayout::NHWC>
           <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
               transformed_x.template data<T>(),
               est_mean->template data<BatchNormParamType<T>>(),
@@ -828,8 +850,8 @@ void BatchNormKernel(const Context &dev_ctx,
           std::min((static_cast<int64_t>(N) * C * H * W * D + block_size - 1) /
                        block_size,
                    max_grid);
-      if (compute_format == DataLayout::kNCHW) {
-        BNForwardInference<T, DataLayout::kNCHW>
+      if (compute_format == DataLayout::NCHW) {
+        BNForwardInference<T, DataLayout::NCHW>
             <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
                 transformed_x.template data<T>(),
                 est_mean->template data<BatchNormParamType<T>>(),
@@ -843,7 +865,7 @@ void BatchNormKernel(const Context &dev_ctx,
                 transformed_y.template data<T>());
       } else {
         if (x_dims.size() == 2) {
-          DenseTensor inv_var = phi::Empty<BatchNormParamType<T>>(dev_ctx, {C});
+          DenseTensor inv_var = Empty<BatchNormParamType<T>>(dev_ctx, {C});
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
           const int threads = 512 > C ? C : 512;
           const int blocks = (C + 511) / 512;
@@ -852,7 +874,7 @@ void BatchNormKernel(const Context &dev_ctx,
               epsilon,
               C,
               inv_var_ptr);
-          BN1DForwardInference<T, DataLayout::kNHWC>
+          BN1DForwardInference<T, DataLayout::NHWC>
               <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
                   transformed_x.template data<T>(),
                   est_mean->template data<BatchNormParamType<T>>(),
@@ -866,7 +888,7 @@ void BatchNormKernel(const Context &dev_ctx,
                   epsilon,
                   transformed_y.template data<T>());
         } else {
-          BNForwardInference<T, DataLayout::kNHWC>
+          BNForwardInference<T, DataLayout::NHWC>
               <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
                   transformed_x.template data<T>(),
                   est_mean->template data<BatchNormParamType<T>>(),
@@ -915,7 +937,7 @@ void BatchNormKernel(const Context &dev_ctx,
     // if (dev_ctx.HasInput("MomentumTensor")) {
     //   const auto *mom_tensor = MomentumTensor;
     //   DenseTensor mom_cpu;
-    //   paddle::framework::TensorCopySync(*mom_tensor, phi::CPUPlace(),
+    //   paddle::framework::TensorCopySync(*mom_tensor, CPUPlace(),
     //                                     &mom_cpu);
     //   momentum = mom_cpu.data<float>()[0];
     // }
@@ -938,17 +960,20 @@ void BatchNormKernel(const Context &dev_ctx,
       dev_ctx.template Alloc<T>(reserve_space);
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = x.
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
     } else {
       double this_factor = 1. - momentum;
 #ifdef PADDLE_WITH_HIP
       this_factor = momentum;
-      const int num = transformed_x.numel();
+      // TODO(large-tensor): downstream functors may still use int; guard until
+      // upgraded.
+      int64_t num = transformed_x.numel();
+
       const int block = 256;
       const int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
       const int max_blocks = std::max(max_threads / block, 1);
       const int grid = std::min(C, max_blocks);
-      if (compute_format == DataLayout::kNCHW) {
+      if (compute_format == DataLayout::NCHW) {
         if (FLAGS_batch_norm_use_miopen == true) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               phi::dynload::miopenBatchNormalizationForwardTraining(
@@ -982,7 +1007,7 @@ void BatchNormKernel(const Context &dev_ctx,
                       dev_ctx.template Alloc<BatchNormParamType<T>>(
                           saved_variance))));
         } else {
-          BNForwardTraining<T, block, DataLayout::kNCHW>
+          BNForwardTraining<T, block, DataLayout::NCHW>
               <<<grid, block, 0, dev_ctx.stream()>>>(
                   transformed_x.template data<T>(),
                   new_scale.template data<BatchNormParamType<T>>(),
@@ -999,7 +1024,7 @@ void BatchNormKernel(const Context &dev_ctx,
                   saved_variance->template data<BatchNormParamType<T>>());
         }
       } else {
-        BNForwardTraining<T, block, DataLayout::kNHWC>
+        BNForwardTraining<T, block, DataLayout::NHWC>
             <<<grid, block, 0, dev_ctx.stream()>>>(
                 transformed_x.template data<T>(),
                 new_scale.template data<BatchNormParamType<T>>(),
@@ -1033,26 +1058,24 @@ void BatchNormKernel(const Context &dev_ctx,
         DenseTensor block_data_tensor;
         DenseTensor flag_tensor;
         DenseTensor compute_mean_tensor =
-            phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+            Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
         DenseTensor compute_inv_var_tensor =
-            phi::Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
+            Empty<BatchNormParamType<T>, Context>(dev_ctx, {C});
 
         BatchNormParamType<T> *block_data_ptr = nullptr;
         int *flag_ptr = nullptr;
 
-        if (x_dims.size() != 2 && compute_format == DataLayout::kNCHW) {
+        if (x_dims.size() != 2 && compute_format == DataLayout::NCHW) {
           // init block&grid config
-          int64_t block_x =
-              std::min(phi::funcs::details::GetLastPow2(H * W * D),
-                       static_cast<int64_t>(block_size));
+          int64_t block_x = std::min(funcs::details::GetLastPow2(H * W * D),
+                                     static_cast<int64_t>(block_size));
           int64_t block_y =
-              std::min(phi::funcs::details::GetLastPow2(C),
+              std::min(funcs::details::GetLastPow2(C),
                        static_cast<int64_t>(block_size / block_x));
 
           if (block_x * block_y != block_size) {
-            block_x =
-                std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
-                         static_cast<int64_t>(block_size / block_y));
+            block_x = std::min(funcs::details::GetLastPow2(N * H * W * D / 16),
+                               static_cast<int64_t>(block_size / block_y));
           }
 
           int64_t grid_x =
@@ -1066,9 +1089,9 @@ void BatchNormKernel(const Context &dev_ctx,
           grid.y = grid_y;
 
           if (grid.x > 1) {
-            block_data_tensor = phi::Empty<BatchNormParamType<T>, Context>(
+            block_data_tensor = Empty<BatchNormParamType<T>, Context>(
                 dev_ctx, {2 * C * grid.x});
-            flag_tensor = phi::Empty<int, Context>(dev_ctx, {grid.y});
+            flag_tensor = Empty<int, Context>(dev_ctx, {grid.y});
 
             block_data_ptr = block_data_tensor.data<BatchNormParamType<T>>();
             flag_ptr = flag_tensor.data<int>();
@@ -1107,14 +1130,14 @@ void BatchNormKernel(const Context &dev_ctx,
               compute_inv_var_tensor.data<BatchNormParamType<T>>());
         } else {
           // init block&grid config
-          int64_t block_x = std::min(phi::funcs::details::GetLastPow2(C),
+          int64_t block_x = std::min(funcs::details::GetLastPow2(C),
                                      static_cast<int64_t>(WARP_SIZE));
           int64_t block_y =
-              std::min(phi::funcs::details::GetLastPow2(
-                           static_cast<int64_t>(N) * H * W * D / 16),
+              std::min(funcs::details::GetLastPow2(static_cast<int64_t>(N) * H *
+                                                   W * D / 16),
                        static_cast<int64_t>(block_size / block_x));
           if (block_x * block_y != block_size) {
-            block_x = std::min(phi::funcs::details::GetLastPow2(C),
+            block_x = std::min(funcs::details::GetLastPow2(C),
                                static_cast<int64_t>(block_size / block_y));
           }
           int64_t grid_x = (C + block_x - 1) / block_x;
@@ -1128,9 +1151,9 @@ void BatchNormKernel(const Context &dev_ctx,
           grid.y = grid_y;
 
           if (grid.y > 1) {
-            block_data_tensor = phi::Empty<BatchNormParamType<T>, Context>(
+            block_data_tensor = Empty<BatchNormParamType<T>, Context>(
                 dev_ctx, {2 * C * grid.y});
-            flag_tensor = phi::Empty<int, Context>(dev_ctx, {grid.x});
+            flag_tensor = Empty<int, Context>(dev_ctx, {grid.x});
 
             block_data_ptr = block_data_tensor.data<BatchNormParamType<T>>();
             flag_ptr = flag_tensor.data<int>();
@@ -1180,7 +1203,7 @@ void BatchNormKernel(const Context &dev_ctx,
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
         // auto *reserve_space =
-        // dev_ctx.Output<phi::DenseTensor>("ReserveSpace");
+        // dev_ctx.Output<DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
           reserve_space = &tmp_reserve_space;
         }
@@ -1271,7 +1294,7 @@ void BatchNormKernel(const Context &dev_ctx,
     }
   }
 
-  if (data_layout == DataLayout::kNHWC && compute_format == DataLayout::kNCHW &&
+  if (data_layout == DataLayout::NHWC && compute_format == DataLayout::NCHW &&
       x_dims.size() > 2) {
     VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
     TransToChannelLast<Context, T>(dev_ctx, &transformed_y, y);

@@ -198,9 +198,9 @@ void infer_sin_cos(const DistMetaTensor& sin,
     // check sin, cos, position_ids's shape
     const int kBatchDimIndex = time_major ? 1 : 0;
     const int kSeqlenDimIndex = time_major ? 0 : 1;
-    int batch_size = q_shape[kBatchDimIndex];
-    int seq_len = q_shape[kSeqlenDimIndex];
-    int head_dim = q_shape[kHeadDimIndex];
+    int64_t batch_size = q_shape[kBatchDimIndex];
+    int64_t seq_len = q_shape[kSeqlenDimIndex];
+    int64_t head_dim = q_shape[kHeadDimIndex];
 
     int seq_len_dim_index = sin_shape.size() == 4 ? 1 : 0;
     int head_dim_index = sin_shape.size() == 4 ? 3 : 1;

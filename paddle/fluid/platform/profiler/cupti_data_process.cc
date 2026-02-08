@@ -18,7 +18,11 @@
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/os_info.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#else
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 #include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle::platform::details {
@@ -299,7 +303,7 @@ CuptiRuntimeCbidStr::CuptiRuntimeCbidStr() {
   REGISTER_RUNTIME_CBID_STR(cudaSetupArgument_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaLaunch_v3020);
   REGISTER_RUNTIME_CBID_STR(cudaDeviceGetPCIBusId_v4010);
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 9000 || defined(PADDLE_WITH_XPU)
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernel_v9000);
   REGISTER_RUNTIME_CBID_STR(cudaLaunchCooperativeKernelMultiDevice_v9000);
 #endif
@@ -324,7 +328,7 @@ void AddApiRecord(const CUpti_ActivityAPI* api,
   } else {
     tid = iter->second;
   }
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
   event.thread_id = api->threadId;
 #else
   event.thread_id = tid;

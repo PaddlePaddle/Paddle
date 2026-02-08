@@ -44,16 +44,17 @@ namespace deep_ep {
 namespace intranode {
 
 template <int kNumRanks>
-__global__ void barrier(int** barrier_signal_ptrs, int rank) {
-  barrier_block<kNumRanks>(barrier_signal_ptrs, rank);
+__global__ void barrier(int** task_fifo_ptrs, int head, int rank) {
+  barrier_device<kNumRanks>(task_fifo_ptrs, head, rank);
 }
 
-void barrier(int** barrier_signal_ptrs,
+void barrier(int** task_fifo_ptrs,
+             int head,
              int rank,
              int num_ranks,
              cudaStream_t stream) {
-#define BARRIER_LAUNCH_CASE(ranks)                                \
-  LAUNCH_KERNEL(&cfg, barrier<ranks>, barrier_signal_ptrs, rank); \
+#define BARRIER_LAUNCH_CASE(ranks)                                 \
+  LAUNCH_KERNEL(&cfg, barrier<ranks>, task_fifo_ptrs, head, rank); \
   break
 
   SETUP_LAUNCH_CONFIG(1, 32, stream);
@@ -104,6 +105,17 @@ int init(const std::vector<uint8_t>& root_unique_id_val,
     EP_HOST_ASSERT(cpu_rdma_team != NVSHMEM_TEAM_INVALID);
   }
 
+  // TODO(DeepEP): we still use `nvshmem_barrier` under IBRC mode, which should
+  // be switch to IBGDA mode later
+  nvshmemi_device_host_state_t* dev_state_ptr = nullptr;
+  CUDA_CHECK(cudaGetSymbolAddress(reinterpret_cast<void**>(&dev_state_ptr),
+                                  nvshmemi_device_state_d));
+
+  bool ibgda_is_initialized = false;
+  CUDA_CHECK(cudaMemcpy(&dev_state_ptr->ibgda_is_initialized,
+                        &ibgda_is_initialized,
+                        sizeof(bool),
+                        cudaMemcpyHostToDevice));
   nvshmem_barrier_all();
   return nvshmem_my_pe();
 }
@@ -126,15 +138,16 @@ void finalize() {
 #endif  // PADDLE_WITH_NVSHMEM
 
 template <int kNumThreads, int kNumExpertsPerSM, int kNumRanksPerSM>
-__global__ void get_dispatch_layout(const int64_t* topk_idx,
-                                    int* num_tokens_per_rank,
-                                    int* num_tokens_per_rdma_rank,
-                                    int* num_tokens_per_expert,
-                                    bool* is_token_in_rank,
-                                    int num_tokens,
-                                    int num_topk,
-                                    int num_ranks,
-                                    int num_experts) {
+__global__ void __launch_bounds__(kNumThreads, 1)
+    get_dispatch_layout(const int64_t* topk_idx,
+                        int* num_tokens_per_rank,
+                        int* num_tokens_per_rdma_rank,
+                        int* num_tokens_per_expert,
+                        bool* is_token_in_rank,
+                        int num_tokens,
+                        int num_topk,
+                        int num_ranks,
+                        int num_experts) {
   auto sm_id = static_cast<int>(blockIdx.x);
   auto thread_id = static_cast<int>(threadIdx.x);
 
@@ -261,11 +274,11 @@ void get_dispatch_layout(const int64_t* topk_idx,
                          int num_ranks,
                          int num_experts,
                          cudaStream_t stream) {
-  constexpr int kNumThreads = 256, kNumExpertsPerSM = 4, kNumRanksPerSM = 8;
+  constexpr int kNumThreads = 256, kNumExpertsPerSM = 32, kNumRanksPerSM = 8;
   int num_sms = ((num_experts + kNumExpertsPerSM - 1) / kNumExpertsPerSM) +
                 (num_ranks + kNumRanksPerSM - 1) / kNumRanksPerSM;
-  EP_STATIC_ASSERT(kNumRanksPerSM % NUM_MAX_NVL_PEERS == 0,
-                   "Invalid number of ranks per SM");
+  EP_STATIC_ASSERT(kNumExpertsPerSM % NUM_MAX_NVL_PEERS == 0,
+                   "Invalid number of experts per SM");
 
   SETUP_LAUNCH_CONFIG(num_sms, kNumThreads, stream);
   LAUNCH_KERNEL(

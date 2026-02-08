@@ -41,9 +41,9 @@ void GaussianKernel(const Context& dev_ctx,
     data[i] = dist(*engine);
   }
 
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   dnnl::memory::desc out_mem_desc =
-      phi::funcs::make_memory_desc(*out, DataLayout::NCHW);
+      funcs::make_memory_desc(*out, DataLayout::NCHW);
   out->set_mem_desc(out_mem_desc);
 }
 

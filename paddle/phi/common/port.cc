@@ -153,8 +153,7 @@ void MkDir(const char *path) {
 #else
   BOOL return_value = CreateDirectory(path, NULL);
   if (!return_value) {
-    auto errorno = GetLastError();
-    if (errorno != ERROR_ALREADY_EXISTS) {
+    if (GetLastError() != ERROR_ALREADY_EXISTS) {
       throw std::runtime_error(path_error);
     }
   }

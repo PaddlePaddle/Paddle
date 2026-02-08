@@ -44,6 +44,10 @@ PHI_DEFINE_EXPORTED_string(
     "between XPU devices, use XPU_VISIBLE_DEVICES can only use "
     "share-memory only.");
 
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
+static std::vector<phi::gpuDeviceProp> g_device_props;
+
 namespace phi {
 class XPUContext;
 
@@ -159,6 +163,40 @@ std::vector<int> GetXPUSelectedDevices() {
     }
   }
   return devices;
+}
+
+const gpuDeviceProp& GetDeviceProperties(int id) {
+  std::call_once(g_device_props_size_init_flag, [&] {
+    int gpu_num = 0;
+    gpu_num = GetXPUDeviceCount();
+    g_device_props_init_flags.resize(gpu_num);
+    g_device_props.resize(gpu_num);
+    for (int i = 0; i < gpu_num; ++i) {
+      g_device_props_init_flags[i] = std::make_unique<std::once_flag>();
+    }
+  });
+
+  if (id == -1) {
+    id = GetXPUCurrentDeviceId();
+  }
+
+  if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
+    PADDLE_THROW(common::errors::OutOfRange(
+        "The device id %d is out of range [0, %d), where %d is the number of "
+        "devices on this machine. Because the device id should be greater than "
+        "or equal to zero and smaller than the number of xpus. Please input "
+        "appropriate device again!",
+        id,
+        static_cast<int>(g_device_props.size()),
+        static_cast<int>(g_device_props.size())));
+  }
+
+  std::call_once(*(g_device_props_init_flags[id]), [&] {
+    PADDLE_ENFORCE_XPU_SUCCESS(
+        cudaGetDeviceProperties(&g_device_props[id], id));
+  });
+
+  return g_device_props[id];
 }
 
 #ifdef PADDLE_WITH_XPU

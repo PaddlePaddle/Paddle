@@ -46,6 +46,7 @@ from .activation import (
     softplus,
     softshrink,
     softsign,
+    swiglu,
     swish,
     tanh,
     tanh_,
@@ -92,7 +93,6 @@ from .flash_attention import (
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
-    scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
 from .input import (
@@ -141,6 +141,7 @@ from .norm import (
     layer_norm,
     local_response_norm,
     normalize,
+    rms_norm,
 )
 from .pooling import (
     adaptive_avg_pool1d,
@@ -163,6 +164,7 @@ from .pooling import (
     max_unpool2d,
     max_unpool3d,
 )
+from .sdpa import scaled_dot_product_attention
 from .sparse_attention import sparse_attention
 from .vision import (
     affine_grid,
@@ -172,6 +174,7 @@ from .vision import (
     pixel_unshuffle,
 )
 
+logsigmoid = log_sigmoid
 __all__ = [
     'celu',
     'conv1d',
@@ -192,6 +195,7 @@ __all__ = [
     'leaky_relu',
     'leaky_relu_',
     'log_sigmoid',
+    'logsigmoid',
     'maxout',
     'prelu',
     'relu',
@@ -205,6 +209,7 @@ __all__ = [
     'softsign',
     'sigmoid',
     'silu',
+    'swiglu',
     'swish',
     'mish',
     'tanh',
@@ -287,6 +292,7 @@ __all__ = [
     'temporal_shift',
     'batch_norm',
     'layer_norm',
+    'rms_norm',
     'instance_norm',
     'class_center_sample',
     'sparse_attention',
