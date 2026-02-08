@@ -544,7 +544,6 @@ class HSigmoidLoss(Layer):
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[1.94512916],
              [2.26129627],
-             [2.36135936],
            >>> # doctest: +SKIP("Random output")
            Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
            [[1.94512916],
