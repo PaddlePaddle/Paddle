@@ -1722,14 +1722,17 @@ class Transformer(Layer):
             Tensor, generated square mask according to the given length. The shape is [length, length].
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.nn.layer.transformer import Transformer
                 >>> length = 5
                 >>> d_model, n_head, dim_feedforward = 8, 4, 64
                 >>> transformer_paddle = Transformer(
-                ...     d_model, n_head, dim_feedforward=dim_feedforward)
+                ...     d_model,
+                ...     n_head,
+                ...     dim_feedforward=dim_feedforward,
+                ... )
                 >>> mask = transformer_paddle.generate_square_subsequent_mask(length)
                 >>> print(mask)
                 Tensor(shape=[5, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
