@@ -184,7 +184,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("paddle.static.BuildStrategy 在 PIR 下已经被弃用")
+            >>> # doctest: +SKIP("paddle.static.BuildStrategy is deprecated in PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 

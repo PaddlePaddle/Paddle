@@ -1715,7 +1715,7 @@ class Fleet:
 
             .. code-block:: pycon
 
-                >>> # doctest: +SKIP("paddle.distributed.fleet.Fleet.minimize PIR 当前不支持")
+                >>> # doctest: +SKIP("paddle.distributed.fleet.Fleet.minimize is not supported in PIR mode currently")
                 >>> import paddle
                 >>> paddle.enable_static()
                 >>> import paddle.distributed.fleet as fleet
