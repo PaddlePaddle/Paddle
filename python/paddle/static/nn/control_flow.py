@@ -1210,8 +1210,9 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
         TypeError: If ``default`` is not None but it is not callable.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.switch_case doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 

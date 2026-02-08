@@ -84,8 +84,9 @@ def nce(
         Tensor: The output nce loss.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.nce doesn't support PIR mode")
             >>> import paddle
             >>> import numpy as np
 
