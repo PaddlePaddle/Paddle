@@ -77,9 +77,14 @@ if [ ! -d ${PADDLE_DIR} ] ; then
         exit 1
     fi
     git checkout -b origin_pr FETCH_HEAD
+    echo "before merge paddle branch log:"
     git log --pretty=oneline -10
+    echo "merge branch ${AGILE_COMPILE_BRANCH_REF} into PR branch"
 fi
 
+echo "after merge paddle branch log:"
 cd ${FLUIDDOCDIR}/ci_scripts
+echo "ci_scripts dir  is :"
 ls
+echo "start to run ci_start_en.sh"
 bash ci_start_en.sh
