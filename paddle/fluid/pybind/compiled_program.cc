@@ -182,8 +182,9 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
         BuildStrategy: An BuildStrategy object.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.BuildStrategy 在 PIR 下已经被弃用")
             >>> import paddle
             >>> import paddle.static as static
 

@@ -226,8 +226,9 @@ def new_group(
         Group: The group instance.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.distributed.collective.Group doesn't support PIR mode")
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
 
