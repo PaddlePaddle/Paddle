@@ -328,8 +328,9 @@ def instance_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.instance_norm doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
@@ -501,8 +502,9 @@ def group_norm(
         Tensor: A Tensor has same data type and data format with `input`.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.group_norm doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -1352,8 +1354,9 @@ def conv2d_transpose(
         ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.conv2d_transpose doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -1722,8 +1725,9 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.conv3d_transpose doesn't support PIR mode")
             >>> import paddle
             >>> import numpy as np
 
@@ -2278,8 +2282,9 @@ def deform_conv2d(
         Tensor: The tensor storing the deformable convolution result. A Tensor with type float32, float64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.deform_conv2d doesn't support PIR mode")
             >>> # deformable conv v2:
             >>> import paddle
             >>> paddle.enable_static()
@@ -2379,8 +2384,9 @@ def bilinear_tensor_product(
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.bilinear_tensor_product doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -2963,9 +2969,10 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         Tensor|tuple(Tensor)|list[Tensor], The output ``out`` of the forward function ``func``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
+            >>> # doctest: +SKIP("paddle.static.py_func doesn't support PIR mode")
             >>> import paddle
             >>> import numpy as np
 
@@ -2989,39 +2996,36 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...     # print(x)
             ...     pass
             >>> def create_tmp_var(name, dtype, shape):
-            ...     return paddle.static.default_main_program().current_block().create_var(
-            ...         name=name, dtype=dtype, shape=shape)
+            ...     return paddle.static.default_main_program().current_block().create_var(name=name, dtype=dtype, shape=shape)
             >>> def simple_net(img, label):
             ...     hidden = img
             ...     for idx in range(4):
             ...         hidden = paddle.static.nn.fc(hidden, size=200)
-            ...         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-            ...             dtype=hidden.dtype, shape=hidden.shape)
+            ...         new_hidden = create_tmp_var(name='hidden_{}'.format(idx), dtype=hidden.dtype, shape=hidden.shape)
             ...         # User-defined forward and backward
-            ...         hidden = paddle.static.py_func(func=tanh, x=hidden,
-            ...             out=new_hidden, backward_func=tanh_grad,
-            ...             skip_vars_in_backward_input=hidden)
+            ...         hidden = paddle.static.py_func(
+            ...             func=tanh, x=hidden, out=new_hidden, backward_func=tanh_grad, skip_vars_in_backward_input=hidden
+            ...         )
             ...         # User-defined debug functions that print out the input Tensor
             ...         paddle.static.py_func(func=debug_func, x=hidden, out=None)
             ...     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
             ...     ce_loss = paddle.nn.loss.CrossEntropyLoss()
             ...     return ce_loss(prediction, label)
-            >>> x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
+            >>> x = paddle.static.data(name='x', shape=[1, 4], dtype='float32')
             >>> y = paddle.static.data(name='y', shape=[1], dtype='int64')
             >>> res = simple_net(x, y)
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
-            >>> input1 = np.random.random(size=[1,4]).astype('float32')
+            >>> input1 = np.random.random(size=[1, 4]).astype('float32')
             >>> input2 = np.random.randint(1, 10, size=[1], dtype='int64')
-            >>> out = exe.run(paddle.static.default_main_program(),
-            ...                 feed={'x':input1, 'y':input2},
-            ...                 fetch_list=[res.name])
+            >>> out = exe.run(paddle.static.default_main_program(), feed={'x': input1, 'y': input2}, fetch_list=[res.name])
             >>> print(out[0].shape)
             ()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
+            >>> # doctest: +SKIP("paddle.static.py_func doesn't support PIR mode")
             >>> # This example shows how to turn Tensor into numpy array and
             >>> # use numpy API to register an Python OP
             >>> import paddle
@@ -3044,8 +3048,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...             result[i][j] = x[i][j] + y[i][j]
             ...     return result
             >>> def create_tmp_var(name, dtype, shape):
-            ...     return paddle.static.default_main_program().current_block().create_var(
-            ...                 name=name, dtype=dtype, shape=shape)
+            ...     return paddle.static.default_main_program().current_block().create_var(name=name, dtype=dtype, shape=shape)
             >>> def py_func_demo():
             ...     start_program = paddle.static.default_startup_program()
             ...     main_program = paddle.static.default_main_program()
@@ -3053,17 +3056,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...     x = paddle.static.data(name='x', shape=[2, 3], dtype='int32')
             ...     y = paddle.static.data(name='y', shape=[2, 3], dtype='int32')
             ...     # Output of the forward function, name/dtype/shape must be specified
-            ...     output = create_tmp_var('output','int32', [3, 1])
+            ...     output = create_tmp_var('output', 'int32', [3, 1])
             ...     # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
             ...     paddle.static.py_func(func=element_wise_add, x=[x, y], out=output)
-            ...     exe=paddle.static.Executor(paddle.CPUPlace())
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
             ...     exe.run(start_program)
             ...     # Feed numpy array to main_program
             ...     input1 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
             ...     input2 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
-            ...     out = exe.run(main_program,
-            ...                feed={'x':input1, 'y':input2},
-            ...                fetch_list=[output.name])
+            ...     out = exe.run(main_program, feed={'x': input1, 'y': input2}, fetch_list=[output.name])
             ...     print("{0} + {1} = {2}".format(input1, input2, out))
             >>> py_func_demo()
             >>> # [[1 5 4]   + [[3 7 7]  =  [array([[ 4, 12, 11]
@@ -3276,8 +3277,9 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                   The data type and shape is same as input tensor.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.spectral_norm doesn't support PIR mode")
             >>> import paddle
 
             >>> paddle.enable_static()
@@ -3417,8 +3419,9 @@ def layer_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.layer_norm doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')

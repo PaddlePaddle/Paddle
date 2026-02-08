@@ -323,8 +323,9 @@ def serialize_program(
         bytes: serialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.serialize_program doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -481,8 +482,9 @@ def save_to_file(path: str, content: bytes) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.save_to_file doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> path_prefix = "./infer_model"
@@ -665,8 +667,9 @@ def deserialize_program(data: bytes) -> Program:
         Program: deserialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.deserialize_program doesn't support PIR mode")
             >>> import paddle
 
             >>> paddle.enable_static()
@@ -714,8 +717,9 @@ def deserialize_persistables(
         Program: deserialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.deserialize_persistables doesn't support PIR mode")
             >>> import paddle
 
             >>> paddle.enable_static()
@@ -813,8 +817,9 @@ def load_from_file(path: str) -> bytes:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load_from_file doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> path_prefix = "./infer_model"
