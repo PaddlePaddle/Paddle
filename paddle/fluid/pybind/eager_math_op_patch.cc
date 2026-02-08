@@ -636,6 +636,18 @@ static PyObject* tensor__mul__method(TensorObject* self,
       other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
+      // NOTE: For string types, return NotImplemented to allow Python to try to
+      // reflected method. This is the expected behavior per Python's data
+      // model: when the left operand doesn't support the operation with the
+      // right operand type, it should return NotImplemented so that the right
+      // operand's reflected method can be attempted. This avoids unintended
+      // string-to-number conversions (e.g., "a" -> 0) in the Scalar
+      // constructor.
+      if (PyObject_CheckString(other_obj)) {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+      }
+
       paddle::experimental::Scalar value;
 
       // NOTE: call reflected method of other_obj if cast failed
