@@ -541,16 +541,13 @@ class HSigmoidLoss(Layer):
             >>> m = paddle.nn.HSigmoidLoss(3, 6)
             >>> out = m(input, label)
             >>> print(out)
+            >>> # doctest: +SKIP("Random output")
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[1.94512916],
              [2.26129627],
-           >>> # doctest: +SKIP("Random output")
-           Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-           [[1.94512916],
-            [2.26129627],
-            [2.36135936],
-            [2.97453213]])
-           >>> # doctest: -SKIP
+             [2.36135936],
+             [2.97453213]])
+            >>> # doctest: -SKIP
     """
 
     weight: Tensor

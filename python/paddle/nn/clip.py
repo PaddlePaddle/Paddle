@@ -1442,7 +1442,11 @@ def set_gradient_clip(clip, param_list=None, program=None):
             >>> paddle.enable_static()
 
             >>> def network():
-            ...     image = paddle.static.data(name='image', shape=[None, 28], dtype='float32')
+            ...     image = paddle.static.data(
+            ...         name='image',
+            ...         shape=[None, 28],
+            ...         dtype='float32',
+            ...     )
             ...     param_attr1 = paddle.ParamAttr("fc1_param")
             ...     fc1 = paddle.static.nn.fc(image, size=10, weight_attr=param_attr1)
             ...     param_attr2 = paddle.ParamAttr("fc2_param")
