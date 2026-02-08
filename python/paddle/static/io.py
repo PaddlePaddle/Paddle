@@ -1515,8 +1515,9 @@ def save(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.save doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
@@ -1627,8 +1628,9 @@ def load(
         None
 
      Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
@@ -1959,8 +1961,9 @@ def load_program_state(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load_program_state doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
