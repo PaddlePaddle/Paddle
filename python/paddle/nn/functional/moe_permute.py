@@ -100,12 +100,7 @@ def moe_permute(
             >>> import paddle.nn.functional as F
             >>> hidden_states = paddle.randn([3, 128], dtype='bfloat16')
             >>> expert_routemap_topk = paddle.to_tensor(
-            ...     [
-            ...         [-1, 0, -1, -1, 2, -1, -1, -1],
-            ...         [1, -1, -1, -1, -1, -1, -1, -1],
-            ...         [-1, -1, -1, -1, -1, -1, 1, -1],
-            ...     ],
-            ...     dtype='int32',
+            ...     [[-1, 0, -1, -1, 2, -1, -1, -1], [1, -1, -1, -1, -1, -1, -1, -1], [-1, -1, -1, -1, -1, -1, 1, -1],], dtype='int32',
             ... )
             >>> expert_prob_topk = paddle.to_tensor(
             ...     [

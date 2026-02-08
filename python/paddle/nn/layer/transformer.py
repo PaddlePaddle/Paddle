@@ -1728,11 +1728,7 @@ class Transformer(Layer):
                 >>> from paddle.nn.layer.transformer import Transformer
                 >>> length = 5
                 >>> d_model, n_head, dim_feedforward = 8, 4, 64
-                >>> transformer_paddle = Transformer(
-                ...     d_model,
-                ...     n_head,
-                ...     dim_feedforward=dim_feedforward,
-                ... )
+                >>> transformer_paddle = Transformer(d_model, n_head, dim_feedforward=dim_feedforward,)
                 >>> mask = transformer_paddle.generate_square_subsequent_mask(length)
                 >>> print(mask)
                 Tensor(shape=[5, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
