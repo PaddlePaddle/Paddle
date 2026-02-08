@@ -2996,33 +2996,29 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...     # print(x)
             ...     pass
             >>> def create_tmp_var(name, dtype, shape):
-            ...     return paddle.static.default_main_program().current_block().create_var(
-            ...         name=name, dtype=dtype, shape=shape)
+            ...     return paddle.static.default_main_program().current_block().create_var(name=name, dtype=dtype, shape=shape)
             >>> def simple_net(img, label):
             ...     hidden = img
             ...     for idx in range(4):
             ...         hidden = paddle.static.nn.fc(hidden, size=200)
-            ...         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-            ...             dtype=hidden.dtype, shape=hidden.shape)
+            ...         new_hidden = create_tmp_var(name='hidden_{}'.format(idx), dtype=hidden.dtype, shape=hidden.shape)
             ...         # User-defined forward and backward
-            ...         hidden = paddle.static.py_func(func=tanh, x=hidden,
-            ...             out=new_hidden, backward_func=tanh_grad,
-            ...             skip_vars_in_backward_input=hidden)
+            ...         hidden = paddle.static.py_func(
+            ...             func=tanh, x=hidden, out=new_hidden, backward_func=tanh_grad, skip_vars_in_backward_input=hidden
+            ...         )
             ...         # User-defined debug functions that print out the input Tensor
             ...         paddle.static.py_func(func=debug_func, x=hidden, out=None)
             ...     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
             ...     ce_loss = paddle.nn.loss.CrossEntropyLoss()
             ...     return ce_loss(prediction, label)
-            >>> x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
+            >>> x = paddle.static.data(name='x', shape=[1, 4], dtype='float32')
             >>> y = paddle.static.data(name='y', shape=[1], dtype='int64')
             >>> res = simple_net(x, y)
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
-            >>> input1 = np.random.random(size=[1,4]).astype('float32')
+            >>> input1 = np.random.random(size=[1, 4]).astype('float32')
             >>> input2 = np.random.randint(1, 10, size=[1], dtype='int64')
-            >>> out = exe.run(paddle.static.default_main_program(),
-            ...                 feed={'x':input1, 'y':input2},
-            ...                 fetch_list=[res.name])
+            >>> out = exe.run(paddle.static.default_main_program(), feed={'x': input1, 'y': input2}, fetch_list=[res.name])
             >>> print(out[0].shape)
             ()
 
@@ -3052,8 +3048,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...             result[i][j] = x[i][j] + y[i][j]
             ...     return result
             >>> def create_tmp_var(name, dtype, shape):
-            ...     return paddle.static.default_main_program().current_block().create_var(
-            ...                 name=name, dtype=dtype, shape=shape)
+            ...     return paddle.static.default_main_program().current_block().create_var(name=name, dtype=dtype, shape=shape)
             >>> def py_func_demo():
             ...     start_program = paddle.static.default_startup_program()
             ...     main_program = paddle.static.default_main_program()
@@ -3061,17 +3056,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...     x = paddle.static.data(name='x', shape=[2, 3], dtype='int32')
             ...     y = paddle.static.data(name='y', shape=[2, 3], dtype='int32')
             ...     # Output of the forward function, name/dtype/shape must be specified
-            ...     output = create_tmp_var('output','int32', [3, 1])
+            ...     output = create_tmp_var('output', 'int32', [3, 1])
             ...     # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
             ...     paddle.static.py_func(func=element_wise_add, x=[x, y], out=output)
-            ...     exe=paddle.static.Executor(paddle.CPUPlace())
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
             ...     exe.run(start_program)
             ...     # Feed numpy array to main_program
             ...     input1 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
             ...     input2 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
-            ...     out = exe.run(main_program,
-            ...                feed={'x':input1, 'y':input2},
-            ...                fetch_list=[output.name])
+            ...     out = exe.run(main_program, feed={'x': input1, 'y': input2}, fetch_list=[output.name])
             ...     print("{0} + {1} = {2}".format(input1, input2, out))
             >>> py_func_demo()
             >>> # [[1 5 4]   + [[3 7 7]  =  [array([[ 4, 12, 11]
