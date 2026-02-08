@@ -535,10 +535,12 @@ class HSigmoidLoss(Layer):
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> m = paddle.nn.HSigmoidLoss(3, 6)
             >>> out = m(input, label)
-            >>> print(out)  # doctest: +ELLIPSIS
-            With sparse mode, if your models has only small parameter prefetch may cause speed down
+            >>> print(out)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
-            ... )
+            [[1.94512916],
+             [2.26129627],
+             [2.36135936],
+             [2.97453213]])
     """
 
     weight: Tensor
