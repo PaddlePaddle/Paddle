@@ -1619,7 +1619,10 @@ class PyReader(DataLoaderBase):
                 >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 >>> user_defined_generator = random_image_and_label_generator(784, 784)
-                >>> reader.decorate_batch_generator(user_defined_generator, paddle.CPUPlace())
+                >>> reader.decorate_batch_generator(
+                ...     user_defined_generator,
+                ...     paddle.CPUPlace(),
+                ... )
 
                 >>> loss = network(image, label)
                 >>> executor = paddle.static.Executor(paddle.CPUPlace())
