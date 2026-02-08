@@ -2380,7 +2380,8 @@ def bilinear_tensor_product(
 
     Examples:
         .. code-block:: pycon
-
+            
+            >>> # doctest: +SKIP("paddle.static.nn.bilinear_tensor_product doesn't support PIR mode")
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
