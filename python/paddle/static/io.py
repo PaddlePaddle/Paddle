@@ -1515,16 +1515,19 @@ def save(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.save doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
             >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-            >>> y = static.nn.fc(x, 10)
-            >>> z = static.nn.fc(y, 10)
+            >>> linear1 = paddle.nn.Linear(10, 10)
+            >>> linear2 = paddle.nn.Linear(10, 10)
+            >>> y = linear1(x)
+            >>> z = linear2(y)
 
             >>> place = paddle.CPUPlace()
             >>> exe = static.Executor(place)
@@ -1627,16 +1630,19 @@ def load(
         None
 
      Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
             >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-            >>> y = static.nn.fc(x, 10)
-            >>> z = static.nn.fc(y, 10)
+            >>> linear1 = paddle.nn.Linear(10, 10)
+            >>> linear2 = paddle.nn.Linear(10, 10)
+            >>> y = linear1(x)
+            >>> z = linear2(y)
 
             >>> place = paddle.CPUPlace()
             >>> exe = static.Executor(place)
@@ -1959,16 +1965,19 @@ def load_program_state(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load_program_state doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
             >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-            >>> y = static.nn.fc(x, 10)
-            >>> z = static.nn.fc(y, 10)
+            >>> linear1 = paddle.nn.Linear(10, 10)
+            >>> linear2 = paddle.nn.Linear(10, 10)
+            >>> y = linear1(x)
+            >>> z = linear2(y)
 
             >>> place = paddle.CPUPlace()
             >>> exe = static.Executor(place)
