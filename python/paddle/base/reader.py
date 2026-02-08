@@ -1204,7 +1204,7 @@ class PyReader(DataLoaderBase):
             >>> user_defined_reader = reader_creator_random_image_and_label(784, 784)
             >>> reader.decorate_sample_list_generator(paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),)
             >>> loss = network(image, label)
-            >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
+            >>> executor = paddle.static.Executor(paddle.CPUPlace())
             >>> executor.run(paddle.static.default_startup_program())
             >>> for i in range(EPOCH_NUM):
             ...     reader.start()
@@ -1263,11 +1263,11 @@ class PyReader(DataLoaderBase):
             >>> user_defined_reader = reader_creator_random_image(784, 784)
             >>> reader.decorate_sample_list_generator(
             ...     paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
-            ...     paddle.static.CPUPlace(),
+            ...     paddle.CPUPlace(),
             ... )
 
             >>> loss = network(image, label)
-            >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
+            >>> executor = paddle.static.Executor(paddle.CPUPlace())
             >>> executor.run(paddle.static.default_startup_program())
 
             >>> for _ in range(EPOCH_NUM):
@@ -1294,7 +1294,7 @@ class PyReader(DataLoaderBase):
             ...                 np.random.random_integers(low=0, high=9, size=[1])
             ...     return reader
 
-            >>>> place = paddle.static.CPUPlace()
+            >>> place = paddle.CPUPlace()
             >>> with base.dygraph.guard(place):
             ...     py_reader = base.io.PyReader(capacity=2, return_list=True)
             ...     user_defined_reader = reader_creator_random_image(784, 784)
@@ -1357,7 +1357,7 @@ class PyReader(DataLoaderBase):
                 ...     paddle.batch(generator, batch_size=BATCH_SIZE),
                 ... )
 
-                >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
+                >>> executor = paddle.static.Executor(paddle.CPUPlace())
                 >>> executor.run(paddle.static.default_startup_program())
                 >>> for i in range(3):
                 ...     reader.start()
@@ -1396,7 +1396,7 @@ class PyReader(DataLoaderBase):
                 ...     paddle.batch(generator, batch_size=BATCH_SIZE),
                 ... )
 
-                >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
+                >>> executor = paddle.static.Executor(paddle.CPUPlace())
                 >>> executor.run(paddle.static.default_startup_program())
                 >>> for i in range(3):
                 ...     reader.start()
@@ -1476,11 +1476,13 @@ class PyReader(DataLoaderBase):
                 >>> reader.decorate_sample_generator(
                 ...     user_defined_generator,
                 ...     batch_size=BATCH_SIZE,
-                ...     places=[paddle.static.CPUPlace()],
+                ...     places=[paddle.CPUPlace()],
                 ... )
                 >>> loss = network(image, label)
-                >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
-                >>> executor.run(paddle.static.default_startup_program())
+                >>> executor = paddle.static.Executor(paddle.CPUPlace())
+                >>> executor.run(
+                ...     paddle.static.default_startup_program(),
+                ... )
 
                 >>> for _ in range(EPOCH_NUM):
                 ...     for data in reader():
@@ -1548,12 +1550,14 @@ class PyReader(DataLoaderBase):
                 >>> user_defined_generator = random_image_and_label_generator(784, 784)
                 >>> reader.decorate_sample_list_generator(
                 ...     paddle.batch(user_defined_generator, batch_size=BATCH_SIZE),
-                ...     paddle.static.CPUPlace(),
+                ...     paddle.CPUPlace(),
                 ... )
 
                 >>> loss = network(image, label)
-                >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
-                >>> executor.run(paddle.static.default_startup_program())
+                >>> executor = paddle.static.Executor(paddle.CPUPlace())
+                >>> executor.run(
+                ...     paddle.static.default_startup_program(),
+                ... )
 
                 >>> for _ in range(EPOCH_NUM):
                 ...     for data in reader():
@@ -1615,11 +1619,13 @@ class PyReader(DataLoaderBase):
                 >>> reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 >>> user_defined_generator = random_image_and_label_generator(784, 784)
-                >>> reader.decorate_batch_generator(user_defined_generator, paddle.static.CPUPlace())
+                >>> reader.decorate_batch_generator(user_defined_generator, paddle.CPUPlace())
 
                 >>> loss = network(image, label)
-                >>> executor = paddle.static.Executor(paddle.static.CPUPlace())
-                >>> executor.run(paddle.static.default_startup_program())
+                >>> executor = paddle.static.Executor(paddle.CPUPlace())
+                >>> executor.run(
+                ...     paddle.static.default_startup_program(),
+                ... )
 
                 >>> for _ in range(EPOCH_NUM):
                 ...     for data in reader():
