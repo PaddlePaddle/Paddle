@@ -364,16 +364,16 @@ class ImperativeQuantizeInputs:
             "only be moving_average_abs_max or lsq_act now."
         )
 
-        bits_check = (
-            lambda bits: isinstance(bits, int) and bits >= 0 and bits <= 16
+        bits_check = lambda bits: (
+            isinstance(bits, int) and bits >= 0 and bits <= 16
         )
         assert bits_check(weight_bits), "weight_bits should be 1, 2,... or 16."
         assert bits_check(activation_bits), (
             "activation_bits should be 1, 2,... or 16."
         )
 
-        layer_check = lambda method: method is None or issubclass(
-            method, paddle.nn.Layer
+        layer_check = lambda method: (
+            method is None or issubclass(method, paddle.nn.Layer)
         )
         assert layer_check(weight_preprocess_layer), (
             "weight_preprocess should be nn.Layer."
