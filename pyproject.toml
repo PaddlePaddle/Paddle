@@ -141,8 +141,9 @@ ignore = [
     "PYI024",
     # `__all__.append` is a common pattern in Paddle
     "PYI056",
-    # Refurb rules
+    # Refurb: Prefer direct return of condition (allow explicit style in Paddle)
     "FURB110",
+    # Refurb: Use `list.extend(iterable)` instead of repeated `append` in loops
     "FURB171",
 ]
 
