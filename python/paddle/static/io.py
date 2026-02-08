@@ -1632,7 +1632,7 @@ def load(
     Returns:
         None
 
-     Examples:
+    Examples:
         .. code-block:: pycon
 
             >>> # doctest: +SKIP("paddle.static.load doesn't support PIR mode")
