@@ -133,6 +133,7 @@ class OptimizerWithMixedPrecision:
         Examples:
             .. code-block:: pycon
 
+                >>> # doctest: +SKIP("paddle.static.amp module doesn't support PIR mode")
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.nn.functional as F
@@ -268,6 +269,7 @@ def decorate_bf16(
             :name: example-1
 
             # fp32&bf16 list based strategy example
+            >>> # doctest: +SKIP("paddle.static.amp module doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
@@ -289,6 +291,7 @@ def decorate_bf16(
             :name: example-2
 
             # pure bf16 training example
+            >>> # doctest: +SKIP("paddle.static.amp module doesn't support PIR mode")
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn.functional as F
