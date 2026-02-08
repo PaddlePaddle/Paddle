@@ -1613,8 +1613,9 @@ class SyncBatchNorm(_BatchNormBase):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.distributed.collective.SyncBatchNorm doesn't support PIR mode")
             >>> # doctest: +REQUIRES(env:GPU)
 
             >>> import paddle

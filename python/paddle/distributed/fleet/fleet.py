@@ -1713,8 +1713,9 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
+                >>> # doctest: +SKIP("paddle.distributed.fleet.Fleet.minimize PIR 当前不支持")
                 >>> import paddle
                 >>> paddle.enable_static()
                 >>> import paddle.distributed.fleet as fleet
