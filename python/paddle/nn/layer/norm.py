@@ -1615,7 +1615,6 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("paddle.distributed.collective.SyncBatchNorm doesn't support PIR mode")
             >>> # doctest: +REQUIRES(env:GPU)
 
             >>> import paddle

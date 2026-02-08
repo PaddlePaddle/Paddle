@@ -42,7 +42,6 @@ class PrepareContextParallel(PlanBase):
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("paddle.distributed.collective.prepare_context doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.distributed as dist
 
