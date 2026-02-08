@@ -56,7 +56,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
     for (int64_t index = threadIdx.x; index < row_numel; index += blockDim.x) {
       // Since index in rows of SelectedRows can be duplicate, we have to use
       // Atomic Operation to avoid concurrent write error.
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(
           tensor_out_ptr + index,
           -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
     }

@@ -48,7 +48,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
     }
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+    CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
   }
 }
 

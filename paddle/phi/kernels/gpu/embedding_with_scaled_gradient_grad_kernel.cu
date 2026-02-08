@@ -67,7 +67,7 @@ __global__ void EmbeddingGrad(T* table,
     phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int64_t i = idx; i < D; i += blockDim.x) {
-      phi::CudaAtomicAdd(&tab[i], out[i]);
+      CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
     idy += blockDim.y * gridDim.x;
@@ -87,13 +87,13 @@ __global__ void CountFreqKernel(const IdT* ids_data,
 
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num_ids) {
-    phi::CudaAtomicAdd(&buf_count[ids_data[idx]], 1);
+    CudaAtomicAdd(&buf_count[ids_data[idx]], 1);
   }
 
   __syncthreads();
 
   for (int64_t i = threadIdx.x; i < num_weights; i += blockDim.x) {
-    phi::CudaAtomicAdd(&count_data[i], buf_count[i]);
+    CudaAtomicAdd(&count_data[i], buf_count[i]);
   }
 }
 

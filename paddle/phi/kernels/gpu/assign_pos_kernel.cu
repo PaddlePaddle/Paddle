@@ -36,7 +36,7 @@ __global__ void AssignPos(T* cum_count,
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
-      int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
+      int p = CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }

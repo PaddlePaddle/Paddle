@@ -239,6 +239,75 @@ class TestAtanAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+class TestAtan2API_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        paddle_dygraph_out = []
+
+        # Position args
+        out1 = paddle.atan2(x, y)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.atan2(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args
+        out3 = paddle.atan2(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+
+        # Test out parameter
+        out4 = paddle.empty([])
+        paddle.atan2(x, y, out=out4)
+        paddle_dygraph_out.append(out4)
+
+        # Numpy reference output
+        ref_out = np.arctan2(self.np_x, self.np_y)
+
+        # Verify all outputs
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+
+            # Position args
+            out1 = paddle.atan2(x, y)
+            # Paddle keyword args
+            out2 = paddle.atan2(x=x, y=y)
+            # Torch keyword args
+            out3 = paddle.atan2(input=x, other=y)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.arctan2(self.np_x, self.np_y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
 # Edit by AI Agent
 # Test fmax compatibility
 class TestFmaxAPI(unittest.TestCase):

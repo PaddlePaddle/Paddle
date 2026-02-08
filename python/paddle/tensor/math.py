@@ -31,6 +31,7 @@ from paddle._C_ops import (  # noqa: F401
     amin,
     angle,
     any,
+    atan2,
     baddbmm,
     baddbmm_,
     bitwise_left_shift,
@@ -4423,84 +4424,6 @@ def negative(x: Tensor, name: str | None = None) -> Tensor:
     if x.dtype == paddle.bool:
         raise TypeError("The `-` operator, on a bool tensor is not supported.")
     return -x
-
-
-def atan2(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Element-wise arctangent of x/y with consideration of the quadrant.
-
-    Equation:
-        .. math::
-
-            atan2(x,y)=\left\{\begin{matrix}
-            & tan^{-1}(\frac{x}{y}) & y > 0 \\
-            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
-            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
-            & +\frac{\pi}{2} & x>0, y = 0 \\
-            & -\frac{\pi}{2} & x<0, y = 0 \\
-            &\text{undefined} & x=0, y = 0
-            \end{matrix}\right.
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
-        y (Tensor): An N-D Tensor, must have the same type as `x`.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
-            >>> x
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1.,  1.,  1., -1.])
-
-            >>> y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
-            >>> y
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1., -1.,  1.,  1.])
-
-            >>> out = paddle.atan2(x, y)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
-
-    """
-
-    x_shape = list(x.shape)
-    y_shape = list(y.shape)
-    if in_dynamic_or_pir_mode():
-        broadcast_x = x
-        broadcast_y = y
-        if x_shape != y_shape:
-            broadcast_shape = paddle.broadcast_shape(x_shape, y_shape)
-            broadcast_x = paddle.broadcast_to(broadcast_x, broadcast_shape)
-            broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
-
-        return _C_ops.atan2(broadcast_x, broadcast_y)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'atan2',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'atan2',
-        )
-
-        helper = LayerHelper('atan2', **locals())
-        inputs = {'X1': x, 'X2': y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
-        return out
 
 
 def logit(

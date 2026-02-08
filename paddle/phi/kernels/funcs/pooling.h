@@ -335,6 +335,7 @@ class MaxPool2dWithIndexFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -349,6 +350,7 @@ class MaxPool2dWithIndexGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -361,6 +363,7 @@ class MaxPool3dWithIndexFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -375,6 +378,7 @@ class MaxPool3dWithIndexGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -478,17 +482,25 @@ inline T PoolOutputSize(T input_size,
   return output_size;
 }
 
-inline int MaxPoolOutputSize(
-    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
+inline int MaxPoolOutputSize(int input_size,
+                             int filter_size,
+                             int stride,
+                             int padding,
+                             int dilation,
+                             bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
       common::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
+  // Effective filter size with dilation
+  int effective_filter_size = dilation * (filter_size - 1) + 1;
   if (ceil_mode) {
-    return (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
+    return (input_size - effective_filter_size + 2 * padding + stride - 1) /
+               stride +
+           1;
   } else {
-    return (input_size - filter_size + 2 * padding) / stride + 1;
+    return (input_size - effective_filter_size + 2 * padding) / stride + 1;
   }
 }
 

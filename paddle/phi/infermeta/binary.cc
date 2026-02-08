@@ -191,32 +191,9 @@ void ArrayReadInferMeta(const MetaTensor& array,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  const auto& x_dims = x.dims();
-  const auto& y_dims = y.dims();
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      y_dims.size(),
-      common::errors::InvalidArgument("The rank (%d) of X shall be same as "
-                                      "rank (%d) of Y.",
-                                      x_dims.size(),
-                                      y_dims.size()));
-
-  if (x_dims.size() > 0)
-    PADDLE_ENFORCE_LE(x_dims[0],
-                      y_dims[0],
-                      common::errors::InvalidArgument(
-                          "The count (%d) of elements of X shall not "
-                          "greater than count (%d) of elements of Y.",
-                          x_dims[0],
-                          y_dims[0]));
-
-  out->share_meta(x);
-  if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
-      y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
+  ElementwiseInferMeta(x, y, out);
+  if (out->dtype() == DataType::INT32 || out->dtype() == DataType::INT64) {
     out->set_dtype(DataType::FLOAT64);
-  } else {
-    out->set_dtype(x.dtype());
   }
 }
 
