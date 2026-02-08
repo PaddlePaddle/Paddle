@@ -1834,5 +1834,47 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestLdexpInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [3, 4]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_y = np.random.randint(-3, 4, self.shape).astype('int32')
+
+    def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        ref_out = np.ldexp(self.np_x, self.np_y)
+
+        for out in [
+            x.clone().ldexp_(y),
+            x.clone().ldexp_(y=y),
+            x.clone().ldexp_(other=y),
+            paddle.ldexp_(x.clone(), y),
+        ]:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_ConflictedKeywords(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        with self.assertRaises(TypeError):
+            x.clone().ldexp_(y=y, other=y)
+        paddle.enable_static()
+
+    def test_dygraph_InvalidOtherType(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        with self.assertRaisesRegex(TypeError, "y must be tensor type"):
+            x.clone().ldexp_(other=1)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

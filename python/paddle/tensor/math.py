@@ -6076,10 +6076,11 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return paddle.multiply(x, paddle.pow(two, y))
 
 
+@param_one_alias(["y", "other"])
 def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
-    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_polygamma`.
+    Inplace version of ``ldexp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_ldexp`.
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
