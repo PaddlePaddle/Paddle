@@ -2536,12 +2536,11 @@ def batch_norm(
 
         .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.batch_norm doesn't support PIR mode")
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
-
-            >>> # Context Manager 'OldIrGuard' is required for static graph APIs
-            >>> # in the transition period to PIR mode.
+            
             >>> with paddle.pir_utils.OldIrGuard():
             ...     main_prog = paddle.static.Program()
             ...     startup_prog = paddle.static.Program()
@@ -2554,8 +2553,6 @@ def batch_norm(
             >>> with paddle.pir_utils.OldIrGuard():
             ...     exe = paddle.static.Executor(paddle.CPUPlace())
             ...     _ = exe.run(startup_prog)
-            ...
-            ...     # Prepare input data
             ...     np.random.seed(2023)
             ...     x_np = np.random.random((2, 3, 32, 32)).astype("float32")
             ...     res = exe.run(main_prog, feed={"x": x_np}, fetch_list=[out])
