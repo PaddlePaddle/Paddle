@@ -15,7 +15,6 @@
 export BRANCH=${AGILE_COMPILE_BRANCH}
 export GIT_PR_ID=${AGILE_PULL_ID}
 
-# export https_proxy=http://agent.baidu.com:8118
 export no_proxy=mirrors.tuna.tsinghua.edu.cn,bcebos.com,baidu.com,mirror.baidu.com,baidu-int.com,paddlepaddle.org.cn,localhost,127.0.0.1
 git config --global user.name "PaddleCI"
 git config --global user.email "paddle_ci@example.com"
@@ -23,8 +22,8 @@ git config --global user.email "paddle_ci@example.com"
 set +e
 
 if [ -f '/home/data/cfs/api_doc/${AGILE_PULL_ID}/api_doc_break.flag' ];then
-  echo 'API documents no change, skip doc build.'
-  exit 0
+    echo 'API documents no change, skip doc build.'
+    exit 0
 fi
 
 DOCS_REPO=https://github.com/PaddlePaddle/docs.git
@@ -61,7 +60,6 @@ fi
 
 
 # clone paddle repo
-
 PADDLE_REPO=https://github.com/PaddlePaddle/Paddle.git
 
 export PADDLE_DIR=/Paddle
@@ -78,7 +76,7 @@ if [ ! -d ${PADDLE_DIR} ] ; then
     fi
     git checkout -b origin_pr FETCH_HEAD
     echo "before merge paddle branch log:"
-    git --no-pager --pretty=oneline -10
+    git --no-pager log --pretty=oneline -10
     echo "merge branch ${AGILE_COMPILE_BRANCH_REF} into PR branch"
 fi
 
