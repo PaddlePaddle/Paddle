@@ -202,7 +202,7 @@ def normalize_program(
         Program: Normalized/Optimized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -489,7 +489,7 @@ def save_to_file(path: str, content: bytes) -> None:
             >>> paddle.enable_static()
             >>> path_prefix = "./infer_model"
 
-            # 用户自定义网络，此处用 softmax 回归为例。
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -497,10 +497,10 @@ def save_to_file(path: str, content: bytes) -> None:
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
 
-            # 序列化参数
+            # Serialize parameters
             >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
 
-            # 将序列化之后的参数保存到文件
+            # Save serialized parameters to file
             >>> params_path = path_prefix + ".params"
             >>> paddle.static.save_to_file(params_path, serialized_params)
     """
@@ -544,7 +544,7 @@ def save_inference_model(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -736,10 +736,10 @@ def deserialize_persistables(
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
 
-            # serialize parameters to bytes.
+            # Serialize parameters to bytes.
             >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
 
-            # deserialize bytes to parameters.
+            # Deserialize bytes to parameters.
             >>> main_program = paddle.static.default_main_program()
             >>> deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
 
@@ -824,7 +824,7 @@ def load_from_file(path: str) -> bytes:
             >>> paddle.enable_static()
             >>> path_prefix = "./infer_model"
 
-            # 用户自定义网络，此处用 softmax 回归为例。
+            # Define user network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -832,14 +832,14 @@ def load_from_file(path: str) -> bytes:
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
 
-            # 序列化参数
+            # Serialize parameters
             >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
 
-            # 将序列化之后的参数保存到文件
+            # Save serialized parameters to file
             >>> params_path = path_prefix + ".params"
             >>> paddle.static.save_to_file(params_path, serialized_params)
 
-            # 从文件加载序列化之后的参数
+            # Load serialized parameters from file
             >>> serialized_params_copy = paddle.static.load_from_file(params_path)
     """
     with open(path, 'rb') as f:
@@ -880,7 +880,7 @@ def load_inference_model(
         we can get inference results.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -903,12 +903,16 @@ def load_inference_model(
             >>> path_prefix = "./infer_model"
             >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
-            >>> [inference_program, feed_target_names, fetch_targets] = (
-            ...     paddle.static.load_inference_model(path_prefix, exe))
+            >>> [inference_program, feed_target_names, fetch_targets] = paddle.static.load_inference_model(
+            ...     path_prefix,
+            ...     exe,
+            ... )
             >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
-            >>> results = exe.run(inference_program,
-            ...               feed={feed_target_names[0]: tensor_img},
-            ...               fetch_list=fetch_targets)
+            >>> results = exe.run(
+            ...     inference_program,
+            ...     feed={feed_target_names[0]: tensor_img},
+            ...     fetch_list=fetch_targets,
+            ... )
 
             # In this example, the inference program was saved in file
             # "./infer_model.pdmodel" and parameters were saved in file
@@ -1117,7 +1121,7 @@ def save_vars(
         TypeError: If `main_program` is not an instance of Program nor None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -1140,8 +1144,12 @@ def save_vars(
             >>> path = "./my_paddle_vars"
 
             # w and b will be save in a file named "var_file".
-            >>> paddle.static.io.save_vars(executor=exe, dirname=path, vars=var_list,
-            ...                 filename="vars_file")
+            >>> paddle.static.io.save_vars(
+            ...     executor=exe,
+            ...     dirname=path,
+            ...     vars=var_list,
+            ...     filename="vars_file",
+            ... )
 
             # The second usage: use `predicate` to select the saved variable.
             >>> def name_has_fc(var):
@@ -1150,7 +1158,13 @@ def save_vars(
             >>> param_path = "./my_paddle_model"
 
             # all variables whose names contain "fc " are saved.
-            >>> paddle.static.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
+            >>> paddle.static.io.save_vars(
+            ...     executor=exe,
+            ...     dirname=param_path,
+            ...     main_program=main_prog,
+            ...     vars=None,
+            ...     predicate=name_has_fc,
+            ... )
 
 
     """
@@ -1279,7 +1293,7 @@ def load_vars(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -1300,10 +1314,18 @@ def load_vars(
             # The first usage: using `vars` to specify the variables.
             >>> path = "./my_paddle_vars"
             >>> var_list = [w, b]
-            >>> paddle.static.io.save_vars(executor=exe, dirname=path, vars=var_list,
-            ...                    filename="vars_file")
-            >>> paddle.static.io.load_vars(executor=exe, dirname=path, vars=var_list,
-            ...                    filename="vars_file")
+            >>> paddle.static.io.save_vars(
+            ...     executor=exe,
+            ...     dirname=path,
+            ...     vars=var_list,
+            ...     filename="vars_file",
+            ... )
+            >>> paddle.static.io.load_vars(
+            ...     executor=exe,
+            ...     dirname=path,
+            ...     vars=var_list,
+            ...     filename="vars_file",
+            ... )
 
             # w and b will be loaded, and they are supposed to
             # be saved in the same file named 'var_file' in the path "./my_paddle_vars".
@@ -1313,10 +1335,20 @@ def load_vars(
             >>> def name_has_fc(var):
             ...     res = "fc" in var.name
             ...     return res
-            >>> paddle.static.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog,
-            ...                    vars=None, predicate=name_has_fc)
-            >>> paddle.static.io.load_vars(executor=exe, dirname=param_path, main_program=main_prog,
-            ...                    vars=None, predicate=name_has_fc)
+            >>> paddle.static.io.save_vars(
+            ...     executor=exe,
+            ...     dirname=param_path,
+            ...     main_program=main_prog,
+            ...     vars=None,
+            ...     predicate=name_has_fc,
+            ... )
+            >>> paddle.static.io.load_vars(
+            ...     executor=exe,
+            ...     dirname=param_path,
+            ...     main_program=main_prog,
+            ...     vars=None,
+            ...     predicate=name_has_fc,
+            ... )
 
             # Load All variables in the `main_program` whose name includes "fc".
             # And all the variables are supposed to be saved in separate files.
@@ -1522,15 +1554,16 @@ def save(
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("paddle.static.save doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
             >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-            >>> y = static.nn.fc(x, 10)
-            >>> z = static.nn.fc(y, 10)
+            >>> linear1 = paddle.nn.Linear(10, 10)
+            >>> linear2 = paddle.nn.Linear(10, 10)
+            >>> y = linear1(x)
+            >>> z = linear2(y)
 
             >>> place = paddle.CPUPlace()
             >>> exe = static.Executor(place)
@@ -1635,15 +1668,16 @@ def load(
      Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("paddle.static.load doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
             >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-            >>> y = static.nn.fc(x, 10)
-            >>> z = static.nn.fc(y, 10)
+            >>> linear1 = paddle.nn.Linear(10, 10)
+            >>> linear2 = paddle.nn.Linear(10, 10)
+            >>> y = linear1(x)
+            >>> z = linear2(y)
 
             >>> place = paddle.CPUPlace()
             >>> exe = static.Executor(place)
@@ -1844,7 +1878,7 @@ def set_program_state(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -1934,7 +1968,7 @@ def get_program_persistable_vars(program: Program) -> list[Tensor]:
     Returns:
         list: The list contains all persistable vars in the program
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static.io as io
@@ -1942,7 +1976,7 @@ def get_program_persistable_vars(program: Program) -> list[Tensor]:
             >>> data = paddle.static.data(name="img", shape=[64, 784])
             >>> w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             >>> b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
-            >>> list_para  = io.get_program_persistable_vars(  paddle.static.default_main_program() )
+            >>> list_para = io.get_program_persistable_vars(paddle.static.default_main_program())
     """
     return list(filter(is_persistable, program.list_vars()))
 
@@ -1968,15 +2002,16 @@ def load_program_state(
 
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("paddle.static.load_program_state doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
             >>> paddle.enable_static()
 
             >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
-            >>> y = static.nn.fc(x, 10)
-            >>> z = static.nn.fc(y, 10)
+            >>> linear1 = paddle.nn.Linear(10, 10)
+            >>> linear2 = paddle.nn.Linear(10, 10)
+            >>> y = linear1(x)
+            >>> z = linear2(y)
 
             >>> place = paddle.CPUPlace()
             >>> exe = static.Executor(place)

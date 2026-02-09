@@ -1554,8 +1554,8 @@ def _append_backward_ops_(
         # But this strategy is not suited for while op for some control flow,
         # for example, for while op, the grads maybe generated in next loop.
         if input_grad_names_set is not None:
-            is_grad_name = (
-                lambda name: name.find(core.grad_var_suffix()) != -1
+            is_grad_name = lambda name: (
+                name.find(core.grad_var_suffix()) != -1
                 or name in input_grad_names_set
             )
             is_append_grad = False

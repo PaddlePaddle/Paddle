@@ -126,8 +126,7 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
                                 DenseTensor* x_grad) {
   auto* grad_x_data = dev_ctx.template Alloc<T>(x_grad);
   if (out.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   auto* grad_y_data = out_grad.data<T>();

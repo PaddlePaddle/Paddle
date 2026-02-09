@@ -264,8 +264,8 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Slice Operator.
 
-Produces a slice of the input tensor along multiple axes. Similar to numpy:
-https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+ Produces a slice of the input tensor along multiple axes. Similar to numpy:
+https://numpy.org/doc/stable/user/basics.indexing.html
 Slice uses `axes`, `starts` and `ends` attributes to specify the start and
 end dimension for each axis in the list of axes, it uses this information
 to slice the input data tensor. If a negative value is passed for any of
