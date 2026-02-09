@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING
 
 from paddle.utils.decorator_utils import (
     lp_pool_layer_decorator,
-    param_one_alias,
     maxpool_layer_decorator,
+    param_one_alias,
 )
 
 from .. import functional as F

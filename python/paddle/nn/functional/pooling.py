@@ -26,9 +26,9 @@ from paddle.base.framework import (
 )
 from paddle.utils.decorator_utils import (
     lp_pool_function_decorator,
+    maxpool_decorator,
     param_one_alias,
     param_two_alias,
-    maxpool_decorator,
 )
 
 from ...base.data_feeder import check_type, check_variable_and_dtype

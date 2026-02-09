@@ -876,7 +876,7 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
     def test_maxpool1d_layer_dilation_basic(self):
         """Test MaxPool1D layer with dilation parameter."""
         pool = paddle.nn.MaxPool1D(
-            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2 
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2
         )
         input_np = np.random.random([2, 3, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
