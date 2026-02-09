@@ -315,7 +315,8 @@
 - op : index_put_
   name : [paddle.index_put_, paddle.Tensor.index_put_]
   args_alias :
-    value : [values]
+    value :
+      - values
     use_default_mapping : True
 
 - op : isclose

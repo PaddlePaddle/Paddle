@@ -1310,6 +1310,52 @@ class TestIndexPutAPI_Compatibility(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_dygraph_tensor_index_put_values_alias_Compatibility(self):
+        paddle.disable_static()
+        try:
+            x = paddle.to_tensor(self.np_input, dtype=self.dtype)
+            idx0_t = paddle.to_tensor(self.idx0, dtype='int64')
+            idx1_t = paddle.to_tensor(self.idx1, dtype='int64')
+            indices_t = (idx0_t, idx1_t)
+            values_t = paddle.to_tensor(self.value, dtype=self.dtype)
+
+            ref = x.clone()
+            ref.index_put_(indices_t, value=values_t, accumulate=False)
+
+            out = x.clone()
+            out.index_put_(indices_t, values=values_t, accumulate=False)
+
+            expected = compute_index_put_ref(
+                copy.deepcopy(self.np_input),
+                (self.idx0, self.idx1),
+                self.value,
+                accumulate=False,
+            )
+
+            np.testing.assert_allclose(ref.numpy(), out.numpy())
+            np.testing.assert_allclose(expected, out.numpy())
+        finally:
+            paddle.enable_static()
+
+    def test_dygraph_tensor_index_put_conflict_value_values_Compatibility(self):
+        paddle.disable_static()
+        try:
+            x = paddle.to_tensor(self.np_input, dtype=self.dtype)
+            idx0_t = paddle.to_tensor(self.idx0, dtype='int64')
+            idx1_t = paddle.to_tensor(self.idx1, dtype='int64')
+            indices_t = (idx0_t, idx1_t)
+            values_t = paddle.to_tensor(self.value, dtype=self.dtype)
+
+            with self.assertRaises(ValueError):
+                x.index_put_(
+                    indices_t,
+                    value=values_t,
+                    values=values_t,
+                    accumulate=False,
+                )
+        finally:
+            paddle.enable_static()
+
     def test_static_Compatibility(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
