@@ -78,7 +78,7 @@ if [ ! -d ${PADDLE_DIR} ] ; then
     fi
     git checkout -b origin_pr FETCH_HEAD
     echo "before merge paddle branch log:"
-    git log --pretty=oneline -10
+    git --no-pager --pretty=oneline -10
     echo "merge branch ${AGILE_COMPILE_BRANCH_REF} into PR branch"
 fi
 
