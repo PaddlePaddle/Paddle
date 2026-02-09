@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -40,8 +40,8 @@ class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("transpose_op_out") = transpose_op(pat.Tensor("matmul_op_out"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-      auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
+      auto x_shape = GetShapeFromValue(match_ctx.Tensor("x"));
+      auto y_shape = GetShapeFromValue(match_ctx.Tensor("y"));
       if (x_shape.size() < 2 || y_shape.size() < 2) return false;
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       const int perm_size = perm.size();
@@ -92,8 +92,8 @@ class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
         matmul_op(pat.Tensor("x_transpose_out"), pat.Tensor("y"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-      auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
+      auto x_shape = GetShapeFromValue(match_ctx.Tensor("x"));
+      auto y_shape = GetShapeFromValue(match_ctx.Tensor("y"));
       if (x_shape.size() < 2 || y_shape.size() < 2) return false;
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       const int perm_size = perm.size();
@@ -145,8 +145,8 @@ class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
         matmul_op(pat.Tensor("x"), pat.Tensor("y_transpose_out"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-      auto y_shape = pir::GetShapeFromValue(match_ctx.Tensor("y"));
+      auto x_shape = GetShapeFromValue(match_ctx.Tensor("x"));
+      auto y_shape = GetShapeFromValue(match_ctx.Tensor("y"));
       if (x_shape.size() < 2 || y_shape.size() < 2) return false;
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       const int perm_size = perm.size();
@@ -179,13 +179,13 @@ class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class MatmulTransposeFusePass : public pir::PatternRewritePass {
+class MatmulTransposeFusePass : public PatternRewritePass {
  public:
   MatmulTransposeFusePass()
-      : pir::PatternRewritePass("matmul_transpose_fuse_pass", 2) {}
+      : PatternRewritePass("matmul_transpose_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<MatmulOutTransposeFusePattern>(context));
     ps.Add(paddle::drr::Create<MatmulXTransposeFusePattern>(context));
     ps.Add(paddle::drr::Create<MatmulYTransposeFusePattern>(context));
@@ -194,13 +194,9 @@ class MatmulTransposeFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateMatmulTransposeFusePass() {
   return std::make_unique<MatmulTransposeFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_transpose_fuse_pass, MatmulTransposeFusePass);
+REGISTER_IR_PASS(matmul_transpose_fuse_pass, pir::MatmulTransposeFusePass);

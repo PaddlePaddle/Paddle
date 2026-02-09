@@ -22,38 +22,35 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class Conv2dBnOneDNNFusePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
+    : public OpRewritePattern<paddle::dialect::BatchNorm_Op> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::BatchNorm_Op op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  using OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::BatchNorm_Op op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     // The prev op should be conv2d op.
     paddle::dialect::Conv2dOp conv2d_op =
-        pir::GetDefiningOpForInput(op, 0)
-            ->dyn_cast<paddle::dialect::Conv2dOp>();
+        GetDefiningOpForInput(op, 0)->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
     auto conv2d_attributes = conv2d_op->attributes();
     auto padding_algorithm = conv2d_attributes.at("padding_algorithm")
-                                 .dyn_cast<pir::StrAttribute>()
+                                 .dyn_cast<StrAttribute>()
                                  .AsString();
     if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
         padding_algorithm != "VALID") {
       return false;
     }
-    auto data_format = conv2d_attributes.at("data_format")
-                           .dyn_cast<pir::StrAttribute>()
-                           .AsString();
+    auto data_format =
+        conv2d_attributes.at("data_format").dyn_cast<StrAttribute>().AsString();
     if (data_format != "NCHW" && data_format != "AnyLayout" &&
         data_format != "NHWC") {
       return false;
     }
     auto groups =
-        conv2d_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+        conv2d_attributes.at("groups").dyn_cast<Int32Attribute>().data();
     if (groups < 1) {
       return false;
     }
@@ -65,15 +62,15 @@ class Conv2dBnOneDNNFusePattern
     if (!op.saved_mean().use_empty()) return false;
     if (!op.saved_variance().use_empty()) return false;
 
-    pir::Value conv2d_filter = conv2d_op.filter();
-    pir::Value bn_mean = op.mean();
-    pir::Value bn_variance = op.variance();
-    pir::Value bn_scale = op.scale();
-    pir::Value bn_bias = op.bias();
+    Value conv2d_filter = conv2d_op.filter();
+    Value bn_mean = op.mean();
+    Value bn_variance = op.variance();
+    Value bn_scale = op.scale();
+    Value bn_bias = op.bias();
 
     // --- deal with filter ---
-    auto bn_variance_shape = pir::GetShapeFromValue(bn_variance);
-    float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
+    auto bn_variance_shape = GetShapeFromValue(bn_variance);
+    float epsilon = op.attribute<FloatAttribute>("epsilon").data();
     if (epsilon < 0.0f || epsilon > 0.001f) {
       return false;
     }
@@ -86,8 +83,8 @@ class Conv2dBnOneDNNFusePattern
     paddle::dialect::DivideOp div_op =
         rewriter.Build<paddle::dialect::DivideOp>(bn_scale, sqrt_op.out());
     // reshape scale
-    auto conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
-    auto bn_scale_shape = pir::GetShapeFromValue(bn_scale);
+    auto conv2d_filter_shape = GetShapeFromValue(conv2d_filter);
+    auto bn_scale_shape = GetShapeFromValue(bn_scale);
     std::vector<int64_t> bn_scale_new_shape(conv2d_filter_shape.size(), 1);
     bn_scale_new_shape[0] = bn_scale_shape[0];
     paddle::dialect::ReshapeOp reshape_scale_op =
@@ -109,8 +106,8 @@ class Conv2dBnOneDNNFusePattern
     conv2d_attributes["scale_weights"] =
         rewriter.array_attr({rewriter.float_attr(1.0f)});
 
-    auto conv2d_filter_dtype = pir::GetDataTypeFromValue(conv2d_filter);
-    if (conv2d_filter_dtype.isa<pir::Float16Type>()) {
+    auto conv2d_filter_dtype = GetDataTypeFromValue(conv2d_filter);
+    if (conv2d_filter_dtype.isa<Float16Type>()) {
       return false;
     }
     auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
@@ -127,7 +124,7 @@ class Conv2dBnOneDNNFusePattern
         conv2d_op.input(),
         mul_op.out(),
         sub_op.out(),
-        pir::Value{},
+        Value{},
         conv2d_attributes);
 
     rewriter.ReplaceAllUsesWith(op.out(), new_conv2d_op.output());
@@ -139,39 +136,36 @@ class Conv2dBnOneDNNFusePattern
 };
 
 class Conv2dBiasBnOneDNNFusePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
+    : public OpRewritePattern<paddle::dialect::BatchNorm_Op> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::BatchNorm_Op op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  using OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::BatchNorm_Op op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     // The prev op should be add op.
     paddle::dialect::AddOp add_op =
-        pir::GetDefiningOpForInput(op, 0)->dyn_cast<paddle::dialect::AddOp>();
+        GetDefiningOpForInput(op, 0)->dyn_cast<paddle::dialect::AddOp>();
     if (!add_op) return false;
     // The prev prev op should be conv2d op.
     paddle::dialect::Conv2dOp conv2d_op =
-        pir::GetDefiningOpForInput(add_op, 0)
-            ->dyn_cast<paddle::dialect::Conv2dOp>();
+        GetDefiningOpForInput(add_op, 0)->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
     auto conv2d_attributes = conv2d_op->attributes();
     auto padding_algorithm = conv2d_attributes.at("padding_algorithm")
-                                 .dyn_cast<pir::StrAttribute>()
+                                 .dyn_cast<StrAttribute>()
                                  .AsString();
     if (padding_algorithm != "EXPLICIT" && padding_algorithm != "SAME" &&
         padding_algorithm != "VALID") {
       return false;
     }
-    auto data_format = conv2d_attributes.at("data_format")
-                           .dyn_cast<pir::StrAttribute>()
-                           .AsString();
+    auto data_format =
+        conv2d_attributes.at("data_format").dyn_cast<StrAttribute>().AsString();
     if (data_format != "NCHW" && data_format != "AnyLayout" &&
         data_format != "NHWC") {
       return false;
     }
     auto groups =
-        conv2d_attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+        conv2d_attributes.at("groups").dyn_cast<Int32Attribute>().data();
     if (groups < 1) {
       return false;
     }
@@ -184,16 +178,16 @@ class Conv2dBiasBnOneDNNFusePattern
     if (!op.saved_mean().use_empty()) return false;
     if (!op.saved_variance().use_empty()) return false;
 
-    pir::Value add_y = add_op.y();
-    if (!pir::ValueIsPersistable(add_y)) return false;
-    pir::Value conv2d_filter = conv2d_op.filter();
-    pir::Value bn_mean = op.mean();
-    pir::Value bn_variance = op.variance();
-    pir::Value bn_scale = op.scale();
-    pir::Value bn_bias = op.bias();
+    Value add_y = add_op.y();
+    if (!ValueIsPersistable(add_y)) return false;
+    Value conv2d_filter = conv2d_op.filter();
+    Value bn_mean = op.mean();
+    Value bn_variance = op.variance();
+    Value bn_scale = op.scale();
+    Value bn_bias = op.bias();
 
-    auto add_y_shape = pir::GetShapeFromValue(add_y);
-    auto bn_bias_shape = pir::GetShapeFromValue(bn_bias);
+    auto add_y_shape = GetShapeFromValue(add_y);
+    auto bn_bias_shape = GetShapeFromValue(bn_bias);
     std::vector<int64_t> add_y_new_shape{add_y_shape[0]};
     // Support both per_tensor & per_channel addition
     if (add_y_shape.size() != 1) {
@@ -222,8 +216,8 @@ class Conv2dBiasBnOneDNNFusePattern
         rewriter.Build<paddle::dialect::ReshapeOp>(add_op.y(), add_y_new_shape);
 
     // --- deal with filter ---
-    auto bn_variance_shape = pir::GetShapeFromValue(bn_variance);
-    float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
+    auto bn_variance_shape = GetShapeFromValue(bn_variance);
+    float epsilon = op.attribute<FloatAttribute>("epsilon").data();
     if (epsilon < 0.0f || epsilon > 0.001f) {
       return false;
     }
@@ -236,8 +230,8 @@ class Conv2dBiasBnOneDNNFusePattern
     paddle::dialect::DivideOp div_op =
         rewriter.Build<paddle::dialect::DivideOp>(bn_scale, sqrt_op.out());
     // reshape scale
-    auto conv2d_filter_shape = pir::GetShapeFromValue(conv2d_filter);
-    auto bn_scale_shape = pir::GetShapeFromValue(bn_scale);
+    auto conv2d_filter_shape = GetShapeFromValue(conv2d_filter);
+    auto bn_scale_shape = GetShapeFromValue(bn_scale);
     std::vector<int64_t> bn_scale_new_shape(conv2d_filter_shape.size(), 1);
     bn_scale_new_shape[0] = bn_scale_shape[0];
     paddle::dialect::ReshapeOp reshape_scale_op =
@@ -259,8 +253,8 @@ class Conv2dBiasBnOneDNNFusePattern
     conv2d_attributes["scale_weights"] =
         rewriter.array_attr({rewriter.float_attr(1.0f)});
 
-    auto conv2d_filter_dtype = pir::GetDataTypeFromValue(conv2d_filter);
-    if (conv2d_filter_dtype.isa<pir::Float16Type>()) {
+    auto conv2d_filter_dtype = GetDataTypeFromValue(conv2d_filter);
+    if (conv2d_filter_dtype.isa<Float16Type>()) {
       return false;
     }
     auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
@@ -281,7 +275,7 @@ class Conv2dBiasBnOneDNNFusePattern
         conv2d_op.input(),
         mul_op.out(),
         add_op_2.out(),
-        pir::Value{},
+        Value{},
         conv2d_attributes);
 
     rewriter.ReplaceAllUsesWith(op.out(), new_conv2d_op.output());
@@ -293,13 +287,13 @@ class Conv2dBiasBnOneDNNFusePattern
   }
 };
 
-class Conv2dBnOneDNNFusePass : public pir::PatternRewritePass {
+class Conv2dBnOneDNNFusePass : public PatternRewritePass {
  public:
   Conv2dBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_bn_onednn_fuse_pass", 2) {}
+      : PatternRewritePass("conv2d_bn_onednn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     auto conv_bn_onednn_pattern = std::make_unique<Conv2dBnOneDNNFusePattern>(
         context,
         1,
@@ -322,13 +316,13 @@ class Conv2dBnOneDNNFusePass : public pir::PatternRewritePass {
   }
 };
 
-class Conv2dBiasBnOneDNNFusePass : public pir::PatternRewritePass {
+class Conv2dBiasBnOneDNNFusePass : public PatternRewritePass {
  public:
   Conv2dBiasBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_bias_bn_onednn_fuse_pass", 2) {}
+      : PatternRewritePass("conv2d_bias_bn_onednn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     auto conv_bias_bn_onednn_pattern =
         std::make_unique<Conv2dBiasBnOneDNNFusePattern>(
             context,
@@ -352,10 +346,6 @@ class Conv2dBiasBnOneDNNFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateConv2dBnOneDNNFusePass() {
   return std::make_unique<Conv2dBnOneDNNFusePass>();
 }
@@ -366,5 +356,6 @@ std::unique_ptr<Pass> CreateConv2dBiasBnOneDNNFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_bn_onednn_fuse_pass, Conv2dBnOneDNNFusePass);
-REGISTER_IR_PASS(conv2d_bias_bn_onednn_fuse_pass, Conv2dBiasBnOneDNNFusePass);
+REGISTER_IR_PASS(conv2d_bn_onednn_fuse_pass, pir::Conv2dBnOneDNNFusePass);
+REGISTER_IR_PASS(conv2d_bias_bn_onednn_fuse_pass,
+                 pir::Conv2dBiasBnOneDNNFusePass);

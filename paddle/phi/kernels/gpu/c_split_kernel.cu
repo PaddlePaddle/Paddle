@@ -101,8 +101,6 @@ void CSplitKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(c_split,
                    GPU,
                    ALL_LAYOUT,
@@ -113,14 +111,3 @@ PD_REGISTER_KERNEL(c_split,
                    int64_t,
                    phi::bfloat16,
                    phi::float16) {}
-#else
-PD_REGISTER_KERNEL(c_split,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CSplitKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::float16) {}
-#endif

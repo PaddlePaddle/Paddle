@@ -2035,7 +2035,7 @@ void FractionalMaxPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   mask->set_dims(make_ddim(output_shape));
-  mask->set_dtype(phi::CppTypeToDataType<int>::Type());
+  mask->set_dtype(phi::CppTypeToDataType<int64_t>::Type());
 }
 
 void FrameInferMeta(const MetaTensor& x,
@@ -6837,6 +6837,34 @@ void IntBincountInferMeta(const MetaTensor& x,
 
   out->set_dims(make_ddim({bin_count}));
   out->set_dtype(x.dtype());
+}
+
+void VarInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  bool keepdim,
+                  bool unbiased,
+                  double correction,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceInferMetaBase(x, axis, keepdim, reduce_all, out);
+}
+
+void StdInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  bool keepdim,
+                  bool unbiased,
+                  double correction,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  ReduceInferMetaBase(x, axis, keepdim, reduce_all, out);
 }
 
 }  // namespace phi

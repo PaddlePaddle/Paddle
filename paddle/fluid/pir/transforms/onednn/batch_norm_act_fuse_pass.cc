@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -100,13 +100,12 @@ class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class BatchNormActFusePass : public pir::PatternRewritePass {
+class BatchNormActFusePass : public PatternRewritePass {
  public:
-  BatchNormActFusePass()
-      : pir::PatternRewritePass("batch_norm_act_fuse_pass", 2) {}
+  BatchNormActFusePass() : PatternRewritePass("batch_norm_act_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<BatchNormActFusePattern>(
         context,
         paddle::dialect::BatchNormOp::name(),
@@ -119,10 +118,6 @@ class BatchNormActFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateBatchNormActFusePass() {
   // pd_op.batch_norm + pd_op.relu -> onednn_op.batch_norm
   return std::make_unique<BatchNormActFusePass>();
@@ -130,4 +125,4 @@ std::unique_ptr<Pass> CreateBatchNormActFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(batch_norm_act_fuse_pass, BatchNormActFusePass);
+REGISTER_IR_PASS(batch_norm_act_fuse_pass, pir::BatchNormActFusePass);

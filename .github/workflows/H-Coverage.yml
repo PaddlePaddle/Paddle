@@ -408,7 +408,9 @@ jobs:
           echo "uv build"
           git submodule update --init --recursive
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
-          uv build --wheel
+          export IS_NVIDIA=True
+          export PADDLEFLEET_VERSION=0.0.0
+          uv build --wheel -v
           '
 
       - name: upload whl to BOS
@@ -416,16 +418,15 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export AK=paddle
           export SK=paddle
-          cd /paddle/dist
+          cd /
           if [ ! -f "bos/BosClient.py" ]; then
             wget -q --no-proxy -O bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir bos
             tar xf bos_new.tar.gz -C bos
           fi
-          whl_file=$(ls paddlefleet*.whl)
-          mv ${whl_file} paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
           target_path="paddle-github-action/PR/paddlefleet/${{ env.PR_ID }}/${{ env.COMMIT_ID }}"
-          python bos/BosClient.py paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl ${target_path}
+          tar zcf paddldfleet.tar.gz paddle
+          python /bos/BosClient.py paddldfleet.tar.gz ${target_path}
           '
       - name: Terminate and delete the container
         if: ${{ always() }}
@@ -484,17 +485,18 @@ jobs:
             -e GITHUB_RUN_ID="${{ github.run_id }}" \
             -w /paddle --network host ${docker_image}
 
-      - name: Clone PaddleFleet
+      - name: Install PaddleFleet
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          git clone https://github.com/PaddlePaddle/PaddleFleet.git .
-          git config --global --add safe.directory /paddle
-          # git checkout ${BRANCH}
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
-          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
-          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
+          wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
+          tar -xf paddldfleet.tar.gz --strip-components=1
+          git config --global --add safe.directory /paddle
+          pip install dist/paddlefleet-0.0.0-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
+          echo "paddlefleet commit:"
+          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -520,7 +522,7 @@ jobs:
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           python -c "import paddle; print(paddle.version.commit)"
-          bash ci/single_card_test.sh
+          timeout 10m bash ci/single_card_test.sh
           single_card_exit_code=$?
           if [[ "$single_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mSingle card test failed.\033[0m"
@@ -579,17 +581,18 @@ jobs:
             -e GITHUB_RUN_ID="${{ github.run_id }}" \
             -w /paddle --network host ${docker_image}
 
-      - name: Clone PaddleFleet
+      - name: Install PaddleFleet
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          git clone https://github.com/PaddlePaddle/PaddleFleet.git .
-          git config --global --add safe.directory /paddle
-          # git checkout ${BRANCH}
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
-          wget https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl
-          pip install paddlefleet-0.0.1-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
+          wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
+          tar -xf paddldfleet.tar.gz --strip-components=1
+          git config --global --add safe.directory /paddle
+          pip install dist/paddlefleet-0.0.0-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
+          echo "paddlefleet commit:"
+          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -615,7 +618,7 @@ jobs:
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
-          bash ci/multi-card_test.sh
+          timeout 20m bash ci/multi-card_test.sh
           multi_card_exit_code=$?
           if [[ "$multi_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mMulti card test failed.\033[0m"

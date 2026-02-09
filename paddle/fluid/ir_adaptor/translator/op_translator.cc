@@ -2296,7 +2296,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
                                           op_desc.Type(),
                                           var_name.substr(0, 1)));
       std::vector<int64_t> shape = var_desc->GetShape();
-      DenseTensorTypeStorage::Dim dim = common::make_ddim(shape);
+      common::DDim dim = common::make_ddim(shape);
 
       pir::Value value_res = operation->result(idx_in_op);
       auto reshape_op = builder.Build<dialect::ReshapeOp>(value_res, shape);
@@ -3333,10 +3333,8 @@ struct RandIntOpTranscriber : public OpTranscriber {
         static_cast<paddle::framework::proto::VarType::Type>(dtype_attr_val);
 
     pir::Type dtype = type_translator[var_type](ctx, *var);
-    paddle::dialect::DenseTensorTypeStorage::Dim dim =
-        common::make_ddim(var->GetShape());
-    paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
-        paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
+    common::DDim dim = common::make_ddim(var->GetShape());
+    DataLayout layout = DataLayout::NCHW;
     paddle::dialect::DenseTensorTypeStorage::LegacyLoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(

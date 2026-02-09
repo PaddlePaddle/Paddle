@@ -288,6 +288,36 @@ inline bool isComplexType(ScalarType t) {
       t == ScalarType::ComplexDouble);
 }
 
+inline bool isSignedType(ScalarType t) {
+#define CASE_ISSIGNED(name)     \
+  case ScalarType::name:        \
+    return std::numeric_limits< \
+        ::c10::impl::ScalarTypeToCPPTypeT<ScalarType::name>>::is_signed;
+
+  // TODO(#146647): If we expect to have numeric_limits for everything,
+  // let's just have a big macro for the whole thing.
+  // If we're hardcoding it, let's just use the macro and a "true"/"false"
+  // below?
+  switch (t) {
+    CASE_ISSIGNED(BFloat16);
+    CASE_ISSIGNED(Float8_e5m2);
+    CASE_ISSIGNED(Float8_e4m3fn);
+    CASE_ISSIGNED(Byte);
+    CASE_ISSIGNED(Char);
+    CASE_ISSIGNED(Short);
+    CASE_ISSIGNED(Int);
+    CASE_ISSIGNED(Long);
+    CASE_ISSIGNED(Half);
+    CASE_ISSIGNED(Float);
+    CASE_ISSIGNED(Double);
+    CASE_ISSIGNED(Bool);
+    case ScalarType::ComplexFloat:
+    case ScalarType::ComplexDouble:
+      return true;
+  }
+#undef CASE_ISSIGNED
+}
+
 inline std::ostream& operator<<(std::ostream& stream, ScalarType scalar_type) {
   return stream << toString(scalar_type);
 }

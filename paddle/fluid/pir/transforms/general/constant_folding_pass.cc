@@ -52,12 +52,12 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-namespace {
+namespace pir {
 
-class ConstantFoldingPattern : public pir::RewritePattern {
+class ConstantFoldingPattern : public RewritePattern {
  public:
   ConstantFoldingPattern(
-      pir::IrContext* context,
+      IrContext* context,
       size_t* suffix,
       const phi::Place& place,
       paddle::framework::Scope* scope,
@@ -73,13 +73,12 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     exe_config_->create_local_scope = false;
   }
 
-  bool Match(pir::Operation* op) const override {
+  bool Match(Operation* op) const override {
     VLOG(4) << "constant_folding_pass applies match on [" << op->name()
             << "] op";
     // 1. Some ops do not need to be processed
-    if (op->HasTrait<pir::SideEffectTrait>() ||
-        op->isa<pir::ConstantTensorOp>() || op->isa<pir::ParameterOp>() ||
-        op->isa<paddle::dialect::FeedOp>() ||
+    if (op->HasTrait<SideEffectTrait>() || op->isa<ConstantTensorOp>() ||
+        op->isa<ParameterOp>() || op->isa<paddle::dialect::FeedOp>() ||
         op->isa<paddle::dialect::DataOp>() ||
         op->isa<paddle::dialect::AssignValueOp>()) {
       return false;
@@ -90,13 +89,13 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         continue;
       }
       // 2. inputs must come from ParameterOp/ConstantTensorOp/CombineOp
-      auto* prev_op = pir::GetDefiningOpForInput(op, i);
-      if (!prev_op || !(prev_op->isa<pir::ParameterOp>() ||
-                        prev_op->isa<pir::ConstantTensorOp>() ||
-                        prev_op->isa<pir::CombineOp>())) {
+      auto* prev_op = GetDefiningOpForInput(op, i);
+      if (!prev_op ||
+          !(prev_op->isa<ParameterOp>() || prev_op->isa<ConstantTensorOp>() ||
+            prev_op->isa<CombineOp>())) {
         return false;
       }
-      if (prev_op->isa<pir::CombineOp>()) {
+      if (prev_op->isa<CombineOp>()) {
         if (prev_op->result(0).use_count() > 1) {
           return false;
         }
@@ -107,9 +106,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           }
           // 3. for combine's prev op, inputs must come from
           // ParameterOp/ConstantTensorOp
-          auto* prev_prev_op = pir::GetDefiningOpForInput(prev_op, i);
-          if (!prev_prev_op || !(prev_prev_op->isa<pir::ParameterOp>() ||
-                                 prev_prev_op->isa<pir::ConstantTensorOp>())) {
+          auto* prev_prev_op = GetDefiningOpForInput(prev_op, i);
+          if (!prev_prev_op || !(prev_prev_op->isa<ParameterOp>() ||
+                                 prev_prev_op->isa<ConstantTensorOp>())) {
             return false;
           }
           if (!prev_op->operand_source(i)
@@ -147,7 +146,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     // 7. maybe affect performance
     if (op->isa<paddle::dialect::FullOp>()) {
-      auto next_ops = pir::GetUseOpsForOutput(op, 0);
+      auto next_ops = GetUseOpsForOutput(op, 0);
       for (auto [next_op, _] : next_ops) {
         if (next_op->isa<paddle::dialect::FullWithTensorOp>() ||
             next_op->isa<paddle::dialect::LinspaceOp>()) {
@@ -161,8 +160,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  void Rewrite(pir::Operation* op,
-               pir::PatternRewriter& rewriter) const override {  // NOLINT
+  void Rewrite(Operation* op,
+               PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass applies rewrite on [" << op->name()
             << "] op";
     auto output_var_names = RunOp(op, rewriter);
@@ -199,8 +198,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           }
         }
 
-        auto parameter_op = rewriter.Build<pir::ParameterOp>(
-            output_var_name, op->result(i).type());
+        auto parameter_op =
+            rewriter.Build<ParameterOp>(output_var_name, op->result(i).type());
         parameter_op->set_attribute(
             kAttrIsPersistable,
             rewriter.array_attr({rewriter.bool_attr(true)}));
@@ -221,7 +220,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           }
         }
 
-        auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
+        auto constant_op = rewriter.Build<ConstantTensorOp>(
             output_var_name, op->result(i).type());
         constant_op->set_attribute(
             kAttrIsPersistable,
@@ -244,10 +243,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
  private:
   bool CheckUseOps(
-      const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
+      const std::vector<std::pair<Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
-      if (use_op->isa<pir::CombineOp>() ||
-          use_op->isa<paddle::dialect::StackOp>()) {
+      if (use_op->isa<CombineOp>() || use_op->isa<paddle::dialect::StackOp>()) {
         if (!ReplaceResultByParameterOp(use_op)) {
           return false;
         }
@@ -268,22 +266,21 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  bool ReplaceResultByParameterOp(pir::Operation* op) const {
+  bool ReplaceResultByParameterOp(Operation* op) const {
     if (op->isa<paddle::dialect::MemcpyD2hOp>()) {
       return false;
     }
     for (uint32_t i = 0; i < op->num_results(); i++) {
-      auto use_ops = pir::GetUseOpsForOutput(op, i);
+      auto use_ops = GetUseOpsForOutput(op, i);
       if (!CheckUseOps(use_ops)) return false;
     }
     return true;
   }
 
  protected:
-  std::vector<std::string> RunOp(
-      pir::Operation* op,
-      pir::PatternRewriter& rewriter) const {  // NOLINT
-    pir::Program new_program(rewriter.ir_context());
+  std::vector<std::string> RunOp(Operation* op,
+                                 PatternRewriter& rewriter) const {  // NOLINT
+    Program new_program(rewriter.ir_context());
     auto output_var_names =
         BuildProgramFromOperation(op, &new_program, rewriter);
 
@@ -308,11 +305,10 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   template <typename Op>
   Op BuildParameterOrConstantTensorOP(
       uint32_t index,
-      pir::Operation* op,
-      pir::Builder& builder,                   // NOLINT
-      pir::PatternRewriter& rewriter) const {  // NOLINT
-    const auto& var_name =
-        pir::GetParameterNameFromValue(op->operand_source(index));
+      Operation* op,
+      Builder& builder,                   // NOLINT
+      PatternRewriter& rewriter) const {  // NOLINT
+    const auto& var_name = GetParameterNameFromValue(op->operand_source(index));
     auto* var = scope_->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
@@ -330,30 +326,28 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   std::vector<std::string> BuildProgramFromOperation(
-      pir::Operation* op,
-      pir::Program* new_program,
-      pir::PatternRewriter& rewriter) const {  // NOLINT
-    pir::Builder builder =
-        pir::Builder(rewriter.ir_context(), new_program->block());
+      Operation* op,
+      Program* new_program,
+      PatternRewriter& rewriter) const {  // NOLINT
+    Builder builder = Builder(rewriter.ir_context(), new_program->block());
 
     // prepare op inputs
-    std::vector<pir::Value> op_inputs;
+    std::vector<Value> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       if (op->operand_source(i)) {
-        auto* prev_op = pir::GetDefiningOpForInput(op, i);
-        if (prev_op->isa<pir::CombineOp>()) {
+        auto* prev_op = GetDefiningOpForInput(op, i);
+        if (prev_op->isa<CombineOp>()) {
           // prepare combine op inputs
-          std::vector<pir::Value> combine_op_inputs;
+          std::vector<Value> combine_op_inputs;
           for (uint32_t j = 0; j < prev_op->num_operands(); j++) {
-            auto* prev_prev_op = pir::GetDefiningOpForInput(prev_op, j);
-            if (prev_prev_op->isa<pir::ParameterOp>()) {
-              auto parameter_op =
-                  BuildParameterOrConstantTensorOP<pir::ParameterOp>(
-                      j, prev_op, builder, rewriter);
+            auto* prev_prev_op = GetDefiningOpForInput(prev_op, j);
+            if (prev_prev_op->isa<ParameterOp>()) {
+              auto parameter_op = BuildParameterOrConstantTensorOP<ParameterOp>(
+                  j, prev_op, builder, rewriter);
               combine_op_inputs.push_back(parameter_op->result(0));
-            } else if (prev_prev_op->isa<pir::ConstantTensorOp>()) {
+            } else if (prev_prev_op->isa<ConstantTensorOp>()) {
               auto constant_op =
-                  BuildParameterOrConstantTensorOP<pir::ConstantTensorOp>(
+                  BuildParameterOrConstantTensorOP<ConstantTensorOp>(
                       j, prev_op, builder, rewriter);
               combine_op_inputs.push_back(constant_op->result(0));
             } else {
@@ -362,17 +356,15 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                   prev_prev_op->name()));
             }
           }
-          auto combine_op = builder.Build<pir::CombineOp>(combine_op_inputs);
+          auto combine_op = builder.Build<CombineOp>(combine_op_inputs);
           op_inputs.push_back(combine_op->result(0));
-        } else if (prev_op->isa<pir::ParameterOp>()) {
-          auto parameter_op =
-              BuildParameterOrConstantTensorOP<pir::ParameterOp>(
-                  i, op, builder, rewriter);
+        } else if (prev_op->isa<ParameterOp>()) {
+          auto parameter_op = BuildParameterOrConstantTensorOP<ParameterOp>(
+              i, op, builder, rewriter);
           op_inputs.push_back(parameter_op->result(0));
-        } else if (prev_op->isa<pir::ConstantTensorOp>()) {
-          auto constant_op =
-              BuildParameterOrConstantTensorOP<pir::ConstantTensorOp>(
-                  i, op, builder, rewriter);
+        } else if (prev_op->isa<ConstantTensorOp>()) {
+          auto constant_op = BuildParameterOrConstantTensorOP<ConstantTensorOp>(
+              i, op, builder, rewriter);
           op_inputs.push_back(constant_op->result(0));
         } else {
           PADDLE_THROW(common::errors::Fatal(
@@ -384,7 +376,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     }
 
     // prepare op outputs
-    std::vector<pir::Type> op_output_types;
+    std::vector<Type> op_output_types;
     for (uint32_t i = 0; i < op->num_results(); i++) {
       op_output_types.push_back(op->result(i).type());
     }
@@ -409,7 +401,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       std::string output_var_name =
           "constant_folding@_" + ss.str() + std::to_string((*suffix_)++);
 
-      builder.Build<pir::ShadowOutputOp>(cast_op.result(0), output_var_name);
+      builder.Build<ShadowOutputOp>(cast_op.result(0), output_var_name);
       output_var_names.push_back(output_var_name);
     }
 
@@ -427,14 +419,14 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
  public:
   ConstantFoldingPatternForTrain(
-      pir::IrContext* context,
+      IrContext* context,
       size_t* suffix,
       const phi::Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config)
       : ConstantFoldingPattern(context, suffix, place, scope, exe_config) {}
 
-  bool Match(pir::Operation* op) const override {
+  bool Match(Operation* op) const override {
     VLOG(4) << "constant_folding_pass applies match on [" << op->name()
             << "] op";
     if (!ConstantFoldingPattern::Match(op)) {
@@ -442,16 +434,16 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
     }
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       // inputs must come from or constant op
-      auto* prev_op = pir::GetDefiningOpForInput(op, i);
-      if (!prev_op || !prev_op->isa<pir::ConstantTensorOp>()) {
+      auto* prev_op = GetDefiningOpForInput(op, i);
+      if (!prev_op || !prev_op->isa<ConstantTensorOp>()) {
         return false;
       }
     }
     return true;
   }
 
-  void Rewrite(pir::Operation* op,
-               pir::PatternRewriter& rewriter) const override {  // NOLINT
+  void Rewrite(Operation* op,
+               PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass for train applies rewrite on ["
             << op->name() << "] op";
 
@@ -471,8 +463,8 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
           common::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                           output_var_name));
 
-      auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
-          output_var_name, op->result(i).type());
+      auto constant_op = rewriter.Build<ConstantTensorOp>(output_var_name,
+                                                          op->result(i).type());
       constant_op->set_attribute(
           kAttrIsPersistable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
@@ -484,34 +476,34 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
   }
 };
 
-class ConstantFoldingPass : public pir::Pass {
+class ConstantFoldingPass : public Pass {
  public:
-  ConstantFoldingPass() : pir::Pass("constant_folding_pass", 1) {}
+  ConstantFoldingPass() : Pass("constant_folding_pass", 1) {}
 
  private:
-  bool Initialize(pir::IrContext* context) override {
+  bool Initialize(IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::Pass::kPlaceAttr),
+        Has(Pass::kPlaceAttr),
         true,
         common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
-        Has(pir::Pass::kParamScopeAttr),
+        Has(Pass::kParamScopeAttr),
         true,
         common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
-    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+    place_ = Get<phi::Place>(Pass::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(Pass::kParamScopeAttr);
 
     PADDLE_ENFORCE_NOT_NULL(
         scope_, common::errors::InvalidArgument("scope can not be nullptr"));
 
-    pir::RewritePatternSet ps(context);
+    RewritePatternSet ps(context);
 
     if (Has("train_mode") && Get<bool>("train_mode")) {
       ps.Add<ConstantFoldingPatternForTrain>(
@@ -520,11 +512,11 @@ class ConstantFoldingPass : public pir::Pass {
       ps.Add<ConstantFoldingPattern>(
           context, &suffix_, place_, scope_, &exe_config_);
     }
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
+    patterns_ = FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
-  void Run(pir::Operation* op) override {
+  void Run(Operation* op) override {
     int64_t num_ops{0};
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
@@ -532,10 +524,10 @@ class ConstantFoldingPass : public pir::Pass {
         num_ops += block.size();
       }
     }
-    pir::GreedyRewriteConfig cfg;
+    GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
+    auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
     AddStatistics(num_rewrites, num_ops);
   }
 
@@ -545,12 +537,8 @@ class ConstantFoldingPass : public pir::Pass {
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
 
-  pir::FrozenRewritePatternSet patterns_;
+  FrozenRewritePatternSet patterns_;
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateConstantFoldingPass() {
   return std::make_unique<ConstantFoldingPass>();
@@ -558,4 +546,4 @@ std::unique_ptr<Pass> CreateConstantFoldingPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(constant_folding_pass, ConstantFoldingPass);
+REGISTER_IR_PASS(constant_folding_pass, pir::ConstantFoldingPass);

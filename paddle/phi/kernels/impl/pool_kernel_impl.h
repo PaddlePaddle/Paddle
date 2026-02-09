@@ -427,7 +427,7 @@ void MaxPool3dWithIndexKernel(const Context& dev_ctx,
                                         mask);
 }
 
-template <typename Context, typename T1, typename T2 = int>
+template <typename Context, typename T1, typename T2 = int64_t>
 void FractionalMaxPoolRawKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const std::vector<int>& output_size,

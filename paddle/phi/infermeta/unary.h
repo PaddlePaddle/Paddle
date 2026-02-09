@@ -1116,4 +1116,20 @@ PADDLE_API void IntBincountInferMeta(const MetaTensor& x,
                                      int64_t dtype,
                                      MetaTensor* out);
 
+PADDLE_API void VarInferMeta(const MetaTensor& x,
+                             const std::vector<int64_t>& axis,
+                             bool keepdim,
+                             bool unbiased,
+                             double correction,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
+PADDLE_API void StdInferMeta(const MetaTensor& x,
+                             const std::vector<int64_t>& axis,
+                             bool keepdim,
+                             bool unbiased,
+                             double correction,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 }  // namespace phi

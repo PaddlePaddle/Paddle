@@ -35,7 +35,7 @@ jobs:
   check-bypass:
     name: Check bypass
     if: ${{ inputs.can-skip != 'true' }}
-    uses: ./.github/workflows/check-bypass-slice.yml
+    uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "deepmd"
     secrets:
@@ -46,7 +46,7 @@ jobs:
     needs: check-bypass
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: slice
+      group: BD_BJ-V100
     steps:
       - name: Check docker image and run container
         env:
@@ -188,16 +188,9 @@ jobs:
             source/tests/pd/model/test_unused_params.py 2>&1 | tee /paddle/pytest_output.log
           TEST_RESULT=${PIPESTATUS[0]}
 
+          echo "DeepMD-Kit Test Finished with status: $TEST_RESULT"
           exit $TEST_RESULT
           '
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deepmd-test-results-pr-${{ env.PR_ID }}
-          path: pytest_output.log
-          retention-days: 30
 
       - name: Terminate and delete the container
         if: always()

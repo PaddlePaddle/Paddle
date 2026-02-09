@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <regex>
 #include <string>
@@ -245,7 +247,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
 
   phi::KernelKey copy_key = kernel_key;
   if (copy_key.backend() == phi::Backend::GPUDNN) {
-    copy_key.set_backend(phi::Backend::GPU);
+    copy_key.set_backend(paddle::experimental::get_accelerat_backend());
     if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
       return false;
     }
@@ -258,16 +260,24 @@ static bool NeedFallBackCpu(const pir::Operation* op,
   return false;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
-  if (op->HasAttribute(kForceBackendAttr) &&
-      op->attributes()
-              .at(kForceBackendAttr)
-              .dyn_cast<pir::StrAttribute>()
-              .AsString() == "gpu") {
-    return true;
+  if (op->HasAttribute(kForceBackendAttr)) {
+    auto backend_str = op->attributes()
+                           .at(kForceBackendAttr)
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+    std::string upper_str = backend_str;
+    std::transform(
+        upper_str.begin(), upper_str.end(), upper_str.begin(), ::toupper);
+    auto forced_backend =
+        paddle::experimental::StringToBackend(upper_str.c_str());
+    if (forced_backend == paddle::experimental::get_accelerat_backend()) {
+      return true;
+    }
   }
 
   // NOTE(phlrain): keep the same kernel select strategy with
@@ -286,18 +296,18 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     if (FLAGS_use_accuracy_compatible_kernel) {
       return true;
     }
-    bool use_cudnn = true;
-    int version = -1;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    version = platform::DnnVersion();
-#endif
-    if (version >= 6000 && op->attributes()
-                                   .at("align_corners")
-                                   .dyn_cast<pir::BoolAttribute>()
-                                   .data() == true) {
+    bool use_cudnn = false;
+    if (op->attributes()
+            .at("align_corners")
+            .dyn_cast<pir::BoolAttribute>()
+            .data() == true) {
       use_cudnn = true;
-    } else {
-      use_cudnn = false;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      int version = platform::DnnVersion();
+      if (version < 6000) {
+        use_cudnn = false;
+      }
+#endif
     }
 
     auto shape = pir::GetShapeFromValue(op->operand_source(0));
@@ -310,7 +320,6 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     return !use_cudnn;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPUDNN) {
     auto iter = phi::KernelFactory::Instance().kernels().find(kernel_name);
     if (iter != phi::KernelFactory::Instance().kernels().end()) {
@@ -322,7 +331,6 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
       }
     }
   }
-#endif
 
   return false;
 }
@@ -1426,11 +1434,13 @@ phi::KernelKey GetKernelKey(
     VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (NeedFallBackFromGPUDNN2GPU(op, kernel_fn_str, res)) {
-    res.set_backend(phi::Backend::GPU);
+    res.set_backend(paddle::experimental::get_accelerat_backend());
     VLOG(8) << "kernel backend must be on GPU when need fallback from GPUDNN "
-               "to GPU";
+               "to "
+            << paddle::experimental::get_accelerat_backend();
   }
 #endif
 
@@ -2285,10 +2295,10 @@ void HandleForSpecialOp(
           auto out_place = phi::TransToPhiPlace(dst_backend);
           auto out_type =
               AllocatedDenseTensorType::get(ctx, out_place, value_type);
-          phi::KernelKey kernel_key(
-              paddle::experimental::get_accelerat_backend(),
-              phi::DataLayout::ANY,
-              TransToPhiDataType(value_type.dtype()));
+          phi::Backend backend = paddle::experimental::get_accelerat_backend();
+          phi::KernelKey kernel_key(backend,
+                                    phi::DataLayout::ANY,
+                                    TransToPhiDataType(value_type.dtype()));
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
@@ -3592,9 +3602,9 @@ void ProcessBlock(
         auto place_attr = arg.attribute<PlaceAttribute>("place");
         if (place_attr && place_attr.data() == place) continue;
         auto dtype = dense_tensor_type.dtype();
-        phi::KernelKey shadow_key{paddle::experimental::get_accelerat_backend(),
-                                  phi::DataLayout::ANY,
-                                  TransToPhiDataType(dtype)};
+        phi::Backend backend = paddle::experimental::get_accelerat_backend();
+        phi::KernelKey shadow_key{
+            backend, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
         std::unordered_map<std::string, pir::Attribute> attr_map{
             {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
             {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -3622,8 +3632,9 @@ void ProcessBlock(
                   "AddShadowFeedTensors only support DenseTensorType Now"));
         }
         // Add ShadowFeedTensors Op
+        phi::Backend backend = paddle::experimental::get_accelerat_backend();
         phi::KernelKey shadow_key{
-            paddle::experimental::get_accelerat_backend(),
+            backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
                 vec_type[0].dyn_cast<DenseTensorType>().dtype())};

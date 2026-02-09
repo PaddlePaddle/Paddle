@@ -27,37 +27,36 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
 
-namespace {
+namespace pir {
 
-class ParamsSyncAmongDevicesPass : public pir::Pass {
+class ParamsSyncAmongDevicesPass : public Pass {
  public:
-  ParamsSyncAmongDevicesPass()
-      : pir::Pass("params_sync_among_devices_pass", 0) {}
+  ParamsSyncAmongDevicesPass() : Pass("params_sync_among_devices_pass", 0) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  bool Initialize(IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::Pass::kPlaceAttr),
+        Has(Pass::kPlaceAttr),
         true,
         common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
-        Has(pir::Pass::kParamScopeAttr),
+        Has(Pass::kParamScopeAttr),
         true,
         common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
-    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+    place_ = Get<phi::Place>(Pass::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(Pass::kParamScopeAttr);
     return true;
   }
 
-  void Run(pir::Operation* op) override {
+  void Run(Operation* op) override {
     VLOG(6) << "apply params_sync_among_devices_pass";
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    auto module_op = op->dyn_cast<ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
         common::errors::PreconditionNotMet(
@@ -67,17 +66,16 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
     std::vector<phi::DenseTensor*> dense_tensors;
     for (auto& inner_op : block) {
-      if (inner_op.template isa<pir::ParameterOp>() &&
-          inner_op.num_results() > 0) {
+      if (inner_op.template isa<ParameterOp>() && inner_op.num_results() > 0) {
         auto var = inner_op.result(0);
         auto bool_attr =
-            var.template attribute<::pir::BoolAttribute>(kAttrIsPersistable);
+            var.template attribute<BoolAttribute>(kAttrIsPersistable);
         if (!bool_attr || !bool_attr.data()) {
           continue;
         }
         std::string param_name = inner_op.attributes()
                                      .at("parameter_name")
-                                     .template dyn_cast<pir::StrAttribute>()
+                                     .template dyn_cast<StrAttribute>()
                                      .AsString();
         auto* param_var = scope_->FindVar(param_name);
         PADDLE_ENFORCE_NOT_NULL(
@@ -132,7 +130,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     AddStatistics(num_rewrites_);
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
+  bool CanApplyOn(Operation* op) const override {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, common::errors::InvalidArgument("scope can not be nullptr"));
 #ifdef PADDLE_WITH_XPU
@@ -150,7 +148,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
     if (phi::is_cpu_place(place_)) {
       return false;
     }
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
+    return op->isa<ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
@@ -158,11 +156,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
   paddle::framework::Scope* scope_{nullptr};
 };
 
-}  // namespace
-
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateParamsSyncAmongDevicesPass() {
+std::unique_ptr<Pass> CreateParamsSyncAmongDevicesPass() {
   return std::make_unique<ParamsSyncAmongDevicesPass>();
 }
 

@@ -79,13 +79,17 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
   Reducer reducer(params, bidm, bidn, warp_m, warp_n, lane, smem_dgrad);
 
   Sum<reduce_t> sum;
-  bool is_rmsnorm = params.mean == nullptr;
+  bool is_rmsnorm = (params.mean == nullptr);
   constexpr float rn = 1.f / static_cast<float>(COLS);
   Wvec gamma[LDGS];
   index_t idx = c;
 #pragma unroll
   for (int it = 0; it < LDGS; it++) {
-    gamma[it].load_from(params.scale, idx);
+    if (params.scale != nullptr) {
+      gamma[it].load_from(params.scale, idx);
+    } else {
+      gamma[it].init(1.0f);
+    }
     idx += Ktraits::VEC_COLS_PER_LDG;
   }
 #pragma unroll 1
@@ -149,7 +153,9 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
         compute_t dx_tmp = rs_r * (dy_tmp - (mdyy_local * y_tmp + mdy_local));
         dx[it].data.elt[jt] = dx_tmp;
       }
-      dx[it].store_to(params.dx, idx);
+      if (params.dx != nullptr) {
+        dx[it].store_to(params.dx, idx);
+      }
       idx += Ktraits::VEC_COLS_PER_LDG;
     }
   }  // end: grid stride loop
@@ -158,7 +164,7 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
     idx = r * Ktraits::VEC_COLS + c;
 #pragma unroll
     for (int it = 0; it < LDGS; it++) {
-      if (params.dbias) {
+      if (params.dbias != nullptr) {
         dz_sum[it].store_to(params.dbias_part, idx);
       }
       dzy_sum[it].store_to(params.dscale_part, idx);
@@ -208,13 +214,17 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
     }
 
     compute_t *dgamma_part =
-        static_cast<compute_t *>(params.dscale_part) + bidm * COLS + tidx;
+        (params.dscale_part != nullptr)
+            ? static_cast<compute_t *>(params.dscale_part) + bidm * COLS + tidx
+            : nullptr;
     for (int jt = 0; jt < NUM_RES; jt++) {
-      *dgamma_part = cta_dzy_sum[jt];
-      dgamma_part += Ktraits::THREADS_PER_CTA;
+      if (dgamma_part != nullptr) {
+        *dgamma_part = cta_dzy_sum[jt];
+        dgamma_part += Ktraits::THREADS_PER_CTA;
+      }
     }
 
-    if (params.dbias) {
+    if (params.dbias != nullptr) {
       compute_t *dbeta_part =
           static_cast<compute_t *>(params.dbias_part) + bidm * COLS + tidx;
       for (int jt = 0; jt < NUM_RES; jt++) {
@@ -275,16 +285,22 @@ __launch_bounds__(Kernel_traits::THREADS_PER_CTA) void ln_bwd_finalize_kernel(
       index_t idx = row * Kernel_traits::COLS + col;
 
       Vec<compute_t, NUM_ELT> dbeta_part, dgamma_part;
-      if (params.dbias) {
+      if (params.dbias != nullptr) {
         dbeta_part.load_from(params.dbias_part, idx);
       } else {
         dbeta_part.init(0.);
       }
-      dgamma_part.load_from(params.dscale_part, idx);
+      if (params.dscale_part != nullptr) {
+        dgamma_part.load_from(params.dscale_part, idx);
+      } else {
+        dgamma_part.init(0.);
+      }
 #pragma unroll
       for (int it = 0; it < NUM_ELT; it++) {
-        dgamma_local.data.elt[it] += dgamma_part.data.elt[it];
-        dbeta_local.data.elt[it] += dbeta_part.data.elt[it];
+        dgamma_local.data.elt[it] += (dgamma_part.data.elt[it]);
+        if (params.dbias != nullptr) {
+          dbeta_local.data.elt[it] += (dbeta_part.data.elt[it]);
+        }
       }
     }
 
@@ -360,8 +376,10 @@ __launch_bounds__(Kernel_traits::THREADS_PER_CTA) void ln_bwd_finalize_kernel(
         dbeta_out2.data.elt[it] =
             Converter<src_t, dst_t>::convert(dbeta_vec2.data.elt[it]);
       }
-      dgamma_out2.store_to(params.dscale, col_out);
-      if (params.dbias) {
+      if (params.dscale != nullptr) {
+        dgamma_out2.store_to(params.dscale, col_out);
+      }
+      if (params.dbias != nullptr) {
         dbeta_out2.store_to(params.dbias, col_out);
       }
     }

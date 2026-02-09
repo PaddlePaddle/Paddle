@@ -37,6 +37,7 @@
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
+#include "paddle/phi/kernels/funcs/function_traits.h"
 #include "paddle/phi/kernels/primitive/reduce_primitives.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -609,7 +610,9 @@ template <typename ScalarT,
           int kVecSize = 4,
           int kInputVecSize = kVecSize>
 struct ReduceExecutor {
-  using MPType = typename phi::dtype::MPTypeTrait<OutScalarT>::Type;
+  using traits = phi::funcs::FunctionTraits<decltype(&ReduceOp::reduce)>;
+  using MPType =
+      typename std::decay<typename traits::template arg<0>::type>::type;
 
   using InputCalculator = funcs::OffsetCalculator<1, IndexType>;
   using OutputCalculator = funcs::OffsetCalculator<2, IndexType>;
@@ -1234,7 +1237,8 @@ inline void GPUReduceScheduler(const KPDevice& dev_ctx,
                                int64_t base_idx = 0) {
   auto stream = dev_ctx.stream();
 
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  using traits = phi::funcs::FunctionTraits<decltype(&ReduceOp::reduce)>;
+  using MPType = typename traits::template arg<0>::type;
 
   static constexpr bool is_inp_out_type_half_or_chalf =
       (std::is_same_v<phi::float16, Tx> && std::is_same_v<phi::float16, Ty>) ||

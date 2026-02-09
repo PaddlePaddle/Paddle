@@ -48,7 +48,7 @@ PD_REGISTER_KERNEL(fractional_max_pool2d,
                    float,
                    double,
                    phi::float16) {
-  kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
+  kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int64_t>::Type());
 }
 
 PD_REGISTER_KERNEL(fractional_max_pool3d,
@@ -58,5 +58,5 @@ PD_REGISTER_KERNEL(fractional_max_pool3d,
                    float,
                    double,
                    phi::float16) {
-  kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
+  kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int64_t>::Type());
 }

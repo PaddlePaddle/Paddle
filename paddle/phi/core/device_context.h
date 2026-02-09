@@ -28,6 +28,14 @@ limitations under the License. */
 namespace phi {
 class TensorBase;
 
+#if defined(PADDLE_WITH_HIP)
+using dnnHandle_t = struct miopenHandle*;
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+using dnnHandle_t = struct cudnnContext*;
+#else
+using dnnHandle_t = void*;
+#endif
+
 /**
  * DeviceContext provides device-related interfaces.
  *
@@ -174,6 +182,8 @@ class PADDLE_API DeviceContext {
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}
+
+  virtual dnnHandle_t cudnn_handle() const { return nullptr; }
 
   /**
    * @brief Set the generator for special op.

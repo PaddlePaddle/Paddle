@@ -145,9 +145,11 @@ jobs:
 
               NEW_BODY="$PR_BODY
 
-          Cherry-pick of #$PR_NUMBER to \`$TARGET_BRANCH\`.
+          ---
 
-          <!-- devPR:https://github.com/PaddlePaddle/Paddle/pull/$PR_NUMBER -->"
+          Cherry-pick of #$PR_NUMBER (authored by @${PR_AUTHOR}) to \`$TARGET_BRANCH\`.
+
+          devPR:https://github.com/PaddlePaddle/Paddle/pull/$PR_NUMBER <!-- For pass CI -->"
 
               # Prepare head ref for PR creation (owner:branch)
               HEAD_REF="${BOT_USERNAME}:${NEW_BRANCH}"

@@ -38,7 +38,9 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   }
   out->Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   dev_ctx.template Alloc<T>(out);
-
+  if (out->numel() == 0 || x.numel() == 0 || weight.numel() == 0) {
+    return;
+  }
   DenseTensor bias_fp32;
   if (bias.is_initialized() && bias.get().dtype() == phi::DataType::FLOAT16) {
     bias_fp32.Resize(bias.get().dims());

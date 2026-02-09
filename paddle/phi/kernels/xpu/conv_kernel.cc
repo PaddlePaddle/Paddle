@@ -183,6 +183,10 @@ void Conv3DKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations_t,
                   const std::string& data_format,
                   DenseTensor* out) {
+  if (input.numel() == 0 || out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int64_t> dilations(dilations_t.begin(), dilations_t.end());

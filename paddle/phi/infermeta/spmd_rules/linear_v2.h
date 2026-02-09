@@ -22,9 +22,11 @@ namespace phi {
 namespace distributed {
 SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
                                const DistMetaTensor& weight,
-                               const DistMetaTensor& bias);
+                               const DistMetaTensor& bias,
+                               bool transpose_weight);
 SpmdInfo LinearV2InferSpmd(const DistMetaTensor& input,
                            const DistMetaTensor& weigh,
-                           const DistMetaTensor& bias);
+                           const DistMetaTensor& bias,
+                           bool transpose_weight);
 }  // namespace distributed
 }  // namespace phi

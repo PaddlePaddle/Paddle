@@ -187,6 +187,7 @@ PADDLE_API void LinearV2GradInferMeta(const MetaTensor& input,
                                       const MetaTensor& weight,
                                       const MetaTensor& bias,
                                       const MetaTensor& out_grad,
+                                      const bool transpose_weight,
                                       MetaTensor* input_grad,
                                       MetaTensor* weight_grad,
                                       MetaTensor* bias_grad);
@@ -400,7 +401,6 @@ PADDLE_API void KernelWithXShapeInferMeta(const MetaTensor& x,
 PADDLE_API void GradSameWithXInferMeta(const MetaTensor& xshape,
                                        const MetaTensor& out,
                                        MetaTensor* dx);
-
 PADDLE_API void LodResetGradInferMeta(const MetaTensor& x,
                                       const MetaTensor& out_grad,
                                       const std::vector<int>& target_lod,

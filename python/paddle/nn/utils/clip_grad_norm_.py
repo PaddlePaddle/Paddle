@@ -54,7 +54,7 @@ def clip_grad_norm_(
         Total norm of the parameter gradients (treated as a single vector).
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -63,6 +63,19 @@ void GridSamplePreProcess(Value* x,
                           std::string* mode,
                           std::string* padding_mode,
                           bool* align_corners);
+
+// Addmm broadcast validation for dygraph
+void AddmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
+
+// Addmm broadcast validation for static graph
+void AddmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
+
+// Baddbmm broadcast validation for dygraph
+void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
+
+// Baddbmm broadcast validation for static graph
+void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
+
 }  // namespace pybind
 
 }  // namespace paddle

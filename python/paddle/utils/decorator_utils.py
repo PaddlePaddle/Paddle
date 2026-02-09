@@ -761,24 +761,6 @@ def sum_decorator() -> Callable[
     return decorator
 
 
-def floor_divide_decorator():
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if not kwargs:
-                return func(*args, **kwargs)
-            if "input" in kwargs and "x" not in kwargs:
-                kwargs["x"] = kwargs.pop("input")
-            if "other" in kwargs and "y" not in kwargs:
-                kwargs["y"] = kwargs.pop("other")
-            return func(*args, **kwargs)
-
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
-
-    return decorator
-
-
 _SA0_RD1 = {'size_average': 0, 'reduce': 1}
 _SA1_RD2 = {'size_average': 1, 'reduce': 2}
 _SA1_RD3 = {'size_average': 1, 'reduce': 3}

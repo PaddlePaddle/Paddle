@@ -98,6 +98,8 @@ typedef struct C_BLASHandle_st* C_BLASHandle;
 
 typedef struct C_BLASLtHandle_st* C_BLASLtHandle;
 
+typedef struct C_DNNHandle_st* C_DNNHandle;
+
 typedef struct C_GraphExec_st* C_GraphExec;
 
 typedef struct C_CudaGraph_t_st* C_CudaGraph;
@@ -820,6 +822,12 @@ struct C_DeviceInterface {
 
   C_Status (*destroy_blaslt_handle)(const C_Device device,
                                     C_BLASLtHandle blaslt_handle);
+
+  C_Status (*init_dnn_handle)(const C_Device device,
+                              C_DNNHandle* dnn_handle,
+                              C_Stream stream);
+
+  C_Status (*destroy_dnn_handle)(const C_Device device, C_DNNHandle dnn_handle);
 
   C_Status (*cuda_stream_begin_capture)(const C_Device device,
                                         C_Stream stream,

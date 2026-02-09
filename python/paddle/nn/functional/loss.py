@@ -21,7 +21,7 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -2722,7 +2722,7 @@ def softmax_with_cross_entropy(
     )
 
 
-@ParamAliasDecorator({"label": ["target"]})
+@param_one_alias(["label", "target"])
 def cross_entropy(
     input: Tensor,
     label: Tensor,

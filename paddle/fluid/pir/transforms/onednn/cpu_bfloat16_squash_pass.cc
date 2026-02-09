@@ -24,12 +24,10 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 template <class IrType1, class IrType2>
-static pir::Type create_type(pir::Type type,
-                             pir::Type out_dtype,
-                             pir::IrContext *ctx) {
+static Type create_type(Type type, Type out_dtype, IrContext *ctx) {
   auto input_type = type.dyn_cast<IrType1>();
   return IrType2::get(ctx,
                       out_dtype,
@@ -43,31 +41,30 @@ static pir::Type create_type(pir::Type type,
 // add quantize/dequantize with scale=1.0f & shift=0.0f, hence only deal with
 // such situation for simplicity
 class DequantQuantBf16SquashPattern
-    : public pir::OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
+    : public OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
  public:
-  using pir::OpRewritePattern<
+  using OpRewritePattern<
       paddle::onednn::dialect::DequantizeOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::onednn::dialect::DequantizeOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  bool MatchAndRewrite(paddle::onednn::dialect::DequantizeOp op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     // The next op should be quant op.
     if (!op.output().HasOneUse()) return false;
     paddle::onednn::dialect::QuantizeOp quant_op =
-        pir::GetUseOpsForOutput(op, 0)[0]
+        GetUseOpsForOutput(op, 0)[0]
             .first->dyn_cast<paddle::onednn::dialect::QuantizeOp>();
     if (!quant_op) return false;
-    auto *pre_op = pir::GetDefiningOpForInput(op, 0);
+    auto *pre_op = GetDefiningOpForInput(op, 0);
     if (!pre_op) return false;
     auto quant_attributes = quant_op->attributes();
     auto dequant_attributes = op->attributes();
     auto q_scale =
-        quant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+        quant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
     auto dq_scale =
-        dequant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+        dequant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
     auto q_shift =
-        quant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+        quant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
     auto dq_shift =
-        dequant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+        dequant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
 
     uint32_t idx = pre_op->num_results();
     for (uint32_t i = 0; i < pre_op->num_results(); i++) {
@@ -92,18 +89,17 @@ class DequantQuantBf16SquashPattern
 };
 
 class DequantQuantBf16MultiUserPattern
-    : public pir::OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
+    : public OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
  public:
-  using pir::OpRewritePattern<
+  using OpRewritePattern<
       paddle::onednn::dialect::DequantizeOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::onednn::dialect::DequantizeOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  bool MatchAndRewrite(paddle::onednn::dialect::DequantizeOp op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     // The user_ops should include quant op.
-    auto user_ops = pir::GetUseOpsForOutput(op, 0);
+    auto user_ops = GetUseOpsForOutput(op, 0);
     if (user_ops.size() <= 1) return false;
     // indicate pre_op for future process
-    auto *pre_op = pir::GetDefiningOpForInput(op, 0);
+    auto *pre_op = GetDefiningOpForInput(op, 0);
     if (!pre_op) return false;
     // check if all user_ops are quantize
     std::vector<bool> all_q(user_ops.size(), true);
@@ -128,9 +124,9 @@ class DequantQuantBf16MultiUserPattern
 
     auto dequant_attributes = op->attributes();
     auto dq_scale =
-        dequant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+        dequant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
     auto dq_shift =
-        dequant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+        dequant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
 
     if (dq_scale != 1.0f || dq_shift != 0.0f) return false;
 
@@ -146,9 +142,9 @@ class DequantQuantBf16MultiUserPattern
             user_ops[i].first->dyn_cast<paddle::onednn::dialect::QuantizeOp>();
         auto quant_attributes = new_op->attributes();
         auto q_scale =
-            quant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+            quant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
         auto q_shift =
-            quant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+            quant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
 
         if (q_scale == dq_scale && q_shift == dq_shift) {
           rewriter.ReplaceAllUsesWith(new_op.output(), pre_op->result(idx));
@@ -166,19 +162,17 @@ class DequantQuantBf16MultiUserPattern
 };
 
 class QuantConvBf16SquashPattern
-    : public pir::OpRewritePattern<paddle::onednn::dialect::QuantizeOp> {
+    : public OpRewritePattern<paddle::onednn::dialect::QuantizeOp> {
  public:
-  using pir::OpRewritePattern<
-      paddle::onednn::dialect::QuantizeOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::onednn::dialect::QuantizeOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  using OpRewritePattern<paddle::onednn::dialect::QuantizeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::onednn::dialect::QuantizeOp op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     // In case the pre op is dq, which will make it unable to merge
-    auto *pre_op = pir::GetDefiningOpForInput(op, 0);
+    auto *pre_op = GetDefiningOpForInput(op, 0);
     if (pre_op && pre_op->name() == "onednn_op.dequantize") return false;
     if (!op.output().HasOneUse()) return false;
     paddle::onednn::dialect::Conv2dOp next_op =
-        pir::GetUseOpsForOutput(op, 0)[0]
+        GetUseOpsForOutput(op, 0)[0]
             .first->dyn_cast<paddle::onednn::dialect::Conv2dOp>();
 
     if (!next_op) return false;
@@ -186,9 +180,9 @@ class QuantConvBf16SquashPattern
     auto quant_attributes = op->attributes();
     auto op_attributes = next_op->attributes();
     auto q_scale =
-        quant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+        quant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
     auto q_shift =
-        quant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+        quant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
 
     if (q_scale != 1.0f || q_shift != 0.0f) return false;
     if (next_op.input() != op.output()) return false;
@@ -203,18 +197,18 @@ class QuantConvBf16SquashPattern
     op_attributes["scale_weights"] =
         rewriter.array_attr({rewriter.float_attr(1.0f)});
 
-    pir::IrContext *ctx = rewriter.ir_context();
+    IrContext *ctx = rewriter.ir_context();
     auto op_info = ctx->GetRegisteredOpInfo(
         paddle::onednn::dialect::FusedConv2dOp::name());
     if (!op_info) return false;
 
-    std::vector<pir::Type> op_item_inner_output_types;
+    std::vector<Type> op_item_inner_output_types;
     for (size_t i = 0; i < next_op->num_results(); ++i) {
-      pir::Type type = next_op->result_type(i);
-      if (!type.isa<pir::DenseTensorType>()) return false;
-      pir::Type new_type =
-          create_type<pir::DenseTensorType, paddle::dialect::DenseTensorType>(
-              type, pir::BFloat16Type::get(ctx), ctx);
+      Type type = next_op->result_type(i);
+      if (!type.isa<DenseTensorType>()) return false;
+      Type new_type =
+          create_type<DenseTensorType, paddle::dialect::DenseTensorType>(
+              type, BFloat16Type::get(ctx), ctx);
       // set bf16 op tensor output type to bf16.
       op_item_inner_output_types.push_back(new_type);
     }
@@ -222,8 +216,8 @@ class QuantConvBf16SquashPattern
     paddle::onednn::dialect::FusedConv2dOp new_conv2d_op =
         rewriter
             .Build(
-                std::vector<pir::Value>{
-                    op.input(), next_op.filter(), pir::Value{}, pir::Value{}},
+                std::vector<Value>{
+                    op.input(), next_op.filter(), Value{}, Value{}},
                 op_attributes,
                 op_item_inner_output_types,
                 op_info)
@@ -239,16 +233,14 @@ class QuantConvBf16SquashPattern
 };
 
 class QuantFusedConvBf16SquashPattern
-    : public pir::OpRewritePattern<paddle::onednn::dialect::QuantizeOp> {
+    : public OpRewritePattern<paddle::onednn::dialect::QuantizeOp> {
  public:
-  using pir::OpRewritePattern<
-      paddle::onednn::dialect::QuantizeOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::onednn::dialect::QuantizeOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  using OpRewritePattern<paddle::onednn::dialect::QuantizeOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::onednn::dialect::QuantizeOp op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     if (!op.output().HasOneUse()) return false;
     paddle::onednn::dialect::FusedConv2dOp next_op =
-        pir::GetUseOpsForOutput(op, 0)[0]
+        GetUseOpsForOutput(op, 0)[0]
             .first->dyn_cast<paddle::onednn::dialect::FusedConv2dOp>();
 
     if (!next_op) return false;
@@ -256,35 +248,35 @@ class QuantFusedConvBf16SquashPattern
     auto quant_attributes = op->attributes();
     auto op_attributes = next_op->attributes();
     auto q_scale =
-        quant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+        quant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
     auto q_shift =
-        quant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+        quant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
 
     if (q_scale != 1.0f || q_shift != 0.0f) return false;
     if (next_op.input() != op.output()) return false;
 
-    pir::IrContext *ctx = rewriter.ir_context();
+    IrContext *ctx = rewriter.ir_context();
     auto op_info = ctx->GetRegisteredOpInfo(
         paddle::onednn::dialect::FusedConv2dOp::name());
     if (!op_info) return false;
 
-    std::vector<pir::Type> op_item_inner_output_types;
+    std::vector<Type> op_item_inner_output_types;
     for (size_t i = 0; i < next_op->num_results(); ++i) {
-      pir::Type type = next_op->result_type(i);
-      if (!type.isa<pir::DenseTensorType>()) return false;
-      pir::Type new_type =
-          create_type<pir::DenseTensorType, paddle::dialect::DenseTensorType>(
-              type, pir::BFloat16Type::get(ctx), ctx);
+      Type type = next_op->result_type(i);
+      if (!type.isa<DenseTensorType>()) return false;
+      Type new_type =
+          create_type<DenseTensorType, paddle::dialect::DenseTensorType>(
+              type, BFloat16Type::get(ctx), ctx);
       // set bf16 op tensor output type to bf16.
       op_item_inner_output_types.push_back(new_type);
     }
 
     paddle::onednn::dialect::FusedConv2dOp new_conv2d_op =
         rewriter
-            .Build(std::vector<pir::Value>{op.input(),
-                                           next_op.filter(),
-                                           next_op.bias(),
-                                           next_op.residual_param()},
+            .Build(std::vector<Value>{op.input(),
+                                      next_op.filter(),
+                                      next_op.bias(),
+                                      next_op.residual_param()},
                    op_attributes,
                    op_item_inner_output_types,
                    op_info)
@@ -301,42 +293,41 @@ class QuantFusedConvBf16SquashPattern
 };
 
 class OpDequantBf16SquashPattern
-    : public pir::OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
+    : public OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
  public:
-  using pir::OpRewritePattern<
+  using OpRewritePattern<
       paddle::onednn::dialect::DequantizeOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::onednn::dialect::DequantizeOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
-    auto *pre_op = pir::GetDefiningOpForInput(op, 0);
+  bool MatchAndRewrite(paddle::onednn::dialect::DequantizeOp op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
+    auto *pre_op = GetDefiningOpForInput(op, 0);
     if (!pre_op) return false;
     auto pre_op_name = pre_op->name();
     if (pre_op_name.find("onednn") == std::string::npos) return false;
-    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(pre_op_name);
+    auto op_info = IrContext::Instance()->GetRegisteredOpInfo(pre_op_name);
     if (!op_info) return false;
 
     auto op_attributes = pre_op->attributes();
     auto dequant_attributes = op->attributes();
     auto dq_scale =
-        dequant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+        dequant_attributes.at("scale").dyn_cast<FloatAttribute>().data();
     auto dq_shift =
-        dequant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+        dequant_attributes.at("shift").dyn_cast<FloatAttribute>().data();
 
     if (op_attributes.find("mkldnn_data_type") == op_attributes.end()) {
       return false;
     }
     auto mkldnn_dtype = op_attributes.at("mkldnn_data_type")
-                            .dyn_cast<pir::StrAttribute>()
+                            .dyn_cast<StrAttribute>()
                             .AsString();
     auto onednn_dtype = op_attributes.at("onednn_data_type")
-                            .dyn_cast<pir::StrAttribute>()
+                            .dyn_cast<StrAttribute>()
                             .AsString();
 
     if (!op.input().HasOneUse()) return false;
     if ((op_attributes.find("fuse_residual_connection") !=
          op_attributes.end()) &&
         (op_attributes.at("fuse_residual_connection")
-             .dyn_cast<pir::BoolAttribute>()
+             .dyn_cast<BoolAttribute>()
              .data() == true)) {
       return false;
     }
@@ -345,7 +336,7 @@ class OpDequantBf16SquashPattern
       return false;
     }
     if (op_attributes.at("force_fp32_output")
-            .dyn_cast<pir::BoolAttribute>()
+            .dyn_cast<BoolAttribute>()
             .data() == true)
       return false;
     if (dq_scale != 1.0f || dq_shift != 0.0f) return false;
@@ -364,7 +355,7 @@ class OpDequantBf16SquashPattern
 
     op_attributes["force_fp32_output"] = rewriter.bool_attr(true);
 
-    std::vector<pir::Type> op_item_inner_output_types;
+    std::vector<Type> op_item_inner_output_types;
     for (size_t i = 0; i < pre_op->num_results(); ++i) {
       if (i == idx) {
         op_item_inner_output_types.push_back(op->result_type(0));
@@ -373,10 +364,10 @@ class OpDequantBf16SquashPattern
       }
     }
 
-    pir::Operation *new_op = rewriter.Build(pre_op->operands_source(),
-                                            op_attributes,
-                                            op_item_inner_output_types,
-                                            op_info);
+    Operation *new_op = rewriter.Build(pre_op->operands_source(),
+                                       op_attributes,
+                                       op_item_inner_output_types,
+                                       op_info);
 
     rewriter.ReplaceOp(pre_op, new_op->results());
     rewriter.ReplaceAllUsesWith(op.output(), new_op->result(idx));
@@ -387,22 +378,21 @@ class OpDequantBf16SquashPattern
 };
 
 template <typename OpType>
-class CastBf16SquashPattern : public pir::OpRewritePattern<OpType> {
+class CastBf16SquashPattern : public OpRewritePattern<OpType> {
  public:
-  using pir::OpRewritePattern<OpType>::OpRewritePattern;
-  bool MatchAndRewrite(
-      OpType op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  using OpRewritePattern<OpType>::OpRewritePattern;
+  bool MatchAndRewrite(OpType op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     bool with_q = false;
     bool with_dq = false;
 
-    auto *pre_op = pir::GetDefiningOpForInput(op, 0);
+    auto *pre_op = GetDefiningOpForInput(op, 0);
     if (pre_op && pre_op->name() == "onednn_op.quantize") {
       if (pre_op->result(0).HasOneUse()) {
         with_q = true;
       }
     }
-    auto next_ops = pir::GetUseOpsForOutput(op, 0);
+    auto next_ops = GetUseOpsForOutput(op, 0);
     paddle::onednn::dialect::DequantizeOp next_op;
     if (next_ops.size() == 1 &&
         next_ops[0].first->name() == "onednn_op.dequantize") {
@@ -413,22 +403,20 @@ class CastBf16SquashPattern : public pir::OpRewritePattern<OpType> {
       with_dq = true;
     }
 
-    std::unordered_map<std::string, pir::Attribute> q_attributes;
-    std::unordered_map<std::string, pir::Attribute> dq_attributes;
+    std::unordered_map<std::string, Attribute> q_attributes;
+    std::unordered_map<std::string, Attribute> dq_attributes;
     if (with_q) {
       q_attributes = pre_op->attributes();
-      auto q_scale =
-          q_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
-      auto q_shift =
-          q_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+      auto q_scale = q_attributes.at("scale").dyn_cast<FloatAttribute>().data();
+      auto q_shift = q_attributes.at("shift").dyn_cast<FloatAttribute>().data();
       if (q_scale != 1.0f || q_shift != 0.0f) with_q = false;
     }
     if (with_dq) {
       dq_attributes = next_op->attributes();
       auto dq_scale =
-          dq_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
+          dq_attributes.at("scale").dyn_cast<FloatAttribute>().data();
       auto dq_shift =
-          dq_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
+          dq_attributes.at("shift").dyn_cast<FloatAttribute>().data();
       if (dq_scale != 1.0f || dq_shift != 0.0f) with_dq = false;
     }
     if (!(with_q || with_dq)) return false;
@@ -437,14 +425,14 @@ class CastBf16SquashPattern : public pir::OpRewritePattern<OpType> {
     auto mkldnn_data_type = cast_attributes["mkldnn_data_type"];
     auto onednn_data_type = cast_attributes["onednn_data_type"];
     std::string mkldnn_dtype =
-        mkldnn_data_type.template dyn_cast<pir::StrAttribute>().AsString();
+        mkldnn_data_type.template dyn_cast<StrAttribute>().AsString();
     std::string onednn_dtype =
-        onednn_data_type.template dyn_cast<pir::StrAttribute>().AsString();
+        onednn_data_type.template dyn_cast<StrAttribute>().AsString();
     if (mkldnn_dtype != "bfloat16" && onednn_dtype != "bfloat16") return false;
 
     OpType new_cast;
     if (with_dq) {
-      pir::Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
+      Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
           rewriter.ir_context(), phi::DataType::FLOAT32);
       cast_attributes["dtype"] = new_dtype;
     }
@@ -476,13 +464,13 @@ class CastBf16SquashPattern : public pir::OpRewritePattern<OpType> {
     return true;
   }
 };
-class CPUBf16QuantizeSquashPass : public pir::PatternRewritePass {
+class CPUBf16QuantizeSquashPass : public PatternRewritePass {
  public:
   CPUBf16QuantizeSquashPass()
-      : pir::PatternRewritePass("cpu_bf16_quantize_squash_pass", 2) {}
+      : PatternRewritePass("cpu_bf16_quantize_squash_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     uint32_t benefit = 100;
 
     auto q_dq_onednn_pattern = std::make_unique<DequantQuantBf16SquashPattern>(
@@ -529,14 +517,10 @@ class CPUBf16QuantizeSquashPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateCPUBf16QuantizeSquashPass() {
   return std::make_unique<CPUBf16QuantizeSquashPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(cpu_bf16_quantize_squash_pass, CPUBf16QuantizeSquashPass);
+REGISTER_IR_PASS(cpu_bf16_quantize_squash_pass, pir::CPUBf16QuantizeSquashPass);

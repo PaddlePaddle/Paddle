@@ -264,6 +264,7 @@ def add_cases(suite):
             padding="valid",
         )
     )
+    suite.addTest(Conv3DZeroSizeXPUTestCase(methodName='runTest'))
 
 
 def add_error_cases(suite):
@@ -397,6 +398,29 @@ class TestConv3dAPI_Compatibility(unittest.TestCase):
                     np.testing.assert_allclose(
                         out, self.np_ref_out, rtol=rtol, atol=atol
                     )
+
+
+class Conv3DZeroSizeXPUTestCase(unittest.TestCase):
+    def runTest(self):
+        if not core.is_compiled_with_xpu():
+            return
+        paddle.device.set_device('xpu')
+        paddle.disable_static()
+        x = paddle.randn([4, 3, 0, 8, 8], dtype='float32')
+        w = paddle.randn([5, 3, 3, 3, 3], dtype='float32')
+        b = paddle.randn([5], dtype='float32')
+        out = paddle.nn.functional.conv3d(
+            x,
+            w,
+            b,
+            padding=[[0, 0], [0, 0], [1, 1], [2, 2], [2, 2]],
+            stride=1,
+            dilation=1,
+            groups=1,
+            data_format='NCDHW',
+        )
+        self.assertEqual(list(out.shape), [4, 5, 0, 10, 10])
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
