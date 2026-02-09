@@ -20,6 +20,7 @@ from op_test import OpTest, convert_uint16_to_float, get_device_place
 
 import paddle
 from paddle import base
+from paddle.base import core
 from paddle.base.executor import Executor
 
 paddle.enable_static()
@@ -83,7 +84,10 @@ class TestTruncatedGaussianRandomOp(OpTest):
         self.b = 2.0
 
     def test_check_output(self):
-        self.gaussian_random_test(place=base.CUDAPlace(0))
+        if core.is_compiled_with_cuda():
+            self.gaussian_random_test(place=base.CUDAPlace(0))
+        else:
+            self.gaussian_random_test(place=base.CPUPlace())
 
     def gaussian_random_test(self, place):
         with paddle.pir_utils.OldIrGuard():
@@ -159,6 +163,10 @@ class TestTruncatedGaussianRandomOpFp64(TestTruncatedGaussianRandomOp):
         self.__class__.op_type = "truncated_gaussian_random"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
 class TestTruncatedGaussianRandomOpBf16(TestTruncatedGaussianRandomOp):
     def init(self):
         self.dtype = np.uint16  # bfloat16 is represented as uint16 in numpy
