@@ -121,7 +121,7 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
 
   // Here copy data from input to avoid data loss at PE and Graph level.
@@ -415,7 +415,7 @@ void SetValueKernel(const Context& dev_ctx,
                      CPUPlace(),
                      value_data_uint8_cpu,
                      values_length);
-  auto value_dims = common::make_ddim(shape);
+  auto value_dims = make_ddim(shape);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,

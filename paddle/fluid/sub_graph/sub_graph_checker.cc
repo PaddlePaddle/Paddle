@@ -126,8 +126,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunPhiResult() {
   AppendFetchOp(phi_program_->block(), &phi_fetch_names_, kOutputPrefix);
 
   phi::Place place = phi::GPUPlace(0);
-  phi_kernel_program_ =
-      paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
+  phi_kernel_program_ = pir::PdOpLowerToKernelPass(phi_program_.get(), place);
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
@@ -176,8 +175,7 @@ std::vector<phi::DenseTensor> SubGraphChecker::RunCinnResult() {
 
   phi::Place place = phi::GPUPlace(0);
 
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
+  auto kernel_program = pir::PdOpLowerToKernelPass(prim_program_.get(), place);
 
   std::vector<std::string> fetch_var_names;
   for (auto name : cinn_fetch_names_) {
@@ -221,8 +219,7 @@ std::vector<double> SubGraphChecker::CheckSpeed() {
 double SubGraphChecker::RunPhiSpeed() {
   RemoveFetchOp(phi_program_->block());
   phi::Place place = phi::GPUPlace(0);
-  phi_kernel_program_ =
-      paddle::dialect::PdOpLowerToKernelPass(phi_program_.get(), place);
+  phi_kernel_program_ = pir::PdOpLowerToKernelPass(phi_program_.get(), place);
 
   paddle::framework::interpreter::ExecutionConfig exec_config;
   exec_config.create_local_scope = false;
@@ -275,8 +272,7 @@ double SubGraphChecker::RunCinnSpeed() {
 
   RemoveFetchOp(prim_program_->block());
 
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(prim_program_.get(), place);
+  auto kernel_program = pir::PdOpLowerToKernelPass(prim_program_.get(), place);
 
   std::vector<std::string> fetch_var_names;
   for (auto name : cinn_fetch_names_) {
@@ -355,8 +351,7 @@ void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
   if (input_values.size() > 0) {
     phi::Place place = phi::GPUPlace(0);
 
-    auto kernel_program =
-        paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
+    auto kernel_program = pir::PdOpLowerToKernelPass(program.get(), place);
 
     paddle::framework::interpreter::ExecutionConfig exec_config;
     exec_config.create_local_scope = false;

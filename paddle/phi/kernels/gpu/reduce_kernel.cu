@@ -64,7 +64,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(common::make_ddim(update_dims));
+  new_out_grad.Resize(make_ddim(update_dims));
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
@@ -106,7 +106,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(common::make_ddim(update_dims));
+  new_out_grad.Resize(make_ddim(update_dims));
 
   // call BroadcastKernel
   dev_ctx.Alloc(x_grad, x.dtype());

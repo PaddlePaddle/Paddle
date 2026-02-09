@@ -1601,8 +1601,8 @@ inline void PermuteWithEigen(const phi::GPUContext& dev_ctx,
     DenseTensor temp_in;
 
     temp_in.ShareBufferWith(in);
-    temp_in.Resize(common::make_ddim(simplifier.GetSrcDims()));
-    out->Resize(common::make_ddim(simplifier.GetDstDims()));
+    temp_in.Resize(make_ddim(simplifier.GetSrcDims()));
+    out->Resize(make_ddim(simplifier.GetDstDims()));
 
     TransCompute<phi::GPUContext, T>(
         simplifier.GetRank(), dev_ctx, temp_in, out, simplifier.GetPerm());

@@ -23,6 +23,7 @@ env:
   CI_name: h-coverage
   CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+  fleet_branch: "release/0.2"
 
 defaults:
   run:
@@ -42,6 +43,7 @@ jobs:
     if: needs.clone.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
@@ -111,6 +113,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           rm -rf * .[^.]*
@@ -226,6 +229,7 @@ jobs:
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: H-Coverage
+    timeout-minutes: 120
     steps:
       - name: Determine the runner
         run: |
@@ -307,6 +311,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -352,6 +357,7 @@ jobs:
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 60
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
       docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
@@ -380,6 +386,7 @@ jobs:
             -e PADDLE_ROOT \
             -e ci_scripts \
             -e no_proxy \
+            -e fleet_branch \
             -e CI_name \
             -e CCACHE_DIR \
             -e CCACHE_SECONDARY_STORAGE \
@@ -400,6 +407,13 @@ jobs:
           git config user.name "PaddleCI"
           git config user.email "paddle_ci@example.com"
           git config pull.rebase false
+          if [ "${BRANCH}" != "develop" ]; then
+            git checkout $fleet_branch
+            echo "Checked out fleet branch: $fleet_branch"
+          else
+            git checkout develop
+            echo "Checked out fleet branch: develop"
+          fi
           mkdir -p /home/.cache/pip
           pip cache dir
           echo "Install uv"
@@ -435,13 +449,13 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c 'bash ci/clean_uv_cache.sh; rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
 
-
   fleet_single_card_test:
     name: Fleet Unit test (single card)
     needs: [build, fleet-build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-single-card
+    timeout-minutes: 60
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       CACHE_DIR: /root/.cache
@@ -500,6 +514,7 @@ jobs:
           '
 
       - name: Download paddle.tar.gz and install paddle whl
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
@@ -518,6 +533,13 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
+          if [ "${BRANCH}" != "develop" ]; then
+            git checkout $fleet_branch
+            echo "Checked out fleet branch: $fleet_branch"
+          else
+            git checkout develop
+            echo "Checked out fleet branch: develop"
+          fi
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
@@ -545,6 +567,7 @@ jobs:
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-multi-card
+    timeout-minutes: 60
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
@@ -567,6 +590,7 @@ jobs:
             -e PADDLE_ROOT \
             -e ci_scripts \
             -e CACHE_DIR \
+            -e fleet_branch \
             -e no_proxy \
             -e CI_name \
             -e PIP_CACHE_DIR \
@@ -596,6 +620,7 @@ jobs:
           '
 
       - name: Download paddle.tar.gz and install paddle whl
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
@@ -614,6 +639,13 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
+          if [ "${BRANCH}" != "develop" ]; then
+            git checkout $fleet_branch
+            echo "Checked out fleet branch: $fleet_branch"
+          else
+            git checkout develop
+            echo "Checked out fleet branch: develop"
+          fi
           python -c "import paddle; print(paddle.version.commit)"
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.

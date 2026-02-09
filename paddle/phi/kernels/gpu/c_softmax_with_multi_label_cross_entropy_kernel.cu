@@ -128,7 +128,7 @@ void CSoftmaxWithMultiLabelCrossEntropyKernel(const Context& dev_ctx,
                                               int nranks,
                                               DenseTensor* softmax,
                                               DenseTensor* loss) {
-  CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> functor_;
+  CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> functor_;
   functor_(dev_ctx,
            logits,
            label,
@@ -142,8 +142,8 @@ void CSoftmaxWithMultiLabelCrossEntropyKernel(const Context& dev_ctx,
 }
 
 template <typename T>
-struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& logits_in,
                   const DenseTensor& label_in,
                   const DenseTensor& smooth_weight_in,
@@ -266,7 +266,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<phi::GPUContext, T> {
     sum_exp_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&sum_exp_logits);
 
-    phi::SumKernel<T, phi::GPUContext>(
+    phi::SumKernel<T, GPUContext>(
         dev_ctx, softmax_2d, {-1}, softmax_2d.dtype(), true, &sum_exp_logits);
 
     comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);

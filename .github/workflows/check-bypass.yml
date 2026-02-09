@@ -22,6 +22,7 @@ jobs:
       CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "ooooo-create"]'
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+    timeout-minutes: 3
     steps:
       - id: check-bypass
         name: Check Bypass

@@ -31,6 +31,7 @@ from paddle._C_ops import (  # noqa: F401
     amin,
     angle,
     any,
+    atan2,
     baddbmm,
     baddbmm_,
     bitwise_left_shift,
@@ -4425,84 +4426,6 @@ def negative(x: Tensor, name: str | None = None) -> Tensor:
     return -x
 
 
-def atan2(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Element-wise arctangent of x/y with consideration of the quadrant.
-
-    Equation:
-        .. math::
-
-            atan2(x,y)=\left\{\begin{matrix}
-            & tan^{-1}(\frac{x}{y}) & y > 0 \\
-            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
-            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
-            & +\frac{\pi}{2} & x>0, y = 0 \\
-            & -\frac{\pi}{2} & x<0, y = 0 \\
-            &\text{undefined} & x=0, y = 0
-            \end{matrix}\right.
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
-        y (Tensor): An N-D Tensor, must have the same type as `x`.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
-            >>> x
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1.,  1.,  1., -1.])
-
-            >>> y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
-            >>> y
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1., -1.,  1.,  1.])
-
-            >>> out = paddle.atan2(x, y)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
-
-    """
-
-    x_shape = list(x.shape)
-    y_shape = list(y.shape)
-    if in_dynamic_or_pir_mode():
-        broadcast_x = x
-        broadcast_y = y
-        if x_shape != y_shape:
-            broadcast_shape = paddle.broadcast_shape(x_shape, y_shape)
-            broadcast_x = paddle.broadcast_to(broadcast_x, broadcast_shape)
-            broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
-
-        return _C_ops.atan2(broadcast_x, broadcast_y)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'atan2',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
-            'atan2',
-        )
-
-        helper = LayerHelper('atan2', **locals())
-        inputs = {'X1': x, 'X2': y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
-        return out
-
-
 def logit(
     x: Tensor, eps: float | None = None, name: str | None = None
 ) -> Tensor:
@@ -4594,8 +4517,14 @@ def logit_(
         return _C_ops.logit_(x, eps)
 
 
+@param_two_alias(["x", "input"], ["y", "end"])
 def lerp(
-    x: Tensor, y: Tensor, weight: float | Tensor, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    weight: float | Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Does a linear interpolation between x and y based on weight.
@@ -4607,9 +4536,12 @@ def lerp(
 
     Args:
         x (Tensor): An N-D Tensor with starting points, the data type is bfloat16, float16, float32, float64.
+            Alias: ``input``
         y (Tensor): An N-D Tensor with ending points, the data type is bfloat16, float16, float32, float64.
+            Alias: ``end``
         weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is bfloat16, float16, float32, float64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the shape and data type is the same with input.
@@ -4627,6 +4559,19 @@ def lerp(
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.50000000, 6.        , 6.50000000, 7.        ])
 
+            >>> # Using out parameter
+            >>> result = paddle.empty([4], dtype='float32')
+            >>> paddle.lerp(x, y, 0.5, out=result)
+            >>> result
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.50000000, 6.        , 6.50000000, 7.        ])
+
+            >>> # Using parameter aliases (input for x, end for y)
+            >>> out = paddle.lerp(input=x, end=y, weight=0.5)  # type: ignore[call-arg]
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.50000000, 6.        , 6.50000000, 7.        ])
+
     """
     if isinstance(weight, float):
         if x.is_cuda and in_dynamic_mode():
@@ -4635,7 +4580,7 @@ def lerp(
             weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.lerp(x, y, weight)
+        return _C_ops.lerp(x, y, weight, out=out)
     else:
         check_variable_and_dtype(
             x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'lerp'
@@ -4658,6 +4603,7 @@ def lerp(
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["y", "end"])
 def lerp_(
     x: Tensor, y: Tensor, weight: float | Tensor, name: str | None = None
 ) -> Tensor:

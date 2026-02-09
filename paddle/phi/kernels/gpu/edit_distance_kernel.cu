@@ -94,7 +94,7 @@ void EditDistanceKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   phi::Vector<size_t> hyp_lod(batch_size + 1);
   phi::Vector<size_t> ref_lod(batch_size + 1);

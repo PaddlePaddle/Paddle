@@ -75,7 +75,7 @@ void CudnnLSTMGradKernel(
   }
 
   DenseTensor weight_grad;
-  funcs::SetConstant<phi::GPUContext, T> zero;
+  funcs::SetConstant<GPUContext, T> zero;
   weight_grad.Resize({weight_numel});
   dev_ctx.template Alloc<T>(&weight_grad);
   zero(dev_ctx, &weight_grad, static_cast<T>(0.0));

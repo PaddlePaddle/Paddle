@@ -75,7 +75,7 @@ void exec_fft(const phi::CPUContext& dev_ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_input_shape_.push_back(in_sizes[axes[i]]);
   }
-  phi::DDim collapsed_input_shape = common::make_ddim(collapsed_input_shape_);
+  phi::DDim collapsed_input_shape = make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   DenseTensor& collapsed_input = transposed_input;
 
@@ -87,7 +87,7 @@ void exec_fft(const phi::CPUContext& dev_ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_output_shape_.push_back(out_sizes[axes[i]]);
   }
-  phi::DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
+  phi::DDim collapsed_output_shape = make_ddim(collapsed_output_shape_);
   DenseTensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   dev_ctx.Alloc<To>(&collapsed_output);

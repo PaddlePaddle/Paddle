@@ -32,6 +32,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 30
 
     steps:
       - name: Check docker image and run container
@@ -63,6 +64,7 @@ jobs:
             -v "/dev/shm:/dev/shm" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            -v /root/.cache/paddle/dataset/ESC-50-master \
             -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \
@@ -93,6 +95,7 @@ jobs:
       - name: Download paddle.tar.gz and merge target branch
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf  * .[^.]*

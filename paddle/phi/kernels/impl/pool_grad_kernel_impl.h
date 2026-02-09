@@ -177,6 +177,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                                    const std::vector<int>& kernel_size,
                                    const std::vector<int>& strides,
                                    const std::vector<int>& paddings,
+                                   const std::vector<int>& dilations,
                                    bool global_pooling,
                                    bool adaptive,
                                    DenseTensor* dx) {
@@ -187,6 +188,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
   std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
   std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
   std::vector<int64_t> strides_(strides.begin(), strides.end());
+  std::vector<int64_t> dilations_(dilations.begin(), dilations.end());
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
@@ -208,6 +210,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                         kernel_size_,
                         strides_,
                         paddings_,
+                        dilations_,
                         adaptive,
                         dx);
       } break;
@@ -219,6 +222,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                         kernel_size_,
                         strides_,
                         paddings_,
+                        dilations_,
                         adaptive,
                         dx);
       } break;
@@ -339,6 +343,7 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const std::vector<int>& kernel_size,
                                   const std::vector<int>& strides,
                                   const std::vector<int>& paddings,
+                                  const std::vector<int>& dilations,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,
@@ -350,6 +355,7 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                             kernel_size,
                                             strides,
                                             paddings,
+                                            dilations,
                                             global_pooling,
                                             adaptive,
                                             dx);
@@ -396,6 +402,7 @@ void MaxPool3dWithIndexGradKernel(const Context& dev_ctx,
                                   const std::vector<int>& kernel_size,
                                   const std::vector<int>& strides,
                                   const std::vector<int>& paddings,
+                                  const std::vector<int>& dilations,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,
@@ -407,6 +414,7 @@ void MaxPool3dWithIndexGradKernel(const Context& dev_ctx,
                                             kernel_size,
                                             strides,
                                             paddings,
+                                            dilations,
                                             global_pooling,
                                             adaptive,
                                             dx);
