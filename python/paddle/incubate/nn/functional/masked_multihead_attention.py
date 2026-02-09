@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 
 @deprecated(
     since="3.4.0",
+    level=1,
+    reason="masked_multihead_attention is deprecated in favor of multi_head_attention",
 )
 @overload
 def masked_multihead_attention(

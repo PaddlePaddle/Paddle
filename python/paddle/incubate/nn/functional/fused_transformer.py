@@ -511,6 +511,8 @@ def fused_bias_dropout_residual_layer_norm(
 
 @deprecated(
     since="3.4.0",
+    level=1,
+    reason="fused_multi_head_attention is deprecated in favor of multi_head_attention",
 )
 def fused_multi_head_attention(
     x: Tensor,
