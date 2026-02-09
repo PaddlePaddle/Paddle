@@ -18,11 +18,15 @@ from typing import TYPE_CHECKING, overload
 
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
+from paddle.utils.deprecated import deprecated
 
 if TYPE_CHECKING:
     from paddle import Tensor
 
 
+@deprecated(
+    since="3.4.0",
+)
 @overload
 def masked_multihead_attention(
     x: Tensor,
