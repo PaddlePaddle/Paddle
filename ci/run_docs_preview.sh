@@ -21,7 +21,7 @@ git config --global user.email "paddle_ci@example.com"
 
 set +e
 
-if [ -f '/home/data/cfs/api_doc/${AGILE_PULL_ID}/api_doc_break.flag' ];then
+if [ -f "/home/data/cfs/api_doc/${AGILE_PULL_ID}/api_doc_break.flag" ]; then
     echo 'API documents no change, skip doc build.'
     exit 0
 fi
