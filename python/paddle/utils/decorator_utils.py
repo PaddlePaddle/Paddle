@@ -976,7 +976,7 @@ def maxpool_layer_decorator() -> Callable[
                     kwargs["return_mask"] = args[5]
                 if len(args) > 6:
                     kwargs["ceil_mode"] = args[6]
-                args = ()
+                args = (args[0],)
 
             return func(*args, **kwargs)
 
