@@ -24,7 +24,7 @@ SKIP_COVERAGE_CHECKING_LABELS = [
     "cinn",
     "typing",
     "codestyle",
-    "fluid_ops",
+    "phi_ops",
     r"3.1\d",  # SOT Python 3.13 support
 ]
 

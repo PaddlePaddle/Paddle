@@ -17,11 +17,15 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Device.h>
+#include <utility>
+#include <vector>
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-namespace at {
+namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
 class Tensor : public TensorBase {
@@ -61,9 +65,18 @@ class Tensor : public TensorBase {
   Tensor& operator=(Tensor&& x) & noexcept {
     return operator=(static_cast<TensorBase&&>(x));
   }
-  Tensor& operator=(const Scalar& v) && { return fill_(v); }
-  Tensor& operator=(const Tensor& rhs) && { return copy_(rhs); }
-  Tensor& operator=(Tensor&& rhs) && { return copy_(rhs); }
+  Tensor& operator=(const Scalar& v) && {
+    fill_(v);
+    return *this;
+  }
+  Tensor& operator=(const Tensor& rhs) && {
+    copy_(rhs);
+    return *this;
+  }
+  Tensor& operator=(Tensor&& rhs) && {
+    copy_(rhs);
+    return *this;
+  }
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
@@ -98,6 +111,21 @@ class Tensor : public TensorBase {
   Tensor cpu() const {
     PaddlePlace place(phi::AllocationType::CPU);
     return tensor_.copy_to(place, true);
+  }
+
+  Tensor cuda() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PaddlePlace place(phi::AllocationType::GPU);
+    return tensor_.copy_to(place, true);
+#elif defined(PADDLE_WITH_XPU)
+    return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    return tensor_.copy_to(paddle::DefaultCustomPlace(), true);
+#else
+    PD_THROW(
+        "cuda() is not supported: no GPU/XPU/Custom device enabled "
+        "in this build.");
+#endif
   }
 
   const void* const_data_ptr() const {
@@ -246,6 +274,38 @@ class Tensor : public TensorBase {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
+  // aten::flatten.using_ints(Tensor(a) self, int start_dim=0, int end_dim=-1)
+  // -> Tensor(a)
+  inline at::Tensor flatten(int64_t start_dim, int64_t end_dim) const {
+    return Tensor(paddle::experimental::flatten(
+        tensor_, static_cast<int>(start_dim), static_cast<int>(end_dim)));
+  }
+
+  // aten::unflatten.int(Tensor(a) self, int dim, SymInt[] sizes) -> Tensor(a)
+  inline at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const {
+    // Compute the new shape by replacing the dimension at 'dim' with 'sizes'
+    int64_t ndim = tensor_.dims().size();
+    int64_t actual_dim = dim < 0 ? dim + ndim : dim;
+    std::vector<int64_t> new_shape;
+    for (int64_t i = 0; i < ndim; ++i) {
+      if (i == actual_dim) {
+        for (auto s : sizes) {
+          new_shape.push_back(s);
+        }
+      } else {
+        new_shape.push_back(tensor_.dims()[i]);
+      }
+    }
+    return Tensor(paddle::experimental::reshape(tensor_, new_shape));
+  }
+
+  // aten::unflatten.int(Tensor(a) self, int dim, SymInt[] sizes) -> Tensor(a)
+  inline at::Tensor unflatten_symint(int64_t dim,
+                                     c10::SymIntArrayRef sizes) const {
+    // SymIntArrayRef is the same as IntArrayRef in this implementation
+    return unflatten(dim, sizes);
+  }
+
   Tensor& fill_(const at::Scalar& value) const {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
     return const_cast<at::Tensor&>(*this);
@@ -258,6 +318,88 @@ class Tensor : public TensorBase {
 
   bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
+
+  bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
+    return phi::is_cuda_pinned_place(tensor_.place()) ||
+           phi::is_xpu_pinned_place(tensor_.place());
+  }
+
+  Tensor pin_memory(
+      ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (is_pinned(device)) {
+      return *this;
+    }
+
+    PaddlePlace current_place = tensor_.place();
+    PaddlePlace pinned_place;
+    if (phi::is_cpu_place(current_place)) {
+      // CPU place cannot be directly converted to pinned place
+      PD_THROW(
+          "pin_memory: Pinning memory is not supported for CPUPlace. "
+          "Please use CUDAPlace or XPUPlace tensor, or specify "
+          "CUDAPinnedPlace/XPUPinnedPlace as device.");
+    } else {
+      // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
+      // place
+      pinned_place = phi::GetPinnedPlace(current_place);
+    }
+    return tensor_.copy_to(pinned_place, true);
+  }
+
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy(int64_t dim,
+                                int64_t start,
+                                int64_t length) const {
+    // narrow_copy returns a copy of the narrowed tensor
+    return narrow(dim, start, length).clone();
+  }
+
+  // aten::narrow_copy(Tensor self, int dim, SymInt start, SymInt length) ->
+  // Tensor
+  inline at::Tensor narrow_copy_symint(int64_t dim,
+                                       c10::SymInt start,
+                                       c10::SymInt length) const {
+    return narrow_copy(dim, start, length);
+  }
+
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const {
+    // Use slice to implement narrow: narrow(dim, start, length) is equivalent
+    // to slice(dim, start, start + length)
+    return Tensor(paddle::experimental::slice(
+        tensor_, {dim}, {start}, {start + length}, {1}, {}));
+  }
+
+  // aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) ->
+  // Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  c10::SymInt start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
+
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow(int64_t dim,
+                           const at::Tensor& start,
+                           int64_t length) const {
+    // Extract scalar value from start tensor
+    PD_CHECK(start.numel() == 1,
+             "start must be a 0-dim tensor or 1-element tensor");
+    int64_t start_val =
+        static_cast<int64_t>(start._PD_GetInner().template data<int64_t>()[0]);
+    return narrow(dim, start_val, length);
+  }
+
+  // aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length)
+  // -> Tensor(a)
+  inline at::Tensor narrow_symint(int64_t dim,
+                                  const at::Tensor& start,
+                                  c10::SymInt length) const {
+    return narrow(dim, start, length);
+  }
 
   at::Tensor reshape(at::IntArrayRef shape) const {
     return Tensor(
@@ -448,10 +590,37 @@ class Tensor : public TensorBase {
   }
 #endif
 
+  // Deprecated packed_accessor for compatibility with PyTorch
+  // Use packed_accessor32 or packed_accessor64 instead
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() const& {
+    return this->template generic_packed_accessor<T, N, PtrTraits, index_t>();
+  }
+
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() && = delete;
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
-};
-
+};  // NOLINT(readability/braces)
 }  // namespace at
 namespace torch {
 using at::Tensor;

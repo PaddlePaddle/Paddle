@@ -53,6 +53,7 @@ build_doc/
 *.log
 
 .vscode
+.comate
 .idea
 .project
 .cproject

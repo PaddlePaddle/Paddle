@@ -24,7 +24,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -34,7 +34,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
 
   explicit DeleteWeightDequantLinearOpPattern(
       paddle::framework::Scope* scope,
-      std::reference_wrapper<std::optional<pir::detail::PassExecutionState>>
+      std::reference_wrapper<std::optional<detail::PassExecutionState>>
           pass_state)
       : scope_(scope), pass_state_(pass_state) {}
 
@@ -54,23 +54,22 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
                           &pat.OutputNoneTensor()});
 
     pat.AddConstraint([this](const paddle::drr::MatchContext& match_ctx) {
-      if (!pir::ValueIsPersistable(match_ctx.Tensor("weight"))) {
+      if (!ValueIsPersistable(match_ctx.Tensor("weight"))) {
         return false;
       }
-      if (!pir::ValueIsPersistable(match_ctx.Tensor("scale"))) {
+      if (!ValueIsPersistable(match_ctx.Tensor("scale"))) {
         return false;
       }
-      auto weight_scale_dtype =
-          pir::GetDataTypeFromValue(match_ctx.Tensor("scale"));
+      auto weight_scale_dtype = GetDataTypeFromValue(match_ctx.Tensor("scale"));
       auto weight_scale_name =
-          pir::GetParameterNameFromValue(match_ctx.Tensor("scale"));
+          GetParameterNameFromValue(match_ctx.Tensor("scale"));
       auto* weight_scale_var = this->scope_->FindVar(weight_scale_name);
       PADDLE_ENFORCE_NOT_NULL(
           weight_scale_var,
           common::errors::InvalidArgument("Persistable var [%s] not in scope.",
                                           weight_scale_name));
-      if (!weight_scale_dtype.isa<pir::Float16Type>() &&
-          !weight_scale_dtype.isa<pir::Float32Type>()) {
+      if (!weight_scale_dtype.isa<Float16Type>() &&
+          !weight_scale_dtype.isa<Float32Type>()) {
         return false;
       }
       return true;
@@ -78,22 +77,20 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
 
     pat.AddPostProcess([this](
                            const paddle::drr::MatchContext& match_ctx) mutable {
-      pir::Operation* op =
-          match_ctx.Tensor("dequantize_linear_out").defining_op();
-      auto next_op_list = pir::GetUseOpsForOutput(op, 0);
+      Operation* op = match_ctx.Tensor("dequantize_linear_out").defining_op();
+      auto next_op_list = GetUseOpsForOutput(op, 0);
       for (auto const& [next_op, op_index] : next_op_list) {
         if (next_op->isa<paddle::dialect::Conv2dOp>() ||
             next_op->isa<paddle::dialect::MatmulOp>() ||
             next_op->isa<paddle::dialect::DepthwiseConv2dOp>() ||
             next_op->isa<paddle::dialect::Conv2dTransposeOp>()) {
           std::vector<float> weight_scales;
-          int quant_axis = op->attribute("quant_axis")
-                               .dyn_cast<pir::Int32Attribute>()
-                               .data();
+          int quant_axis =
+              op->attribute("quant_axis").dyn_cast<Int32Attribute>().data();
           auto weight_scale_dtype =
-              pir::GetDataTypeFromValue(match_ctx.Tensor("scale"));
+              GetDataTypeFromValue(match_ctx.Tensor("scale"));
           auto weight_scale_name =
-              pir::GetParameterNameFromValue(match_ctx.Tensor("scale"));
+              GetParameterNameFromValue(match_ctx.Tensor("scale"));
           auto* weight_scale_var = this->scope_->FindVar(weight_scale_name);
           auto* weight_scale_tensor =
               weight_scale_var->GetMutable<phi::DenseTensor>();
@@ -110,7 +107,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
                     weight_scale_nums));
           } else {
             std::vector<int64_t> weight_shape =
-                pir::GetShapeFromValue(match_ctx.Tensor("weight"));
+                GetShapeFromValue(match_ctx.Tensor("weight"));
             quant_axis =
                 quant_axis >= 0 ? quant_axis : quant_axis + weight_shape.size();
             PADDLE_ENFORCE_EQ(
@@ -127,7 +124,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
                     weight_scale_nums));
           }
 
-          if (weight_scale_dtype.isa<pir::Float16Type>()) {
+          if (weight_scale_dtype.isa<Float16Type>()) {
             const phi::dtype::float16* weight_scale_data =
                 weight_scale_tensor->data<phi::dtype::float16>();
             for (int i = 0; i < weight_scale_nums; i++) {
@@ -146,26 +143,25 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
               common::errors::InvalidArgument("pass state has no value"));
 
           auto& quant_analysis =
-              this->pass_state_.get()
-                  ->am.GetAnalysis<pir::pass::QuantAnalysis>();
+              this->pass_state_.get()->am.GetAnalysis<pass::QuantAnalysis>();
           this->pass_state_.get()
-              ->preserved_analyses.Preserve<pir::pass::QuantAnalysis>();
+              ->preserved_analyses.Preserve<pass::QuantAnalysis>();
 
           PADDLE_ENFORCE_EQ(
               this->pass_state_.get()
-                  ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
+                  ->preserved_analyses.IsPreserved<pass::QuantAnalysis>(),
               true,
               common::errors::InvalidArgument(
                   "QuantAnalysis should be Preserved"));
           quant_analysis.scale_map[match_ctx.Tensor("weight")] = weight_scales;
 
-          auto& int8_analysis = this->pass_state_.get()
-                                    ->am.GetAnalysis<pir::pass::Int8Analysis>();
+          auto& int8_analysis =
+              this->pass_state_.get()->am.GetAnalysis<pass::Int8Analysis>();
           this->pass_state_.get()
-              ->preserved_analyses.Preserve<pir::pass::Int8Analysis>();
+              ->preserved_analyses.Preserve<pass::Int8Analysis>();
           PADDLE_ENFORCE_EQ(
               this->pass_state_.get()
-                  ->preserved_analyses.IsPreserved<pir::pass::Int8Analysis>(),
+                  ->preserved_analyses.IsPreserved<pass::Int8Analysis>(),
               true,
               common::errors::InvalidArgument(
                   "Int8Analysis should be Preserved"));
@@ -180,27 +176,26 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
 
  private:
   paddle::framework::Scope* scope_{nullptr};
-  std::reference_wrapper<std::optional<pir::detail::PassExecutionState>>
-      pass_state_;
+  std::reference_wrapper<std::optional<detail::PassExecutionState>> pass_state_;
 };
 
-class DeleteWeightDequantLinearOpPass : public pir::PatternRewritePass {
+class DeleteWeightDequantLinearOpPass : public PatternRewritePass {
  public:
   DeleteWeightDequantLinearOpPass()
-      : pir::PatternRewritePass("delete_weight_dequant_linear_op_pass", 1) {}
+      : PatternRewritePass("delete_weight_dequant_linear_op_pass", 1) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
-    PADDLE_ENFORCE_EQ(Has(pir::Pass::kParamScopeAttr),
+  RewritePatternSet InitializePatterns(IrContext* context) override {
+    PADDLE_ENFORCE_EQ(Has(Pass::kParamScopeAttr),
                       true,
                       common::errors::InvalidArgument(
                           "Pass initialize failed."
                           "When using DeleteWeightDequantLinearOpPass, scope "
                           "attribute is required!"
                           "Use Set method to set the scope attribute."));
-    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+    scope_ = &Get<paddle::framework::Scope>(Pass::kParamScopeAttr);
     PADDLE_ENFORCE_NOT_NULL(
         scope_, common::errors::InvalidArgument("scope can not be nullptr"));
-    pir::RewritePatternSet ps(context);
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<DeleteWeightDequantLinearOpPattern>(
         context, scope_, std::ref(pass_state())));
     return ps;
@@ -209,9 +204,6 @@ class DeleteWeightDequantLinearOpPass : public pir::PatternRewritePass {
  private:
   paddle::framework::Scope* scope_{nullptr};
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateDeleteWeightDequantLinearOpPass() {
   return std::make_unique<DeleteWeightDequantLinearOpPass>();
@@ -220,4 +212,4 @@ std::unique_ptr<Pass> CreateDeleteWeightDequantLinearOpPass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(delete_weight_dequant_linear_op_pass,
-                 DeleteWeightDequantLinearOpPass);
+                 pir::DeleteWeightDequantLinearOpPass);

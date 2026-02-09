@@ -36,7 +36,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 2) {
     // input
@@ -46,7 +46,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
@@ -54,7 +54,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   }
 }
@@ -73,7 +73,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
@@ -84,7 +84,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
@@ -92,7 +92,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(common::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     dev_ctx.template Alloc<T>(transformed_input);
   }
 }

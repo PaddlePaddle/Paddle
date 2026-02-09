@@ -38,7 +38,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -103,7 +103,7 @@ void FullIntArrayKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& shape,
                         DataType dtype UNUSED,
                         DenseTensor* out) {
-  out->Resize(common::make_ddim({static_cast<int64_t>(shape.size())}));
+  out->Resize(make_ddim({static_cast<int64_t>(shape.size())}));
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;

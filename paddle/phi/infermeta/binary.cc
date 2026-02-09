@@ -191,32 +191,9 @@ void ArrayReadInferMeta(const MetaTensor& array,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  const auto& x_dims = x.dims();
-  const auto& y_dims = y.dims();
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      y_dims.size(),
-      common::errors::InvalidArgument("The rank (%d) of X shall be same as "
-                                      "rank (%d) of Y.",
-                                      x_dims.size(),
-                                      y_dims.size()));
-
-  if (x_dims.size() > 0)
-    PADDLE_ENFORCE_LE(x_dims[0],
-                      y_dims[0],
-                      common::errors::InvalidArgument(
-                          "The count (%d) of elements of X shall not "
-                          "greater than count (%d) of elements of Y.",
-                          x_dims[0],
-                          y_dims[0]));
-
-  out->share_meta(x);
-  if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
-      y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
+  ElementwiseInferMeta(x, y, out);
+  if (out->dtype() == DataType::INT32 || out->dtype() == DataType::INT64) {
     out->set_dtype(DataType::FLOAT64);
-  } else {
-    out->set_dtype(x.dtype());
   }
 }
 
@@ -987,6 +964,21 @@ void CorrelationInferMeta(const MetaTensor& input1,
                         "Input(Y) of CorrelationOp must be 4 dims."
                         "But received dims is %d.",
                         in2_dims.size()));
+
+  PADDLE_ENFORCE_GT(stride1,
+                    0,
+                    common::errors::InvalidArgument(
+                        "stride1 of CorrelationOp must be greater than 0. "
+                        "But received stride1 = %d.",
+                        stride1));
+
+  PADDLE_ENFORCE_GT(stride2,
+                    0,
+                    common::errors::InvalidArgument(
+                        "stride2 of CorrelationOp must be greater than 0. "
+                        "But received stride2 = %d.",
+                        stride2));
+
   std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
                                                             in_dims[2],
                                                             in_dims[3],
@@ -3065,11 +3057,33 @@ void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     MetaConfig config) {
   std::vector<int64_t> dims_x = vectorize(x.dims());
   std::vector<int64_t> dims_y = vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
+  const int64_t lhs_reduce_dim = (ndims_x == 1) ? 0 : ndims_x - 1 - trans_x;
+  const int64_t rhs_reduce_dim = (ndims_y == 1) ? 0 : ndims_y - 2 + trans_y;
+  const int64_t K_lhs = dims_x[lhs_reduce_dim];
+  const int64_t K_rhs = dims_y[rhs_reduce_dim];
+  if (config.is_runtime || (K_rhs != -1 && K_lhs != -1)) {
+    PADDLE_ENFORCE_EQ(
+        K_lhs,
+        K_rhs,
+        common::errors::InvalidArgument(
+            "In operator matmul, the [%d] dimension of Input(X) must be equal "
+            "to "
+            "the [%d] dimension of Input(Y). But receiving the [%d]"
+            "dimension of Input(X) is [%d], and the [%d] dimension of "
+            "Input(Y) is [%d].",
+            lhs_reduce_dim,
+            rhs_reduce_dim,
+            lhs_reduce_dim,
+            K_lhs,
+            rhs_reduce_dim,
+            K_rhs));
+  }
   PADDLE_ENFORCE_GT(ndims_x,
                     0UL,
                     common::errors::InvalidArgument(

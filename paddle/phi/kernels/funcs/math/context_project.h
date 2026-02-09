@@ -128,13 +128,13 @@ class ContextProjectFunctor {
              context_length,
              sequence_width});  // output_height, output_width,
         // input_channels, filter_height, filter_width
-        out_t.Resize(common::make_ddim(output_shape));
+        out_t.Resize(make_ddim(output_shape));
 
         std::vector<int64_t> input_shape(
             {1,
              input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
-        in_t.Resize(common::make_ddim(input_shape));
+        in_t.Resize(make_ddim(input_shape));
         im2col_ocf(dev_ctx, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
@@ -259,13 +259,13 @@ class ContextProjectGradFunctor {
                context_length,
                sequence_width});  // output_height, output_width,
           // input_channels, filter_height, filter_width
-          out_t.Resize(common::make_ddim(output_shape));
+          out_t.Resize(make_ddim(output_shape));
 
           std::vector<int64_t> input_shape(
               {1,
                input_row_end - input_row_begin,
                sequence_width});  // input_channels, input_height, input_width
-          in_t.Resize(common::make_ddim(input_shape));
+          in_t.Resize(make_ddim(input_shape));
 
           col2im_ocf(dev_ctx, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});

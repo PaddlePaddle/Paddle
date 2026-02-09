@@ -159,127 +159,6 @@ void BaddbmmInferMeta(const MetaTensor& input,
           << " alpha=" << alpha << " ndim_input=" << ndim_input
           << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
 
-  PADDLE_ENFORCE_NE(
-      product(input_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'input' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(x_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'x' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-
-  PADDLE_ENFORCE_NE(
-      product(y_dims),
-      0,
-      errors::PreconditionNotMet("The Input variable 'y' has not "
-                                 "been initialized. You may need to confirm "
-                                 "if you put exe.run(startup_program) "
-                                 "after optimizer.minimize function."));
-  // dim check
-  PADDLE_ENFORCE_EQ(ndim_input == 3 || ndim_input == 2,
-                    true,
-                    errors::InvalidArgument(
-                        "The input tensor input's dimension must be 3 or 2. "
-                        "But received input's dimension = [%d].",
-                        ndim_input));
-  PADDLE_ENFORCE_EQ(
-      ndim_x,
-      3,
-      errors::InvalidArgument("The input tensor x's dimension must be 3. "
-                              "But received x's dimension = [%d].",
-                              ndim_x));
-  PADDLE_ENFORCE_EQ(
-      ndim_y,
-      3,
-      errors::InvalidArgument("The input tensor y's dimension must be 3. "
-                              "But received y's dimension = [%d].",
-                              ndim_y));
-
-  PADDLE_ENFORCE_EQ(
-      x_dims[2],
-      y_dims[1],
-      errors::InvalidArgument("The dimension 2 of x must be equal to the "
-                              "dimension 1 of y. "
-                              "But received x's dimension 2 = [%d], y's "
-                              "dimension 1 = [%d].",
-                              x_dims[2],
-                              y_dims[1]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0],
-      y_dims[0],
-      errors::InvalidArgument("The dimension 0 of x must be equal to the "
-                              "dimension 0 of y. "
-                              "But received x's dimension 0 = [%d], y's "
-                              "dimension 0 = [%d].",
-                              x_dims[0],
-                              y_dims[0]));
-
-  if (ndim_input == 3) {
-    PADDLE_ENFORCE_EQ(
-        input_dims[0] == x_dims[0] || input_dims[0] == 1,
-        true,
-        errors::InvalidArgument("The dimension 0 of input must be equal to "
-                                "the dimension 0 of x when "
-                                "input is 3-D tensor. "
-                                "If not, the dimension 0 of input must be 1. "
-                                "But received input's dimension 0 = [%d], "
-                                "x's dimension 0 = [%d].",
-                                input_dims[0],
-                                x_dims[0]));
-    PADDLE_ENFORCE_EQ(
-        input_dims[1] == x_dims[1] || input_dims[1] == 1,
-        true,
-        errors::InvalidArgument("The dimension 1 of input must be equal to "
-                                "the dimension 1 of x when "
-                                "input is 3-D tensor. "
-                                "If not, the dimension 1 of input must be 1. "
-                                "But received input's dimension 1 = [%d], "
-                                "x's dimension 1 = [%d].",
-                                input_dims[1],
-                                x_dims[1]));
-    PADDLE_ENFORCE_EQ(
-        input_dims[2] == y_dims[2] || input_dims[2] == 1,
-        true,
-        errors::InvalidArgument("The dimension 2 of input must be equal to "
-                                "the dimension 2 of y when "
-                                "input is 3-D tensor. "
-                                "If not, the dimension 2 of input must be 1. "
-                                "But received input's dimension 2 = [%d], "
-                                "y's dimension 2 = [%d].",
-                                input_dims[2],
-                                y_dims[2]));
-  } else {
-    PADDLE_ENFORCE_EQ(
-        input_dims[0] == x_dims[1] || input_dims[0] == 1,
-        true,
-        errors::InvalidArgument("The dimension 0 of input must be equal to "
-                                "the dimension 1 of x when "
-                                "input is 2-D tensor. "
-                                "If not, the dimension 0 of input must be 1. "
-                                "But received input's dimension 0 = [%d], "
-                                "x's dimension 1 = [%d].",
-                                input_dims[0],
-                                x_dims[1]));
-    PADDLE_ENFORCE_EQ(
-        input_dims[1] == y_dims[2] || input_dims[1] == 1,
-        true,
-        errors::InvalidArgument("The dimension 1 of input must be equal to "
-                                "the dimension 2 of y when "
-                                "input is 2-D tensor. "
-                                "If not, the dimension 1 of input must be 1. "
-                                "But received input's dimension 1 = [%d], "
-                                "y's dimension 2 = [%d].",
-                                input_dims[1],
-                                y_dims[2]));
-  }
-
   std::vector<int64_t> output_dims;
   output_dims.push_back(x_dims[0]);
   output_dims.push_back(x_dims[1]);
@@ -1627,27 +1506,35 @@ void LerpInferMeta(const MetaTensor& x,
 void LinearV2InferMeta(const MetaTensor& input,
                        const MetaTensor& weight,
                        const MetaTensor& bias,
+                       const bool transpose_weight,
                        MetaTensor* out,
                        MetaConfig config) {
   const auto& input_dims = input.dims();
   const auto& weight_dims = weight.dims();
   const int64_t weight_ndim = weight.dims().size();
-  const bool is_bias_need_broadcast = bias.numel() == 1;
-  const bool is_valid_bias =
-      is_bias_need_broadcast || bias.numel() == weight.dims()[weight_ndim - 1];
-
-  PADDLE_ENFORCE_EQ(weight_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "The Input tensor Y's dimension of FusedGemmEpilogueOp "
-                        " should be 2, but got %d.",
-                        weight_dims.size()));
   PADDLE_ENFORCE_GE(input_dims.size(),
                     1,
                     common::errors::InvalidArgument(
-                        "The Input tensor X's dimension of FusedGemmEpilogueOp "
+                        "The Input tensor X's dimension of linear_v2 op"
                         " should be >= 1, but got %d.",
                         input_dims.size()));
+  PADDLE_ENFORCE_EQ(weight_ndim,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The Input tensor Y's dimension of linear_v2 op"
+                        " should be 2, but got %d.",
+                        weight_ndim));
+  // Assume weight to be [K, N] if not tranasposed, [N, K] if transposed
+  const int64_t weight_elewise_dim =
+      transpose_weight ? weight_dims[0] : weight_dims[1];
+  const int64_t weight_reduce_dim =
+      transpose_weight ? weight_dims[1] : weight_dims[0];
+  // Assume bias to be [N] or [1]
+  const bool is_bias_need_broadcast =
+      ((bias.numel() == 1) && (weight_elewise_dim != 1));
+  const bool is_valid_bias =
+      is_bias_need_broadcast || bias.numel() == weight_elewise_dim;
+
   PADDLE_ENFORCE_LE(
       bias.dims().size(),
       1,
@@ -1661,7 +1548,7 @@ void LinearV2InferMeta(const MetaTensor& input,
 
   // regard [k] x [k, n] -> [n]
   if (input_dims.size() == 1) {
-    out->set_dims(make_ddim({weight_dims[1]}));
+    out->set_dims(make_ddim({weight_elewise_dim}));
     out->set_dtype(input.dtype());
     return;
   }
@@ -1670,7 +1557,7 @@ void LinearV2InferMeta(const MetaTensor& input,
 
   auto input_rank = input_dims.size();
   int64_t K_from_input = input_mat_dims[1];
-  int64_t K_from_weight = weight_dims[0];
+  int64_t K_from_weight = weight_reduce_dim;
   const bool check_dim =
       (!config.is_runtime && K_from_input != -1) || config.is_runtime;
   if (check_dim) {
@@ -1691,7 +1578,7 @@ void LinearV2InferMeta(const MetaTensor& input,
   }
   out_dims.push_back(input_dims[input_rank - 2]);
 
-  out_dims.push_back(weight_dims[1]);
+  out_dims.push_back(weight_elewise_dim);
   out->set_dims(make_ddim(out_dims));
   out->set_dtype(input.dtype());
 }

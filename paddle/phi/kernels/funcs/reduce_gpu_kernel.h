@@ -37,6 +37,7 @@
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
+#include "paddle/phi/kernels/funcs/function_traits.h"
 #include "paddle/phi/kernels/primitive/reduce_primitives.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -609,7 +610,9 @@ template <typename ScalarT,
           int kVecSize = 4,
           int kInputVecSize = kVecSize>
 struct ReduceExecutor {
-  using MPType = typename phi::dtype::MPTypeTrait<OutScalarT>::Type;
+  using traits = phi::funcs::FunctionTraits<decltype(&ReduceOp::reduce)>;
+  using MPType =
+      typename std::decay<typename traits::template arg<0>::type>::type;
 
   using InputCalculator = funcs::OffsetCalculator<1, IndexType>;
   using OutputCalculator = funcs::OffsetCalculator<2, IndexType>;
@@ -1234,7 +1237,8 @@ inline void GPUReduceScheduler(const KPDevice& dev_ctx,
                                int64_t base_idx = 0) {
   auto stream = dev_ctx.stream();
 
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  using traits = phi::funcs::FunctionTraits<decltype(&ReduceOp::reduce)>;
+  using MPType = typename traits::template arg<0>::type;
 
   static constexpr bool is_inp_out_type_half_or_chalf =
       (std::is_same_v<phi::float16, Tx> && std::is_same_v<phi::float16, Ty>) ||
@@ -1348,7 +1352,8 @@ template <typename Tx,
 void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
-                     const std::vector<int>& origin_reduce_dims) {
+                     const std::vector<int>& origin_reduce_dims,
+                     const float norm_p = 1.0f) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
@@ -1375,12 +1380,20 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
 
   // Initialize reducer.
-  ReduceOp reducer = [&iter]() {
-    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MeanOps<Tx, MPType, Ty>>) {
+  ReduceOp reducer = [&iter, &norm_p]() {
+    constexpr bool kIsMeanOp =
+        std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::MeanOps<Tx, MPType, Ty>>;
+
+    constexpr bool kIsPNormOp =
+        std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                       kps::GenericPNormOps<Tx, MPType, Ty>>;
+
+    if constexpr (kIsMeanOp) {
       MPType factor = static_cast<MPType>(iter.num_output_elements()) /
                       static_cast<MPType>(iter.numel());
       return ReduceOp<Tx, MPType, Ty>{factor};
+    } else if constexpr (kIsPNormOp) {
+      return ReduceOp<Tx, MPType, Ty>{norm_p};
     } else {
       return ReduceOp<Tx, MPType, Ty>{};
     }
@@ -1389,12 +1402,16 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   // Initialize ident value.
   Tx ident = []() {
     if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MaxOps<Tx, MPType, Ty>>) {
+                                 kps::MaxOps<Tx, MPType, Ty>> ||
+                  std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::AbsMaxOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::lowest();
     }
 
     if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MinOps<Tx, MPType, Ty>>) {
+                                 kps::MinOps<Tx, MPType, Ty>> ||
+                  std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::AbsMinOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::max();
     }
 

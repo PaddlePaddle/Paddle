@@ -105,7 +105,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -126,7 +125,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
-#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -271,7 +269,6 @@ DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
 DECLARE_FILE_SYMBOLS(pass_timing);
-DECLARE_FILE_SYMBOLS(op_compatible_info);
 DECLARE_FILE_SYMBOLS(sub_graph_detector);
 DECLARE_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::pybind {
@@ -484,30 +481,30 @@ struct iinfo {
     dtype = #type;                           \
   } while (0)
 
-  explicit iinfo(const phi::DataType &type) {
+  explicit iinfo(const DataType &type) {
     switch (type) {
-      case phi::DataType::UINT8:
+      case DataType::UINT8:
         CASE_IINFO_BODY(uint8, uint8_t);
         break;
-      case phi::DataType::UINT16:
+      case DataType::UINT16:
         CASE_IINFO_BODY(uint16, uint16_t);
         break;
-      case phi::DataType::UINT32:
+      case DataType::UINT32:
         CASE_IINFO_BODY(uint32, uint32_t);
         break;
-      case phi::DataType::UINT64:
+      case DataType::UINT64:
         CASE_IINFO_BODY(uint64, uint64_t);
         break;
-      case phi::DataType::INT8:
+      case DataType::INT8:
         CASE_IINFO_BODY(int8, int8_t);
         break;
-      case phi::DataType::INT16:
+      case DataType::INT16:
         CASE_IINFO_BODY(int16, int16_t);
         break;
-      case phi::DataType::INT32:
+      case DataType::INT32:
         CASE_IINFO_BODY(int32, int32_t);
         break;
-      case phi::DataType::INT64:
+      case DataType::INT64:
         CASE_IINFO_BODY(int64, int64_t);
         break;
       default:
@@ -542,26 +539,26 @@ struct finfo {
     dtype = #type;                                                    \
   } while (0)
 
-  explicit finfo(const phi::DataType &type) {
+  explicit finfo(const DataType &type) {
     switch (type) {
-      case phi::DataType::FLOAT8_E4M3FN:
+      case DataType::FLOAT8_E4M3FN:
         CASE_FINFO_BODY(float8_e4m3fn, phi::dtype::float8_e4m3fn);
         break;
-      case phi::DataType::FLOAT8_E5M2:
+      case DataType::FLOAT8_E5M2:
         CASE_FINFO_BODY(float8_e5m2, phi::dtype::float8_e5m2);
         break;
-      case phi::DataType::FLOAT16:
+      case DataType::FLOAT16:
         CASE_FINFO_BODY(float16, phi::dtype::float16);
         break;
-      case phi::DataType::BFLOAT16:
+      case DataType::BFLOAT16:
         CASE_FINFO_BODY(bfloat16, phi::dtype::bfloat16);
         break;
-      case phi::DataType::FLOAT32:
-      case phi::DataType::COMPLEX64:
+      case DataType::FLOAT32:
+      case DataType::COMPLEX64:
         CASE_FINFO_BODY(float32, float);
         break;
-      case phi::DataType::FLOAT64:
-      case phi::DataType::COMPLEX128:
+      case DataType::FLOAT64:
+      case DataType::COMPLEX128:
         CASE_FINFO_BODY(float64, double);
         break;
       default:
@@ -819,7 +816,7 @@ int DLPackManagedTensorAllocator(::DLTensor *prototype,
   try {
     phi::IntArray shape(prototype->shape, prototype->ndim);
     phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
-    phi::DataType dtype =
+    DataType dtype =
         paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
     Tensor tensor = paddle::empty(shape, dtype, place);
     std::shared_ptr<DenseTensor> dense_tensor =
@@ -1607,7 +1604,7 @@ PYBIND11_MODULE(libpaddle, m) {
 #endif
 
   py::class_<iinfo>(m, "iinfo")
-      .def(py::init<const phi::DataType &>())
+      .def(py::init<const DataType &>())
       .def_readonly("min", &iinfo::min)
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
@@ -1622,7 +1619,7 @@ PYBIND11_MODULE(libpaddle, m) {
       });
 
   py::class_<finfo>(m, "finfo")
-      .def(py::init<const phi::DataType &>())
+      .def(py::init<const DataType &>())
       .def_readonly("min", &finfo::min)
       .def_readonly("max", &finfo::max)
       .def_readonly("bits", &finfo::bits)
@@ -1901,10 +1898,7 @@ PYBIND11_MODULE(libpaddle, m) {
            });
   m.def(
       "frombuffer",
-      [](py::object buffer,
-         phi::DataType dtype,
-         int64_t count,
-         int64_t offset) {
+      [](py::object buffer, DataType dtype, int64_t count, int64_t offset) {
         int64_t actual_count = 0;
         auto elsize = phi::SizeOf(dtype);
         Py_buffer view;
@@ -2063,7 +2057,7 @@ PYBIND11_MODULE(libpaddle, m) {
             "dict."));
     py::object typestr_obj = cuda_dict["typestr"];
     std::string typestr = typestr_obj.cast<std::string>();
-    phi::DataType dtype = paddle::framework::ConvertToPDDataType(typestr);
+    DataType dtype = paddle::framework::ConvertToPDDataType(typestr);
 
     // Extract the `obj.__cuda_array_interface__['data']` attribute
     PADDLE_ENFORCE_EQ(
@@ -3290,6 +3284,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("init_gflags", framework::InitGflags);
+  m.def("init_gflags_from_env", framework::InitGflagsFromEnv);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
@@ -3343,6 +3338,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const GPUPlace &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
+  });
+  m.def("_check_last_cuda_error", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
   });
   m.def("_set_warmup", [](bool warmup) {
 #if defined(PADDLE_WITH_CUDA)
@@ -3809,6 +3809,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_XPU
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_current_device_id", &platform::GetXPUCurrentDeviceId);
+  m.def("set_xpu_current_device_id", &platform::SetXPUDeviceId, py::arg("i"));
   m.def("xpu_empty_cache", platform::EmptyCache);
   m.def(
       "get_device_properties",
@@ -4352,30 +4353,30 @@ All parameter, weight, gradient are variables in Paddle.
   BindTensor(m);
   BindSize(&m);
 
-  py::enum_<phi::DataType> data_type(m, "DataType");
+  py::enum_<DataType> data_type(m, "DataType");
   g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT
-  data_type.value("UNDEFINED", phi::DataType::UNDEFINED)
-      .value("BOOL", phi::DataType::BOOL)
-      .value("UINT8", phi::DataType::UINT8)
-      .value("INT8", phi::DataType::INT8)
-      .value("UINT16", phi::DataType::UINT16)
-      .value("INT16", phi::DataType::INT16)
-      .value("UINT32", phi::DataType::UINT32)
-      .value("INT32", phi::DataType::INT32)
-      .value("UINT64", phi::DataType::UINT64)
-      .value("INT64", phi::DataType::INT64)
-      .value("FLOAT32", phi::DataType::FLOAT32)
-      .value("FLOAT64", phi::DataType::FLOAT64)
-      .value("COMPLEX64", phi::DataType::COMPLEX64)
-      .value("COMPLEX128", phi::DataType::COMPLEX128)
-      .value("FLOAT16", phi::DataType::FLOAT16)
-      .value("BFLOAT16", phi::DataType::BFLOAT16)
-      .value("FLOAT8_E4M3FN", phi::DataType::FLOAT8_E4M3FN)
-      .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
-      .value("PSTRING", phi::DataType::PSTRING)
-      .value("ALL_DTYPE", phi::DataType::ALL_DTYPE)
+  data_type.value("UNDEFINED", DataType::UNDEFINED)
+      .value("BOOL", DataType::BOOL)
+      .value("UINT8", DataType::UINT8)
+      .value("INT8", DataType::INT8)
+      .value("UINT16", DataType::UINT16)
+      .value("INT16", DataType::INT16)
+      .value("UINT32", DataType::UINT32)
+      .value("INT32", DataType::INT32)
+      .value("UINT64", DataType::UINT64)
+      .value("INT64", DataType::INT64)
+      .value("FLOAT32", DataType::FLOAT32)
+      .value("FLOAT64", DataType::FLOAT64)
+      .value("COMPLEX64", DataType::COMPLEX64)
+      .value("COMPLEX128", DataType::COMPLEX128)
+      .value("FLOAT16", DataType::FLOAT16)
+      .value("BFLOAT16", DataType::BFLOAT16)
+      .value("FLOAT8_E4M3FN", DataType::FLOAT8_E4M3FN)
+      .value("FLOAT8_E5M2", DataType::FLOAT8_E5M2)
+      .value("PSTRING", DataType::PSTRING)
+      .value("ALL_DTYPE", DataType::ALL_DTYPE)
       .export_values()
-      .def("__dlpack_data_type__", [](const phi::DataType &self) {
+      .def("__dlpack_data_type__", [](const DataType &self) {
         ::DLDataType dl_dtype =
             paddle::framework::PhiDataTypeToDLDataType(self);
         return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
@@ -4444,10 +4445,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   BindGlooWrapper(&m);
-  BindBoxHelper(&m);
-#ifdef PADDLE_WITH_BOX_PS
-  BindBoxWrapper(&m);
-#endif
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   BindNCCLWrapper(&m);
 #endif

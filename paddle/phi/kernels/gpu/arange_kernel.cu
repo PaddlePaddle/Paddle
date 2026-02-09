@@ -45,7 +45,7 @@ void ArangeTensorKernel(const Context& dev_ctx,
 
   int64_t size = 0;
   funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(common::make_ddim({size}));
+  out->Resize(make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -70,7 +70,7 @@ void ArangeNullaryKernel(const Context& dev_ctx,
   MPType step_value_mpt = static_cast<MPType>(step_value);
   int64_t size = 0;
   funcs::GetSize(start_value_mpt, end_value_mpt, step_value_mpt, &size);
-  out->Resize(common::make_ddim({size}));
+  out->Resize(make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -96,10 +96,8 @@ void ArangeKernel(const Context& dev_ctx,
       dev_ctx, start_value, end_value, step_value, out);
 }
 
-template decltype(ArangeNullaryKernel<int64_t, phi::GPUContext>)
-    ArangeNullaryKernel;
-template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
-    ArangeNullaryKernel;
+template decltype(ArangeNullaryKernel<int64_t, GPUContext>) ArangeNullaryKernel;
+template decltype(ArangeNullaryKernel<int, GPUContext>) ArangeNullaryKernel;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(arange_tensor,

@@ -107,7 +107,7 @@ void BatchFCGradOpCUDAKernel(const Context& dev_ctx,
   add_bias_grad<T>(
       dev_ctx.stream(), dout_data, slot_pairs_num, ins_num, out_dim, db_data);
 
-  auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
   T alpha = 1;
   T beta = 0;
 

@@ -61,7 +61,9 @@ std::unordered_map<std::string, std::string> activation_type = {
     {paddle::dialect::SwishOp::name(), "swish"},
     {paddle::dialect::TanhOp::name(), "tanh"},
     {paddle::dialect::Tanh_Op::name(), "tanh"}};
+}  // namespace
 
+namespace pir {
 class FusedFcActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
   uint32_t benefit_;
@@ -337,13 +339,12 @@ class FusedFcClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FcActivationFusePass : public pir::PatternRewritePass {
+class FcActivationFusePass : public PatternRewritePass {
  public:
-  FcActivationFusePass()
-      : pir::PatternRewritePass("fc_activation_fuse_pass", 2) {}
+  FcActivationFusePass() : PatternRewritePass("fc_activation_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     int benefit_idx = 1;
     for (auto act_op : act_ops) {
       ps.Add(paddle::drr::Create<FusedFcActivationFusePattern>(
@@ -360,14 +361,10 @@ class FcActivationFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFcActivationFusePass() {
   // onednn_op.fc + pd_op.relu(act) ->  onednn_op.fc
   return std::make_unique<FcActivationFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(fc_activation_fuse_pass, FcActivationFusePass);
+REGISTER_IR_PASS(fc_activation_fuse_pass, pir::FcActivationFusePass);

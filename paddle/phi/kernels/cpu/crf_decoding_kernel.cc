@@ -86,9 +86,9 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
 
     DenseTensor emission_weights_tmp = *emission_weights;
     emission_weights_tmp.Resize(
-        common::make_ddim({in_dims[0] * in_dims[1], in_dims[2]}));
+        make_ddim({in_dims[0] * in_dims[1], in_dims[2]}));
 
-    decoded_path->Resize(common::make_ddim({in_dims[0] * in_dims[1], 1}));
+    decoded_path->Resize(make_ddim({in_dims[0] * in_dims[1], 1}));
     for (size_t i = 0; i < seq_num; ++i) {
       if (length_data[i] == 0) continue;
       int64_t start_pos = i * in_dims[1];
@@ -100,7 +100,7 @@ void CRFDecodingOpKernel(const Context& dev_ctx,
                          *transition_weights,
                          &decoded_path_one_seq);
     }
-    decoded_path->Resize(common::make_ddim({in_dims[0], in_dims[1]}));
+    decoded_path->Resize(make_ddim({in_dims[0], in_dims[1]}));
 
     if (label) {
       const int64_t* label_value = label_p->data<int64_t>();

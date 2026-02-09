@@ -45,7 +45,7 @@ namespace paddle::framework {
 
 WhileInstruction::WhileInstruction(
     size_t id,
-    const phi::Place& place,
+    const Place& place,
     pir::Operation* op,
     ValueExecutionInfo* parent_exe_info,
     interpreter::ExecutionConfig execution_config)

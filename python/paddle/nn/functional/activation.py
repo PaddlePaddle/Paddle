@@ -68,12 +68,12 @@ def celu(
         A ``Tensor`` with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
+            >>> x = paddle.to_tensor([[-1.0, 6.0], [1.0, 15.6]])
             >>> out = F.celu(x, alpha=0.2)
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -134,7 +134,7 @@ def elu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -202,7 +202,7 @@ def hardshrink(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -259,7 +259,7 @@ def hardtanh(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -335,7 +335,7 @@ def hardsigmoid(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -400,7 +400,7 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -442,8 +442,12 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias(["x", "input"])
 def leaky_relu(
-    x: Tensor, negative_slope: float = 0.01, name: str | None = None
+    x: Tensor,
+    negative_slope: float = 0.01,
+    inplace: bool = False,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     leaky_relu activation. The calculation formula is:
@@ -459,15 +463,17 @@ def leaky_relu(
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         negative_slope (float, optional): Slope of the activation function at
             :math:`x < 0` . Default is 0.01.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -480,7 +486,11 @@ def leaky_relu(
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.leaky_relu(x, negative_slope)
+        return (
+            _C_ops.leaky_relu_(x, negative_slope)
+            if inplace
+            else _C_ops.leaky_relu(x, negative_slope)
+        )
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'leaky_relu'
@@ -497,6 +507,7 @@ def leaky_relu(
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def leaky_relu_(
     x: Tensor, negative_slope: float = 0.01, name: str | None = None
 ) -> Tensor:
@@ -504,8 +515,7 @@ def leaky_relu_(
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
     """
-    if in_dynamic_mode():
-        return _C_ops.leaky_relu_(x, negative_slope)
+    return _C_ops.leaky_relu_(x, negative_slope)
 
 
 def prelu(
@@ -535,17 +545,28 @@ def prelu(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-            ...                            [ 3.0, -4.0,  5.0, -6.0],
-            ...                            [-7.0, -8.0,  8.0,  9.0]],
-            ...                           [[ 1.0, -2.0, -3.0,  4.0],
-            ...                            [-5.0,  6.0,  7.0, -8.0],
-            ...                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            >>> data = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [
+            ...                 [-2.0, 3.0, -4.0, 5.0],
+            ...                 [3.0, -4.0, 5.0, -6.0],
+            ...                 [-7.0, -8.0, 8.0, 9.0],
+            ...             ],
+            ...             [
+            ...                 [1.0, -2.0, -3.0, 4.0],
+            ...                 [-5.0, 6.0, 7.0, -8.0],
+            ...                 [6.0, 7.0, 8.0, 9.0],
+            ...             ],
+            ...         ]
+            ...     ],
+            ...     dtype='float32',
+            ... )
 
             >>> w = paddle.to_tensor([0.25], dtype='float32')
             >>> out = F.prelu(data, w)
@@ -676,7 +697,7 @@ def rrelu(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -750,7 +771,8 @@ def rrelu(
         return out
 
 
-def relu(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def relu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     """
     relu activation. The calculation formula is follows:
 
@@ -762,13 +784,15 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -781,7 +805,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.relu(x)
+        return _C_ops.relu_(x) if inplace else _C_ops.relu(x)
     else:
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
@@ -793,6 +817,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def relu_(x: Tensor, name: str | None = None) -> Tensor:
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
@@ -819,7 +844,7 @@ def log_sigmoid(x: Tensor, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -887,7 +912,7 @@ def maxout(
         A Tensor with the same data type as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -950,7 +975,7 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1010,7 +1035,7 @@ def selu(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1086,7 +1111,7 @@ def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1230,21 +1255,30 @@ def softmax(
         specified) as x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            ...                        [3.0, 4.0, 5.0, 6.0],
-            ...                        [7.0, 8.0, 8.0, 9.0]],
-            ...                       [[1.0, 2.0, 3.0, 4.0],
-            ...                        [5.0, 6.0, 7.0, 8.0],
-            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [2.0, 3.0, 4.0, 5.0],
+            ...             [3.0, 4.0, 5.0, 6.0],
+            ...             [7.0, 8.0, 8.0, 9.0],
+            ...         ],
+            ...         [
+            ...             [1.0, 2.0, 3.0, 4.0],
+            ...             [5.0, 6.0, 7.0, 8.0],
+            ...             [6.0, 7.0, 8.0, 9.0],
+            ...         ],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = F.softmax(x)
             >>> out2 = F.softmax(x, dtype='float64')
-            >>> #out1's data type is float32; out2's data type is float64
-            >>> #out1 and out2's value is as follows:
+            >>> # out1's data type is float32; out2's data type is float64
+            >>> # out1 and out2's value is as follows:
             >>> print(out1)
             >>> print(out2)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1354,7 +1388,7 @@ def softshrink(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1403,7 +1437,7 @@ def softsign(x: Tensor, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1443,12 +1477,12 @@ def swish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.to_tensor([-2., 0., 1.])
+            >>> x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> out = F.swish(x)
             >>> print(out)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1503,7 +1537,7 @@ def mish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1552,7 +1586,7 @@ def tanhshrink(x: Tensor, name: str | None = None) -> Tensor:
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1607,7 +1641,7 @@ def thresholded_relu(
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1690,7 +1724,7 @@ def log_softmax(
         specified) as x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1793,13 +1827,15 @@ def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
         halved.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import functional as F
             >>> x = paddle.to_tensor(
-            ...     [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-            ...         [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+            ...     [
+            ...         [-0.22014759, -1.76358426, 0.80566144, 0.04241343],
+            ...         [-1.94900405, -1.89956081, 0.17134808, -1.11280477],
+            ...     ]
             ... )
             >>> print(F.glu(x))
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1868,7 +1904,7 @@ def gumbel_softmax(
         probability distributions that sum to 1 across ``axis``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -1922,7 +1958,7 @@ def swiglu(
         A Tensor with the same data type with x and y.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F

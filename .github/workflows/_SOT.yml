@@ -39,6 +39,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
 
     steps:
       - name: run container
@@ -108,6 +109,7 @@ jobs:
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -162,6 +164,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.9
@@ -176,6 +179,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 10
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -190,6 +194,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.10
@@ -204,6 +209,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 10
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -218,6 +224,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.11
@@ -232,6 +239,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 10
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -246,6 +254,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.12
@@ -260,6 +269,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 10
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -274,6 +284,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.13
@@ -288,6 +299,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 10
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -302,6 +314,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.14
@@ -317,6 +330,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         if: ${{ env.determine_excode == 0 }}
+        timeout-minutes: 10
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy

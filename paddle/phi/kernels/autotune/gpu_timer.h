@@ -122,7 +122,7 @@ class CalculateStreamTimer {
         end_time_(0),
         is_started_(false) {}
 
-  explicit CalculateStreamTimer(const phi::Place &place)
+  explicit CalculateStreamTimer(const Place &place)
       : calculated_stream_(nullptr),
         start_time_(0),
         end_time_(0),
@@ -134,9 +134,9 @@ class CalculateStreamTimer {
     // of the event, "gettimeofday" is used here to retrieve it. The callback is
     // used to record the start time of the event.
     if (!is_started_) {
-      calculated_stream_ = dynamic_cast<phi::GPUContext *>(
-                               phi::DeviceContextPool::Instance().Get(place_))
-                               ->stream();
+      calculated_stream_ =
+          dynamic_cast<GPUContext *>(DeviceContextPool::Instance().Get(place_))
+              ->stream();
     }
     if (calculated_stream_ != nullptr) {
 #ifdef PADDLE_WITH_HIP
@@ -206,7 +206,7 @@ class CalculateStreamTimer {
   double start_time_;
   double end_time_;
   bool is_started_;
-  const phi::Place place_;
+  const Place place_;
 };
 
 }  // namespace phi

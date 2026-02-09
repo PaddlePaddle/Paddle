@@ -27,7 +27,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
  private:
   std::string bfloat16_ops_;
@@ -137,8 +137,7 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
       }
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -163,12 +162,12 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op) {
         return false;
       }
@@ -305,7 +304,7 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       if (mkldnn_data_type != "bfloat16") {
@@ -313,8 +312,7 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
       }
 
       std::vector<std::string> no_permitted_output_names = {"xshape"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -340,7 +338,7 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, 0);
+      auto next_ops = GetUseOpsForOutput(input_op, 0);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -421,8 +419,7 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
       }
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -447,13 +444,13 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
 
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op) {
         return false;
       }
@@ -537,7 +534,7 @@ class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
@@ -546,8 +543,7 @@ class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
       }
 
       std::vector<std::string> no_permitted_output_names = {"xshape"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -573,7 +569,7 @@ class CpuBfloat16DequantPatternOne_one : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, 0);
+      auto next_ops = GetUseOpsForOutput(input_op, 0);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -634,8 +630,7 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
       }
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -660,12 +655,12 @@ class CpuBfloat16Pattern2_2 : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
+      Operation *input_op = match_ctx.Tensor("out_0").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op->isa<paddle::onednn::dialect::QuantizeOp>()) {
         return true;
       }
@@ -733,7 +728,7 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
+      Operation *input_op = match_ctx.Tensor("out_0").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
@@ -742,8 +737,7 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
       }
 
       std::vector<std::string> no_permitted_output_names = {"xshape"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -769,7 +763,7 @@ class CpuBfloat16DequantPattern2_2 : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, index_);
+      auto next_ops = GetUseOpsForOutput(input_op, index_);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -904,8 +898,7 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
       // For fused_matmul, it name residual_data as residual_param
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param", "residual_data"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -930,12 +923,12 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op) {
         return false;
       }
@@ -1074,7 +1067,7 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
@@ -1083,8 +1076,7 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
       }
 
       std::vector<std::string> no_permitted_output_names = {"xshape"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -1110,7 +1102,7 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, 0);
+      auto next_ops = GetUseOpsForOutput(input_op, 0);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -1186,8 +1178,7 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
       }
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -1212,12 +1203,12 @@ class CpuBfloat16FusionGruPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
+      Operation *input_op = match_ctx.Tensor("out_0").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op) {
         return false;
       }
@@ -1355,7 +1346,7 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
+      Operation *input_op = match_ctx.Tensor("out_0").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
@@ -1364,8 +1355,7 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
       }
 
       std::vector<std::string> no_permitted_output_names = {"xshape"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -1391,7 +1381,7 @@ class CpuBfloat16FusionGruDequantPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, index_);
+      auto next_ops = GetUseOpsForOutput(input_op, index_);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -1540,8 +1530,7 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
       }
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -1566,12 +1555,12 @@ class CpuBfloat16LayerNormOpPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
+      Operation *input_op = match_ctx.Tensor("out_0").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op) {
         return false;
       }
@@ -1659,7 +1648,7 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out_0").defining_op();
+      Operation *input_op = match_ctx.Tensor("out_0").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
@@ -1672,8 +1661,7 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
         no_permitted_output_names.push_back("mean");
         no_permitted_output_names.push_back("variance");
       }
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -1699,7 +1687,7 @@ class CpuBfloat16LayerNormDequantPattern : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, index_);
+      auto next_ops = GetUseOpsForOutput(input_op, index_);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -1841,8 +1829,7 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
       }
       const std::vector<std::string> permitted_input_names = {
           "x", "y", "input", "residual_param"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -1867,12 +1854,12 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
       uint32_t num_operands = input_op->num_operands();
       if (index_ >= num_operands || !input_op->operand_source(index_)) {
         return false;
       }
-      auto *pre_op = pir::GetDefiningOpForInput(input_op, index_);
+      auto *pre_op = GetDefiningOpForInput(input_op, index_);
       if (!pre_op) {
         return false;
       }
@@ -2006,7 +1993,7 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
 
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       bool need_dequant = false;
-      pir::Operation *input_op = match_ctx.Tensor("out").defining_op();
+      Operation *input_op = match_ctx.Tensor("out").defining_op();
 
       auto mkldnn_data_type = match_ctx.Attr<std::string>("mkldnn_data_type");
       auto onednn_data_type = match_ctx.Attr<std::string>("onednn_data_type");
@@ -2015,8 +2002,7 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
       }
 
       std::vector<std::string> no_permitted_output_names = {"xshape"};
-      auto op_info =
-          pir::IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
+      auto op_info = IrContext::Instance()->GetRegisteredOpInfo(bfloat16_ops_);
       paddle::dialect::OpYamlInfoParser yaml_parser(
           op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
               ->get_op_info_(bfloat16_ops_),
@@ -2042,7 +2028,7 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
         return false;
       }
 
-      auto next_ops = pir::GetUseOpsForOutput(input_op, 0);
+      auto next_ops = GetUseOpsForOutput(input_op, 0);
       for (auto [next_op, _] : next_ops) {
         if (!next_op->isa<paddle::onednn::dialect::DequantizeOp>()) {
           need_dequant = true;
@@ -2068,13 +2054,12 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
 };
 
 template <typename OpType>
-class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
+class CastBf16Pattern : public OpRewritePattern<OpType> {
  public:
-  using pir::OpRewritePattern<OpType>::OpRewritePattern;
+  using OpRewritePattern<OpType>::OpRewritePattern;
 
-  bool MatchAndRewrite(
-      OpType op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
+  bool MatchAndRewrite(OpType op,
+                       PatternRewriter &rewriter) const override {  // NOLINT
     std::string target_op_name = op->name();
     if (!(target_op_name == "onednn_op.cast" ||
           target_op_name == "onednn_op.cast_"))
@@ -2086,7 +2071,7 @@ class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
         dtype_attr.template dyn_cast<paddle::dialect::DataTypeAttribute>()
             .data();
     if (dtype == phi::DataType::FLOAT32) {
-      pir::Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
+      Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
           rewriter.ir_context(), phi::DataType::BFLOAT16);
       attributes["dtype"] = new_dtype;
     } else {
@@ -2095,7 +2080,7 @@ class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
 
     OpType new_cast = rewriter.Build<OpType>(op->operand_source(0), attributes);
 
-    std::unordered_map<std::string, pir::Attribute> dq_attributes;
+    std::unordered_map<std::string, Attribute> dq_attributes;
     dq_attributes["scale"] = rewriter.float_attr(1.0f);
     dq_attributes["shift"] = rewriter.float_attr(0.0f);
     paddle::onednn::dialect::DequantizeOp dq_op =
@@ -2108,12 +2093,12 @@ class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
   }
 };
 
-class CpuBfloat16Pass : public pir::PatternRewritePass {
+class CpuBfloat16Pass : public PatternRewritePass {
  public:
-  CpuBfloat16Pass() : pir::PatternRewritePass("cpu_bfloat16_pass", 2) {}
+  CpuBfloat16Pass() : PatternRewritePass("cpu_bfloat16_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
 
     // op with two inputs and one output
     const std::vector<std::string> bfloat16_ops_two_one{
@@ -2283,13 +2268,9 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateCpuBf16PatternPass() {
   return std::make_unique<CpuBfloat16Pass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(cpu_bfloat16_pass, CpuBfloat16Pass);
+REGISTER_IR_PASS(cpu_bfloat16_pass, pir::CpuBfloat16Pass);

@@ -290,8 +290,8 @@ struct ReduceConfig {
   // If should_reduce_again, we need malloc temp space for temp data
   void SetOutputData(Ty* y_data, const KPDevice& dev_ctx, DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(common::make_ddim(
-          {static_cast<int64_t>(left_num * grid.z * grid.y)}));
+      tmp->Resize(
+          make_ddim({static_cast<int64_t>(left_num * grid.z * grid.y)}));
       tmp_data = dev_ctx.Alloc<MPType>(tmp);
     }
   }
@@ -1337,7 +1337,7 @@ void ReduceFunctor(const Context& dev_ctx,
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = common::make_ddim(dims_vector);
+    out_dims = make_ddim(dims_vector);
   }
   auto& place = *dev_ctx.eigen_device();
   Functor functor;

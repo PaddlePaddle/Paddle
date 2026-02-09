@@ -103,7 +103,7 @@ def sequence_mask(
             int32 or int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -195,7 +195,7 @@ def gather_tree(ids: Tensor, parents: Tensor) -> Tensor:
             :attr:`ids` by backtracing according to :attr:`parents`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -304,7 +304,7 @@ def temporal_shift(
         same shape and same data type as the input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F

@@ -308,6 +308,15 @@ class XPUTestDiagV2Op(XPUOpTestWrapper):
             with base.program_guard(base.Program()):
                 self.run_static()
 
+    class TestDiagV2OpEmpty1DOffsetOutOfRange(TestDiagV2Op):
+        def init_config(self):
+            self.x = np.array([], dtype=self.dtype)
+            self.offset = 2
+            self.padding_value = 0.0
+            n = self.x.size
+            dim = n + abs(self.offset)
+            self.out = np.zeros((dim, dim), dtype=self.dtype)
+
 
 support_types = get_xpu_op_support_types('diag_v2')
 for stype in support_types:

@@ -40,7 +40,7 @@ def set_default_dtype(d: DTypeLike) -> None:
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_default_dtype("float32")
@@ -87,7 +87,7 @@ def get_default_dtype() -> _DTypeLiteral:
         str, this global dtype only supports float16, float32, float64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.get_default_dtype()
