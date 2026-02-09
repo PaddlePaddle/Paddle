@@ -22,6 +22,19 @@ import paddle
 FIELD_PREFIX = "_paddle_field_"
 
 
+class _NonTensorBatch:
+    """
+    Wrapper for batch data that contains no tensor data.
+    When a batch has no tensors (e.g., all strings or custom objects),
+    a dummy tensor is added to flat_batch to keep the C++ blocking queue
+    working, and the real structure is wrapped in this class so that
+    _restore_batch can detect it and return only the structure.
+    """
+
+    def __init__(self, structure):
+        self.structure = structure
+
+
 def _flatten_batch(batch):
     """
     For lod_blocking_queue only receive tensor array, flatten batch
@@ -87,9 +100,18 @@ def _flatten_batch(batch):
     if not isinstance(batch, Sequence):
         flat_batch = []
         structure, _ = _flatten([batch], flat_batch, [], 0)
+        if len(flat_batch) == 0:
+            # Add a dummy tensor so the C++ blocking queue doesn't treat
+            # an empty DenseTensorArray as end-of-data, and wrap the
+            # structure to signal _restore_batch to ignore the dummy.
+            flat_batch.append(np.array([0], dtype="int32"))
+            return flat_batch, _NonTensorBatch(structure[0])
         return flat_batch, structure[0]
     flat_batch = []
     structure, _ = _flatten(batch, flat_batch, [], 0)
+    if len(flat_batch) == 0:
+        flat_batch.append(np.array([0], dtype="int32"))
+        return flat_batch, _NonTensorBatch(structure)
     return flat_batch, structure
 
 
@@ -135,6 +157,12 @@ def _restore_batch(flat_batch, structure):
         return field_idx
 
     assert isinstance(flat_batch, Sequence), "flat_batch is not a list or tuple"
+
+    # batch contains no tensor data, the flat_batch only has a dummy
+    # sentinel tensor added to keep the blocking queue working;
+    # return the original structure directly
+    if isinstance(structure, _NonTensorBatch):
+        return structure.structure
 
     # no np.array in dataset, no output tensor from blocking queue
     # simply return structure
