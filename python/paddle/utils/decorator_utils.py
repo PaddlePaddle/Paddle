@@ -958,6 +958,34 @@ def maxpool_decorator() -> Callable[
     return decorator
 
 
+def maxpool_layer_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                if len(args) > 5:
+                    kwargs["return_mask"] = args[5]
+                if len(args) > 6:
+                    kwargs["ceil_mode"] = args[6]
+                args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def use_first_signature(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
