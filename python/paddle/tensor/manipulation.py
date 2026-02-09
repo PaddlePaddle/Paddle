@@ -323,7 +323,7 @@ def slice(
 ) -> Tensor:
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    https://numpy.org/doc/stable/user/basics.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
@@ -6102,8 +6102,8 @@ def strided_slice(
     name: str | None = None,
 ) -> Tensor:
     """
-    This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
+    https://numpy.org/doc/stable/user/basics.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
