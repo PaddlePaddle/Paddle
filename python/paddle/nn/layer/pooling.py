@@ -701,14 +701,14 @@ class MaxPool1D(Layer):
 
     def forward(self, input: Tensor) -> Tensor:
         out = F.max_pool1d(
-            input,
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
-            self.return_mask,
-            self.ceil_mode,
-            self.name,
+            x=input,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
+            padding=self.padding,
+            return_mask=self.return_mask,
+            ceil_mode=self.ceil_mode,
+            dilation=self.dilation,
+            name=self.name,
         )
         return out
 
@@ -836,13 +836,13 @@ class MaxPool2D(Layer):
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.max_pool2d(
-            x,
+            x=x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
-            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
+            dilation=self.dilation,
             data_format=self.data_format,
             name=self.name,
         )
@@ -961,13 +961,13 @@ class MaxPool3D(Layer):
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.max_pool3d(
-            x,
+            x=x,
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
-            dilation=self.dilation,
             return_mask=self.return_mask,
             ceil_mode=self.ceil_mode,
+            dilation=self.dilation,
             data_format=self.data_format,
             name=self.name,
         )
