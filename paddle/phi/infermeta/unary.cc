@@ -3000,7 +3000,7 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
                   out,
                   config);
   saved_idx->set_dims(out->dims());
-  saved_idx->set_dtype(phi::CppTypeToDataType<int64_t>::Type());
+  saved_idx->set_dtype(phi::CppTypeToDataType<int>::Type());
 }
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
