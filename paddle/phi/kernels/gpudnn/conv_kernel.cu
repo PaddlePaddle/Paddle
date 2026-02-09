@@ -280,7 +280,8 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                                           output_data,
                                           filter_data,
                                           handle,
-                                          &workspace_handle);
+                                          &workspace_handle,
+                                          input_tensor->dtype());
 
   helper::ExecutePlansAndCache(handle,
                                &workspace_handle,
