@@ -32,8 +32,8 @@ struct GlobalGatherFunctor {
                   DenseTensor *out);
 };
 template <typename T>
-struct GlobalGatherFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &dev_ctx,
+struct GlobalGatherFunctor<GPUContext, T> {
+  void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &x_in,
                   const DenseTensor &local_count_in,
                   const DenseTensor &global_count_in,
@@ -99,7 +99,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    DDim out_dims = make_ddim({fwd_count, in_feat});
     int64_t *expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -149,7 +149,7 @@ void GlobalGatherKernel(const Context &dev_ctx,
                         const DenseTensor &local_count,
                         const DenseTensor &global_count,
                         DenseTensor *out) {
-  GlobalGatherFunctor<phi::GPUContext, T> functor_;
+  GlobalGatherFunctor<GPUContext, T> functor_;
   functor_(dev_ctx, x, local_count, global_count, out);
 }
 

@@ -121,35 +121,35 @@ template <typename DeviceContext>
 void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
                                const std::vector<DenseTensor> &t_list,
                                DenseTensor *p_out,
-                               phi::DataType type) {
+                               DataType type) {
   switch (type) {
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       ConcatDenseTensor<DeviceContext, bool>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       ConcatDenseTensor<DeviceContext, uint8_t>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       ConcatDenseTensor<DeviceContext, int8_t>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       ConcatDenseTensor<DeviceContext, int32_t>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       ConcatDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       ConcatDenseTensor<DeviceContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       ConcatDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       ConcatDenseTensor<DeviceContext, float>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       ConcatDenseTensor<DeviceContext, double>()(dev_ctx, t_list, p_out);
       break;
     default:
@@ -163,26 +163,26 @@ template <>
 void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
                                const std::vector<DenseTensor> &t_list,
                                DenseTensor *p_out,
-                               phi::DataType type) {
+                               DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       ConcatDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       ConcatDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       ConcatDenseTensor<phi::XPUContext, float>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       ConcatDenseTensor<phi::XPUContext, int32_t>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       ConcatDenseTensor<phi::XPUContext, int64_t>()(dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       ConcatDenseTensor<phi::XPUContext, uint8_t>()(dev_ctx, t_list, p_out);
       break;
     default:
@@ -196,43 +196,43 @@ template <typename DeviceContext>
 void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
                               const DenseTensor &t_in,
                               std::vector<DenseTensor *> *p_list,
-                              phi::DataType type) {
+                              DataType type) {
   switch (type) {
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       SplitDenseTensor<DeviceContext, bool>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       SplitDenseTensor<DeviceContext, uint8_t>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       SplitDenseTensor<DeviceContext, int8_t>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::FLOAT8_E4M3FN:
+    case DataType::FLOAT8_E4M3FN:
       SplitDenseTensor<DeviceContext, phi::dtype::float8_e4m3fn>()(
           dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::FLOAT8_E5M2:
+    case DataType::FLOAT8_E5M2:
       SplitDenseTensor<DeviceContext, phi::dtype::float8_e5m2>()(
           dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       SplitDenseTensor<DeviceContext, int32_t>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       SplitDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       SplitDenseTensor<DeviceContext, phi::dtype::float16>()(
           dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       SplitDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
           dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       SplitDenseTensor<DeviceContext, float>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       SplitDenseTensor<DeviceContext, double>()(dev_ctx, t_in, p_list);
       break;
     default:
@@ -246,26 +246,26 @@ template <>
 void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
                               const DenseTensor &t_in,
                               std::vector<DenseTensor *> *p_list,
-                              phi::DataType type) {
+                              DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       SplitDenseTensor<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       SplitDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
           dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       SplitDenseTensor<phi::XPUContext, float>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       SplitDenseTensor<phi::XPUContext, int32_t>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       SplitDenseTensor<phi::XPUContext, int64_t>()(dev_ctx, t_in, p_list);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       SplitDenseTensor<phi::XPUContext, uint8_t>()(dev_ctx, t_in, p_list);
       break;
     default:

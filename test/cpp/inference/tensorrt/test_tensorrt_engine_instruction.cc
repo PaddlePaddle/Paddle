@@ -205,8 +205,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
       "persistable", pir::BoolAttribute::get(pir::IrContext::Instance(), true));
 
   // 4. Run Program
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(&program, phi::GPUPlace());
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program, phi::GPUPlace());
   std::unique_ptr<paddle::framework::NaiveExecutor> executor =
       std::make_unique<paddle::framework::NaiveExecutor>(phi::GPUPlace());
   paddle::framework::interpreter::ExecutionConfig execution_config;
@@ -348,8 +347,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
       "persistable", pir::BoolAttribute::get(pir::IrContext::Instance(), true));
 
   // 4. Run Program
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(&program, phi::GPUPlace());
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program, phi::GPUPlace());
   std::unique_ptr<paddle::framework::NaiveExecutor> executor =
       std::make_unique<paddle::framework::NaiveExecutor>(phi::GPUPlace());
   paddle::framework::interpreter::ExecutionConfig execution_config;
@@ -522,8 +520,7 @@ TEST(PluginTest, test_generic_plugin) {
       "persistable", pir::BoolAttribute::get(pir::IrContext::Instance(), true));
 
   // 4. Run Program
-  auto kernel_program =
-      paddle::dialect::PdOpLowerToKernelPass(&program, phi::GPUPlace());
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program, phi::GPUPlace());
   std::unique_ptr<paddle::framework::NaiveExecutor> executor =
       std::make_unique<paddle::framework::NaiveExecutor>(phi::GPUPlace());
   paddle::framework::interpreter::ExecutionConfig execution_config;

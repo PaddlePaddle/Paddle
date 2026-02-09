@@ -31,7 +31,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'Doc-Preview'
+      workflow-name: "Doc-Preview"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,6 +41,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:

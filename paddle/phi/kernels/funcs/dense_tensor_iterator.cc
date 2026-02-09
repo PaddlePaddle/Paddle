@@ -189,15 +189,15 @@ void DenseTensorIterator::set_output_raw_strided(int64_t output_idx,
   if (!op.tensor().initialized() || !valid_stride) {
     if (strides.empty()) {
       auto meta = op.tensor().meta();
-      auto new_dims = common::make_ddim(sizes);
+      auto new_dims = make_ddim(sizes);
       auto new_strides = meta.calc_strides(new_dims);
       meta.dims = new_dims;
       meta.strides = new_strides;
       op.tensor().set_meta(meta);
     } else {
       auto meta = op.tensor().meta();
-      auto new_dims = common::make_ddim(sizes);
-      auto new_strides = common::make_ddim(strides);
+      auto new_dims = make_ddim(sizes);
+      auto new_strides = make_ddim(strides);
       meta.dims = new_dims;
       meta.strides = new_strides;
       op.tensor().set_meta(meta);

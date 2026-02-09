@@ -323,8 +323,9 @@ def serialize_program(
         bytes: serialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.serialize_program doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -387,29 +388,29 @@ def serialize_persistables(
         bytes: serialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
-
-            >>> path_prefix = "./infer_model"
-
-            # User defined network, here a softmax regression example
-            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
-
-            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
-
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> exe.run(paddle.static.default_startup_program())
-
-            # serialize parameters to bytes.
-            >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
-
-            # deserialize bytes to parameters.
-            >>> main_program = paddle.static.default_main_program()
-            >>> deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
+            >>> with paddle.pir_utils.OldIrGuard():
+            ...     path_prefix = "./infer_model"
+            ...
+            ...     # User defined network, here a softmax regression example
+            ...     image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            ...     label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            ...     predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            ...
+            ...     loss = paddle.nn.functional.cross_entropy(predict, label)
+            ...
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
+            ...     exe.run(paddle.static.default_startup_program())
+            ...
+            ...     # serialize parameters to bytes.
+            ...     serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            ...
+            ...     # deserialize bytes to parameters.
+            ...     main_program = paddle.static.default_main_program()
+            ...     deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
 
     """
     # verify feed_vars
@@ -481,8 +482,9 @@ def save_to_file(path: str, content: bytes) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.save_to_file doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> path_prefix = "./infer_model"
@@ -665,8 +667,9 @@ def deserialize_program(data: bytes) -> Program:
         Program: deserialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.deserialize_program doesn't support PIR mode")
             >>> import paddle
 
             >>> paddle.enable_static()
@@ -714,8 +717,9 @@ def deserialize_persistables(
         Program: deserialized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.deserialize_persistables doesn't support PIR mode")
             >>> import paddle
 
             >>> paddle.enable_static()
@@ -813,8 +817,9 @@ def load_from_file(path: str) -> bytes:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load_from_file doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
             >>> path_prefix = "./infer_model"
@@ -1515,8 +1520,9 @@ def save(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.save doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
@@ -1627,8 +1633,9 @@ def load(
         None
 
      Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
@@ -1959,8 +1966,9 @@ def load_program_state(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.load_program_state doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 

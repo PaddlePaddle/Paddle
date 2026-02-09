@@ -411,10 +411,6 @@ struct CustomContext::Impl {
         }
       }
     });
-    PADDLE_ENFORCE_NOT_NULL(
-        dnn_handle_,
-        common::errors::InvalidArgument(
-            "The Custom dnn handle is nullptr. It must not be null."));
     return dnn_handle_;
   }
 

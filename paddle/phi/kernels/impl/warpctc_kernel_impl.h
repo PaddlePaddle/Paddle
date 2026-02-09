@@ -340,7 +340,7 @@ void WarpctcKernel(const Context& dev_ctx,
     max_sequence_length = funcs::MaximumSequenceLength(logits_lod);
   }
 
-  auto loss_dims = common::make_ddim({static_cast<int64_t>(num_sequences), 1});
+  auto loss_dims = make_ddim({static_cast<int64_t>(num_sequences), 1});
 
   // warpctc needs sequences data stored in transposed padding format
   DenseTensor warpctc_logits_tmp =

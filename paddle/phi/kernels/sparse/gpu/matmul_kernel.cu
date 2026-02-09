@@ -75,7 +75,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
   out_dim_vec[y_ndims - 2] = xdim_vec[x_ndims - 2];
   out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
   MetaTensor meta_out(out);
-  meta_out.set_dims(common::make_ddim(out_dim_vec));
+  meta_out.set_dims(make_ddim(out_dim_vec));
   meta_out.set_dtype(y.dtype());
 
   dev_ctx.template Alloc<T>(out);

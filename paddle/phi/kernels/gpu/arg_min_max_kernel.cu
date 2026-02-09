@@ -80,7 +80,7 @@ __global__ void ArgCUDAKernel(const int64_t height,     // n * h
 }
 
 template <typename T, typename IndType, class Reducer, typename IndexType>
-void ComputeFullArg(const phi::GPUContext& dev_ctx,
+void ComputeFullArg(const GPUContext& dev_ctx,
                     const DenseTensor& input,
                     DenseTensor* indices,
                     const int64_t pre,
@@ -170,7 +170,7 @@ struct VisitDataCudaArgMinMaxFunctor {
     DDim x_dims;
     int new_axis = axis;
     if (flatten) {
-      x_dims = common::make_ddim({x.numel()});
+      x_dims = make_ddim({x.numel()});
       // if flatten, the axis just as 0
       new_axis = 0;
     } else {

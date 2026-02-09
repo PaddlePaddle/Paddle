@@ -44,7 +44,7 @@ struct BNStatsFinalizeArgs {
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
             param_shape.size(),
-            common::make_ddim(param_shape)));
+            make_ddim(param_shape)));
 
     in_desc.set(param_shape, format, param_dtype);
     out_desc.set(param_shape, format, dtype);

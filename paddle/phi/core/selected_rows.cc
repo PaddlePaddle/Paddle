@@ -18,10 +18,9 @@ namespace phi {
 
 SelectedRows::SelectedRows(const std::vector<int64_t>& rows,
                            const int64_t& height)
-    : impl_(std::make_shared<phi::SelectedRowsImpl>(rows, height)) {}
+    : impl_(std::make_shared<SelectedRowsImpl>(rows, height)) {}
 
-SelectedRows::SelectedRows()
-    : impl_(std::make_shared<phi::SelectedRowsImpl>()) {}
+SelectedRows::SelectedRows() : impl_(std::make_shared<SelectedRowsImpl>()) {}
 
 void SelectedRows::set_type(const DataType dtype) { impl_->set_type(dtype); }
 

@@ -62,7 +62,7 @@ void ScatterNdAddGradKernel(const Context &dev_ctx,
           errors::InvalidArgument(
               "Size of the last dim of the index tensor [%d] should be 0",
               end_size));
-      auto remain_dims = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+      auto remain_dims = slice_ddim(index_dims, 0, index_dims_size - 1);
       int64_t remain_numel = common::product(remain_dims);
       int64_t updates_grad_numel = updates_grad->numel();
       int64_t out_grad_numel = out_grad.numel();

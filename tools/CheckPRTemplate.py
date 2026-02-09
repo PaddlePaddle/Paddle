@@ -24,11 +24,15 @@ PR_checkTemplate = ['Paddle']
 BRANCH = os.environ['BRANCH']
 if BRANCH.startswith("develop"):
     REPO_TEMPLATE = {
-        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)'''
+        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)### 是否引起精度变化(.*[^\s].*)'''
     }
 elif BRANCH.startswith("fleety_"):
     REPO_TEMPLATE = {
         "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
+    }
+else:
+    REPO_TEMPLATE = {
+        "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)'''
     }
 
 
@@ -80,6 +84,11 @@ def parameter_accuracy(body):
         'Security',
         'Others',
     ]
+
+    Accuracy_Change = [
+        '是',
+        '否',
+    ]
     body = re.sub("\r\n", "", body)
     type_end = body.find('### PR Types')
     changes_end = body.find('### Description')
@@ -107,7 +116,131 @@ def parameter_accuracy(body):
             "https://github.com/PaddlePaddle/Paddle/pull/" + str(des_pr_id[0])
         ):
             message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
+
+    if BRANCH.startswith("develop"):
+        accuracy_start = body.find('### 是否引起精度变化')
+        if accuracy_start != -1:
+            # 确保description_start在accuracy_start之后
+            PR_dic['Precision Change Impact'] = body[
+                accuracy_start + len('### 是否引起精度变化') :
+            ]
+        else:
+            PR_dic['Precision Change Impact'] = ''
+        accuracy_value = PR_dic.get('Precision Change Impact', '').strip()
+        print(f'Extracted Precision Change Impact: "{accuracy_value}"')
+        if not accuracy_value:
+            message += '必须填写是否引起精度变化'
+        else:
+            found_valid = False
+            for option in Accuracy_Change:
+                if option in accuracy_value:
+                    found_valid = True
+                    break
+            if not found_valid:
+                message += f'精度变化必须填写为：{Accuracy_Change}. 现在是 {accuracy_value}.'
     return message
+
+
+def check_precision_change_approval(body, pr_number, pr_user):
+    """Check if PR with precision change has sufficient approval"""
+    # Only check for develop branch
+    if not BRANCH.startswith("develop"):
+        return True, "Not develop branch, skip precision change approval check"
+
+    # Check if involves precision change
+    body_without_comments = re.sub(r'<!--.*?-->', '', body, flags=re.DOTALL)
+    accuracy_start = body_without_comments.find('### 是否引起精度变化')
+    if accuracy_start != -1:
+        precision_text = body_without_comments[
+            accuracy_start + len('### 是否引起精度变化') :
+        ]
+    else:
+        precision_text = ''
+        return False, '未匹配到是否引起精度变化字段，无法判断是否涉及精度变化'
+    precision_text = precision_text.strip()
+
+    print(f'Extracted precision text: "{precision_text}"')
+    has_precision_change = '是' in precision_text
+
+    if not has_precision_change:
+        return True, "不涉及精度变化，无需检查"
+    REQUIRED_APPROVERS = [
+        'From00',
+        'lugimzzz',
+        'Jiang-Jia-Jun',
+        'wanghuancoder',
+    ]
+    REQUIRED_APPROVERS_LOWER = [user.lower() for user in REQUIRED_APPROVERS]
+    print(
+        f"PR {pr_number} involves precision change, checking approvals from required approvers: {REQUIRED_APPROVERS}"
+    )
+
+    # If has precision change, check approval status
+    reviews_url = f"https://api.github.com/repos/PaddlePaddle/Paddle/pulls/{pr_number}/reviews"
+    headers = {
+        'Authorization': 'token ' + GITHUB_API_TOKEN,
+        'Accept': 'application/vnd.github+json',
+    }
+
+    try:
+        response = httpx.get(reviews_url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return (
+                False,
+                f"Cannot get review information: {response.status_code}",
+            )
+
+        reviews = response.json()
+
+        # Check for approved reviews
+        approved_by = {}
+        for approver in REQUIRED_APPROVERS:
+            approved_by[approver] = False
+
+        if pr_user.lower() in REQUIRED_APPROVERS_LOWER:
+            approved_by[pr_user] = True
+            print(f"  ✓ Approved by PR author {pr_user}")
+
+        # Check all reviews
+        for review in reviews:
+            if review['state'] == 'APPROVED':
+                reviewer = review['user']['login']
+                if reviewer.lower() in REQUIRED_APPROVERS_LOWER:
+                    # Find the correct casing for this reviewer
+                    for approver in REQUIRED_APPROVERS:
+                        if approver.lower() == reviewer.lower():
+                            approved_by[approver] = True
+                            print(f"  ✓ Approved by {approver}")
+                            break
+        # Check if all required approvers have approved
+        missing_approvers = [
+            approver
+            for approver, has_approved in approved_by.items()
+            if not has_approved
+        ]
+        if len(missing_approvers) == 0:
+            approvers_list = ", ".join(REQUIRED_APPROVERS)
+            return (
+                True,
+                f"✅ All required approvers have approved: {approvers_list}",
+            )
+        else:
+            approved_list = [a for a in REQUIRED_APPROVERS if approved_by[a]]
+            missing_list = ", ".join(missing_approvers)
+
+            if len(approved_list) > 0:
+                approved_str = ", ".join(approved_list)
+                return (
+                    False,
+                    f"❌ Missing approvals from: {missing_list}. Approved by: {approved_str}",
+                )
+            else:
+                return (
+                    False,
+                    f"❌ No approvals from required approvers. Missing: {missing_list}",
+                )
+    except Exception as e:
+        return False, f"Error checking approval: {e!s}"
 
 
 def checkComments(url):
@@ -170,6 +303,17 @@ def pull_request_event_template(event, repo, *args, **kwargs):
             print("ERROR MESSAGE:", check_pr_template_message)
             sys.exit(7)
         else:
+            print("check approve")
+            approval_ok, approval_msg = check_precision_change_approval(
+                BODY, pr_num, pr_user
+            )
+            print(
+                f"Approval check result: {approval_ok}, message: {approval_msg}"
+            )
+            if not approval_ok:
+                check_pr_template_message = approval_msg
+                print("ERROR MESSAGE:", check_pr_template_message)
+                sys.exit(8)
             sys.exit(0)
 
 

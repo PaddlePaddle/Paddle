@@ -49,7 +49,7 @@ void ShuffleBatchGradKernel(const Context& dev_ctx,
   ReorderFunctor<T, false> functor(
       out_grad_data, shuffleidx_data, x_grad_data, x_embed_size);
   // TODO(zengjinle): for small data, direct cudaMemcpy may be better
-  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, x_grad->numel());
+  funcs::ForRange<GPUContext> for_range(dev_ctx, x_grad->numel());
   for_range(functor);
 #endif
 }

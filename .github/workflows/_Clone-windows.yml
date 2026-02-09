@@ -21,6 +21,7 @@ jobs:
     name: Clone Paddle
     runs-on:
       group: win-clone
+    timeout-minutes: 30
     steps:
       - name: Git config
         run: |

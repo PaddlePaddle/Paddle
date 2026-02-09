@@ -47,8 +47,8 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
                                                      : output_grad->dims()[2]);
 
   DDim in_grad_dims =
-      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
-                                       : common::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::NCHW ? make_ddim({nt, c, h, w})
+                                       : make_ddim({nt, h, w, c}));
   const T* output_grad_data = output_grad->data<T>();
   input_grad->Resize(in_grad_dims);
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
