@@ -274,11 +274,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                     kernels_.end(),
                     common::errors::NotFound(
                         "The kernel `%s` is not registered.", kernel_name));
-
   if (FLAGS_use_stride_kernel && use_strided_kernel) {
     auto stride_kernel_iter = iter->second.find(
         {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
-             ? paddle::experimental::Backend::GPU
+             ? paddle::experimental::get_accelerat_backend()
              : const_kernel_key.backend(),
          phi::DataLayout::STRIDED,
          const_kernel_key.dtype()});
@@ -287,7 +286,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (stride_kernel_iter == iter->second.end() &&
-        const_kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+        (const_kernel_key.backend() > phi::Backend::NUM_BACKENDS ||
+         const_kernel_key.backend() == phi::Backend::GPUDNN)) {
       stride_kernel_iter = iter->second.find({phi::Backend::CUSTOM,
                                               phi::DataLayout::STRIDED,
                                               const_kernel_key.dtype()});
@@ -301,15 +301,17 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
                                    phi::DataLayout::ALL_LAYOUT,
                                    const_kernel_key.dtype());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false, false};
     }
-    kernel_key =
-        KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
+    kernel_key = KernelKey(paddle::experimental::get_accelerat_backend(),
+                           kernel_key.layout(),
+                           kernel_key.dtype());
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
@@ -364,6 +366,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                                      phi::DataLayout::ALL_LAYOUT,
                                      kernel_key.dtype()});
   }
+
+  if (kernel_iter == iter->second.end()) {
+    bool in_black_list = phi::backends::custom_device::is_in_custom_black_list(
+        TransToFluidOpName(kernel_name));
+  }
+
   if (FLAGS_enable_api_kernel_fallback &&
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(

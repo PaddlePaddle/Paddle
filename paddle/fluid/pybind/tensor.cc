@@ -79,7 +79,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -403,7 +402,7 @@ DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
   DenseTensor tensor;
   tensor.Resize(phi::make_ddim(dims_vec));
   tensor.ResetHolder(std::move(alloc));
-  tensor.set_type(static_cast<phi::DataType>(dtype_idx));
+  tensor.set_type(static_cast<DataType>(dtype_idx));
   return tensor;
 }
 #endif
@@ -962,7 +961,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              size_t size = t[0].cast<size_t>();
              auto dtype =
-                 static_cast<phi::DataType>(t[1].cast<int>());
+                 static_cast<DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
              auto device_id = t[4].cast<int>();
 
@@ -1080,7 +1079,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_reader_holder,
-                 static_cast<phi::DataType>(t[3].cast<int>()));
+                 static_cast<DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(
                  t[4].cast<std::vector<int64_t>>()));
 
@@ -1130,7 +1129,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                      "shared by xpu ipc could use this api."));
 
              size_t size = t[0].cast<size_t>();
-             auto dtype = static_cast<phi::DataType>(t[1].cast<int>());
+             auto dtype = static_cast<DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(
                  t[2].cast<std::vector<int>>());
              auto device_id = t[4].cast<int>();
@@ -1241,7 +1240,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                      dev, size, device_id, std::move(base_ptr));
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<phi::DataType>(t[3].cast<int>()));
+                 static_cast<DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(
                  t[4].cast<std::vector<int>>()));
              VLOG(6) << "[DEBUG XPU] _new_shared_xpu: Reshape tensor dims: "
@@ -1371,7 +1370,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<phi::DataType>(t[3].cast<int>()));
+                 static_cast<DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
 
              return tensor;
@@ -1458,7 +1457,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             // 4. Rebuild Tensor
             tensor.ResetHolderWithType(
                 shared_reader_holder,
-                static_cast<phi::DataType>(t[2].cast<int>()));
+                static_cast<DataType>(t[2].cast<int>()));
             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
 
             return tensor;

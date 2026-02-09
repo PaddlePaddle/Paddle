@@ -39,7 +39,7 @@ class Stub(Layer):
             It will use a global configuration to create the observers if the 'observer' is none.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn.quant import Stub

@@ -53,12 +53,12 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // make new tensor reduce_out
   DenseTensor new_y(out_y->type());
   new_y.ShareDataWith(*out_y);
-  new_y.Resize(common::make_ddim(update_dims));
+  new_y.Resize(make_ddim(update_dims));
 
   // make new tensor d_out
   DenseTensor new_dout(d_out->type());
   new_dout.ShareDataWith(*d_out);
-  new_dout.Resize(common::make_ddim(update_dims));
+  new_dout.Resize(make_ddim(update_dims));
   dev_ctx.Alloc(d_x, d_out->dtype());
 
   DenseTensor new_in_tensor(*in_x);
@@ -71,7 +71,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
 
   // make new tensor equal_count
   DenseTensor equal_count;
-  equal_count.Resize(common::make_ddim(update_dims));
+  equal_count.Resize(make_ddim(update_dims));
   dev_ctx.template Alloc<T>(&equal_count);
 
   // compute

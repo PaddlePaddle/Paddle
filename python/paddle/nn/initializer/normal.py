@@ -148,17 +148,19 @@ class Normal(NormalInitializer):
         A parameter initialized by Random Normal (Gaussian) distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
             >>> weight_attr = paddle.framework.ParamAttr(
             ...     name="linear_weight",
-            ...     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            ...     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0),
+            ... )
             >>> bias_attr = paddle.framework.ParamAttr(
             ...     name="linear_bias",
-            ...     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            ...     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0),
+            ... )
             >>> # doctest: +SKIP('name has been used')
             >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
             >>> print(linear.weight)
@@ -359,17 +361,19 @@ class TruncatedNormal(TruncatedNormalInitializer):
         A parameter initialized by truncated normal distribution (Gaussian distribution).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
             >>> weight_attr = paddle.framework.ParamAttr(
             ...     name="linear_weight",
-            ...     initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            ...     initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0),
+            ... )
             >>> bias_attr = paddle.framework.ParamAttr(
             ...     name="linear_bias",
-            ...     initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            ...     initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0),
+            ... )
             >>> # doctest: +SKIP('name has been used')
             >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
             >>> print(linear.weight)

@@ -33,7 +33,7 @@ void ArgMaxMinMapper(PyObject* args,
                      paddle::experimental::Scalar* axis,
                      bool* keepdims,
                      bool* flatten,
-                     phi::DataType* dtype) {
+                     DataType* dtype) {
   // The python params are (x, axis,keepdim,dtype,name) which haven't flatten
   // The _C_ops params are (x, axis,keepdim,flatten,dtype) which have flatten
   // but haven't name We should parse the python params and convert them to the
@@ -91,7 +91,7 @@ void ArgMaxMinMapper(PyObject* args,
                     common::errors::InvalidArgument(
                         "the value of 'dtype' in argmax and argmin "
                         "could not be None, but received None"));
-  *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
+  *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, DataType::INT64);
   // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 
@@ -103,7 +103,7 @@ void ArgMaxMinMapper(PyObject* args,
                      pir::Value* axis,
                      bool* keepdims,
                      bool* flatten,
-                     phi::DataType* dtype) {
+                     DataType* dtype) {
   // Get Total Params count and check validity if needed
   int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
   int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
@@ -133,13 +133,13 @@ void ArgMaxMinMapper(PyObject* args,
   if (axis_obj == Py_None || axis_obj == nullptr) {
     *flatten = true;
     *axis = paddle::dialect::full(
-        std::vector<int64_t>{1}, 0, phi::DataType::INT64, CPUPlace());
+        std::vector<int64_t>{1}, 0, DataType::INT64, CPUPlace());
   } else if (PyObject_CheckIRValue(axis_obj)) {
     *axis = CastPyArg2Value(axis_obj, "argmax", 1);
   } else {
     int64_t axis_tmp = CastPyArg2Long(axis_obj, "argmax", 1);
     *axis = paddle::dialect::full(
-        std::vector<int64_t>{1}, axis_tmp, phi::DataType::INT64, CPUPlace());
+        std::vector<int64_t>{1}, axis_tmp, DataType::INT64, CPUPlace());
   }
   *keepdims = CastPyArg2Boolean(keepdims_obj, "argmax", 2, false);
 
@@ -148,7 +148,7 @@ void ArgMaxMinMapper(PyObject* args,
                     common::errors::InvalidArgument(
                         "the value of 'dtype' in argmax and argmin "
                         "could not be None, but received None"));
-  *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, phi::DataType::INT64);
+  *dtype = CastPyArg2DataType(dtype_obj, "argmax", 3, DataType::INT64);
 
   // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
@@ -165,7 +165,7 @@ void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
                   Tensor** x_ptr_ptr,
                   paddle::experimental::IntArray* axis,
-                  phi::DataType* dtype,
+                  DataType* dtype,
                   bool* keepdim) {
   // Get Total Params count and check validity if needed
   int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
@@ -194,7 +194,7 @@ void ArgSumMapper(PyObject* args,
       args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
   PyObject* py_obj_2 = nullptr;
   if (py_obj_1 == nullptr) {
-    *dtype = phi::DataType::UNDEFINED;
+    *dtype = DataType::UNDEFINED;
     *keepdim = false;
   } else {
     bool is_keepdim1 = CheckBool(py_obj_1);
@@ -202,9 +202,9 @@ void ArgSumMapper(PyObject* args,
       *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
       py_obj_2 = GetItemFromArgsOrKWArgs(
           args, 3, kwargs, {"dtype"}, nargs, &remaining_kwargs);
-      *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, phi::DataType::UNDEFINED);
+      *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, DataType::UNDEFINED);
     } else {
-      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
+      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, DataType::UNDEFINED);
       py_obj_2 = GetItemFromArgsOrKWArgs(
           args, 3, kwargs, {"keepdim"}, nargs, &remaining_kwargs);
       *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
@@ -218,7 +218,7 @@ void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
                   pir::Value* x,
                   pir::Value* axis,
-                  phi::DataType* dtype,
+                  DataType* dtype,
                   bool* keepdim) {
   // Get Total Params count and check validity if needed
   int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
@@ -248,15 +248,15 @@ void ArgSumMapper(PyObject* args,
     *axis = paddle::dialect::stack(axis_tmp, /*axis*/ 0);
   } else {
     std::vector<int64_t> axis_tmp = CastPyArg2Longs(axis_obj, "sum", 1, {});
-    *axis = paddle::dialect::full_int_array(
-        axis_tmp, phi::DataType::INT64, CPUPlace());
+    *axis =
+        paddle::dialect::full_int_array(axis_tmp, DataType::INT64, CPUPlace());
   }
 
   PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
       args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
   PyObject* py_obj_2 = nullptr;
   if (py_obj_1 == nullptr) {
-    *dtype = phi::DataType::UNDEFINED;
+    *dtype = DataType::UNDEFINED;
     *keepdim = false;
   } else {
     bool is_keepdim1 = CheckBool(py_obj_1);
@@ -264,9 +264,9 @@ void ArgSumMapper(PyObject* args,
       *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
       py_obj_2 = GetItemFromArgsOrKWArgs(
           args, 3, kwargs, {"dtype"}, nargs, &remaining_kwargs);
-      *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, phi::DataType::UNDEFINED);
+      *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, DataType::UNDEFINED);
     } else {
-      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
+      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, DataType::UNDEFINED);
       py_obj_2 = GetItemFromArgsOrKWArgs(
           args, 3, kwargs, {"keepdim"}, nargs, &remaining_kwargs);
       *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);

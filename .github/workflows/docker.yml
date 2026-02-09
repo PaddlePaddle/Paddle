@@ -77,7 +77,7 @@ jobs:
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
           docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
-          docker_xpu_file: Dockerfile.develop.xre
+          docker_xpu_file: Dockerfile.develop.xre.ubuntu22
           docker_npu_file: Dockerfile.develop.npu
           docker_dcu_file: Dockerfile.develop.dtk
           docker_doc_file: Dockerfile.doc

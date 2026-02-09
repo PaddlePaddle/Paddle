@@ -105,7 +105,7 @@ DenseTensor Slice(const Context& dev_ctx,
     offset[new_axes[i]] = starts[i];
     extends[new_axes[i]] = ends[i] - starts[i];
   }
-  ret.Resize(common::make_ddim(out_shape));
+  ret.Resize(make_ddim(out_shape));
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     SLICE_RANK_CASE(1);
@@ -147,7 +147,7 @@ static void Slice(const Context& dev_ctx,
     out_shape_vec[axes_vec[i]] = end_vec[i] - begin_vec[i];
   }
 
-  DDim out_dims(common::make_ddim(out_shape_vec));
+  DDim out_dims(make_ddim(out_shape_vec));
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 

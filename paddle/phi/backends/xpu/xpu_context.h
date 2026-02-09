@@ -20,6 +20,7 @@ limitations under the License. */
 #include <mutex>
 #include <queue>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/xpu/forwards.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
@@ -106,6 +107,11 @@ class XPUContext : public DeviceContext,
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
+
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "XPUContext does not support cudnn_handle()."));
+  }
 
  public:
   // NOTE: DeviceContext hold resources. Used in training scenarios.
@@ -212,6 +218,11 @@ class XPUPinnedContext
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "XPUPinnedContext does not support cudnn_handle()."));
+  }
 
   static const char* name() { return "XPUPinnedContext"; }
 

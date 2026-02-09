@@ -28,7 +28,7 @@ inline DenseTensor MatMul(const Context& dev_ctx,
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   DenseTensor matrix_c;
-  DDim c_dim = common::make_ddim({a_dim[0], b_dim[1]});
+  DDim c_dim = make_ddim({a_dim[0], b_dim[1]});
   matrix_c.Resize(c_dim);
   dev_ctx.template Alloc<T>(&matrix_c);
 
@@ -161,9 +161,9 @@ inline void GetDims(const std::vector<const DenseTensor*>& ins,
   for (size_t i = 0; i < n; i++) {
     (*ins_dims)[i] = ins[i]->dims();
     if (i == 0 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = common::make_ddim({1, (*ins_dims)[i][0]});
+      (*ins_dims)[i] = make_ddim({1, (*ins_dims)[i][0]});
     } else if (i == n - 1 && (*ins_dims)[i].size() == 1) {
-      (*ins_dims)[i] = common::make_ddim({(*ins_dims)[i][0], 1});
+      (*ins_dims)[i] = make_ddim({(*ins_dims)[i][0], 1});
     }
   }
 }
@@ -210,7 +210,7 @@ void MultiDotKernel(const Context& dev_ctx,
     auto mat_dim_c = funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
     if (cost1 < cost2) {
       DenseTensor tmp_out;
-      DDim tmp_dim = common::make_ddim({Ma, Nb});
+      DDim tmp_dim = make_ddim({Ma, Nb});
       tmp_out.Resize(tmp_dim);
       dev_ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(
@@ -219,7 +219,7 @@ void MultiDotKernel(const Context& dev_ctx,
       blas.MatMul(tmp_out, mat_dim_tmp, *ins[2], mat_dim_c, scale, out, T(0));
     } else {
       DenseTensor tmp_out;
-      DDim tmp_dim = common::make_ddim({Ka, Nc});
+      DDim tmp_dim = make_ddim({Ka, Nc});
       tmp_out.Resize(tmp_dim);
       dev_ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(
@@ -369,14 +369,14 @@ void MultiDotGradKernel(const Context& dev_ctx,
 
   DDim dout_dim = dout.dims();
   if (ins[0]->dims().size() == 1 && ins[n - 1]->dims().size() == 1) {
-    dout_dim = common::make_ddim({1, 1});
+    dout_dim = make_ddim({1, 1});
   } else if (ins[0]->dims().size() == 1) {
     if (dout_dim.size() == 1) {
-      dout_dim = common::make_ddim({1, dout_dim[0]});
+      dout_dim = make_ddim({1, dout_dim[0]});
     }
   } else if (ins[n - 1]->dims().size() == 1) {
     if (dout_dim.size() == 1) {
-      dout_dim = common::make_ddim({dout_dim[0], 1});
+      dout_dim = make_ddim({dout_dim[0], 1});
     }
   }
 

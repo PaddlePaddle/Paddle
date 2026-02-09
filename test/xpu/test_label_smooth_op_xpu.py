@@ -85,6 +85,29 @@ class XPUTestLabelSmoothOp(XPUOpTestWrapper):
             return
 
 
+class XPUTestLabelSmoothOp_ZeroSize(XPUOpTest):
+    def setUp(self):
+        self.op_type = "label_smooth"
+        self.epsilon = 0.1
+        self.use_xpu = True
+        self.label_dim = 1000
+        self.label = np.zeros((0, 1, self.label_dim)).astype("float32")
+        smoothed_label = (
+            1 - self.epsilon
+        ) * self.label + self.epsilon / self.label_dim
+        self.inputs = {'X': self.label}
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {'Out': smoothed_label}
+
+    def test_check_output(self):
+        if not paddle.is_compiled_with_xpu():
+            return
+        self.check_output_with_place(paddle.XPUPlace(0))
+
+    def test_check_grad(self):
+        return
+
+
 support_types = get_xpu_op_support_types('label_smooth')
 for stype in support_types:
     create_test_class(globals(), XPUTestLabelSmoothOp, stype)

@@ -259,8 +259,9 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
 template <typename T>
 Tensor linear_v2_decomp(const Tensor& input,
                         const Tensor& weight,
-                        const Tensor& bias) {
-  Tensor result = matmul<T>(input, weight, false, false);
+                        const Tensor& bias,
+                        bool transpose_weight) {
+  Tensor result = matmul<T>(input, weight, false, transpose_weight);
   result = result + bias;
   return result;
 }

@@ -38,19 +38,18 @@ inline __global__ void sequence_expand_grad_kernel(const T* dout_data,
          tid_y += blockDim.y) {
       for (size_t tid_x = threadIdx.x; tid_x < x_item_length;
            tid_x += blockDim.x) {
-        phi::CudaAtomicAdd(
-            &dx_data[(x_offset + tid_y) * x_item_length + tid_x],
-            dout_data[(out_offset + tid_z * x_item_count + tid_y) *
-                          x_item_length +
-                      tid_x]);
+        CudaAtomicAdd(&dx_data[(x_offset + tid_y) * x_item_length + tid_x],
+                      dout_data[(out_offset + tid_z * x_item_count + tid_y) *
+                                    x_item_length +
+                                tid_x]);
       }
     }
   }
 }
 
 template <typename T>
-struct SequenceExpandGradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SequenceExpandGradFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/

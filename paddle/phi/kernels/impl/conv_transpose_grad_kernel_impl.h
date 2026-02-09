@@ -108,7 +108,7 @@ void ConvTransposeGradRawKernel(const Context& dev_ctx,
       col_shape_vec[j + 1 + data_dim] = x_shape_vec[j + 1];
     }
   }
-  DDim col_shape(common::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
 
   // use col_matrix_shape in the gemm calculation
   // size: (o_c * k_h * k_w, h * w) or (o_c * k_d * k_h * k_w, d * h * w)

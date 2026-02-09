@@ -235,6 +235,11 @@ AdaptiveMaxPool2d = AdaptiveMaxPool2D
 AdaptiveMaxPool3d = AdaptiveMaxPool3D
 LPPool2d = LPPool2D
 LPPool1d = LPPool1D
+MaxPool1d = MaxPool1D
+MaxPool2d = MaxPool2D
+MaxPool3d = MaxPool3D
+FractionalMaxPool2d = FractionalMaxPool2D
+FractionalMaxPool3d = FractionalMaxPool3D
 
 __all__ = [
     'BatchNorm',
@@ -416,4 +421,9 @@ __all__ = [
     'Module',
     'ModuleDict',
     'ModuleList',
+    'MaxPool1d',
+    'MaxPool2d',
+    'MaxPool3d',
+    'FractionalMaxPool2d',
+    'FractionalMaxPool3d',
 ]

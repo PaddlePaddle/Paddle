@@ -239,7 +239,7 @@ void PowKernel(const Context& dev_ctx,
   const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
   XPUType pow_factor = static_cast<XPUType>(factor.to<T>());
-
+  if (x.numel() == 0) return;
   auto xpu_context = dev_ctx.x_context();
 
   int r = xpu::pow_tensor_scalar(
@@ -439,6 +439,10 @@ void SwishKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+
   int r = xpu::swish(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(x.data<T>()),
                      reinterpret_cast<XPUType*>(out->data<T>()),

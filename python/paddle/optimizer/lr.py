@@ -3232,8 +3232,10 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
                 pred_fn_pairs=[
                     (
                         global_step < warmup_steps,
-                        lambda: start_lr
-                        + linear_step * (global_step / float(warmup_steps)),
+                        lambda: (
+                            start_lr
+                            + linear_step * (global_step / float(warmup_steps))
+                        ),
                     )
                 ],
                 default=lambda: learning_rate,
