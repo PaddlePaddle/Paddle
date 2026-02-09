@@ -221,5 +221,96 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
         return ret
 
 
+class StringDataset(paddle.io.Dataset):
+    def __init__(self, num_samples):
+        self.num_samples = num_samples
+
+    def __getitem__(self, idx):
+        return "a"
+
+    def __len__(self):
+        return self.num_samples
+
+
+class CustomObj:
+    def __init__(self, val):
+        self.val = val
+
+    def __repr__(self):
+        return f'CustomObj({self.val})'
+
+    def __eq__(self, other):
+        return isinstance(other, CustomObj) and self.val == other.val
+
+
+class CustomObjDataset(paddle.io.Dataset):
+    def __init__(self, num_samples):
+        self.num_samples = num_samples
+
+    def __getitem__(self, idx):
+        return CustomObj(idx)
+
+    def __len__(self):
+        return self.num_samples
+
+
+class TestDataLoaderNonTensorData(unittest.TestCase):
+    def test_string_data_single_process(self):
+        dataset = StringDataset(20)
+        loader = DataLoader(
+            dataset,
+            batch_size=10,
+            drop_last=True,
+            collate_fn=lambda d: d,
+        )
+        batches = list(loader)
+        self.assertEqual(len(batches), 2)
+        for batch in batches:
+            self.assertEqual(len(batch), 10)
+            self.assertTrue(all(item == "a" for item in batch))
+
+    def test_string_data_multi_process(self):
+        dataset = StringDataset(20)
+        loader = DataLoader(
+            dataset,
+            batch_size=10,
+            num_workers=2,
+            drop_last=True,
+            collate_fn=lambda d: d,
+        )
+        batches = list(loader)
+        self.assertEqual(len(batches), 2)
+        for batch in batches:
+            self.assertEqual(len(batch), 10)
+            self.assertTrue(all(item == "a" for item in batch))
+
+    def test_custom_obj_data_single_process(self):
+        dataset = CustomObjDataset(6)
+        loader = DataLoader(
+            dataset,
+            batch_size=3,
+            collate_fn=lambda d: d,
+        )
+        batches = list(loader)
+        self.assertEqual(len(batches), 2)
+        for batch in batches:
+            self.assertEqual(len(batch), 3)
+            self.assertTrue(all(isinstance(item, CustomObj) for item in batch))
+
+    def test_custom_obj_data_multi_process(self):
+        dataset = CustomObjDataset(6)
+        loader = DataLoader(
+            dataset,
+            batch_size=3,
+            num_workers=2,
+            collate_fn=lambda d: d,
+        )
+        batches = list(loader)
+        self.assertEqual(len(batches), 2)
+        for batch in batches:
+            self.assertEqual(len(batch), 3)
+            self.assertTrue(all(isinstance(item, CustomObj) for item in batch))
+
+
 if __name__ == '__main__':
     unittest.main()
