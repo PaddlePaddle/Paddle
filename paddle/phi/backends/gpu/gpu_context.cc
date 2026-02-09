@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(use_default_stream);
+COMMON_DECLARE_bool(cublas_allow_tf32);
 namespace phi {
 
 namespace internal {
@@ -410,8 +411,11 @@ struct GPUContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
+        cublasMath_t tf32_mode = FLAGS_cublas_allow_tf32
+                                     ? CUBLAS_TF32_TENSOR_OP_MATH
+                                     : CUBLAS_DEFAULT_MATH;
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+            blas_tf32_tensor_core_handle_, tf32_mode));
       }
 #endif
     });
@@ -623,8 +627,11 @@ struct GPUContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
+        cublasMath_t tf32_mode = FLAGS_cublas_allow_tf32
+                                     ? CUBLAS_TF32_TENSOR_OP_MATH
+                                     : CUBLAS_DEFAULT_MATH;
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+            blas_tf32_tensor_core_handle_, tf32_mode));
       }
 #endif
     });
@@ -664,8 +671,11 @@ struct GPUContext::Impl {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
+        cublasMath_t tf32_mode = FLAGS_cublas_allow_tf32
+                                     ? CUBLAS_TF32_TENSOR_OP_MATH
+                                     : CUBLAS_DEFAULT_MATH;
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-            blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+            blas_tf32_tensor_core_handle_, tf32_mode));
       }
 #endif
     });
