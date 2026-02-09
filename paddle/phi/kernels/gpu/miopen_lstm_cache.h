@@ -80,8 +80,8 @@ class ScopedRNNBase {
     size_t state_size;
     if (!initialized_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+          dynload::miopenDropoutGetStatesSize(handle, &state_size));
+      DeviceContextPool& pool = DeviceContextPool::Instance();
       auto* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(place));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx->template Alloc<uint8_t>(dropout_state);
@@ -95,7 +95,7 @@ class ScopedRNNBase {
                              state_size);
 
     // ------------------- miopen rnn descriptors ---------------------
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetRNNDescriptor_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetRNNDescriptor_V2(
         rnn_desc_.desc(),
         hidden_size_,
         num_layers_,
@@ -109,7 +109,7 @@ class ScopedRNNBase {
 
     // ------------------- miopen weights_size ---------------------
     size_t weights_size_;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, miopen_type));
     PADDLE_ENFORCE_EQ(
         weights_size_,
@@ -123,12 +123,12 @@ class ScopedRNNBase {
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- miopen workspace, reserve size ---------------------
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenGetRNNWorkspaceSize(handle,
-                                                rnn_desc_.desc(),
-                                                seq_length_,
-                                                x_descs_.data(),
-                                                workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNTrainingReserveSize(
+        dynload::miopenGetRNNWorkspaceSize(handle,
+                                           rnn_desc_.desc(),
+                                           seq_length_,
+                                           x_descs_.data(),
+                                           workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
   }
   miopenTensorDescriptor_t* x_descs() { return x_descs_.data(); }
