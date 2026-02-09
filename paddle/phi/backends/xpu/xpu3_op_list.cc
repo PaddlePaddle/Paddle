@@ -190,6 +190,8 @@ XPUOpMap& get_kl3_ops() {
       {"bilinear_interp_v2",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"bilinear_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"bicubic_interp_v2",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"bitwise_not", XPUKernelSet({phi::DataType::BOOL})},
       {"bitwise_and", XPUKernelSet({phi::DataType::BOOL})},
       {"bitwise_or", XPUKernelSet({phi::DataType::BOOL})},
