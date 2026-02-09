@@ -536,13 +536,6 @@ class FunctionGeneratorBase:
         self.composite_func_info = {}  # {name: func_name, args: [input_name, ...]}
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
-        self.args_alias_map = {}  # {arg_name: alias_vector, ...}
-        self.dygraph_pre_process = (
-            ""  # The pre_process function calling code for dygraph
-        )
-
-        self.args_mapper_func_name = None  # The custom args parser function
-        self.python_api_names = ""
 
     def ParseForwardInplaceInfo(self):
         forward_api_contents = self.forward_api_contents
@@ -551,42 +544,6 @@ class FunctionGeneratorBase:
 
         inplace_map_str = forward_api_contents['inplace']
         self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
-
-    # Function for parameters parse
-    def ParsePythonAPIInfo(self):
-        python_api_info = self.python_api_info
-        args_alias = {}
-        if 'name' in python_api_info.keys():
-            self.python_api_names = python_api_info['name']
-        if 'args_alias' in python_api_info.keys():
-            for arg, alias_or_mode in python_api_info['args_alias'].items():
-                if arg == 'use_default_mapping':
-                    args_alias.update({arg: alias_or_mode})
-                    continue
-                alias_set = set(alias_or_mode)
-                # Add the original argument name to the alias set
-                alias_set.add(arg)
-                # Convert to C++ vector format
-                alias_vector = (
-                    "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
-                )
-                args_alias.update({arg: alias_vector})
-            self.args_alias_map = args_alias
-        if 'pre_process' in python_api_info.keys():
-            pre_process = python_api_info['pre_process']
-            if pre_process is not None:
-                if 'dygraph_func' in pre_process.keys():
-                    self.dygraph_pre_process = pre_process['dygraph_func']
-                elif 'func' in pre_process.keys():
-                    self.dygraph_pre_process = pre_process['func']
-
-        if 'args_mapper' in python_api_info.keys():
-            args_mapper = python_api_info['args_mapper']
-            if args_mapper is not None:
-                if 'dygraph_func' in args_mapper.keys():
-                    self.args_mapper_func_name = args_mapper['dygraph_func']
-                elif 'func' in args_mapper.keys():
-                    self.args_mapper_func_name = args_mapper['func']
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
