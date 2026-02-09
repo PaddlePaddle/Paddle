@@ -6233,7 +6233,7 @@ void MoePermuteInferMeta(const MetaTensor& X,
   }
   if (return_expert_indices) {
     // This size is determined in runtime, so no shape inference available.
-    expert_indices->set_dims({-1});
+    expert_indices->set_dims({output_rows});
     expert_indices->set_dtype(expert_routemap_topk.dtype());
   } else {
     expert_indices->set_dims({0});

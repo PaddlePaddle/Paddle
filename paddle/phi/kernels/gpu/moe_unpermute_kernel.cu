@@ -19,9 +19,8 @@
 
 namespace phi {
 
-#ifndef MAX_NUM_EXPERTS
-#define MAX_NUM_EXPERTS 64
-#endif
+// Import MoE constants from shared header
+using moe::kMaxNumExperts;
 
 template <bool MP, bool WEIGHTED_TOKEN>
 __global__ __launch_bounds__(256) void tokens_zip_kernel(
@@ -44,8 +43,8 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   __nv_bfloat16 *zipped_tokens =
       reinterpret_cast<__nv_bfloat16 *>(zipped_tokens_out);
 
-  __shared__ int local_row_fetchlist[MAX_NUM_EXPERTS];
-  __shared__ float local_row_weight[MAX_NUM_EXPERTS];
+  __shared__ int local_row_fetchlist[kMaxNumExperts];
+  __shared__ float local_row_weight[kMaxNumExperts];
 
   if (threadIdx.x < num_experts) {
     const int fetch_row =
@@ -249,12 +248,12 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         cols));
   PADDLE_ENFORCE_LE(
       num_experts,
-      MAX_NUM_EXPERTS,
+      kMaxNumExperts,
       common::errors::InvalidArgument(
           "Currently we support no more than (%ld), received num_expert: "
           "(%ld). Please check input "
           "value.",
-          MAX_NUM_EXPERTS,
+          kMaxNumExperts,
           num_experts));
   const int64_t topk = expert_routemap_topk.dims()[1];
   PADDLE_ENFORCE_LE(

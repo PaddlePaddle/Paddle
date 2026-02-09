@@ -25,6 +25,96 @@
 
 namespace phi {
 
+// ============================================================================
+// Compile-time constants for MoE permute/unpermute kernels
+// ============================================================================
+namespace moe {
+
+inline constexpr int kCumsumBlockSize = 40;
+inline constexpr int kCumsumInvalidTag = -1;
+inline constexpr int kMaxNumExperts = 64;
+inline constexpr int kMaxNumExpertsForOptKernel = 32;
+
+}  // namespace moe
+
+// ============================================================================
+// Dispatch utilities: runtime bool -> compile-time bool, zero overhead
+// ============================================================================
+namespace dispatch {
+
+// Type tag for compile-time type passing
+template <typename T>
+struct TypeTag {
+  using type = T;
+};
+
+// Runtime bool -> compile-time std::bool_constant
+template <typename F>
+inline auto Bool(bool v, F&& f) {
+  return v ? f(std::true_type{}) : f(std::false_type{});
+}
+
+// Multi-bool dispatch: flattens nested conditionals
+template <typename F>
+inline auto Bools(F&& f) {
+  return f();
+}
+
+// Recursive and variadic decay.
+template <typename F, typename... Rest>
+inline auto Bools(F&& f, bool first, Rest... rest) {
+  return Bool(first, [&](auto tag) {
+    return Bools([&](auto... tags) { return f(tag, tags...); }, rest...);
+  });
+}
+
+// Token type dispatch: dtype -> (TokenT, has_scale)
+template <typename F>
+inline void TokenType(phi::DataType dtype, F&& f) {
+  if (dtype == phi::DataType::BFLOAT16) {
+    f(TypeTag<phi::bfloat16>{}, std::false_type{});
+  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+    f(TypeTag<phi::float8_e4m3fn>{}, std::true_type{});
+  }
+}
+
+// Probability type dispatch
+template <typename F>
+inline void ProbType(phi::DataType dtype, F&& f) {
+  if (dtype == phi::DataType::BFLOAT16) {
+    f(TypeTag<phi::bfloat16>{});
+  } else if (dtype == phi::DataType::FLOAT32) {
+    f(TypeTag<float>{});
+  }
+}
+
+// Scale type dispatch
+template <typename F>
+inline void ScaleType(bool using_ue8m0, F&& f) {
+  if (using_ue8m0) {
+    f(TypeTag<int32_t>{});
+  } else {
+    f(TypeTag<float>{});
+  }
+}
+
+}  // namespace dispatch
+template <typename probs_T>
+struct expert_infos {
+  int expert_row_idx;
+  probs_T expert_probs;
+
+  __device__ __host__ expert_infos()
+      : expert_row_idx(-1), expert_probs(probs_T(0)) {}
+  __device__ __host__ expert_infos(int idx, probs_T prob)
+      : expert_row_idx(idx), expert_probs(prob) {}
+
+  __device__ __host__ expert_infos& operator=(const expert_infos& other) {
+    expert_row_idx = other.expert_row_idx;
+    expert_probs = other.expert_probs;
+    return *this;
+  }
+};
 template <paddle::DataType DType>
 struct TypeMap;
 template <>
