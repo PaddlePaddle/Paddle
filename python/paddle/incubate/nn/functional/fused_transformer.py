@@ -509,7 +509,6 @@ def fused_bias_dropout_residual_layer_norm(
         )
         return final_out
 
-
 @deprecated(
     since="3.4.0",
 )
