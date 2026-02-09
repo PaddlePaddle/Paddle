@@ -246,8 +246,8 @@ class TestMaxPool1DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
 
         # Verify output shape
@@ -266,8 +266,8 @@ class TestMaxPool1DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
         result, mask = pool_layer(input_tensor)
 
@@ -285,8 +285,8 @@ class TestMaxPool1DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=1,
             return_mask=True,
+            dilation=1,
         )
 
         # Without specifying dilation (should default to 1)
@@ -320,8 +320,8 @@ class TestMaxPool1DDilation(unittest.TestCase):
             kernel_size=ksize,
             stride=stride,
             padding=padding,
-            dilation=dilation,
             return_mask=True,
+            dilation=dilation,
         )
 
         # Compare with numpy reference implementation
@@ -357,8 +357,8 @@ class TestMaxPool1DDilation(unittest.TestCase):
                 kernel_size=config["ksize"],
                 stride=config["stride"],
                 padding=config["padding"],
-                dilation=config["dilation"],
                 return_mask=True,
+                dilation=config["dilation"],
             )
 
             expected, _ = max_pool1d_dilation_forward_naive(
@@ -394,8 +394,8 @@ class TestMaxPool2DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
 
         # Verify output shape
@@ -414,8 +414,8 @@ class TestMaxPool2DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
         result, mask = pool_layer(input_tensor)
 
@@ -433,8 +433,8 @@ class TestMaxPool2DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=(2, 3),
             return_mask=True,
+            dilation=(2, 3),
         )
 
         # effective_kh = 2 * (3 - 1) + 1 = 5
@@ -455,8 +455,8 @@ class TestMaxPool2DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=1,
             return_mask=True,
+            dilation=1,
         )
 
         # Without specifying dilation
@@ -484,8 +484,8 @@ class TestMaxPool2DDilation(unittest.TestCase):
             kernel_size=2,
             stride=1,
             padding=0,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
 
         # With dilation=2 and kernel=2x2, the effective kernel covers:
@@ -536,8 +536,8 @@ class TestMaxPool2DDilation(unittest.TestCase):
                 kernel_size=config["ksize"],
                 stride=config["stride"],
                 padding=config["padding"],
-                dilation=config["dilation"],
                 return_mask=True,
+                dilation=config["dilation"],
             )
 
             expected, _ = max_pool2d_dilation_forward_naive(
@@ -573,8 +573,8 @@ class TestMaxPool3DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
 
         # effective_ksize = 2 * (3 - 1) + 1 = 5
@@ -592,8 +592,8 @@ class TestMaxPool3DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
         result, mask = pool_layer(input_tensor)
 
@@ -611,8 +611,8 @@ class TestMaxPool3DDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=1,
             return_mask=True,
+            dilation=1,
         )
 
         # Without specifying dilation
@@ -646,8 +646,8 @@ class TestMaxPool3DDilation(unittest.TestCase):
             kernel_size=ksize,
             stride=stride,
             padding=padding,
-            dilation=dilation,
             return_mask=True,
+            dilation=dilation,
         )
 
         # Compare with numpy reference
@@ -692,8 +692,8 @@ class TestMaxPool3DDilation(unittest.TestCase):
                 kernel_size=config["ksize"],
                 stride=config["stride"],
                 padding=config["padding"],
-                dilation=config["dilation"],
                 return_mask=True,
+                dilation=config["dilation"],
             )
 
             expected, _ = max_pool3d_dilation_forward_naive(
@@ -726,8 +726,8 @@ class TestMaxPoolDilationValidation(unittest.TestCase):
                 kernel_size=3,
                 stride=2,
                 padding=1,
-                dilation=-1,
                 return_mask=True,
+                dilation=-1,
             )
 
     def test_dilation_one_no_return_mask(self):
@@ -741,8 +741,8 @@ class TestMaxPoolDilationValidation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=1,
             return_mask=False,
+            dilation=1,
         )
 
         expected_shape = [2, 3, 16, 16]
@@ -759,10 +759,10 @@ class TestMaxPoolDilationValidation(unittest.TestCase):
                 kernel_size=2,
                 stride=2,
                 padding=0,
-                dilation=2,
-                ceil_mode=False,
-                data_format='NHWC',
                 return_mask=False,
+                ceil_mode=False,
+                dilation=2,
+                data_format='NHWC',
             )
 
     def test_dilation_channel_last_3d(self):
@@ -778,9 +778,9 @@ class TestMaxPoolDilationValidation(unittest.TestCase):
                 kernel_size=2,
                 stride=2,
                 padding=1,
+                return_mask=False,
                 dilation=2,
                 data_format='NDHWC',
-                return_mask=False,
             )
 
 
@@ -799,8 +799,8 @@ class TestMaxPoolDilationGradient(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
 
         # Backward
@@ -823,8 +823,8 @@ class TestMaxPoolDilationGradient(unittest.TestCase):
             kernel_size=2,
             stride=2,
             padding=0,
-            dilation=2,
             return_mask=True,
+            dilation=2,
         )
 
         # Backward
@@ -876,7 +876,7 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
     def test_maxpool1d_layer_dilation_basic(self):
         """Test MaxPool1D layer with dilation parameter."""
         pool = paddle.nn.MaxPool1D(
-            kernel_size=3, stride=2, padding=1, dilation=2, return_mask=True
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2 
         )
         input_np = np.random.random([2, 3, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -894,7 +894,7 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
         input_np = np.random.random([1, 2, 16]).astype("float32")
 
         pool = paddle.nn.MaxPool1D(
-            kernel_size=3, stride=2, padding=1, dilation=2, return_mask=True
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2
         )
         input_tensor = paddle.to_tensor(input_np)
         result, _ = pool(input_tensor)
@@ -927,8 +927,8 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
                 kernel_size=config["ksize"],
                 stride=config["stride"],
                 padding=config["padding"],
-                dilation=config["dilation"],
                 return_mask=True,
+                dilation=config["dilation"],
             )
             input_np = np.random.random([2, 3, 32]).astype("float32")
             input_tensor = paddle.to_tensor(input_np)
@@ -952,7 +952,7 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
     def test_maxpool1d_layer_dilation_gradient(self):
         """Test MaxPool1D layer gradient with dilation."""
         pool = paddle.nn.MaxPool1D(
-            kernel_size=3, stride=2, padding=1, dilation=2, return_mask=True
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2
         )
         input_np = np.random.random([2, 3, 16]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -971,9 +971,9 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=0,
-            dilation=2,
-            ceil_mode=True,
             return_mask=True,
+            ceil_mode=True,
+            dilation=2,
         )
         input_np = np.random.random([2, 3, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1006,7 +1006,7 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
     def test_maxpool2d_layer_dilation_basic(self):
         """Test MaxPool2D layer with dilation parameter."""
         pool = paddle.nn.MaxPool2D(
-            kernel_size=3, stride=2, padding=1, dilation=2, return_mask=True
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2
         )
         input_np = np.random.random([2, 3, 32, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1024,7 +1024,7 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
         input_np = np.random.random([1, 2, 16, 16]).astype("float32")
 
         pool = paddle.nn.MaxPool2D(
-            kernel_size=3, stride=2, padding=1, dilation=2, return_mask=True
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2
         )
         input_tensor = paddle.to_tensor(input_np)
         result, _ = pool(input_tensor)
@@ -1050,8 +1050,8 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=1,
-            dilation=(2, 3),
             return_mask=True,
+            dilation=(2, 3),
         )
         input_np = np.random.random([2, 3, 32, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1091,8 +1091,8 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
                 kernel_size=config["ksize"],
                 stride=config["stride"],
                 padding=config["padding"],
-                dilation=config["dilation"],
                 return_mask=True,
+                dilation=config["dilation"],
             )
             input_np = np.random.random([2, 3, 24, 24]).astype("float32")
             input_tensor = paddle.to_tensor(input_np)
@@ -1121,7 +1121,7 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
     def test_maxpool2d_layer_dilation_gradient(self):
         """Test MaxPool2D layer gradient with dilation."""
         pool = paddle.nn.MaxPool2D(
-            kernel_size=3, stride=2, padding=1, dilation=2, return_mask=True
+            kernel_size=3, stride=2, padding=1, return_mask=True, dilation=2
         )
         input_np = np.random.random([2, 3, 16, 16]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1140,9 +1140,9 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
             kernel_size=3,
             stride=2,
             padding=0,
-            dilation=2,
-            ceil_mode=True,
             return_mask=True,
+            ceil_mode=True,
+            dilation=2,
         )
         input_np = np.random.random([2, 3, 32, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1175,7 +1175,7 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
     def test_maxpool3d_layer_dilation_basic(self):
         """Test MaxPool3D layer with dilation parameter."""
         pool = paddle.nn.MaxPool3D(
-            kernel_size=2, stride=2, padding=0, dilation=2, return_mask=True
+            kernel_size=2, stride=2, padding=0, return_mask=True, dilation=2
         )
         input_np = np.random.random([2, 3, 8, 16, 16]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1194,7 +1194,7 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
         input_np = np.random.random([1, 2, 8, 8, 8]).astype("float32")
 
         pool = paddle.nn.MaxPool3D(
-            kernel_size=2, stride=1, padding=0, dilation=2, return_mask=True
+            kernel_size=2, stride=1, padding=0, return_mask=True, dilation=2
         )
         input_tensor = paddle.to_tensor(input_np)
         result, _ = pool(input_tensor)
@@ -1220,8 +1220,8 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
             kernel_size=2,
             stride=2,
             padding=0,
-            dilation=(2, 2, 3),
             return_mask=True,
+            dilation=(2, 2, 3),
         )
         input_np = np.random.random([1, 2, 10, 12, 14]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1255,8 +1255,8 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
                 kernel_size=config["ksize"],
                 stride=config["stride"],
                 padding=config["padding"],
-                dilation=config["dilation"],
                 return_mask=True,
+                dilation=config["dilation"],
             )
             input_np = np.random.random([1, 2, 10, 12, 12]).astype("float32")
             input_tensor = paddle.to_tensor(input_np)
@@ -1285,7 +1285,7 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
     def test_maxpool3d_layer_dilation_gradient(self):
         """Test MaxPool3D layer gradient with dilation."""
         pool = paddle.nn.MaxPool3D(
-            kernel_size=2, stride=2, padding=0, dilation=2, return_mask=True
+            kernel_size=2, stride=2, padding=0, return_mask=True, dilation=2
         )
         input_np = np.random.random([2, 3, 8, 8, 8]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1304,9 +1304,9 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
             kernel_size=2,
             stride=2,
             padding=0,
-            dilation=2,
-            ceil_mode=True,
             return_mask=True,
+            ceil_mode=True,
+            dilation=2,
         )
         input_np = np.random.random([1, 2, 8, 10, 10]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
