@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/core/enforce.h"
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/debug.h"
 #include "xpu/kernel/math.h"
@@ -104,15 +105,18 @@ struct BroadcastConfig {
     strides_out_tmp.resize(dim_size, 1);
     dim_tmp.resize(dim_size, 1);
     for (int i = 1; i < dim_size; i++) {
+      PADDLE_ENFORCE_LE_INT_MAX(out_dims[i], "out_dims[i]");
+      PADDLE_ENFORCE_LE_INT_MAX(in_dims[i], "in_dims[i]");
       strides_in_tmp[i] = strides_in_tmp[i - 1] * in_dims[i - 1];
       strides_out_tmp[i] = strides_out_tmp[i - 1] * out_dims[i - 1];
     }
 
-    int numel_out = 1;
+    int64_t numel_out = 1;
     for (int i = 0; i < dim_size; i++) {
       dim_tmp[i] = in_dims[i];
       numel_out = out_dims[i] * numel_out;
     }
+    PADDLE_ENFORCE_LE_INT_MAX(numel_out, "numel_out");
     kDims = dim_size;
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
     memcpy(strides_out, strides_out_tmp.data(), kDims * sizeof(int));
@@ -120,15 +124,17 @@ struct BroadcastConfig {
 
     cmp_res = get_mnk_for_broadcast_ops(in_dims, y_in_dims);
     get_opt_type();
-    buf_len = get_buf_len(numel_out);
-    int numel_x = 1;
-    int numel_y = 1;
+    buf_len = get_buf_len(static_cast<int>(numel_out));
+    int64_t numel_x = 1;
+    int64_t numel_y = 1;
     for (int i = 0; i < dim_size; i++) {
       numel_x = in_dims[i] * numel_x;
       numel_y = y_in_dims[i] * numel_y;
     }
+    PADDLE_ENFORCE_LE_INT_MAX(numel_x, "numel_x");
+    PADDLE_ENFORCE_LE_INT_MAX(numel_y, "numel_y");
     if (numel_out == numel_x && numel_out == numel_y) {
-      buf_len = GetXpuReadLens(numel_out, 8, 64);
+      buf_len = GetXpuReadLens(static_cast<int>(numel_out), 8, 64);
     }
   }
 
