@@ -6164,8 +6164,8 @@ void MoePermuteInferMeta(const MetaTensor& X,
                          const int padding_alignment,
                          const bool do_gather,
                          const bool using_ue8m0_scale,
-                         const bool using_tp_alloc,
                          const bool return_expert_indices,
+                         const int override_buffer_size,
                          MetaTensor* X_unzipped,
                          MetaTensor* zipped_expertwise_rowmap,
                          MetaTensor* token_prob_unzipped,
@@ -6193,8 +6193,12 @@ void MoePermuteInferMeta(const MetaTensor& X,
   const int64_t cols = X.dims()[1];
   const int64_t topk = expert_routemap_topk.dims()[1];
   int64_t output_rows = 0;
-  if (using_tp_alloc) {
-    output_rows = rows * topk + num_experts * 127;
+
+  // Using -1 as default value for not overriding buffer size,
+  // which also means that tokens_per_expert(CPU) is valid
+  // and will be used to calculate the output_rows.
+  if (override_buffer_size != -1) {
+    output_rows = override_buffer_size;
   } else {
     for (int i = 0; i < num_experts; ++i) {
       const int64_t tokens = tokens_per_expert[i];

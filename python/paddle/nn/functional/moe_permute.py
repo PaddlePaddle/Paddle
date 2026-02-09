@@ -33,10 +33,8 @@ def moe_permute(
     padding_alignment: int,
     do_gather: bool = True,
     using_ue8m0_scale: bool = False,
-    using_tp_alloc: bool = False,
     return_expert_indices: bool = False,
     override_buffer_size: int = -1,
-    tokens_per_expert_tensor: Tensor | None = None,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     r"""
@@ -76,8 +74,8 @@ def moe_permute(
             Must be a power of 2. Typical values are 16, 32 or 64 for optimal memory access.
         do_gather(bool): Decide whether do actual tokens gather operation or not, default is True.
         using_ue8m0_scale (bool): Whether to use the ue8m0 scaling for float8 inputs. Default is False.
-        using_tp_alloc (bool): Whether to use the Tensor Parallel specific buffer allocation strategy. Default is False.
         return_expert_indices(bool): Whether to return an 1D tensor of expert indices for each token, with -1 representing padding. Default is False.
+        override_buffer_size(bool): Whether to override the buffer size using the given CPU integer, default is -1.
         name (str|None, optional): Name prefix for the operation (optional).
             Default: None
 
@@ -147,8 +145,8 @@ def moe_permute(
             padding_alignment,
             do_gather,
             using_ue8m0_scale,
-            using_tp_alloc,
             return_expert_indices,
+            override_buffer_size,
         )
         if return_expert_indices:
             return (

@@ -759,15 +759,20 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const int padding_multiplex,
                       const bool do_gather,
                       const bool using_ue8m0_scale,
-                      const bool using_tp_alloc,
                       const bool return_expert_indices,
+                      const int override_buffer_size,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped,
                       DenseTensor *expert_indices) {
+  // ====================================================================
+  //                            Input checks
+  // ====================================================================
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
+  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   PADDLE_ENFORCE_LE(
       rows,
       std::numeric_limits<int32_t>::max(),
@@ -781,6 +786,11 @@ void MoePermuteKernel(const Context &dev_ctx,
                                       "INT_MAX, received X.dims()[1]: (%ld)",
                                       cols));
   PADDLE_ENFORCE_LE(
+      topk,
+      std::numeric_limits<int32_t>::max(),
+      common::errors::InvalidArgument(
+          "topk should be less than INT_MAX, received topk: (%ld)", topk));
+  PADDLE_ENFORCE_LE(
       num_experts,
       kMaxNumExperts,
       common::errors::InvalidArgument(
@@ -789,7 +799,6 @@ void MoePermuteKernel(const Context &dev_ctx,
           "value.",
           kMaxNumExperts,
           num_experts));
-  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
   PADDLE_ENFORCE_LE(
       quanted_cols,
       std::numeric_limits<int32_t>::max(),
@@ -797,57 +806,72 @@ void MoePermuteKernel(const Context &dev_ctx,
                                       "INT_MAX, received quanted_cols: (%ld)",
                                       quanted_cols));
 
-  // Expert base offset initialization, tensor numeric range [0, max_token_num]
-  int expert_offset[kMaxNumExperts];
-  int expert_offset_end[kMaxNumExperts];
-  int tokens_cumulated = 0;
-  for (int i = 0; i < kMaxNumExperts; i++) {
-    if (i < num_experts) {
-      expert_offset[i] = tokens_cumulated;
-      expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
-      tokens_cumulated +=
-          ((tokens_per_expert[i] + padding_multiplex - 1) / padding_multiplex) *
-          padding_multiplex;
-    } else {
-      expert_offset[i] = 0;
-    }
-  }
+  // ====================================================================
+  //       Offset calculation using two path: CPU vec or GPU tensor
+  // ====================================================================
+  // Init with 0 if not override
   DenseTensor expert_offset_tensor;
-  expert_offset_tensor.Resize({kMaxNumExperts});
-  dev_ctx.template Alloc<int>(&expert_offset_tensor);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                                             expert_offset,
-                                             sizeof(int) * kMaxNumExperts,
-                                             cudaMemcpyHostToDevice,
-                                             dev_ctx.stream()));
-
   DenseTensor expert_offset_end_tensor;
-  expert_offset_end_tensor.Resize({kMaxNumExperts});
-  dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
-                      expert_offset_end,
-                      sizeof(int) * kMaxNumExperts,
-                      cudaMemcpyHostToDevice,
-                      dev_ctx.stream()));
-  // ------------------- resource allocate -------------------------
-  const int64_t topk = expert_routemap_topk.dims()[1];
-  const int output_rows =
-      using_tp_alloc ? (rows * topk + num_experts * (127)) : tokens_cumulated;
-  PADDLE_ENFORCE_LE(
-      topk,
-      std::numeric_limits<int32_t>::max(),
-      common::errors::InvalidArgument(
-          "topk should be less than INT_MAX, received topk: (%ld)", topk));
+  int tokens_cumulated =
+      (override_buffer_size == -1) ? 0 : override_buffer_size;
+  std::vector<int> padding_rows;
+  if (override_buffer_size == -1) {
+    // Using CPU vec to calculate the expert_offset and expert_offset_end
+    // with extra alloc and memcpy
+    int expert_offset[kMaxNumExperts];
+    int expert_offset_end[kMaxNumExperts];
+    for (int i = 0; i < kMaxNumExperts; i++) {
+      if (i < num_experts) {
+        expert_offset[i] = tokens_cumulated;
+        expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
+        tokens_cumulated += ((tokens_per_expert[i] + padding_multiplex - 1) /
+                             padding_multiplex) *
+                            padding_multiplex;
+      } else {
+        expert_offset[i] = 0;
+      }
+    }
+    expert_offset_tensor.Resize({kMaxNumExperts});
+    dev_ctx.template Alloc<int>(&expert_offset_tensor);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
+                                               expert_offset,
+                                               sizeof(int) * kMaxNumExperts,
+                                               cudaMemcpyHostToDevice,
+                                               dev_ctx.stream()));
+
+    expert_offset_end_tensor.Resize({kMaxNumExperts});
+    dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
+                        expert_offset_end,
+                        sizeof(int) * kMaxNumExperts,
+                        cudaMemcpyHostToDevice,
+                        dev_ctx.stream()));
+    for (int i = 0; i < num_experts; i++) {
+      int64_t next_expert_offset =
+          i < num_experts - 1 ? expert_offset[i + 1] : tokens_cumulated;
+      int64_t invalid_rows =
+          next_expert_offset - expert_offset[i] - tokens_per_expert[i];
+      int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+      for (int i = 0; i < invalid_rows; ++i) {
+        padding_rows.push_back(cur_expert_end + i);
+      }
+    }
+  } else {
+    // Using expert_routemap_topk to calculate the expert_offset and
+    // expert_offset_end tensor, fully on GPU
+    return;
+  }
+  // ====================================================================
+  //             Output resource allocation && pre_process
+  // ====================================================================
+  void *XScale_unzipped_ptr = nullptr;
 
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);
   dev_ctx.template Alloc<float>(token_prob_unzipped);
   dev_ctx.template Alloc<int>(expert_indices);
-  auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
-  auto token_prob_unzipped_ptr =
-      reinterpret_cast<void *>(token_prob_unzipped->data<float>());
-  void *XScale_unzipped_ptr = nullptr;
+
   if (using_ue8m0_scale) {
     // if using the ue8m0 scale, four ue8m0 scale will be packed into one int32
     dev_ctx.template Alloc<int32_t>(XScale_unzipped);
@@ -858,20 +882,13 @@ void MoePermuteKernel(const Context &dev_ctx,
     XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
   }
-  // Handle 0-size input
   if (X.numel() == 0) return;
 
-  std::vector<int> padding_rows;
-  for (int i = 0; i < num_experts; i++) {
-    int64_t next_expert_offset =
-        i < num_experts - 1 ? expert_offset[i + 1] : output_rows;
-    int64_t invalid_rows =
-        next_expert_offset - expert_offset[i] - tokens_per_expert[i];
-    int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-    for (int i = 0; i < invalid_rows; ++i) {
-      padding_rows.push_back(cur_expert_end + i);
-    }
-  }
+  auto X_unzipped_ptr = reinterpret_cast<void *>(X_unzipped->data<T>());
+  auto token_prob_unzipped_ptr =
+      reinterpret_cast<void *>(token_prob_unzipped->data<float>());
+  // Handle 0-size input
+
   if (using_ue8m0_scale) {
     FillingPaddingRows(dev_ctx,
                        do_gather ? X_unzipped->data<T>() : nullptr,
