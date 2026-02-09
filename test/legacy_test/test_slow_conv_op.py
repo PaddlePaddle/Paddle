@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -21,8 +22,8 @@ import paddle.nn.functional as F
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "Skipping tests: CUDA is not available.",
+    not paddle.is_compiled_with_cuda() or sys.platform == 'win32',
+    "Skipping tests: CUDA is not available or running on Windows.",
 )
 class TestSlowConv2d(unittest.TestCase):
     def setUp(self):
@@ -191,7 +192,7 @@ class TestSlowConv2d(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
+    not paddle.is_compiled_with_cuda() or sys.platform == 'win32',
     "Skipping tests: CUDA is not available or running on Windows.",
 )
 class TestSlowConv2dDilated(unittest.TestCase):
