@@ -708,7 +708,7 @@ set_tests_properties(test_imperative_resnet_sorted_gradient
 set_tests_properties(test_imperative_se_resnext
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 
-if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
+if(WITH_GPU)
   py_test_modules(test_fused_gemm_epilogue_op MODULES
                   test_fused_gemm_epilogue_op)
   py_test_modules(test_fused_gemm_epilogue_grad_op MODULES
