@@ -69,7 +69,7 @@ def clip_by_norm(x, max_norm, name=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import clip
@@ -123,15 +123,18 @@ def merge_selected_rows(x, name=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.base as base
 
             >>> b = paddle.static.default_main_program().global_block()
             >>> var = b.create_var(
-            ...     name="X", dtype="float32", persistable=True,
-            ...     type=base.core.VarDesc.VarType.SELECTED_ROWS)
+            ...     name="X",
+            ...     dtype="float32",
+            ...     persistable=True,
+            ...     type=base.core.VarDesc.VarType.SELECTED_ROWS,
+            ... )
             >>> y = paddle.nn.clip.merge_selected_rows(var)
     """
     if in_dynamic_or_pir_mode():
@@ -176,7 +179,7 @@ def get_tensor_from_selected_rows(x, name=None):
         Variable: DenseTensor transformed from SelectedRows. The data type is same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.base as base
@@ -189,7 +192,12 @@ def get_tensor_from_selected_rows(x, name=None):
             >>> x = scope.var('X').get_selected_rows()
             >>> x.set_rows(x_rows)
             >>> x.set_height(height)
-            >>> x = block.create_var(name="X", dtype="float32", persistable=True, type=base.core.VarDesc.VarType.SELECTED_ROWS)
+            >>> x = block.create_var(
+            ...     name="X",
+            ...     dtype="float32",
+            ...     persistable=True,
+            ...     type=base.core.VarDesc.VarType.SELECTED_ROWS,
+            ... )
             >>> z = paddle.nn.clip.get_tensor_from_selected_rows(x)
     """
     if in_pir_mode():
@@ -299,7 +307,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
         will be set to ``-max`` by framework.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -426,13 +434,16 @@ class ClipGradByValue(ClipGradBase):
             automatically. In this case, ``max`` must be greater than :math:`0`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
-            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
-            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> linear = paddle.nn.Linear(
+            ...     in_features=10,
+            ...     out_features=10,
+            ...     weight_attr=paddle.ParamAttr(need_clip=True),
+            ...     bias_attr=paddle.ParamAttr(need_clip=False),
+            ... )
             >>> out = linear(x)
             >>> loss = paddle.mean(out)
             >>> loss.backward()
@@ -534,7 +545,7 @@ class ClipGradByNorm(ClipGradBase):
         clip_norm(float): The maximum norm value.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
@@ -669,13 +680,16 @@ class ClipGradByGlobalNorm(ClipGradBase):
         auto_skip_clip (bool, optional): skip clipping gradient. Default value is ``False``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
-            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
-            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> linear = paddle.nn.Linear(
+            ...     in_features=10,
+            ...     out_features=10,
+            ...     weight_attr=paddle.ParamAttr(need_clip=True),
+            ...     bias_attr=paddle.ParamAttr(need_clip=False),
+            ... )
             >>> out = linear(x)
             >>> loss = paddle.mean(out)
             >>> loss.backward()
@@ -1421,15 +1435,18 @@ def set_gradient_clip(clip, param_list=None, program=None):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> paddle.enable_static()
 
             >>> def network():
-            ...     image = paddle.static.data(name='image', shape=[
-            ...                        None, 28], dtype='float32')
+            ...     image = paddle.static.data(
+            ...         name='image',
+            ...         shape=[None, 28],
+            ...         dtype='float32',
+            ...     )
             ...     param_attr1 = paddle.ParamAttr("fc1_param")
             ...     fc1 = paddle.static.nn.fc(image, size=10, weight_attr=param_attr1)
             ...     param_attr2 = paddle.ParamAttr("fc2_param")
@@ -1442,7 +1459,8 @@ def set_gradient_clip(clip, param_list=None, program=None):
             >>> with paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
             ...     loss = network()
             ...     paddle.nn.clip.set_gradient_clip(
-            ...         paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0))
+            ...         paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0),
+            ...     )
             ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             ...     sgd.minimize(loss)
 
@@ -1451,7 +1469,8 @@ def set_gradient_clip(clip, param_list=None, program=None):
             ...     loss = network()
             ...     paddle.nn.clip.set_gradient_clip(
             ...         paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
-            ...         param_list=["fc1_param", "fc2_param"])
+            ...         param_list=["fc1_param", "fc2_param"],
+            ...     )
             ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             ...     sgd.minimize(loss)
 
@@ -1462,7 +1481,8 @@ def set_gradient_clip(clip, param_list=None, program=None):
             ...     param_var2 = paddle.static.default_main_program().global_block().var("fc2_param")
             ...     paddle.nn.clip.set_gradient_clip(
             ...         paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
-            ...         param_list=[param_var1, param_var2])
+            ...         param_list=[param_var1, param_var2],
+            ...     )
             ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             ...     sgd.minimize(loss)
 

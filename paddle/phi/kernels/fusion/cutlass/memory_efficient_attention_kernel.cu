@@ -66,14 +66,10 @@ void MemoryEfficientAttentionForwardKernel(
 
   if (query.numel() == 0 || key.numel() == 0 || value.numel() == 0) {
     if (output) {
-      Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+      Full<T, Context>(dev_ctx, output->dims(), 0, output);
     }
     if (logsumexp) {
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(logsumexp->dims())),
-                       0,
-                       logsumexp);
+      Full<T, Context>(dev_ctx, logsumexp->dims(), 0, logsumexp);
     }
     return;
   }
