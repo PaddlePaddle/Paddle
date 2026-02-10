@@ -144,7 +144,6 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
         paddle.seed(42)  # For reproducibility
 
     def test_permute_unpermute_consistency(self):
-        return
         """Test that permute + unpermute recovers original tensors."""
         for seq_len, dt, expert_num, topk in itertools.product(
             self.SEQLEN, self.DTYPES, self.EXPERT_NUMS, self.TOPKS
@@ -364,7 +363,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     expert_routemap_topk,
                     expert_prob_topk,
                     num_experts=expert_num,
-                    tokens_per_expert=tokens_per_expert,
+                    tokens_per_expert=[],
                     padding_alignment=128,
                     return_expert_indices=True,
                     override_buffer_size=permuted_tokens.shape[
@@ -399,7 +398,6 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                 )
 
     def test_permute_unpermute_consistency_for_ue8m0_scale(self):
-        return
         """Test that permute + unpermute recovers original tensors for ue8m0 scale."""
         DTYPES = ["float8_e4m3fn"]
         EXPERT_NUMS = [4, 8, 16]
