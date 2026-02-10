@@ -2711,7 +2711,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         >>> lr_value = (
         ...     base_lr
         ...     * np.power(d_model, -0.5)
-        ...     * np.min([np.power(current_steps, -0.5), np.power(warmup_steps, -1.5) * current_steps])
+        ...     * np.min([np.power(current_steps, -0.5), np.power(warmup_steps, -1.5) * current_steps]),
         ... )
 
     Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_.
