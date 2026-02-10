@@ -351,5 +351,52 @@ class TestLerpBF16(TestLerp):
         )
 
 
+class TestLerpEndKwarg(unittest.TestCase):
+    """Test PyTorch-style 'end' keyword argument alias for 'y' in lerp/lerp_."""
+
+    def test_lerp_inplace_end_kwarg(self):
+        paddle.disable_static()
+        x_data = np.array([0.0, 1.0, 2.0], dtype='float32')
+        end_data = np.array([10.0, 11.0, 12.0], dtype='float32')
+        weight = 0.5
+
+        x_ref = paddle.to_tensor(x_data.copy())
+        y_tensor = paddle.to_tensor(end_data)
+        x_ref.lerp_(y=y_tensor, weight=weight)
+
+        x_test = paddle.to_tensor(x_data.copy())
+        end_tensor = paddle.to_tensor(end_data)
+        x_test.lerp_(end=end_tensor, weight=weight)
+
+        np.testing.assert_allclose(x_ref.numpy(), x_test.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_lerp_end_kwarg(self):
+        paddle.disable_static()
+        x_data = np.array([0.0, 1.0, 2.0], dtype='float32')
+        end_data = np.array([10.0, 11.0, 12.0], dtype='float32')
+        weight = 0.5
+
+        x_ref = paddle.to_tensor(x_data)
+        y_tensor = paddle.to_tensor(end_data)
+        ref = paddle.lerp(x=x_ref, y=y_tensor, weight=weight)
+
+        x_test = paddle.to_tensor(x_data)
+        end_tensor = paddle.to_tensor(end_data)
+        out = paddle.lerp(x=x_test, end=end_tensor, weight=weight)
+
+        np.testing.assert_allclose(ref.numpy(), out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_lerp_inplace_end_and_y_conflict(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([0.0, 1.0, 2.0])
+        y = paddle.to_tensor([10.0, 11.0, 12.0])
+        end = paddle.to_tensor([10.0, 11.0, 12.0])
+        with self.assertRaises((TypeError, ValueError)):
+            x.lerp_(y=y, end=end, weight=0.5)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

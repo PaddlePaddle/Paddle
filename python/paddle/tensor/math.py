@@ -4602,8 +4602,8 @@ def lerp(
         return out
 
 
-@inplace_apis_in_dygraph_only
 @param_one_alias(["y", "end"])
+@inplace_apis_in_dygraph_only
 def lerp_(
     x: Tensor, y: Tensor, weight: float | Tensor, name: str | None = None
 ) -> Tensor:
