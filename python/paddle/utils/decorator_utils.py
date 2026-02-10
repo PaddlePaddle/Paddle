@@ -944,6 +944,7 @@ def maxpool_decorator() -> Callable[
                 kwargs["stride"] = args[2]
                 kwargs["padding"] = args[3]
                 kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from nn.MaxPool in PyTorch
                 if len(args) > 5:
                     kwargs["ceil_mode"] = args[5]
                 if len(args) > 6:
@@ -972,6 +973,7 @@ def maxpool_layer_decorator() -> Callable[
                 kwargs["stride"] = args[2]
                 kwargs["padding"] = args[3]
                 kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from F.max_pool in PyTorch
                 if len(args) > 5:
                     kwargs["return_mask"] = args[5]
                 if len(args) > 6:

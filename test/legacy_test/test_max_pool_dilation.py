@@ -269,7 +269,7 @@ class TestMaxPool1DDilation(unittest.TestCase):
             2,
             1,
             True,  # return_mask
-            False, # ceil_mode
+            False,  # ceil_mode
             2,
         )
 
@@ -289,7 +289,7 @@ class TestMaxPool1DDilation(unittest.TestCase):
             2,
             1,
             2,
-            False, # ceil_mode
+            False,  # ceil_mode
             True,  # return_indices
         )
 
@@ -457,7 +457,7 @@ class TestMaxPool2DDilation(unittest.TestCase):
             2,
             1,
             True,  # return_mask
-            False, # ceil_mode
+            False,  # ceil_mode
             2,
         )
 
@@ -477,7 +477,7 @@ class TestMaxPool2DDilation(unittest.TestCase):
             2,
             1,
             2,
-            False, # ceil_mode
+            False,  # ceil_mode
             True,  # return_indices
         )
 
@@ -675,7 +675,7 @@ class TestMaxPool3DDilation(unittest.TestCase):
             2,
             1,
             True,  # return_mask
-            False, # ceil_mode
+            False,  # ceil_mode
             2,
         )
 
@@ -694,7 +694,7 @@ class TestMaxPool3DDilation(unittest.TestCase):
             2,
             1,
             2,
-            False, # ceil_mode
+            False,  # ceil_mode
             True,  # return_indices
         )
 
@@ -1120,8 +1120,8 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
             3,
             2,
             0,
-            True, # return_mask
-            True, # ceil_mode
+            True,  # return_mask
+            True,  # ceil_mode
             2,
         )
         input_np = np.random.random([2, 3, 32]).astype("float32")
@@ -1152,8 +1152,8 @@ class TestMaxPool1DLayerDilation(unittest.TestCase):
             2,
             0,
             2,
-            True, # return_indices
-            True, # ceil_mode
+            True,  # return_indices
+            True,  # ceil_mode
         )
         input_np = np.random.random([2, 3, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1351,8 +1351,8 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
             3,
             2,
             0,
-            True, # return_mask
-            True, # ceil_mode
+            True,  # return_mask
+            True,  # ceil_mode
             2,
         )
         input_np = np.random.random([2, 3, 32, 32]).astype("float32")
@@ -1383,8 +1383,8 @@ class TestMaxPool2DLayerDilation(unittest.TestCase):
             2,
             0,
             2,
-            True, # return_indices
-            True, # ceil_mode
+            True,  # return_indices
+            True,  # ceil_mode
         )
         input_np = np.random.random([2, 3, 32, 32]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
@@ -1577,8 +1577,8 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
             2,
             2,
             0,
-            True, # return_mask
-            True, # ceil_mode
+            True,  # return_mask
+            True,  # ceil_mode
             2,
         )
         input_np = np.random.random([1, 2, 8, 10, 10]).astype("float32")
@@ -1609,8 +1609,8 @@ class TestMaxPool3DLayerDilation(unittest.TestCase):
             2,
             0,
             2,
-            True, # return_indices
-            True, # ceil_mode
+            True,  # return_indices
+            True,  # ceil_mode
         )
         input_np = np.random.random([1, 2, 8, 10, 10]).astype("float32")
         input_tensor = paddle.to_tensor(input_np)
