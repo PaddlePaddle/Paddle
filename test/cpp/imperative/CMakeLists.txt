@@ -2,7 +2,7 @@ if(WIN32)
   cc_test(
     nccl_context_test
     SRCS nccl_context_test.cc
-    DEPS device_context)
+    DEPS phi)
 else()
   if(WITH_GLOO AND (WITH_NCCL OR WITH_RCCL))
     cc_test(

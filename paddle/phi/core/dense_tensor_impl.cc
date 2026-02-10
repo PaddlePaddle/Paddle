@@ -299,6 +299,10 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
   return *this;
 }
 
+DenseTensor& DenseTensor::Resize(const std::initializer_list<int64_t> dims) {
+  return Resize(make_ddim(dims));
+}
+
 DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(

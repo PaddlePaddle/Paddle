@@ -62,17 +62,24 @@ def affine_grid(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
             >>> # theta.shape = [1, 2, 3]
-            >>> theta = paddle.to_tensor([[[-0.7, -0.4, 0.3],
-            ...                            [ 0.6,  0.5, 1.5]]], dtype="float32")
+            >>> theta = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [-0.7, -0.4, 0.3],
+            ...             [0.6, 0.5, 1.5],
+            ...         ]
+            ...     ],
+            ...     dtype="float32",
+            ... )
             >>> y_t = F.affine_grid(
             ...     theta,
             ...     [1, 2, 3, 3],
-            ...     align_corners=False
+            ...     align_corners=False,
             ... )
             >>> print(y_t)
             Tensor(shape=[1, 3, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -290,7 +297,7 @@ def channel_shuffle(
         Out (Tensor): Rearranged tensor keeping the original tensor shape.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F

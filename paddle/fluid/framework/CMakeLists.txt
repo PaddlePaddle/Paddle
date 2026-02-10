@@ -109,7 +109,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS data_type dlpack_tensor device_context phi common)
+  DEPS data_type dlpack_tensor phi common)
 
 cc_library(
   lod_tensor
@@ -119,7 +119,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context phi common glog)
+  DEPS phi common glog)
 
 cc_library(
   var_type_traits
@@ -220,7 +220,7 @@ cc_library(
 cc_library(
   no_need_buffer_vars_inference
   SRCS no_need_buffer_vars_inference.cc
-  DEPS attribute device_context)
+  DEPS attribute phi)
 cc_library(
   op_info
   SRCS op_info.cc
@@ -239,7 +239,7 @@ endif()
 cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
-  DEPS device_context phi common)
+  DEPS phi common)
 
 if(WITH_XPU)
   cc_library(
