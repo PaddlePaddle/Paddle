@@ -509,9 +509,10 @@ def fused_bias_dropout_residual_layer_norm(
         )
         return final_out
 
+
 @deprecated(
     since="3.4.0",
-    level=1,
+    level=2,
     reason="fused_multi_head_attention is deprecated in favor of multi_head_attention",
 )
 def fused_multi_head_attention(

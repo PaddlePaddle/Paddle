@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 @deprecated(
     since="3.4.0",
-    level=1,
+    level=2,
 )
 def softmax_mask_fuse_upper_triangle(x: Tensor) -> Tensor:
     """
