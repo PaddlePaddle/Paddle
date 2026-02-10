@@ -1856,7 +1856,11 @@ class MultiplicativeDecay(LRScheduler):
 
             >>> # train on default dynamic graph mode
             >>> linear = paddle.nn.Linear(10, 10)
-            >>> scheduler = paddle.optimizer.lr.MultiplicativeDecay(learning_rate=0.5, lr_lambda=lambda x: 0.95, verbose=True)
+            >>> scheduler = paddle.optimizer.lr.MultiplicativeDecay(
+            ...     learning_rate=0.5,
+            ...     lr_lambda=lambda x: 0.95,
+            ...     verbose=True,
+            ... )
             >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
