@@ -17,8 +17,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/hipblasLt.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace dyl = phi::dynload;
-
 namespace phi {
 class CublasLtHelper {
  public:
@@ -28,7 +26,7 @@ class CublasLtHelper {
     hipblasComputeType_t hipComputeType = HIPBLAS_COMPUTE_32I;
 
     // matmul desc
-    status = dyl::hipblasLtMatmulDescCreate(
+    status = dynload::hipblasLtMatmulDescCreate(
         &matmul_desc_, hipComputeType, HIP_DATATYPE_R_32I);
 
     PADDLE_ENFORCE_EQ(
@@ -36,32 +34,33 @@ class CublasLtHelper {
         HIPBLAS_STATUS_SUCCESS,
         common::errors::External("hipblasLtMatmulDescCreate execution error"));
     hipblasOperation_t op_transpose = HIPBLAS_OP_T;
-    status = dyl::hipblasLtMatmulDescSetAttribute(matmul_desc_,
-                                                  HIPBLASLT_MATMUL_DESC_TRANSA,
-                                                  &op_transpose,
-                                                  sizeof(op_transpose));
+    status =
+        dynload::hipblasLtMatmulDescSetAttribute(matmul_desc_,
+                                                 HIPBLASLT_MATMUL_DESC_TRANSA,
+                                                 &op_transpose,
+                                                 sizeof(op_transpose));
     PADDLE_ENFORCE_EQ(status,
                       HIPBLAS_STATUS_SUCCESS,
                       common::errors::External(
                           "hipblasLtMatmulDescSetAttribute execution error"));
 
     // matrix desc
-    status =
-        dyl::hipblasLtMatrixLayoutCreate(&B_desc_, HIP_DATATYPE_R_8I, k, n, k);
+    status = dynload::hipblasLtMatrixLayoutCreate(
+        &B_desc_, HIP_DATATYPE_R_8I, k, n, k);
     PADDLE_ENFORCE_EQ(status,
                       HIPBLAS_STATUS_SUCCESS,
                       common::errors::External(
                           "hipblasLtMatrixLayoutCreate execution error"));
 
-    status =
-        dyl::hipblasLtMatrixLayoutCreate(&A_desc_, HIP_DATATYPE_R_8I, k, m, k);
+    status = dynload::hipblasLtMatrixLayoutCreate(
+        &A_desc_, HIP_DATATYPE_R_8I, k, m, k);
     PADDLE_ENFORCE_EQ(status,
                       HIPBLAS_STATUS_SUCCESS,
                       common::errors::External(
                           "hipblasLtMatrixLayoutCreate execution error"));
 
-    status =
-        dyl::hipblasLtMatrixLayoutCreate(&C_desc_, HIP_DATATYPE_R_32I, n, m, n);
+    status = dynload::hipblasLtMatrixLayoutCreate(
+        &C_desc_, HIP_DATATYPE_R_32I, n, m, n);
     PADDLE_ENFORCE_EQ(status,
                       HIPBLAS_STATUS_SUCCESS,
                       common::errors::External(
@@ -76,22 +75,22 @@ class CublasLtHelper {
             void* workspace = nullptr) {
     hipblasStatus_t status;
 
-    status = dyl::hipblasLtMatmul(handle_,
-                                  matmul_desc_,
-                                  &alpha_,
-                                  B_dev,
-                                  B_desc_,
-                                  A_dev,
-                                  A_desc_,
-                                  &beta_,
-                                  C_dev,
-                                  C_desc_,
-                                  C_dev,
-                                  C_desc_,
-                                  &algo_,
-                                  workspace,
-                                  workspace_size_,
-                                  stream);
+    status = dynload::hipblasLtMatmul(handle_,
+                                      matmul_desc_,
+                                      &alpha_,
+                                      B_dev,
+                                      B_desc_,
+                                      A_dev,
+                                      A_desc_,
+                                      &beta_,
+                                      C_dev,
+                                      C_desc_,
+                                      C_dev,
+                                      C_desc_,
+                                      &algo_,
+                                      workspace,
+                                      workspace_size_,
+                                      stream);
     PADDLE_ENFORCE_EQ(
         status,
         HIPBLAS_STATUS_SUCCESS,
