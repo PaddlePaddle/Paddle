@@ -412,6 +412,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : poisson
+  name : [paddle.poisson, paddle.Tensor.poisson]
+  args_alias :
+    x : [input]
+
 - op : nextafter
   name : [paddle.nextafter, paddle.Tensor.nextafter]
   args_alias :
