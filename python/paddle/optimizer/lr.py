@@ -119,7 +119,7 @@ class LRScheduler:
             >>> class StepDecay(LRScheduler):
             ...     def __init__(self, learning_rate, step_size, gamma=0.1, last_epoch=-1, verbose=False,):
             ...         if not isinstance(step_size, int):
-            ...             raise TypeError("The type of 'step_size' must be 'int', but received %s." % type(step_size))
+            ...             raise TypeError(f"The type of 'step_size' must be 'int', but received {type(step_size)}.")
             ...         if gamma >= 1.0:
             ...             raise ValueError('gamma should be < 1.0.')
             ...
