@@ -117,7 +117,14 @@ class LRScheduler:
             >>> from paddle.optimizer.lr import LRScheduler
 
             >>> class StepDecay(LRScheduler):
-            ...     def __init__(self, learning_rate, step_size, gamma=0.1, last_epoch=-1, verbose=False,):
+            ...     def __init__(
+            ...         self,
+            ...         learning_rate,
+            ...         step_size,
+            ...         gamma=0.1,
+            ...         last_epoch=-1,
+            ...         verbose=False,
+            ...     ):
             ...         if not isinstance(step_size, int):
             ...             raise TypeError(f"The type of 'step_size' must be 'int', but received {type(step_size)}.")
             ...         if gamma >= 1.0:
@@ -181,7 +188,12 @@ class LRScheduler:
                 >>> value = paddle.arange(26, dtype='float32')
                 >>> a = paddle.reshape(value, [2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
-                >>> adadelta = paddle.optimizer.Adadelta(learning_rate=0.0003, epsilon=1e-06, rho=0.95, parameters=linear.parameters(),)
+                >>> adadelta = paddle.optimizer.Adadelta(
+                ...     learning_rate=0.0003,
+                ...     epsilon=1e-06,
+                ...     rho=0.95,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adadelta.step()
@@ -193,7 +205,12 @@ class LRScheduler:
                 >>> value = paddle.arange(26, dtype='float32')
                 >>> a = paddle.reshape(value, [2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
-                >>> adadelta = paddle.optimizer.Adadelta(learning_rate=0.0003, epsilon=1e-06, rho=0.95, parameters=linear.parameters(),)
+                >>> adadelta = paddle.optimizer.Adadelta(
+                ...     learning_rate=0.0003,
+                ...     epsilon=1e-06,
+                ...     rho=0.95,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adadelta.step()
@@ -2655,7 +2672,11 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
 
             >>> import paddle
             >>> paddle.enable_static()
-            >>> global_step = paddle.optimizer.lr.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1,)
+            >>> global_step = paddle.optimizer.lr.autoincreased_step_counter(
+            ...     counter_name='@LR_DECAY_COUNTER@',
+            ...     begin=0,
+            ...     step=1,
+            ... )
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
@@ -2788,7 +2809,12 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
             >>> paddle.enable_static()
             >>> base_lr = 0.1
-            >>> lr = paddle.optimizer.lr.exponential_decay(learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True,)
+            >>> lr = paddle.optimizer.lr.exponential_decay(
+            ...     learning_rate=base_lr,
+            ...     decay_steps=10000,
+            ...     decay_rate=0.5,
+            ...     staircase=True,
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2843,7 +2869,12 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
             >>> paddle.enable_static()
             >>> base_lr = 0.1
-            >>> lr = paddle.optimizer.lr.natural_exp_decay(learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True,)
+            >>> lr = paddle.optimizer.lr.natural_exp_decay(
+            ...     learning_rate=base_lr,
+            ...     decay_steps=10000,
+            ...     decay_rate=0.5,
+            ...     staircase=True,
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2896,7 +2927,12 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
             >>> import paddle
             >>> paddle.enable_static()
             >>> base_lr = 0.1
-            >>> lr = paddle.optimizer.lr.inverse_time_decay(learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True,)
+            >>> lr = paddle.optimizer.lr.inverse_time_decay(
+            ...     learning_rate=base_lr,
+            ...     decay_steps=10000,
+            ...     decay_rate=0.5,
+            ...     staircase=True,
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2947,7 +2983,12 @@ def polynomial_decay(
             >>> start_lr = 0.01
             >>> total_step = 5000
             >>> end_lr = 0
-            >>> lr = paddle.optimizer.lr.polynomial_decay(start_lr, total_step, end_lr, power=1,)
+            >>> lr = paddle.optimizer.lr.polynomial_decay(
+            ...     start_lr,
+            ...     total_step,
+            ...     end_lr,
+            ...     power=1,
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -3159,7 +3200,12 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             >>> warmup_steps = 50
             >>> start_lr = 0.1
             >>> end_lr = 1.0 / 3.0
-            >>> decayed_lr = paddle.optimizer.lr.linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr,)
+            >>> decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
+            ...     learning_rate,
+            ...     warmup_steps,
+            ...     start_lr,
+            ...     end_lr,
+            ... )
             >>> place = paddle.CPUPlace()
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
