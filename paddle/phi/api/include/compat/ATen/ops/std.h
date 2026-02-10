@@ -121,7 +121,7 @@ inline Tensor Tensor::std(bool unbiased) const {
 }
 
 // std with dimensions, unbiased flag, and keepdim
-inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
+inline Tensor Tensor::std(std::optional<at::IntArrayRef> dim,
                           bool unbiased,
                           bool keepdim) const {
   // Convert unbiased to correction: unbiased=True means correction=1
@@ -134,7 +134,7 @@ inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
 }
 
 // std with dimensions, correction value, and keepdim
-inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
+inline Tensor Tensor::std(std::optional<at::IntArrayRef> dim,
                           const ::std::optional<at::Scalar>& correction,
                           bool keepdim) const {
   // Default correction is 1.0 (Bessel's correction)
