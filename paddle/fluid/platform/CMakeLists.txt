@@ -13,7 +13,6 @@ if(WITH_GLOO)
     DEPS gloo_wrapper phi common)
 endif()
 
-# separate init from device_context to avoid cycle dependencies
 if(WITH_CUSTOM_DEVICE AND NOT WIN32)
   set(INIT_DEPS phi common custom_device_load)
 else()
@@ -24,20 +23,6 @@ cc_library(
   init
   SRCS init.cc
   DEPS ${INIT_DEPS})
-
-#fluid_memory depends on device_context, here add deps individually for
-# avoiding cycle dependencies
-
-cc_library(
-  device_context
-  SRCS device_context.cc
-  DEPS simple_threadpool
-       xxhash
-       eigen3
-       ${IPU_CTX_DEPS}
-       dlpack
-       phi
-       common)
 
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)

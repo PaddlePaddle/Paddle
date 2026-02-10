@@ -252,7 +252,7 @@ struct YieldOpInferSymbolicShapeInterfaceModel
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
-  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
 
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
   info.AttachInterface(

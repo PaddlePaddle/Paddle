@@ -91,6 +91,10 @@ if(NOT WITH_PYTHON AND ON_INFER)
   list(REMOVE_ITEM TEST_OPS test_eager_trace_op)
 endif()
 
+if(WITH_XPU)
+  list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
 if(NOT WITH_GPU)

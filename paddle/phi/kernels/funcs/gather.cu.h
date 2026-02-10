@@ -206,7 +206,7 @@ __global__ void GatherGradGPUKernel(const T* input,
     int64_t out_index =
         inner_dim_index * (outer_dim_size * out_index_dim_size) +
         index[index_dim_index] * outer_dim_size + out_dim_index;
-    phi::CudaAtomicAdd(out + out_index, *(input + idx));
+    CudaAtomicAdd(out + out_index, *(input + idx));
   }
 }
 

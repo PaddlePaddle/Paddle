@@ -59,7 +59,7 @@ def _stride_column(param: Tensor) -> None:
         param(Tensor): The param that will be strided according to 'columns'.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -150,10 +150,10 @@ def vector_to_parameters(
             property. For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: pycon
 
             >>> import paddle
-            >>> weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(3.))
+            >>> weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(3.0))
             >>> linear1 = paddle.nn.Linear(10, 15, weight_attr)
 
             >>> vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())

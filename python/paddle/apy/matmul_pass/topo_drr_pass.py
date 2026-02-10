@@ -235,8 +235,8 @@ class InitNaiveLoadFromGlobalAccessTopoPass(access_topo_drr.DrrPass):
         o.new_data_op.place = lambda o, t: o.data_op.place
         o.new_data_op([], [t.input])
         o.load_from_global = o.ap_native_op("ap_op.load_from_global")
-        o.load_from_global.index_func_unique_id = (
-            lambda o, t: self.data_input_name_attr
+        o.load_from_global.index_func_unique_id = lambda o, t: (
+            self.data_input_name_attr
         )
         o.load_from_global([t.input], [t.output])
 
@@ -256,8 +256,8 @@ class ReplaceWithLoadFromRegisterPass(access_topo_drr.DrrPass):
     def result_pattern(self, o, t):
         o.load_from_register = o.ap_native_op("ap_op.load_from_register")
         o.load_from_register.name = lambda o, t: self.name
-        o.load_from_register.register_var_name = (
-            lambda o, t: self.register_var_name
+        o.load_from_register.register_var_name = lambda o, t: (
+            self.register_var_name
         )
         o.load_from_register.type = lambda o, t: pir.a_type(t.output.type)
         o.load_from_register.symbolic_shape_or_data = lambda o, t: pir.a_symbol(
@@ -281,8 +281,8 @@ class ReplaceWithStoreToRegisterPass(access_topo_drr.DrrPass):
     def result_pattern(self, o, t):
         o.store_to_register_op = o.ap_native_op("ap_op.store_to_register")
         o.store_to_register_op.name = lambda o, t: self.name
-        o.store_to_register_op.register_var_name = (
-            lambda o, t: self.register_var_name
+        o.store_to_register_op.register_var_name = lambda o, t: (
+            self.register_var_name
         )
         o.store_to_register_op([t.output_val], [])
 

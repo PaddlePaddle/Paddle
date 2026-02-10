@@ -2336,7 +2336,7 @@ def margin_cross_entropy(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # doctest: +REQUIRES(env:GPU)
@@ -2355,19 +2355,29 @@ def margin_cross_entropy(
 
             >>> X = paddle.randn(
             ...     shape=[batch_size, feature_length],
-            ...     dtype='float64')
+            ...     dtype='float64',
+            ... )
             >>> X_l2 = paddle.sqrt(paddle.sum(paddle.square(X), axis=1, keepdim=True))
             >>> X = paddle.divide(X, X_l2)
 
             >>> W = paddle.randn(
             ...     shape=[feature_length, num_classes],
-            ...     dtype='float64')
+            ...     dtype='float64',
+            ... )
             >>> W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
             >>> W = paddle.divide(W, W_l2)
 
             >>> logits = paddle.matmul(X, W)
             >>> loss, softmax = paddle.nn.functional.margin_cross_entropy(
-            ...     logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
+            ...     logits,
+            ...     label,
+            ...     margin1=m1,
+            ...     margin2=m2,
+            ...     margin3=m3,
+            ...     scale=s,
+            ...     return_softmax=True,
+            ...     reduction=None,
+            ... )
             >>> print(logits)
             Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=True,
                    [[-0.59561850,  0.32797505,  0.80279214,  0.00144975],
@@ -2384,7 +2394,7 @@ def margin_cross_entropy(
                    [[0.00000000, 0.00000000, 1.        , 0.00000000],
                     [0.00000000, 0.96152676, 0.00000067, 0.03847257]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
@@ -2412,7 +2422,7 @@ def margin_cross_entropy(
 
             >>> X = paddle.randn(
             ...     shape=[batch_size, feature_length],
-            ...     dtype='float64'
+            ...     dtype='float64',
             ... )
             >>> X_list: List[paddle.Tensor] = []
             >>> dist.all_gather(X_list, X)
@@ -2422,13 +2432,22 @@ def margin_cross_entropy(
 
             >>> W = paddle.randn(
             ...     shape=[feature_length, num_class_per_card[rank_id]],
-            ...     dtype='float64')
+            ...     dtype='float64',
+            ... )
             >>> W_l2 = paddle.sqrt(paddle.sum(paddle.square(W), axis=0, keepdim=True))
             >>> W = paddle.divide(W, W_l2)
 
             >>> logits = paddle.matmul(X, W)
             >>> loss, softmax = paddle.nn.functional.margin_cross_entropy(
-            ...     logits, label, margin1=m1, margin2=m2, margin3=m3, scale=s, return_softmax=True, reduction=None)
+            ...     logits,
+            ...     label,
+            ...     margin1=m1,
+            ...     margin2=m2,
+            ...     margin3=m3,
+            ...     scale=s,
+            ...     return_softmax=True,
+            ...     reduction=None,
+            ... )
             >>> print(logits)
             >>> print(label)
             >>> print(loss)
@@ -2947,7 +2966,10 @@ def cross_entropy(
             >>> label = paddle.randint(0, C, shape=[N], dtype='int64')
             >>> weight = paddle.rand([C], dtype='float64')
 
-            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction=reduction)
+            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+            ...     weight=weight,
+            ...     reduction=reduction,
+            ... )
             >>> dy_ret = cross_entropy_loss(input, label)
 
             >>> print(dy_ret)
