@@ -7,7 +7,6 @@ set(prim_eager_deps
     backward
     tracer
     layer
-    autograd_meta
     eager_nan_inf_utils
     grad_node_info
     grad_tensor_holder
