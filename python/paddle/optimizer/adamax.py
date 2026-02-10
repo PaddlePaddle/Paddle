@@ -140,8 +140,8 @@ class Adamax(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adamax = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
-            ...     parameters=[
-            ...         {  # type: ignore
+            ...     parameters=[  # type: ignore
+            ...         {
             ...             'params': linear_1.parameters()
             ...         },
             ...         {
