@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -2517,6 +2517,29 @@ def fractional_max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@overload
+def lp_pool1d(
+    x: Tensor,
+    norm_type: float,
+    kernel_size: Size1,
+    stride: Size1 | None = None,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
+    ceil_mode: bool = False,
+    data_format: DataLayout1D = "NCL",
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def lp_pool1d(
+    input: Tensor,
+    norm_type: float,
+    kernel_size: Size1,
+    stride: Size1 | None = None,
+    ceil_mode: bool = False,
+) -> Tensor: ...
+
+
 @lp_pool_function_decorator
 def lp_pool1d(
     x: Tensor,
@@ -2536,6 +2559,7 @@ def lp_pool1d(
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type is float16, float32 or float64.
+            Alias: ``input``.
         norm_type (int|float): The number the power operation.
         kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).
@@ -2649,6 +2673,29 @@ def lp_pool1d(
         return squeeze(pool_out, [axis])
 
 
+@overload
+def lp_pool2d(
+    x: Tensor,
+    norm_type: float,
+    kernel_size: Size2,
+    stride: Size2 | None = None,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
+    ceil_mode: bool = False,
+    data_format: DataLayout2D = "NCHW",
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def lp_pool2d(
+    input: Tensor,
+    norm_type: float,
+    kernel_size: Size2,
+    stride: Size2 | None = None,
+    ceil_mode: bool = False,
+) -> Tensor: ...
+
+
 @lp_pool_function_decorator
 def lp_pool2d(
     x: Tensor,
@@ -2670,6 +2717,7 @@ def lp_pool2d(
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
+            Alias: ``input``.
         norm_type (int|float): The number the power operation.
         kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).

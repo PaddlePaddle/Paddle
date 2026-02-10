@@ -105,7 +105,7 @@ def check_layer_numerics(
             ...         return x @ self._w + self._b
             ...
             >>> dtype = 'float32'
-            >>> x = paddle.rand([10, 2, 2], dtype=dtype) # type: ignore[arg-type]
+            >>> x = paddle.rand([10, 2, 2], dtype=dtype)  # type: ignore[call-overload]
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)

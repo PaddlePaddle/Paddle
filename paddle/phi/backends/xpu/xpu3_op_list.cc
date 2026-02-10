@@ -1013,6 +1013,7 @@ XPUOpMap& get_kl3_ops() {
       // AddMore
       {"sequence_unpad", XPUKernelSet({FLOAT32})},
       // Fused op
+      {"squeeze_excitation_block", XPUKernelSet({FLOAT32, FLOAT16})},
       {"resnet_basic_block_grad", XPUKernelSet({FLOAT32})},
       {"resnet_basic_block", XPUKernelSet({FLOAT32})},
       {"fused_bias_act", XPUKernelSet({FLOAT16, BFLOAT16})},

@@ -1665,7 +1665,7 @@ def load(
     Returns:
         None
 
-     Examples:
+    Examples:
         .. code-block:: pycon
 
             >>> import paddle
