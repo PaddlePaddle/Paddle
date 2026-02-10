@@ -39,7 +39,6 @@ using moe::kMaxNumExpertsForOptKernel;
 // ============================================================================
 
 // Generic permute kernel for large num_experts or Hopper architecture.
-// Once the max_num_experts is not given, we assume it is 64.
 template <typename X_T,
           typename routemap_T,
           typename probs_T,
@@ -47,7 +46,7 @@ template <typename X_T,
           bool has_scale,
           bool do_gather,
           bool return_expert_indices,
-          int max_num_experts = 64>
+          int max_num_experts>
 __global__ __launch_bounds__(512) void permute_generic_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
@@ -72,8 +71,12 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
   int local_expert_end_offsets;
   const int block_row_base = blockIdx.x * kCumsumBlockSize;
   int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
-  __shared__ expert_infos_t
-      shared_expert_infos[kCumsumBlockSize][max_num_experts];
+
+  // Dynamic shared memory for expert_infos, sized as
+  // kCumsumBlockSize * max_num_experts
+  extern __shared__ char smem_raw[];
+  expert_infos_t(*shared_expert_infos)[max_num_experts] =
+      reinterpret_cast<expert_infos_t(*)[max_num_experts]>(smem_raw);
 
   // Init shared memory
   for (int i = threadIdx.x; i < kCumsumBlockSize * max_num_experts;
@@ -180,7 +183,7 @@ template <typename X_T,
           bool has_scale,
           bool do_gather,
           bool return_expert_indices,
-          int max_num_experts = 32>
+          int max_num_experts>
 __global__ __launch_bounds__(256) void permute_opt_kernel(
     const X_T *__restrict__ X,
     const routemap_T *__restrict__ routemap_topk,
@@ -490,7 +493,8 @@ template <typename TokenT,
           typename ScaleT,
           bool HasScale,
           bool DoGather,
-          bool ReturnIndices>
+          bool ReturnIndices,
+          int MaxNumExperts>
 void launch_permute_kernel(const phi::GPUContext &dev_ctx,
                            const phi::DenseTensor &X,
                            const phi::DenseTensor &expert_routemap_topk,
@@ -571,31 +575,40 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
 #endif
   // Fallback to generic kernel
   block.x = 512;
-  permute_generic_kernel<TokenT,
-                         IntT,
-                         ProbT,
-                         ScaleT,
-                         HasScale,
-                         DoGather,
-                         ReturnIndices,
-                         kMaxNumExperts>
-      <<<grid, block, 0, dev_ctx.stream()>>>(x_ptr,
-                                             routemap_ptr,
-                                             prob_ptr,
-                                             scale_ptr,
-                                             offset_ptr,
-                                             offset_end_ptr,
-                                             x_out_ptr,
-                                             rowmap_out_ptr,
-                                             prob_out_ptr,
-                                             scale_out_ptr,
-                                             cumsum_ptr,
-                                             expert_indices_ptr,
-                                             total_zipped_tokens_num,
-                                             token_length,
-                                             scale_length,
-                                             num_experts,
-                                             topk);
+  constexpr int generic_smem =
+      kCumsumBlockSize * MaxNumExperts * sizeof(expert_infos<ProbT>);
+  auto generic_kernel_ptr = permute_generic_kernel<TokenT,
+                                                   IntT,
+                                                   ProbT,
+                                                   ScaleT,
+                                                   HasScale,
+                                                   DoGather,
+                                                   ReturnIndices,
+                                                   MaxNumExperts>;
+  if constexpr (generic_smem > 48 * 1024) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaFuncSetAttribute(generic_kernel_ptr,
+                             cudaFuncAttributeMaxDynamicSharedMemorySize,
+                             generic_smem));
+  }
+  generic_kernel_ptr<<<grid, block, generic_smem, dev_ctx.stream()>>>(
+      x_ptr,
+      routemap_ptr,
+      prob_ptr,
+      scale_ptr,
+      offset_ptr,
+      offset_end_ptr,
+      x_out_ptr,
+      rowmap_out_ptr,
+      prob_out_ptr,
+      scale_out_ptr,
+      cumsum_ptr,
+      expert_indices_ptr,
+      total_zipped_tokens_num,
+      token_length,
+      scale_length,
+      num_experts,
+      topk);
 }
 
 // ============================================================================
@@ -646,32 +659,37 @@ void dispatch_permute_kernel(const Context &dev_ctx,
               constexpr bool ReturnIndices =
                   decltype(return_indices_tag)::value;
 
-              launch_permute_kernel<TokenT,
-                                    ProbT,
-                                    int,
-                                    ScaleT,
-                                    HasScale,
-                                    DoGather,
-                                    ReturnIndices>(
-                  dev_ctx,
-                  X,
-                  expert_routemap_topk,
-                  expert_prob_topk,
-                  XScale,
-                  expert_offsets,
-                  expert_offset_end,
-                  X_unzipped,
-                  zipped_expertwise_rowmap,
-                  token_prob_unzipped,
-                  XScale_unzipped,
-                  global_expertwise_block_cumsum,
-                  expert_indices,
-                  total_zipped_tokens_num,
-                  token_length,
-                  scale_length,
-                  num_experts,
-                  topk,
-                  capability);
+              // Bucketed num_experts dispatch
+              dispatch::NumExperts(num_experts, [&](auto ne_tag) {
+                constexpr int NE = decltype(ne_tag)::value;
+
+                launch_permute_kernel<TokenT,
+                                      ProbT,
+                                      int,
+                                      ScaleT,
+                                      HasScale,
+                                      DoGather,
+                                      ReturnIndices,
+                                      NE>(dev_ctx,
+                                          X,
+                                          expert_routemap_topk,
+                                          expert_prob_topk,
+                                          XScale,
+                                          expert_offsets,
+                                          expert_offset_end,
+                                          X_unzipped,
+                                          zipped_expertwise_rowmap,
+                                          token_prob_unzipped,
+                                          XScale_unzipped,
+                                          global_expertwise_block_cumsum,
+                                          expert_indices,
+                                          total_zipped_tokens_num,
+                                          token_length,
+                                          scale_length,
+                                          num_experts,
+                                          topk,
+                                          capability);
+              });
             },
             do_gather,
             return_expert_indices);
@@ -745,8 +763,10 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
       [&](auto fill_expert_indices_tag) {
         constexpr bool FillExpertIndices =
             decltype(fill_expert_indices_tag)::value;
+        const int smem_bytes =
+            static_cast<int>(sizeof(int32_t)) * num_experts * 2;
         routemap_digest_kernel<FillExpertIndices, BLOCK_SIZE>
-            <<<grid, block, 0, dev_ctx.stream()>>>(
+            <<<grid, block, smem_bytes, dev_ctx.stream()>>>(
                 expert_routemap_topk.data<int32_t>(),
                 expert_offset->data<int32_t>(),
                 expert_offset_end->data<int32_t>(),

@@ -22,7 +22,7 @@ namespace phi {
 // Import MoE constants from shared header
 using moe::kMaxNumExperts;
 
-template <bool MP, bool WEIGHTED_TOKEN>
+template <bool MP, bool WEIGHTED_TOKEN, int NUM_EXPERTS>
 __global__ __launch_bounds__(256) void tokens_zip_kernel(
     const phi::bfloat16 *__restrict__ unzipped_tokens_in,
     const int *__restrict__ zipped_expertwise_rowmap,
@@ -43,15 +43,16 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   __nv_bfloat16 *zipped_tokens =
       reinterpret_cast<__nv_bfloat16 *>(zipped_tokens_out);
 
-  __shared__ int local_row_fetchlist[kMaxNumExperts];
-  __shared__ float local_row_weight[kMaxNumExperts];
+  __shared__ int local_row_fetchlist[NUM_EXPERTS];
+  __shared__ float local_row_weight[NUM_EXPERTS];
 
-  if (threadIdx.x < num_experts) {
-    const int fetch_row =
-        zipped_expertwise_rowmap[this_row * num_experts + threadIdx.x];
-    local_row_fetchlist[threadIdx.x] = fetch_row;
+  // Strided load: blockDim.x may be < num_experts, so each thread
+  // handles multiple slots to cover the full [0, num_experts) range.
+  for (int i = threadIdx.x; i < num_experts; i += blockDim.x) {
+    const int fetch_row = zipped_expertwise_rowmap[this_row * num_experts + i];
+    local_row_fetchlist[i] = fetch_row;
     if constexpr (WEIGHTED_TOKEN) {
-      local_row_weight[threadIdx.x] =
+      local_row_weight[i] =
           ((fetch_row == -1) ? 0.0f : unzipped_token_probs[fetch_row]);
     }
   }
@@ -191,40 +192,33 @@ void dispatch_tokens_zip(const Context &dev_ctx,
   grid.x = total_zipped_tokens_num;
   block.x = 256;
 
-// Core kernel launcher: strictly typed to your requirements
-#define LAUNCH_ZIP_KERNEL(MP_CONST, WEIGHTED_CONST) \
-  tokens_zip_kernel<MP_CONST, WEIGHTED_CONST>       \
-      <<<grid, block, 0, dev_ctx.stream()>>>(       \
-          unzipped_tokens.data<phi::bfloat16>(),    \
-          zipped_expertwise_rowmap.data<int>(),     \
-          expert_routemap_topk.data<int>(),         \
-          unzipped_token_probs.data<float>(),       \
-          zipped_tokens->data<phi::bfloat16>(),     \
-          zipped_probs_topk->data<float>(),         \
-          total_zipped_tokens_num,                  \
-          token_length,                             \
-          num_experts,                              \
-          topk)
+  if (unzipped_token_probs.dtype() != paddle::DataType::FLOAT32) return;
 
-// Dispatch Level 2: Handle 'using_weighted_combine' boolean
-#define DISPATCH_WEIGHTED(MP_CONST)     \
-  if (using_weighted_combine) {         \
-    LAUNCH_ZIP_KERNEL(MP_CONST, true);  \
-  } else {                              \
-    LAUNCH_ZIP_KERNEL(MP_CONST, false); \
-  }
+  // Unified dispatch: MP x WEIGHTED x NUM_EXPERTS
+  dispatch::Bools(
+      [&](auto mp_tag, auto weighted_tag) {
+        constexpr bool MP_CONST = decltype(mp_tag)::value;
+        constexpr bool WEIGHTED_CONST = decltype(weighted_tag)::value;
 
-  // Dispatch Level 1: Handle 'MP' boolean and Type check
-  if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
-    if (MP) {
-      DISPATCH_WEIGHTED(true)
-    } else {
-      DISPATCH_WEIGHTED(false)
-    }
-  }
+        dispatch::NumExperts(num_experts, [&](auto ne_tag) {
+          constexpr int NE = decltype(ne_tag)::value;
 
-#undef DISPATCH_WEIGHTED
-#undef LAUNCH_ZIP_KERNEL
+          tokens_zip_kernel<MP_CONST, WEIGHTED_CONST, NE>
+              <<<grid, block, 0, dev_ctx.stream()>>>(
+                  unzipped_tokens.data<phi::bfloat16>(),
+                  zipped_expertwise_rowmap.data<int>(),
+                  expert_routemap_topk.data<int>(),
+                  unzipped_token_probs.data<float>(),
+                  zipped_tokens->data<phi::bfloat16>(),
+                  zipped_probs_topk->data<float>(),
+                  total_zipped_tokens_num,
+                  token_length,
+                  num_experts,
+                  topk);
+        });
+      },
+      MP,
+      using_weighted_combine);
 }
 
 template <typename T, typename Context>

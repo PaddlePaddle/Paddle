@@ -32,15 +32,37 @@ namespace moe {
 
 inline constexpr int kCumsumBlockSize = 40;
 inline constexpr int kCumsumInvalidTag = -1;
-inline constexpr int kMaxNumExperts = 64;
+inline constexpr int kMaxNumExperts = 384;
 inline constexpr int kMaxNumExpertsForOptKernel = 32;
 
 }  // namespace moe
 
 // ============================================================================
-// Dispatch utilities: runtime bool -> compile-time bool, zero overhead
+// Dispatch utilities: runtime num_experts -> compile-time bucket
 // ============================================================================
 namespace dispatch {
+
+// Bucketed NUM_EXPERTS dispatch: selects the smallest compile-time bucket
+// >= runtime num_experts to minimize register / shared-memory overhead.
+// Buckets: 8, 16, 32, 64, 128, 256, 384
+template <typename F>
+inline void NumExperts(int num_experts, F&& f) {
+  if (num_experts <= 8) {
+    f(std::integral_constant<int, 8>{});
+  } else if (num_experts <= 16) {
+    f(std::integral_constant<int, 16>{});
+  } else if (num_experts <= 32) {
+    f(std::integral_constant<int, 32>{});
+  } else if (num_experts <= 64) {
+    f(std::integral_constant<int, 64>{});
+  } else if (num_experts <= 128) {
+    f(std::integral_constant<int, 128>{});
+  } else if (num_experts <= 256) {
+    f(std::integral_constant<int, 256>{});
+  } else {
+    f(std::integral_constant<int, 384>{});
+  }
+}
 
 // Type tag for compile-time type passing
 template <typename T>
