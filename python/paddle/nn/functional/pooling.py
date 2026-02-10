@@ -579,6 +579,7 @@ def max_pool1d(
     kernel_size: Size1,
     stride: Size1 | None = None,
     padding: _PaddingSizeMode | Size1 | Size2 = 0,
+    dilation: Size1 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
     name: str | None = None,
@@ -603,6 +604,8 @@ def max_pool1d(
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain an integer. Default: 1.
         return_mask (bool): Whether return the max indices along with the outputs. default is `False`.
             Alias: ``return_indices``.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
@@ -638,6 +641,8 @@ def max_pool1d(
         stride = kernel_size
     else:
         stride = [1, *convert_to_list(stride, 1, "pool_stride")]
+    dilation_list = convert_to_list(dilation, 1, "dilation")
+    dilation = [1, *dilation_list]
 
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, ceil_mode=ceil_mode
@@ -646,10 +651,21 @@ def max_pool1d(
     # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+    # Check if dilation is non-trivial (not all ones)
+    has_dilation = any(d != 1 for d in dilation_list)
+
     if in_dynamic_or_pir_mode():
-        if return_mask:
+        if return_mask or has_dilation:
+            # Use max_pool2d_with_index when return_mask=True or dilation != 1
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -674,7 +690,11 @@ def max_pool1d(
 
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
-        op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
+        op_type = (
+            'max_pool2d_with_index'
+            if (return_mask or has_dilation)
+            else "pool2d"
+        )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -691,6 +711,7 @@ def max_pool1d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -1152,6 +1173,7 @@ def max_pool2d(
     kernel_size: Size2,
     stride: Size2 | None = None,
     padding: _PaddingSizeMode | Size2 | Size4 = 0,
+    dilation: Size2 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout2D = 'NCHW',
@@ -1181,6 +1203,9 @@ def max_pool2d(
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain two integers, (dilation_Height, dilation_Width).
+            Otherwise, the dilation size will be a square of an int. Default: 1.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
             Alias: ``return_indices``.
@@ -1210,6 +1235,8 @@ def max_pool2d(
             paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
             paddle.Size([1, 3, 16, 16])
+            >>> # with dilation
+            >>> out, max_indices = F.max_pool2d(x, kernel_size=3, stride=1, padding=1, dilation=2, return_mask=True)
     """
 
     kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
@@ -1217,6 +1244,7 @@ def max_pool2d(
         stride = kernel_size
     else:
         stride = convert_to_list(stride, 2, 'pool_stride')
+    dilation = convert_to_list(dilation, 2, 'dilation')
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -1235,10 +1263,30 @@ def max_pool2d(
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
+    # Check if dilation is non-trivial (not all ones)
+    dilation = (
+        dilation if isinstance(dilation, (list, tuple)) else [dilation] * 2
+    )
+    has_dilation = any(d != 1 for d in dilation)
+
+    # When dilation != 1, must use max_pool2d_with_index (pool2d doesn't support dilation)
+    if has_dilation and data_format == "NHWC":
+        raise ValueError(
+            "When dilation != 1, data_format must be set to NCHW in API:max_pool2d"
+        )
+
     if in_dynamic_or_pir_mode():
-        if return_mask:
+        if return_mask or has_dilation:
+            # Use max_pool2d_with_index when return_mask=True or dilation != 1
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return output if return_mask else output[0]
         else:
@@ -1257,7 +1305,11 @@ def max_pool2d(
             )
 
     else:
-        op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
+        op_type = (
+            'max_pool2d_with_index'
+            if (return_mask or has_dilation)
+            else "pool2d"
+        )
         helper = LayerHelper(op_type, **locals())
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'max_pool2d'
@@ -1279,6 +1331,7 @@ def max_pool2d(
                     "global_pooling": False,
                     "strides": stride,
                     "paddings": padding,
+                    "dilations": dilation,
                     "padding_algorithm": padding_algorithm,
                     "use_cudnn": True,
                     "ceil_mode": ceil_mode,
@@ -1317,6 +1370,7 @@ def max_pool3d(
     kernel_size: Size3,
     stride: Size3 | None = None,
     padding: _PaddingSizeMode | Size3 | Size6 = 0,
+    dilation: Size3 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
     data_format: DataLayout3D = 'NCDHW',
@@ -1344,6 +1398,9 @@ def max_pool3d(
             4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain three integers, (dilation_Depth, dilation_Height, dilation_Width).
+            Otherwise, the dilation size will be a cube of an int. Default: 1.
         ceil_mode (bool): ${ceil_mode_comment}
         return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
             Alias: ``return_indices``.
@@ -1383,6 +1440,7 @@ def max_pool3d(
         stride = kernel_size
     else:
         stride = convert_to_list(stride, 3, 'pool_stride')
+    dilation = convert_to_list(dilation, 3, 'dilation')
 
     channel_last = _channel_last(data_format, 3)
 
@@ -1395,10 +1453,30 @@ def max_pool3d(
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
+    # Check if dilation is non-trivial (not all ones)
+    dilation = (
+        dilation if isinstance(dilation, (list, tuple)) else [dilation] * 3
+    )
+    has_dilation = any(d != 1 for d in dilation)
+
+    # When dilation != 1, must use max_pool3d_with_index (pool3d doesn't support dilation)
+    if has_dilation and data_format == "NDHWC":
+        raise ValueError(
+            "When dilation != 1, data_format must be set to NCDHW in API:max_pool3d"
+        )
+
     if in_dynamic_or_pir_mode():
-        if return_mask:
+        if return_mask or has_dilation:
+            # Use max_pool3d_with_index when return_mask=True or dilation != 1
             output = _C_ops.max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return output if return_mask else output[0]
         else:
@@ -1417,7 +1495,11 @@ def max_pool3d(
             )
 
     else:
-        op_type = "max_pool3d_with_index" if return_mask else "pool3d"
+        op_type = (
+            "max_pool3d_with_index"
+            if (return_mask or has_dilation)
+            else "pool3d"
+        )
         helper = LayerHelper(op_type, **locals())
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'max_pool3d'
@@ -1437,6 +1519,7 @@ def max_pool3d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -1874,7 +1957,7 @@ def adaptive_max_pool1d(
     x = unsqueeze(x, [2])
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True, False
+            x, pool_size, [1, 1], [0, 0], [1, 1], False, True, False
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1976,7 +2059,7 @@ def adaptive_max_pool2d(
             output_size[1] = in_w
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True, False
+            x, output_size, [1, 1], [0, 0], [1, 1], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2074,9 +2157,11 @@ def adaptive_max_pool3d(
             output_size[2] = in_w
 
     if in_dynamic_or_pir_mode():
-        # By default, strides is [1,1,1] and paddings is [0, 0, 0]
+        # By default, strides is [1, 1, 1]
+        # paddings is [0, 0, 0]
+        # dilations is [1, 1, 1]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
+            x, output_size, [1, 1, 1], [0, 0, 0], [1, 1, 1], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:

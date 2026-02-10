@@ -450,7 +450,7 @@ static void ParseIndex(const Tensor& tensor,
       none_count++;
       bool index_ele = (slice_item == Py_True);
       auto slice_tensor =
-          full_ad_func({1}, index_ele, phi::DataType::BOOL, tensor.place());
+          full_ad_func({1}, index_ele, DataType::BOOL, tensor.place());
       advanced_index->push_back(std::move(slice_tensor));
       (*advanced_index_dim)[estimated_dim] = estimated_dim;
       estimated_dim++;
@@ -477,7 +477,7 @@ static void ParseIndex(const Tensor& tensor,
       }
 
       if (slice_tensor.shape().size() == 0) {
-        if (slice_tensor.dtype() != phi::DataType::BOOL) {
+        if (slice_tensor.dtype() != DataType::BOOL) {
           // 0-D int tensor is same with scalar
           PADDLE_ENFORCE_EQ(
               slice_tensor.is_dense_tensor(),
@@ -516,7 +516,7 @@ static void ParseIndex(const Tensor& tensor,
         }
       } else {
         *has_advanced_index = true;
-        if (slice_tensor.dtype() == phi::DataType::BOOL) {
+        if (slice_tensor.dtype() == DataType::BOOL) {
           // bool tensor consumes (rank of index tensor) dimensions of input
           // tensor
           for (size_t i = 0; i < slice_tensor.shape().size(); i++) {
@@ -628,7 +628,7 @@ inline static bool MaskedFillDispatching(const Tensor& tensor,
   if (indices.size() != 1) return false;
 
   int64_t num_ind = 0;
-  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+  if ((indices)[0].dtype() != DataType::BOOL) {
     return false;
   } else {
     num_ind += (indices)[0].shape().size();
@@ -672,7 +672,7 @@ static Tensor dealWithAdvancedIndex(const Tensor& tensor,
         *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
       }
 
-      if (index.dtype() == phi::DataType::BOOL) {
+      if (index.dtype() == DataType::BOOL) {
         *rank_of_new_dim = std::max(*rank_of_new_dim, 1);
         i--;
         for (size_t j = 0; j < index.shape().size(); j++) {
@@ -869,7 +869,7 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
 
 static void ParseBoolAndBroadcastIndices(std::vector<Tensor>* advanced_index) {
   for (size_t i = 0; i < advanced_index->size(); i++) {
-    if ((*advanced_index)[i].dtype() == phi::DataType::BOOL) {
+    if ((*advanced_index)[i].dtype() == DataType::BOOL) {
       Tensor bool_2_idx = nonzero_ad_func((*advanced_index)[i]);
       Tensor bool_2_idx_sliced =
           slice_ad_func(bool_2_idx, {1}, {0}, {1}, {1}, {1});
@@ -916,32 +916,32 @@ static Tensor dealWithValues(const Tensor& tensor,
                             egr::Controller::Instance().GenerateUniqueName());
     py::object value_obj_tmp = py::reinterpret_borrow<py::object>(value_obj);
     py::object value = value_obj_tmp;
-    if (tensor.dtype() == phi::DataType::FLOAT32) {
+    if (tensor.dtype() == DataType::FLOAT32) {
       if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
       }
-    } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+    } else if (tensor.dtype() == DataType::FLOAT64) {
       if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
       }
-    } else if (tensor.dtype() == phi::DataType::INT32) {
+    } else if (tensor.dtype() == DataType::INT32) {
       if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
       }
-    } else if (tensor.dtype() == phi::DataType::INT64) {
+    } else if (tensor.dtype() == DataType::INT64) {
       if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
       }
-    } else if (tensor.dtype() == phi::DataType::BOOL) {
+    } else if (tensor.dtype() == DataType::BOOL) {
       if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
       }
-    } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
+    } else if (tensor.dtype() == DataType::COMPLEX64) {
       if (!py::isinstance<py::array_t<std::complex<float>>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<std::complex<float>>(
             value_obj_tmp);
       }
-    } else if (tensor.dtype() == phi::DataType::COMPLEX128) {
+    } else if (tensor.dtype() == DataType::COMPLEX128) {
       if (!py::isinstance<py::array_t<std::complex<double>>>(value_obj_tmp)) {
         value = pybind11::detail::CastNumpyArray<std::complex<double>>(
             value_obj_tmp);
@@ -966,24 +966,24 @@ static Tensor dealWithValues(const Tensor& tensor,
         py::isinstance<py::int_>(value_obj_tmp) ||
         py::isinstance<py::bool_>(value_obj_tmp) ||
         PyComplex_Check(value_obj)) {
-      if (tensor.dtype() == phi::DataType::FLOAT32 ||
-          tensor.dtype() == phi::DataType::FLOAT16 ||
-          tensor.dtype() == phi::DataType::BFLOAT16) {
+      if (tensor.dtype() == DataType::FLOAT32 ||
+          tensor.dtype() == DataType::FLOAT16 ||
+          tensor.dtype() == DataType::BFLOAT16) {
         values->push_back(value_obj_tmp.cast<float>());
-      } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+      } else if (tensor.dtype() == DataType::FLOAT64) {
         values->push_back(value_obj_tmp.cast<double>());
-      } else if (tensor.dtype() == phi::DataType::INT32 ||
-                 tensor.dtype() == phi::DataType::INT16 ||
-                 tensor.dtype() == phi::DataType::INT8 ||
-                 tensor.dtype() == phi::DataType::UINT8) {
+      } else if (tensor.dtype() == DataType::INT32 ||
+                 tensor.dtype() == DataType::INT16 ||
+                 tensor.dtype() == DataType::INT8 ||
+                 tensor.dtype() == DataType::UINT8) {
         values->push_back(value_obj_tmp.cast<float>());
-      } else if (tensor.dtype() == phi::DataType::INT64) {
+      } else if (tensor.dtype() == DataType::INT64) {
         values->push_back(value_obj_tmp.cast<double>());
-      } else if (tensor.dtype() == phi::DataType::BOOL) {
+      } else if (tensor.dtype() == DataType::BOOL) {
         values->push_back(value_obj_tmp.cast<bool>());
-      } else if (tensor.dtype() == phi::DataType::COMPLEX64) {
+      } else if (tensor.dtype() == DataType::COMPLEX64) {
         values->push_back(value_obj_tmp.cast<std::complex<float>>());
-      } else if (tensor.dtype() == phi::DataType::COMPLEX128) {
+      } else if (tensor.dtype() == DataType::COMPLEX128) {
         values->push_back(value_obj_tmp.cast<std::complex<double>>());
       }
     } else {
@@ -1262,7 +1262,7 @@ static void ApplyGetitem(const int index_size,
   };
 
   if (transed_index->size() == 1 &&
-      (*transed_index)[0].dtype() == phi::DataType::BOOL) {
+      (*transed_index)[0].dtype() == DataType::BOOL) {
     // get value for bool tensor
     const int64_t slice_offset =
         reinterpret_cast<const char*>(transed_tensor->data()) -
