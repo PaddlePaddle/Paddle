@@ -63,8 +63,7 @@ void PadKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   using T = phi::complex64;
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
-    phi::Full<T, XPUContext>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    Full<T, XPUContext>(dev_ctx, out->dims(), pad_value, out);
     return;
   }
   std::vector<int64_t> pad_left, pad_right;

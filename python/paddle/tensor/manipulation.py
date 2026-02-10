@@ -34,7 +34,6 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
-    tensor_split_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -323,7 +322,7 @@ def slice(
 ) -> Tensor:
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    https://numpy.org/doc/stable/user/basics.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
@@ -2982,7 +2981,13 @@ def split(
         return outs
 
 
-@tensor_split_decorator
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices_or_sections", "indices", "sections"],
+        "axis": ["dim"],
+    }
+)
 def tensor_split(
     x: Tensor,
     num_or_indices: int | Sequence[int],
@@ -3012,7 +3017,7 @@ def tensor_split(
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split along ``axis`` at each of the indices. For instance,
             ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
-            alias: ``indices`` or ``sections``
+            alias: ``indices`` , ``sections`` , ``indices_or_sections``
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
@@ -5202,6 +5207,21 @@ def broadcast_to(
     return expand(x, shape, name)
 
 
+@overload
+def expand(
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def expand(
+    input: Tensor,
+    *size: int,
+) -> Tensor: ...
+
+
 @expand_decorator()
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
@@ -5348,6 +5368,14 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+@overload
+def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
+
+
+@overload
+def reshape(input: Tensor, *shape: int) -> Tensor: ...
+
+
 @reshape_decorator()
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
@@ -5415,6 +5443,9 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.)
 
+            >>> out = paddle.reshape(x, 6, 4, 2)
+            >>> print(out.shape)
+            paddle.Size([6, 4, 2])
     """
 
     def get_attr_shape(list_shape):
@@ -6102,8 +6133,8 @@ def strided_slice(
     name: str | None = None,
 ) -> Tensor:
     """
-    This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
+    https://numpy.org/doc/stable/user/basics.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
@@ -7634,6 +7665,31 @@ def scatter_add_(
     )
 
 
+@overload
+def index_add(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: Number = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def index_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    *,
+    alpha: Number = 1,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
 @index_add_decorator()
 def index_add(
     x: Tensor,
@@ -7718,6 +7774,28 @@ def index_add(
         attrs={'axis': axis},
     )
     return out
+
+
+@overload
+def index_add_(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: int = 1,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def index_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    *,
+    alpha: Number = 1,
+) -> Tensor: ...
 
 
 @index_add_decorator()
@@ -7873,6 +7951,35 @@ def as_strided(
             >>> # the stride is [6, 1].
     """
     return _C_ops.as_strided(x, shape, stride, offset)
+
+
+@overload
+def view(
+    x: Tensor,
+    shape_or_dtype: Sequence[int] | DTypeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    dtype: DTypeLike,
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    size: Sequence[int],
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    *shape: int,
+) -> Tensor: ...
 
 
 @dygraph_only

@@ -6073,6 +6073,16 @@ void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
+
+  // When converting from sparse to dense tensor, we need to convert the layout
+  // from SPARSE_COO/SPARSE_CSR to appropriate dense layout (NCHW, NCDHW, etc.)
+  auto input_layout = x.layout();
+  if (input_layout == DataLayout::SPARSE_COO ||
+      input_layout == DataLayout::SPARSE_CSR) {
+    // Set to NCHW as default dense layout
+    // Individual kernels can override this if needed
+    out->set_layout(DataLayout::NCHW);
+  }
 }
 
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out) {

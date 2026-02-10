@@ -144,8 +144,9 @@ class CompiledProgram:
         CompiledProgram
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.CompiledProgram doesn't support PIR mode")
             >>> import numpy
             >>> import paddle
             >>> import paddle.static as static
@@ -161,13 +162,14 @@ class CompiledProgram:
             >>> paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
             >>> exe.run(static.default_startup_program())
-            >>> compiled_prog = static.CompiledProgram(
-            ...     static.default_main_program())
+            >>> compiled_prog = static.CompiledProgram(static.default_main_program())
 
             >>> x = numpy.random.random(size=(10, 1)).astype('float32')
-            >>> loss_data, = exe.run(compiled_prog,
-            ...                     feed={"X": x},
-            ...                     fetch_list=[loss.name])
+            >>> (loss_data,) = exe.run(
+            ...     compiled_prog,
+            ...     feed={"X": x},
+            ...     fetch_list=[loss.name],
+            ... )
     """
 
     def __init__(
