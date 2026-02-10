@@ -142,7 +142,7 @@ class Adamax(Optimizer):
             ...     learning_rate=0.1,
             ...     parameters=[  # type: ignore
             ...         {
-            ...             'params': linear_1.parameters()
+            ...             'params': linear_1.parameters(),
             ...         },
             ...         {
             ...             'params': linear_2.parameters(),
