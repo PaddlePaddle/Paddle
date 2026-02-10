@@ -410,7 +410,6 @@ from .tensor.logic import (
     greater_equal_,
     greater_than,
     greater_than_,
-    gt,
     is_empty,
     is_tensor,
     isclose,
@@ -1008,7 +1007,6 @@ ne = not_equal
 lt = less_than
 less = less_than
 le = less_equal
-greater = gt
 ge = greater_equal
 swapdims = transpose
 swapaxes = transpose
@@ -1338,7 +1336,6 @@ __all__ = [
     'chunk',
     'tolist',
     'tensordot',
-    "greater",
     'greater_than',
     'greater_than_',
     'shard_index',

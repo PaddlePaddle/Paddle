@@ -304,19 +304,22 @@ class TestLayerPrint(unittest.TestCase):
             str(module), 'AvgPool3D(kernel_size=2, stride=2, padding=0)'
         )
 
-        module = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool1D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool1D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
-        module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool2D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
-        module = nn.MaxPool3D(kernel_size=2, stride=2, padding=0)
+        module = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1)
         self.assertEqual(
-            str(module), 'MaxPool3D(kernel_size=2, stride=2, padding=0)'
+            str(module),
+            'MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1)',
         )
 
         module = nn.AdaptiveAvgPool1D(output_size=16)
@@ -394,7 +397,7 @@ class TestLayerPrint(unittest.TestCase):
             nn.Tanh(name="Tanh"),
             module1,
             nn.Conv3D(4, 6, (3, 3, 3)),
-            nn.MaxPool3D(kernel_size=2, stride=2, padding=0),
+            nn.MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1),
             nn.GELU(True),
         )
         self.assertEqual(
@@ -406,7 +409,7 @@ class TestLayerPrint(unittest.TestCase):
             '(3): Sequential(\n    (conv1): Conv2D(1, 20, kernel_size=[5, 5], data_format=NCHW)\n    (relu1): ReLU()\n'
             '    (conv2): Conv2D(20, 64, kernel_size=[5, 5], data_format=NCHW)\n    (relu2): ReLU()\n  )\n  '
             '(4): Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)\n  '
-            '(5): MaxPool3D(kernel_size=2, stride=2, padding=0)\n  '
+            '(5): MaxPool3D(kernel_size=2, stride=2, padding=0, dilation=1)\n  '
             '(6): GELU(approximate=True)\n)',
         )
 

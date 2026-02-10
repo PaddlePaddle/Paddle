@@ -874,15 +874,15 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   if (FLAGS_enable_pir_api) {
     if (!self->tensor.defined()) {
       // be same to old dygraph
-      return ToPyObject(phi::DataType::FLOAT32);
+      return ToPyObject(DataType::FLOAT32);
     }
     if (egr::IsVariableCompatTensor(self->tensor)) {
       auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
           self->tensor.impl().get());
       if (var_tensor->IsType<phi::Vocab>()) {
-        return ToPyObject(phi::DataType::UNDEFINED);
+        return ToPyObject(DataType::UNDEFINED);
       } else if (var_tensor->IsType<phi::Strings>()) {
-        return ToPyObject(phi::DataType::PSTRING);
+        return ToPyObject(DataType::PSTRING);
       } else {
         PADDLE_THROW(common::errors::Unavailable(
             "VariableCompatTensor only support get shape from Vocab or "

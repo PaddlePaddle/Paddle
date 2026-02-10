@@ -125,7 +125,7 @@ __global__ void MergeGradKernel(const T* grad,
   grad += ty * row_numel;
   grad_merge += grad_merge_idx * row_numel;
   for (int64_t index = tid; index < row_numel; index += block_size) {
-    phi::CudaAtomicAdd(grad_merge + index, grad[index]);
+    CudaAtomicAdd(grad_merge + index, grad[index]);
   }
 }
 
@@ -147,9 +147,9 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
   for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    phi::CudaAtomicAdd(param + index,
-                       -1.0 * learning_rate[0] * grad[index] /
-                           (sqrt(moment[index]) + epsilon));
+    CudaAtomicAdd(param + index,
+                  -1.0 * learning_rate[0] * grad[index] /
+                      (sqrt(moment[index]) + epsilon));
   }
 }
 

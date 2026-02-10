@@ -592,8 +592,8 @@ std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op) {
   return stop_gradients;
 }
 
-bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
-                            const std::vector<::pir::Value>& vec_output) {
+bool CanGroupOpRunCpuKernel(const std::vector<pir::Value>& vec_inputs,
+                            const std::vector<pir::Value>& vec_output) {
   for (size_t i = 0; i < vec_inputs.size(); ++i) {
     auto tmp_in = vec_inputs[i];
     if (!tmp_in || !tmp_in.type()) {
@@ -635,7 +635,7 @@ bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
     if (out.type().isa<DenseTensorType>()) {
       auto type = out.type().dyn_cast<DenseTensorType>();
 
-      if (type.dtype().isa<::pir::BFloat16Type>()) {
+      if (type.dtype().isa<pir::BFloat16Type>()) {
         return false;
       }
 

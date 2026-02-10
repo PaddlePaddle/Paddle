@@ -51,8 +51,8 @@ static void ValidateBroadcastDim(int64_t actual,
 
 static void CheckDataType(const std::string& op_name,
                           const std::string var_name,
-                          const phi::DataType& var_dtype,
-                          const std::vector<phi::DataType>& expect_dtype) {
+                          const DataType& var_dtype,
+                          const std::vector<DataType>& expect_dtype) {
   for (auto& t : expect_dtype) {
     if (var_dtype == t) return;
   }
@@ -97,7 +97,7 @@ void ExpandAsPreProcess(pir::Value* x,
   auto stop_gradient_attr =
       x->attribute<pir::BoolAttribute>(kStopGradientAttrName);
   auto stop_gradient = !stop_gradient_attr || stop_gradient_attr.data();
-  if (dtype == phi::DataType::BOOL && !stop_gradient) {
+  if (dtype == DataType::BOOL && !stop_gradient) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "When the data type of input 'x' for expand_as is bool, "
         "you must set its stop_gradient to be False by "
@@ -176,10 +176,8 @@ void SumPreProcess(Value* x, Value* axis) {
 void BinCountPreProcess(Tensor* x,
                         paddle::optional<Tensor>* weights,
                         Scalar* minlength) {
-  CheckDataType("bincount",
-                "x",
-                x->dtype(),
-                {phi::DataType::INT32, phi::DataType::INT64});
+  CheckDataType(
+      "bincount", "x", x->dtype(), {DataType::INT32, DataType::INT64});
 }
 
 void BinCountPreProcess(Value* x,
@@ -188,7 +186,7 @@ void BinCountPreProcess(Value* x,
   CheckDataType("bincount",
                 "x",
                 pir::GetValueDtype(*x),
-                {phi::DataType::INT32, phi::DataType::INT64});
+                {DataType::INT32, DataType::INT64});
 }
 
 void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
@@ -230,49 +228,49 @@ void IsClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
   CheckDataType("is_close",
                 "x",
                 pir::GetValueDtype(*x),
-                {phi::DataType::FLOAT16,
-                 phi::DataType::FLOAT32,
-                 phi::DataType::FLOAT64,
-                 phi::DataType::COMPLEX64,
-                 phi::DataType::COMPLEX128});
+                {DataType::FLOAT16,
+                 DataType::FLOAT32,
+                 DataType::FLOAT64,
+                 DataType::COMPLEX64,
+                 DataType::COMPLEX128});
   CheckDataType("is_close",
                 "y",
                 pir::GetValueDtype(*y),
-                {phi::DataType::FLOAT16,
-                 phi::DataType::FLOAT32,
-                 phi::DataType::FLOAT64,
-                 phi::DataType::COMPLEX64,
-                 phi::DataType::COMPLEX128});
+                {DataType::FLOAT16,
+                 DataType::FLOAT32,
+                 DataType::FLOAT64,
+                 DataType::COMPLEX64,
+                 DataType::COMPLEX128});
   // 'float64'
   CheckDataType(
-      "is_close", "rtol", pir::GetValueDtype(*rtol), {phi::DataType::FLOAT64});
+      "is_close", "rtol", pir::GetValueDtype(*rtol), {DataType::FLOAT64});
   CheckDataType(
-      "is_close", "atol", pir::GetValueDtype(*atol), {phi::DataType::FLOAT64});
+      "is_close", "atol", pir::GetValueDtype(*atol), {DataType::FLOAT64});
 }
 
 void AllClosePreProcess(Value* x, Value* y, Value* rtol, Value* atol) {
   CheckDataType("allclose",
                 "x",
                 pir::GetValueDtype(*x),
-                {phi::DataType::BOOL,
-                 phi::DataType::INT32,
-                 phi::DataType::INT64,
-                 phi::DataType::FLOAT16,
-                 phi::DataType::FLOAT32,
-                 phi::DataType::FLOAT64});
+                {DataType::BOOL,
+                 DataType::INT32,
+                 DataType::INT64,
+                 DataType::FLOAT16,
+                 DataType::FLOAT32,
+                 DataType::FLOAT64});
   CheckDataType("allclose",
                 "y",
                 pir::GetValueDtype(*y),
-                {phi::DataType::BOOL,
-                 phi::DataType::INT32,
-                 phi::DataType::INT64,
-                 phi::DataType::FLOAT16,
-                 phi::DataType::FLOAT32,
-                 phi::DataType::FLOAT64});
+                {DataType::BOOL,
+                 DataType::INT32,
+                 DataType::INT64,
+                 DataType::FLOAT16,
+                 DataType::FLOAT32,
+                 DataType::FLOAT64});
   CheckDataType(
-      "allclose", "rtol", pir::GetValueDtype(*rtol), {phi::DataType::FLOAT64});
+      "allclose", "rtol", pir::GetValueDtype(*rtol), {DataType::FLOAT64});
   CheckDataType(
-      "allclose", "atol", pir::GetValueDtype(*atol), {phi::DataType::FLOAT64});
+      "allclose", "atol", pir::GetValueDtype(*atol), {DataType::FLOAT64});
 }
 
 void GridSamplePreProcess(Tensor* x,

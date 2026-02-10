@@ -775,6 +775,69 @@ def atanh(
 )
 
 add_doc_and_signature(
+    "atan2",
+    r"""Element-wise arctangent of x/y with consideration of the quadrant.
+
+    Equation:
+        .. math::
+
+            atan2(x,y)=\left\{\begin{matrix}
+            & tan^{-1}(\frac{x}{y}) & y > 0 \\
+            & tan^{-1}(\frac{x}{y}) + \pi & x>=0, y < 0 \\
+            & tan^{-1}(\frac{x}{y}) - \pi & x<0, y < 0 \\
+            & +\frac{\pi}{2} & x>0, y = 0 \\
+            & -\frac{\pi}{2} & x<0, y = 0 \\
+            &\text{undefined} & x=0, y = 0
+            \end{matrix}\right.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``other`` can be used as an alias for ``y``.
+        For example, ``atan2(input=tensor_x, other=tensor_y)`` is equivalent to ``atan2(x=tensor_x, y=tensor_y)``.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
+            Alias: ``input``.
+        y (Tensor): An N-D Tensor, must have the same type as `x`.
+            Alias: ``other``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-1, +1, +1, -1]).astype('float32')
+            >>> x
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1,  1,  1, -1])
+
+            >>> y = paddle.to_tensor([-1, -1, +1, +1]).astype('float32')
+            >>> y
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1,  -1,  1, 1])
+
+            >>> out = paddle.atan2(x, y)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
+
+""",
+    """
+def atan2(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "log2",
     r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
@@ -4534,10 +4597,12 @@ add_doc_and_signature(
         x (Tensor): The input tensor, it's data type should be float32, float64,
             uint8, int8, int16, int32, int64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Keyword args:
+        out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
+            (integer types are autocasted into float32).
 
     Returns:
-        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
-            (integer types are autocasted into float32).
+        Tensor: The value of modified bessel function of order 1.
 
     Examples:
         .. code-block:: pycon
@@ -4565,14 +4630,15 @@ add_doc_and_signature(
     The function is used to calculate exponentially scaled modified Bessel function of order 1.
 
     Args:
-
         x (Tensor): The input tensor, it's data type should be float32, float64,
             uint8, int8, int16, int32, int64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Keyword args:
+        out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
+            (integer types are autocasted into float32).
 
     Returns:
-        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
-            (integer types are autocasted into float32).
+        Tensor: The value of exponentially scaled modified Bessel function of order 1.
 
     Examples:
         .. code-block:: pycon
@@ -4897,7 +4963,12 @@ add_doc_and_signature(
             0.)
 """,
     """
-def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor
+def dist(
+    x: Tensor,
+    y: Tensor,
+    p: float = 2,
+    name: str | None = None
+) -> Tensor
 """,
 )
 
@@ -4952,7 +5023,9 @@ add_doc_and_signature(
 """,
     """
 def flip(
-    x: Tensor, axis: Sequence[int] | int, name: str | None = None
+    x: Tensor,
+    axis: Sequence[int] | int,
+    name: str | None = None
 ) -> Tensor
 """,
 )
@@ -4960,8 +5033,6 @@ def flip(
 add_doc_and_signature(
     "renorm",
     r"""
-    **renorm**
-
     This operator is used to calculate the p-norm along the axis,
     suppose the input-shape on axis dimension has the value of T, then
     the tensor is split into T parts, the p-norm should be calculated for each
@@ -4996,7 +5067,12 @@ add_doc_and_signature(
               [ 0.62920785,  0.54178572,  0.61500001]]])
 """,
     """
-def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor
+def renorm(
+    x: Tensor,
+    p: float,
+    axis: int,
+    max_norm: float
+) -> Tensor
 """,
 )
 
@@ -5007,6 +5083,11 @@ add_doc_and_signature(
     Please refer to :ref:`api_paddle_renorm`.
 """,
     """
-def renorm_(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor
+def renorm_(
+    x: Tensor,
+    p: float,
+    axis: int,
+    max_norm: float
+) -> Tensor
 """,
 )
