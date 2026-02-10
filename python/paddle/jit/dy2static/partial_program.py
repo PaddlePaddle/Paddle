@@ -602,10 +602,12 @@ class PartialProgramLayer:
             new_grad_name = var.name + suffix + "@GRAD"
             found_ops = list(
                 filter(
-                    lambda x: x[0] >= start_idx
-                    and any(
-                        out_arg == var_grad_name
-                        for out_arg in x[1].output_arg_names
+                    lambda x: (
+                        x[0] >= start_idx
+                        and any(
+                            out_arg == var_grad_name
+                            for out_arg in x[1].output_arg_names
+                        )
                     ),
                     enumerate(target_program.block(0).ops),
                 )

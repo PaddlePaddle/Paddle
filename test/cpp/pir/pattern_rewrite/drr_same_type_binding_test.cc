@@ -197,13 +197,17 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::SoftmaxOp softmax_op2 =
       builder.Build<paddle::dialect::SoftmaxOp>(transpose_op1.out(), -1);
 
+  paddle::dialect::TransposeOp matmul_rhs_trans =
+      builder.Build<paddle::dialect::TransposeOp>(full_input_op1.out(),
+                                                  std::vector<int>{0, 2, 1});
+
   paddle::dialect::MatmulOp matmul_op2 =
       builder.Build<paddle::dialect::MatmulOp>(softmax_op2.out(),
-                                               full_input_op1.out());
+                                               matmul_rhs_trans.out());
 
   // path 2
   paddle::dialect::FullOp full_op_scale =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{48},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{16},
                                              1.5,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
@@ -220,7 +224,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 
   paddle::dialect::TransposeOp transpose_op3 =
       builder.Build<paddle::dialect::TransposeOp>(full_input_op1.out(),
-                                                  std::vector<int>{0, 1, 2});
+                                                  std::vector<int>{0, 2, 1});
 
   paddle::dialect::MatmulOp matmul_op1 =
       builder.Build<paddle::dialect::MatmulOp>(transpose_op2.out(),
@@ -268,9 +272,8 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::ReluOp>(add_op2.out());
 
   // tail
-  paddle::dialect::MatmulOp matmul_op4 =
-      builder.Build<paddle::dialect::MatmulOp>(layernorm_op1.variance(),
-                                               layernorm_op1.mean());
+  paddle::dialect::AddOp safe_op1 = builder.Build<paddle::dialect::AddOp>(
+      layernorm_op1.variance(), layernorm_op1.mean());
 
   paddle::dialect::MatmulOp matmul_op5 =
       builder.Build<paddle::dialect::MatmulOp>(relu_op1.out(),
@@ -280,7 +283,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::MatmulOp>(softmax_op4.out(),
                                                relu_op2.out());
 
-  builder.Build<paddle::dialect::FetchOp>(matmul_op4.out(), "out1", 0);
+  builder.Build<paddle::dialect::FetchOp>(safe_op1.out(), "out1", 0);
   builder.Build<paddle::dialect::FetchOp>(matmul_op5.out(), "out2", 1);
   builder.Build<paddle::dialect::FetchOp>(matmul_op6.out(), "out3", 2);
 }
@@ -306,7 +309,7 @@ TEST(DrrTest, drr_demo) {
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 27u);
+  EXPECT_EQ(program.block()->size(), 28u);
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
@@ -317,5 +320,5 @@ TEST(DrrTest, drr_demo) {
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
                     common::errors::Unavailable("pm fail to run program"));
-  EXPECT_EQ(program.block()->size(), 13u);
+  EXPECT_EQ(program.block()->size(), 28u);
 }
