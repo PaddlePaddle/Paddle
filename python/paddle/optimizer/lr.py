@@ -2753,7 +2753,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
             >>> import paddle
             >>> warmup_steps = 100
             >>> learning_rate = 0.01
-            >>> lr = paddle.optimizer.lr.noam_decay(1 / (warmup_steps * (learning_rate**2)), warmup_steps, learning_rate)
+            >>> lr = paddle.optimizer.lr.noam_decay(1 / (warmup_steps * (learning_rate**2)), warmup_steps, learning_rate,)
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
