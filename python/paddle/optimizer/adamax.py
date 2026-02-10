@@ -46,67 +46,68 @@ __all__ = []
 
 class Adamax(Optimizer):
     r"""
-    The Adamax optimizer is implemented based on the Adamax Optimization
-    in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
-    The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
-    which makes the learning rate update algorithm more stable and simple.
+        The Adamax optimizer is implemented based on the Adamax Optimization
+        in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
+        The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
+        which makes the learning rate update algorithm more stable and simple.
 
-    The parameter ``param_out`` update rule with gradient ``grad``:
+        The parameter ``param_out`` update rule with gradient ``grad``:
 
-    .. math::
+        .. math::
 
-        t & = t + 1
+            t & = t + 1
 
-        moment\_out & = {\beta}_1 * moment + (1 - {\beta}_1) * grad
+            moment\_out & = {\beta}_1 * moment + (1 - {\beta}_1) * grad
 
-        inf\_norm\_out & = max({\beta}_2 * inf\_norm + \epsilon, |grad|)
+            inf\_norm\_out & = max({\beta}_2 * inf\_norm + \epsilon, |grad|)
 
-        learning\_rate & = \frac{learning\_rate}{1 - {\beta}_1^t}
+            learning\_rate & = \frac{learning\_rate}{1 - {\beta}_1^t}
 
-        param\_out & = param - learning\_rate * \frac{moment\_out}{inf\_norm\_out}
+            param\_out & = param - learning\_rate * \frac{moment\_out}{inf\_norm\_out}
 
-    Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
+        Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
-    The original paper does not have an ``epsilon`` attribute,
-    it is added here for numerical stability to prevent the division by 0 error.
+        The original paper does not have an ``epsilon`` attribute,
+        it is added here for numerical stability to prevent the division by 0 error.
 
-    Args:
-        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a LRScheduler. The default value is 0.001.
-        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
-            The default value is 0.9.
-        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
-            The default value is 0.999.
-        epsilon (float|Tensor, optional): A small float value for numerical stability.
-            The default value is 1e-08.
-        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
-            This parameter is required in dygraph mode. And you can specify different options for
-            different parameter groups such as the learning rate, weight decay, etc,
-            then the parameters are list of dict. Note that the learning_rate in parameter groups
-            represents the scale of base learning_rate.
-            The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization.
-            It can be a int or float value as coeff of L2 regularization or
-            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
-            the regularization setting here in optimizer will be ignored for this parameter.
-            Otherwise, the regularization setting here in optimizer will take effect.
-            Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three clipping strategies
-            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
-            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str|None, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`.
-            The default value is None.
+        Args:
+            learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
+                It can be a float value or a LRScheduler. The default value is 0.001.
+            beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
+                It should be a float number or a 0-D Tensor with shape [] and data type as float32.
+                The default value is 0.9.
+            beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
+                It should be a float number or a 0-D Tensor with shape [] and data type as float32.
+                The default value is 0.999.
+            epsilon (float|Tensor, optional): A small float value for numerical stability.
+                The default value is 1e-08.
+            parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+                This parameter is required in dygraph mode. And you can specify different options for
+                different parameter groups such as the learning rate, weight decay, etc,
+                then the parameters are list of dict. Note that the learning_rate in parameter groups
+                represents the scale of base learning_rate.
+                The default value is None in static graph mode, at this time all parameters will be updated.
+            weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization.
+                It can be a int or float value as coeff of L2 regularization or
+                :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+                If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
+                the regularization setting here in optimizer will be ignored for this parameter.
+                Otherwise, the regularization setting here in optimizer will take effect.
+                Default None, meaning there is no regularization.
+            grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
+                some derived class of ``GradientClipBase`` . There are three clipping strategies
+                ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+                :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
+            name (str|None, optional): Normally there is no need for user to set this property.
+                For more information, please refer to :ref:`api_guide_Name`.
+                The default value is None.
 
-    **Notes**:
-        **Currently, Adamax doesn't support sparse parameter optimization.**
+        **Notes**:
+            **Currently, Adamax doesn't support sparse parameter optimization.**
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+            PIR skip
 
             >>> import paddle
 
@@ -124,7 +125,7 @@ class Adamax(Optimizer):
             ...     parameters=linear.parameters(),
             ...     beta1=beta1,
             ...     beta2=beta2,
-            ...     weight_decay=0.01
+            ...     weight_decay=0.01,
             ... )
             >>> out.backward()
             >>> adamax.step()
@@ -140,16 +141,17 @@ class Adamax(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adamax = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
-            ...     parameters=[{  # type: ignore
-            ...         'params': linear_1.parameters()
-            ...     }, {
-            ...         'params': linear_2.parameters(),
-            ...         'weight_decay': 0.001,
-            ...         'learning_rate': 0.1,
-            ...         'beta1': 0.8
-            ...     }],
+            ...     parameters=[
+            ...         {'params': linear_1.parameters()},  # type: ignore
+            ...         {
+            ...             'params': linear_2.parameters(),
+            ...             'weight_decay': 0.001,
+            ...             'learning_rate': 0.1,
+            ...             'beta1': 0.8,
+            ...         },
+            ...     ],
             ...     weight_decay=0.01,
-            ...     beta1=0.9
+            ...     beta1=0.9,
             ... )
             >>> out.backward()
             >>> adamax.step()

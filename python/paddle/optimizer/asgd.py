@@ -87,9 +87,10 @@ class ASGD(Optimizer):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
+PIR skip
 
-            >>> import paddle
+ import paddle
 
             >>> inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
             >>> linear = paddle.nn.Linear(10, 10)
