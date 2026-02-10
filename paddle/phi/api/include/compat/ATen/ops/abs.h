@@ -32,6 +32,10 @@ inline at::Tensor& abs_(at::Tensor& self) {  // NOLINT(runtime/references)
   return self;
 }
 
+}  // namespace at
+
+namespace at {
+
 // Tensor member function implementations
 inline at::Tensor Tensor::abs() const { return at::abs(*this); }
 
