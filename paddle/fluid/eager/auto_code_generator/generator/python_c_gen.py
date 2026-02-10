@@ -376,18 +376,10 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
-        self.is_forward_only = True
-
         # Generated Results
         self.python_c_function_str = ""
         self.python_c_function_reg_str = ""
         self.python_c_function_declare_str = ""
-
-    def CollectIsForwardOnly(self):
-        forward_api_contents = self.forward_api_contents
-        self.is_forward_only = (
-            False if 'backward' in forward_api_contents.keys() else True
-        )
 
     def ParsePythonAPIInfo(self, name, no_parse_python_api_info=False):
         python_api_info = {}
@@ -455,7 +447,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         forward_inputs_position_map = self.forward_inputs_position_map
         forward_outputs_position_map = self.forward_outputs_position_map
         optional_inputs = self.optional_inputs
-        is_forward_only = self.is_forward_only
 
         (
             need_parse_python_api_args,
@@ -951,9 +942,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
     def run(
         self, no_predefined_out_tensor=False, no_parse_python_api_info=False
     ):
-        # Initialized is_forward_only
-        self.CollectIsForwardOnly()
-
         # Initialized optional_inputs
         self.ParseDispensable()
 
