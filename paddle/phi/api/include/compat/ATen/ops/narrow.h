@@ -42,8 +42,7 @@ inline at::Tensor narrow(const at::Tensor& self,
   // Extract scalar value from start tensor
   PD_CHECK(start.numel() == 1,
            "start must be a 0-dim tensor or 1-element tensor");
-  int64_t start_val =
-      static_cast<int64_t>(start._PD_GetInner().template data<int64_t>()[0]);
+  int64_t start_val = start.item<int64_t>();
   return narrow(self, dim, start_val, length);
 }
 
