@@ -99,6 +99,10 @@ inline void ScaleType(bool using_ue8m0, F&& f) {
 }
 
 }  // namespace dispatch
+
+// ============================================================================
+//                               Type defs
+// ============================================================================
 template <typename probs_T>
 struct expert_infos {
   int expert_row_idx;
@@ -115,6 +119,7 @@ struct expert_infos {
     return *this;
   }
 };
+
 template <paddle::DataType DType>
 struct TypeMap;
 template <>
@@ -162,6 +167,14 @@ template <>
 struct alignas(16) VectorType<uint8_t, 16> {
   uint8_t data[16];
 };
+
+// ============================================================================
+//                               Helper functions
+// ============================================================================
+__host__ __device__ __forceinline__ int32_t align_up(int32_t x,
+                                                     int32_t alignment) {
+  return ((x + alignment - 1) / alignment) * alignment;
+}
 
 template <typename T>
 __device__ __forceinline__ void unrolled_memcpy(const T* src,
@@ -255,5 +268,102 @@ __device__ __forceinline__ void vectorized_memset(T* ptr,
     }
   }
 }
+// ============================================================================
+//                               Helper Kernels
+// ============================================================================
+// Helper kernel for filling padding rows in pre-training circumstances,
+// to prevent illegal padding area participating in split matmul.
+template <typename X_T,
+          typename SCALE_T,
+          bool FILLING_X_UNZIPPED,
+          bool FILLING_X_SCALE_UNZIPPED,
+          bool FILLING_EXPERT_INDICES>
+__global__ __launch_bounds__(512) void filling_padding_rows_kernel(
+    X_T* __restrict__ X_unzipped_ptr,
+    SCALE_T* __restrict__ XScale_unzipped_ptr,
+    float* __restrict__ token_prob_unzipped_ptr,
+    int* __restrict__ expert_indices_ptr,
+    const int cols,
+    const int quanted_cols,
+    const int* __restrict__ padding_rows) {
+  uint32_t rows = padding_rows[blockIdx.x];
+  if constexpr (FILLING_X_UNZIPPED) {
+    vectorized_memset(&X_unzipped_ptr[rows * cols], static_cast<X_T>(0), cols);
+  }
+  if constexpr (FILLING_X_SCALE_UNZIPPED) {
+    unrolled_memset(&XScale_unzipped_ptr[rows * quanted_cols],
+                    static_cast<SCALE_T>(0),
+                    quanted_cols);
+  }
+  if (threadIdx.x == 0) {
+    token_prob_unzipped_ptr[rows] = static_cast<float>(0.0);
+    if constexpr (FILLING_EXPERT_INDICES) {
+      expert_indices_ptr[rows] = -1;
+    }
+  }
+}
+template <bool FillExpertIndices, int BLOCK_SIZE>
+__global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
+                                       int32_t* __restrict__ expert_offset,
+                                       int32_t* __restrict__ expert_offset_end,
+                                       int32_t* __restrict__ expert_indices,
+                                       int numel,
+                                       int num_experts,
+                                       int padding_alignment) {
+  extern __shared__ int32_t shared[];
+  int32_t* hist = shared;                       // [0, ne)
+  int32_t* offset_smem = shared + num_experts;  // [ne, 2*ne)
 
+  //  Phase 1: Histogram
+  for (int i = threadIdx.x; i < num_experts; i += BLOCK_SIZE) hist[i] = 0;
+  __syncthreads();
+
+  // Vectorized int4 bulk: each thread loads 4 int32s per iteration
+  const int num_vec4 = numel >> 2;
+  const int4* topk_vec4 = reinterpret_cast<const int4*>(topk_ids);
+
+  for (int i = threadIdx.x; i < num_vec4; i += BLOCK_SIZE) {
+    int4 vec = topk_vec4[i];
+    int32_t elems[4] = {vec.x, vec.y, vec.z, vec.w};
+#pragma unroll
+    for (int k = 0; k < 4; k++) {
+      int32_t expert_id = elems[k];
+      if (expert_id >= 0 && expert_id < num_experts)
+        atomicAdd(&hist[expert_id], 1);
+    }
+  }
+
+  // Scalar tail
+  for (int i = (num_vec4 << 2) + threadIdx.x; i < numel; i += BLOCK_SIZE) {
+    int32_t expert_id = topk_ids[i];
+    if (expert_id >= 0 && expert_id < num_experts)
+      atomicAdd(&hist[expert_id], 1);
+  }
+  __syncthreads();
+
+  //  Phase 2: Padded prefix-sum (thread 0)
+  if (threadIdx.x == 0) {
+    int32_t offset = 0;
+    for (int i = 0; i < num_experts; i++) {
+      int32_t count = hist[i];
+      int32_t padded_count = align_up(count, padding_alignment);
+      expert_offset[i] = offset;
+      expert_offset_end[i] = offset + count;
+      offset_smem[i] = offset;
+      offset += padded_count;
+    }
+  }
+  if constexpr (FillExpertIndices) {
+    __syncthreads();
+    //  Phase 3: Fill expert_indices – per-expert loop, single pass
+    //    For each expert: write expert_id for valid slots, -1 for padding.
+    for (int expert = 0; expert < num_experts; expert++) {
+      int32_t offset = offset_smem[expert];
+      int32_t count = hist[expert];
+      int32_t padded_count = align_up(count, padding_alignment);
+      for (int j = threadIdx.x; j < padded_count; j += BLOCK_SIZE)
+        expert_indices[offset + j] = (j < count) ? expert : -1;
+    }
+  }
+}
 }  // namespace phi

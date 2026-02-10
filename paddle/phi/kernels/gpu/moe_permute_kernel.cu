@@ -37,37 +37,6 @@ using moe::kMaxNumExpertsForOptKernel;
 // ============================================================================
 //                                Kernels
 // ============================================================================
-// Helper kernel for filling padding rows in pre-training circumstances,
-// to prevent illegal padding area participating in split matmul.
-template <typename X_T,
-          typename SCALE_T,
-          bool FILLING_X_UNZIPPED,
-          bool FILLING_X_SCALE_UNZIPPED,
-          bool FILLING_EXPERT_INDICES>
-__global__ __launch_bounds__(512) void filling_padding_rows_kernel(
-    X_T *__restrict__ X_unzipped_ptr,
-    SCALE_T *__restrict__ XScale_unzipped_ptr,
-    float *__restrict__ token_prob_unzipped_ptr,
-    int *__restrict__ expert_indices_ptr,
-    const int cols,
-    const int quanted_cols,
-    const int *__restrict__ padding_rows) {
-  uint32_t rows = padding_rows[blockIdx.x];
-  if constexpr (FILLING_X_UNZIPPED) {
-    vectorized_memset(&X_unzipped_ptr[rows * cols], static_cast<X_T>(0), cols);
-  }
-  if constexpr (FILLING_X_SCALE_UNZIPPED) {
-    unrolled_memset(&XScale_unzipped_ptr[rows * quanted_cols],
-                    static_cast<SCALE_T>(0),
-                    quanted_cols);
-  }
-  if (threadIdx.x == 0) {
-    token_prob_unzipped_ptr[rows] = static_cast<float>(0.0);
-    if constexpr (FILLING_EXPERT_INDICES) {
-      expert_indices_ptr[rows] = -1;
-    }
-  }
-}
 
 // Generic permute kernel for large num_experts or Hopper architecture.
 // Once the max_num_experts is not given, we assume it is 64.
@@ -629,6 +598,9 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
                                              topk);
 }
 
+// ============================================================================
+//                               Dispatchers
+// ============================================================================
 template <typename T, typename Context>
 void dispatch_permute_kernel(const Context &dev_ctx,
                              const phi::DenseTensor &X,
@@ -753,33 +725,42 @@ void dispatch_preprocess(const Context &dev_ctx,
       XScale_unzipped_ptr != nullptr,
       expert_indices_ptr != nullptr);
 }
-/*
+
+template <typename Context>
 void dispatch_preprocess_w_override(const Context &dev_ctx,
-                                    const DenseTensor & expert_routmap_topk,
+                                    const DenseTensor &expert_routemap_topk,
+                                    const int num_experts,
+                                    const int padding_alignment,
                                     const bool return_expert_indices,
-                                    DenseTensor * expert_offset,
-                                    DenseTensor * expert_offset_end,
-                                    DensTensor * expert_indices){
+                                    DenseTensor *expert_offset,
+                                    DenseTensor *expert_offset_end,
+                                    DenseTensor *expert_indices) {
+  constexpr int BLOCK_SIZE = 1024;
+  constexpr int GRID_SIZE = 1;
 
-  if (expert_routemap.empty()) return;
-
-  dim3 grid{1}; // using 1 block to avoid unnecessary global atomics and sync.
-  dim3 block{1024};
+  dim3 grid{GRID_SIZE};  // using 1 block to avoid unnecessary global atomics
+                         // and sync.
+  dim3 block{BLOCK_SIZE};
   dispatch::Bools(
       [&](auto fill_expert_indices_tag) {
         constexpr bool FillExpertIndices =
-decltype(fill_expert_indices_tag)::value;
-      routemap_digest_kernel<FillExpertIndices> <<<grid, block, 0,
-dev_ctx.stream()>>>
-                                                (
-                                                  expert_routemap_topk,
-                                                  expert_offset,
-                                                  expert_offset_end,
-                                                  expert_indices);
-    },return_expert_indices);
+            decltype(fill_expert_indices_tag)::value;
+        routemap_digest_kernel<FillExpertIndices, BLOCK_SIZE>
+            <<<grid, block, 0, dev_ctx.stream()>>>(
+                expert_routemap_topk.data<int32_t>(),
+                expert_offset->data<int32_t>(),
+                expert_offset_end->data<int32_t>(),
+                expert_indices->data<int32_t>(),
+                expert_routemap_topk.numel(),
+                num_experts,
+                padding_alignment);
+      },
+      return_expert_indices);
 }
-*/
 
+// ============================================================================
+//                               CPP Interface
+// ============================================================================
 template <typename T, typename Context>
 void MoePermuteKernel(const Context &dev_ctx,
                       const DenseTensor &X,
@@ -788,7 +769,7 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const DenseTensor &expert_prob_topk,
                       const int num_experts,
                       const std::vector<int> &tokens_per_expert,
-                      const int padding_multiplex,
+                      const int padding_alignment,
                       const bool do_gather,
                       const bool using_ue8m0_scale,
                       const bool return_expert_indices,
@@ -868,28 +849,43 @@ void MoePermuteKernel(const Context &dev_ctx,
   //                    Preprocess helper tensors
   // ====================================================================
   const int cumsum_blocknum = (rows + kCumsumBlockSize - 1) / kCumsumBlockSize;
+
   DenseTensor expert_offset_tensor;
   DenseTensor expert_offset_end_tensor;
   DenseTensor global_expertwise_block_cumsum;
 
-  // Semaphore initialization
+  expert_offset_tensor.Resize({kMaxNumExperts});
+  expert_offset_end_tensor.Resize({kMaxNumExperts});
   global_expertwise_block_cumsum.Resize(
       {static_cast<int64_t>(cumsum_blocknum + 2),
        static_cast<int64_t>(num_experts)});
+
+  dev_ctx.template Alloc<int>(&expert_offset_tensor);
+  dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
   dev_ctx.template Alloc<int>(&global_expertwise_block_cumsum);
+  // 1.Semaphore initialization
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaMemsetAsync(global_expertwise_block_cumsum.data<int>(),
                       -1,
                       global_expertwise_block_cumsum.numel() * sizeof(int),
                       dev_ctx.stream()));
 
-  // expert_offset initialization
+  // 2.expert_offset initialization
   if (is_buffer_overridden) {
     // Note that when using override, the padding_rows is not needed, and
     // this helper kernel will do expert_indices filling as well.
-    // Input: expert_routemap_topk,
+    // Input: expert_routemap_topk, num_experts, padding_alignment,
+    // return_expert_indices
     // Output: expert_offset, expert_offset_end, expert_indices
-    return;
+    dispatch_preprocess_w_override(dev_ctx,
+                                   expert_routemap_topk,
+                                   num_experts,
+                                   padding_alignment,
+                                   return_expert_indices,
+                                   &expert_offset_tensor,
+                                   &expert_offset_end_tensor,
+                                   expert_indices);
+
   } else {
     // plain non-override mode
     int tokens_cumulated = 0;
@@ -902,23 +898,19 @@ void MoePermuteKernel(const Context &dev_ctx,
       if (i < num_experts) {
         expert_offset[i] = tokens_cumulated;
         expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
-        tokens_cumulated += ((tokens_per_expert[i] + padding_multiplex - 1) /
-                             padding_multiplex) *
-                            padding_multiplex;
+        tokens_cumulated += ((tokens_per_expert[i] + padding_alignment - 1) /
+                             padding_alignment) *
+                            padding_alignment;
       } else {
         expert_offset[i] = 0;
       }
     }
-    expert_offset_tensor.Resize({kMaxNumExperts});
-    dev_ctx.template Alloc<int>(&expert_offset_tensor);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
                                                expert_offset,
                                                sizeof(int) * kMaxNumExperts,
                                                cudaMemcpyHostToDevice,
                                                dev_ctx.stream()));
 
-    expert_offset_end_tensor.Resize({kMaxNumExperts});
-    dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
                         expert_offset_end,
@@ -960,27 +952,29 @@ void MoePermuteKernel(const Context &dev_ctx,
   // ====================================================================
   //                    Kernel dispatch
   // ====================================================================
-  dispatch_permute_kernel<T, Context>(dev_ctx,
-                                      X,
-                                      expert_routemap_topk,
-                                      expert_prob_topk,
-                                      XScale,
-                                      expert_offset_tensor,
-                                      expert_offset_end_tensor,
-                                      X_unzipped,
-                                      zipped_expertwise_rowmap,
-                                      token_prob_unzipped,
-                                      XScale_unzipped,
-                                      &global_expertwise_block_cumsum,
-                                      expert_indices,
-                                      static_cast<int>(rows),
-                                      static_cast<int>(cols),
-                                      static_cast<int>(topk),
-                                      num_experts,
-                                      static_cast<int>(quanted_cols),
-                                      do_gather,
-                                      using_ue8m0_scale,
-                                      return_expert_indices);
+  dispatch_permute_kernel<T, Context>(
+      dev_ctx,
+      X,
+      expert_routemap_topk,
+      expert_prob_topk,
+      XScale,
+      expert_offset_tensor,
+      expert_offset_end_tensor,
+      X_unzipped,
+      zipped_expertwise_rowmap,
+      token_prob_unzipped,
+      XScale_unzipped,
+      &global_expertwise_block_cumsum,
+      expert_indices,
+      static_cast<int>(rows),
+      static_cast<int>(cols),
+      static_cast<int>(topk),
+      num_experts,
+      static_cast<int>(quanted_cols),
+      do_gather,
+      using_ue8m0_scale,
+      /*If buffer overridden, the expert_indices is computed in pre-process*/
+      !is_buffer_overridden && return_expert_indices);
 }
 
 }  // namespace phi
