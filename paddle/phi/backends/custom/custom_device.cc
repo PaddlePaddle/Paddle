@@ -640,7 +640,8 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_max_shared_mem_per_block) {
       pimpl_->get_max_shared_mem_per_block(device, &shared_mem_per_block);
     }
-    VLOG(10) << Type() << " get max threads per block " << shared_mem_per_block;
+    VLOG(10) << Type() << " get max shared mem per block "
+             << shared_mem_per_block;
     return shared_mem_per_block;
   }
 

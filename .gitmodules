@@ -26,10 +26,6 @@
 	path = third_party/warpctc
 	url = https://github.com/baidu-research/warp-ctc.git
 	ignore = dirty
-[submodule "third_party/warprnnt"]
-	path = third_party/warprnnt
-	url = https://github.com/PaddlePaddle/warp-transducer.git
-	ignore = dirty
 [submodule "third_party/xxhash"]
 	path = third_party/xxhash
 	url = https://github.com/Cyan4973/xxHash.git

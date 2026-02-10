@@ -884,10 +884,13 @@ def infer_use_cinn_backend(backend, build_strategy):
 def cinn_is_available():
     if not paddle.is_compiled_with_cinn():
         return False
+
+    curr_place = paddle.framework._current_expected_place_()
+    device_type = curr_place.get_device_type()
     if not (
         paddle.is_compiled_with_cuda()
         or paddle.is_compiled_with_rocm()
-        or paddle.is_compiled_with_custom_device()
+        or paddle.is_compiled_with_custom_device(device_type)
     ):
         return False
     if not isinstance(
