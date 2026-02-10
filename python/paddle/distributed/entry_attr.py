@@ -62,8 +62,9 @@ class EntryAttr:
 class ProbabilityEntry(EntryAttr):
     """
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.distributed.ProbabilityEntry is not supported in PIR mode currently")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -81,8 +82,8 @@ class ProbabilityEntry(EntryAttr):
             ...     entry=entry,
             ...     param_attr=paddle.ParamAttr(
             ...         name="SparseFeatFactors",
-            ...         initializer=paddle.nn.initializer.Uniform()
-            ...     )
+            ...         initializer=paddle.nn.initializer.Uniform(),
+            ...     ),
             ... )
 
 
@@ -107,8 +108,9 @@ class ProbabilityEntry(EntryAttr):
 class CountFilterEntry(EntryAttr):
     """
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.distributed.CountFilterEntry is not supported in PIR mode currently")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -126,8 +128,8 @@ class CountFilterEntry(EntryAttr):
             ...     entry=entry,
             ...     param_attr=paddle.ParamAttr(
             ...         name="SparseFeatFactors",
-            ...         initializer=paddle.nn.initializer.Uniform()
-            ...     )
+            ...         initializer=paddle.nn.initializer.Uniform(),
+            ...     ),
             ... )
 
     """
@@ -155,8 +157,9 @@ class CountFilterEntry(EntryAttr):
 class ShowClickEntry(EntryAttr):
     """
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.distributed.ShowClickEntry is not supported in PIR mode currently")
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -176,8 +179,8 @@ class ShowClickEntry(EntryAttr):
             ...     entry=entry,
             ...     param_attr=paddle.ParamAttr(
             ...         name="SparseFeatFactors",
-            ...         initializer=paddle.nn.initializer.Uniform()
-            ...     )
+            ...         initializer=paddle.nn.initializer.Uniform(),
+            ...     ),
             ... )
 
 

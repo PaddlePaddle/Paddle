@@ -104,7 +104,7 @@ class LazyGuard:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle import LazyGuard
             >>> from paddle.nn import Linear
@@ -112,7 +112,6 @@ class LazyGuard:
             >>> with LazyGuard():
             ...     # w and b are initialized lazily and have no memory.
             ...     net = Linear(10, 10)
-            ...
             >>> for param in net.parameters():
             ...     # Initialize param and allocate memory explicitly.
             ...     param.initialize()
@@ -124,14 +123,13 @@ class LazyGuard:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle import LazyGuard
                 >>> from paddle.nn import Linear
 
                 >>> with LazyGuard():
                 ...     fc = LazyInit(Linear)(10, 10)
-                ...
                 >>> for param in fc.parameters():
                 ...     param.initialize()
         """
