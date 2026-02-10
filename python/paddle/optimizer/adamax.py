@@ -143,7 +143,7 @@ class Adamax(Optimizer):
             ...         {'params': linear_2.parameters(), 'weight_decay': 0.001, 'learning_rate': 0.1, 'beta1': 0.8},
             ...     ],
             ...     weight_decay=0.01,
-            ...     beta1=0.9,
+            ...     beta1=0.9
             ... )
             >>> out.backward()
             >>> adamax.step()

@@ -125,7 +125,7 @@ class Adagrad(Optimizer):
             ...             'learning_rate': 0.1,
             ...         },
             ...     ],
-            ...     weight_decay=0.01,
+            ...     weight_decay=0.01
             ... )
             >>> out.backward()
             >>> adagrad.step()
