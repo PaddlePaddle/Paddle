@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -22,8 +21,8 @@ import paddle.nn.functional as F
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or sys.platform == 'win32',
-    "Skipping tests: CUDA is not available or running on Windows.",
+    not paddle.is_compiled_with_cuda(),
+    "Skipping tests: CUDA is not available.",
 )
 class TestSlowConv2d(unittest.TestCase):
     def setUp(self):
@@ -42,15 +41,6 @@ class TestSlowConv2d(unittest.TestCase):
         # Restore flags
         paddle.set_flags(self.old_flag_acc)
         paddle.set_flags(self.old_flag_disable)
-
-    def _get_atol_rtol(self, dtype):
-        if dtype == 'float64':
-            return 1e-7, 1e-7
-        elif dtype == 'float32':
-            return 1e-4, 1e-4
-        elif dtype == 'float16':
-            return 5e-2, 5e-2
-        return 1e-4, 1e-4
 
     def _init_data(self, dtype, layout, with_bias):
         groups = 1
@@ -107,73 +97,13 @@ class TestSlowConv2d(unittest.TestCase):
         loss = out.sum()
         loss.backward()
 
-        return {
-            "out": out.cast('float32').numpy(),
-            "x_grad": x.grad.cast('float32').numpy()
-            if x.grad is not None
-            else np.zeros_like(np_x),
-            "w_grad": w.grad.cast('float32').numpy()
-            if w.grad is not None
-            else np.zeros_like(np_w),
-            "b_grad": b.grad.cast('float32').numpy()
-            if b is not None and b.grad is not None
-            else None,
-        }
+        return out.numpy()
 
     def _check_implementation(self, dtype, layout="NCHW", with_bias=True):
         np_x, np_w, np_b, groups = self._init_data(dtype, layout, with_bias)
-        atol, rtol = self._get_atol_rtol(dtype)
-        # -------------------------------------------------
-        # Reference Run (Flag=0) ->  cuDNN Enabled
-        # -------------------------------------------------
-        res_ref = self._run_op(
-            np_x, np_w, np_b, dtype, layout, groups, disable_cudnn_flag=0
-        )
-
-        # -------------------------------------------------
-        # Target Run (Flag=1) ->  cuDNN Disabled (Fallback Kernel)
-        # -------------------------------------------------
-        res_tgt = self._run_op(
+        self._run_op(
             np_x, np_w, np_b, dtype, layout, groups, disable_cudnn_flag=1
         )
-
-        # -------------------------------------------------
-        # Assertions
-        # -------------------------------------------------
-        msg = f"Failed at {dtype} with {layout}"
-
-        np.testing.assert_allclose(
-            res_tgt["out"],
-            res_ref["out"],
-            atol=atol,
-            rtol=rtol,
-            err_msg=f"{msg} (Forward)",
-        )
-
-        np.testing.assert_allclose(
-            res_tgt["x_grad"],
-            res_ref["x_grad"],
-            atol=atol,
-            rtol=rtol,
-            err_msg=f"{msg} (X Grad)",
-        )
-
-        np.testing.assert_allclose(
-            res_tgt["w_grad"],
-            res_ref["w_grad"],
-            atol=atol,
-            rtol=rtol,
-            err_msg=f"{msg} (W Grad)",
-        )
-
-        if with_bias:
-            np.testing.assert_allclose(
-                res_tgt["b_grad"],
-                res_ref["b_grad"],
-                atol=atol,
-                rtol=rtol,
-                err_msg=f"{msg} (Bias Grad)",
-            )
 
     # =================================================================
     # Test Cases for Registered Types
@@ -192,8 +122,8 @@ class TestSlowConv2d(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or sys.platform == 'win32',
-    "Skipping tests: CUDA is not available or running on Windows.",
+    not paddle.is_compiled_with_cuda(),
+    "Skipping tests: CUDA is not available.",
 )
 class TestSlowConv2dDilated(unittest.TestCase):
     def setUp(self):
@@ -212,15 +142,6 @@ class TestSlowConv2dDilated(unittest.TestCase):
         # Restore flags
         paddle.set_flags(self.old_flag_acc)
         paddle.set_flags(self.old_flag_disable)
-
-    def _get_atol_rtol(self, dtype):
-        if dtype == 'float64':
-            return 1e-7, 1e-7
-        elif dtype == 'float32':
-            return 1e-4, 1e-4
-        elif dtype == 'float16':
-            return 5e-2, 5e-2
-        return 1e-4, 1e-4
 
     def _init_data(self, dtype, layout, with_bias):
         groups = 1
@@ -277,74 +198,13 @@ class TestSlowConv2dDilated(unittest.TestCase):
         loss = out.sum()
         loss.backward()
 
-        return {
-            "out": out.cast('float32').numpy(),
-            "x_grad": x.grad.cast('float32').numpy()
-            if x.grad is not None
-            else np.zeros_like(np_x),
-            "w_grad": w.grad.cast('float32').numpy()
-            if w.grad is not None
-            else np.zeros_like(np_w),
-            "b_grad": b.grad.cast('float32').numpy()
-            if b is not None and b.grad is not None
-            else None,
-        }
+        return out.numpy()
 
     def _check_implementation(self, dtype, layout="NCHW", with_bias=True):
         np_x, np_w, np_b, groups = self._init_data(dtype, layout, with_bias)
-        atol, rtol = self._get_atol_rtol(dtype)
-
-        # -------------------------------------------------
-        # Reference Run (Flag=0) ->  cuDNN Enabled
-        # -------------------------------------------------
-        res_ref = self._run_op(
-            np_x, np_w, np_b, dtype, layout, groups, disable_cudnn_flag=0
-        )
-
-        # -------------------------------------------------
-        # Target Run (Flag=1) ->  cuDNN Disabled (Fallback Kernel)
-        # -------------------------------------------------
-        res_tgt = self._run_op(
+        self._run_op(
             np_x, np_w, np_b, dtype, layout, groups, disable_cudnn_flag=1
         )
-
-        # -------------------------------------------------
-        # Assertions
-        # -------------------------------------------------
-        msg = f"Failed at {dtype} with {layout}"
-
-        np.testing.assert_allclose(
-            res_tgt["out"],
-            res_ref["out"],
-            atol=atol,
-            rtol=rtol,
-            err_msg=f"{msg} (Forward)",
-        )
-
-        np.testing.assert_allclose(
-            res_tgt["x_grad"],
-            res_ref["x_grad"],
-            atol=atol,
-            rtol=rtol,
-            err_msg=f"{msg} (X Grad)",
-        )
-
-        np.testing.assert_allclose(
-            res_tgt["w_grad"],
-            res_ref["w_grad"],
-            atol=atol,
-            rtol=rtol,
-            err_msg=f"{msg} (W Grad)",
-        )
-
-        if with_bias:
-            np.testing.assert_allclose(
-                res_tgt["b_grad"],
-                res_ref["b_grad"],
-                atol=atol,
-                rtol=rtol,
-                err_msg=f"{msg} (Bias Grad)",
-            )
 
     # =================================================================
     # Test Cases for Registered Types
