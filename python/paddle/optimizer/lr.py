@@ -111,7 +111,7 @@ class LRScheduler:
     Examples:
         Here is an example of a simple ``StepDecay`` implementation.
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.optimizer.lr import LRScheduler
@@ -183,7 +183,7 @@ class LRScheduler:
         Returns:
             None
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> value = paddle.arange(26, dtype='float32')
@@ -196,7 +196,7 @@ class LRScheduler:
                 >>> adadelta.step()
                 >>> adadelta.clear_grad()
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> value = paddle.arange(26, dtype='float32')
@@ -1843,7 +1843,7 @@ class MultiplicativeDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2662,7 +2662,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         Variable: The auto-increased Variable with data type int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -2711,7 +2711,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
 
     Noam decay method. The numpy implementation of noam decay as follows.
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import numpy as np
         >>> # set hyper parameters
@@ -2737,7 +2737,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         The decayed learning rate.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> warmup_steps = 100
@@ -2795,7 +2795,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         Variable: The decayed learning rate. The data type is float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2855,7 +2855,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         The decayed learning rate. The data type is float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2914,7 +2914,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         Variable: The decayed learning rate. The data type is float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -2969,7 +2969,7 @@ def polynomial_decay(
         Variable: The decayed learning rate
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> start_lr = 0.01
@@ -3044,7 +3044,7 @@ def piecewise_decay(boundaries, values):
         The decayed learning rate.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -3120,7 +3120,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
         Variable: The decayed learning rate.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> base_lr = 0.1
@@ -3181,7 +3181,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
