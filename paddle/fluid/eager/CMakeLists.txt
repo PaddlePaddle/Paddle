@@ -7,7 +7,6 @@ set(eager_deps
     backward
     tracer
     layer
-    autograd_meta
     eager_nan_inf_utils
     grad_node_info
     grad_tensor_holder
@@ -61,7 +60,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_library(
     backward
     SRCS backward.cc
-    DEPS grad_tensor_holder utils autograd_meta grad_node_info phi common)
+    DEPS grad_tensor_holder utils grad_node_info phi common)
 endif()
 
 cc_library(
@@ -74,10 +73,6 @@ cc_library(
   DEPS phi common)
 
 cc_library(
-  autograd_meta
-  SRCS autograd_meta.cc
-  DEPS phi common)
-cc_library(
   utils
   SRCS utils.cc
   DEPS phi
@@ -89,7 +84,6 @@ cc_library(
        op_registry
        variable_helper
        generated_op
-       autograd_meta
        hook_utils
        md5)
 
