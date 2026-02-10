@@ -24,11 +24,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-@deprecated(
-    since="3.4.0",
-    level=2,
-    reason="masked_multihead_attention is deprecated in favor of multi_head_attention",
-)
 @overload
 def masked_multihead_attention(
     x: Tensor,
@@ -77,6 +72,11 @@ def masked_multihead_attention(
 ) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
+@deprecated(
+    since="3.4.0",
+    level=1,
+    reason="masked_multihead_attention is deprecated in favor of multi_head_attention",
+)
 def masked_multihead_attention(
     x,
     cache_kv=None,
