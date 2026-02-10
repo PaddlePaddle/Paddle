@@ -147,8 +147,16 @@ def max_pool3d_with_index_wrapper(
     adaptive=False,
     ceil_mode=False,
 ):
+    dilations = [1, 1, 1]
     return paddle._C_ops.max_pool3d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        dilations,
+        global_pooling,
+        adaptive,
+        ceil_mode,
     )
 
 
@@ -348,8 +356,16 @@ def max_pool2d_with_index_wrapper(
     adaptive=False,
     ceil_mode=False,
 ):
+    dilations = [1, 1]
     return paddle._C_ops.max_pool2d_with_index(
-        x, kernel_size, strides, paddings, global_pooling, adaptive, ceil_mode
+        x,
+        kernel_size,
+        strides,
+        paddings,
+        dilations,
+        global_pooling,
+        adaptive,
+        ceil_mode,
     )
 
 

@@ -9,11 +9,11 @@ on:
       clone_dir:
         type: string
         required: false
-        default: 'Paddle'
+        default: "Paddle"
       is_pr:
         type: string
         required: false
-        default: 'true'
+        default: "true"
     outputs:
       can-skip:
         value: ${{ jobs.clone.outputs.can-skip }}
@@ -41,13 +41,14 @@ jobs:
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
     runs-on:
       group: HK-Clone
+    timeout-minutes: 30
 
     steps:
       - name: Clone paddle
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref }}
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 1000
 
       - name: Merge PR to test branch

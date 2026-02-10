@@ -47,7 +47,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
   }
 
   in->set_mem_desc(in_md.reshape(squeezed_op_tz));
-  in->Resize(common::make_ddim(squeezed_op_tz));
+  in->Resize(make_ddim(squeezed_op_tz));
 }
 
 template <typename T, typename Context>
@@ -186,7 +186,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
-    out->Resize(common::make_ddim(out_md.get_dims()));
+    out->Resize(make_ddim(out_md.get_dims()));
   } else {
     out->set_mem_desc(out_md);
   }

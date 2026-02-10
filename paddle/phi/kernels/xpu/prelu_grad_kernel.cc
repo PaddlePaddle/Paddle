@@ -34,6 +34,7 @@ void PReluGradKernel(const Context& dev_ctx,
       Full<T, Context>(dev_ctx, alpha_grad->dims(), 0, alpha_grad);
     }
   }
+  if (x.numel() == 0) return;
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();

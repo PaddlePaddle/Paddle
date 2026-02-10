@@ -146,7 +146,7 @@ class MoEGlobalMeshTensorOp
       const std::vector<pir::Value>& inputs,
       const std::vector<TensorDistAttribute>& local_dist_attrs,
       const TensorDistAttribute& global_dist_attr,
-      const phi::DDim& global_dims);
+      const DDim& global_dims);
 
   static OpInfoTuple GetOpInfo();
   static std::vector<std::vector<pir::Value>> Vjp(
@@ -171,8 +171,8 @@ class DistReshapeOp : public pir::Op<DistReshapeOp, VjpInterface> {
                              pir::OperationArgument& argument,  // NOLINT
                              pir::Value input,
                              const PlacementsAttribute& x_placements,
-                             const common::DDim& global_shape,
-                             const common::DDim& local_shape,
+                             const DDim& global_shape,
+                             const DDim& local_shape,
                              const TensorDistAttribute& out_dist_attr);
 
   static OpInfoTuple GetOpInfo();

@@ -46,7 +46,7 @@ static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
   auto dimsA = a.size();
   auto dimsB = b.size();
   auto ndim = dimsA > dimsB ? dimsA : dimsB;
-  common::DDim expandedSizes = common::make_ddim(std::vector<int64_t>(ndim, 0));
+  common::DDim expandedSizes = make_ddim(std::vector<int64_t>(ndim, 0));
 
   for (int64_t i = ndim - 1; i >= 0; --i) {
     int64_t offset = ndim - 1 - i;
@@ -181,8 +181,8 @@ inline static void RestrideSrc(const DenseTensor& self,
                 replacement_shape.end());
   strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
   auto meta = self.meta();
-  meta.dims = common::make_ddim(*shape);
-  meta.strides = common::make_ddim(*strides);
+  meta.dims = make_ddim(*shape);
+  meta.strides = make_ddim(*strides);
   meta.offset = self.offset();
   view_src->set_meta(meta);
   view_src->ResetHolder(self.Holder());
@@ -197,7 +197,7 @@ inline static void ReshapeIndexer(DenseTensor* index,
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  index->Resize(common::make_ddim(shape));
+  index->Resize(make_ddim(shape));
 }
 
 template <typename T, typename Context>

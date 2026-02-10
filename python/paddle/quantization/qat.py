@@ -81,7 +81,7 @@ class QAT(Quantization):
                     )
                     (2): ObserveWrapper(
                       (_observer): FakeQuanterWithAbsMaxObserverLayer()
-                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
                     )
                     (3): QuantedConv2D(
                       (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
@@ -93,7 +93,7 @@ class QAT(Quantization):
                     )
                     (5): ObserveWrapper(
                       (_observer): FakeQuanterWithAbsMaxObserverLayer()
-                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0, dilation=1)
                     )
                   )
                   (fc): Sequential(

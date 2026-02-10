@@ -120,7 +120,7 @@ void PadOpKernel(const Context& dev_ctx,
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     out_tz[out_tz.size() - 1 - i] += paddings[2 * i] + paddings[2 * i + 1];
   }
-  out->Resize(common::make_ddim(out_tz));
+  out->Resize(make_ddim(out_tz));
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_tz, x.dtype(), funcs::ToOneDNNDataType(x.dtype()), onednn_engine);

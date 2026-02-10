@@ -50,6 +50,10 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
+
+if(WITH_SLEEF)
+  list(APPEND PHI_DEPS sleef)
+endif()
 if(WITH_CINN)
   list(APPEND PHI_DEPS ap_phi)
 endif()
@@ -311,6 +315,12 @@ endif()
 set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Dummy Library" FORCE)
+
+if(WIN32)
+  set(PHI_LINK
+      "${CMAKE_CURRENT_BINARY_DIR}/phi.lib"
+      CACHE FILEPATH "PHI Import Library" FORCE)
+endif()
 
 string(REPLACE "phi" "phi_core" PHI_CORE_NAME ${PHI_NAME})
 set(PHI_CORE_NAME

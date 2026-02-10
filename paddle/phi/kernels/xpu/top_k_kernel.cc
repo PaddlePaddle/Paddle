@@ -88,7 +88,7 @@ void TopkKernel(const Context& dev_ctx,
 
   if (axis + 1 == in_dims.size()) {
     const int64_t row =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t col = in_dims[in_dims.size() - 1];
 
     int r =
@@ -143,8 +143,8 @@ void TopkKernel(const Context& dev_ctx,
     int64_t* trans_idx_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_data);
 
-    const int64_t row = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t row =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t col = trans_dims[trans_dims.size() - 1];
 
     // Do top k on transposed input

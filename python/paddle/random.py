@@ -27,7 +27,7 @@ def initial_seed() -> int:
         int: The 64-bit initial seed of the default generator on CPU place only.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> s = paddle.random.initial_seed()

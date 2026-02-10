@@ -77,9 +77,9 @@ void CalculateGradMatrixDims(const OneDNNContext &dev_ctx,
     }
   }
 
-  dx_tmp->Resize(common::make_ddim(*dx_bd_dims));
+  dx_tmp->Resize(make_ddim(*dx_bd_dims));
   dev_ctx.template Alloc<T>(dx_tmp);
-  dy_tmp->Resize(common::make_ddim(*dy_bd_dims));
+  dy_tmp->Resize(make_ddim(*dy_bd_dims));
   dev_ctx.template Alloc<T>(dy_tmp);
 }
 

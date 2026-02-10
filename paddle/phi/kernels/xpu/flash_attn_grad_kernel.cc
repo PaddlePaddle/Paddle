@@ -20,6 +20,76 @@
 #include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
 namespace phi {
+#define MHA_VARLEN_BWD_TYPES_AND_ARGS(T, TACCUM, TGEMM, TID)                  \
+  xpu::Context *ctx, const T *dout, const T *q, const T *k, const T *v,       \
+      const T *out, const TACCUM *softmax_lse, T *dq, T *dk, T *dv,           \
+      const xpu::VectorParam<TID>&lod_seqlens_q,                              \
+      const xpu::VectorParam<TID>&lod_seqlens_k, int64_t max_seqlen_q,        \
+      int64_t max_seqlen_k, int64_t head_num, int64_t head_num_k,             \
+      int64_t head_dim, const float softmax_scale, const float p_dropout,     \
+      int seed, const bool is_causal, const TACCUM *attn_mask,                \
+      const TACCUM *bias, const float *q_maxptr, const float *k_maxptr,       \
+      const float *v_maxptr, const float *o_maxptr, float *dq_maxptr,         \
+      float *dk_maxptr, float *dv_maxptr, const float *do_maxptr,             \
+      const bool is_qkv_fusion, const bool is_dqkv_fusion,                    \
+      const int64_t qkv_layout, const float *alibi_slopes,                    \
+      const std::vector<int64_t>&alibi_slopes_shape, int window_size_left,    \
+      int window_size_right, int64_t v_head_dim,                              \
+      const int *downstart_row_indices_data,                                  \
+      const int *downend_row_indices_data,                                    \
+      const int *upstart_row_indices_data, const int *upend_row_indices_data, \
+      const int flash_mask_head_num, int *flashmask_maxmin,                   \
+      XPUStream side_stream
+
+#define MHA_VARLEN_BWD_ARGS                                                    \
+  ctx, dout, q, k, v, out, softmax_lse, dq, dk, dv, lod_seqlens_q,             \
+      lod_seqlens_k, max_seqlen_q, max_seqlen_k, head_num, head_num_k,         \
+      head_dim, softmax_scale, p_dropout, seed, is_causal, attn_mask, bias,    \
+      q_maxptr, k_maxptr, v_maxptr, o_maxptr, dq_maxptr, dk_maxptr, dv_maxptr, \
+      do_maxptr, is_qkv_fusion, is_dqkv_fusion, qkv_layout, alibi_slopes,      \
+      alibi_slopes_shape, window_size_left, window_size_right, v_head_dim,     \
+      downstart_row_indices_data, downend_row_indices_data,                    \
+      upstart_row_indices_data, upend_row_indices_data, flash_mask_head_num,   \
+      flashmask_maxmin, side_stream
+
+template <typename T, typename TACCUM, typename TGEMM, typename TID>
+int mha_varlen_bwd_wrapper(
+    MHA_VARLEN_BWD_TYPES_AND_ARGS(T, TACCUM, TGEMM, TID)) {
+  PADDLE_THROW(
+      "Unsupported template params combination for mha_varlen_bwd, should not "
+      "reach here.");
+}
+
+#define DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(T, TACCUM, TGEMM, TID) \
+  template <>                                                         \
+  int mha_varlen_bwd_wrapper<T, TACCUM, TGEMM, TID>(                  \
+      MHA_VARLEN_BWD_TYPES_AND_ARGS(T, TACCUM, TGEMM, TID)) {         \
+    return baidu::xpu::xfa::mha_varlen_bwd<T, TACCUM, TGEMM, TID>(    \
+        MHA_VARLEN_BWD_ARGS);                                         \
+  }
+
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(float, float, tfloat32, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(float, float, float, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeBF16, float, float, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeBF16, float, XPUTypeFP16, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeBF16, float, tfloat32, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeBF16,
+                                       XPUTypeFP16,
+                                       XPUTypeFP16,
+                                       int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeFP16, float, tfloat32, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeFP16, float, float, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeFP16, float, XPUTypeFP16, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeFP16,
+                                       XPUTypeFP16,
+                                       XPUTypeFP16,
+                                       int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeBF16, float, XPUTypeBF16, int);
+DECLARE_SUPPORTED_MHA_VARLEN_BWD_TYPES(XPUTypeBF16,
+                                       XPUTypeFP16,
+                                       XPUTypeBF16,
+                                       int);
+
 template <typename T, typename Context>
 void FlashAttnGradKernelBase(const Context& dev_ctx,
                              const DenseTensor& q,
@@ -148,13 +218,13 @@ void FlashAttnGradKernelBase(const Context& dev_ctx,
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   int fa_tgemm = get_flash_attn_tgemm<XPUType>();
   auto flash_attention_grad_kernel =
-      baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, tfloat32, int>;
+      mha_varlen_bwd_wrapper<XPUType, float, tfloat32, int>;
   if (fa_tgemm == XPU_FA_DTYPE::FA_FLOAT) {
     flash_attention_grad_kernel =
-        baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, float, int>;
+        mha_varlen_bwd_wrapper<XPUType, float, float, int>;
   } else if (fa_tgemm == XPU_FA_DTYPE::FA_FLOAT16) {
     flash_attention_grad_kernel =
-        baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, XPUTypeFP16, int>;
+        mha_varlen_bwd_wrapper<XPUType, float, XPUTypeFP16, int>;
   }
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
   // int mha_varlen_bwd(xdnn::Context* xpu_ctx, const T* dout, const T* q, const

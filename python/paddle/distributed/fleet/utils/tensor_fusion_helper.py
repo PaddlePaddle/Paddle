@@ -34,6 +34,10 @@ from .log_util import logger
 def _share_tensor_ipc_meta(tensor):
     if tensor is None:
         return None
+
+    if paddle.is_compiled_with_xpu():
+        return tensor.value().get_tensor()._share_xpu()
+
     if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
         return tensor.value().get_tensor()._share_cuda()
     return None

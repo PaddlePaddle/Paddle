@@ -263,7 +263,7 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
     } else {
       out_dim = {batch_size_tmp, dims[rank - 1] - cvm_offset};
     }
-    outs_dims[i] = common::make_ddim(out_dim);
+    outs_dims[i] = make_ddim(out_dim);
   }
   for (size_t i = 0; i < out.size(); ++i) {
     out[i]->Resize(outs_dims[i]);

@@ -380,12 +380,11 @@ void Conv3dTransposeKernel(const Context& dev_ctx,
 
   DDim in_data_dims;
   if (data_format == "NHWC") {
-    in_data_dims = common::slice_ddim(x.dims(), 1, x.dims().size() - 1);
+    in_data_dims = slice_ddim(x.dims(), 1, x.dims().size() - 1);
   } else {
-    in_data_dims = common::slice_ddim(x.dims(), 2, x.dims().size());
+    in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   }
-  DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
 
   std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> paddings_ =

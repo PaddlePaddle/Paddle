@@ -65,7 +65,7 @@ else()
 endif()
 
 if(WITH_XPU_XRE5)
-  set(XPU_XPUTX_BASE_VERSION "2.0.2.0")
+  set(XPU_XPUTX_BASE_VERSION "2.0.2.4")
 endif()
 
 if(WITH_XPU_XRE5)
