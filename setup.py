@@ -1541,6 +1541,9 @@ def get_package_data_and_package_dir():
                     + ext_suffix
                 ]
                 shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
+        if os.name == 'nt':
+            package_data['paddle.libs'] += ['phi.lib']
+            shutil.copy(env_dict.get("PHI_LINK"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [

@@ -83,6 +83,9 @@ TEST(TensorBaseTest, ModifyOperationAPIs) {
   // Test is_contiguous()
   ASSERT_TRUE(tensor.is_contiguous());
 
+  // Test is_contiguous_or_false()
+  ASSERT_TRUE(tensor.is_contiguous_or_false());
+
   // Test fill_()
   tensor.fill_(2.0);
   float* data = tensor.data_ptr<float>();

@@ -77,6 +77,8 @@ void MatmulKernelImpl(const Context& dev_ctx,
   MetaTensor meta_out(out);
   meta_out.set_dims(make_ddim(out_dim_vec));
   meta_out.set_dtype(y.dtype());
+  // Ensure the output DenseTensor has a proper dense layout, not sparse layout
+  meta_out.set_layout(DataLayout::NCHW);
 
   dev_ctx.template Alloc<T>(out);
 
