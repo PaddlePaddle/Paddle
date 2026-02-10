@@ -244,17 +244,6 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_generic_kernel(
             &X_unzipped[(int64_t)output_row * (int64_t)token_length],
             token_length);
       }
-
-      // Early exit: each row has at most topk expert assignments.
-      // Remaining entries are guaranteed to be -1; flush them and break.
-      if (++hits >= topk) {
-        if (threadIdx.x == 0) {
-          for (int e = expert + 1; e < num_experts; e++) {
-            zipped_expertwise_rowmap[row * num_experts + e] = -1;
-          }
-        }
-        break;
-      }
     }
   }
 }
