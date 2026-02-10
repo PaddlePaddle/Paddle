@@ -39,25 +39,31 @@ using moe::kMaxNumExpertsForOptKernel;
 // ============================================================================
 
 // Generic permute kernel for large num_experts or Hopper architecture.
-template <typename X_T,
-          typename routemap_T,
-          typename probs_T,
-          typename scale_T,
+// ROWS_PER_BLOCK : token rows each block processes (compile-time).
+// BLOCK_DIM_X    : threads per block (compile-time, also drives
+// __launch_bounds__). For FP8, both can be tuned via moe::kFp8CumsumBlockSize /
+// kFp8BlockDimX.
+template <typename TokenT,
+          typename IndexT,
+          typename ProbT,
+          typename ScaleT,
           bool has_scale,
           bool do_gather,
           bool return_expert_indices,
-          int max_num_experts>
-__global__ __launch_bounds__(512) void permute_generic_kernel(
-    const X_T *__restrict__ X,
-    const routemap_T *__restrict__ routemap_topk,
-    const probs_T *__restrict__ probs_topk,
-    const scale_T *__restrict__ XScale,
+          int max_num_experts,
+          int ROWS_PER_BLOCK = moe::kCumsumBlockSize,
+          int BLOCK_DIM_X = 512>
+__global__ __launch_bounds__(BLOCK_DIM_X) void permute_generic_kernel(
+    const TokenT *__restrict__ X,
+    const IndexT *__restrict__ routemap_topk,
+    const ProbT *__restrict__ probs_topk,
+    const ScaleT *__restrict__ XScale,
     const int *__restrict__ expert_base_offset,
     const int *__restrict__ expert_base_offset_end,
-    X_T *__restrict__ X_unzipped,
+    TokenT *__restrict__ X_unzipped,
     int *__restrict__ zipped_expertwise_rowmap,
-    probs_T *__restrict__ probs_unzipped,
-    scale_T *__restrict__ XScale_unzipped,
+    ProbT *__restrict__ probs_unzipped,
+    ScaleT *__restrict__ XScale_unzipped,
     int *global_expertwise_block_cumsum,
     int *__restrict__ expert_indices,
     const int total_zipped_tokens_num,
@@ -65,95 +71,162 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
     const int scale_length,
     const int num_experts,
     const int topk) {
-  using expert_infos_t = expert_infos<probs_T>;
-  int local_cumsum = 0;
-  int local_expert_offsets;
-  int local_expert_end_offsets;
-  const int block_row_base = blockIdx.x * kCumsumBlockSize;
-  int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
+  using SlotInfo = ExpertSlotInfo<ProbT>;
+  const int block_row_base = blockIdx.x * ROWS_PER_BLOCK;
 
-  // Dynamic shared memory for expert_infos, sized as
-  // kCumsumBlockSize * max_num_experts
+  // Dynamic shared memory layout:
+  //   [0, ROWS_PER_BLOCK * max_num_experts * sizeof(SlotInfo))  :
+  //   shared_slot_info [above, +max_num_experts * sizeof(uint32_t)) : expert
+  //   mask (only when ROWS_PER_BLOCK==32)
   extern __shared__ char smem_raw[];
-  expert_infos_t(*shared_expert_infos)[max_num_experts] =
-      reinterpret_cast<expert_infos_t(*)[max_num_experts]>(smem_raw);
+  SlotInfo(*shared_slot_info)[max_num_experts] =
+      reinterpret_cast<SlotInfo(*)[max_num_experts]>(smem_raw);
 
-  // Init shared memory
-  for (int i = threadIdx.x; i < kCumsumBlockSize * max_num_experts;
+  // Init shared memory (row_idx=-1, prob=0)
+#pragma unroll
+  for (int i = threadIdx.x; i < ROWS_PER_BLOCK * max_num_experts;
        i += blockDim.x) {
-    shared_expert_infos[i / max_num_experts][i % max_num_experts] =
-        expert_infos_t();
+    shared_slot_info[i / max_num_experts][i % max_num_experts] = SlotInfo();
   }
   __syncthreads();
 
   // ---------------Expertwise deterministic job scheduling ---------------
-  if (threadIdx.x < num_experts) {
-    const int expert_id = threadIdx.x;
-    local_expert_offsets = expert_base_offset[expert_id];
-    local_expert_end_offsets = expert_base_offset_end[expert_id];
+  if constexpr (ROWS_PER_BLOCK == 32) {
+    // -- Warp-level ballot/popc optimization (ROWS_PER_BLOCK == warp_size) --
+    //
+    // Phase-1a: Each warp handles one topk column.  For each lane's token,
+    //   atomicOr the expert bit into a 32-bit mask (one per expert).
+    // Phase-1b: Each warp handles one expert.  __popc gives the per-block
+    //   count and per-token position in O(1) hardware ops.
+    //
+    // Key advantage: blockDim.x is fully decoupled from num_experts.
+    const int lane_id = threadIdx.x & 31;
+    const int warp_id = threadIdx.x >> 5;
+    const int warp_num = BLOCK_DIM_X >> 5;
 
-    for (int row = block_row_base; row < block_row_base + kCumsumBlockSize;
-         row++) {
-      if (row >= total_zipped_tokens_num) break;
-      const int internal_row = row - block_row_base;
+    // Expert bitmask: bit i = "token i in this block is assigned to expert"
+    uint32_t *block_expert_mask = reinterpret_cast<uint32_t *>(
+        smem_raw + ROWS_PER_BLOCK * max_num_experts * sizeof(SlotInfo));
+    for (int i = threadIdx.x; i < num_experts; i += blockDim.x) {
+      block_expert_mask[i] = 0u;
+    }
+    __syncthreads();
+
+    // Phase 1a: scatter token→expert assignments into bitmasks + capture probs
+    const int global_row = block_row_base + lane_id;
+    const bool row_valid = global_row < total_zipped_tokens_num;
+    for (int col = warp_id; col < topk; col += warp_num) {
+      int expert = -1;
+      ProbT prob = ProbT(0);
+      if (row_valid) {
+        expert = routemap_topk[global_row * topk + col];
+        prob = probs_topk[global_row * topk + col];
+      }
+      if (expert >= 0 && expert < num_experts) {
+        atomicOr(&block_expert_mask[expert], 1u << lane_id);
+        shared_slot_info[lane_id][expert].prob = prob;
+      }
+    }
+    __syncthreads();
+
+    // Phase 1b: per-expert offset via popc + inter-block cumsum chain
+    for (int expert_id = warp_id; expert_id < num_experts;
+         expert_id += warp_num) {
+      const uint32_t mask = block_expert_mask[expert_id];
+      const int local_count = __popc(mask);
+
+      // Warp leader: inter-block cumsum + fold expert base offset
+      int cumsum_offset = 0;
+      if (lane_id == 0) {
+        const int base = expert_base_offset[expert_id];
+        const int recv_idx = blockIdx.x * num_experts + expert_id;
+        const int send_idx = (blockIdx.x + 1) * num_experts + expert_id;
+        if (blockIdx.x != 0) {
+          while ((cumsum_offset = atomicAdd(
+                      &global_expertwise_block_cumsum[recv_idx], 0)) ==
+                 kCumsumInvalidTag) {
+          }
+        }
+        // Propagate cumulative count (without base) to next block
+        global_expertwise_block_cumsum[send_idx] = cumsum_offset + local_count;
+        // Fold base into offset for this block's position calculation
+        cumsum_offset += base;
+      }
+      cumsum_offset = __shfl_sync(0xFFFFFFFF, cumsum_offset, 0);
+
+      // Each lane: 0-based position = popc of bits below this lane
+      if (mask & (1u << lane_id)) {
+        const int local_pos = __popc(mask & ((1u << lane_id) - 1));
+        shared_slot_info[lane_id][expert_id].row_idx =
+            cumsum_offset + local_pos;
+      }
+    }
+  } else {
+    // Original Phase-1: one thread per expert, sequential cumsum.
+    // Requires BLOCK_DIM_X >= num_experts.
+    int local_cumsum = 0;
+    int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
+    if (threadIdx.x < num_experts) {
+      const int expert_id = threadIdx.x;
+      const int local_expert_offsets = expert_base_offset[expert_id];
+
+      for (int row = block_row_base; row < block_row_base + ROWS_PER_BLOCK;
+           row++) {
+        if (row >= total_zipped_tokens_num) break;
+        const int internal_row = row - block_row_base;
 #pragma unroll
-      for (int k = 0; k < topk; k++) {
-        expert_infos_t proposed = {routemap_topk[row * topk + k],
-                                   probs_topk[row * topk + k]};
-        if (proposed.expert_row_idx == -1) continue;
-        if (threadIdx.x == proposed.expert_row_idx) {
-          shared_expert_infos[internal_row][expert_id] = {
-              local_cumsum + local_expert_offsets, proposed.expert_probs};
-          local_cumsum += 1;
+        for (int k = 0; k < topk; k++) {
+          SlotInfo proposed = {routemap_topk[row * topk + k],
+                               probs_topk[row * topk + k]};
+          if (proposed.row_idx == -1) continue;
+          if (threadIdx.x == proposed.row_idx) {
+            shared_slot_info[internal_row][expert_id] = {
+                local_cumsum + local_expert_offsets, proposed.prob};
+            local_cumsum += 1;
+          }
         }
       }
-    }
-    // Inter-block communication
-    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
-    if (blockIdx.x != 0) {
-      // signal receive from previous block, using light-weight
-      // atomicAdd(check) this will not change any data, only do fetch in
-      // low-cost
-      while ((cumsum_offset = atomicAdd(
-                  &global_expertwise_block_cumsum[anticipate_signal_idx], 0)) ==
-             kCumsumInvalidTag) {
+      // Inter-block communication
+      const int recv_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+      const int send_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
+      if (blockIdx.x != 0) {
+        while ((cumsum_offset = atomicAdd(
+                    &global_expertwise_block_cumsum[recv_signal_idx], 0)) ==
+               kCumsumInvalidTag) {
+        }
       }
-    }
-    // signal send for next block, with current cumsum
-    const int proposed_offset = cumsum_offset + local_cumsum;
-    global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
-// Intra-block communication;
+      const int proposed_offset = cumsum_offset + local_cumsum;
+      global_expertwise_block_cumsum[send_signal_idx] = proposed_offset;
+      // Intra-block communication: apply cumsum offset to all rows
 #pragma unroll
-    for (int i = 0; i < kCumsumBlockSize; i++) {
-      shared_expert_infos[i][expert_id].expert_row_idx =
-          (shared_expert_infos[i][expert_id].expert_row_idx == -1)
-              ? -1
-              : shared_expert_infos[i][expert_id].expert_row_idx +
-                    cumsum_offset;
+      for (int i = 0; i < ROWS_PER_BLOCK; i++) {
+        shared_slot_info[i][expert_id].row_idx =
+            (shared_slot_info[i][expert_id].row_idx == -1)
+                ? -1
+                : shared_slot_info[i][expert_id].row_idx + cumsum_offset;
+      }
     }
   }
 
   // --------------------------- Jobs schedule done -------------------------
   __syncthreads();
   const int block_row_end =
-      min(block_row_base + kCumsumBlockSize, total_zipped_tokens_num);
+      min(block_row_base + ROWS_PER_BLOCK, total_zipped_tokens_num);
   for (int row = block_row_base; row < block_row_end; row++) {
     // OOB check
     if (row >= total_zipped_tokens_num) return;
     const int internal_row = row - block_row_base;
-#pragma unroll
+    int hits = 0;
     for (int expert = 0; expert < num_experts; expert++) {
-      const expert_infos_t this_expert_token_info =
-          shared_expert_infos[internal_row][expert];
-      const int proposed_row_idx = this_expert_token_info.expert_row_idx;
+      const SlotInfo slot = shared_slot_info[internal_row][expert];
+      const int output_row = slot.row_idx;
       if (threadIdx.x == 0)
-        zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
-      if (proposed_row_idx == -1) continue;  // no memcpy
+        zipped_expertwise_rowmap[row * num_experts + expert] = output_row;
+      if (output_row == -1) continue;  // no memcpy
       if (threadIdx.x == 0) {
-        probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+        probs_unzipped[output_row] = slot.prob;
         if constexpr (return_expert_indices) {
-          expert_indices[proposed_row_idx] = expert;
+          expert_indices[output_row] = expert;
         }
       }
 
@@ -161,40 +234,51 @@ __global__ __launch_bounds__(512) void permute_generic_kernel(
         // vec copy
         if constexpr (has_scale) {
           // src or dst may be unaligned with 128bits
-          try_vectorized_memcpy(&XScale[(int64_t)row * (int64_t)scale_length],
-                                &XScale_unzipped[(int64_t)proposed_row_idx *
-                                                 (int64_t)scale_length],
-                                scale_length);
+          try_vectorized_memcpy(
+              &XScale[(int64_t)row * (int64_t)scale_length],
+              &XScale_unzipped[(int64_t)output_row * (int64_t)scale_length],
+              scale_length);
         }
         vectorized_memcpy(
             &X[(int64_t)row * (int64_t)token_length],
-            &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
+            &X_unzipped[(int64_t)output_row * (int64_t)token_length],
             token_length);
+      }
+
+      // Early exit: each row has at most topk expert assignments.
+      // Remaining entries are guaranteed to be -1; flush them and break.
+      if (++hits >= topk) {
+        if (threadIdx.x == 0) {
+          for (int e = expert + 1; e < num_experts; e++) {
+            zipped_expertwise_rowmap[row * num_experts + e] = -1;
+          }
+        }
+        break;
       }
     }
   }
 }
 
 // Optimized kernel for blackwell+ architecture, in small num_experts
-template <typename X_T,
-          typename routemap_T,
-          typename probs_T,
-          typename scale_T,
+template <typename TokenT,
+          typename IndexT,
+          typename ProbT,
+          typename ScaleT,
           bool has_scale,
           bool do_gather,
           bool return_expert_indices,
           int max_num_experts>
 __global__ __launch_bounds__(256) void permute_opt_kernel(
-    const X_T *__restrict__ X,
-    const routemap_T *__restrict__ routemap_topk,
-    const probs_T *__restrict__ probs_topk,
-    const scale_T *__restrict__ XScale,
+    const TokenT *__restrict__ X,
+    const IndexT *__restrict__ routemap_topk,
+    const ProbT *__restrict__ probs_topk,
+    const ScaleT *__restrict__ XScale,
     const int *__restrict__ expert_base_offset,
     const int *__restrict__ expert_base_offset_end,
-    X_T *__restrict__ X_unzipped,
+    TokenT *__restrict__ X_unzipped,
     int *__restrict__ zipped_expertwise_rowmap,
-    probs_T *__restrict__ probs_unzipped,
-    scale_T *__restrict__ XScale_unzipped,
+    ProbT *__restrict__ probs_unzipped,
+    ScaleT *__restrict__ XScale_unzipped,
     int *global_expertwise_block_cumsum,
     int *__restrict__ expert_indices,
     const int total_zipped_tokens_num,
@@ -205,7 +289,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
 // This kernel need TMA support, so it only be compiled on Hopper or above
 // architecture
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
-  using expert_infos_t = expert_infos<probs_T>;
+  using SlotInfo = ExpertSlotInfo<ProbT>;
   int local_cumsum = 0;
   int local_expert_offsets;
   int local_expert_end_offsets;
@@ -225,21 +309,20 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
   const int block_row_end =
       min(block_row_base + kCumsumBlockSize, total_zipped_tokens_num);
   int cumsum_offset = (blockIdx.x != 0) * kCumsumInvalidTag;
-  __shared__ expert_infos_t
-      shared_expert_infos[kCumsumBlockSize][max_num_experts];
+  __shared__ SlotInfo shared_slot_info[kCumsumBlockSize][max_num_experts];
 
   constexpr int stages = 2;
   // Preload the tokens to smem
   extern __shared__ float
-      smem_fp32[];  // NVCC do not support extern __shared__ X_T smem[];
-  X_T *smem = reinterpret_cast<X_T *>(smem_fp32);
-  X_T *A0 = smem + 0 * token_length;
-  X_T *A1 = smem + 1 * token_length;
+      smem_fp32[];  // NVCC do not support extern __shared__ TokenT smem[];
+  TokenT *smem = reinterpret_cast<TokenT *>(smem_fp32);
+  TokenT *ping_buffer = smem + 0 * token_length;
+  TokenT *pong_buffer = smem + 1 * token_length;
 
-  routemap_T *__restrict__ shared_routemap_topk =
-      reinterpret_cast<routemap_T *>(smem + token_length * stages);
-  probs_T *__restrict__ shared_probs_topk = reinterpret_cast<probs_T *>(
-      shared_routemap_topk + kCumsumBlockSize * topk);
+  IndexT *__restrict__ shared_routemap_topk =
+      reinterpret_cast<IndexT *>(smem + token_length * stages);
+  ProbT *__restrict__ shared_probs_topk =
+      reinterpret_cast<ProbT *>(shared_routemap_topk + kCumsumBlockSize * topk);
 
   cg::thread_block block = cg::this_thread_block();
   constexpr auto scope = cuda::thread_scope_block;
@@ -259,14 +342,14 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
       block,
       shared_routemap_topk,
       routemap_topk + static_cast<int64_t>(block_row_base) * topk,
-      cuda::aligned_size_t<32>(local_rowmap_size * sizeof(routemap_T)),
+      cuda::aligned_size_t<32>(local_rowmap_size * sizeof(IndexT)),
       pipe);
 
   cuda::memcpy_async(
       block,
       shared_probs_topk,
       probs_topk + static_cast<int64_t>(block_row_base) * topk,
-      cuda::aligned_size_t<32>(local_rowmap_size * sizeof(probs_T)),
+      cuda::aligned_size_t<32>(local_rowmap_size * sizeof(ProbT)),
       pipe);
   pipe.producer_commit();
 
@@ -274,9 +357,9 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
     // Prime stage 0 for tokens prefetch read
     pipe.producer_acquire();
     cuda::memcpy_async(block,
-                       A0,
+                       ping_buffer,
                        X + static_cast<int64_t>(block_row_base) * token_length,
-                       cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
+                       cuda::aligned_size_t<32>(token_length * sizeof(TokenT)),
                        pipe);
     pipe.producer_commit();
   }
@@ -285,8 +368,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
 #pragma unroll
   for (int i = threadIdx.x; i < kCumsumBlockSize * max_num_experts;
        i += blockDim.x) {
-    shared_expert_infos[i / max_num_experts][i % max_num_experts] =
-        expert_infos_t();
+    shared_slot_info[i / max_num_experts][i % max_num_experts] = SlotInfo();
   }
   // Waiting for the shared_routemap_topk and shared_probs_topk async loading
   pipe.consumer_wait();
@@ -314,42 +396,40 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         const int internal_row = row - block_row_base;
 #pragma unroll
         for (int k = 0; k < topk; k++) {
-          expert_infos_t proposed = {
-              shared_routemap_topk[internal_row * topk + k],
-              shared_probs_topk[internal_row * topk + k]};
-          // const expert_infos_t proposed = {routemap_topk[row * topk + k],
+          SlotInfo proposed = {shared_routemap_topk[internal_row * topk + k],
+                               shared_probs_topk[internal_row * topk + k]};
+          // const SlotInfo proposed = {routemap_topk[row * topk + k],
           //                     probs_topk[row * topk + k]};
-          if (proposed.expert_row_idx == -1) continue;
-          if (threadIdx.x == proposed.expert_row_idx) {
-            shared_expert_infos[internal_row][expert_id] = {
-                local_cumsum + local_expert_offsets, proposed.expert_probs};
+          if (proposed.row_idx == -1) continue;
+          if (threadIdx.x == proposed.row_idx) {
+            shared_slot_info[internal_row][expert_id] = {
+                local_cumsum + local_expert_offsets, proposed.prob};
             local_cumsum += 1;
           }
         }
       }
       // Inter-block communication
-      const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
-      const int push_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
+      const int recv_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+      const int send_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
       if (blockIdx.x != 0) {
         // signal receive from previous block, using light-weight
         // atomicAdd(check) this will not change any data, only do fetch in
         // low-cost
         while ((cumsum_offset = atomicAdd(
-                    &global_expertwise_block_cumsum[anticipate_signal_idx],
-                    0)) == kCumsumInvalidTag) {
+                    &global_expertwise_block_cumsum[recv_signal_idx], 0)) ==
+               kCumsumInvalidTag) {
         }
       }
       // signal send for next block, with current cumsum
       const int proposed_offset = cumsum_offset + local_cumsum;
-      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+      global_expertwise_block_cumsum[send_signal_idx] = proposed_offset;
 // Intra-block communication;
 #pragma unroll
       for (int i = 0; i < kCumsumBlockSize; i++) {
-        shared_expert_infos[i][expert_id].expert_row_idx =
-            (shared_expert_infos[i][expert_id].expert_row_idx == -1)
+        shared_slot_info[i][expert_id].row_idx =
+            (shared_slot_info[i][expert_id].row_idx == -1)
                 ? -1
-                : shared_expert_infos[i][expert_id].expert_row_idx +
-                      cumsum_offset;
+                : shared_slot_info[i][expert_id].row_idx + cumsum_offset;
       }
     } else {
       // clang-format off
@@ -364,42 +444,40 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         const int internal_row = row - block_row_base;
 #pragma unroll
         for (int k = 0; k < topk; k++) {
-          expert_infos_t proposed = {
-              shared_routemap_topk[internal_row * topk + k],
-              shared_probs_topk[internal_row * topk + k]};
-          if (proposed.expert_row_idx == -1) continue;
-          if (threadIdx.x == proposed.expert_row_idx) {
-            shared_expert_infos[internal_row][expert_id] = {
-                local_suffixsum, proposed.expert_probs};
+          SlotInfo proposed = {shared_routemap_topk[internal_row * topk + k],
+                               shared_probs_topk[internal_row * topk + k]};
+          if (proposed.row_idx == -1) continue;
+          if (threadIdx.x == proposed.row_idx) {
+            shared_slot_info[internal_row][expert_id] = {local_suffixsum,
+                                                         proposed.prob};
             local_suffixsum += 1;
           }
         }
       }
       // Inter-block communication
-      const int anticipate_signal_idx =
-          (blockIdx.x) * num_experts + threadIdx.x;
-      const int push_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
+      const int recv_signal_idx = (blockIdx.x) * num_experts + threadIdx.x;
+      const int send_signal_idx = (blockIdx.x + 2) * num_experts + threadIdx.x;
       int suffixsum_offset = 0;
       if (blockIdx.x != 1) {
         // signal receive from previous block, using light-weight
         // atomicAdd(check) this will not change any data, only do fetch in
         // low-cost
         while ((suffixsum_offset = atomicAdd(
-                    &global_expertwise_block_cumsum[anticipate_signal_idx],
-                    0)) == kCumsumInvalidTag) {
+                    &global_expertwise_block_cumsum[recv_signal_idx], 0)) ==
+               kCumsumInvalidTag) {
         }
       }
       // signal send for next block, with current cumsum
       const int proposed_offset = suffixsum_offset + local_suffixsum;
-      global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+      global_expertwise_block_cumsum[send_signal_idx] = proposed_offset;
 // Intra-block communication;
 #pragma unroll
       for (int i = 0; i < kCumsumBlockSize; i++) {
-        shared_expert_infos[i][expert_id].expert_row_idx =
-            (shared_expert_infos[i][expert_id].expert_row_idx == -1)
+        shared_slot_info[i][expert_id].row_idx =
+            (shared_slot_info[i][expert_id].row_idx == -1)
                 ? -1
                 : local_expert_end_offsets -
-                      (shared_expert_infos[i][expert_id].expert_row_idx +
+                      (shared_slot_info[i][expert_id].row_idx +
                        suffixsum_offset);
       }
     }
@@ -409,38 +487,41 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
 
   for (int row = block_row_base; row < block_row_end; row++) {
     const int internal_row = row - block_row_base;
-    X_T *a_stage = (internal_row % 2 == 0) ? A0 : A1;
-    X_T *a_next = (internal_row % 2 == 0) ? A1 : A0;
+    TokenT *current_buffer =
+        (internal_row % 2 == 0) ? ping_buffer : pong_buffer;
+    TokenT *prefetch_buffer =
+        (internal_row % 2 == 0) ? pong_buffer : ping_buffer;
     if constexpr (do_gather) {
-      // wait async loading to SMEM(a_stage) done
+      // wait async loading to SMEM(current_buffer) done
       pipe.consumer_wait();
       block.sync();  // ensure shared memory is ready
 
       // start next stage
       if (row + 1 < block_row_end) {
         pipe.producer_acquire();
-        // Start loading the next rows token into SMEM(a_next)
-        cuda::memcpy_async(block,
-                           a_next,
-                           X + static_cast<int64_t>(row + 1) * token_length,
-                           cuda::aligned_size_t<32>(token_length * sizeof(X_T)),
-                           pipe);
+        // Start loading the next rows token into SMEM(prefetch_buffer)
+        cuda::memcpy_async(
+            block,
+            prefetch_buffer,
+            X + static_cast<int64_t>(row + 1) * token_length,
+            cuda::aligned_size_t<32>(token_length * sizeof(TokenT)),
+            pipe);
 
         pipe.producer_commit();
       }
     }
 
+    int hits = 0;
     for (int expert = 0; expert < num_experts; expert++) {
-      const expert_infos_t this_expert_token_info =
-          shared_expert_infos[internal_row][expert];
-      const int proposed_row_idx = this_expert_token_info.expert_row_idx;
+      const SlotInfo slot = shared_slot_info[internal_row][expert];
+      const int output_row = slot.row_idx;
       if (threadIdx.x == 0)
-        zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
-      if (proposed_row_idx == -1) continue;  // no memcpy
+        zipped_expertwise_rowmap[row * num_experts + expert] = output_row;
+      if (output_row == -1) continue;  // no memcpy
       if (threadIdx.x == 0) {
-        probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+        probs_unzipped[output_row] = slot.prob;
         if constexpr (return_expert_indices) {
-          expert_indices[proposed_row_idx] = expert;
+          expert_indices[output_row] = expert;
         }
       }
 
@@ -449,25 +530,36 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         // Using TMA copy data from SMEM to GMEM
         if (threadIdx.x == 0) {
           cuda::device::experimental::cp_async_bulk_shared_to_global(
-              &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
-              a_stage,
-              token_length * sizeof(X_T));
+              &X_unzipped[(int64_t)output_row * (int64_t)token_length],
+              current_buffer,
+              token_length * sizeof(TokenT));
           cuda::device::experimental::cp_async_bulk_commit_group();
         }
 #else
         vectorized_memcpy(
-            a_stage,
-            &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
+            current_buffer,
+            &X_unzipped[(int64_t)output_row * (int64_t)token_length],
             token_length);
 #endif
         // vec copy
         if constexpr (has_scale) {
           // src or dst may be unaligned with 128bits
-          try_vectorized_memcpy(&XScale[(int64_t)row * (int64_t)scale_length],
-                                &XScale_unzipped[(int64_t)proposed_row_idx *
-                                                 (int64_t)scale_length],
-                                scale_length);
+          try_vectorized_memcpy(
+              &XScale[(int64_t)row * (int64_t)scale_length],
+              &XScale_unzipped[(int64_t)output_row * (int64_t)scale_length],
+              scale_length);
         }
+      }
+
+      // Early exit: each row has at most topk expert assignments.
+      // Remaining entries are guaranteed to be -1; flush them and break.
+      if (++hits >= topk) {
+        if (threadIdx.x == 0) {
+          for (int e = expert + 1; e < num_experts; e++) {
+            zipped_expertwise_rowmap[row * num_experts + e] = -1;
+          }
+        }
+        break;
       }
     }
     if constexpr (do_gather) {
@@ -477,7 +569,7 @@ __global__ __launch_bounds__(256) void permute_opt_kernel(
         cuda::device::experimental::cp_async_bulk_wait_group_read<0>();
       }
 #endif
-      // release stage for SMEM (a_stage)
+      // release stage for SMEM (current_buffer)
       pipe.consumer_release();
     }
   }
@@ -515,7 +607,6 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
                            int topk,
                            int capability) {
   dim3 grid, block;
-  grid.x = (total_zipped_tokens_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
 
   // Determine whether to use optimized kernel (Hopper+, aligned, small experts)
   [[maybe_unused]] bool use_opt_kernel = false;
@@ -542,6 +633,8 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
 
 #if CUDA_VERSION >= 12080
   if (use_opt_kernel) {
+    grid.x =
+        (total_zipped_tokens_num + kCumsumBlockSize - 1) / kCumsumBlockSize;
     block.x = 256;
     const int smem = 2 * token_length * sizeof(TokenT) +
                      (sizeof(IntT) + sizeof(ProbT)) * topk * kCumsumBlockSize;
@@ -574,9 +667,32 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
   }
 #endif
   // Fallback to generic kernel
-  block.x = 512;
+  //
+  // FP8 uses warp-ballot Phase-1 optimization when kFp8CumsumBlockSize == 32,
+  // which fully decouples blockDim.x from num_experts — any power-of-2 works.
+  // BF16 uses the original one-thread-per-expert Phase-1 (blockDim.x >=
+  // num_experts).
+  constexpr int rows_per_block =
+      (sizeof(TokenT) == 1) ? moe::kFp8CumsumBlockSize : kCumsumBlockSize;
+  constexpr int block_dim_x = (sizeof(TokenT) == 1) ? moe::kFp8BlockDimX : 512;
+
+  // Compile-time sanity checks
+  static_assert(rows_per_block > 0, "rows_per_block must be positive");
+  static_assert(block_dim_x >= 32 && block_dim_x <= 1024 &&
+                    (block_dim_x & (block_dim_x - 1)) == 0,
+                "block_dim_x must be a power-of-2 in [32, 1024]");
+  // Original Phase-1 fallback requires blockDim.x >= MaxNumExperts
+  static_assert(
+      rows_per_block == 32 || block_dim_x >= MaxNumExperts,
+      "Non-warp-optimized path requires block_dim_x >= MaxNumExperts");
+
+  grid.x = (total_zipped_tokens_num + rows_per_block - 1) / rows_per_block;
+  block.x = block_dim_x;
+
+  // Shared memory: slot_info + expert bitmask (warp-ballot path only)
   constexpr int generic_smem =
-      kCumsumBlockSize * MaxNumExperts * sizeof(expert_infos<ProbT>);
+      rows_per_block * MaxNumExperts * sizeof(ExpertSlotInfo<ProbT>) +
+      (rows_per_block == 32 ? MaxNumExperts * sizeof(uint32_t) : 0);
   auto generic_kernel_ptr = permute_generic_kernel<TokenT,
                                                    IntT,
                                                    ProbT,
@@ -584,7 +700,9 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
                                                    HasScale,
                                                    DoGather,
                                                    ReturnIndices,
-                                                   MaxNumExperts>;
+                                                   MaxNumExperts,
+                                                   rows_per_block,
+                                                   block_dim_x>;
   if constexpr (generic_smem > 48 * 1024) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaFuncSetAttribute(generic_kernel_ptr,
@@ -698,9 +816,9 @@ void dispatch_permute_kernel(const Context &dev_ctx,
   });
 }
 
-template <typename X_T, typename ScaleT, typename Context>
+template <typename TokenT, typename ScaleT, typename Context>
 void dispatch_preprocess(const Context &dev_ctx,
-                         X_T *X_unzipped_ptr,
+                         TokenT *X_unzipped_ptr,
                          ScaleT *XScale_unzipped_ptr,
                          float *token_prob_unzipped_ptr,
                          int *expert_indices_ptr,
@@ -730,7 +848,11 @@ void dispatch_preprocess(const Context &dev_ctx,
         constexpr bool FillScale = decltype(fill_scale_tag)::value;
         constexpr bool FillIndices = decltype(fill_indices_tag)::value;
 
-        filling_padding_rows_kernel<X_T, ScaleT, FillX, FillScale, FillIndices>
+        filling_padding_rows_kernel<TokenT,
+                                    ScaleT,
+                                    FillX,
+                                    FillScale,
+                                    FillIndices>
             <<<grid, block, 0, dev_ctx.stream()>>>(X_unzipped_ptr,
                                                    XScale_unzipped_ptr,
                                                    token_prob_unzipped_ptr,
@@ -868,7 +990,16 @@ void MoePermuteKernel(const Context &dev_ctx,
   // ====================================================================
   //                    Preprocess helper tensors
   // ====================================================================
-  const int cumsum_blocknum = (rows + kCumsumBlockSize - 1) / kCumsumBlockSize;
+  // The cumsum buffer must accommodate the largest possible grid.x across
+  // all kernel paths.  The opt kernel always uses kCumsumBlockSize; the
+  // generic kernel uses kFp8CumsumBlockSize for FP8 or kCumsumBlockSize
+  // for BF16.  Take the minimum to guarantee the buffer is large enough.
+  constexpr int kEffectiveBlockSize =
+      (sizeof(T) == 1 && moe::kFp8CumsumBlockSize < kCumsumBlockSize)
+          ? moe::kFp8CumsumBlockSize
+          : kCumsumBlockSize;
+  const int cumsum_blocknum =
+      (rows + kEffectiveBlockSize - 1) / kEffectiveBlockSize;
 
   DenseTensor expert_offset_tensor;
   DenseTensor expert_offset_end_tensor;
@@ -883,12 +1014,15 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
   dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
   dev_ctx.template Alloc<int>(&global_expertwise_block_cumsum);
-  // 1.Semaphore initialization
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(global_expertwise_block_cumsum.data<int>(),
-                      -1,
-                      global_expertwise_block_cumsum.numel() * sizeof(int),
-                      dev_ctx.stream()));
+  // 1.Semaphore initialization — only needed when there are multiple blocks
+  //   that require inter-block cumsum communication.
+  if (cumsum_blocknum > 1) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemsetAsync(global_expertwise_block_cumsum.data<int>(),
+                        -1,
+                        global_expertwise_block_cumsum.numel() * sizeof(int),
+                        dev_ctx.stream()));
+  }
 
   // 2.expert_offset initialization
   if (is_buffer_overridden) {

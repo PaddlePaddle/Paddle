@@ -371,7 +371,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                     ],  # using same buffer size to do functional check
                 )
                 validate_expert_indices(
-                    expert_indices_overridden, compact_routemap_overridden
+                    expert_indices_overridden, compact_routemap
                 )
                 (
                     permuted_tokens_recovered_overridden,

@@ -30,10 +30,30 @@ namespace phi {
 // ============================================================================
 namespace moe {
 
+// Smallest power-of-2 >= v.  (v must be > 0)
+inline constexpr int ceil_pow2(int v) {
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  return v + 1;
+}
+
 inline constexpr int kCumsumBlockSize = 40;
 inline constexpr int kCumsumInvalidTag = -1;
 inline constexpr int kMaxNumExperts = 384;
 inline constexpr int kMaxNumExpertsForOptKernel = 32;
+
+// FP8-specific tuning knobs for permute_generic_kernel.
+// FP8 has ~2x lighter memcpy than BF16, shifting the bottleneck to Phase-1
+// scheduling and inter-block cumsum sync. Tune these independently from BF16.
+//   kFp8CumsumBlockSize : rows per block   (32 enables warp-ballot
+//   optimization) kFp8BlockDimX       : threads per block (tune range: 128 ..
+//   512)
+inline constexpr int kFp8CumsumBlockSize = 32;
+inline constexpr int kFp8BlockDimX = 256;
 
 }  // namespace moe
 
@@ -125,19 +145,18 @@ inline void ScaleType(bool using_ue8m0, F&& f) {
 // ============================================================================
 //                               Type defs
 // ============================================================================
-template <typename probs_T>
-struct expert_infos {
-  int expert_row_idx;
-  probs_T expert_probs;
+template <typename ProbT>
+struct ExpertSlotInfo {
+  int row_idx;
+  ProbT prob;
 
-  __device__ __host__ expert_infos()
-      : expert_row_idx(-1), expert_probs(probs_T(0)) {}
-  __device__ __host__ expert_infos(int idx, probs_T prob)
-      : expert_row_idx(idx), expert_probs(prob) {}
+  __device__ __host__ ExpertSlotInfo() : row_idx(-1), prob(ProbT(0)) {}
+  __device__ __host__ ExpertSlotInfo(int idx, ProbT p)
+      : row_idx(idx), prob(p) {}
 
-  __device__ __host__ expert_infos& operator=(const expert_infos& other) {
-    expert_row_idx = other.expert_row_idx;
-    expert_probs = other.expert_probs;
+  __device__ __host__ ExpertSlotInfo& operator=(const ExpertSlotInfo& other) {
+    row_idx = other.row_idx;
+    prob = other.prob;
     return *this;
   }
 };
@@ -295,14 +314,14 @@ __device__ __forceinline__ void vectorized_memset(T* ptr,
 // ============================================================================
 // Helper kernel for filling padding rows in pre-training circumstances,
 // to prevent illegal padding area participating in split matmul.
-template <typename X_T,
-          typename SCALE_T,
+template <typename TokenT,
+          typename ScaleT,
           bool FILLING_X_UNZIPPED,
           bool FILLING_X_SCALE_UNZIPPED,
           bool FILLING_EXPERT_INDICES>
 __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
-    X_T* __restrict__ X_unzipped_ptr,
-    SCALE_T* __restrict__ XScale_unzipped_ptr,
+    TokenT* __restrict__ X_unzipped_ptr,
+    ScaleT* __restrict__ XScale_unzipped_ptr,
     float* __restrict__ token_prob_unzipped_ptr,
     int* __restrict__ expert_indices_ptr,
     const int cols,
@@ -310,11 +329,12 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
     const int* __restrict__ padding_rows) {
   uint32_t rows = padding_rows[blockIdx.x];
   if constexpr (FILLING_X_UNZIPPED) {
-    vectorized_memset(&X_unzipped_ptr[rows * cols], static_cast<X_T>(0), cols);
+    vectorized_memset(
+        &X_unzipped_ptr[rows * cols], static_cast<TokenT>(0), cols);
   }
   if constexpr (FILLING_X_SCALE_UNZIPPED) {
     unrolled_memset(&XScale_unzipped_ptr[rows * quanted_cols],
-                    static_cast<SCALE_T>(0),
+                    static_cast<ScaleT>(0),
                     quanted_cols);
   }
   if (threadIdx.x == 0) {
