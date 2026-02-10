@@ -186,7 +186,6 @@ class TestGeneratorSeed(unittest.TestCase):
 
         x1_np = x1.numpy()
         x2_np = x2.numpy()
-        x3_np = x3.numpy()
 
         print(">>>>>>> gaussian random dygraph state load/save >>>>>>>")
         np.testing.assert_equal(x1_np, x2_np)
