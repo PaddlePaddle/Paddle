@@ -648,7 +648,6 @@ if(WITH_CUSTOM_DEVICE AND EXISTS "${PADDLE_SOURCE_DIR}/../common")
   include_directories("${PADDLE_SOURCE_DIR}/..")
 endif()
 
-
 if(WITH_NV_JETSON)
   set(WITH_ARM
       ON
@@ -763,7 +762,8 @@ endif()
 
 add_subdirectory(paddle)
 if(WITH_CUSTOM_DEVICE_SUB_BUILD)
-  add_subdirectory(${CUSTOM_DEVICE_SOURCE_DIR} ${PADDLE_BINARY_DIR}/custom_device_build)
+  add_subdirectory(${CUSTOM_DEVICE_SOURCE_DIR}
+                   ${PADDLE_BINARY_DIR}/custom_device_build)
 endif()
 if(WITH_PYTHON)
   add_subdirectory(python)

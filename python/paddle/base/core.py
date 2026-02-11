@@ -396,12 +396,16 @@ def set_paddle_custom_device_lib_path(lib_dir):
     if os.environ.get('CUSTOM_DEVICE_ROOT', None) is not None:
         # use set environment value
         return
-    path1 = os.path.normpath(os.path.join(lib_dir, '..', 'paddle_custom_device'))
+    path1 = os.path.normpath(
+        os.path.join(lib_dir, '..', 'paddle_custom_device')
+    )
     if os.path.exists(path1):
         # set CUSTOM_DEVICE_ROOT default path (lib_dir/../paddle_custom_device)
         os.environ['CUSTOM_DEVICE_ROOT'] = path1
     else:
-        path2 = os.path.normpath(os.path.join(lib_dir, '..', '..', 'paddle_custom_device'))
+        path2 = os.path.normpath(
+            os.path.join(lib_dir, '..', '..', 'paddle_custom_device')
+        )
         if os.path.exists(path2):
             # set CUSTOM_DEVICE_ROOT default path (lib_dir/../../paddle_custom_device)
             os.environ['CUSTOM_DEVICE_ROOT'] = path2

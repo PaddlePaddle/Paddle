@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "glog/logging.h"
-#include "paddle/phi/common/transform.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 
 #if defined(PADDLE_WITH_XPU)
@@ -195,13 +195,13 @@ struct CastDataType {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     } else if (phi::is_custom_place(in_.place())) {
       auto* context = static_cast<const phi::CustomContext*>(ctx_);
-    auto func = phi::CreateCustomDeviceFunc();
-    func->CustomCastDataType(*context,
-                            static_cast<const void*>(in_begin),
-                            static_cast<void*>(out_begin),
-                            in_.numel(),
-                            in_.dtype(),
-                            out_->dtype());
+      auto func = phi::CreateCustomDeviceFunc();
+      func->CustomCastDataType(*context,
+                               static_cast<const void*>(in_begin),
+                               static_cast<void*>(out_begin),
+                               in_.numel(),
+                               in_.dtype(),
+                               out_->dtype());
       context->Wait();
 #endif
 #if defined(PADDLE_WITH_IPU)
