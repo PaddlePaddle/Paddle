@@ -585,7 +585,7 @@ def flash_attn_qkvpacked(
         - softmax(Tensor). The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
@@ -819,7 +819,7 @@ def flash_attn_unpadded(
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -1178,7 +1178,7 @@ def flash_attn_varlen_qkvpacked(
         - softmax(Tensor). The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
@@ -1356,7 +1356,7 @@ def flashmask_attention(
         This API supports GQA.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
@@ -1522,7 +1522,7 @@ def flashmask_attention(
 
     To convert FlashMask's `startend_row_indices` to `dense_mask`, use the code below:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> import numpy as np
@@ -1555,7 +1555,7 @@ def flashmask_attention(
 
     For `Causal Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1588,7 +1588,7 @@ def flashmask_attention(
 
     For `Sliding Window Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1620,7 +1620,7 @@ def flashmask_attention(
 
     For `Causal Document Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1652,7 +1652,7 @@ def flashmask_attention(
 
     For `Document Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
           [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -1686,7 +1686,7 @@ def flashmask_attention(
 
     For `Share Question Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1718,7 +1718,7 @@ def flashmask_attention(
 
     For `Global + Sliding Window Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +SKIP('Only example')
 
@@ -1755,7 +1755,7 @@ def flashmask_attention(
 
     For `Causal Blockwise Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1789,7 +1789,7 @@ def flashmask_attention(
 
     For `Prefix LM Document Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1823,7 +1823,7 @@ def flashmask_attention(
 
     For `Prefix LM Causal Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
           [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
@@ -1856,7 +1856,7 @@ def flashmask_attention(
 
     For `QK-sparse Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -2144,7 +2144,7 @@ def calc_reduced_attention_scores(
         reduced_attention_scores(Tensor), The reduce sum of attention scores across seqlen_q.
         4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k]. The dtype is float32.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('reduce_attn_scores need A100 compile')
             >>> import paddle

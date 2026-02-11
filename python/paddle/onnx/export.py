@@ -63,7 +63,7 @@ def export(
     Returns:
         None
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
