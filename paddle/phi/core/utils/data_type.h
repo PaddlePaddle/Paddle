@@ -274,6 +274,8 @@ inline BKCLDataType ToBKCLDataType(DataType type) {
     return BKCL_FLOAT;
   } else if (type == DataType::FLOAT64) {
     return BKCL_FLOAT64;
+  } else if (type == DataType::INT8) {
+    return BKCL_UINT8;
   } else if (type == DataType::INT32) {
     return BKCL_INT32;
   } else if (type == DataType::INT64) {

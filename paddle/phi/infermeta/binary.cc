@@ -3057,11 +3057,33 @@ void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     MetaConfig config) {
   std::vector<int64_t> dims_x = vectorize(x.dims());
   std::vector<int64_t> dims_y = vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
+  const int64_t lhs_reduce_dim = (ndims_x == 1) ? 0 : ndims_x - 1 - trans_x;
+  const int64_t rhs_reduce_dim = (ndims_y == 1) ? 0 : ndims_y - 2 + trans_y;
+  const int64_t K_lhs = dims_x[lhs_reduce_dim];
+  const int64_t K_rhs = dims_y[rhs_reduce_dim];
+  if (config.is_runtime || (K_rhs != -1 && K_lhs != -1)) {
+    PADDLE_ENFORCE_EQ(
+        K_lhs,
+        K_rhs,
+        common::errors::InvalidArgument(
+            "In operator matmul, the [%d] dimension of Input(X) must be equal "
+            "to "
+            "the [%d] dimension of Input(Y). But receiving the [%d]"
+            "dimension of Input(X) is [%d], and the [%d] dimension of "
+            "Input(Y) is [%d].",
+            lhs_reduce_dim,
+            rhs_reduce_dim,
+            lhs_reduce_dim,
+            K_lhs,
+            rhs_reduce_dim,
+            K_rhs));
+  }
   PADDLE_ENFORCE_GT(ndims_x,
                     0UL,
                     common::errors::InvalidArgument(

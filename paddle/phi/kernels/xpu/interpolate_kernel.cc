@@ -136,30 +136,62 @@ void InterpolateKernel(
     Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
-  bool nearest = "nearest" == interp_method;
-  int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
-  if (nearest) {
-    trans_mode = (align_corners == true) ? 0 : 2;
-    PADDLE_ENFORCE_EQ(
-        (data_layout == DataLayout::NCHW),
-        true,
-        errors::InvalidArgument("XPU nearest is only support NCHW"));
-  }
+  float ratio_h =
+      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+  float ratio_w =
+      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  if ("bicubic" == interp_method) {
+    if constexpr (std::is_floating_point_v<T> ||
+                  std::is_same_v<T, phi::dtype::float16>) {
+      int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
+      int r = xpu::upsample_bicubic2d<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(output->data<T>()),
+          static_cast<int64_t>(n),
+          static_cast<int64_t>(c),
+          static_cast<int64_t>(in_h),
+          static_cast<int64_t>(in_w),
+          static_cast<int64_t>(out_h),
+          static_cast<int64_t>(out_w),
+          static_cast<int64_t>(trans_mode),
+          (data_layout == DataLayout::NCHW),
+          ratio_h,
+          ratio_w);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "upsample_bicubic2d");
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "XPU Bicubic interpolation only supports float, float16 and "
+          "bfloat16, "
+          "but received other types(bfloat16 is not bound yet)"));
+    }
 
-  int r =
-      xpu::interpolate2d<XPUType>(dev_ctx.x_context(),
-                                  reinterpret_cast<const XPUType*>(x.data<T>()),
-                                  reinterpret_cast<XPUType*>(output->data<T>()),
-                                  n,
-                                  c,
-                                  in_h,
-                                  in_w,
-                                  out_h,
-                                  out_w,
-                                  nearest,
-                                  trans_mode,
-                                  (data_layout == DataLayout::NCHW));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d");
+  } else {
+    bool nearest = "nearest" == interp_method;
+    int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
+    if (nearest) {
+      trans_mode = (align_corners == true) ? 0 : 2;
+      PADDLE_ENFORCE_EQ(
+          (data_layout == DataLayout::NCHW),
+          true,
+          errors::InvalidArgument("XPU nearest is only support NCHW"));
+    }
+
+    int r = xpu::interpolate2d<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(output->data<T>()),
+        n,
+        c,
+        in_h,
+        in_w,
+        out_h,
+        out_w,
+        nearest,
+        trans_mode,
+        (data_layout == DataLayout::NCHW));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "interpolate2d");
+  }
 }
 
 template <typename T, typename Context>
@@ -226,6 +258,38 @@ void NearestInterpKernel(
                                 output);
 }
 
+template <typename T, typename Context>
+void BicubicInterpKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<double>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* output) {
+  InterpolateKernel<T, Context>(dev_ctx,
+                                x,
+                                out_size,
+                                size_tensor,
+                                scale_tensor,
+                                data_layout,
+                                out_d,
+                                out_h,
+                                out_w,
+                                scale,
+                                interp_method,
+                                align_corners,
+                                align_mode,
+                                output);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(bilinear_interp,
@@ -245,6 +309,16 @@ PD_REGISTER_KERNEL(nearest_interp,
                    phi::float16,
                    float,
                    int64_t) {
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
+PD_REGISTER_KERNEL(bicubic_interp,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::BicubicInterpKernel,
+                   float,
+                   phi::float16) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);

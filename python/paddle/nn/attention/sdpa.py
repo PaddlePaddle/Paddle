@@ -111,9 +111,11 @@ def _cur_sdpa_kernel_backends(with_priority: bool = False):
         curr_priority = _get_backend_priority()
         backends = sorted(
             backends,
-            key=lambda backend: curr_priority.index(backend)
-            if backend in curr_priority
-            else float('inf'),
+            key=lambda backend: (
+                curr_priority.index(backend)
+                if backend in curr_priority
+                else float('inf')
+            ),
         )
 
     return backends

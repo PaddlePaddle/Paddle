@@ -210,7 +210,7 @@ def fft(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -284,7 +284,7 @@ def ifft(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -420,7 +420,7 @@ def irfft(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -473,7 +473,7 @@ def hfft(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -894,11 +894,11 @@ def irfftn(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([2.+2.j, 2.+2.j, 3.+3.j]).astype(paddle.complex128)
+            >>> x = paddle.to_tensor([2.0 + 2.0j, 2.0 + 2.0j, 3.0 + 3.0j]).astype(paddle.complex128)
             >>> print(x)
             Tensor(shape=[3], dtype=complex128, place=Place(cpu), stop_gradient=True,
             [(2+2j), (2+2j), (3+3j)])
@@ -959,11 +959,11 @@ def hfftn(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([(2+2j), (2+2j), (3+3j)])
+            >>> x = paddle.to_tensor([(2 + 2j), (2 + 2j), (3 + 3j)])
             >>> hfftn_x = paddle.fft.hfftn(x)
             >>> print(hfftn_x)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1230,7 +1230,7 @@ def rfft2(
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -1302,11 +1302,11 @@ def irfft2(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[3.+3.j, 2.+2.j, 3.+3.j], [2.+2.j, 2.+2.j, 3.+3.j]])
+            >>> x = paddle.to_tensor([[3.0 + 3.0j, 2.0 + 2.0j, 3.0 + 3.0j], [2.0 + 2.0j, 2.0 + 2.0j, 3.0 + 3.0j]])
             >>> irfft2_x = paddle.fft.irfft2(x)
             >>> print(irfft2_x)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1363,11 +1363,11 @@ def hfft2(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[3.+3.j, 2.+2.j, 3.+3.j], [2.+2.j, 2.+2.j, 3.+3.j]])
+            >>> x = paddle.to_tensor([[3.0 + 3.0j, 2.0 + 2.0j, 3.0 + 3.0j], [2.0 + 2.0j, 2.0 + 2.0j, 3.0 + 3.0j]])
             >>> hfft2_x = paddle.fft.hfft2(x)
             >>> print(hfft2_x)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1427,7 +1427,7 @@ def ihfft2(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1504,7 +1504,7 @@ def fftfreq(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1578,7 +1578,7 @@ def rfftfreq(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1633,7 +1633,7 @@ def fftshift(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1682,7 +1682,7 @@ def ifftshift(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -33,8 +33,7 @@ void SetKernel(const Context& dev_ctx,
       out->clear();
       *out = DenseTensor{source.Holder(), meta};
     } else if (x.numel() == 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     }
     out->ShareInplaceVersionCounterWith(x);
     return;
