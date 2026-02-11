@@ -7,7 +7,6 @@ set(op_handle_deps
     phi
     common
     node
-    device_context
     op_registry
     lod_tensor
     selected_rows_utils

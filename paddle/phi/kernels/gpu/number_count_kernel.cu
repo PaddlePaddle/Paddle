@@ -65,7 +65,7 @@ __global__ void NumberCount(const T* numbers,
 #endif
     }
     if (threadIdx.x % WARP_SIZE == 0) {
-      phi::CudaAtomicAdd(number_count + i, x);
+      CudaAtomicAdd(number_count + i, x);
     }
   }
 }

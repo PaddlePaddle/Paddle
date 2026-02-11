@@ -490,18 +490,18 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   if (scores.numel() == 0) {
-    rpn_rois->Resize(make_ddim({0, 4}));
+    rpn_rois->Resize({0, 4});
     if (rpn_rois_num != nullptr) {
-      rpn_rois_num->Resize(make_ddim({}));
+      rpn_rois_num->Resize({});
       Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
     }
     return;
   }
 
   DenseTensor bbox_deltas_swap, scores_swap;
-  bbox_deltas_swap.Resize(make_ddim({num, h_bbox, w_bbox, c_bbox}));
+  bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);
-  scores_swap.Resize(make_ddim({num, h_score, w_score, c_score}));
+  scores_swap.Resize({num, h_score, w_score, c_score});
   dev_ctx.template Alloc<T>(&scores_swap);
 
   funcs::Transpose<GPUContext, T, 4> trans;
@@ -511,8 +511,8 @@ void GenerateProposalsKernel(const Context &dev_ctx,
 
   DenseTensor tmp_anchors = anchors;
   DenseTensor tmp_variances = variances;
-  tmp_anchors.Resize(make_ddim({tmp_anchors.numel() / 4, 4}));
-  tmp_variances.Resize(make_ddim({tmp_variances.numel() / 4, 4}));
+  tmp_anchors.Resize({tmp_anchors.numel() / 4, 4});
+  tmp_variances.Resize({tmp_variances.numel() / 4, 4});
 
   T *rpn_rois_data = rpn_rois->data<T>();
   T *rpn_roi_probs_data = rpn_roi_probs->data<T>();

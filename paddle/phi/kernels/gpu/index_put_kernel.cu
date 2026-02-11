@@ -55,7 +55,7 @@ __global__ void IndexPutCudaKernel(const T* x,
   }
 
   if (accumulate) {
-    phi::CudaAtomicAdd(out + offset, *(vals + (idx & is_single_val_tensor)));
+    CudaAtomicAdd(out + offset, *(vals + (idx & is_single_val_tensor)));
   } else {
     *(out + offset) = *(vals + (idx & is_single_val_tensor));
   }

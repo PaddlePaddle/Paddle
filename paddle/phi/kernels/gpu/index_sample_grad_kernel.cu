@@ -52,8 +52,8 @@ __global__ void IndexSampleGrad(const SampleIndexT* index,
       ElementIndexT in_idx = index_j * input_length + index_i;
       SampleIndexT sample_idx = index[index_idx];
       if (same_data_in_row) {
-        phi::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
-                           out_grad[sample_idx]);
+        CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                      out_grad[sample_idx]);
       } else {
         in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
       }
