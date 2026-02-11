@@ -67,11 +67,11 @@ def pad_sequence(
             >>> b = paddle.ones([22, 300])
             >>> c = paddle.ones([15, 300])
             >>> padded = paddle.nn.utils.pad_sequence([a, b, c])
-            >>> padded.shape
-            [25, 3, 300]
+            >>> print(padded.shape)
+            paddle.Size([25, 3, 300])
             >>> padded = paddle.nn.utils.pad_sequence([a, b, c], batch_first=True)
-            >>> padded.shape
-            [3, 25, 300]
+            >>> print(padded.shape)
+            paddle.Size([3, 25, 300])
     """
     if not isinstance(sequences, list):
         raise TypeError(
