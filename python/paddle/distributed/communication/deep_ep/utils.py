@@ -72,7 +72,7 @@ class EventOverlap:
         Utility for overlapping and Python `with` syntax.
 
         You can overlap the kernels on the current stream with the following example:
-        ```python
+        ```pycon
         event_overlap = event_after_all_to_all_kernels()
         with event_overlap():
             do_something_on_current_stream()

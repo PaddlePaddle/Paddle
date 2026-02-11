@@ -1099,12 +1099,12 @@ class Event:
     Note:
         The `device` parameter has been removed in the latest version. The event will always use the current device context.
         Previously, you could specify the device like:
-        ```python
+        ```pycon
         # Old usage (no longer supported)
         e = paddle.device.Event(device="gpu:0")
         ```
         Now it will automatically use the current device:
-        ```python
+        ```pycon
         # New usage
         paddle.set_device("gpu:0")  # Set device first
         e = paddle.device.Event()  # Will use gpu:0

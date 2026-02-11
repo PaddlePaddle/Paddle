@@ -96,7 +96,7 @@ if TYPE_CHECKING:
 
 
 # NOTE(SigureMo): Don't directly capture free var inside for-loop, use partial instead.
-# ```python
+# ```pycon
 # lambdas = []
 # for i in range(10):
 #     lambdas.append(lambda: i)
@@ -104,7 +104,7 @@ if TYPE_CHECKING:
 #     print(fn()) # result is 9, 9, 9, 9, 9, 9, 9, 9, 9, 9
 # ```
 # Rewrite by partial:
-# ```python
+# ```pycon
 # lambdas = []
 # for i in range(10):
 #     lambdas.append(partial(lambda i: i, i))
