@@ -61,7 +61,7 @@ class MNIST(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import itertools
             >>> import paddle.vision.transforms as T
@@ -281,7 +281,7 @@ class FashionMNIST(MNIST):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import itertools
             >>> import paddle.vision.transforms as T
