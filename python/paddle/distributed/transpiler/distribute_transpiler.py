@@ -173,7 +173,7 @@ class DistributeTranspilerConfig:
           .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.distributed.transpiler.distribute_transpiler import RoundRobin
             >>> import paddle.distributed.transpiler as transpiler
@@ -281,7 +281,7 @@ class DistributeTranspiler:
     mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
@@ -612,7 +612,7 @@ class DistributeTranspiler:
                 this argument is not used.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> t = paddle.distributed.transpiler.DistributeTranspiler()
@@ -1130,7 +1130,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: trainer side program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
@@ -1279,7 +1279,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: the program for current parameter server to run.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
@@ -1592,7 +1592,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             tuple: (main_program, startup_program), of type "Program"
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
@@ -1634,7 +1634,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: parameter server side startup program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
