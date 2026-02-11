@@ -407,16 +407,17 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   miopenTensorDescriptor_t in_param_desc_;
 
   PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::miopenCreateTensorDescriptor(&data_desc_));
+      phi::dynload::miopenCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::miopenCreateTensorDescriptor(&in_param_desc_));
+      phi::dynload::miopenCreateTensorDescriptor(&in_param_desc_));
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t in_param_desc_;
 
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
+      phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
 #endif
 
   if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -427,22 +428,22 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::miopenSetTensorDescriptor(data_desc_,
-                                         CudnnDataType<T>::type,
-                                         x_dims.size() > 3 ? x_dims.size() : 4,
-                                         const_cast<int *>(dims.data()),
-                                         const_cast<int *>(strides.data())));
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
+      data_desc_,
+      CudnnDataType<T>::type,
+      x_dims.size() > 3 ? x_dims.size() : 4,
+      const_cast<int *>(dims.data()),
+      const_cast<int *>(strides.data())));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, miopenBNSpatial));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::cudnnSetTensorNdDescriptor(data_desc_,
-                                          CudnnDataType<T>::type,
-                                          x_dims.size() > 3 ? x_dims.size() : 4,
-                                          dims.data(),
-                                          strides.data()));
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+      data_desc_,
+      CudnnDataType<T>::type,
+      x_dims.size() > 3 ? x_dims.size() : 4,
+      dims.data(),
+      strides.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
 #endif
   const auto *saved_mean_data =
@@ -452,7 +453,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   if (d_scale && d_bias) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenBatchNormalizationBackward(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenBatchNormalizationBackward(
         dev_ctx.cudnn_handle(),
         miopenBNSpatial,
         CudnnDataType<T>::kOne(),
@@ -473,7 +474,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         saved_mean_data,
         saved_var_data));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationBackward(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBatchNormalizationBackward(
         dev_ctx.cudnn_handle(),
         CUDNN_BATCHNORM_SPATIAL,
         CudnnDataType<T>::kOne(),
@@ -516,13 +517,14 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::miopenDestroyTensorDescriptor(data_desc_));
+      phi::dynload::miopenDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::miopenDestroyTensorDescriptor(in_param_desc_));
+      phi::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
+      phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
 #endif
 }
 
