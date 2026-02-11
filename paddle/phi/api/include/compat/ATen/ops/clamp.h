@@ -19,8 +19,21 @@
 #include <c10/core/ScalarType.h>
 #include <limits>
 #include <optional>
-#include "paddle/phi/api/include/compat/ATen/core/TensorBody.h"
 #include "paddle/phi/api/include/tensor.h"
+
+namespace at {
+
+class Tensor;
+
+// Helper function to get default min/max values based on ScalarType
+namespace detail {
+at::Scalar get_default_min_value(c10::ScalarType dtype);
+at::Scalar get_default_max_value(c10::ScalarType dtype);
+}  // namespace detail
+
+}  // namespace at
+
+#include "paddle/phi/api/include/compat/ATen/core/TensorBody.h"
 
 namespace at {
 

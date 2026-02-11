@@ -27,7 +27,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-#include "paddle/phi/api/include/compat/ATen/ops/clamp.h"
+namespace at {
+class Tensor;
+}
 
 namespace at {
 
