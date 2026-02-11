@@ -79,7 +79,11 @@ def flops(
             ...         )
             ...
             ...         if num_classes > 0:
-            ...             self.fc = nn.Sequential(nn.Linear(400, 120), nn.Linear(120, 84), nn.Linear(84, 10))
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10),
+            ...             )
             ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs)
@@ -94,7 +98,12 @@ def flops(
             ...     x = x[0]
             ...     nelements = x.numel()
             ...     m.total_ops += int(nelements)
-            >>> FLOPs = paddle.flops(lenet, [1, 1, 28, 28], custom_ops={nn.LeakyReLU: count_leaky_relu}, print_detail=True)
+            >>> FLOPs = paddle.flops(
+            ...     lenet,
+            ...     [1, 1, 28, 28],
+            ...     custom_ops={nn.LeakyReLU: count_leaky_relu},
+            ...     print_detail=True,
+            ... )
             >>> # doctest: +SKIP('numpy print with different version')
             <class 'paddle.nn.layer.conv.Conv2D'>'s flops has been counted
             <class 'paddle.nn.layer.activation.ReLU'>'s flops has been counted
