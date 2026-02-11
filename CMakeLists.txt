@@ -643,6 +643,12 @@ include_directories("${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/")
 include_directories(
   "${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/torch/csrc/api/include/")
 
+if(WITH_CUSTOM_DEVICE AND EXISTS "${PADDLE_SOURCE_DIR}/../common")
+  add_definitions(-DPADDLE_WITH_CUSTOM_DEVICE_SUB_BUILD)
+  include_directories("${PADDLE_SOURCE_DIR}/..")
+endif()
+
+
 if(WITH_NV_JETSON)
   set(WITH_ARM
       ON
