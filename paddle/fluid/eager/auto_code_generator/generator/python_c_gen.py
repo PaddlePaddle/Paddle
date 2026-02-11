@@ -451,28 +451,17 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         forward_outputs_position_map = self.forward_outputs_position_map
         optional_inputs = self.optional_inputs
 
-        # Get Python API Info
         if inplace:
-            inplaced_forward_api_name = GetInplacedFunctionName(
-                forward_api_name
-            )
-            (
-                need_parse_python_api_args,
-                args_alias_map,
-                dygraph_pre_process,
-                args_mapper_func,
-            ) = self.ParsePythonAPIInfo(
-                inplaced_forward_api_name, no_parse_python_api_info
-            )
+            function_name = GetInplacedFunctionName(forward_api_name)
         else:
-            (
-                need_parse_python_api_args,
-                args_alias_map,
-                dygraph_pre_process,
-                args_mapper_func,
-            ) = self.ParsePythonAPIInfo(
-                forward_api_name, no_parse_python_api_info
-            )
+            function_name = forward_api_name
+        # Get Python API Info
+        (
+            need_parse_python_api_args,
+            args_alias_map,
+            dygraph_pre_process,
+            args_mapper_func,
+        ) = self.ParsePythonAPIInfo(function_name, no_parse_python_api_info)
 
         max_args = len(orig_forward_attrs_list) + len(
             forward_inputs_position_map
@@ -670,6 +659,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("false")
                 )
 
+        # Generate Call Pre-Process Logic
         pre_process_str = "    // NO NEED"
         if need_parse_python_api_args and len(dygraph_pre_process) > 0:
 
@@ -679,6 +669,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             pre_process_str = CALL_PRE_PROCESS_TEMPLATE.format(
                 pre_process_add_ampersand(dygraph_pre_process)
             )
+
+        # Generate Call Args Mapper Logic
         args_mapper_str = "    // NO NEED"
         if args_mapper_func is not None:
             all_params_list = []
@@ -815,31 +807,19 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 )
 
         # Generate Python-C Function Definitions
+        fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
+            "::",
+            namespace,
+            GetForwardFunctionName(function_name),
+        )
+
         # Generate ad_func Call
-        if inplace:
-            inplaced_fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "::",
-                namespace,
-                GetForwardFunctionName(inplaced_forward_api_name),
-            )
-            inplace_noamp_dygraph_function_str = (
-                NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
-                    inplaced_fwd_function_name,
-                    dygraph_function_call_str,
-                    inplaced_fwd_function_name,
-                    dygraph_function_call_str,
-                )
-            )
-        else:
-            fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
-                "::", namespace, GetForwardFunctionName(forward_api_name)
-            )
-            noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
-                fwd_function_name,
-                dygraph_function_call_str,
-                fwd_function_name,
-                dygraph_function_call_str,
-            )
+        noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+            fwd_function_name,
+            dygraph_function_call_str,
+            fwd_function_name,
+            dygraph_function_call_str,
+        )
 
         # Generate Return
         if inplace:
@@ -883,86 +863,45 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         prefix = self.namespace.removeprefix("::").removesuffix("::")
         forward_api_name_prefix = "" if prefix == "" else prefix + "_"
 
-        if inplace:
-            # Generate Python-C Function Definition
-            python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-                inplaced_forward_api_name,
-                pythonc_record_event_str,
-                inplaced_forward_api_name,
-                get_params_nums_and_check_str,
-                get_eager_tensor_str,
-                parse_attributes_str,
-                check_remaining_params_validity_str,
-                args_mapper_str,
-                convert_to_dist_str,
-                pre_process_str,
-                "",
-                set_device_str,
-                inplace_noamp_dygraph_function_str,
-                return_str,
-            )
-            python_c_function_declare_str = (
-                PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(
-                    name=inplaced_forward_api_name
-                )
-            )
-            # Generate Python-C Function Registration
-            python_c_inplace_func_reg_str = (
-                PYTHON_C_FUNCTION_REG_TEMPLATE.format(
-                    forward_api_name_prefix,
-                    inplaced_forward_api_name,
-                    namespace,
-                    inplaced_forward_api_name,
-                    inplaced_forward_api_name,
-                )
-            )
+        # Generate Python-C Function Definition
+        python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+            function_name,
+            pythonc_record_event_str,
+            function_name,
+            get_params_nums_and_check_str,
+            get_eager_tensor_str,
+            parse_attributes_str,
+            check_remaining_params_validity_str,
+            args_mapper_str,
+            convert_to_dist_str,
+            pre_process_str,
+            get_predefined_out_str,
+            set_device_str,
+            noamp_dygraph_function_str,
+            return_str,
+        )
+        python_c_function_declare_str = (
+            PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=function_name)
+        )
+        # Generate Python-C Function Registration
+        python_c_function_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
+            forward_api_name_prefix,
+            function_name,
+            namespace,
+            function_name,
+            function_name,
+        )
 
-            # self.forward_api_name ending with '_' means it only has inplace api
-            if self.forward_api_name[-1] == '_':
-                self.python_c_function_str = python_c_inplace_func_str
-                self.python_c_function_declare_str = (
-                    python_c_function_declare_str
-                )
-                # Generate Python-C Function Registration
-                self.python_c_function_reg_str = python_c_inplace_func_reg_str
-            else:
-                self.python_c_function_str += python_c_inplace_func_str
-                self.python_c_function_declare_str += (
-                    python_c_function_declare_str
-                )
-                # Generate Python-C Function Registration
-                self.python_c_function_reg_str += python_c_inplace_func_reg_str
+        # self.forward_api_name ending with '_' means it only has inplace api
+        if inplace and self.forward_api_name[-1] != '_':
+            # Add Inplace Function Code After Non-Inplace Function Code
+            self.python_c_function_str += python_c_function_str
+            self.python_c_function_declare_str += python_c_function_declare_str
+            self.python_c_function_reg_str += python_c_function_reg_str
         else:
-            # Generate Python-C Function Definition
-            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-                forward_api_name,
-                pythonc_record_event_str,
-                forward_api_name,
-                get_params_nums_and_check_str,
-                get_eager_tensor_str,
-                parse_attributes_str,
-                check_remaining_params_validity_str,
-                args_mapper_str,
-                convert_to_dist_str,
-                pre_process_str,
-                get_predefined_out_str,
-                set_device_str,
-                noamp_dygraph_function_str,
-                return_str,
-            )
-            self.python_c_function_declare_str = (
-                PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=forward_api_name)
-            )
-            # Generate Python-C Function Registration
-            self.python_c_function_reg_str = (
-                PYTHON_C_FUNCTION_REG_TEMPLATE.format(
-                    forward_api_name_prefix,
-                    forward_api_name,
-                    namespace,
-                    forward_api_name,
-                    forward_api_name,
-                )
-            )
+            self.python_c_function_str = python_c_function_str
+            self.python_c_function_declare_str = python_c_function_declare_str
+            self.python_c_function_reg_str = python_c_function_reg_str
 
     def run(
         self, no_predefined_out_tensor=False, no_parse_python_api_info=False
