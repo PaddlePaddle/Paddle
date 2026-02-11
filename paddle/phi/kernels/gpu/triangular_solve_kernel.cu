@@ -51,7 +51,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
-  out->Resize(common::make_ddim(y_bst_dims_vec));
+  out->Resize(make_ddim(y_bst_dims_vec));
   T* out_data = dev_ctx.template Alloc<T>(out);
   IntArray y_bst_dims(y_bst_dims_vec);
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, out);

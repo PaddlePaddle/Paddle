@@ -597,7 +597,7 @@ static void SliceTensor(DenseTensor *x,
                         const DenseTensor *share,
                         const std::vector<int64_t> &out_compute_dims,
                         int64_t offset) {
-  auto new_dim = common::make_ddim(out_compute_dims);
+  auto new_dim = make_ddim(out_compute_dims);
   DenseTensorMeta meta(share->dtype(),
                        new_dim,
                        share->layout(),

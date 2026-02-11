@@ -73,7 +73,7 @@ class TestBuffered(unittest.TestCase):
 
 
 class TestCompose(unittest.TestCase):
-    def test_compse(self):
+    def test_compose(self):
         reader = paddle.reader.compose(
             reader_creator_10(0), reader_creator_10(0)
         )

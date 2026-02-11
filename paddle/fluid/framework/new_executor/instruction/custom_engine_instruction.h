@@ -32,7 +32,7 @@ class CustomEngineInstruction : public InstructionBase {
   typedef void (*DeletePtr)(void*);
   CustomEngineInstruction(
       size_t id,
-      const phi::Place& place,
+      const Place& place,
       pir::Operation* op,
       ValueExecutionInfo* value_exec_info,
       paddle::framework::interpreter::ExecutionConfig execution_config);
@@ -83,7 +83,7 @@ class CustomEngineInstruction : public InstructionBase {
   }
 
  private:
-  phi::Place place_;
+  Place place_;
   std::string op_name_ = "custom_engine.group_op";
   pir::Operation* op_{nullptr};  // not owned
 

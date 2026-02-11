@@ -30,9 +30,9 @@ class IrSparseCooTensor
   IrSparseCooTensor() = default;
 
   IrSparseCooTensor(phi::DataType dtype,
-                    const common::DDim& dims,
-                    common::DDim non_zero_dims,
-                    common::DataLayout layout,
+                    const DDim& dims,
+                    DDim non_zero_dims,
+                    DataLayout layout,
                     bool coalesced = false);
   IrSparseCooTensor(IrSparseCooTensor&& other) = default;
 
@@ -49,13 +49,13 @@ class IrSparseCooTensor
 
   int64_t numel() const override;
 
-  const common::DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return dims_; }
 
-  void SetDims(const common::DDim& dims) { dims_ = dims; }
+  void SetDims(const DDim& dims) { dims_ = dims; }
 
-  const common::DDim& non_zero_dims() const noexcept { return non_zero_dims_; }
+  const DDim& non_zero_dims() const noexcept { return non_zero_dims_; }
 
-  void SetNonZeroDims(const common::DDim& non_zero_dims) {
+  void SetNonZeroDims(const DDim& non_zero_dims) {
     non_zero_dims_ = non_zero_dims;
   }
 
@@ -65,9 +65,9 @@ class IrSparseCooTensor
 
   void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
 
-  common::DataLayout layout() const noexcept override { return layout_; }
+  DataLayout layout() const noexcept override { return layout_; }
 
-  void SetLayout(common::DataLayout layout) { layout_ = layout; }
+  void SetLayout(DataLayout layout) { layout_ = layout; }
 
   bool coalesced() const { return coalesced_; }
 
@@ -88,10 +88,10 @@ class IrSparseCooTensor
                      bool fake_alloc = false) override;
 
  private:
-  common::DDim dims_;
-  common::DDim non_zero_dims_;
+  DDim dims_;
+  DDim non_zero_dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  common::DataLayout layout_{common::DataLayout::ANY};
+  DataLayout layout_{DataLayout::ANY};
   bool coalesced_ = false;
 };
 
@@ -102,8 +102,8 @@ class IrSparseCsrTensor
   IrSparseCsrTensor() = default;
 
   IrSparseCsrTensor(phi::DataType dtype,
-                    const common::DDim& dims,
-                    common::DataLayout layout,
+                    const DDim& dims,
+                    DataLayout layout,
                     pir::DenseTensorType non_zero_crows,
                     pir::DenseTensorType non_zero_cols,
                     pir::DenseTensorType non_zero_elements);
@@ -122,9 +122,9 @@ class IrSparseCsrTensor
 
   int64_t numel() const override;
 
-  const common::DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return dims_; }
 
-  void SetDims(const common::DDim& dims) { dims_ = dims; }
+  void SetDims(const DDim& dims) { dims_ = dims; }
 
   const phi::Place& place() const override;
 
@@ -132,9 +132,9 @@ class IrSparseCsrTensor
 
   void SetDtype(phi::DataType dtype) { dtype_ = dtype; }
 
-  common::DataLayout layout() const noexcept override { return layout_; }
+  DataLayout layout() const noexcept override { return layout_; }
 
-  void SetLayout(common::DataLayout layout) { layout_ = layout; }
+  void SetLayout(DataLayout layout) { layout_ = layout; }
 
   pir::DenseTensorType non_zero_crows() const { return non_zero_crows_; }
 
@@ -166,9 +166,9 @@ class IrSparseCsrTensor
                      bool fake_alloc = false) override;
 
  private:
-  common::DDim dims_;
+  DDim dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
-  common::DataLayout layout_{common::DataLayout::ANY};
+  DataLayout layout_{DataLayout::ANY};
   pir::DenseTensorType non_zero_crows_;
   pir::DenseTensorType non_zero_cols_;
   pir::DenseTensorType non_zero_elements_;
@@ -178,9 +178,9 @@ inline SparseCooTensorType CvtToSparseCooTensorType(
     const IrSparseCooTensor& ir_tensor) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DataLayout data_layout = phi::DataLayout::UNDEFINED;
+  DataLayout data_layout = DataLayout::UNDEFINED;
   phi::LegacyLoD lod = {};
-  phi::DDim dims = {};
+  DDim dims = {};
   size_t offset = 0;
   pir::DenseTensorType non_zero_indices = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);

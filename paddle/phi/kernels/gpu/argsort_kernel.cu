@@ -185,7 +185,7 @@ static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
 // Sort by flag descending, True: descending. False: Ascending.
 // Default is false.
 template <typename T, typename IndType>
-void ArgFullSort(const phi::GPUContext& dev_ctx,
+void ArgFullSort(const GPUContext& dev_ctx,
                  const DenseTensor* input,
                  DenseTensor* output,
                  DenseTensor* indices,
@@ -275,7 +275,7 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
   }
 }
 template <typename T, typename IndType>
-void PerSort(const phi::GPUContext& dev_ctx,
+void PerSort(const GPUContext& dev_ctx,
              T* out_data,
              int64_t* ids_data,
              IndType start,
@@ -401,7 +401,7 @@ void ArgsortKernel(const Context& dev_ctx,
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     dev_ctx.template Alloc<int64_t>(indices);
     dev_ctx.template Alloc<T>(output);
@@ -434,8 +434,8 @@ void ArgsortKernel(const Context& dev_ctx,
     // Do transpose
     TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

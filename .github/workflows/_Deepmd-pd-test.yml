@@ -47,6 +47,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 20
     steps:
       - name: Check docker image and run container
         env:

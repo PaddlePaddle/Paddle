@@ -23,6 +23,8 @@
 #include <ATen/ops/full.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/reshape.h>
+#include <ATen/ops/sparse_coo_tensor.h>
+#include <ATen/ops/sparse_csr_tensor.h>
 #include <ATen/ops/transpose.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>

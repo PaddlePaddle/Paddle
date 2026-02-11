@@ -46,7 +46,7 @@ __global__ void CosSimDyKernel(const T* x_norm,
     for (size_t i = 0; i < cols; ++i) {
       T dy_data = dz_data * (x_data[i] * reciprocal_xy_norm_prod -
                              z_data * y[i] * reciprocal_y_norm_square);
-      phi::CudaAtomicAdd(dy + i, dy_data);
+      CudaAtomicAdd(dy + i, dy_data);
     }
   }
 }

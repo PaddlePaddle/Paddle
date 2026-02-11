@@ -144,12 +144,12 @@ def unfold(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
-            >>> x = paddle.randn((100,3,224,224))
+            >>> x = paddle.randn((100, 3, 224, 224))
             >>> y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
@@ -1352,16 +1352,16 @@ def dropout(
         When x is a 4d tensor with shape `NCHW`, where `N` is batch size, `C` is the number of channels, H and W are the height and width of the feature, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
         Similarly, when x is a 5d tensor with shape `NCDHW`, where `D` is the depth of the feature, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x = paddle.to_tensor([[1,2,3], [4,5,6]]).astype(paddle.float32)
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype(paddle.float32)
             >>> y_train = paddle.nn.functional.dropout(x, 0.5)
             >>> y_test = paddle.nn.functional.dropout(x, 0.5, training=False)
             >>> y_0 = paddle.nn.functional.dropout(x, axis=0)
             >>> y_1 = paddle.nn.functional.dropout(x, axis=1)
-            >>> y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
+            >>> y_01 = paddle.nn.functional.dropout(x, axis=[0, 1])
             >>> print(x)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 3.],
@@ -1376,7 +1376,7 @@ def dropout(
              [4., 5., 6.]])
             >>> print(y_0)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[2., 4., 6.],
+            [[2. , 4. , 6. ],
              [8. , 10., 12.]])
             >>> print(y_1)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1556,7 +1556,7 @@ def dropout1d(
         Tensor with the same shape as input, where entire channels are zeroed with probability p
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1629,18 +1629,18 @@ def dropout2d(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(1)
             >>> x = paddle.randn(shape=(2, 3, 4, 5)).astype(paddle.float32)
-            >>> y_train = paddle.nn.functional.dropout2d(x)  #train
-            >>> y_test = paddle.nn.functional.dropout2d(x, training=False) #test
+            >>> y_train = paddle.nn.functional.dropout2d(x)  # train
+            >>> y_test = paddle.nn.functional.dropout2d(x, training=False)  # test
             >>> for i in range(2):
             ...     for j in range(3):
-            ...         print(x[i,j,:,:])
-            ...         print(y_train[i,j,:,:]) # may all 0
-            ...         print(y_test[i,j,:,:])
+            ...         print(x[i, j, :, :])
+            ...         print(y_train[i, j, :, :])  # may all 0
+            ...         print(y_test[i, j, :, :])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.30557564,  0.11855337,  0.41220093, -0.09968963,  1.50014710],
              [ 1.24004936, -0.92485696,  0.08612321,  1.15149164, -0.09276631],
@@ -1658,21 +1658,21 @@ def dropout2d(
              [ 0.40092674,  0.67630458,  0.72265440,  1.31720388, -1.41899264]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 0.88350385, -1.14767575,  0.51043051, -0.10051888, -0.61305630],
-             [-0.12084112,  0.48506257, -1.13189507,  0.62806708, -0.80003673],
+             [-0.12084112,  0.48506257, -1.13189507,  0.62806708, -0.80003667],
              [ 0.51513153, -0.08890446,  0.22753835,  0.11557858,  0.78117645],
              [ 1.47505593,  0.84618902, -0.38528305, -1.05887091,  0.16592593]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 1.76700771, -2.29535151,  1.02086103, -0.20103776, -1.22611260],
-             [-0.24168225,  0.97012514, -2.26379013,  1.25613415, -1.60007346],
+             [-0.24168225,  0.97012514, -2.26379013,  1.25613415, -1.60007334],
              [ 1.03026307, -0.17780893,  0.45507669,  0.23115715,  1.56235290],
              [ 2.95011187,  1.69237804, -0.77056611, -2.11774182,  0.33185187]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 0.88350385, -1.14767575,  0.51043051, -0.10051888, -0.61305630],
-             [-0.12084112,  0.48506257, -1.13189507,  0.62806708, -0.80003673],
+             [-0.12084112,  0.48506257, -1.13189507,  0.62806708, -0.80003667],
              [ 0.51513153, -0.08890446,  0.22753835,  0.11557858,  0.78117645],
              [ 1.47505593,  0.84618902, -0.38528305, -1.05887091,  0.16592593]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1.46668839, -0.38117948,  1.18678427,  0.38740095,  0.29117522],
+            [[-1.46668839, -0.38117948,  1.18678415,  0.38740095,  0.29117522],
              [-0.13538910, -0.14527084, -0.04912176, -0.26063353,  0.23640174],
              [ 0.45643106,  0.60587281, -1.03242552, -0.45319262, -1.57911122],
              [-0.08732958, -0.75898546,  0.14563090, -1.73751652, -0.89109969]])
@@ -1682,15 +1682,15 @@ def dropout2d(
              [0. , 0. , -0., -0., -0.],
              [-0., -0., 0. , -0., -0.]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1.46668839, -0.38117948,  1.18678427,  0.38740095,  0.29117522],
+            [[-1.46668839, -0.38117948,  1.18678415,  0.38740095,  0.29117522],
              [-0.13538910, -0.14527084, -0.04912176, -0.26063353,  0.23640174],
              [ 0.45643106,  0.60587281, -1.03242552, -0.45319262, -1.57911122],
              [-0.08732958, -0.75898546,  0.14563090, -1.73751652, -0.89109969]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.32110816, -0.76044011,  0.34456784, -0.39410326,  0.37896338],
              [ 0.52747023,  0.72711533,  0.29204839,  0.72493637,  0.31128070],
-             [ 0.58046782, -1.78499067, -1.67504823, -0.38590902, -0.26243693],
-             [ 0.96669912,  0.43670532, -0.38109761,  0.78405094, -2.17882323]])
+             [ 0.58046782, -1.78499067, -1.67504823, -0.38590902, -0.26243690],
+             [ 0.96669900,  0.43670532, -0.38109761,  0.78405094, -2.17882323]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0., -0., 0. , -0., 0. ],
              [0. , 0. , 0. , 0. , 0. ],
@@ -1699,8 +1699,8 @@ def dropout2d(
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.32110816, -0.76044011,  0.34456784, -0.39410326,  0.37896338],
              [ 0.52747023,  0.72711533,  0.29204839,  0.72493637,  0.31128070],
-             [ 0.58046782, -1.78499067, -1.67504823, -0.38590902, -0.26243693],
-             [ 0.96669912,  0.43670532, -0.38109761,  0.78405094, -2.17882323]])
+             [ 0.58046782, -1.78499067, -1.67504823, -0.38590902, -0.26243690],
+             [ 0.96669900,  0.43670532, -0.38109761,  0.78405094, -2.17882323]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[ 0.17168395,  0.45112833,  0.63307828,  2.38763475, -1.27247131],
              [ 0.56171960, -1.09584677,  0.38300961, -0.57512099,  0.31011426],
@@ -1717,8 +1717,8 @@ def dropout2d(
              [-0.95336407, -1.04852903, -0.21312937, -0.53549880, -0.00074209],
              [ 2.22819090,  1.12403083, -0.04198794, -1.51167727, -0.42699185]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 0.62503546, -0.20989063, -0.22046235, -0.38679042, -1.02590704],
-             [ 1.04561794,  1.08428383, -0.52219963, -1.56003857,  0.89213932],
+            [[ 0.62503546, -0.20989063, -0.22046235, -0.38679042, -1.02590692],
+             [ 1.04561782,  1.08428383, -0.52219963, -1.56003857,  0.89213932],
              [-0.16578521,  0.14524542, -0.45563069,  0.48180851,  1.35843253],
              [ 1.07669640, -0.84535235, -1.18651557,  0.79144061, -0.45565742]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1727,8 +1727,8 @@ def dropout2d(
              [-0., 0. , -0., 0. , 0. ],
              [0. , -0., -0., 0. , -0.]])
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 0.62503546, -0.20989063, -0.22046235, -0.38679042, -1.02590704],
-             [ 1.04561794,  1.08428383, -0.52219963, -1.56003857,  0.89213932],
+            [[ 0.62503546, -0.20989063, -0.22046235, -0.38679042, -1.02590692],
+             [ 1.04561782,  1.08428383, -0.52219963, -1.56003857,  0.89213932],
              [-0.16578521,  0.14524542, -0.45563069,  0.48180851,  1.35843253],
              [ 1.07669640, -0.84535235, -1.18651557,  0.79144061, -0.45565742]])
     """
@@ -1781,16 +1781,16 @@ def dropout3d(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.randn(shape=(2, 3, 4, 5, 6)).astype(paddle.float32)
-            >>> y_train = paddle.nn.functional.dropout3d(x)  #train
-            >>> y_test = paddle.nn.functional.dropout3d(x, training=False) #test
-            >>> print(x[0,0,:,:,:])
-            >>> print(y_train[0,0,:,:,:]) # may all 0
-            >>> print(y_test[0,0,:,:,:])
+            >>> y_train = paddle.nn.functional.dropout3d(x)  # train
+            >>> y_test = paddle.nn.functional.dropout3d(x, training=False)  # test
+            >>> print(x[0, 0, :, :, :])
+            >>> print(y_train[0, 0, :, :, :])  # may all 0
+            >>> print(y_test[0, 0, :, :, :])
 
     """
 
@@ -1898,7 +1898,7 @@ def alpha_dropout(
         Tensor: A Tensor representing the dropout, has same shape and data type as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(1)
@@ -1942,7 +1942,7 @@ def feature_alpha_dropout(
         Tensor: A Tensor representing the dropout, has same shape and data type as `x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(1)
@@ -2375,7 +2375,7 @@ def zeropad2d(
         Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -2434,7 +2434,7 @@ def cosine_similarity(
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
     Code Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2503,7 +2503,7 @@ def linear(
         data type is the same with input :math:`x` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -2642,7 +2642,7 @@ def label_smooth(
         Tensor: The tensor containing the smoothed labels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.disable_static()
@@ -2729,7 +2729,7 @@ def class_center_sample(
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
         :name: code-example1
 
         >>> # CPU or single GPU
@@ -2750,7 +2750,7 @@ def class_center_sample(
         Tensor(shape=[7], dtype=int64, place=Place(cpu), stop_gradient=True,
         [5 , 8 , 10, 14, 17, 18, 19])
 
-    .. code-block:: python
+    .. code-block:: pycon
         :name: code-example2
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
@@ -2766,15 +2766,19 @@ def class_center_sample(
         >>> num_classes_list = [10, 10]
         >>> num_classes = paddle.sum(paddle.to_tensor(num_classes_list))
         >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')  # type: ignore[arg-type]
-        >>> label_list = [] # type: ignore
+        >>> label_list = []  # type: ignore
         >>> dist.all_gather(label_list, label)
         >>> label = paddle.concat(label_list, axis=0)
-        >>> remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes_list[rank_id], num_samples)
+        >>> remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
+        ...     label,
+        ...     num_classes_list[rank_id],
+        ...     num_samples,
+        ... )
 
         >>> print(label)
         >>> print(remapped_label)
         >>> print(sampled_class_index)
-        >>> #python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
+        >>> # python -m paddle.distributed.launch --gpus=0,1 test_class_center_sample.py
         >>> # rank 0 output:
         Tensor(shape=[20], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
         [10, 17, 15, 11, 9 , 12, 18, 18, 17, 18, 19, 2 , 8 , 13, 11, 13, 9 , 10, 0 , 4 ])

@@ -39,7 +39,7 @@ class MatrixReduceSumFunctor<T, CPUContext> {
     std::copy(out_dims.data(),
               out_dims.data() + out_size,
               out_bst_dims.data() + in_size - out_size);
-    out->Resize(common::make_ddim(out_bst_dims));
+    out->Resize(make_ddim(out_bst_dims));
 
     std::vector<int64_t> out_reduce_dims;
     for (size_t idx = 0; idx <= in_size - 3; idx++) {

@@ -177,11 +177,6 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using float16 = phi::float16;
-using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
-
 PD_REGISTER_KERNEL(sum_grad,
                    GPU,
                    STRIDED,
