@@ -194,6 +194,27 @@ def argsort(
         return ids
 
 
+@overload
+def index_select(
+    x: Tensor,
+    index: Tensor,
+    axis: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def index_select(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
 @index_select_decorator()
 def index_select(
     x: Tensor,

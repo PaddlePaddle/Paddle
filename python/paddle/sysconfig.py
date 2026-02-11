@@ -27,7 +27,7 @@ def get_include() -> str:
       The directory as string.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> include_dir = paddle.sysconfig.get_include()
@@ -46,7 +46,7 @@ def get_lib() -> str:
       The directory as string.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> include_dir = paddle.sysconfig.get_lib()

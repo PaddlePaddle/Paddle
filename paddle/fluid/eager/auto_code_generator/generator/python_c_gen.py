@@ -377,7 +377,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.is_forward_only = True
-        self.need_parse_python_api_args = False
 
         # Generated Results
         self.python_c_function_str = ""
@@ -390,7 +389,65 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             False if 'backward' in forward_api_contents.keys() else True
         )
 
-    def GeneratePythonCFunction(self, no_predefined_out_tensor=False):
+    def ParsePythonAPIInfo(self, name, no_parse_python_api_info=False):
+        python_api_info = {}
+        need_parse_python_api_args = False
+        args_alias = {}  # {arg_name: alias_vector, ...}
+        dygraph_pre_process = ""  # pre-process function name
+        args_mapper_func = None  # The custom args parser function
+
+        if no_parse_python_api_info:
+            return (
+                need_parse_python_api_args,
+                args_alias,
+                dygraph_pre_process,
+                args_mapper_func,
+            )
+
+        if name in python_api_info_from_yaml.keys():
+            python_api_info = python_api_info_from_yaml[name]
+        if len(python_api_info) > 0:
+            need_parse_python_api_args = True
+            # parse args_alias
+            if 'args_alias' in python_api_info.keys():
+                for arg, alias_or_mode in python_api_info['args_alias'].items():
+                    if arg == 'use_default_mapping':
+                        args_alias.update({arg: alias_or_mode})
+                        continue
+                    alias_set = set(alias_or_mode)
+                    # Add the original argument name to the alias set
+                    alias_set.add(arg)
+                    # Convert to C++ vector format
+                    alias_vector = (
+                        "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
+                    )
+                    args_alias.update({arg: alias_vector})
+            # parse pre_process
+            if 'pre_process' in python_api_info.keys():
+                pre_process = python_api_info['pre_process']
+                if pre_process is not None:
+                    if 'dygraph_func' in pre_process.keys():
+                        dygraph_pre_process = pre_process['dygraph_func']
+                    elif 'func' in pre_process.keys():
+                        dygraph_pre_process = pre_process['func']
+            # parse args_mapper
+            if 'args_mapper' in python_api_info.keys():
+                args_mapper = python_api_info['args_mapper']
+                if args_mapper is not None:
+                    if 'dygraph_func' in args_mapper.keys():
+                        args_mapper_func = args_mapper['dygraph_func']
+                    elif 'func' in args_mapper.keys():
+                        args_mapper_func = args_mapper['func']
+        return (
+            need_parse_python_api_args,
+            args_alias,
+            dygraph_pre_process,
+            args_mapper_func,
+        )
+
+    def GeneratePythonCFunction(
+        self, no_predefined_out_tensor=False, no_parse_python_api_info=False
+    ):
         namespace = self.namespace
         forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
@@ -400,13 +457,16 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
 
-        need_parse_python_api_args = self.need_parse_python_api_args
-        args_alias_map = self.args_alias_map
+        (
+            need_parse_python_api_args,
+            args_alias_map,
+            dygraph_pre_process,
+            args_mapper_func,
+        ) = self.ParsePythonAPIInfo(forward_api_name, no_parse_python_api_info)
+
         max_args = len(orig_forward_attrs_list) + len(
             forward_inputs_position_map
         )
-        dygraph_pre_process = self.dygraph_pre_process
-        args_mapper_func = self.args_mapper_func_name
         inplace_args_pos_map = {}
         inplace_returns_pos_map = {}
         get_params_nums_and_check_str = "   // NO NEED"
@@ -888,16 +948,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
-    def InitAndParsePythonAPIInfo(self):
-        global python_api_info_from_yaml
-        if self.forward_api_name in python_api_info_from_yaml.keys():
-            self.python_api_info = python_api_info_from_yaml[
-                self.forward_api_name
-            ]
-        if len(self.python_api_info) > 0:
-            self.need_parse_python_api_args = True
-            self.ParsePythonAPIInfo()
-
     def run(
         self, no_predefined_out_tensor=False, no_parse_python_api_info=False
     ):
@@ -912,8 +962,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-        if not no_parse_python_api_info:
-            self.InitAndParsePythonAPIInfo()
         if SkipAPIGeneration(self.forward_api_name):
             return False
 
@@ -923,7 +971,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
         # Code Generation
-        self.GeneratePythonCFunction(no_predefined_out_tensor)
+        self.GeneratePythonCFunction(
+            no_predefined_out_tensor, no_parse_python_api_info
+        )
 
         return True
 
