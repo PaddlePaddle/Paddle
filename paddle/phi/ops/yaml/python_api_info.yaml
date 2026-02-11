@@ -413,7 +413,7 @@
     use_default_mapping : True
 
 - op : poisson
-  name : [paddle.poisson, paddle.Tensor.poisson]
+  name : [paddle.poisson]
   args_alias :
     x : [input]
 
