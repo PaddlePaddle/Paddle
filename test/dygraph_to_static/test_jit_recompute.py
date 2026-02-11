@@ -20,6 +20,7 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
+from paddle.distributed.fleet.utils import recompute
 
 
 class ManualPyLayerRecompute(paddle.autograd.PyLayer):
@@ -71,6 +72,37 @@ class TestManualPyLayerRecompute(Dy2StTestBase):
 
         np.testing.assert_allclose(grad_x1, grad_x2, rtol=1e-05)
         np.testing.assert_allclose(grad_y1, grad_y2, rtol=1e-05)
+
+
+class SimpleRecomputeNet(paddle.nn.Layer):
+    def __init__(self, input_size=10):
+        super().__init__()
+        self.block = paddle.nn.Sequential(
+            paddle.nn.Linear(input_size, input_size),
+            paddle.nn.ReLU(),
+            paddle.nn.Linear(input_size, 1),
+        )
+        self.block = paddle.jit.to_static(self.block)
+
+    def forward(self, inputs):
+        return recompute(self.block, inputs)
+
+
+class TestRecompute(Dy2StTestBase):
+    def test(self):
+        input_size = 10
+        x = paddle.randn([2, input_size])
+        x.stop_gradient = False
+
+        model = SimpleRecomputeNet(input_size)
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.01, parameters=model.parameters()
+        )
+
+        out = model(x)
+        loss = out.mean()
+        loss.backward()
+        optimizer.step()
 
 
 if __name__ == '__main__':
