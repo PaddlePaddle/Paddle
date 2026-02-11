@@ -49,7 +49,7 @@ class CELU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -112,7 +112,7 @@ class ELU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -159,7 +159,7 @@ class GLU(Layer):
         - output: Tensor which the size of the given axis is halved.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor(
@@ -225,7 +225,7 @@ class GELU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
@@ -304,7 +304,7 @@ class Hardshrink(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -368,7 +368,7 @@ class Hardswish(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -409,7 +409,7 @@ class Tanh(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -460,7 +460,7 @@ class Hardtanh(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -518,7 +518,7 @@ class PReLU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -622,7 +622,7 @@ class RReLU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -703,7 +703,7 @@ class ReLU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -749,7 +749,7 @@ class ReLU6(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -798,7 +798,7 @@ class SELU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -866,7 +866,7 @@ class LeakyReLU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -923,7 +923,7 @@ class Sigmoid(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -978,7 +978,7 @@ class Hardsigmoid(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1028,7 +1028,7 @@ class Softplus(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1082,7 +1082,7 @@ class Softshrink(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1134,7 +1134,7 @@ class Softsign(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1176,7 +1176,7 @@ class Swish(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1230,7 +1230,7 @@ class Mish(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1278,7 +1278,7 @@ class Tanhshrink(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1328,7 +1328,7 @@ class ThresholdedReLU(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1378,7 +1378,7 @@ class Silu(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1432,7 +1432,7 @@ class LogSigmoid(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1547,7 +1547,7 @@ class Softmax(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1608,7 +1608,7 @@ class LogSoftmax(Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1680,7 +1680,7 @@ class Maxout(Layer):
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -1726,7 +1726,7 @@ class Softmax2D(Layer):
         A Tensor of the same shape and dtype as input with value in range [0, 1].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)

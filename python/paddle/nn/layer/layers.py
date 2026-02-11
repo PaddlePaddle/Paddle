@@ -410,7 +410,7 @@ class Layer:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -531,7 +531,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -594,7 +594,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -652,7 +652,7 @@ class Layer:
             Layer, self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -706,7 +706,7 @@ class Layer:
             str, full name of this layer.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -759,7 +759,7 @@ class Layer:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -847,7 +847,7 @@ class Layer:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -922,7 +922,7 @@ class Layer:
             :Tensor, created parameter.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -1008,7 +1008,7 @@ class Layer:
             Tensor, created Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1065,7 +1065,7 @@ class Layer:
             Tensor, created Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1114,7 +1114,7 @@ class Layer:
             list, list of Tensor, a list of Parameters.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1151,7 +1151,7 @@ class Layer:
             Layer, self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -1227,7 +1227,7 @@ class Layer:
             Layer: a child layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1252,7 +1252,7 @@ class Layer:
             (string, Layer): Tuple containing a name and child layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1328,7 +1328,7 @@ class Layer:
             (string, Parameter): Tuple of name and Parameter
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1406,7 +1406,7 @@ class Layer:
             (string, Layer): Tuple of name and Layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1522,7 +1522,7 @@ class Layer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1579,7 +1579,7 @@ class Layer:
             list of Tensor, a list of buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1653,7 +1653,7 @@ class Layer:
             (string, Tensor): Tuple of name and tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1711,7 +1711,7 @@ class Layer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1862,7 +1862,7 @@ class Layer:
             Layer, the sublayer passed in.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1990,7 +1990,7 @@ class Layer:
         Returns:
             Parameter, the parameter passed in.
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -2457,7 +2457,7 @@ class Layer:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2522,7 +2522,7 @@ class Layer:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2650,7 +2650,7 @@ class Layer:
             unexpected_keys(list):A list of str containing the unexpected keys
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2856,7 +2856,7 @@ class Layer:
             self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -3237,7 +3237,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Paddle compiled by the user does not support float16, so keep original data type.')
                 >>> import paddle
@@ -3303,7 +3303,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('bfloat need V100 compile')
                 >>> import paddle
