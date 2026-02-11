@@ -123,6 +123,15 @@ def validate_expert_indices(proposed_expert_indices, compact_routemap):
         compact_routemap, permute_rows=proposed_expert_indices.shape[0]
     )
     np.testing.assert_array_equal(proposed_expert_indices, gold)
+    # check all proposed_expert_indices item is in [0, expert_num) or -1
+    expert_num = compact_routemap.shape[1]
+    # high performance, parallel assert using paddle vectorized operations
+    valid_mask = (proposed_expert_indices == -1) | (
+        (proposed_expert_indices >= 0) & (proposed_expert_indices < expert_num)
+    )
+    assert paddle.all(valid_mask).item(), (
+        f"expert_indices contains invalid values outside range [-1, {expert_num})"
+    )
 
 
 class TestFusedMoePermuteUnpermute(unittest.TestCase):

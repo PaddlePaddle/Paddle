@@ -349,9 +349,10 @@ __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
                                        int32_t* __restrict__ expert_offset,
                                        int32_t* __restrict__ expert_offset_end,
                                        int32_t* __restrict__ expert_indices,
-                                       int numel,
-                                       int num_experts,
-                                       int padding_alignment) {
+                                       int32_t numel,
+                                       int32_t num_experts,
+                                       int32_t padding_alignment,
+                                       int32_t override_buffer_size) {
   extern __shared__ int32_t shared[];
   int32_t* hist = shared;                       // [0, ne)
   int32_t* offset_smem = shared + num_experts;  // [ne, 2*ne)
@@ -406,6 +407,14 @@ __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
       for (int j = threadIdx.x; j < padded_count; j += BLOCK_SIZE)
         expert_indices[offset + j] = (j < count) ? expert : -1;
     }
+    // Phase 3b: Fill the rest of the buffer with -1 (parallel)
+    // Total filled size = offset of last expert + its padded_count
+    int32_t total_filled = offset_smem[num_experts - 1] +
+                           align_up(hist[num_experts - 1], padding_alignment);
+    // All threads parallel fill remaining positions
+    for (int i = total_filled + threadIdx.x; i < override_buffer_size;
+         i += BLOCK_SIZE)
+      expert_indices[i] = -1;
   }
 }
 }  // namespace phi
