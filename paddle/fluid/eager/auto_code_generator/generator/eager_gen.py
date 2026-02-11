@@ -2401,7 +2401,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
-        if is_inplaced or (forward_api_name == "cast"):
+        if grad_flag:
+            amp_logic_str = ""
+        elif is_inplaced or (forward_api_name == "cast"):
             amp_logic_str = f'\n VLOG(5) << " No AMP for {forward_ad_function_name} because it is a inplace or cast api. "; '
         else:
             amp_logic_str = AMP_LOGIC_TEMPLATE.format(
@@ -2485,8 +2487,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 op_name=kernel_trans2_op_name_str,
                 return_value=type_promote_call_list,
             )
-        else:
+        elif not grad_flag:
             type_promotion_logic_str = f'\n VLOG(5) << " No Type Promotion for {forward_ad_function_name} api. "; '
+        else:
+            type_promotion_logic_str = ""
 
         # Forward type autocast logic
         if forward_api_name in type_autocast_op_list:
@@ -2509,22 +2513,27 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 trace_backward=trace_backward,
                 return_value=type_autocast_call_list,
             )
-        else:
+        elif not grad_flag:
             type_autocast_logic_str = f'\n VLOG(5) << " No Type Autocast for {forward_ad_function_name} api. "; '
+        else:
+            type_autocast_logic_str = ""
 
         # Forward layout autotune
-        layout_autotune_list_str = "    ".join(
-            layout_autotune_list
-        ) + "    ".join(layout_autotune_optional_list)
-        layout_logic_str = self.GenerateForwardLayoutAutotune(
-            forward_api_name,
-            amp_tensors_vector_list,
-            layout_tensors_vector_optional_list,
-            layout_autotune_list_str,
-            returns_type_str,
-            returns_str,
-            amp_inputs_call_args_str,
-        )
+        if not grad_flag:
+            layout_autotune_list_str = "    ".join(
+                layout_autotune_list
+            ) + "    ".join(layout_autotune_optional_list)
+            layout_logic_str = self.GenerateForwardLayoutAutotune(
+                forward_api_name,
+                amp_tensors_vector_list,
+                layout_tensors_vector_optional_list,
+                layout_autotune_list_str,
+                returns_type_str,
+                returns_str,
+                amp_inputs_call_args_str,
+            )
+        else:
+            layout_logic_str = ""
 
         # For inputs outputs prepare for logging
         var_str = f'\n{indent}  std::string input_str = "";'

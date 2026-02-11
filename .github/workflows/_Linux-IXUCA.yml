@@ -237,8 +237,8 @@ jobs:
             -v /home:/home \
             -v /data:/data \
             -v ${{ github.workspace }}/PaddleCustomDevice:/paddle \
-            -e LD_LIBRARY_PATH=/usr/local/corex-4.3.0/lib \
-            -e LIBRARY_PATH=/usr/local/corex-4.3.0/lib \
+            -e LD_LIBRARY_PATH=/usr/local/corex/lib \
+            -e LIBRARY_PATH=/usr/local/corex/lib \
             -v /root/.cache:/root/.cache \
             -v /root/.cache:/root/.ccache \
             -e BRANCH \

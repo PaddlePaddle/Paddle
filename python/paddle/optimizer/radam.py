@@ -105,7 +105,7 @@ class RAdam(Optimizer):
         Currently, RAdam doesn't support sparse parameter optimization.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

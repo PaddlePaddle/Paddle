@@ -70,12 +70,12 @@ if(WITH_GPU)
   nv_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi common scope)
+    DEPS operator op_registry phi common scope)
 elseif(WITH_ROCM)
   hip_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi common scope)
+    DEPS operator op_registry phi common scope)
 endif()
 
 if(WITH_GPU)
@@ -120,11 +120,11 @@ cc_test(
 cc_test(
   operator_test
   SRCS operator_test.cc
-  DEPS operator op_registry device_context)
+  DEPS operator op_registry phi)
 cc_test(
   operator_exception_test
   SRCS operator_exception_test.cc
-  DEPS operator op_registry device_context)
+  DEPS operator op_registry phi)
 
 cc_test(
   version_test
@@ -161,7 +161,7 @@ cc_test(
 cc_test(
   prune_test
   SRCS prune_test.cc
-  DEPS op_info prune device_context)
+  DEPS op_info prune phi)
 cc_test(
   var_type_inference_test
   SRCS var_type_inference_test.cc
@@ -175,7 +175,7 @@ cc_test(
 cc_test(
   op_kernel_type_test
   SRCS op_kernel_type_test.cc
-  DEPS phi common device_context framework_proto op_kernel_type)
+  DEPS phi common framework_proto op_kernel_type)
 
 cc_test(tuple_test SRCS tuple_test.cc)
 

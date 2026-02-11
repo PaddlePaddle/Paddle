@@ -894,12 +894,19 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     next_vars,
                     check_types=False,
                     skip_if=lambda x: (
-                        isinstance(x, LoopVar)
-                        and isinstance(
-                            x.curr_var, paddle.jit.dy2static.utils.UndefinedVar
+                        (
+                            isinstance(x, LoopVar)
+                            and isinstance(
+                                x.curr_var,
+                                paddle.jit.dy2static.utils.UndefinedVar,
+                            )
                         )
-                    )
-                    or (isinstance(x, paddle.jit.dy2static.utils.UndefinedVar)),
+                        or (
+                            isinstance(
+                                x, paddle.jit.dy2static.utils.UndefinedVar
+                            )
+                        )
+                    ),
                 )
             except ValueError as e:
                 raise ValueError(
@@ -1921,10 +1928,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         return pack_sequence_as(true_output, restored_output)
 
     mask = paddle.cast(pred, dtype='int32')
-    merge_func = (
-        lambda name, false_var, true_var: select_input_with_buildin_type(
-            [false_var, true_var], mask, name
-        )
+    merge_func = lambda name, false_var, true_var: (
+        select_input_with_buildin_type([false_var, true_var], mask, name)
     )
 
     def merge_every_var_list(false_vars, true_vars, name):
