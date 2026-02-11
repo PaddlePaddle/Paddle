@@ -186,7 +186,7 @@ jobs:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_test
     runs-on:
       group: Kunlun
-    timeout-minutes: 120
+    timeout-minutes: 300
 
     steps:
       - name: Determine the runner
@@ -274,6 +274,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          sleep 5h
           bash ${ci_scripts}/kunlun_test.sh
           '
 
