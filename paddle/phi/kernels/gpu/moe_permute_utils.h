@@ -391,7 +391,7 @@ __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
       int32_t count = hist[i];
       int32_t padded_count = align_up(count, padding_alignment);
       expert_offset[i] = offset;
-      expert_offset_end[i] = offset + count;
+      expert_offset_end[i] = offset + count - 1;
       offset_smem[i] = offset;
       offset += padded_count;
     }
