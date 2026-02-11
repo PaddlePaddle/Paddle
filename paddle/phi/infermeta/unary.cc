@@ -5953,7 +5953,7 @@ void TransposeInferMeta(const MetaTensor& x,
                         axis_size));
 
   std::vector<int> formatted_axis = axis;
-  std::vector<int> count(axis_size, 0);
+  std::vector<int> count(x_rank, 0);
   for (int i = 0; i < axis_size; i++) {
     PADDLE_ENFORCE_LT(axis[i],
                       x_rank,
