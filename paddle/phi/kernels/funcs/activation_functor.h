@@ -5466,7 +5466,9 @@ struct CudaLog10Functor<ComplexType<T>>
 template <typename T>
 struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  T log_ten = static_cast<T>(log(static_cast<MPType>(10.0)));
+
+  // ln(10) constant matching PyTorch's M_LN10 for precise float64 backward
+  T log_ten = static_cast<T>(2.30258509299404568401);
 
   // dx = dout / (x * log(10))
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
