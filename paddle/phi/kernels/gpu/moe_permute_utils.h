@@ -404,8 +404,11 @@ __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
       int32_t offset = offset_smem[expert];
       int32_t count = hist[expert];
       int32_t padded_count = align_up(count, padding_alignment);
-      for (int j = threadIdx.x; j < padded_count; j += BLOCK_SIZE)
-        expert_indices[offset + j] = (j < count) ? expert : -1;
+      for (int j = threadIdx.x; j < padded_count; j += BLOCK_SIZE) {
+        int32_t write_pos = offset + j;
+        if (write_pos < override_buffer_size)
+          expert_indices[write_pos] = (j < count) ? expert : -1;
+      }
     }
     // Phase 3b: Fill the rest of the buffer with -1 (parallel)
     // Total filled size = offset of last expert + its padded_count
