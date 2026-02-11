@@ -21,6 +21,7 @@ import functools
 import inspect
 import sys
 import warnings
+from inspect import signature
 from typing import Callable, TypeVar
 
 from typing_extensions import ParamSpec
@@ -142,6 +143,7 @@ def deprecated(
 
             return func(*args, **kwargs)
 
+        wrapper.__signature__ = signature(func)
         return wrapper
 
     return decorator
