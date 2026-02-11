@@ -248,6 +248,12 @@ struct GPUContext::Impl {
   ~Impl() {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     if (owned_) {
+#ifdef PADDLE_WITH_CUDA
+      if (cublas_workspace_) {
+        cudaFree(cublas_workspace_);
+        cublas_workspace_ = nullptr;
+      }
+#endif
       DestroyInternalWorkspace();
       DestroyInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
@@ -278,6 +284,29 @@ struct GPUContext::Impl {
 
   bool IsTensorCoreAvailable() const {
     return blas_tensor_core_handle_ != nullptr;
+  }
+
+  // Returns the cublas workspace size matching PyTorch's behavior
+  // for different GPU architectures.
+  // Hopper (SM 9.0): 32 MiB, others: ~8.125 MiB
+  static size_t GetCublasWorkspaceSize(int compute_capability) {
+    if (compute_capability == 90) {
+      return 4096 * 8 * 1024;  // 32 MiB
+    }
+    return 4096 * 1024 * 2 + 16 * 1024 * 8;  // ~8.125 MiB
+  }
+
+  void SetCublasWorkspace(blasHandle_t handle) {
+#ifdef PADDLE_WITH_CUDA
+    size_t workspace_size = GetCublasWorkspaceSize(compute_capability_);
+    if (!cublas_workspace_) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMalloc(&cublas_workspace_, workspace_size));
+      cublas_workspace_size_ = workspace_size;
+    }
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace(
+        handle, cublas_workspace_, cublas_workspace_size_));
+#endif
   }
 
   void InitDnnWorkspace() {
@@ -392,6 +421,7 @@ struct GPUContext::Impl {
         } else {
           blas_handle_ = blas_handle_creator_();
         }
+        SetCublasWorkspace(blas_handle_);
       }
 #ifdef PADDLE_WITH_CUDA
       if (!blas_tensor_core_handle_) {
@@ -605,6 +635,7 @@ struct GPUContext::Impl {
         } else {
           blas_handle_ = blas_handle_creator_();
         }
+        SetCublasWorkspace(blas_handle_);
       }
 #ifdef PADDLE_WITH_CUDA
       if (!blas_tensor_core_handle_) {
@@ -646,6 +677,7 @@ struct GPUContext::Impl {
         } else {
           blas_handle_ = blas_handle_creator_();
         }
+        SetCublasWorkspace(blas_handle_);
       }
 #ifdef PADDLE_WITH_CUDA
       if (!blas_tensor_core_handle_) {
@@ -784,6 +816,8 @@ struct GPUContext::Impl {
   std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
   blasLtHandle_t blaslt_handle_{nullptr};
   std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
+  void* cublas_workspace_{nullptr};
+  size_t cublas_workspace_size_{0};
   dnnHandle_t dnn_handle_{nullptr};
   std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
   solverHandle_t solver_handle_{nullptr};

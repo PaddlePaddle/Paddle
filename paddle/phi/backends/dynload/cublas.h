@@ -125,7 +125,8 @@ extern void *cublas_dso_handle;
   __macro(cublasCgeam);                   \
   __macro(cublasZgeam);                   \
   __macro(cublasGemmBatchedEx);           \
-  __macro(cublasGemmStridedBatchedEx);
+  __macro(cublasGemmStridedBatchedEx);    \
+  __macro(cublasSetWorkspace);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
