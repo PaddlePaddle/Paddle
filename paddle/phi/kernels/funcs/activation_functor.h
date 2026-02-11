@@ -5467,12 +5467,16 @@ template <typename T>
 struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  // ln(10) constant matching PyTorch's M_LN10 for precise float64 backward
-  T log_ten = static_cast<T>(2.30258509299404568401);
+  // ln(10) = 2.30258509299404568402... (M_LN10)
+  // Using PyTorch's exact 16-digit literal from derivatives.yaml for bit-exact
+  // alignment
+  T log_ten = static_cast<T>(2.3025850929940456);
 
   // dx = dout / (x * log(10))
+  // Division-first order: (dout / x) / log_ten to match PyTorch's
+  // generated backward code rounding behavior (reduces 1-ULP drift).
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / (x * log_ten);
+    return (dout / x) / log_ten;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
