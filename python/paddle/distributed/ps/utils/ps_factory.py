@@ -18,11 +18,6 @@ from .public import *  # noqa: F403
 __all__ = [
     'PsProgramBuilder',
     'GeoPsProgramBuilder',
-    'CpuSyncPsProgramBuilder',
-    'CpuAsyncPsProgramBuilder',
-    'GpuPsProgramBuilder',
-    'HeterAsyncPsProgramBuilder',
-    'FlPsProgramBuilder',
     'NuPsProgramBuilder',
 ]
 
@@ -38,13 +33,3 @@ class PsProgramBuilderFactory:
                 return globals()['NuPsProgramBuilder'](pass_ctx)
             else:
                 return globals()['GeoPsProgramBuilder'](pass_ctx)
-        elif attrs['use_ps_gpu']:
-            return globals()['GpuPsProgramBuilder'](pass_ctx)
-        elif attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:
-            return globals()['HeterAsyncPsProgramBuilder'](pass_ctx)
-        elif attrs.get('is_fl_ps_mode'):
-            return globals()['FlPsProgramBuilder'](pass_ctx)
-        elif attrs['ps_mode'] == DistributedMode.SYNC:
-            return globals()['CpuSyncPsProgramBuilder'](pass_ctx)
-        else:
-            return globals()['CpuAsyncPsProgramBuilder'](pass_ctx)

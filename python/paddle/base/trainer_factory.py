@@ -25,13 +25,8 @@ local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .device_worker import (  # noqa: F401
-    DownpourLite,
-    DownpourSGD,
-    DownpourSGDOPT,
-    HeterSection,
+from .device_worker import (
     Hogwild,
-    Section,
 )
 from .framework import Variable
 from .trainer_desc import (

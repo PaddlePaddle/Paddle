@@ -132,7 +132,6 @@ from .ps_trainer_pass import (  # noqa: F401
     FakeInitOpsPass,
     PsGpuPass,
     PsTranspilePass,
-    SetHeterPipelineOptPass,
     SplitFlOpsPass,
     SplitHeterWorkerOpsPass,
     SplitTrainerOpsPass,

@@ -53,9 +53,6 @@ from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
 from paddle.incubate.distributed.fleet.parameter_server.mode import PSMode
-from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
-    DistributedAdam,  # noqa: F401
-)
 from paddle.incubate.distributed.fleet.role_maker import MPISymmetricRoleMaker
 from paddle.static import (
     Executor,

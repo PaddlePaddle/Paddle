@@ -32,7 +32,6 @@ from paddle.incubate.distributed.fleet.role_maker import (
 
 from .optimizer_factory import (
     FLEET_GLOBAL_DICT,
-    DistributedAdam,  # noqa: F401
 )
 
 

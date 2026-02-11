@@ -1281,44 +1281,6 @@ class SplitTrainerOpsPass(PassBase):
         main_program = trainer_program
 
 
-@register_pass("set_heter_pipeline_opt_pass")
-class SetHeterPipelineOptPass(PassBase):
-    def __init__(self):
-        super().__init__()
-
-    def _check_self(self):
-        return True
-
-    def _check_conflict(self, other_pass):
-        return True
-
-    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        attrs = pass_ctx._attrs
-        role_maker = attrs['role_maker']
-        num_microbatches = attrs['user_defined_strategy'].pipeline_configs[
-            'accumulate_steps'
-        ]
-
-        startup_program._heter_pipeline_opt = {
-            "startup_program": startup_program,
-            "pipeline_stage": int(role_maker._get_stage_id()) - 1,
-            "heter_place": role_maker._heter_device(),
-            "is_fl_mode": 1,
-        }
-        main_program._heter_pipeline_opt = {
-            "trainer": "HeterPipelineTrainer",
-            "device_worker": "HeterSection",
-            "trainers": role_maker._get_stage_trainers(),  # trainer num in each stage
-            "trainer_id": int(role_maker._role_id()),
-            "pipeline_stage": int(role_maker._get_stage_id()) - 1,
-            "num_pipeline_stages": int(role_maker._get_num_stage()),
-            "section_program": main_program,
-            "num_microbatches": num_microbatches,
-            "heter_place": role_maker._heter_device(),
-            "is_fl_mode": 1,
-        }
-
-
 @register_pass("split_fl_ops_pass")
 class SplitFlOpsPass(PassBase):
     def __init__(self):
