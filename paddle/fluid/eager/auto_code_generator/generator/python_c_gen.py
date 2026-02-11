@@ -660,14 +660,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Generate Remaining Params Checking Logic
         check_remaining_params_validity_str = "    // NO NEED"
-        if need_parse_python_api_args and inplace:
-            check_remaining_params_validity_str = (
-                CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("true")
-            )
-        elif need_parse_python_api_args and not inplace:
-            check_remaining_params_validity_str = (
-                CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("false")
-            )
+        if need_parse_python_api_args:
+            if inplace:
+                check_remaining_params_validity_str = (
+                    CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("true")
+                )
+            else:
+                check_remaining_params_validity_str = (
+                    CHECK_REMAINING_ARGS_VALID_TEMPLATE.format("false")
+                )
 
         pre_process_str = "    // NO NEED"
         if need_parse_python_api_args and len(dygraph_pre_process) > 0:
