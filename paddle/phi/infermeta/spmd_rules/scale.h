@@ -26,5 +26,7 @@ SpmdInfo ScaleInferSpmd(const DistMetaTensor& x,
                         const Scalar& scale,
                         const Scalar& bias,
                         bool bias_after_scale);
-}
+
+SpmdInfo DivScaleInferSpmd(const DistMetaTensor& x, const Scalar& scale);
+}  // namespace distributed
 }  // namespace phi
