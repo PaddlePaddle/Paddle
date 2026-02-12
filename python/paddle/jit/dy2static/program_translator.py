@@ -777,6 +777,16 @@ class SymbolicStaticFunction(StaticFunction):
 
         build_strategy = self._kwargs.get("build_strategy", None)
         backend = self._kwargs.get("backend", None)
+
+        if (
+            self.class_instance is not None
+            and not TransformOptions.check_fn_need_transform(
+                self.class_instance, TransformOptions.ToStaticMode.SOT
+            )
+        ):
+            args = (self.class_instance, *args)
+            return self._dygraph_function(*args, **kwargs)
+
         traced_fun = symbolic_translate(
             self._dygraph_function,
             build_strategy=build_strategy,

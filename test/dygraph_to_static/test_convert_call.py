@@ -505,6 +505,37 @@ class TestMarkerUnified(Dy2StTestBase):
             )
         )
 
+    def test_unified_layer_to_static_in_init(self):
+        """Test that @unified decorated layer can be to_static in __init__."""
+
+        @paddle.jit.marker.unified
+        class UnifiedLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                # Currently, not support SETUP_WITH
+                with paddle.amp.auto_cast(False):
+                    return x * 2
+
+        class Model(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.unified_layer = UnifiedLayer()
+                # to_static in __init__ should work for @unified layer
+                self.unified_layer = paddle.jit.to_static(self.unified_layer)
+
+            def forward(self, x):
+                return self.unified_layer(x)
+
+        inp = paddle.rand([2, 10])
+        inp.stop_gradient = False
+        model = Model()
+        out = model(inp)
+        out.sum().backward()
+        np.testing.assert_allclose(out.numpy(), (inp * 2).numpy())
+        np.testing.assert_allclose(inp.grad.numpy(), np.full_like(inp, 2))
+
 
 class TestCaptureControlFlow(Dy2StTestBase):
     def test_decorator(self):
