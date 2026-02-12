@@ -80,6 +80,11 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
 void NegativeAxisPreProcess(Tensor* x, int* axis);
 void NegativeAxisPreProcess(Value* x, int* axis);
 
-}  // namespace pybind
+// Inplace API broadcast validation for dygraph
+void InplaceShapePreProcess(Tensor* x, Tensor* y);
 
+// Inplace API broadcast validation for static graph
+void InplaceShapePreProcess(pir::Value* x, pir::Value* y);
+
+}  // namespace pybind
 }  // namespace paddle

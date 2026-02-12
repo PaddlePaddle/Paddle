@@ -2357,6 +2357,10 @@ class TestIndexFillAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
 
+@unittest.skipIf(
+    paddle.device.is_compiled_with_xpu(),
+    "skip xpu which not support index_fill_",
+)
 # Test Tensor.index_fill_ inplace compatibility
 class TestTensorIndexFillInplace(unittest.TestCase):
     def setUp(self):
