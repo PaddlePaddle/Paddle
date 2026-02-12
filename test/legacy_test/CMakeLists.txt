@@ -100,6 +100,7 @@ endif()
 
 if(WITH_XPU)
   list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+  list(REMOVE_ITEM TEST_OPS test_addcmul_op)
 endif()
 
 if(WITH_XPU OR WITH_ROCM)

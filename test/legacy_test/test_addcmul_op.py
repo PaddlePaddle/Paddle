@@ -28,10 +28,6 @@ from paddle.base import core
 from paddle.base.framework import Program, program_guard
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulOp(OpTest):
     """Base test class for addcmul operator - 2D tensors"""
 
@@ -171,10 +167,6 @@ class TestAddcmulFP16Op(TestAddcmulOp):
     or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBF16Op(OpTest):
     """Test bfloat16 dtype"""
 
@@ -213,10 +205,6 @@ class TestAddcmulBF16Op(OpTest):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBroadcast2D(OpTest):
     """Test broadcasting - covers GetBroadcastDims and ExtendDims2Rank"""
 
@@ -254,10 +242,6 @@ class TestAddcmulBroadcast2D(OpTest):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBroadcast3D(OpTest):
     """Test broadcasting with different ndims"""
 
@@ -299,10 +283,6 @@ class TestAddcmulBroadcast3D(OpTest):
     is_custom_device(),
     "addcmul is not supported on custom devices",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulOpError(unittest.TestCase):
     """Test error cases"""
 
@@ -330,10 +310,6 @@ class TestAddcmulOpError(unittest.TestCase):
 @unittest.skipIf(
     is_custom_device(),
     "addcmul is not supported on custom devices",
-)
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
 )
 class TestAddcmulAPI(unittest.TestCase):
     """Test Python API compatibility"""
@@ -410,10 +386,6 @@ class TestAddcmulAPI(unittest.TestCase):
     is_custom_device(),
     "addcmul is not supported on custom devices",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulGradEmptyTensor(unittest.TestCase):
     """Test gradient with empty tensors - covers numel==0 branch"""
 
@@ -441,10 +413,6 @@ class TestAddcmulGradEmptyTensor(unittest.TestCase):
 @unittest.skipIf(
     is_custom_device(),
     "addcmul is not supported on custom devices",
-)
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
 )
 class TestAddcmulSelectiveGrad(unittest.TestCase):
     """Test gradient with selective stop_gradient - covers null grad pointer branches"""
@@ -508,10 +476,6 @@ class TestAddcmulSelectiveGrad(unittest.TestCase):
     is_custom_device(),
     "addcmul is not supported on custom devices",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulGrad0DScalar(unittest.TestCase):
     """Test 0D scalar gradient - covers AddcmulGradZero"""
 
@@ -561,10 +525,6 @@ class TestAddcmulGrad0DScalar(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "CINN requires CUDA",
-)
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
 )
 class TestAddcmulCINNSymbolic(unittest.TestCase):
     """
@@ -706,10 +666,6 @@ class TestAddcmulCINNSymbolic(unittest.TestCase):
     not core.is_compiled_with_cuda(),
     "CINN requires CUDA",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulCINNGrad(unittest.TestCase):
     """
     Test CINN gradient computation for addcmul operator.
@@ -797,10 +753,6 @@ class TestAddcmulCINNGrad(unittest.TestCase):
 # ============================================================
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBroadcast4D(OpTest):
     """Rank 4 broadcasting - all three tensors broadcast with reduction"""
 
@@ -837,10 +789,6 @@ class TestAddcmulBroadcast4D(OpTest):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBroadcast5D(OpTest):
     """Rank 5 broadcasting - multi-dim reduction"""
 
@@ -877,10 +825,6 @@ class TestAddcmulBroadcast5D(OpTest):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBroadcast6D(OpTest):
     """Rank 6 broadcasting - multi-dim reduction"""
 
@@ -917,10 +861,6 @@ class TestAddcmulBroadcast6D(OpTest):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "addcmul is not supported on XPU",
-)
 class TestAddcmulBroadcastAll3D(OpTest):
     """All three tensors broadcast - exercises all reduction paths"""
 
