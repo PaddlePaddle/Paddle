@@ -897,7 +897,7 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
 template <typename T, typename Context>
 void MoePermuteKernel(const Context &dev_ctx,
                       const DenseTensor &X,
-                      const optional<DenseTensor> &XScale,
+                      const paddle::optional<DenseTensor> &XScale,
                       const DenseTensor &expert_routemap_topk,
                       const DenseTensor &expert_prob_topk,
                       const int num_experts,
