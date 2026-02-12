@@ -51,23 +51,27 @@ class TESS(AudioClassificationDataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'
-            >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,  # type: ignore[arg-type]
-            ...                                         feat_type='raw')
+            >>> tess_dataset = paddle.audio.datasets.TESS(
+            ...     mode=mode,  # type: ignore[arg-type]
+            ...     feat_type='raw',
+            ... )
             >>> for idx in range(5):
             ...     audio, label = tess_dataset[idx]
             ...     # do something with audio, label
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
 
-            >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,  # type: ignore[arg-type]
-            ...                                         feat_type='mfcc',
-            ...                                         n_mfcc=40)
+            >>> tess_dataset = paddle.audio.datasets.TESS(
+            ...     mode=mode,  # type: ignore[arg-type]
+            ...     feat_type='mfcc',
+            ...     n_mfcc=40,
+            ... )
             >>> for idx in range(5):
             ...     audio, label = tess_dataset[idx]
             ...     # do something with mfcc feature, label

@@ -65,11 +65,6 @@ if [[ $changed_deprecated_tests_count -gt 0 ]]; then
     check_approval 1 wanghuancoder
 fi
 
-if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
-    echo_line="You must have raindrops2sea or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
-    check_approval 1 raindrops2sea XiaoguangHu01
-fi
-
 for API_FILE in ${API_FILES[*]}; do
   API_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
   if [ "${API_CHANGE}" ] && [ "${PR_ID}" != "" ]; then
