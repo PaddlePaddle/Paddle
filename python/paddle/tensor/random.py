@@ -1861,7 +1861,11 @@ def randint(
             >>> # doctest: -SKIP
 
     """
-    if high is None:
+    if isinstance(high, (list, tuple)):
+        shape = high
+        high = low
+        low = 0
+    elif high is None:
         if low <= 0:
             raise ValueError(
                 f"If high is None, low must be greater than 0, but received low = {low}."
