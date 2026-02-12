@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,32 +15,23 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
-#include <c10/core/TensorOptions.h>
-#include <optional>
-#include <string_view>
-
-#include "paddle/phi/api/include/api.h"
 
 namespace at {
 
-inline at::Tensor abs(const at::Tensor& self) {
-  return paddle::experimental::abs(self._PD_GetInner());
-}
-
-inline at::Tensor& abs_(at::Tensor& self) {  // NOLINT(runtime/references)
-  paddle::experimental::abs_(self._PD_GetInner());
-  return self;
+inline at::Tensor permute(const at::Tensor& self, at::IntArrayRef dims) {
+  std::vector<int> perm(dims.size());
+  for (size_t i = 0; i < dims.size(); i++) {
+    perm[i] = static_cast<int>(dims[i]);
+  }
+  return paddle::experimental::transpose(self._PD_GetInner(), perm);
 }
 
 }  // namespace at
 
 namespace at {
 
-// Tensor member function implementations
-inline at::Tensor Tensor::abs() const { return at::abs(*this); }
-
-inline at::Tensor& Tensor::abs_() const {
-  return at::abs_(const_cast<at::Tensor&>(*this));
+inline at::Tensor Tensor::permute(at::IntArrayRef dims) const {
+  return at::permute(*this, dims);
 }
 
 }  // namespace at
