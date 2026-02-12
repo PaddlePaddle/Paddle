@@ -1106,7 +1106,10 @@ class StackTransform(Transform):
 
             >>> import paddle
 
-            >>> x = paddle.stack((paddle.to_tensor([1.0, 2.0, 3.0]), paddle.to_tensor([1, 2.0, 3.0])), 1)
+            >>> x = paddle.stack(
+            ...     (paddle.to_tensor([1.0, 2.0, 3.0]), paddle.to_tensor([1, 2.0, 3.0])),
+            ...     1,
+            ... )
             >>> t = paddle.distribution.StackTransform(
             ...     (paddle.distribution.ExpTransform(),
             ...     paddle.distribution.PowerTransform(paddle.to_tensor(2.))),
