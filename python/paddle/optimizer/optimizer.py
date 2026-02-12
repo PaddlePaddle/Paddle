@@ -462,8 +462,8 @@ class Optimizer:
                 >>> layer_state_dict = emb.state_dict()
                 >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-                >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True)
-                >>> adam = paddle.optimizer.Adam(learning_rate=scheduler, parameters=emb.parameters())
+                >>> scheduler = paddle.optimizer.lr.NoamDecay(d_model=100, warmup_steps=100, verbose=True,)
+                >>> adam = paddle.optimizer.Adam(learning_rate=scheduler, parameters=emb.parameters(),)
                 >>> opt_state_dict = adam.state_dict()
                 >>> paddle.save(opt_state_dict, "adam.pdopt")
 
@@ -736,7 +736,7 @@ class Optimizer:
                 >>> adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
                 >>> # set learning rate manually by class LRScheduler
-                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8)
+                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8,)
                 >>> adam.set_lr_scheduler(scheduler)
                 >>> lr = adam.get_lr()
                 >>> print("current lr is {}".format(lr))
@@ -1535,7 +1535,7 @@ class Optimizer:
 
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=linear.parameters(),)
                 >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
@@ -1626,7 +1626,7 @@ class Optimizer:
                 >>> linear = paddle.nn.Linear(10, 10)
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
-                >>> optimizer = paddle.optimizer.Adam(learning_rate=0.1, parameters=linear.parameters())
+                >>> optimizer = paddle.optimizer.Adam(learning_rate=0.1, parameters=linear.parameters(),)
                 >>> params_grads = optimizer.backward(loss)
                 >>> optimizer.apply_gradients(params_grads)
 
@@ -1874,7 +1874,7 @@ class Optimizer:
                 >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=linear.parameters(),)
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
@@ -1943,7 +1943,7 @@ class Optimizer:
                 >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
                 >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01,)
                 >>> loss.backward()
                 >>> adam.minimize(loss)
                 >>> adam.clear_grad()
@@ -2006,7 +2006,7 @@ class Optimizer:
                 >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=linear.parameters(),)
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
