@@ -18,33 +18,16 @@ import numpy as np
 from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
-from paddle import _C_ops, base, incubate
+from paddle import base, incubate
 from paddle.base import core
-from paddle.framework import in_dynamic_or_pir_mode
 
 paddle.enable_static()
 
-
-def _softmax_mask_fuse_upper_triangle_python_api(x):
-    """
-    A wrapper function without @deprecated decorator for OpTest.
-    OpTest uses function signature to match inputs, but the @deprecated
-    decorator (level=1) wraps the function with (*args, **kwargs) signature,
-    which breaks OpTest's parameter matching.
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.fused_softmax_mask_upper_triangle(x)
-    else:
-        from paddle.base.layer_helper import LayerHelper
-
-        helper = LayerHelper('fused_softmax_mask_upper_triangle', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='fused_softmax_mask_upper_triangle',
-            inputs={'X': [x]},
-            outputs={'Out': [out]},
-        )
-        return out
+_softmax_mask_fuse_upper_triangle_python_api = getattr(
+    paddle.incubate.softmax_mask_fuse_upper_triangle,
+    '__wrapped__',
+    paddle.incubate.softmax_mask_fuse_upper_triangle,
+)
 
 
 def _get_softmax_upper(x, fp16=True):
