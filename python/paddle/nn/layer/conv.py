@@ -24,7 +24,7 @@ from paddle.base.framework import in_dygraph_mode
 from paddle.utils.decorator_utils import param_one_alias
 
 from ...device import (
-    get_cudnn_version,
+    cudnn_available,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
@@ -201,13 +201,7 @@ class _ConvNd(Layer):
             device=self._device,
         )
 
-        cudnn_version = get_cudnn_version()
-
-        self._use_cudnn = (
-            True
-            if (is_compiled_with_cuda() and cudnn_version is not None)
-            else False
-        )
+        self._use_cudnn = cudnn_available()
 
         self._op_type = "conv" + str(dims) + 'd'
         if self._op_type == 'conv2d' and (

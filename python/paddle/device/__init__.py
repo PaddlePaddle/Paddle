@@ -151,6 +151,7 @@ else:
 
 __all__ = [
     'get_cudnn_version',
+    'cudnn_available',
     'set_device',
     'get_device',
     'XPUPlace',
@@ -383,6 +384,24 @@ def get_cudnn_version() -> int | None:
             return cudnn_version
     else:
         return _cudnn_version
+
+
+def cudnn_available() -> bool:
+    """
+    Check whether cuDNN (or equivalent DNN library) is available.
+
+    Returns:
+        bool: True if cuDNN or equivalent DNN library is available, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> available = paddle.device.cudnn_available()
+            >>> print(available)
+    """
+    return core.cudnn_available()
 
 
 def device_to_place(device: Place | int | str | None = None) -> Place:

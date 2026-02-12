@@ -31,7 +31,7 @@ from paddle.utils.decorator_utils import param_one_alias
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...device import get_cudnn_version
+from ...device import cudnn_available
 from ...framework import no_grad
 from ...tensor.manipulation import squeeze, unsqueeze
 from ...utils import (
@@ -458,11 +458,7 @@ def conv1d(
             [[[133., 238.],
             [160., 211.]]])
     """
-    cudnn_version = get_cudnn_version()
-    if cudnn_version is not None:
-        use_cudnn = True
-    else:
-        use_cudnn = False
+    use_cudnn = cudnn_available()
 
     if data_format not in ["NCL", "NLC"]:
         raise ValueError(
@@ -757,13 +753,7 @@ def conv2d(
             f", the groups is {groups}"
         )
 
-    cudnn_version = get_cudnn_version()
-
-    use_cudnn = (
-        True
-        if (is_compiled_with_cuda() and cudnn_version is not None)
-        else False
-    )
+    use_cudnn = cudnn_available()
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -972,11 +962,7 @@ def conv1d_transpose(
             Tensor(shape=[1, 1, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[60., 16., 99., 75., 4. ]]])
     """
-    cudnn_version = get_cudnn_version()
-    if cudnn_version is not None:
-        use_cudnn = True
-    else:
-        use_cudnn = False
+    use_cudnn = cudnn_available()
 
     if data_format not in ['NCL', 'NLC']:
         raise ValueError(
@@ -1277,13 +1263,7 @@ def conv2d_transpose(
             f", the groups is {groups}"
         )
 
-    cudnn_version = get_cudnn_version()
-
-    use_cudnn = (
-        True
-        if (is_compiled_with_cuda() and cudnn_version is not None)
-        else False
-    )
+    use_cudnn = cudnn_available()
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -1574,12 +1554,7 @@ def conv3d(
             f"Received: number of filters({num_filters}), groups({groups})."
         )
 
-    cudnn_version = get_cudnn_version()
-    use_cudnn = (
-        True
-        if (is_compiled_with_cuda() and cudnn_version is not None)
-        else False
-    )
+    use_cudnn = cudnn_available()
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
     stride = convert_to_list(stride, 3, 'stride')
@@ -1806,14 +1781,7 @@ def conv3d_transpose(
     else:
         output_padding = convert_to_list(output_padding, 3, 'output_padding')
 
-    cudnn_version = get_cudnn_version()
-
-    # TODO(LielinJiang): whether to use cudnn according to the version of cudnn
-    use_cudnn = (
-        True
-        if (is_compiled_with_cuda() and cudnn_version is not None)
-        else False
-    )
+    use_cudnn = cudnn_available()
 
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"

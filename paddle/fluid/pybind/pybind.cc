@@ -295,6 +295,26 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
+bool CudnnAvailable() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  return platform::DnnVersion() > 0;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto &device_type : device_types) {
+    auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
+    for (auto dev_id : devices) {
+      phi::CustomPlace place(device_type, dev_id);
+      if (phi::DeviceManager::IsDnnAvailable(place)) {
+        return true;
+      }
+    }
+  }
+  return false;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithCudnnFrontend() {
 #ifndef PADDLE_WITH_CUDNN_FRONTEND
   return false;
@@ -3315,6 +3335,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("cudnn_available", CudnnAvailable);
   m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
