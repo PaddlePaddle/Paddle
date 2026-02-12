@@ -62,7 +62,3 @@ inline at::Tensor empty(at::IntArrayRef size,
 #define empty_symint empty  // SymIntArrayRef is same as IntArrayRef
 
 }  // namespace at
-
-namespace torch {
-using at::empty;
-}  // namespace torch
