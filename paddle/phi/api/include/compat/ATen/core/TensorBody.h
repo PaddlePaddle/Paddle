@@ -17,13 +17,23 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Scalar.h>
+#include <c10/util/OptionalArrayRef.h>
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/memory/malloc.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime_api.h>
+#endif
+
 #include <c10/core/Device.h>
 #include <utility>
 #include <vector>
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/memory/malloc.h"
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
@@ -590,8 +600,8 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#ifdef PADDLE_WITH_CUDA
-  void record_stream(const cudaStream_t& stream) const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void record_stream(const gpuStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
         stream);
