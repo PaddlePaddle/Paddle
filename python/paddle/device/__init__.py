@@ -2117,8 +2117,8 @@ class Device(str):
                 dev_type = 'xpu'
                 dev_index = type.gpu_device_id()
             elif type.is_custom_place():
-                dev_type = type.get_device_type()
-                dev_index = type.get_device_id()
+                dev_type = type.custom_device_type()
+                dev_index = type.custom_device_id()
             else:
                 raise ValueError(f"Unknown place type: {type}")
 
