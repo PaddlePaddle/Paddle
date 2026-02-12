@@ -146,9 +146,9 @@ __global__ void FusedFillIf(T** outs,
 }
 
 template <typename T>
-class LazyZeros<phi::GPUContext, T> {
+class LazyZeros<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const DenseTensor*>& xs,
                   const std::vector<DenseTensor*>& outs) {
@@ -218,9 +218,9 @@ class LazyZeros<phi::GPUContext, T> {
 };
 
 template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<phi::GPUContext, T, IsFoundInfOnCPU> {
+class UpdateLossScalingFunctor<GPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,

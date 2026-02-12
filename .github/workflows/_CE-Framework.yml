@@ -32,6 +32,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-whl
     steps:
@@ -63,6 +64,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -104,6 +106,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-infer
     steps:
@@ -138,6 +141,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -203,6 +207,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-test
     steps:
@@ -237,6 +242,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

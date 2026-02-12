@@ -694,6 +694,7 @@ class ReLU(Layer):
     x is input Tensor.
 
     Parameters:
+        inplace (bool, optional): If True, do the operation in-place. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -714,16 +715,19 @@ class ReLU(Layer):
             [0., 0., 1.])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._name = name
+        self._inplace = inplace
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.relu(x, self._name)
+        return F.relu(x, inplace=self._inplace, name=self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        parts = []
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
+        return ', '.join(parts)
 
 
 class ReLU6(Layer):
@@ -765,8 +769,7 @@ class ReLU6(Layer):
         return F.relu6(x, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        return f'name={self._name}' if self._name else ''
 
 
 class SELU(Layer):
@@ -854,6 +857,7 @@ class LeakyReLU(Layer):
     Parameters:
         negative_slope (float, optional): Slope of the activation function at
             :math:`x < 0` . Default is 0.01.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -875,18 +879,29 @@ class LeakyReLU(Layer):
     """
 
     def __init__(
-        self, negative_slope: float = 0.01, name: str | None = None
+        self,
+        negative_slope: float = 0.01,
+        inplace: bool = False,
+        name: str | None = None,
     ) -> None:
         super().__init__()
         self._negative_slope = negative_slope
+        self._inplace = inplace
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.leaky_relu(x, self._negative_slope, self._name)
+        return F.leaky_relu(
+            x,
+            negative_slope=self._negative_slope,
+            inplace=self._inplace,
+            name=self._name,
+        )
 
     def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'negative_slope={self._negative_slope}{name_str}'
+        parts = [f'negative_slope={self._negative_slope}']
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
+        return ', '.join(parts)
 
 
 class Sigmoid(Layer):

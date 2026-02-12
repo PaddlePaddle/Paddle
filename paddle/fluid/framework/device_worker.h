@@ -57,21 +57,21 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-TEST_API std::string PrintDenseTensor(phi::DenseTensor* tensor,
+TEST_API std::string PrintDenseTensor(DenseTensor* tensor,
                                       int64_t start,
                                       int64_t end,
                                       char separator = ',',
                                       bool need_leading_separator = false);
-TEST_API void PrintDenseTensor(phi::DenseTensor* tensor,
+TEST_API void PrintDenseTensor(DenseTensor* tensor,
                                int64_t start,
                                int64_t end,
                                std::string& output_str,  // NOLINT
                                char separator = ',',
                                bool need_leading_separator = false,
                                int num_decimals = 9);
-TEST_API std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
+TEST_API std::pair<int64_t, int64_t> GetTensorBound(DenseTensor* tensor,
                                                     int index);
-TEST_API bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
+TEST_API bool CheckValidOutput(DenseTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
@@ -278,7 +278,7 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void BindingDataFeedMemory();
   virtual void Finalize();
   template <typename T>
-  void SetZero(phi::DenseTensor* tensor, const phi::DenseTensor& root_tensor);
+  void SetZero(DenseTensor* tensor, const DenseTensor& root_tensor);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);

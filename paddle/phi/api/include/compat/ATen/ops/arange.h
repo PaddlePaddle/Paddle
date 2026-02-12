@@ -107,7 +107,3 @@ inline at::Tensor arange(const at::Scalar& start,
 }
 
 }  // namespace at
-
-namespace torch {
-using at::arange;
-}  // namespace torch

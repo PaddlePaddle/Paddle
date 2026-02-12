@@ -102,7 +102,7 @@ inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
 template <typename T>
 struct GraphSendUERecvSumCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
-    phi::CudaAtomicAdd(output, val);
+    CudaAtomicAdd(output, val);
   }
 };
 
@@ -195,7 +195,7 @@ __global__ void ManipulateMeanGradCUDAKernelForMulX(const T* out_grad_data,
       int64_t o_add = use_bcast ? l_bcastoff[tx] : tx;
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
       T val = out_grad_off[o_add] * e_off[e_add];
-      phi::CudaAtomicAdd(x_grad_off + tx, val / static_cast<T>(dst_count[src]));
+      CudaAtomicAdd(x_grad_off + tx, val / static_cast<T>(dst_count[src]));
       tx += stride_x;
     }
     ty += stride_y;
@@ -227,7 +227,7 @@ __global__ void ManipulateSumGradCUDAKernelForAddE(const T* out_grad_data,
     const T* out_grad_off = out_grad_data + dst * out_len;
     while (tx < out_len) {
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
-      phi::CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx]);
+      CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx]);
       tx += stride_x;
     }
     ty += stride_y;
@@ -266,7 +266,7 @@ __global__ void ManipulateSumGradCUDAKernelForMulE(const T* x_data,
     while (tx < out_len) {
       int64_t x_add = use_bcast ? l_bcastoff[tx] : tx;
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
-      phi::CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx] * x_off[x_add]);
+      CudaAtomicAdd(e_grad_off + e_add, out_grad_off[tx] * x_off[x_add]);
       tx += stride_x;
     }
     ty += stride_y;
@@ -299,8 +299,8 @@ __global__ void ManipulateMeanGradCUDAKernelForAddE(const T* out_grad_data,
     const T* out_grad_off = out_grad_data + dst * out_len;
     while (tx < out_len) {
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
-      phi::CudaAtomicAdd(e_grad_off + e_add,
-                         out_grad_off[tx] / static_cast<T>(dst_count[dst]));
+      CudaAtomicAdd(e_grad_off + e_add,
+                    out_grad_off[tx] / static_cast<T>(dst_count[dst]));
       tx += stride_x;
     }
     ty += stride_y;
@@ -340,7 +340,7 @@ __global__ void ManipulateMeanGradCUDAKernelForMulE(const T* x_data,
     while (tx < out_len) {
       int64_t x_add = use_bcast ? l_bcastoff[tx] : tx;
       int64_t e_add = use_bcast ? r_bcastoff[tx] : tx;
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(
           e_grad_off + e_add,
           out_grad_off[tx] * x_off[x_add] / static_cast<T>(dst_count[dst]));
       tx += stride_x;
@@ -388,10 +388,10 @@ __global__ void ManipulateMinMaxGradCUDAKernelForAdd(const T* x_data,
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
       T val = x_off[x_add] + e_off[e_add];
-      phi::CudaAtomicAdd(x_grad_off + x_add,
-                         out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
-      phi::CudaAtomicAdd(e_grad_off + e_add,
-                         out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
+      CudaAtomicAdd(x_grad_off + x_add,
+                    out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
+      CudaAtomicAdd(e_grad_off + e_add,
+                    out_grad_off[tx] * static_cast<T>(val == out_off[tx]));
       tx += stride_x;
     }
     ty += stride_y;
@@ -437,10 +437,10 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
       int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
       T val = x_off[x_add] * e_off[e_add];
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(
           x_grad_off + x_add,
           out_grad_off[tx] * static_cast<T>(val == out_off[tx]) * e_off[e_add]);
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(
           e_grad_off + e_add,
           out_grad_off[tx] * static_cast<T>(val == out_off[tx]) * x_off[x_add]);
       tx += stride_x;

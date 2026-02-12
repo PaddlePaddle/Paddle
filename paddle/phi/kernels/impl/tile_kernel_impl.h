@@ -67,7 +67,7 @@ void Tile(const Context& dev_ctx,
     bcast_dims[i] = repeat_times[i];
   }
 
-  DDim new_x_dims = common::make_ddim(vec_x_dims);
+  DDim new_x_dims = make_ddim(vec_x_dims);
   DDim out_dims(new_x_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];

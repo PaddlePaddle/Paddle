@@ -71,7 +71,6 @@
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -183,8 +182,9 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
         BuildStrategy: An BuildStrategy object.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.BuildStrategy is deprecated in PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 

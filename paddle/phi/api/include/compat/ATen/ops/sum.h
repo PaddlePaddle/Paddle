@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <c10/util/OptionalArrayRef.h>
 #include <optional>
 #include <string_view>
 
@@ -69,8 +70,3 @@ inline at::Tensor& sum_out(
 }
 
 }  // namespace at
-
-namespace torch {
-using at::sum;
-using at::sum_out;
-}  // namespace torch

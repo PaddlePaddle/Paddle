@@ -15,8 +15,6 @@ limitations under the License. */
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-using pstring = ::phi::dtype::pstring;
-
 namespace phi::strings {
 
 template <typename ContextT>

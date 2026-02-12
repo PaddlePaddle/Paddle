@@ -46,9 +46,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
   const int64_t w =
       (data_layout == DataLayout::NCHW ? input->dims()[3] : input->dims()[2]);
 
-  DDim out_dims =
-      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
-                                       : common::make_ddim({nt, h, w, c}));
+  DDim out_dims = (data_layout == DataLayout::NCHW ? make_ddim({nt, c, h, w})
+                                                   : make_ddim({nt, h, w, c}));
   const T* input_data = input->data<T>();
   output->Resize(out_dims);
   T* output_data = dev_ctx.template Alloc<T>(output);

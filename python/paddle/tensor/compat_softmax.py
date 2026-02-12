@@ -130,20 +130,21 @@ def softmax(
         specified) as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            ...                        [3.0, 4.0, 5.0, 6.0],
-            ...                        [7.0, 8.0, 8.0, 9.0]],
-            ...                       [[1.0, 2.0, 3.0, 4.0],
-            ...                        [5.0, 6.0, 7.0, 8.0],
-            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [[2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 8.0, 9.0]],
+            ...         [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [6.0, 7.0, 8.0, 9.0]],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> out1 = paddle.compat.nn.functional.softmax(x, -1)
             >>> out2 = paddle.compat.nn.functional.softmax(x, -1, dtype='float64')
-            >>> #out1's data type is float32; out2's data type is float64
-            >>> #out1 and out2's value is as follows:
+            >>> # out1's data type is float32; out2's data type is float64
+            >>> # out1 and out2's value is as follows:
             >>> print(out1)
             >>> print(out2)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,

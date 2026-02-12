@@ -209,7 +209,7 @@ def spectral_norm(
         Layer, the original layer with the spectral norm hook.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import Conv2D

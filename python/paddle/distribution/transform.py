@@ -388,33 +388,33 @@ class AbsTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> abs = paddle.distribution.AbsTransform()
 
-            >>> print(abs.forward(paddle.to_tensor([-1., 0., 1.])))
+            >>> print(abs.forward(paddle.to_tensor([-1.0, 0.0, 1.0])))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [1., 0., 1.])
 
-            >>> print(abs.inverse(paddle.to_tensor([1.])))
+            >>> print(abs.inverse(paddle.to_tensor([1.0])))
             (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [-1.]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [1.]))
 
             >>> # The |dX/dY| is constant 1. So Log|dX/dY| == 0
-            >>> print(abs.inverse_log_det_jacobian(paddle.to_tensor(1.)))
+            >>> print(abs.inverse_log_det_jacobian(paddle.to_tensor(1.0)))
             (Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                     0.), Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                     0.))
 
-            >>> #Special case handling of 0.
-            >>> print(abs.inverse(paddle.to_tensor([0.])))
+            >>> # Special case handling of 0.
+            >>> print(abs.inverse(paddle.to_tensor([0.0])))
             (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [0.]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [0.]))
-            >>> print(abs.inverse_log_det_jacobian(paddle.to_tensor(0.)))
+            >>> print(abs.inverse_log_det_jacobian(paddle.to_tensor(0.0)))
             (Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                     0.), Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                     0.))
@@ -452,12 +452,12 @@ class AffineTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([1., 2.])
-            >>> affine = paddle.distribution.AffineTransform(paddle.to_tensor(0.), paddle.to_tensor(1.))
+            >>> x = paddle.to_tensor([1.0, 2.0])
+            >>> affine = paddle.distribution.AffineTransform(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
 
             >>> print(affine.forward(x))
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -537,12 +537,12 @@ class ChainTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
 
-            >>> x = paddle.to_tensor([0., 1., 2., 3.])
+            >>> x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0])
 
             >>> chain = paddle.distribution.ChainTransform((
             ...     paddle.distribution.AffineTransform(
@@ -659,24 +659,24 @@ class ExpTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> exp = paddle.distribution.ExpTransform()
-            >>> print(exp.forward(paddle.to_tensor([1., 2., 3.])))
+            >>> print(exp.forward(paddle.to_tensor([1.0, 2.0, 3.0])))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [2.71828175 , 7.38905621 , 20.08553696])
 
-            >>> print(exp.inverse(paddle.to_tensor([1., 2., 3.])))
+            >>> print(exp.inverse(paddle.to_tensor([1.0, 2.0, 3.0])))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [0.        , 0.69314718, 1.09861231])
 
-            >>> print(exp.forward_log_det_jacobian(paddle.to_tensor([1., 2., 3.])))
+            >>> print(exp.forward_log_det_jacobian(paddle.to_tensor([1.0, 2.0, 3.0])))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [1., 2., 3.])
 
-            >>> print(exp.inverse_log_det_jacobian(paddle.to_tensor([1., 2., 3.])))
+            >>> print(exp.inverse_log_det_jacobian(paddle.to_tensor([1.0, 2.0, 3.0])))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [ 0.        , -0.69314718, -1.09861231])
     """
@@ -730,15 +730,14 @@ class IndependentTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
             >>> # Exponential transform with event_rank = 1
-            >>> multi_exp = paddle.distribution.IndependentTransform(
-            ...     paddle.distribution.ExpTransform(), 1)
+            >>> multi_exp = paddle.distribution.IndependentTransform(paddle.distribution.ExpTransform(), 1)
             >>> print(multi_exp.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[2.71828175  , 7.38905621  , 20.08553696 ],
@@ -808,12 +807,12 @@ class PowerTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([1., 2.])
-            >>> power = paddle.distribution.PowerTransform(paddle.to_tensor(2.))
+            >>> x = paddle.to_tensor([1.0, 2.0])
+            >>> power = paddle.distribution.PowerTransform(paddle.to_tensor(2.0))
 
             >>> print(power.forward(x))
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -878,13 +877,13 @@ class ReshapeTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.ones((1,2,3))
+            >>> x = paddle.ones((1, 2, 3))
             >>> reshape_transform = paddle.distribution.ReshapeTransform((2, 3), (3, 2))
-            >>> print(reshape_transform.forward_shape((1,2,3)))
+            >>> print(reshape_transform.forward_shape((1, 2, 3)))
             (1, 3, 2)
             >>> print(reshape_transform.forward(x))
             Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -997,11 +996,11 @@ class SigmoidTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.ones((2,3))
+            >>> x = paddle.ones((2, 3))
             >>> t = paddle.distribution.SigmoidTransform()
             >>> print(t.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1044,11 +1043,11 @@ class SoftmaxTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.ones((2,3))
+            >>> x = paddle.ones((2, 3))
             >>> t = paddle.distribution.SoftmaxTransform()
             >>> print(t.forward(x))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1103,12 +1102,14 @@ class StackTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.stack(
-            ...     (paddle.to_tensor([1., 2., 3.]), paddle.to_tensor([1, 2., 3.])), 1)
+            ...     (paddle.to_tensor([1.0, 2.0, 3.0]), paddle.to_tensor([1, 2.0, 3.0])),
+            ...     1,
+            ... )
             >>> t = paddle.distribution.StackTransform(
             ...     (paddle.distribution.ExpTransform(),
             ...     paddle.distribution.PowerTransform(paddle.to_tensor(2.))),
@@ -1218,12 +1219,12 @@ class StickBreakingTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
 
-            >>> x = paddle.to_tensor([1.,2.,3.])
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> t = paddle.distribution.StickBreakingTransform()
             >>> print(t.forward(x))
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1283,13 +1284,13 @@ class TanhTransform(Transform):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> tanh = paddle.distribution.TanhTransform()
 
-            >>> x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
             >>> # doctest: +SKIP('random sample')
             >>> print(tanh.forward(x))

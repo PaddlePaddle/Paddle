@@ -82,7 +82,7 @@ __global__ void MinMaxWithIndexKernel(const int64_t height,     // n * h
 }
 
 template <typename T, typename IndType, class Reducer, typename IndexType>
-void ComputeMinMaxWithIndex(const phi::GPUContext& dev_ctx,
+void ComputeMinMaxWithIndex(const GPUContext& dev_ctx,
                             const DenseTensor& input,
                             DenseTensor* values,
                             DenseTensor* indices,
@@ -180,7 +180,7 @@ struct VisitDataCudaMinMaxWithIndexFunctor {
     DDim x_dims;
     int new_axis = axis;
     if (flatten) {
-      x_dims = common::make_ddim({x.numel()});
+      x_dims = make_ddim({x.numel()});
       // if flatten, the axis just as 0
       new_axis = 0;
     } else {

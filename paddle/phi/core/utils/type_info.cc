@@ -60,7 +60,9 @@ template class PADDLE_API TypeInfoTraits<phi::TensorBase, RawTensor>;
 template class PADDLE_API TypeInfoTraits<phi::TensorBase, FeedList>;
 
 template class PADDLE_API TypeInfoTraits<phi::DeviceContext, CPUContext>;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 template class PADDLE_API TypeInfoTraits<phi::DeviceContext, CustomContext>;
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)

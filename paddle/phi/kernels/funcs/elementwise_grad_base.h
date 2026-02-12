@@ -271,8 +271,7 @@ void CommonElementwiseBroadcastBackward(const CPUContext &dev_ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << common::make_ddim(x_dims_array)
-          << " ydim:" << common::make_ddim(y_dims_array);
+          << make_ddim(x_dims_array) << " ydim:" << make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -1979,8 +1978,7 @@ void CommonElementwiseBroadcastBackward(const GPUContext &dev_ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << common::make_ddim(x_dims_array)
-          << " ydim:" << common::make_ddim(y_dims_array);
+          << make_ddim(x_dims_array) << " ydim:" << make_ddim(y_dims_array);
 
   CommonGradBroadcastCUDA<T, DX_OP, DY_OP, Tout>(x,
                                                  y,

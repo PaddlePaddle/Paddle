@@ -27,7 +27,7 @@ class ValueExecutionInfo;
 class PyLayerInstruction : public InstructionBase {
  public:
   PyLayerInstruction(size_t id,
-                     const phi::Place& place,
+                     const Place& place,
                      pir::Operation* op,
                      ValueExecutionInfo* value_exe_info,
                      interpreter::ExecutionConfig execution_config);

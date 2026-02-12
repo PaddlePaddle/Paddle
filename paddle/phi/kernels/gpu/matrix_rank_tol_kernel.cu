@@ -40,7 +40,7 @@
 namespace phi {
 
 template <typename T>
-static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+static void GesvdjBatched(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -53,7 +53,7 @@ static void GesvdjBatched(const phi::GPUContext& dev_ctx,
                           int thin_UV = 1);
 
 template <typename T>
-void SyevjBatched(const phi::GPUContext& dev_ctx,
+void SyevjBatched(const GPUContext& dev_ctx,
                   int batchSize,
                   int n,
                   T* A,
@@ -61,7 +61,7 @@ void SyevjBatched(const phi::GPUContext& dev_ctx,
                   int* info);
 
 template <>
-void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<float>(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -140,7 +140,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<double>(const GPUContext& dev_ctx,
                            int batchSize,
                            int m,
                            int n,
@@ -220,7 +220,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int m,
                                    int n,
@@ -300,7 +300,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                     int batchSize,
                                     int m,
                                     int n,
@@ -381,7 +381,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<float>(const GPUContext& dev_ctx,
                          int batchSize,
                          int n,
                          float* A,
@@ -438,7 +438,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<double>(const GPUContext& dev_ctx,
                           int batchSize,
                           int n,
                           double* A,
@@ -493,7 +493,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                   int batchSize,
                                   int n,
                                   phi::complex64* A,
@@ -557,7 +557,7 @@ void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int n,
                                    phi::complex128* A,

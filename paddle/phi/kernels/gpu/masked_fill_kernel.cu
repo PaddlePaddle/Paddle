@@ -90,7 +90,7 @@ __global__ void GPUMaskedFillKernel(const T* input,
 }
 
 template <typename T>
-void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
+void DispatchMaskFillKernel(const GPUContext& dev_ctx,
                             const T* input,
                             const bool* mask,
                             const T* value,
@@ -120,7 +120,7 @@ void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
 
 template <typename T>
 void DispatchMaskFillOneValueKernel(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const T* input,
     const bool* mask,
     const T* value,
@@ -149,7 +149,7 @@ void DispatchMaskFillOneValueKernel(
 }
 
 template <typename T>
-void GPUMaskedFill(const phi::GPUContext& dev_ctx,
+void GPUMaskedFill(const GPUContext& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& mask,
                    const DenseTensor& value,
@@ -220,7 +220,7 @@ void MaskedFillKernel(const Context& dev_ctx,
 
   auto expanded_size =
       vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
-  DDim expanded_dims = common::make_ddim(expanded_size);
+  DDim expanded_dims = make_ddim(expanded_size);
 
   bool flag = funcs::CanDispatchMaskFillShortcut(x.dims(), mask.dims());
   if (expanded_dims != x_dims) flag = false;

@@ -271,7 +271,7 @@ class Timeline:
                 crt_info['size'] = -mevent.bytes
                 mem_list.append(crt_info)
                 end_profiler = max(end_profiler, crt_info['time'])
-            mem_list.sort(key=lambda tmp: (tmp.get('time', 0)))
+            mem_list.sort(key=lambda tmp: tmp.get('time', 0))
             i = 0
             total_size = 0
             while i < len(mem_list):

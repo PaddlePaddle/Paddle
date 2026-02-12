@@ -234,16 +234,15 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     DenseTensor out_values = EmptyLike<T>(dev_ctx, x.values());
     out->SetMember(out_indices, out_values, x.dims());
   } else {
-    DenseTensorMeta indices_meta(
-        phi::CppTypeToDataType<IntT>::Type(),
-        common::make_ddim(
-            {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
-        DataLayout::NCHW);
+    DenseTensorMeta indices_meta(phi::CppTypeToDataType<IntT>::Type(),
+                                 make_ddim({static_cast<int64_t>(sparse_dim),
+                                            static_cast<int64_t>(nnz)}),
+                                 DataLayout::NCHW);
     auto indices_dim = common::vectorize(
         slice_ddim(x.values().dims(), 1, x.values().dims().size()));
     indices_dim.insert(indices_dim.begin(), nnz);
     DenseTensorMeta values_meta(
-        x.dtype(), common::make_ddim(indices_dim), DataLayout::NCHW);
+        x.dtype(), make_ddim(indices_dim), DataLayout::NCHW);
     DenseTensor out_indices = Empty(dev_ctx, std::move(indices_meta));
     DenseTensor out_values = Empty(dev_ctx, std::move(values_meta));
 

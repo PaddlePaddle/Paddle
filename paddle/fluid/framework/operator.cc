@@ -1581,7 +1581,8 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (this->CanCUDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
@@ -1607,14 +1608,15 @@ bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         phi::DataType data_type) const {
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
-                   phi::is_gpu_place(ctx.GetPlace());
+                   (phi::is_gpu_place(ctx.GetPlace()) ||
+                    phi::is_custom_place(ctx.GetPlace()));
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+    const auto& dev_ctx = ctx.device_context<phi::DeviceContext>();
     use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
   }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #if defined(PADDLE_WITH_CUDA)
   if (use_cudnn && data_type == phi::DataType::BFLOAT16) {
@@ -1625,8 +1627,8 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
   }
 #endif  // PADDLE_WITH_CUDA
-
   return use_cudnn && this->SupportsCUDNN(data_type);
+#endif
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -2181,7 +2183,8 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
@@ -2645,7 +2648,8 @@ Scope* OperatorWithKernel::PrepareData(
           auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
           if ((in_def->backend != tensor_backend &&
                !(in_def->backend == phi::Backend::GPUDNN &&
-                 tensor_backend == phi::Backend::GPU) &&
+                 tensor_backend ==
+                     paddle::experimental::get_accelerat_backend()) &&
                !(in_def->backend == phi::Backend::KPS &&
                  tensor_backend == phi::Backend::XPU) &&
                !(in_def->backend == phi::Backend::ONEDNN &&
@@ -2690,22 +2694,22 @@ Scope* OperatorWithKernel::PrepareData(
       enable_cache_transfer_scope_ = false;
       if (!run_by_executor_) {
         if (new_expected_kernel_key) {
-          if (kernel_type_for_var.backend() == phi::Backend::GPU ||
+          if (kernel_type_for_var.backend() ==
+                  paddle::experimental::get_accelerat_backend() ||
+              new_expected_kernel_key->backend() ==
+                  paddle::experimental::get_accelerat_backend() ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
-              new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
-              kernel_type_for_var.backend() == phi::Backend::XPU ||
-              new_expected_kernel_key->backend() == phi::Backend::XPU) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
           }
-        } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
+        } else if (kernel_type_for_var.backend() ==
+                       paddle::experimental::get_accelerat_backend() ||
+                   expected_kernel_key.backend() ==
+                       paddle::experimental::get_accelerat_backend() ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
-                   expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
-                   kernel_type_for_var.backend() == phi::Backend::XPU ||
-                   expected_kernel_key.backend() == phi::Backend::XPU) {
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;

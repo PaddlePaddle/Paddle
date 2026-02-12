@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -26,6 +26,7 @@ from paddle.base.framework import (
 )
 from paddle.utils.decorator_utils import (
     lp_pool_function_decorator,
+    maxpool_decorator,
     param_one_alias,
     param_two_alias,
 )
@@ -573,6 +574,7 @@ def avg_pool3d(
         )
 
 
+@maxpool_decorator()
 def max_pool1d(
     x: Tensor,
     kernel_size: Size1,
@@ -580,6 +582,7 @@ def max_pool1d(
     padding: _PaddingSizeMode | Size1 | Size2 = 0,
     return_mask: bool = False,
     ceil_mode: bool = False,
+    dilation: Size1 = 1,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -590,6 +593,7 @@ def max_pool1d(
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L], where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
+            Alias: ``input``.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
@@ -602,8 +606,11 @@ def max_pool1d(
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         return_mask (bool): Whether return the max indices along with the outputs. default is `False`.
+            Alias: ``return_indices``.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False.
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain an integer. Default: 1.
         name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -635,6 +642,8 @@ def max_pool1d(
         stride = kernel_size
     else:
         stride = [1, *convert_to_list(stride, 1, "pool_stride")]
+    dilation_list = convert_to_list(dilation, 1, "dilation")
+    dilation = [1, *dilation_list]
 
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, ceil_mode=ceil_mode
@@ -643,10 +652,21 @@ def max_pool1d(
     # use 2d to implement 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+    # Check if dilation is non-trivial (not all ones)
+    has_dilation = any(d != 1 for d in dilation_list)
+
     if in_dynamic_or_pir_mode():
-        if return_mask:
+        if return_mask or has_dilation:
+            # Use max_pool2d_with_index when return_mask=True or dilation != 1
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -671,7 +691,11 @@ def max_pool1d(
 
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
-        op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
+        op_type = (
+            'max_pool2d_with_index'
+            if (return_mask or has_dilation)
+            else "pool2d"
+        )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -688,6 +712,7 @@ def max_pool1d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -1143,6 +1168,7 @@ def max_unpool3d(
     return unpool_out
 
 
+@maxpool_decorator()
 def max_pool2d(
     x: Tensor,
     kernel_size: Size2,
@@ -1150,6 +1176,7 @@ def max_pool2d(
     padding: _PaddingSizeMode | Size2 | Size4 = 0,
     return_mask: bool = False,
     ceil_mode: bool = False,
+    dilation: Size2 = 1,
     data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
 ) -> Tensor:
@@ -1163,6 +1190,7 @@ def max_pool2d(
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
+            Alias: ``input``.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
@@ -1176,8 +1204,12 @@ def max_pool2d(
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
+            Alias: ``return_indices``.
+        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain two integers, (dilation_Height, dilation_Width).
+            Otherwise, the dilation size will be a square of an int. Default: 1.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -1204,6 +1236,8 @@ def max_pool2d(
             paddle.Size([1, 3, 16, 16])
             >>> print(max_indices.shape)
             paddle.Size([1, 3, 16, 16])
+            >>> # with dilation
+            >>> out, max_indices = F.max_pool2d(x, kernel_size=3, stride=1, padding=1, dilation=2, return_mask=True)
     """
 
     kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
@@ -1211,6 +1245,7 @@ def max_pool2d(
         stride = kernel_size
     else:
         stride = convert_to_list(stride, 2, 'pool_stride')
+    dilation = convert_to_list(dilation, 2, 'dilation')
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -1229,10 +1264,30 @@ def max_pool2d(
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
+    # Check if dilation is non-trivial (not all ones)
+    dilation = (
+        dilation if isinstance(dilation, (list, tuple)) else [dilation] * 2
+    )
+    has_dilation = any(d != 1 for d in dilation)
+
+    # When dilation != 1, must use max_pool2d_with_index (pool2d doesn't support dilation)
+    if has_dilation and data_format == "NHWC":
+        raise ValueError(
+            "When dilation != 1, data_format must be set to NCHW in API:max_pool2d"
+        )
+
     if in_dynamic_or_pir_mode():
-        if return_mask:
+        if return_mask or has_dilation:
+            # Use max_pool2d_with_index when return_mask=True or dilation != 1
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return output if return_mask else output[0]
         else:
@@ -1251,7 +1306,11 @@ def max_pool2d(
             )
 
     else:
-        op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
+        op_type = (
+            'max_pool2d_with_index'
+            if (return_mask or has_dilation)
+            else "pool2d"
+        )
         helper = LayerHelper(op_type, **locals())
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'max_pool2d'
@@ -1273,6 +1332,7 @@ def max_pool2d(
                     "global_pooling": False,
                     "strides": stride,
                     "paddings": padding,
+                    "dilations": dilation,
                     "padding_algorithm": padding_algorithm,
                     "use_cudnn": True,
                     "ceil_mode": ceil_mode,
@@ -1305,6 +1365,7 @@ def max_pool2d(
             return pool_out
 
 
+@maxpool_decorator()
 def max_pool3d(
     x: Tensor,
     kernel_size: Size3,
@@ -1312,6 +1373,7 @@ def max_pool3d(
     padding: _PaddingSizeMode | Size3 | Size6 = 0,
     return_mask: bool = False,
     ceil_mode: bool = False,
+    dilation: Size3 = 1,
     data_format: DataLayout3D = 'NCDHW',
     name: str | None = None,
 ) -> Tensor:
@@ -1322,6 +1384,7 @@ def max_pool3d(
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively.
+            Alias: ``input``.
         kernel_size (int|list|tuple): The pool kernel size. If the kernel size
             is a tuple or list, it must contain three integers,
             (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
@@ -1336,8 +1399,12 @@ def max_pool3d(
             4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        ceil_mode (bool): ${ceil_mode_comment}
         return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
+            Alias: ``return_indices``.
+        ceil_mode (bool): ${ceil_mode_comment}
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain three integers, (dilation_Depth, dilation_Height, dilation_Width).
+            Otherwise, the dilation size will be a cube of an int. Default: 1.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
@@ -1374,6 +1441,7 @@ def max_pool3d(
         stride = kernel_size
     else:
         stride = convert_to_list(stride, 3, 'pool_stride')
+    dilation = convert_to_list(dilation, 3, 'dilation')
 
     channel_last = _channel_last(data_format, 3)
 
@@ -1386,10 +1454,30 @@ def max_pool3d(
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
+    # Check if dilation is non-trivial (not all ones)
+    dilation = (
+        dilation if isinstance(dilation, (list, tuple)) else [dilation] * 3
+    )
+    has_dilation = any(d != 1 for d in dilation)
+
+    # When dilation != 1, must use max_pool3d_with_index (pool3d doesn't support dilation)
+    if has_dilation and data_format == "NDHWC":
+        raise ValueError(
+            "When dilation != 1, data_format must be set to NCDHW in API:max_pool3d"
+        )
+
     if in_dynamic_or_pir_mode():
-        if return_mask:
+        if return_mask or has_dilation:
+            # Use max_pool3d_with_index when return_mask=True or dilation != 1
             output = _C_ops.max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False, ceil_mode
+                x,
+                kernel_size,
+                stride,
+                padding,
+                dilation,
+                False,
+                False,
+                ceil_mode,
             )
             return output if return_mask else output[0]
         else:
@@ -1408,7 +1496,11 @@ def max_pool3d(
             )
 
     else:
-        op_type = "max_pool3d_with_index" if return_mask else "pool3d"
+        op_type = (
+            "max_pool3d_with_index"
+            if (return_mask or has_dilation)
+            else "pool3d"
+        )
         helper = LayerHelper(op_type, **locals())
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'max_pool3d'
@@ -1428,6 +1520,7 @@ def max_pool3d(
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
+                "dilations": dilation,
                 "padding_algorithm": padding_algorithm,
                 "use_cudnn": True,
                 "ceil_mode": ceil_mode,
@@ -1818,9 +1911,11 @@ def adaptive_max_pool1d(
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. It can be an integer, or a list or tuple containing a single integer.
         return_mask (bool): If true, the index of max pooling point will be returned along
                 with outputs. It cannot be set in average pooling type. Default False.
+            Alias: ``return_indices``.
         name(str|None, optional): For detailed information, please refer
                                  to :ref:`api_guide_Name`. Usually name is no need to set and
                                  None by default.
@@ -1863,7 +1958,7 @@ def adaptive_max_pool1d(
     x = unsqueeze(x, [2])
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True, False
+            x, pool_size, [1, 1], [0, 0], [1, 1], False, True, False
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1918,8 +2013,10 @@ def adaptive_max_pool2d(
 
     Args:
         x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two elements, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
         return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+            Alias: ``return_indices``.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
     Returns:
@@ -1963,7 +2060,7 @@ def adaptive_max_pool2d(
             output_size[1] = in_w
     if in_dynamic_or_pir_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True, False
+            x, output_size, [1, 1], [0, 0], [1, 1], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2009,8 +2106,10 @@ def adaptive_max_pool3d(
 
     Args:
         x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
+            Alias: ``input``.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
         return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+            Alias: ``return_indices``.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
     Returns:
@@ -2059,9 +2158,11 @@ def adaptive_max_pool3d(
             output_size[2] = in_w
 
     if in_dynamic_or_pir_mode():
-        # By default, strides is [1,1,1] and paddings is [0, 0, 0]
+        # By default, strides is [1, 1, 1]
+        # paddings is [0, 0, 0]
+        # dilations is [1, 1, 1]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
+            x, output_size, [1, 1, 1], [0, 0, 0], [1, 1, 1], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2095,6 +2196,7 @@ def adaptive_max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def fractional_max_pool2d(
     x: Tensor,
     output_size: Size2,
@@ -2137,12 +2239,14 @@ def fractional_max_pool2d(
         output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
             two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of
             the input.
+            Alias: ``input``.
         kernel_size (int|list|tuple, optional): The pool kernel size. If the kernel size
             is a tuple or list, it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be the square of an int. Default is None, means using the non-overlapping mode.
         random_u(float): A random float number in range (0, 1) for the fractional pooling.
             Default None, means randomly generated by framework which can be fixed by ``paddle.seed``.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
+            Alias: ``return_indices``.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
@@ -2250,6 +2354,7 @@ def fractional_max_pool2d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
 def fractional_max_pool3d(
     x: Tensor,
     output_size: Size2,
@@ -2289,6 +2394,7 @@ def fractional_max_pool3d(
 
     Parameters:
         x (Tensor): The input tensor of fractional max pool3d operator, which is a 5-D tensor. The data type can be float16, bfloat16, float32, float64.
+            Alias: ``input``.
         output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
             three element, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of
             the input.
@@ -2298,6 +2404,7 @@ def fractional_max_pool3d(
         random_u(float): A random float number in range (0, 1) for the fractional pooling.
             Default None, means randomly generated by framework which can be fixed by ``paddle.seed``.
         return_mask(bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
+            Alias: ``return_indices``.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
@@ -2411,6 +2518,29 @@ def fractional_max_pool3d(
         return (pool_out, mask) if return_mask else pool_out
 
 
+@overload
+def lp_pool1d(
+    x: Tensor,
+    norm_type: float,
+    kernel_size: Size1,
+    stride: Size1 | None = None,
+    padding: _PaddingSizeMode | Size1 | Size2 = 0,
+    ceil_mode: bool = False,
+    data_format: DataLayout1D = "NCL",
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def lp_pool1d(
+    input: Tensor,
+    norm_type: float,
+    kernel_size: Size1,
+    stride: Size1 | None = None,
+    ceil_mode: bool = False,
+) -> Tensor: ...
+
+
 @lp_pool_function_decorator
 def lp_pool1d(
     x: Tensor,
@@ -2430,6 +2560,7 @@ def lp_pool1d(
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type is float16, float32 or float64.
+            Alias: ``input``.
         norm_type (int|float): The number the power operation.
         kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).
@@ -2543,6 +2674,29 @@ def lp_pool1d(
         return squeeze(pool_out, [axis])
 
 
+@overload
+def lp_pool2d(
+    x: Tensor,
+    norm_type: float,
+    kernel_size: Size2,
+    stride: Size2 | None = None,
+    padding: _PaddingSizeMode | Size2 | Size4 = 0,
+    ceil_mode: bool = False,
+    data_format: DataLayout2D = "NCHW",
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def lp_pool2d(
+    input: Tensor,
+    norm_type: float,
+    kernel_size: Size2,
+    stride: Size2 | None = None,
+    ceil_mode: bool = False,
+) -> Tensor: ...
+
+
 @lp_pool_function_decorator
 def lp_pool2d(
     x: Tensor,
@@ -2564,6 +2718,7 @@ def lp_pool2d(
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
+            Alias: ``input``.
         norm_type (int|float): The number the power operation.
         kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
             it must contain two integers, (kernel_size_Height, kernel_size_Width).
