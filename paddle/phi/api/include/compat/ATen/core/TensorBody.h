@@ -17,6 +17,7 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/util/OptionalArrayRef.h>
 #include <optional>
 #include <vector>
 #include "paddle/common/ddim.h"
