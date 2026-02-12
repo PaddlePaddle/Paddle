@@ -497,11 +497,13 @@ def test_native_code_function_gpu_only():
     # Therefore, we return individual properties as primitive types instead
     device_properties = paddle.device.cuda.get_device_properties()
 
-    paddle.core.nvprof_start()
-    paddle.core.nvprof_enable_record_event()
-    paddle.core.nvprof_nvtx_push("")
-    paddle.core.nvprof_nvtx_pop()
-    paddle.core.nvprof_stop()
+    if hasattr(paddle.core, "nvprof_init"):
+        paddle.core.nvprof_start()
+        paddle.core.nvprof_stop()
+        paddle.core.nvprof_enable_record_event()
+        paddle.core.nvprof_disable_record_event()
+        paddle.core.nvprof_nvtx_push("")
+        paddle.core.nvprof_nvtx_pop()
 
     return (
         device_properties.name,
