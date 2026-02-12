@@ -19,6 +19,7 @@
 #include <c10/core/Backend.h>
 #include <c10/core/List.h>
 #include <c10/core/SymIntArrayRef.h>
+#include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
