@@ -129,6 +129,11 @@ extern void *cublas_dso_handle;
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
+#if !defined(_WIN32)
+#define CUBLAS_WORKSPACE_ROUTINE(__macro) __macro(cublasSetWorkspace);
+CUBLAS_WORKSPACE_ROUTINE(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#endif
+
 #if CUDA_VERSION >= 12030 && defined(__linux__)
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \
   __macro(cublasGemmStridedBatchedEx_64);    \

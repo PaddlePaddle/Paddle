@@ -248,6 +248,16 @@ struct GPUContext::Impl {
   ~Impl() {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     if (owned_) {
+#ifdef PADDLE_WITH_CUDA
+      if (cublas_workspace_) {
+        cudaFree(cublas_workspace_);
+        cublas_workspace_ = nullptr;
+      }
+      if (cublaslt_workspace_) {
+        cudaFree(cublaslt_workspace_);
+        cublaslt_workspace_ = nullptr;
+      }
+#endif
       DestroyInternalWorkspace();
       DestroyInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
@@ -278,6 +288,58 @@ struct GPUContext::Impl {
 
   bool IsTensorCoreAvailable() const {
     return blas_tensor_core_handle_ != nullptr;
+  }
+
+  // Returns the cublas workspace size matching PyTorch's behavior
+  // for different GPU architectures.
+  // Hopper (SM 9.0): 32 MiB, others: ~8.125 MiB
+  static size_t GetCublasWorkspaceSize(int compute_capability) {
+    if (compute_capability == 90) {
+      return 4096 * 8 * 1024;  // 32 MiB
+    }
+    return 4096 * 1024 * 2 + 16 * 1024 * 8;  // ~8.125 MiB
+  }
+
+  void InitCublasWorkspace() {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+    std::call_once(flag_cublas_workspace_, [&]() {
+      size_t workspace_size = GetCublasWorkspaceSize(compute_capability_);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMalloc(&cublas_workspace_, workspace_size));
+      cublas_workspace_size_ = workspace_size;
+    });
+#endif
+  }
+
+  void SetCublasWorkspace(blasHandle_t handle) {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+    InitCublasWorkspace();
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace(
+        handle, cublas_workspace_, cublas_workspace_size_));
+#endif
+  }
+
+  // Persistent cublasLt workspace: grow-only, freed in destructor.
+  // Returns {ptr, size}. Thread-safe via mutex for grow path.
+  std::pair<void*, size_t> GetCublasLtWorkspace(size_t required_size) {
+#ifdef PADDLE_WITH_CUDA
+    if (cublaslt_workspace_size_ >= required_size && cublaslt_workspace_) {
+      return {cublaslt_workspace_, cublaslt_workspace_size_};
+    }
+    std::lock_guard<std::mutex> guard(cublaslt_workspace_mtx_);
+    // Double-check after acquiring lock
+    if (cublaslt_workspace_size_ >= required_size && cublaslt_workspace_) {
+      return {cublaslt_workspace_, cublaslt_workspace_size_};
+    }
+    if (cublaslt_workspace_) {
+      cudaFree(cublaslt_workspace_);
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&cublaslt_workspace_, required_size));
+    cublaslt_workspace_size_ = required_size;
+    return {cublaslt_workspace_, cublaslt_workspace_size_};
+#else
+    return {nullptr, 0};
+#endif
   }
 
   void InitDnnWorkspace() {
@@ -784,6 +846,11 @@ struct GPUContext::Impl {
   std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
   blasLtHandle_t blaslt_handle_{nullptr};
   std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
+  void* cublas_workspace_{nullptr};
+  size_t cublas_workspace_size_{0};
+  void* cublaslt_workspace_{nullptr};
+  size_t cublaslt_workspace_size_{0};
+  mutable std::mutex cublaslt_workspace_mtx_;
   dnnHandle_t dnn_handle_{nullptr};
   std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
   solverHandle_t solver_handle_{nullptr};
@@ -800,6 +867,7 @@ struct GPUContext::Impl {
   std::once_flag flag_cublas_;
   std::once_flag flag_tensorcore_cublas_;
   std::once_flag flag_eigen_device_;
+  std::once_flag flag_cublas_workspace_;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
@@ -859,6 +927,11 @@ blasHandle_t GPUContext::cublas_handle() const {
 
 blasLtHandle_t GPUContext::cublaslt_handle() const {
   return impl_->GetBlasLtHandle();
+}
+
+std::pair<void*, size_t> GPUContext::cublaslt_workspace(
+    size_t required_size) const {
+  return impl_->GetCublasLtWorkspace(required_size);
 }
 
 solverHandle_t GPUContext::cusolver_dn_handle() const {
