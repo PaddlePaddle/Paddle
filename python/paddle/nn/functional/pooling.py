@@ -26,6 +26,7 @@ from paddle.base.framework import (
 )
 from paddle.utils.decorator_utils import (
     lp_pool_function_decorator,
+    maxpool_decorator,
     param_one_alias,
     param_two_alias,
 )
@@ -573,15 +574,15 @@ def avg_pool3d(
         )
 
 
-@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+@maxpool_decorator()
 def max_pool1d(
     x: Tensor,
     kernel_size: Size1,
     stride: Size1 | None = None,
     padding: _PaddingSizeMode | Size1 | Size2 = 0,
-    dilation: Size1 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
+    dilation: Size1 = 1,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -604,12 +605,12 @@ def max_pool1d(
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
-            it must contain an integer. Default: 1.
         return_mask (bool): Whether return the max indices along with the outputs. default is `False`.
             Alias: ``return_indices``.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False.
+        dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
+            it must contain an integer. Default: 1.
         name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -1167,15 +1168,15 @@ def max_unpool3d(
     return unpool_out
 
 
-@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+@maxpool_decorator()
 def max_pool2d(
     x: Tensor,
     kernel_size: Size2,
     stride: Size2 | None = None,
     padding: _PaddingSizeMode | Size2 | Size4 = 0,
-    dilation: Size2 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
+    dilation: Size2 = 1,
     data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
 ) -> Tensor:
@@ -1203,12 +1204,12 @@ def max_pool2d(
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
+            Alias: ``return_indices``.
+        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
         dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
             it must contain two integers, (dilation_Height, dilation_Width).
             Otherwise, the dilation size will be a square of an int. Default: 1.
-        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
-            Alias: ``return_indices``.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -1364,15 +1365,15 @@ def max_pool2d(
             return pool_out
 
 
-@param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+@maxpool_decorator()
 def max_pool3d(
     x: Tensor,
     kernel_size: Size3,
     stride: Size3 | None = None,
     padding: _PaddingSizeMode | Size3 | Size6 = 0,
-    dilation: Size3 = 1,
     return_mask: bool = False,
     ceil_mode: bool = False,
+    dilation: Size3 = 1,
     data_format: DataLayout3D = 'NCDHW',
     name: str | None = None,
 ) -> Tensor:
@@ -1398,12 +1399,12 @@ def max_pool3d(
             4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
+        return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
+            Alias: ``return_indices``.
+        ceil_mode (bool): ${ceil_mode_comment}
         dilation (int|list|tuple): The dilation size. If dilation size is a tuple or list,
             it must contain three integers, (dilation_Depth, dilation_Height, dilation_Width).
             Otherwise, the dilation size will be a cube of an int. Default: 1.
-        ceil_mode (bool): ${ceil_mode_comment}
-        return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
-            Alias: ``return_indices``.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.

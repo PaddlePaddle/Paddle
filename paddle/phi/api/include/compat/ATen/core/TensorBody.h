@@ -21,8 +21,6 @@
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/memory/malloc.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -593,8 +591,8 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#ifdef PADDLE_WITH_CUDA
-  void record_stream(const cudaStream_t& stream) const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void record_stream(const gpuStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
         stream);
