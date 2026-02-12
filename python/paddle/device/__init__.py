@@ -1655,9 +1655,8 @@ class stream_guard:
             >>> data1 = paddle.ones(shape=[20])
             >>> data2 = paddle.ones(shape=[20])
             >>> data3 = data1 + data2
-            >>> with paddle.device.stream_guard(
-            ...     s
-            ... ):  # this is equivalent to paddle.cuda.StreamContext(s) and paddle.device.StreamContext(s)
+            >>> # This is equivalent to paddle.cuda.StreamContext(s) and paddle.device.StreamContext(s)
+            >>> with paddle.device.stream_guard(s):
             ...     s.wait_stream(paddle.device.default_stream())  # type: ignore[attr-defined]
             ...     data4 = data1 + data3
 
