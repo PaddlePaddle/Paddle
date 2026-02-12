@@ -316,6 +316,12 @@ set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Dummy Library" FORCE)
 
+if(WIN32)
+  set(PHI_LINK
+      "${CMAKE_CURRENT_BINARY_DIR}/phi.lib"
+      CACHE FILEPATH "PHI Import Library" FORCE)
+endif()
+
 string(REPLACE "phi" "phi_core" PHI_CORE_NAME ${PHI_NAME})
 set(PHI_CORE_NAME
     ${PHI_CORE_NAME}

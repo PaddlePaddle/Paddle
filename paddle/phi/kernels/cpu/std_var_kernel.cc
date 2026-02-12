@@ -35,10 +35,7 @@ void VarKernel(const Context& dev_ctx,
                double correction,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(NAN),
-                          out);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(NAN), out);
     return;
   }
   // 1. Mean
@@ -63,7 +60,7 @@ void VarKernel(const Context& dev_ctx,
   }
 
   DenseTensor scale_val =
-      phi::FullLike<T, Context>(dev_ctx, *out, static_cast<T>(divisor));
+      FullLike<T, Context>(dev_ctx, *out, static_cast<T>(divisor));
   phi::MultiplyKernel<T, Context>(dev_ctx, sum, scale_val, out);
 }
 
@@ -76,10 +73,7 @@ void StdKernel(const Context& dev_ctx,
                double correction,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(NAN),
-                          out);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(NAN), out);
     return;
   }
   VarKernel<T, Context>(dev_ctx, x, axis, keepdim, unbiased, correction, out);

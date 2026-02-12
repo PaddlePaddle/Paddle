@@ -64,6 +64,7 @@ jobs:
             -v "/dev/shm:/dev/shm" \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            -v /root/.cache/paddle/dataset/ESC-50-master \
             -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \

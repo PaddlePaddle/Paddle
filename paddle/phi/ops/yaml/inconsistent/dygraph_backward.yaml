@@ -95,6 +95,12 @@
     func : c_embedding_grad
   no_need_buffer : weight
 
+- backward_op : div_scale_grad
+  forward : div_scale (Tensor x, Scalar scale) -> Tensor(out)
+  args : (Tensor out_grad, Scalar scale=1.0)
+  output : Tensor(x_grad)
+  invoke : div_scale(out_grad, scale)
+
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor out, Tensor grad_out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)

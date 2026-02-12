@@ -22,7 +22,6 @@ from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
-    softmax_param_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1156,7 +1155,7 @@ def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         return out
 
 
-@softmax_param_alias
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def softmax(
     x: Tensor,
     axis: int = -1,
@@ -1242,10 +1241,12 @@ def softmax(
 
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+            Alias: ``input``.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
+            Alias: ``dim``.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         out (Tensor, optional): The output Tensor.

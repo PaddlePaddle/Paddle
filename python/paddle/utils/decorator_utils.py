@@ -170,22 +170,6 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def softmax_param_alias(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    @functools.wraps(func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # Process parameters to handle alias mapping
-        if "input" in kwargs:
-            kwargs["x"] = kwargs.pop("input")
-        if "dim" in kwargs:
-            kwargs["axis"] = kwargs.pop("dim")
-        return func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(func)
-    return cast("Callable[_InputT, _RetT]", wrapper)
-
-
 def param_one_alias(
     alias_list,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
@@ -231,7 +215,7 @@ def lp_pool_layer_decorator(
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if len(args) == 5 and isinstance(args[4], bool):
             warnings.warn(
-                "The 4th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
+                "The 5th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
                 category=Warning,
                 stacklevel=2,
             )
@@ -258,43 +242,6 @@ def lp_pool_function_decorator(
             )
             kwargs["ceil_mode"] = args[4]
             args = args[:4]
-        return func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(func)
-    return wrapper
-
-
-def tensor_split_decorator(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    @functools.wraps(func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        if not kwargs:
-            return func(*args, **kwargs)
-        contains_num_or_indices = "num_or_indices" in kwargs
-        # Process parameters to handle alias mapping
-        if "input" in kwargs and "x" not in kwargs:
-            kwargs["x"] = kwargs.pop("input")
-        if "dim" in kwargs and "axis" not in kwargs:
-            kwargs["axis"] = kwargs.pop("dim")
-        if (
-            "indices_or_sections" in kwargs
-            and not contains_num_or_indices
-            and "num_or_indices" not in kwargs
-        ):
-            kwargs["num_or_indices"] = kwargs.pop("indices_or_sections")
-        if (
-            "indices" in kwargs
-            and not contains_num_or_indices
-            and "num_or_indices" not in kwargs
-        ):
-            kwargs["num_or_indices"] = kwargs.pop("indices")
-        if (
-            "sections" in kwargs
-            and not contains_num_or_indices
-            and "num_or_indices" not in kwargs
-        ):
-            kwargs["num_or_indices"] = kwargs.pop("sections")
         return func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(func)
@@ -724,43 +671,6 @@ def index_select_decorator() -> Callable[
     return decorator
 
 
-def sum_decorator() -> Callable[
-    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
-]:
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if ("input" in kwargs) and ("x" not in kwargs):
-                kwargs["x"] = kwargs.pop("input")
-            if ("dim" in kwargs) and ("axis" not in kwargs):
-                kwargs["axis"] = kwargs.pop("dim")
-            if len(args) == 3:
-                kwargs["x"] = args[0]
-                kwargs["axis"] = args[1]
-                if isinstance(args[2], bool):
-                    kwargs["keepdim"] = args[2]
-                else:
-                    kwargs["dtype"] = args[2]
-                args = ()
-            elif len(args) == 4:
-                kwargs["x"] = args[0]
-                kwargs["axis"] = args[1]
-                if isinstance(args[2], bool):
-                    kwargs["keepdim"] = args[2]
-                    kwargs["dtype"] = args[3]
-                else:
-                    kwargs["dtype"] = args[2]
-                    kwargs["keepdim"] = args[3]
-                args = ()
-
-            return func(*args, **kwargs)
-
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
-
-    return decorator
-
-
 _SA0_RD1 = {'size_average': 0, 'reduce': 1}
 _SA1_RD2 = {'size_average': 1, 'reduce': 2}
 _SA1_RD3 = {'size_average': 1, 'reduce': 3}
@@ -918,6 +828,67 @@ def index_add_decorator() -> Callable[
                 if len(args) > 3:
                     kwargs["value"] = args[3]
                 args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def maxpool_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "input" in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["x"] = args[0]
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from nn.MaxPool in PyTorch
+                if len(args) > 5:
+                    kwargs["ceil_mode"] = args[5]
+                if len(args) > 6:
+                    kwargs["return_mask"] = args[6]
+                args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def maxpool_layer_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from F.max_pool in PyTorch
+                if len(args) > 5:
+                    kwargs["return_mask"] = args[5]
+                if len(args) > 6:
+                    kwargs["ceil_mode"] = args[6]
+                args = (args[0],)
 
             return func(*args, **kwargs)
 
