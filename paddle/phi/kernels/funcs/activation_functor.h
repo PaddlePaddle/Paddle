@@ -5454,7 +5454,11 @@ struct CudaLog10Functor : public BaseActivationFunctor<T> {
   // log10(x) = log10(x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<U>(log10_local(x));
+    // Cast to floating-point before log10_local to avoid calling
+    // host-only ::log10(int) on Windows NVCC when MPType is integral
+    using FPType =
+        std::conditional_t<std::is_integral<MPType>::value, float, MPType>;
+    return static_cast<U>(log10_local(static_cast<FPType>(x)));
   }
 };
 
