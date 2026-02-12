@@ -215,7 +215,7 @@ class Accuracy(Metric):
             ...             [0.1, 0.4, 0.3, 0.2],
             ...             [0.1, 0.2, 0.4, 0.3],
             ...             [0.1, 0.2, 0.3, 0.4],
-            ...         ]
+            ...         ],
             ...     )
             ... )
             >>> y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
@@ -701,7 +701,7 @@ class Auc(Metric):
             ...     nn.Sequential(
             ...         nn.Linear(10, 2),
             ...         nn.Softmax(),
-            ...     )
+            ...     ),
             ... )
             >>> optim = paddle.optimizer.Adam(
             ...     learning_rate=0.001,
