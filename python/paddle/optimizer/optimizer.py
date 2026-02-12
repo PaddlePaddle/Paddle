@@ -165,7 +165,7 @@ class Optimizer:
        Base class for optimizer.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # Take the subclass adam as an example
             >>> import paddle
@@ -406,7 +406,7 @@ class Optimizer:
             dict[str,Tensor], dict contains all the Tensor used by optimizer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> emb = paddle.nn.Embedding(10, 10)
@@ -453,7 +453,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -663,7 +663,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -731,7 +731,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -771,7 +771,7 @@ class Optimizer:
             float, The current learning rate of optimizer.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # train on default dynamic graph mode
                 >>> import paddle
@@ -1531,7 +1531,7 @@ class Optimizer:
                 grad is the gradient value corresponding to the parameter.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
@@ -1622,7 +1622,7 @@ class Optimizer:
             list: A list of operators appended to the current program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1872,7 +1872,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1938,7 +1938,7 @@ class Optimizer:
                 ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -2007,7 +2007,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
