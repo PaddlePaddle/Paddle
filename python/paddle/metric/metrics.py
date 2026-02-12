@@ -103,6 +103,7 @@ class Metric(metaclass=abc.ABCMeta):
             ...     # calculate whether the predictions are correct
             ...     correct = pred == label
             ...     return paddle.cast(correct, dtype='float32')
+            ...
 
         With the :code:`compute`, we split some calculations to OPs (which
         may run on GPU devices, will be faster), and only fetch 1 tensor with
@@ -208,7 +209,11 @@ class Accuracy(Metric):
             >>> import numpy as np
             >>> import paddle
 
-            >>> x = paddle.to_tensor(np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2], [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
+            >>> x = paddle.to_tensor(np.array([
+            ...     [0.1, 0.2, 0.3, 0.4],
+            ...     [0.1, 0.4, 0.3, 0.2],
+            ...     [0.1, 0.2, 0.4, 0.3],
+            ...     [0.1, 0.2, 0.3, 0.4]]))
             >>> y = paddle.to_tensor(np.array([[0], [1], [2], [3]]))
 
             >>> m = paddle.metric.Accuracy()
@@ -233,8 +238,13 @@ class Accuracy(Metric):
             >>> train_dataset = MNIST(mode='train', transform=transform)
 
             >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
-            >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
-            >>> model.prepare(optim, loss=paddle.nn.CrossEntropyLoss(), metrics=paddle.metric.Accuracy())
+            >>> optim = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=model.parameters())
+            >>> model.prepare(
+            ...     optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy())
+            ...
             >>> model.fit(train_dataset, batch_size=64)
 
     """
@@ -379,7 +389,7 @@ class Precision(Metric):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> class Data(paddle.io.Dataset):  # type: ignore[type-arg]
+            >>> class Data(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.n = 1024
@@ -391,9 +401,18 @@ class Precision(Metric):
             ...
             ...     def __len__(self):
             ...         return self.n
-            >>> model = paddle.Model(nn.Sequential(nn.Linear(10, 1), nn.Sigmoid()))
-            >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
-            >>> model.prepare(optim, loss=nn.BCELoss(), metrics=paddle.metric.Precision())
+            ...
+            >>> model = paddle.Model(nn.Sequential(
+            ...     nn.Linear(10, 1),
+            ...     nn.Sigmoid()
+            ... ))
+            >>> optim = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=model.parameters())
+            >>> model.prepare(
+            ...     optim,
+            ...     loss=nn.BCELoss(),
+            ...     metrics=paddle.metric.Precision())
+            ...
             >>> data = Data()
             >>> model.fit(data, batch_size=16)
     """
@@ -511,7 +530,7 @@ class Recall(Metric):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> class Data(paddle.io.Dataset):  # type: ignore[type-arg]
+            >>> class Data(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.n = 1024
@@ -523,9 +542,18 @@ class Recall(Metric):
             ...
             ...     def __len__(self):
             ...         return self.n
-            >>> model = paddle.Model(nn.Sequential(nn.Linear(10, 1), nn.Sigmoid()))
-            >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
-            >>> model.prepare(optim, loss=nn.BCELoss(), metrics=[paddle.metric.Precision(), paddle.metric.Recall()])
+            ...
+            >>> model = paddle.Model(nn.Sequential(
+            ...     nn.Linear(10, 1),
+            ...     nn.Sigmoid()
+            ... ))
+            >>> optim = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=model.parameters())
+            >>> model.prepare(
+            ...     optim,
+            ...     loss=nn.BCELoss(),
+            ...     metrics=[paddle.metric.Precision(), paddle.metric.Recall()])
+            ...
             >>> data = Data()
             >>> model.fit(data, batch_size=16)
     """
@@ -635,11 +663,11 @@ class Auc(Metric):
             >>> m = paddle.metric.Auc()
 
             >>> n = 8
-            >>> class0_preds = np.random.random(size=(n, 1))
+            >>> class0_preds = np.random.random(size = (n, 1))
             >>> class1_preds = 1 - class0_preds
 
             >>> preds = np.concatenate((class0_preds, class1_preds), axis=1)
-            >>> labels = np.random.randint(2, size=(n, 1))
+            >>> labels = np.random.randint(2, size = (n, 1))
 
             >>> m.update(preds=preds, labels=labels)
             >>> res = m.accumulate()
@@ -651,7 +679,7 @@ class Auc(Metric):
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> class Data(paddle.io.Dataset):  # type: ignore[type-arg]
+            >>> class Data(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.n = 1024
@@ -663,11 +691,20 @@ class Auc(Metric):
             ...
             ...     def __len__(self):
             ...         return self.n
-            >>> model = paddle.Model(nn.Sequential(nn.Linear(10, 2), nn.Softmax()))
-            >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
+            ...
+            >>> model = paddle.Model(nn.Sequential(
+            ...     nn.Linear(10, 2), nn.Softmax())
+            ... )
+            >>> optim = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=model.parameters())
+            ...
             >>> def loss(x, y):
             ...     return nn.functional.nll_loss(paddle.log(x), y)
-            >>> model.prepare(optim, loss=loss, metrics=paddle.metric.Auc())
+            ...
+            >>> model.prepare(
+            ...     optim,
+            ...     loss=loss,
+            ...     metrics=paddle.metric.Auc())
             >>> data = Data()
             >>> model.fit(data, batch_size=16)
     """
