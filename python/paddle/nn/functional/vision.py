@@ -27,7 +27,7 @@ from paddle.base.framework import (
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...device import get_cudnn_version, is_compiled_with_rocm
+from ...device import cudnn_available, get_cudnn_version, is_compiled_with_rocm
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -98,6 +98,8 @@ def affine_grid(
 
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None and cudnn_version >= 6000 and align_corners:
+        use_cudnn = True
+    elif cudnn_version is None and cudnn_available() and align_corners:
         use_cudnn = True
     else:
         use_cudnn = False
