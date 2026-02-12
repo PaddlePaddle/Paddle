@@ -22,8 +22,6 @@
 #include "paddle/common/ddim.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/memory/malloc.h"
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
@@ -688,6 +686,119 @@ class Tensor : public TensorBase {
   }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  void record_stream(const XPUStream& stream) const {
+    paddle::memory::RecordStream(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
+        stream);
+  }
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  void record_stream(const phi::stream::stream_t& stream) const {
+    paddle::memory::RecordStream(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
+        stream);
+  }
+#endif
+
+  Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
+
+  Tensor var(bool unbiased = true) const {
+    std::vector<int64_t> empty_dims;
+    double correction = unbiased ? 1.0 : 0.0;
+    return var_impl(empty_dims, correction, false);
+  }
+
+  Tensor var(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const {
+    // Convert unbiased to correction: unbiased=True means correction=1
+    double correction = unbiased ? 1.0 : 0.0;
+    std::vector<int64_t> dims_vec;
+    if (dim.has_value() && dim.value().size() > 0) {
+      dims_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return var_impl(dims_vec, correction, keepdim);
+  }
+
+  Tensor var(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const {
+    double correction_value = 1.0;
+    if (correction.has_value()) {
+      const at::Scalar& scalar = correction.value();
+      correction_value = scalar.to<double>();
+    }
+    std::vector<int64_t> dims_vec;
+    if (dim.has_value() && dim.value().size() > 0) {
+      dims_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return var_impl(dims_vec, correction_value, keepdim);
+  }
+
+ private:
+  Tensor var_impl(const std::vector<int64_t>& dims_vec,
+                  double correction_value,
+                  bool keepdim) const {
+    phi::IntArray dims_int_array(dims_vec);
+
+    PaddleTensor mean_tensor;
+    if (dims_vec.empty()) {
+      mean_tensor = paddle::experimental::mean(
+          tensor_, phi::IntArray(std::vector<int64_t>{}), true);
+    } else {
+      mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
+    }
+
+    PaddleTensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
+    PaddleTensor diff_squared = paddle::experimental::multiply(diff, diff);
+
+    PaddleTensor sum_squared_diff;
+    if (dims_vec.empty()) {
+      sum_squared_diff =
+          paddle::experimental::sum(diff_squared,
+                                    phi::IntArray(std::vector<int64_t>{}),
+                                    diff_squared.dtype(),
+                                    keepdim);
+    } else {
+      sum_squared_diff = paddle::experimental::sum(
+          diff_squared, dims_int_array, diff_squared.dtype(), keepdim);
+    }
+
+    int64_t n = tensor_.numel();
+    if (!dims_vec.empty()) {
+      n = 1;
+      for (int64_t d : dims_vec) {
+        int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
+        if (dim_idx >= 0 &&
+            dim_idx < static_cast<int64_t>(tensor_.dims().size())) {
+          n *= tensor_.dims()[dim_idx];
+        }
+      }
+    }
+
+    double corrected_n = static_cast<double>(n) - correction_value;
+    if (corrected_n <= 0.0) {
+      corrected_n = static_cast<double>(n);
+    }
+
+    std::vector<int64_t> result_shape_vec;
+    for (int64_t i = 0; i < sum_squared_diff.dims().size(); ++i) {
+      result_shape_vec.push_back(sum_squared_diff.dims()[i]);
+    }
+    PaddleTensor correction_scalar =
+        paddle::experimental::full(phi::IntArray(result_shape_vec),
+                                   phi::Scalar(corrected_n),
+                                   sum_squared_diff.dtype(),
+                                   sum_squared_diff.place());
+    PaddleTensor result =
+        paddle::experimental::divide(sum_squared_diff, correction_scalar);
+
+    return Tensor(result);
+  }
+
+ public:
   // Deprecated packed_accessor for compatibility with PyTorch
   // Use packed_accessor32 or packed_accessor64 instead
   template <typename T,
