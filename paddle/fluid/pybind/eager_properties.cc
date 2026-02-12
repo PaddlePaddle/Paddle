@@ -102,12 +102,12 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   if (!self->tensor.defined() || self->tensor.is_dense_tensor() ||
       self->tensor.is_dist_tensor()) {
     // be same to old dygraph
-    return ToPyObject(paddle::framework::proto::VarType::DENSE_TENSOR);
+    return ToPyObject(framework::proto::VarType::DENSE_TENSOR);
   }
   if (self->tensor.is_selected_rows()) {
-    return ToPyObject(paddle::framework::proto::VarType::SELECTED_ROWS);
+    return ToPyObject(framework::proto::VarType::SELECTED_ROWS);
   } else if (egr::IsVariableCompatTensor(self->tensor)) {
-    return ToPyObject(static_cast<paddle::framework::proto::VarType::Type>(
+    return ToPyObject(static_cast<framework::proto::VarType::Type>(
         static_cast<const egr::VariableCompatTensor*>(self->tensor.impl().get())
             ->Type()));
   } else {
@@ -909,8 +909,7 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
             "Strings."));
       }
     } else {
-      return ToPyObject(
-          paddle::framework::TransToProtoVarType(self->tensor.type()));
+      return ToPyObject(framework::TransToProtoVarType(self->tensor.type()));
     }
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
