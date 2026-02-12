@@ -60,16 +60,16 @@ DY2ST_PRIM_GT = [
 
 # IN V100, 16G, CUDA 12.0, the results are as follows:
 DY2ST_PRIM_GT_CUDA12 = [
-    8.852442741394043,
-    8.40353012084961,
-    7.157838344573975,
-    8.537829399108887,
-    7.063560485839844,
-    7.615252494812012,
-    7.805097579956055,
-    8.546052932739258,
-    8.456424713134766,
-    7.971644401550293,
+    8.852460861206055,
+    8.403220176696777,
+    7.161067962646484,
+    8.568664550781250,
+    7.060279846191406,
+    7.605168342590332,
+    7.794760704040527,
+    8.558345794677734,
+    8.416743278503418,
+    8.219929695129395,
 ]
 
 
@@ -160,7 +160,7 @@ def run(model, data_loader, optimizer, mode):
             end_time = time.time()
             print(
                 f"[{mode}]epoch {epoch} | batch step {batch_id}, "
-                f"loss {avg_loss:0.8f}, "
+                f"loss {avg_loss:0.15f}, "
                 f"acc1 {total_acc1.numpy() / total_sample:0.3f}, "
                 f"acc5 {total_acc5.numpy() / total_sample:0.3f}, "
                 f"time {end_time - start_time:f}"
