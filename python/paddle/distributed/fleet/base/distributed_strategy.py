@@ -1104,7 +1104,10 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.amp = True
-                >>> strategy.amp_configs = {"init_loss_scaling": 32768, "custom_white_list": ['conv2d']}
+                >>> strategy.amp_configs = {
+                ...     "init_loss_scaling": 32768,
+                ...     "custom_white_list": ['conv2d'],
+                ... }
 
             .. code-block:: pycon
                 :name: example_2
@@ -1113,7 +1116,10 @@ class DistributedStrategy:
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.amp = True
                 >>> # pure fp16
-                >>> strategy.amp_configs = {"init_loss_scaling": 32768, "use_pure_fp16": True}
+                >>> strategy.amp_configs = {
+                ...     "init_loss_scaling": 32768,
+                ...     "use_pure_fp16": True,
+                ... }
 
         """
         return get_msg_dict(self.strategy.amp_configs)
