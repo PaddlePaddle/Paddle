@@ -92,7 +92,7 @@ class Metric(metaclass=abc.ABCMeta):
         prediction of each sample like follows, while the correct prediction
         matrix shape is [N, 5].
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-compute-example
 
             >>> import paddle
@@ -110,7 +110,7 @@ class Metric(metaclass=abc.ABCMeta):
         shape as [N, 5] instead of 2 tensors with shapes as [N, 10] and [N, 1].
         :code:`update` can be define as follows:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-update-example
 
             >>> def update(self, correct):
@@ -203,7 +203,7 @@ class Accuracy(Metric):
             is `acc`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-standalone-example
 
             >>> import numpy as np
@@ -223,7 +223,7 @@ class Accuracy(Metric):
             >>> print(res)
             0.75
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-model-api-example
 
             >>> # doctest: +TIMEOUT(80)
@@ -366,7 +366,7 @@ class Precision(Metric):
             Default is `precision`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-standalone-example
 
             >>> import numpy as np
@@ -381,7 +381,7 @@ class Precision(Metric):
             >>> print(res)
             1.0
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-model-api-example
 
             >>> import numpy as np
@@ -507,7 +507,7 @@ class Recall(Metric):
             Default is `recall`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-standalone-example
 
             >>> import numpy as np
@@ -522,7 +522,7 @@ class Recall(Metric):
             >>> print(res)
             0.6666666666666666
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-model-api-example
 
             >>> import numpy as np
@@ -654,7 +654,7 @@ class Auc(Metric):
     "NOTE: only implement the ROC curve type via Python now."
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-standalone-example
 
             >>> import numpy as np
@@ -672,7 +672,7 @@ class Auc(Metric):
             >>> m.update(preds=preds, labels=labels)
             >>> res = m.accumulate()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-model-api-example
 
             >>> import numpy as np
@@ -836,7 +836,7 @@ def accuracy(
         Tensor, the correct rate. A Tensor with type float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
