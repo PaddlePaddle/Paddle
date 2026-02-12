@@ -3523,7 +3523,6 @@
     func : slow_conv2d_dilated_grad
     data_type : input
   optional : bias
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : slow_conv3d_dilated_grad
   forward : slow_conv3d_dilated (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCDHW") -> Tensor(out)
@@ -3536,7 +3535,6 @@
     func : slow_conv3d_dilated_grad
     data_type : input
   optional : bias
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : softplus_double_grad
   forward : softplus_grad (Tensor x, Tensor grad_out, double beta, double threshold) -> Tensor(grad_x)
