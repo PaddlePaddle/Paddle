@@ -281,6 +281,7 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             num_workers=2,
             drop_last=True,
             collate_fn=identity_collate,
+            use_shared_memory=False,
         )
         batches = list(loader)
         self.assertEqual(len(batches), 2)
@@ -308,6 +309,7 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             batch_size=3,
             num_workers=2,
             collate_fn=identity_collate,
+            use_shared_memory=False,
         )
         batches = list(loader)
         self.assertEqual(len(batches), 2)
