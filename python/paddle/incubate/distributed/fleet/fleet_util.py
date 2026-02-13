@@ -45,7 +45,7 @@ class FleetUtil:
     FleetUtil provides some common functions for users' convenience.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -85,7 +85,7 @@ class FleetUtil:
             s(str): string to print
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -106,7 +106,7 @@ class FleetUtil:
             s(str): string to log
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -126,7 +126,7 @@ class FleetUtil:
             s(str): string to log
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -155,7 +155,7 @@ class FleetUtil:
             param_type(str): param data type, default is int64
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -185,7 +185,7 @@ class FleetUtil:
             print_prefix(str): prefix of print auc
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -231,7 +231,7 @@ class FleetUtil:
             auc_value(float), total_ins_num(int)
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -309,7 +309,7 @@ class FleetUtil:
             path(str): model path
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -328,7 +328,7 @@ class FleetUtil:
                        default is 0
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -351,7 +351,7 @@ class FleetUtil:
                        default is 0
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -430,7 +430,7 @@ class FleetUtil:
             donefile_name(str): donefile name, default is "donefile.txt"
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -529,7 +529,7 @@ class FleetUtil:
             donefile_name(str): donefile name, default is None"
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -650,7 +650,7 @@ class FleetUtil:
                           table_id(int): cache table id
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -709,7 +709,7 @@ class FleetUtil:
             pass_id(str|int): training pass id
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -735,7 +735,7 @@ class FleetUtil:
             pass_id(str|int): training pass id
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -760,7 +760,7 @@ class FleetUtil:
             day(str|int): training day
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -785,7 +785,7 @@ class FleetUtil:
             pass_id(str|int): training pass id
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -810,7 +810,7 @@ class FleetUtil:
             day(str|int): training day
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -841,7 +841,7 @@ class FleetUtil:
             key_num(int): cache key num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -877,7 +877,7 @@ class FleetUtil:
             key_num(int): cache key num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -905,7 +905,7 @@ class FleetUtil:
             program(Program): base Program
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -985,7 +985,7 @@ class FleetUtil:
                                 default is True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -1071,7 +1071,7 @@ class FleetUtil:
                                 default is True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -1167,7 +1167,7 @@ class FleetUtil:
             xbox_base_key(int): xbox key
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -1217,7 +1217,7 @@ class FleetUtil:
             xbox_base_key(int): xbox key
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -1268,7 +1268,7 @@ class FleetUtil:
             xbox_base_key(int): xbox key
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -1315,7 +1315,7 @@ class FleetUtil:
             online_pass_interval(list)
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -1400,7 +1400,7 @@ class FleetUtil:
              mean_predict_qvalue, total_ins_num]
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -1605,7 +1605,7 @@ class FleetUtil:
             print_prefix(str): print prefix
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> # doctest: +SKIP('dependency on custom variables')
@@ -1760,7 +1760,7 @@ class FleetUtil:
             output_dir(str): output dir.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
@@ -1779,7 +1779,7 @@ class GPUPSUtil(FleetUtil):
     GPUPSUtil provides some common functions for users' convenience.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -1806,7 +1806,7 @@ class GPUPSUtil(FleetUtil):
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -1826,7 +1826,7 @@ class GPUPSUtil(FleetUtil):
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -1851,7 +1851,7 @@ class GPUPSUtil(FleetUtil):
             xbox_base_key(int): xbox key
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -1894,7 +1894,7 @@ class GPUPSUtil(FleetUtil):
             xbox_base_key(int): xbox key
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -1938,7 +1938,7 @@ class GPUPSUtil(FleetUtil):
             xbox_base_key(int): xbox key
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -1987,7 +1987,7 @@ class GPUPSUtil(FleetUtil):
             donefile_name(str): donefile name, default is "donefile.txt"
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -2080,7 +2080,7 @@ class GPUPSUtil(FleetUtil):
             donefile_name(str): donefile name, default is None"
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
@@ -2193,7 +2193,7 @@ class GPUPSUtil(FleetUtil):
                           table_id(int): cache table id
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
