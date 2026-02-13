@@ -99,7 +99,7 @@ class FullyShardAuto:
                 param = getattr(layer, param_name)
                 if param is not None:
                     param_placements = [
-                        dist.Replicate() for _ in range(len(self.mesh._shape))
+                        dist.Replicate() for _ in range(len(self.mesh.shape))
                     ]
                     if not param.is_dist():
                         param = dist.shard_tensor(
@@ -107,7 +107,7 @@ class FullyShardAuto:
                         )
                         setattr(layer, param_name, param)
 
-        for name, layer in self.model.named_sublayers():
+        for name, layer in self.model.named_sublayers(include_self=True):
             shard_layer_param(layer)
 
     def _register_comm_hook(self, model):
