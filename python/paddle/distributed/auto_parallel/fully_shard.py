@@ -69,12 +69,12 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
 
 
 class FullyShardAuto:
-    def __init__(self, model, mesh, enable_tensor_fusion=True):
+    def __init__(self, model, mesh, enable_tensor_fusion_and_overlap=True):
         self.model = model
         self.mesh = self._check_mesh(mesh)
-        self._shard_all_param()
 
-        if enable_tensor_fusion:
+        if enable_tensor_fusion_and_overlap:
+            self._shard_all_param()
             FullyShardTensorFusion(self.model, self.mesh)
         else:
             # use first dims as sharding axis
