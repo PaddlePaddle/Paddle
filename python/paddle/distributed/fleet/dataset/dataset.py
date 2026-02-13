@@ -126,7 +126,7 @@ class DatasetBase:
         A pipe command is a UNIX pipeline command that can be used only
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.dataset.DatasetBase()
@@ -143,7 +143,7 @@ class DatasetBase:
         Set batch size. Will be effective during training
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -160,7 +160,7 @@ class DatasetBase:
         Set thread num, it is the num of readers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -177,7 +177,7 @@ class DatasetBase:
         Set file list in current worker. The filelist is indicated by a list of file names (string).
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -197,7 +197,7 @@ class DatasetBase:
         Set user slot name.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -214,7 +214,7 @@ class DatasetBase:
         Set Variables which you will use.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -249,7 +249,7 @@ class DatasetBase:
         Set hdfs config: fs name ad ugi
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -266,7 +266,7 @@ class DatasetBase:
         Set customized download cmd: download_cmd
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -310,7 +310,7 @@ class DatasetBase:
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dataset = paddle.distributed.fleet.DatasetBase()
@@ -335,7 +335,7 @@ class DatasetBase:
          Var consistency inspection of use_var_list and data_generator data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('need to work with real dataset')
                 >>> import paddle
@@ -406,7 +406,7 @@ class InMemoryDataset(DatasetBase):
     It will load data into memory and shuffle data before training.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -481,7 +481,7 @@ class InMemoryDataset(DatasetBase):
             candidate_size(int): if fea_eval is set True, set the candidate size used in slots shuffle.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -557,7 +557,7 @@ class InMemoryDataset(DatasetBase):
             candidate_size(int): if fea_eval is set True, set the candidate size used in slots shuffle.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -627,7 +627,7 @@ class InMemoryDataset(DatasetBase):
             queue_num(int): Dataset output queue num, training threads get data from queues. default is -1, which is set same as thread number in c++.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -751,7 +751,7 @@ class InMemoryDataset(DatasetBase):
             queue_num(int): dataset output queue num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -770,7 +770,7 @@ class InMemoryDataset(DatasetBase):
             parse_ins_id(bool): if parse ins_id or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -788,7 +788,7 @@ class InMemoryDataset(DatasetBase):
             parse_content(bool): if parse content or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -806,7 +806,7 @@ class InMemoryDataset(DatasetBase):
             fleet_send_batch_size(int): fleet send batch size
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -824,7 +824,7 @@ class InMemoryDataset(DatasetBase):
             fleet_send_sleep_seconds(int): fleet send sleep time
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -843,7 +843,7 @@ class InMemoryDataset(DatasetBase):
             merge_size(int): ins size to merge. default is 2.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -863,7 +863,7 @@ class InMemoryDataset(DatasetBase):
             set_shuffle_by_uid(bool): if shuffle according to uid or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -895,7 +895,7 @@ class InMemoryDataset(DatasetBase):
             date(str): training date(format : YYMMDD). eg.20211111
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -952,7 +952,7 @@ class InMemoryDataset(DatasetBase):
             is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -993,7 +993,7 @@ class InMemoryDataset(DatasetBase):
             thread_num(int): preload thread num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1032,7 +1032,7 @@ class InMemoryDataset(DatasetBase):
         Wait preload_into_memory done
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1067,7 +1067,7 @@ class InMemoryDataset(DatasetBase):
         Local shuffle
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1106,7 +1106,7 @@ class InMemoryDataset(DatasetBase):
         If you run in distributed mode, you should pass fleet instead of None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1164,7 +1164,7 @@ class InMemoryDataset(DatasetBase):
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1214,7 +1214,7 @@ class InMemoryDataset(DatasetBase):
             The size of memory data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1271,7 +1271,7 @@ class InMemoryDataset(DatasetBase):
             The size of shuffle data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1324,7 +1324,7 @@ class InMemoryDataset(DatasetBase):
                             default is True.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -1348,7 +1348,7 @@ class InMemoryDataset(DatasetBase):
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('No files to read')
                 >>> import paddle
@@ -1385,7 +1385,7 @@ class QueueDataset(DatasetBase):
     QueueDataset, it will process data streamly.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> dataset = paddle.distributed.QueueDataset()
@@ -1428,7 +1428,7 @@ class FileInstantDataset(DatasetBase):
     FileInstantDataset, it will process data streamly.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> dataset = paddle.distributed.fleet.FileInstantDataset()
