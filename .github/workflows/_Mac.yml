@@ -49,7 +49,7 @@ jobs:
     name: Build and test
     if: ${{ inputs.clone-can-skip != 'true' }}
     runs-on:
-      group: Mac-CI
+      group: mac-test
     timeout-minutes: 60
 
     steps:
