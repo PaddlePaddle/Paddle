@@ -488,7 +488,10 @@ class HDFSClient(FS):
             >>> from paddle.distributed.fleet.utils import HDFSClient
             >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
 
-            >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+            >>> configs = {
+            ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+            ...     "hadoop.job.ugi": "hello,hello123"
+            ... }
 
             >>> client = HDFSClient(hadoop_home, configs)
             >>> client.ls_dir("hdfs:/test_hdfs_client")
@@ -588,7 +591,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> subdirs = client.list_dirs("hdfs:/test_hdfs_client")
@@ -620,7 +626,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
@@ -680,7 +689,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_file("hdfs:/test_hdfs_client")
@@ -723,7 +735,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_file("hdfs:/test_hdfs_client")
@@ -754,7 +769,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_exist("hdfs:/test_hdfs_client")
@@ -813,7 +831,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
@@ -908,7 +929,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.download("hdfs:/test_hdfs_client", "./")
@@ -976,7 +1000,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.mkdirs("hdfs:/test_hdfs_client")
@@ -1027,7 +1054,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
@@ -1086,7 +1116,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.delete("hdfs:/test_hdfs_client")
@@ -1118,7 +1151,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.touch("hdfs:/test_hdfs_client")
@@ -1159,7 +1195,10 @@ class HDFSClient(FS):
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
+                >>> configs = {
+                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                ...     "hadoop.job.ugi": "hello,hello123"
+                ... }
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.cat("hdfs:/test_hdfs_client")
