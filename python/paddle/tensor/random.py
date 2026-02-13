@@ -1765,6 +1765,29 @@ def uniform_(
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
+@overload
+def randint(
+    low: int = 0,
+    high: int | None = None,
+    shape: ShapeLike = [1],
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def randint(
+    high: int,
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
 @param_one_alias(["shape", "size"])
 def randint(
     low: int = 0,
@@ -1797,7 +1820,9 @@ def randint(
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor.
+
+    Keyword Arguments:
+        out (Tensor, optional): Optional output tensor. If provided, the result will be stored in this tensor. Default: None.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
