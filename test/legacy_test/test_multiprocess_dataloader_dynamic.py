@@ -86,6 +86,10 @@ def collate_batch(batch_list):
     return image, label
 
 
+def identity_collate(batch_list):
+    return batch_list
+
+
 class TestDygraphDataLoader(unittest.TestCase):
     def run_main(
         self,
@@ -261,7 +265,7 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             dataset,
             batch_size=10,
             drop_last=True,
-            collate_fn=lambda d: d,
+            collate_fn=identity_collate,
         )
         batches = list(loader)
         self.assertEqual(len(batches), 2)
@@ -276,7 +280,7 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             batch_size=10,
             num_workers=2,
             drop_last=True,
-            collate_fn=lambda d: d,
+            collate_fn=identity_collate,
         )
         batches = list(loader)
         self.assertEqual(len(batches), 2)
@@ -289,7 +293,7 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
         loader = DataLoader(
             dataset,
             batch_size=3,
-            collate_fn=lambda d: d,
+            collate_fn=identity_collate,
         )
         batches = list(loader)
         self.assertEqual(len(batches), 2)
@@ -303,7 +307,7 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             dataset,
             batch_size=3,
             num_workers=2,
-            collate_fn=lambda d: d,
+            collate_fn=identity_collate,
         )
         batches = list(loader)
         self.assertEqual(len(batches), 2)
