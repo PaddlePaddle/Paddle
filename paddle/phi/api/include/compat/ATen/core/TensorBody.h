@@ -540,7 +540,7 @@ class Tensor : public TensorBase {
   void record_stream(const phi::stream::stream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        stream);
+        reinterpret_cast<gpuStream_t>(stream));
   }
 #endif
 

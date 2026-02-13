@@ -165,7 +165,7 @@ class Optimizer:
        Base class for optimizer.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # Take the subclass adam as an example
             >>> import paddle
@@ -406,7 +406,7 @@ class Optimizer:
             dict[str,Tensor], dict contains all the Tensor used by optimizer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> emb = paddle.nn.Embedding(10, 10)
@@ -453,7 +453,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -463,10 +463,14 @@ class Optimizer:
                 >>> paddle.save(layer_state_dict, "emb.pdparams")
 
                 >>> scheduler = paddle.optimizer.lr.NoamDecay(
-                ...     d_model=100, warmup_steps=100, verbose=True)
+                ...     d_model=100,
+                ...     warmup_steps=100,
+                ...     verbose=True,
+                ... )
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=scheduler,
-                ...     parameters=emb.parameters())
+                ...     parameters=emb.parameters(),
+                ... )
                 >>> opt_state_dict = adam.state_dict()
                 >>> paddle.save(opt_state_dict, "adam.pdopt")
 
@@ -663,7 +667,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -731,7 +735,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -739,7 +743,11 @@ class Optimizer:
                 >>> adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
                 >>> # set learning rate manually by class LRScheduler
-                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2,4,6], gamma=0.8)
+                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(
+                ...     learning_rate=0.5,
+                ...     milestones=[2, 4, 6],
+                ...     gamma=0.8,
+                ... )
                 >>> adam.set_lr_scheduler(scheduler)
                 >>> lr = adam.get_lr()
                 >>> print("current lr is {}".format(lr))
@@ -771,7 +779,7 @@ class Optimizer:
             float, The current learning rate of optimizer.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # train on default dynamic graph mode
                 >>> import paddle
@@ -779,12 +787,12 @@ class Optimizer:
                 >>> emb = paddle.nn.Embedding(10, 3)
 
                 >>> ## example1: LRScheduler is not used, return the same value is all the same
-                >>> adam = paddle.optimizer.Adam(0.01, parameters = emb.parameters())
+                >>> adam = paddle.optimizer.Adam(0.01, parameters=emb.parameters())
                 >>> for batch in range(10):
                 ...     input = paddle.randint(low=0, high=5, shape=[5])
                 ...     out = emb(input)
                 ...     out.backward()
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.01
                 ...     adam.step()
                 Learning rate of step0: 0.01
                 Learning rate of step1: 0.01
@@ -799,12 +807,12 @@ class Optimizer:
 
                 >>> ## example2: StepDecay is used, return the scheduled learning rate
                 >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
-                >>> adam = paddle.optimizer.Adam(scheduler, parameters = emb.parameters())
+                >>> adam = paddle.optimizer.Adam(scheduler, parameters=emb.parameters())
                 >>> for batch in range(10):
                 ...     input = paddle.randint(low=0, high=5, shape=[5])
                 ...     out = emb(input)
                 ...     out.backward()
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05...
                 ...     adam.step()
                 ...     scheduler.step()
                 Learning rate of step0: 0.5
@@ -833,7 +841,7 @@ class Optimizer:
                 >>> exe = paddle.static.Executor()
                 >>> exe.run(start_prog)
                 >>> for batch in range(10):
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05->0.005...
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05->0.005...
                 ...     out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
                 ...     scheduler.step()
                 Learning rate of step0: 0.5
@@ -1531,15 +1539,17 @@ class Optimizer:
                 grad is the gradient value corresponding to the parameter.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
 
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                ...                             parameters = linear.parameters())
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=0.01,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
@@ -1622,7 +1632,7 @@ class Optimizer:
             list: A list of operators appended to the current program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1630,8 +1640,10 @@ class Optimizer:
                 >>> linear = paddle.nn.Linear(10, 10)
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
-                >>> optimizer = paddle.optimizer.Adam(learning_rate=0.1,
-                ...         parameters=linear.parameters())
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.1,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> params_grads = optimizer.backward(loss)
                 >>> optimizer.apply_gradients(params_grads)
 
@@ -1872,15 +1884,17 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                ...                             parameters = linear.parameters())
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=0.01,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
@@ -1938,7 +1952,7 @@ class Optimizer:
                 ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -1949,9 +1963,11 @@ class Optimizer:
                 >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
                 >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
-                ...         parameters=linear.parameters(),
-                ...         weight_decay=0.01)
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=0.1,
+                ...     parameters=linear.parameters(),
+                ...     weight_decay=0.01,
+                ... )
                 >>> loss.backward()
                 >>> adam.minimize(loss)
                 >>> adam.clear_grad()
@@ -2007,15 +2023,17 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                ...                         parameters = linear.parameters())
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=0.01,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
