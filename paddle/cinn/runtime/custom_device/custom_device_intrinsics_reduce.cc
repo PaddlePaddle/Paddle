@@ -44,23 +44,33 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
       {cinn::common::Target::Feature::JIT},
       {});
 
-#define EXPAND_REDUCE_INT32_REGISTER_MARCO(MARCO, ...) \
-  MARCO(sum_int32, int, ##__VA_ARGS__)                 \
-  MARCO(prod_int32, int, ##__VA_ARGS__)                \
-  MARCO(max_int32, int, ##__VA_ARGS__)                 \
-  MARCO(min_int32, int, ##__VA_ARGS__)
+#define EXPAND_ARG_REDUCE_MACRO(MACRO, DTYPE, TYPE, ...) \
+  MACRO(max_argidx_##DTYPE##_i32, TYPE, ##__VA_ARGS__)   \
+  MACRO(min_argidx_##DTYPE##_i32, TYPE, ##__VA_ARGS__)   \
+  MACRO(max_argidx_##DTYPE##_i64, TYPE, ##__VA_ARGS__)   \
+  MACRO(min_argidx_##DTYPE##_i64, TYPE, ##__VA_ARGS__)
 
-#define EXPAND_REDUCE_INT64_REGISTER_MARCO(MARCO, ...) \
-  MARCO(sum_int64, int64_t, ##__VA_ARGS__)             \
-  MARCO(prod_int64, int64_t, ##__VA_ARGS__)            \
-  MARCO(max_int64, int64_t, ##__VA_ARGS__)             \
-  MARCO(min_int64, int64_t, ##__VA_ARGS__)
+#define EXPAND_REDUCE_INT32_REGISTER_MACRO(MACRO, ...) \
+  MACRO(sum_int32, int, ##__VA_ARGS__)                 \
+  MACRO(prod_int32, int, ##__VA_ARGS__)                \
+  MACRO(max_int32, int, ##__VA_ARGS__)                 \
+  MACRO(min_int32, int, ##__VA_ARGS__)                 \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, i32, int, ##__VA_ARGS__)
+
+#define EXPAND_REDUCE_INT64_REGISTER_MACRO(MACRO, ...) \
+  MACRO(sum_int64, int64_t, ##__VA_ARGS__)             \
+  MACRO(prod_int64, int64_t, ##__VA_ARGS__)            \
+  MACRO(max_int64, int64_t, ##__VA_ARGS__)             \
+  MACRO(min_int64, int64_t, ##__VA_ARGS__)             \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, i64, int64_t, ##__VA_ARGS__)
 
 #define EXPAND_REDUCE_FP32_REGISTER_MACRO(MACRO, ...) \
   MACRO(sum_fp32, float, ##__VA_ARGS__)               \
   MACRO(prod_fp32, float, ##__VA_ARGS__)              \
   MACRO(max_fp32, float, ##__VA_ARGS__)               \
-  MACRO(min_fp32, float, ##__VA_ARGS__)
+  MACRO(min_fp32, float, ##__VA_ARGS__)               \
+  MACRO(sum_welford_fp32, float, ##__VA_ARGS__)       \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, fp32, float, ##__VA_ARGS__)
 
 #define EXPAND_REDUCE_BOOL_REGISTER_MACRO(MACRO, ...) \
   MACRO(all, bool, ##__VA_ARGS__)                     \
@@ -70,7 +80,9 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
   MACRO(sum_fp64, double, ##__VA_ARGS__)              \
   MACRO(prod_fp64, double, ##__VA_ARGS__)             \
   MACRO(max_fp64, double, ##__VA_ARGS__)              \
-  MACRO(min_fp64, double, ##__VA_ARGS__)
+  MACRO(min_fp64, double, ##__VA_ARGS__)              \
+  MACRO(sum_welford_fp64, double, ##__VA_ARGS__)      \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, fp64, double, ##__VA_ARGS__)
 
 #ifdef CINN_CUSTOM_DEVICE_BF16
 #define EXPAND_REDUCE_BF16_REGISTER_MACRO(MACRO, ...) \
@@ -85,8 +97,15 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
   MACRO(sum_fp16, float16, ##__VA_ARGS__)             \
   MACRO(prod_fp16, float16, ##__VA_ARGS__)            \
   MACRO(max_fp16, float16, ##__VA_ARGS__)             \
-  MACRO(min_fp16, float16, ##__VA_ARGS__)
+  MACRO(min_fp16, float16, ##__VA_ARGS__)             \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, fp16, float16, ##__VA_ARGS__)
 #endif
+
+#define EXPAND_REDUCE_UINT8_REGISTER_MACRO(MACRO, ...) \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, u8, uint8_t, ##__VA_ARGS__)
+
+#define EXPAND_REDUCE_INT16_REGISTER_MACRO(MACRO, ...) \
+  EXPAND_ARG_REDUCE_MACRO(MACRO, i16, int16_t, ##__VA_ARGS__)
 
 #define REGISTER_BLOCK_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_block_reduce_##REDUCE_TYPE, target) \
@@ -96,11 +115,13 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
       .template AddInputType(cinn::common::type_of<bool>())                   \
       .End();
 
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT32_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_UINT8_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
 
 #ifdef CINN_CUSTOM_DEVICE_BF16
   EXPAND_REDUCE_BF16_REGISTER_MACRO(REGISTER_BLOCK_REDUCE_FUNC_IMPL)
@@ -120,8 +141,8 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
       .template AddInputType(cinn::common::type_of<cinn_buffer_t *>())   \
       .End();
 
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT32_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_DISCRETE_REDUCE_FUNC_IMPL)
@@ -148,8 +169,8 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
       .template AddInputType(cinn::common::type_of<int>())                \
       .End();
 
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
+  EXPAND_REDUCE_INT32_REGISTER_MACRO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MACRO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
   EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
   EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
   EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_BLOCK_SHUFFLE_FUNC_IMPL)
@@ -170,8 +191,8 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
       .template AddInputType(cinn::common::type_of<cinn_buffer_t *>())       \
       .template AddInputType(cinn::common::type_of<int>())                   \
       .End();
-  EXPAND_REDUCE_INT32_REGISTER_MARCO(REGISTER_GRID_REDUCE_FUNC_IMPL)
-  EXPAND_REDUCE_INT64_REGISTER_MARCO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT32_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
+  EXPAND_REDUCE_INT64_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_FP32_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_FP64_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
   EXPAND_REDUCE_BOOL_REGISTER_MACRO(REGISTER_GRID_REDUCE_FUNC_IMPL)
@@ -186,8 +207,8 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
 
 #undef REGISTER_GRID_REDUCE_FUNC_IMPL
 
-#undef EXPAND_REDUCE_INT32_REGISTER_MARCO
-#undef EXPAND_REDUCE_INT64_REGISTER_MARCO
+#undef EXPAND_REDUCE_INT32_REGISTER_MACRO
+#undef EXPAND_REDUCE_INT64_REGISTER_MACRO
 #undef EXPAND_REDUCE_FP32_REGISTER_MACRO
 #undef EXPAND_REDUCE_FP64_REGISTER_MACRO
 #undef EXPAND_REDUCE_BOOL_REGISTER_MACRO
@@ -204,4 +225,3 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
 }  // namespace custom_device
 }  // namespace runtime
 }  // namespace cinn
-#endif  // CINN_WITH_CUSTOM_DEVICE
