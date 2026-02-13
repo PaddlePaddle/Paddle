@@ -205,7 +205,7 @@ class FleetUtil:
                 ... )
                 >>> binary_predict = paddle.concat(
                 ...     input=[
-                ...         paddle.subtract(paddle.ceil(similarity_norm), similarity_norm),
+                ...         paddle.subtract(paddle.ceil(similarity_norm), similarity_norm,),
                 ...         similarity_norm,
                 ...     ],
                 ...     axis=1,
