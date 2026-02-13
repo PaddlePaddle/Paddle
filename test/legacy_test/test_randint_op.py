@@ -294,6 +294,30 @@ class TestRandintAliasAndOut(unittest.TestCase):
             self.assertEqual(result.shape, (3, 4))
 
 
+class TestRandintHighAsList(unittest.TestCase):
+    """Test randint when high is a list/tuple (positional args compatibility).
+
+    When called as paddle.randint(10, [3, 4]), the second positional arg
+    binds to `high` as a list. The code detects this and treats it as
+    shape=high, high=low, low=0.
+    """
+
+    def test_high_is_list(self):
+        paddle.disable_static()
+        # paddle.randint(10, [3, 4]) means low=0, high=10, shape=[3, 4]
+        x = paddle.randint(10, [3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 10))
+        paddle.enable_static()
+
+    def test_high_is_tuple(self):
+        paddle.disable_static()
+        x = paddle.randint(5, (2, 3))
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 5))
+        paddle.enable_static()
+
+
 class TestRandintOldStaticMode(unittest.TestCase):
     """Test randint in old static graph mode (non-PIR mode).
 
