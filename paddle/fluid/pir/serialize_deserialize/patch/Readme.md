@@ -71,7 +71,7 @@ op_patches:
 ```
 
 #### OpOperand / OpResult 增删改：
-- OpOperand 不需要修改
+- OpOperand 不需要修改。
 - OpResult Type 修改：
   OpResult Type的修改改与Attribute类似，需要指定object，type，default。
 
