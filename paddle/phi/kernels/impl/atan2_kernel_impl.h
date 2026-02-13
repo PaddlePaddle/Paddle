@@ -57,38 +57,6 @@ struct Atan2Functor {
 };
 
 template <>
-struct Atan2Functor<int32_t> {
-  Atan2Functor(const int32_t* x1, const int32_t* x2, double* out, int64_t numel)
-      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    out_[idx] =
-        ::atan2(static_cast<double>(x1_[idx]), static_cast<double>(x2_[idx]));
-  }
-
-  const int32_t* x1_;
-  const int32_t* x2_;
-  double* out_;
-  int64_t numel_;
-};
-
-template <>
-struct Atan2Functor<int64_t> {
-  Atan2Functor(const int64_t* x1, const int64_t* x2, double* out, int64_t numel)
-      : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    out_[idx] =
-        ::atan2(static_cast<double>(x1_[idx]), static_cast<double>(x2_[idx]));
-  }
-
-  const int64_t* x1_;
-  const int64_t* x2_;
-  double* out_;
-  int64_t numel_;
-};
-
-template <>
 struct Atan2Functor<double> {
   Atan2Functor(const double* x1, const double* x2, double* out, int64_t numel)
       : x1_(x1), x2_(x2), out_(out), numel_(numel) {}
