@@ -191,23 +191,17 @@ class FleetUtil:
                 >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.print_global_auc(myscope, stat_pos=stat_pos.name,
-                ...                           stat_neg=stat_neg.name)
+                >>> fleet_util.print_global_auc(myscope, stat_pos=stat_pos.name, stat_neg=stat_neg.name)
 
                 >>> # below is part of model
-                >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
-                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(
-                ...     emb, min=-15.0, max=15.0), name="similarity_norm")
-                >>> binary_predict = paddle.concat(input=[
-                ...     paddle.subtract(
-                ...         paddle.ceil(similarity_norm),
-                ...         similarity_norm),
-                ...     similarity_norm],
-                ...     axis=1)
-                >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos,
-                ...     stat_neg] = paddle.static.auc(input=binary_predict,
-                ...                                   label=label,curve='ROC',
-                ...                                   num_thresholds=4096)
+                >>> emb = my_slot_net(slots, label)  # emb can be fc layer of size 1
+                >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(emb, min=-15.0, max=15.0), name="similarity_norm")
+                >>> binary_predict = paddle.concat(
+                ...     input=[paddle.subtract(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1
+                ... )
+                >>> auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] = paddle.static.auc(
+                ...     input=binary_predict, label=label, curve='ROC', num_thresholds=4096
+                ... )
 
         """
         auc_value = self.get_global_auc(scope, stat_pos, stat_neg)
@@ -237,9 +231,7 @@ class FleetUtil:
                 >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> auc_value, _ = fleet_util.get_global_auc(myscope,
-                ...                                          stat_pos=stat_pos,
-                ...                                          stat_neg=stat_neg)
+                >>> auc_value, _ = fleet_util.get_global_auc(myscope, stat_pos=stat_pos, stat_neg=stat_neg)
 
         """
         if scope.find_var(stat_pos) is None or scope.find_var(stat_neg) is None:
@@ -435,12 +427,14 @@ class FleetUtil:
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output",
-                ...                                 day=20190723,
-                ...                                 pass_id=66,
-                ...                                 xbox_base_key=int(time.time()),
-                ...                                 hadoop_fs_name="hdfs://xxx",
-                ...                                 hadoop_fs_ugi="user,passwd")
+                >>> fleet_util.write_model_donefile(
+                ...     output_path="hdfs:/my/output",
+                ...     day=20190723,
+                ...     pass_id=66,
+                ...     xbox_base_key=int(time.time()),
+                ...     hadoop_fs_name="hdfs://xxx",
+                ...     hadoop_fs_ugi="user,passwd",
+                ... )
 
         """
         day = str(day)
@@ -542,7 +536,8 @@ class FleetUtil:
                 ...     data_path="hdfs:/my/data/",
                 ...     hadoop_fs_name="hdfs://xxx",
                 ...     hadoop_fs_ugi="user,passwd",
-                ...     monitor_data={})
+                ...     monitor_data={},
+                ... )
 
         """
         day = str(day)
@@ -661,7 +656,8 @@ class FleetUtil:
                 ...     pass_id=1,
                 ...     key_num=123456,
                 ...     hadoop_fs_name="hdfs://xxx",
-                ...     hadoop_fs_ugi="user,passwd")
+                ...     hadoop_fs_ugi="user,passwd",
+                ... )
 
         """
         day = str(day)
@@ -991,16 +987,18 @@ class FleetUtil:
                 >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.save_paddle_inference_model(exe,
-                ...                                        join_scope,
-                ...                                        join_program,
-                ...                                        feeded_vars,
-                ...                                        target_vars,
-                ...                                        "hdfs:/my/output/path/",
-                ...                                        day=20190727,
-                ...                                        pass_id=6,
-                ...                                        hadoop_fs_name="xxx",
-                ...                                        hadoop_fs_ugi="xxx,xxx")
+                >>> fleet_util.save_paddle_inference_model(
+                ...     exe,
+                ...     join_scope,
+                ...     join_program,
+                ...     feeded_vars,
+                ...     target_vars,
+                ...     "hdfs:/my/output/path/",
+                ...     day=20190727,
+                ...     pass_id=6,
+                ...     hadoop_fs_name="xxx",
+                ...     hadoop_fs_ugi="xxx,xxx",
+                ... )
         """
         day = str(day)
         pass_id = str(pass_id)
@@ -1077,36 +1075,42 @@ class FleetUtil:
                 >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.save_paddle_params(exe,
-                ...                               join_scope,
-                ...                               join_program,
-                ...                               "paddle_dense.model.0",
-                ...                               "hdfs:/my/output/path/",
-                ...                               day=20190727,
-                ...                               pass_id=6,
-                ...                               hadoop_fs_name="xxx",
-                ...                               hadoop_fs_ugi="xxx,xxx",
-                ...                               var_names=join_all_var_names)
-                >>> fleet_util.save_paddle_params(exe,
-                ...                               join_scope,
-                ...                               join_program,
-                ...                               "paddle_dense.model.usr.0",
-                ...                               "hdfs:/my/output/path/",
-                ...                               day=20190727,
-                ...                               pass_id=6,
-                ...                               hadoop_fs_name="xxx",
-                ...                               hadoop_fs_ugi="xxx,xxx",
-                ...                               var_names=join_user_var_names)
-                >>> fleet_util.save_paddle_params(exe,
-                ...                               join_scope,
-                ...                               join_program,
-                ...                               "paddle_dense.model.item.0",
-                ...                               "hdfs:/my/output/path/",
-                ...                               day=20190727,
-                ...                               pass_id=6,
-                ...                               hadoop_fs_name="xxx",
-                ...                               hadoop_fs_ugi="xxx,xxx",
-                ...                               var_names=join_user_item_names)
+                >>> fleet_util.save_paddle_params(
+                ...     exe,
+                ...     join_scope,
+                ...     join_program,
+                ...     "paddle_dense.model.0",
+                ...     "hdfs:/my/output/path/",
+                ...     day=20190727,
+                ...     pass_id=6,
+                ...     hadoop_fs_name="xxx",
+                ...     hadoop_fs_ugi="xxx,xxx",
+                ...     var_names=join_all_var_names,
+                ... )
+                >>> fleet_util.save_paddle_params(
+                ...     exe,
+                ...     join_scope,
+                ...     join_program,
+                ...     "paddle_dense.model.usr.0",
+                ...     "hdfs:/my/output/path/",
+                ...     day=20190727,
+                ...     pass_id=6,
+                ...     hadoop_fs_name="xxx",
+                ...     hadoop_fs_ugi="xxx,xxx",
+                ...     var_names=join_user_var_names,
+                ... )
+                >>> fleet_util.save_paddle_params(
+                ...     exe,
+                ...     join_scope,
+                ...     join_program,
+                ...     "paddle_dense.model.item.0",
+                ...     "hdfs:/my/output/path/",
+                ...     day=20190727,
+                ...     pass_id=6,
+                ...     hadoop_fs_name="xxx",
+                ...     hadoop_fs_ugi="xxx,xxx",
+                ...     var_names=join_user_item_names,
+                ... )
 
         """
         day = str(day)
@@ -1321,11 +1325,8 @@ class FleetUtil:
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> online_pass_interval = fleet_util.get_online_pass_interval(
-                ...     days="{20190720..20190729}",
-                ...     hours="{0..23}",
-                ...     split_interval=5,
-                ...     split_per_pass=2,
-                ...     is_data_hourly_placed=False)
+                ...     days="{20190720..20190729}", hours="{0..23}", split_interval=5, split_per_pass=2, is_data_hourly_placed=False
+                ... )
 
         """
         pattern = r'^\d+|{[0-9]+}|{[0-9]+\.\.[0-9]+}$'
@@ -1995,10 +1996,7 @@ class GPUPSUtil(FleetUtil):
                 >>> hdfs_client = AFSClient()
                 >>> fleet_util = GPUPSUtil()
                 >>> fleet_util.set_fsclient(hdfs_client)
-                >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output",
-                ...                                 day=20190723,
-                ...                                 pass_id=66,
-                ...                                 xbox_base_key=int(time.time()))
+                >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output", day=20190723, pass_id=66, xbox_base_key=int(time.time()))
 
         """
         day = str(day)
@@ -2094,7 +2092,8 @@ class GPUPSUtil(FleetUtil):
                 ...     pass_id=1,
                 ...     xbox_base_key=int(time.time()),
                 ...     data_path="hdfs:/my/data/",
-                ...     monitor_data={})
+                ...     monitor_data={},
+                ... )
 
         """
         day = str(day)
@@ -2201,11 +2200,7 @@ class GPUPSUtil(FleetUtil):
                 >>> hdfs_client = AFSClient()
                 >>> fleet_util = GPUPSUtil()
                 >>> fleet_util.set_fsclient(hdfs_client)
-                >>> fleet_util.write_cache_donefile(
-                ...     output_path="hdfs:/my/output/",
-                ...     day=20190722,
-                ...     pass_id=1,
-                ...     key_num=123456)
+                >>> fleet_util.write_cache_donefile(output_path="hdfs:/my/output/", day=20190722, pass_id=1, key_num=123456)
 
         """
         day = str(day)
