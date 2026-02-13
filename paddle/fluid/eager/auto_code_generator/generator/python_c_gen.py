@@ -37,6 +37,7 @@ args_default_mapping = {
 #########################
 skipped_forward_api_names = {
     "scale_grad",
+    "div_scale_grad",
     "push_gpups_sparse",
     "multiply_grad",
     "pull_sparse_v2_grad",
