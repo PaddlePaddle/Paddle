@@ -136,7 +136,7 @@ class LocalFS(FS):
     A tool of local file system.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> from paddle.distributed.fleet.utils import LocalFS
@@ -158,7 +158,7 @@ class LocalFS(FS):
             and the second is a list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -188,7 +188,7 @@ class LocalFS(FS):
             fs_path(str): The local directory path.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -210,7 +210,7 @@ class LocalFS(FS):
             fs_dst_path(str): The new name of the file or directory.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -243,7 +243,7 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -275,7 +275,7 @@ class LocalFS(FS):
             Bool: Return true if the path exists and it's a file, otherwise return false.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -300,7 +300,7 @@ class LocalFS(FS):
             Bool: Return true if the path exists and it's a directory, otherwise return false.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -326,7 +326,7 @@ class LocalFS(FS):
             otherwise return false.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -347,7 +347,7 @@ class LocalFS(FS):
             program will throw an Exception. Default is true.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -380,7 +380,7 @@ class LocalFS(FS):
             overwrite(bool): Whether to re-write `dst_path` if that exists. Default is False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -413,7 +413,7 @@ class LocalFS(FS):
             List: A list of all its subdirectories, e.g. [subdirname1, subdirname1, ...].
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import LocalFS
@@ -482,16 +482,13 @@ class HDFSClient(FS):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> from paddle.distributed.fleet.utils import HDFSClient
             >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
 
-            >>> configs = {
-            ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-            ...     "hadoop.job.ugi": "hello,hello123"
-            ... }
+            >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
             >>> client = HDFSClient(hadoop_home, configs)
             >>> client.ls_dir("hdfs:/test_hdfs_client")
@@ -585,16 +582,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> subdirs = client.list_dirs("hdfs:/test_hdfs_client")
@@ -620,16 +614,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> subdirs, files = client.ls_dir("hdfs:/test_hdfs_client")
@@ -683,16 +674,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_file("hdfs:/test_hdfs_client")
@@ -729,16 +717,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_file("hdfs:/test_hdfs_client")
@@ -763,16 +748,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> ret = client.is_exist("hdfs:/test_hdfs_client")
@@ -825,16 +807,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
@@ -923,16 +902,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.download("hdfs:/test_hdfs_client", "./")
@@ -994,16 +970,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.mkdirs("hdfs:/test_hdfs_client")
@@ -1048,16 +1021,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
@@ -1110,16 +1080,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.delete("hdfs:/test_hdfs_client")
@@ -1145,16 +1112,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.touch("hdfs:/test_hdfs_client")
@@ -1189,16 +1153,13 @@ class HDFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.distributed.fleet.utils import HDFSClient
 
                 >>> hadoop_home = "/home/client/hadoop-client/hadoop/"
-                >>> configs = {
-                ...     "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-                ...     "hadoop.job.ugi": "hello,hello123"
-                ... }
+                >>> configs = {"fs.default.name": "hdfs://xxx.hadoop.com:54310", "hadoop.job.ugi": "hello,hello123"}
 
                 >>> client = HDFSClient(hadoop_home, configs)
                 >>> client.cat("hdfs:/test_hdfs_client")
@@ -1287,7 +1248,7 @@ class AFSClient(FS):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('depend on external file')
             >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1317,7 +1278,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1346,7 +1307,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1378,7 +1339,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1412,7 +1373,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1440,7 +1401,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1484,7 +1445,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1513,7 +1474,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1547,7 +1508,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1573,7 +1534,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1604,7 +1565,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
 
                 >>> # doctest: +SKIP('depend on external file')
@@ -1630,7 +1591,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
@@ -1662,7 +1623,7 @@ class AFSClient(FS):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
