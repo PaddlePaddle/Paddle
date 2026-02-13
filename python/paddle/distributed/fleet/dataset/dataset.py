@@ -110,7 +110,6 @@ class DatasetBase:
             fs_ugi(str): fs ugi. default is "".
             download_cmd(str): customized download command. default is "cat"
 
-
         """
         self._set_batch_size(batch_size)
         self._set_thread(thread_num)
