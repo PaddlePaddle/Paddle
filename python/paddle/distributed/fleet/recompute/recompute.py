@@ -31,6 +31,7 @@ from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
 from paddle.framework import core, in_dynamic_mode
+from paddle.jit.dy2static.program_translator import StaticFunction
 
 from ..utils.log_util import logger
 
@@ -685,10 +686,14 @@ def recompute(function, *args, **kwargs):
         offload_indices = kwargs.pop('offload_indices', [])
         input_args = []
         # rearrange `position-args + keyword-args` into `position-args`
-        if isinstance(function, paddle.nn.Layer):
-            dyfunc_sig = inspect.signature(function.forward)
-        else:
-            dyfunc_sig = inspect.signature(function)
+        target = (
+            function.forward
+            if isinstance(function, paddle.nn.Layer)
+            else function
+        )
+        if isinstance(target, StaticFunction):
+            target = target.dygraph_function
+        dyfunc_sig = inspect.signature(target)
 
         bound_args = dyfunc_sig.bind(*args, **kwargs)
         bound_args.apply_defaults()

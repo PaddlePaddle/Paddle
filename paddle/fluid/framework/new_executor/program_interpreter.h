@@ -253,22 +253,22 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool enable_job_schedule_profiler_;
 };
 
-static inline const phi::DenseTensor& GetTensorFromVar(const Variable* var) {
+static inline const DenseTensor& GetTensorFromVar(const Variable* var) {
   if (var->IsType<DenseTensor>()) {
     return var->Get<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
 
-static inline phi::DenseTensor* GetMutableTensorFromVar(Variable* var) {
+static inline DenseTensor* GetMutableTensorFromVar(Variable* var) {
   if (var->IsType<DenseTensor>()) {
     return var->GetMutable<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }

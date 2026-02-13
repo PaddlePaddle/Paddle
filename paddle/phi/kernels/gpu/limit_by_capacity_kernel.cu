@@ -28,7 +28,7 @@ __global__ void limit_by_capacity_impl(
     wid = i / n_expert;
     eid = i % n_expert;
     auto proposal = expc[wid * n_expert + eid];
-    auto cap_left = phi::CudaAtomicAdd(cap + eid, proposal * (-1));
+    auto cap_left = CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
     } else if (cap_left >= 0) {

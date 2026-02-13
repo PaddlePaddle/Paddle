@@ -139,7 +139,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
       x_pad[2 * i + 4 + 1] = paddings_[2 * i + 1] - padding_common[i];
     }
 
-    transformed_dout.Resize(common::make_ddim(new_dout_shape_vec));
+    transformed_dout.Resize(make_ddim(new_dout_shape_vec));
     dev_ctx.template Alloc<T>(&transformed_dout);
 
     const int rank = x_transpose.dims().size();
@@ -337,7 +337,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
       DenseTensor dx_transpose;
       DenseTensor dx_nchw;
       dx_nchw.ShareDataWith(*dx);
-      dx_nchw.Resize(common::make_ddim(x_vec));
+      dx_nchw.Resize(make_ddim(x_vec));
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 2, 3, 1};
         dx_transpose = Transpose<T, Context>(dev_ctx, dx_nchw, axis);
@@ -631,10 +631,10 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       input_pad[2 * i + 4] = paddings_[2 * i] - padding_common[i];
       input_pad[2 * i + 4 + 1] = paddings_[2 * i + 1] - padding_common[i];
     }
-    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_x.Resize(new_input_shape);
     transformed_ddx.Resize(new_input_shape);
-    transformed_dout.Resize(common::make_ddim(new_output_grad_shape_vec));
+    transformed_dout.Resize(make_ddim(new_output_grad_shape_vec));
 
     dev_ctx.template Alloc<T>(&transformed_x);
     dev_ctx.template Alloc<T>(&transformed_ddx);
@@ -711,12 +711,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   }
 
   if (!is_sys_pad) {
-    transformed_ddout_channel.Resize(common::make_ddim(transformed_out_vec));
+    transformed_ddout_channel.Resize(make_ddim(transformed_out_vec));
     dev_ctx.template Alloc<T>(&transformed_ddout_channel);
   } else {
     dev_ctx.template Alloc<T>(ddout);
     transformed_ddout_channel = *ddout;
-    transformed_ddout_channel.Resize(common::make_ddim(transformed_out_vec));
+    transformed_ddout_channel.Resize(make_ddim(transformed_out_vec));
   }
 
   const T* x_ = transformed_x.data<T>();

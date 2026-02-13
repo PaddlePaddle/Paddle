@@ -30,9 +30,9 @@ void SetOutDataLayout(std::shared_ptr<VarType> var,
     // set out_tensor's layout
     if (var->MutableVar()->IsInitialized()) {
       paddle::framework::Variable* tmp_var = var->MutableVar();
-      auto* out = tmp_var->GetMutable<phi::DenseTensor>();
-      auto meta = phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(out));
+      auto* out = tmp_var->GetMutable<DenseTensor>();
+      auto meta =
+          phi::DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(out));
       meta->layout = layout;
     }
   }

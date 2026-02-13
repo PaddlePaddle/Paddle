@@ -32,6 +32,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -67,6 +68,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

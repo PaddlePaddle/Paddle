@@ -87,7 +87,7 @@ class Identity(Layer):
         - output: Multi-dimensional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -161,7 +161,7 @@ class Linear(Layer):
         - output: Multi-dimensional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -169,10 +169,12 @@ class Linear(Layer):
             >>> # Define the linear layer.
             >>> weight_attr = paddle.ParamAttr(
             ...     name="weight",
-            ...     initializer=paddle.nn.initializer.Constant(value=0.5))
+            ...     initializer=paddle.nn.initializer.Constant(value=0.5),
+            ... )
             >>> bias_attr = paddle.ParamAttr(
             ...     name="bias",
-            ...     initializer=paddle.nn.initializer.Constant(value=1.0))
+            ...     initializer=paddle.nn.initializer.Constant(value=1.0),
+            ... )
             >>> linear = paddle.nn.Linear(2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
             >>> print(linear.weight)
             Parameter containing:
@@ -843,7 +845,7 @@ class Dropout(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -926,7 +928,7 @@ class Dropout2D(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -1011,7 +1013,7 @@ class Dropout3D(Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1096,7 +1098,7 @@ class AlphaDropout(Layer):
         - output: N-D tensor, the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -1158,7 +1160,7 @@ class FeatureAlphaDropout(Layer):
         - output: N-D tensor, the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -1259,7 +1261,7 @@ class Pad1D(_PadnD):
         Tensor: The padded tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1311,7 +1313,7 @@ class ConstantPad1D(Pad1D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1362,7 +1364,7 @@ class ReplicationPad1D(Pad1D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1414,7 +1416,7 @@ class ReflectionPad1D(Pad1D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1466,7 +1468,7 @@ class ZeroPad1D(Pad1D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1516,7 +1518,7 @@ class CircularPad1D(Pad1D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1569,7 +1571,7 @@ class Pad2D(_PadnD):
         Tensor: The padded tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1626,7 +1628,7 @@ class ConstantPad2D(Pad2D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1680,7 +1682,7 @@ class ReplicationPad2D(Pad2D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1735,14 +1737,14 @@ class ReflectionPad2D(Pad2D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
             >>> # from reflection_padding_layers import ReflectionPad2D
 
             >>> input_shape = (1, 1, 2, 3)
-            >>> pad = [1, 0, 1, 1] # L=1, R=0, T=1, B=1
+            >>> pad = [1, 0, 1, 1]  # L=1, R=0, T=1, B=1
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data = [[[[1., 2., 3.], [4., 5., 6.]]]]
             >>> my_pad = nn.ReflectionPad2D(padding=pad)
@@ -1789,7 +1791,7 @@ class ZeroPad2D(Pad2D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1843,13 +1845,13 @@ class CircularPad2D(Pad2D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> input_shape = (1, 1, 2, 3)
-            >>> pad = [1, 0, 1, 2] # (L, R, T, B)
+            >>> pad = [1, 0, 1, 2]  # (L, R, T, B)
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data is [[[[1., 2., 3.],
             >>> #           [4., 5., 6.]]]]
@@ -1901,7 +1903,7 @@ class Pad3D(_PadnD):
         Tensor: The padded tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1959,7 +1961,7 @@ class ConstantPad3D(Pad3D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2014,7 +2016,7 @@ class ReplicationPad3D(Pad3D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2070,7 +2072,7 @@ class ReflectionPad3D(Pad3D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2124,7 +2126,7 @@ class ZeroPad3D(Pad3D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -2178,13 +2180,13 @@ class CircularPad3D(Pad3D):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> input_shape = (1, 1, 1, 2, 3) # NCDHW
-            >>> pad = [1, 0, 1, 2, 0, 0] # (L, R, T, B, F, K)
+            >>> input_shape = (1, 1, 1, 2, 3)  # NCDHW
+            >>> pad = [1, 0, 1, 2, 0, 0]  # (L, R, T, B, F, K)
             >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
             >>> # data is [[[[[1., 2., 3.],
             >>> #            [4., 5., 6.]]]]]
@@ -2235,15 +2237,25 @@ class CosineSimilarity(Layer):
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
     Code Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
-            >>> x1 = paddle.to_tensor([[1., 2., 3.],
-            ...                        [2., 3., 4.]], dtype="float32")
-            >>> x2 = paddle.to_tensor([[8., 3., 3.],
-            ...                        [2., 3., 4.]], dtype="float32")
+            >>> x1 = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 2.0, 3.0],
+            ...         [2.0, 3.0, 4.0],
+            ...     ],
+            ...     dtype="float32",
+            ... )
+            >>> x2 = paddle.to_tensor(
+            ...     [
+            ...         [8.0, 3.0, 3.0],
+            ...         [2.0, 3.0, 4.0],
+            ...     ],
+            ...     dtype="float32",
+            ... )
 
             >>> cos_sim_func = nn.CosineSimilarity(axis=0)
             >>> result = cos_sim_func(x1, x2)
@@ -2351,17 +2363,22 @@ class Embedding(Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
             >>> embedding = paddle.nn.Embedding(4, 3, sparse=True)
 
-            >>> w0 = paddle.to_tensor([[0., 0., 0.],
-            ...                        [1., 1., 1.],
-            ...                        [2., 2., 2.],
-            ...                        [3., 3., 3.]], dtype="float32")
+            >>> w0 = paddle.to_tensor(
+            ...     [
+            ...         [0.0, 0.0, 0.0],
+            ...         [1.0, 1.0, 1.0],
+            ...         [2.0, 2.0, 2.0],
+            ...         [3.0, 3.0, 3.0],
+            ...     ],
+            ...     dtype="float32",
+            ... )
             >>> embedding.weight.set_value(w0)
             >>> print(embedding.weight)
             Parameter containing:

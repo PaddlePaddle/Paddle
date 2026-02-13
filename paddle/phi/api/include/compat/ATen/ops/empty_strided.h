@@ -39,7 +39,3 @@ inline at::Tensor empty_strided(at::IntArrayRef size,
 }
 
 }  // namespace at
-
-namespace torch {
-using at::empty_strided;
-}  // namespace torch

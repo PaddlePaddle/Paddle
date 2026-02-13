@@ -21,6 +21,7 @@ SparseCsrTensor::SparseCsrTensor() {
   this->non_zero_crows_ = crows;
   this->non_zero_cols_ = cols;
   this->non_zero_elements_ = values;
+  meta_.layout = DataLayout::SPARSE_CSR;
 }
 
 inline void check_shape(const DDim& dims) {
@@ -62,7 +63,7 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
     check_shape(dims);
   }
   meta_.dims = dims;
-  meta_.layout = DataLayout::NCHW;
+  meta_.layout = DataLayout::SPARSE_CSR;
   meta_.dtype = non_zero_elements.dtype();
 }
 
@@ -128,6 +129,8 @@ void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
   this->non_zero_cols_ = non_zero_cols;
   this->non_zero_elements_ = non_zero_elements;
   meta_.dims = dims;
+  meta_.layout = DataLayout::SPARSE_CSR;
+  meta_.dtype = non_zero_elements.dtype();
 }
 
 void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,

@@ -34,7 +34,7 @@ class Scope;
 
 class InstructionBase {
  public:
-  explicit InstructionBase(size_t id, const phi::Place& place);
+  explicit InstructionBase(size_t id, const Place& place);
 
   virtual ~InstructionBase() = default;
 

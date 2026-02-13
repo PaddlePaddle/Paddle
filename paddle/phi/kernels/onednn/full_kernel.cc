@@ -61,7 +61,7 @@ void FullKernel(const Context& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   T fill_value = val.to<T>();
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
 
   funcs::FillConstantOneDNNHandler<T> handler(
       out, onednn_engine, dev_ctx.GetPlace());

@@ -49,7 +49,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
@@ -76,7 +76,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
@@ -109,7 +109,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }

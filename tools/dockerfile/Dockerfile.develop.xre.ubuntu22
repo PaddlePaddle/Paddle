@@ -1,0 +1,167 @@
+# Docker Image for PaddlePaddle Kunlun XPU P800
+
+FROM ubuntu:22.04
+LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
+
+RUN apt-get update && apt-get install -y apt-utils
+RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    add-apt-repository ppa:ubuntu-toolchain-r/test
+RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar ntp xz-utils libssl-dev bzip2 gzip make automake \
+    coreutils language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev liblapack3 \
+    bison libjpeg-dev zlib1g zlib1g-dev swig locales net-tools libtool numactl libnuma-dev liblzma-dev libbz2-dev libblas-dev \
+    openssl openssh-server libffi-dev pciutils libblas3 liblapack-dev libzstd-dev default-jre libgcc-s1 gdb
+
+# workdir
+WORKDIR /opt
+
+# GCC 12
+RUN rm -f /usr/bin/gcc && rm -f /usr/bin/g++
+RUN apt-get install -y gcc-12 g++-12 gfortran-12
+RUN ln -s /usr/bin/gcc-12 /usr/bin/gcc
+RUN ln -s /usr/bin/g++-12 /usr/bin/g++
+RUN ln -s /usr/bin/gfortran-12 /usr/bin/gfortran
+
+# patchelf 0.15.0 - https://github.com/NixOS/patchelf/pull/216
+RUN wget -q --no-check-certificate https://github.com/NixOS/patchelf/archive/refs/tags/0.15.0.tar.gz && \
+    tar xzf 0.15.0.tar.gz && cd patchelf-0.15.0 && \
+    ./bootstrap.sh  > /dev/null && ./configure > /dev/null && \
+    make -j16 > /dev/null && make install > /dev/null && \
+    cd .. && rm -rf patchelf-0.15.0 && rm -rf 0.15.0.tar.gz
+
+# install cmake && ccache
+RUN apt-get remove --purge cmake && apt-get install -y cmake
+# ccache version 4.9.1
+RUN apt-get install -y ccache
+
+# default python version
+RUN apt-get update && apt-get install -y python3.10-distutils python3.10 python3.10-dev \
+    python3.9 python3.9-dev python3.9-distutils && \
+    apt-get install python-is-python3
+# set default python
+RUN rm -rf /usr/bin/python && ln -s /usr/bin/python3.10 /usr/bin/python && \
+    rm -rf /usr/bin/python3 && ln -s /usr/bin/python3.10 /usr/bin/python3
+
+
+# install pip
+RUN wget -q https://bootstrap.pypa.io/get-pip.py
+RUN sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip.py
+
+RUN python3.10 get-pip.py && \
+    python3.9 get-pip.py && \
+    rm -rf /opt/get-pip.py
+
+RUN python3.10 -m pip install setuptools==68.2.0 && \
+    python3.9 -m pip install setuptools==50.3.2
+
+
+# binutils >= 2.27
+RUN apt-get install -y binutils
+
+
+# git credential to skip password typing
+RUN git config --global credential.helper store
+
+# Fix locales to en_US.UTF-8
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+#For pre-commit
+RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip && \
+    rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip3
+
+RUN python3.10 -m pip --no-cache-dir install ipython==5.3.0 && \
+    python3.10 -m pip --no-cache-dir install ipykernel==4.6.0 wheel && \
+    python3.9 -m pip --no-cache-dir install ipython==5.3.0 && \
+    python3.9 -m pip --no-cache-dir install ipykernel==4.6.0 wheel
+
+# install pylint and pre-commit
+RUN python3.10 -m pip --no-cache-dir install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro \
+    attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
+    python3.9 -m pip --no-cache-dir install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro \
+    attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
+
+
+
+# add more libs
+RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev zstd \
+    pkg-config libhdf5-103 libhdf5-dev lrzsz libsndfile1 tree ninja-build iproute2 iputils-ping -y
+
+# install Paddle requirement
+RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
+    python3.10 -m pip --no-cache-dir install -r requirements.txt -i https://pypi.org/simple && \
+    python3.9 -m pip --no-cache-dir install -r requirements.txt -i https://pypi.org/simple && \
+    rm -rf requirements.txt
+
+RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
+    python3.10 -m pip --no-cache-dir install -r requirements.txt --ignore-installed -i https://pypi.org/simple && \
+    python3.9 -m pip --no-cache-dir install -r requirements.txt --ignore-installed -i https://pypi.org/simple && \
+    rm -rf requirements.txt
+
+# Install XRE 5.0.21.21
+WORKDIR /opt
+ARG XRE_VERSION=5.0.21.21
+ARG XRE_INSTALL=/usr/local/xpu-${XRE_VERSION}
+RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XRE_VERSION}/xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz --no-check-certificate && \
+    tar -zxf xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && \
+    mkdir -p ${XRE_INSTALL} && \
+    mv -f /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/* ${XRE_INSTALL}/ && \
+    ln -sf ${XRE_INSTALL} /usr/local/xpu && \
+    ln -sf ${XRE_INSTALL}/bin/xpu_smi /usr/local/bin/xpu_smi && \
+    rm -rf xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz
+ENV PATH=${XRE_INSTALL}/bin:$PATH
+
+RUN wget "https://su.bcebos.com/v1/klx-sdk-release-public/xccl/resource/MLNX_OFED_LINUX-24.01-0.3.3.1-ubuntu22.04-x86_64.tgz" --no-check-certificate \
+-O MLNX_OFED_LINUX-24.01-0.3.3.1-ubuntu22.04-x86_64.tgz && \
+tar -zxf MLNX_OFED_LINUX-24.01-0.3.3.1-ubuntu22.04-x86_64.tgz && \
+cd MLNX_OFED_LINUX-24.01-0.3.3.1-ubuntu22.04-x86_64 && \
+./mlnxofedinstall --user-space-only --skip-distro-check --without-fw-update --force && \
+rm -rf /opt/MLNX_OFED_LINUX-24.01-0.3.3.1-ubuntu22.04-x86_64.tgz && \
+rm -rf /opt/MLNX_OFED_LINUX-24.01-0.3.3.1-ubuntu22.04-x86_64
+
+# mpich 4.1a1
+RUN wget https://www.mpich.org/static/downloads/4.1a1/mpich-4.1a1.tar.gz && \
+    tar -xvf mpich-4.1a1.tar.gz && \
+    cd mpich-4.1a1 && \
+    ./configure \
+    --prefix=/opt/mpich \
+    --disable-fortran \
+    --with-hwloc=embedded \
+    --with-device=ch3:nemesis \
+    CC=gcc CXX=g++ && \
+    make -j$(nproc) && \
+    make install && \
+rm -rf /opt/mpich-4.1a1.tar.gz /opt/mpich-4.1a1
+
+ENV PATH=/opt/mpich/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/mpich/lib:$LD_LIBRARY_PATH
+
+# git env
+ENV GIT_SSH_COMMAND="ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa"
+
+# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && \
+    sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+
+# Set language environment in .bashrc
+RUN echo "export LANG=en_US.UTF-8" >> /root/.bashrc && \
+    echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc && \
+    echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
+
+CMD source ~/.bashrc
+
+# /proc/sys/kernel/core_pattern
+RUN mkdir -p /var/core
+
+# clang14
+RUN apt-get update &&\
+    apt install -y clang-14
+
+# Clean
+RUN apt-get clean -y
+RUN pip cache purge
+
+EXPOSE 22

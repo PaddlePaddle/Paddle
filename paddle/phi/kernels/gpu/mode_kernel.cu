@@ -66,7 +66,7 @@ void ModeKernel(const Context& dev_ctx,
 
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     funcs::GetModebySort<T>(
         dev_ctx, &x, input_width, input_height, output_data, indices_data);
@@ -90,7 +90,7 @@ void ModeKernel(const Context& dev_ctx,
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }
-      DDim tmp_out_dim = common::make_ddim(tmp_out_shape);
+      DDim tmp_out_dim = make_ddim(tmp_out_shape);
       out->Resize(tmp_out_dim);
       indices->Resize(tmp_out_dim);
     }
@@ -119,8 +119,8 @@ void ModeKernel(const Context& dev_ctx,
     trans_out.Resize(trans_out_shape);
     T* trans_out_data = dev_ctx.template Alloc<T>(&trans_out);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_shape, 0, trans_shape.size() - 1));
     const int64_t input_width = trans_shape[trans_shape.size() - 1];
     funcs::GetModebySort<T>(dev_ctx,
                             &trans_input,

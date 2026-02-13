@@ -28,7 +28,7 @@ class ValueExecutionInfo;
 class OneDNNMixedPhiKernelInstruction : public OneDNNPhiKernelInstruction {
  public:
   OneDNNMixedPhiKernelInstruction(size_t id,
-                                  const phi::Place& place,
+                                  const Place& place,
                                   pir::Operation* op,
                                   const ValueExecutionInfo* value_exec_info);
 

@@ -32,7 +32,7 @@ class ValueExecutionInfo;
 class IfInstruction : public InstructionBase {
  public:
   IfInstruction(size_t id,
-                const phi::Place& place,
+                const Place& place,
                 pir::Operation* op,
                 ValueExecutionInfo* value_exe_info,
                 interpreter::ExecutionConfig execution_config);

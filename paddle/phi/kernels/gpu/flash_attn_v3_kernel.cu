@@ -388,10 +388,9 @@ void FlashAttnV3BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(
-          common::make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize(make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
     } else {
-      out->Resize(common::make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize(make_ddim({total_q, num_heads, head_size_v}));
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
@@ -408,9 +407,9 @@ void FlashAttnV3BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(common::make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize(make_ddim({batch_size, num_heads, seqlen_q}));
   } else {
-    softmax_lse->Resize(common::make_ddim({num_heads, total_q}));
+    softmax_lse->Resize(make_ddim({num_heads, total_q}));
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -755,17 +754,17 @@ void FlashAttnV3BaseKernel(
         256,
         common::errors::InvalidArgument("num_splits > 256 not supported"));
     if (!is_varlen_q) {
-      out_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           batch_size,
-           num_heads,
-           seqlen_q,
-           head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           batch_size,
-           num_heads,
-           seqlen_q}));
+      out_accum->Resize(
+          make_ddim({phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     batch_size,
+                     num_heads,
+                     seqlen_q,
+                     head_size_v}));
+      softmax_lse_accum->Resize(
+          make_ddim({phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     batch_size,
+                     num_heads,
+                     seqlen_q}));
       dev_ctx.template Alloc<float>(out_accum);
       dev_ctx.template Alloc<float>(softmax_lse_accum);
       phi::dynload::fa3_fwd_params_set_oaccum_batch_stride(
@@ -773,15 +772,15 @@ void FlashAttnV3BaseKernel(
       phi::dynload::fa3_fwd_params_set_lseaccum_batch_stride(
           params_handle, softmax_lse_accum->strides()[1]);
     } else {
-      out_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           num_heads,
-           total_q,
-           head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           num_heads,
-           total_q}));
+      out_accum->Resize(
+          make_ddim({phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     num_heads,
+                     total_q,
+                     head_size_v}));
+      softmax_lse_accum->Resize(
+          make_ddim({phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     num_heads,
+                     total_q}));
       dev_ctx.template Alloc<float>(out_accum);
       dev_ctx.template Alloc<float>(softmax_lse_accum);
     }
@@ -1551,10 +1550,9 @@ void FlashMaskV2BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(
-          common::make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize(make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
     } else {
-      out->Resize(common::make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize(make_ddim({total_q, num_heads, head_size_v}));
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
@@ -1571,9 +1569,9 @@ void FlashMaskV2BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(common::make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize(make_ddim({batch_size, num_heads, seqlen_q}));
   } else {
-    softmax_lse->Resize(common::make_ddim({num_heads, total_q}));
+    softmax_lse->Resize(make_ddim({num_heads, total_q}));
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -1921,13 +1919,13 @@ void FlashMaskV2BaseKernel(
         256,
         common::errors::InvalidArgument("num_splits > 256 not supported"));
     if (!is_varlen_q) {
-      out_accum->Resize(common::make_ddim(
+      out_accum->Resize(make_ddim(
           {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            batch_size,
            num_heads,
            seqlen_q,
            head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
+      softmax_lse_accum->Resize(make_ddim(
           {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            batch_size,
            num_heads,
@@ -1939,12 +1937,12 @@ void FlashMaskV2BaseKernel(
       phi::dynload::flashmaskv2_fwd_params_set_lseaccum_batch_stride(
           params_handle, softmax_lse_accum->strides()[1]);
     } else {
-      out_accum->Resize(common::make_ddim(
+      out_accum->Resize(make_ddim(
           {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            num_heads,
            total_q,
            head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
+      softmax_lse_accum->Resize(make_ddim(
           {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            num_heads,
            total_q}));
