@@ -31,7 +31,7 @@ class DataFeedDesc:
     A typical message might look like:
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> with open("data.proto", "w") as f:
@@ -61,7 +61,7 @@ class DataFeedDesc:
         DataFeedDesc can also be changed during runtime. Once you got familiar with
         what each field mean, you can modify it to better suit your need. E.g.:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> data_feed = base.DataFeedDesc('data.proto')
@@ -94,7 +94,7 @@ class DataFeedDesc:
         Set :attr:`batch_size` in ``paddle.base.DataFeedDesc`` . :attr:`batch_size` can be changed during training.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
@@ -134,7 +134,7 @@ class DataFeedDesc:
         sparse slot will be fed into a DenseTensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
@@ -180,7 +180,7 @@ class DataFeedDesc:
         ones will be used for a specific model.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
@@ -223,7 +223,7 @@ class DataFeedDesc:
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
