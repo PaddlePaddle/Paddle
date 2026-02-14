@@ -27,6 +27,18 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     get_current_device_type,
 )
 
+# Global registry for fsdp_context
+_g_fsdp_context = None
+
+
+def register_fsdp_context(context):
+    global _g_fsdp_context
+    _g_fsdp_context = context
+
+
+def get_fsdp_context():
+    return _g_fsdp_context
+
 
 class BufferState(Enum):
     # Buffer status for lazy double buffer mechanism
@@ -444,7 +456,7 @@ class FSDPCommManager:
             grads_buffer = group.grads_buffer
 
             # Grad queue mechanism: wait and release completed reduce_scatter async tasks
-            self._wait_for_previous_grad_reduce()
+            self._wait_for_grad_comm()
 
             tmp_buffer = grads_buffer.get_tmp_buffer()
             if self.enable_overlap:
@@ -470,7 +482,7 @@ class FSDPCommManager:
 
                 grads_buffer.clear_tmp_buffer()
 
-    def _wait_for_previous_grad_reduce(self, queue_limit=2):
+    def _wait_for_grad_comm(self, queue_limit=2):
         # Wait for async reduce_scatter tasks to complete and release resources
         # queue_limit: max queue size, default use 2, 0 means wait for all
         while len(self.grad_reduce_queue) > queue_limit:
@@ -480,9 +492,9 @@ class FSDPCommManager:
                 grads_buffer.comm_task = None
             grads_buffer.clear_tmp_buffer()
 
-    def finalize_grad_reduce(self):
+    def finish_grad_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
-        self._wait_for_previous_grad_reduce(queue_limit=0)
+        self._wait_for_grad_comm(queue_limit=0)
 
 
 class FusionBackwardHook(PyLayer):
@@ -520,20 +532,42 @@ class FusionForwardHook(PyLayer):
         return args
 
 
-class FullyShardTensorFusion:
+class FullyShardFusion:
     def __init__(self, model, mesh, fsdp_unit_layers=None):
         self.model = model
-        self.mesh = mesh
+        self.mesh = self._check_mesh(mesh)
+        self._shard_all_param()
         self.buffer_manager = FSDPBufferManager(
             self.model, self.mesh, fsdp_unit_layers
         )
         self.comm_manager = FSDPCommManager(self.buffer_manager)
-
-        for param in self.model.parameters():
-            param.buffer_manager = self.buffer_manager
-            param.comm_manager = self.comm_manager
-
         self.register_tensor_fusion_hooks(self.model)
+        register_fsdp_context(self)
+
+    def _check_mesh(self, mesh, pp_idx=0):
+        if "pp" in mesh.dim_names:
+            mesh = mesh.get_mesh_with_dim("pp", pp_idx)
+        return mesh
+
+    def _shard_all_param(self):
+        def shard_layer_param(layer):
+            for param_name in list(layer._parameters.keys()):
+                param = getattr(layer, param_name)
+                if param is not None:
+                    param_placements = [
+                        dist.Replicate() for _ in range(len(self.mesh.shape))
+                    ]
+                    if not param.is_dist():
+                        param = dist.shard_tensor(
+                            param, self.mesh, param_placements
+                        )
+                        setattr(layer, param_name, param)
+
+        for name, layer in self.model.named_sublayers(include_self=True):
+            shard_layer_param(layer)
+
+    def finish_grad_sync(self):
+        self.comm_manager.finish_grad_sync()
 
     def register_tensor_fusion_hooks(self, model):
         def _pre_forward_hook(sublayers):

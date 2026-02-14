@@ -21,7 +21,7 @@ import paddle.distributed as dist
 from paddle.autograd import PyLayer
 
 from .auto_dp_utils import in_auto_dp_mode
-from .fully_shard_utils import FullyShardTensorFusion
+from .fully_shard_utils import FullyShardFusion
 
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
@@ -70,13 +70,11 @@ def shard_accumulators(parameters_and_grads, optimizer, target_block):
 
 class FullyShardAuto:
     def __init__(self, model, mesh, enable_tensor_fusion_and_overlap=True):
-        self.model = model
-        self.mesh = self._check_mesh(mesh)
-
         if enable_tensor_fusion_and_overlap:
-            self._shard_all_param()
-            FullyShardTensorFusion(self.model, self.mesh)
+            FullyShardFusion(model, mesh)
         else:
+            self.model = model
+            self.mesh = mesh
             # use first dims as sharding axis
             self._shard_fn = dist.ShardingStage3(0, self.mesh)
             for param in self.model.parameters():
@@ -87,28 +85,6 @@ class FullyShardAuto:
             if in_auto_dp_mode():
                 self._register_comm_hook(self.model)
             os.environ["skip_sharding3_output_reshard"] = "1"
-
-    def _check_mesh(self, mesh, pp_idx=0):
-        if "pp" in mesh.dim_names:
-            mesh = mesh.get_mesh_with_dim("pp", pp_idx)
-        return mesh
-
-    def _shard_all_param(self):
-        def shard_layer_param(layer):
-            for param_name in list(layer._parameters.keys()):
-                param = getattr(layer, param_name)
-                if param is not None:
-                    param_placements = [
-                        dist.Replicate() for _ in range(len(self.mesh.shape))
-                    ]
-                    if not param.is_dist():
-                        param = dist.shard_tensor(
-                            param, self.mesh, param_placements
-                        )
-                        setattr(layer, param_name, param)
-
-        for name, layer in self.model.named_sublayers(include_self=True):
-            shard_layer_param(layer)
 
     def _register_comm_hook(self, model):
         def _pre_forward_hook(sublayers):

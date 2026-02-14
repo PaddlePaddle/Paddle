@@ -1694,19 +1694,15 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                if (
-                    isinstance(params_grads, list)
-                    and params_grads
-                    and params_grads[0]
-                    and hasattr(params_grads[0][0], 'buffer_manager')
-                ):
-                    buffer_manager = params_grads[0][0].buffer_manager
-                    comm_manager = params_grads[0][0].comm_manager
-                    # Wait for all pending reduce_scatter tasks before optimizer step
-                    comm_manager.finalize_grad_reduce()
+                from paddle.distributed.auto_parallel.fully_shard_utils import (
+                    get_fsdp_context,
+                )
 
+                fsdp_context = get_fsdp_context()
+                if fsdp_context is not None:
+                    fsdp_context.finish_grad_sync()
                     new_params_grads = []
-                    for group in buffer_manager.buffer_groups:
+                    for group in fsdp_context.buffer_manager.buffer_groups:
                         if not group.params_buffer.data_buffer.stop_gradient:
                             new_params_grads.append(
                                 (
@@ -1717,7 +1713,9 @@ class Optimizer:
                     params_grads = new_params_grads
                     if self._grad_clip is not None:
                         self._grad_clip.should_comm_on_shard_dim = True
-                        self._grad_clip.fsdp_group = buffer_manager._fsdp_group
+                        self._grad_clip.fsdp_group = (
+                            fsdp_context.buffer_manager._fsdp_group
+                        )
                 elif auto_dp:
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
