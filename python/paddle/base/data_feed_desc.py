@@ -67,7 +67,7 @@ class DataFeedDesc:
             >>> data_feed = base.DataFeedDesc('data.proto')
             >>> data_feed.set_batch_size(128)
             >>> data_feed.set_dense_slots(['words'])  # The slot named 'words' will be dense
-            >>> data_feed.set_use_slots(['words'])    # The slot named 'words' will be used
+            >>> data_feed.set_use_slots(['words'])  # The slot named 'words' will be used
 
             >>> # Finally, the content can be dumped out for debugging purpose:
 
