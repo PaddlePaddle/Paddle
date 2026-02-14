@@ -1516,6 +1516,7 @@ def swish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias(["x", "input"])
 def mish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     mish activation.
@@ -1531,6 +1532,7 @@ def mish(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 

@@ -109,5 +109,33 @@ class TestMishAPI(unittest.TestCase):
             run(place, False)
 
 
+class TestMishInputAlias(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [10, 12]
+        self.x_np = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+
+    def test_input_alias_dygraph(self):
+        paddle.disable_static()
+        x_tensor = paddle.to_tensor(self.x_np)
+        out_x = F.mish(x_tensor)
+        out_input = F.mish(input=x_tensor)
+        np.testing.assert_allclose(out_x.numpy(), out_input.numpy(), rtol=1e-5)
+
+    def test_input_alias_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.shape)
+            out_x = F.mish(x)
+            out_input = F.mish(input=x)
+        paddle.disable_static()
+
+    def test_input_alias_conflict(self):
+        paddle.disable_static()
+        x_tensor = paddle.to_tensor(self.x_np)
+        with self.assertRaises(TypeError):
+            F.mish(x_tensor, input=x_tensor)
+
+
 if __name__ == '__main__':
     unittest.main()
