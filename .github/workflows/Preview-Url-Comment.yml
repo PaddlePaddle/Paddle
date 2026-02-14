@@ -9,7 +9,7 @@ on:
 jobs:
   comment:
     name: Post Preview URLs Comment
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
@@ -45,8 +45,8 @@ jobs:
         uses: peter-evans/find-comment@v4
         with:
           issue-number: ${{ steps.artifacts-data.outputs.pr_number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: 'Preview documentation links for API changes in this PR'
+          comment-author: "github-actions[bot]"
+          body-includes: "Preview documentation links for API changes in this PR"
 
       - name: Create or update comment
         if: steps.download.outcome == 'success'

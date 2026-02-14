@@ -15,7 +15,7 @@ on:
 jobs:
   check-bypass:
     name: Check bypass
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
     env:
@@ -28,8 +28,8 @@ jobs:
         uses: PFCCLab/ci-bypass@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          non-pull-request-event-strategy: 'never-skipped'
-          type: 'composite'
+          non-pull-request-event-strategy: "never-skipped"
+          type: "composite"
           composite-rule: |
             {
               "any": [

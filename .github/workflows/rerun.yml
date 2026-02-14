@@ -7,7 +7,7 @@ on:
 jobs:
   re-run:
     if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/re-run')  && github.event.comment.user.login == github.event.issue.user.login }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'all-failed'
+          JOB_NAME: "all-failed"
 
       - name: Rerun Approval
         if: ${{ contains(github.event.comment.body, 'approval') }}
@@ -30,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Check approval'
+          JOB_NAME: "Check approval"
 
       - name: Rerun Codestyle-check
         if: ${{ contains(github.event.comment.body, 'codestyle') }}
@@ -40,7 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Pre Commit'
+          JOB_NAME: "Pre Commit"
 
       - name: Rerun Clone
         if: ${{ contains(github.event.comment.body, 'clone') }}
@@ -50,7 +50,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Clone-linux / Clone Paddle'
+          JOB_NAME: "Clone-linux / Clone Paddle"
 
       - name: Rerun sot
         if: ${{ contains(github.event.comment.body, 'sot') }}
@@ -60,7 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-SOT / Check bypass / Check bypass'
+          JOB_NAME: "PR-CI-SOT / Check bypass / Check bypass"
 
       - name: Rerun CPU
         if: ${{ contains(github.event.comment.body, 'cpu') }}
@@ -70,7 +70,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-CPU / Build and test'
+          JOB_NAME: "Linux-CPU / Build and test"
 
       - name: Rerun NPU
         if: ${{ contains(github.event.comment.body, 'npu')}}
@@ -80,7 +80,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-NPU / Test'
+          JOB_NAME: "Linux-NPU / Test"
 
       - name: Rerun Inference
         if: ${{ contains(github.event.comment.body, 'inference') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
@@ -90,7 +90,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-Inference / Check bypass / Check bypass'
+          JOB_NAME: "PR-CI-Inference / Check bypass / Check bypass"
 
       - name: Rerun Inference build
         if: ${{ contains(github.event.comment.body, 'inference') && contains(github.event.comment.body, 'build') }}
@@ -100,7 +100,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-Inference / Build'
+          JOB_NAME: "PR-CI-Inference / Build"
 
       - name: Rerun Inference test
         if: ${{ contains(github.event.comment.body, 'inference') && contains(github.event.comment.body, 'test') }}
@@ -110,7 +110,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-Inference / Test'
+          JOB_NAME: "PR-CI-Inference / Test"
 
       - name: Rerun Coverage clone
         if: ${{ contains(github.event.comment.body, 'coverage') }}
@@ -120,7 +120,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage clone / Clone Paddle'
+          JOB_NAME: "Coverage clone / Clone Paddle"
 
       - name: Rerun Coverage docker build
         if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'docker') }}
@@ -130,7 +130,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage build docker / Build docker'
+          JOB_NAME: "Coverage build docker / Build docker"
 
       - name: Rerun Coverage build
         if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'build') }}
@@ -140,7 +140,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage build'
+          JOB_NAME: "Coverage build"
 
       - name: Rerun Coverage test
         if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'test') }}
@@ -150,7 +150,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Coverage test'
+          JOB_NAME: "Coverage test"
 
       - name: Rerun XPU
         if: ${{ contains(github.event.comment.body, 'xpu') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
@@ -160,7 +160,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Check bypass / Check bypass'
+          JOB_NAME: "Linux-XPU / Check bypass / Check bypass"
 
       - name: Rerun XPU build
         if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'build') }}
@@ -170,7 +170,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Build'
+          JOB_NAME: "Linux-XPU / Build"
 
       - name: Rerun XPU test
         if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'test') }}
@@ -180,7 +180,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Test'
+          JOB_NAME: "Linux-XPU / Test"
 
       - name: Rerun Distribute-stable build
         if: ${{ contains(github.event.comment.body, 'distribute') && !contains(github.event.comment.body, 'test') }}
@@ -190,7 +190,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Distribute-stable-build / Build'
+          JOB_NAME: "Distribute-stable-build / Build"
 
       - name: Rerun Distribute-stable test
         if: ${{ contains(github.event.comment.body, 'distribute') && contains(github.event.comment.body, 'test') }}
@@ -200,7 +200,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Distribute-stable-test / Test'
+          JOB_NAME: "Distribute-stable-test / Test"
 
       - name: Rerun build
         if: ${{ contains(github.event.comment.body, 'linux') && contains(github.event.comment.body, 'build') }}
@@ -210,7 +210,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-build / Build'
+          JOB_NAME: "Linux-build / Build"
 
       - name: Rerun Static-check test
         if: ${{ contains(github.event.comment.body, 'static-check') }}
@@ -220,7 +220,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Static-Check / Test'
+          JOB_NAME: "Static-Check / Test"
 
       - name: Rerun CE-CINN-Framework
         if: ${{ contains(github.event.comment.body, 'ce-cinn') }}
@@ -230,7 +230,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'CE-CINN-Framework / CINN'
+          JOB_NAME: "CE-CINN-Framework / CINN"
 
       - name: Rerun CE-Framework Whl
         if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'whl') }}
@@ -240,7 +240,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'CE-Framework / Whl'
+          JOB_NAME: "CE-Framework / Whl"
 
       - name: Rerun CE-Framework Infer
         if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'infer') && !contains(github.event.comment.body, 'inference') }}
@@ -250,7 +250,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'CE-Framework / Infer'
+          JOB_NAME: "CE-Framework / Infer"
 
       - name: Rerun CE-Framework Test
         if: ${{ contains(github.event.comment.body, 'ce') && contains(github.event.comment.body, 'test') }}
@@ -260,7 +260,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'CE-Framework / Test'
+          JOB_NAME: "CE-Framework / Test"
 
       - name: Rerun Api-Benchmark
         if: ${{ contains(github.event.comment.body, 'api-benchmark') }}
@@ -270,7 +270,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Check bypass / Check bypass'
+          JOB_NAME: "Api-Benchmark / Check bypass / Check bypass"
 
       - name: Rerun Doc-Preview
         if: ${{ contains(github.event.comment.body, 'doc') && contains(github.event.comment.body, 'preview') }}
@@ -280,7 +280,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Doc-Preview / Check bypass / Check bypass'
+          JOB_NAME: "Doc-Preview / Check bypass / Check bypass"
 
       - name: Rerun Slice
         if: ${{ contains(github.event.comment.body, 'slice') }}
@@ -290,7 +290,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Slice / Check bypass / Check bypass'
+          JOB_NAME: "Slice / Check bypass / Check bypass"
 
       - name: Rerun Windows-GPU
         if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'gpu') }}
@@ -300,7 +300,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Windows-GPU / Check bypass / Check bypass'
+          JOB_NAME: "Windows-GPU / Check bypass / Check bypass"
 
       - name: Rerun Windows-Inference
         if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'infer')}}
@@ -310,7 +310,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Windows-Inference / Check bypass / Check bypass'
+          JOB_NAME: "Windows-Inference / Check bypass / Check bypass"
 
       - name: Rerun Windows-OPENBLAS
         if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'openblas')}}
@@ -320,4 +320,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Windows-OPENBLAS / Check bypass / Check bypass'
+          JOB_NAME: "Windows-OPENBLAS / Check bypass / Check bypass"
