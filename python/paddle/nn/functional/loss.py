@@ -1607,6 +1607,7 @@ def nll_loss(
         return out
 
 
+@param_two_alias(["label", "target"], ["epsilon", "eps"])
 def poisson_nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1628,6 +1629,7 @@ def poisson_nll_loss(
             Label tensor, random sampled from Poisson distribution :math:`label \sim \text{Poisson}(input)`.
             The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
             It's data type should be float16, bfloat16, float32, float64.
+            Alias: ``target``.
          log_input (bool, optional):
             Whether to the treat input tensor as log input.
             If ``True`` the loss is computed as, :math:`\exp(\text{input}) - \text{label} * \text{input}` .
@@ -1641,6 +1643,7 @@ def poisson_nll_loss(
          epsilon (float, optional):
             A small value to avoid evaluation of :math:`\log(0)` when `log_input`\ =\ ``False``. ``epsilon > 0``.
             Default: 1e-8.
+            Alias: ``eps``.
          reduction (str, optional):
             Indicate how to reduce the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
