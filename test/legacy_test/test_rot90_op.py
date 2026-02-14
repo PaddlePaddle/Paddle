@@ -354,5 +354,61 @@ def create_test_zero_size_class(op_type, dtype, shape, axis):
 create_test_zero_size_class("rot90", "float32", [3, 4, 0], (0, 1))
 create_test_zero_size_class("rot90", "int32", [3, 4, 0, 3, 4], (0, 1))
 
+
+class TestRot90Alias(unittest.TestCase):
+    """Test rot90 PyTorch-style alias arguments (input, dims)."""
+
+    def test_dygraph_alias_input_dims(self):
+        paddle.disable_static()
+        data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        out1 = paddle.rot90(x=data, k=1, axes=[0, 1])
+        out2 = paddle.rot90(input=data, k=1, dims=[0, 1])
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_alias_dims_tuple(self):
+        paddle.disable_static()
+        data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        out1 = paddle.rot90(x=data, k=1, axes=[0, 1])
+        out2 = paddle.rot90(input=data, k=1, dims=(0, 1))
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_alias_3d(self):
+        paddle.disable_static()
+        data = paddle.to_tensor(
+            [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dtype='float32'
+        )
+        out1 = paddle.rot90(x=data, k=1, axes=[1, 2])
+        out2 = paddle.rot90(input=data, k=1, dims=[1, 2])
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_static_graph_alias(self):
+        paddle.enable_static()
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
+            input_var = paddle.static.data(
+                name='input_alias', dtype='float32', shape=[2, 3]
+            )
+            out1 = paddle.rot90(x=input_var, k=1, axes=[0, 1])
+            out2 = paddle.rot90(input=input_var, k=1, dims=[0, 1])
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
+            exe = base.Executor(place)
+            exe.run(startup_program)
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            res1, res2 = exe.run(
+                train_program,
+                feed={'input_alias': img},
+                fetch_list=[out1, out2],
+            )
+
+            np.testing.assert_allclose(res1, res2)
+
+
 if __name__ == "__main__":
     unittest.main()
