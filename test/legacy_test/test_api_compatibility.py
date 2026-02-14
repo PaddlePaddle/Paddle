@@ -1773,6 +1773,80 @@ class TestBitwiseRightShiftInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test select_scatter compatibility
+class TestSelectScatterCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        paddle.enable_static()
+        self.shape = [2, 3, 4]
+        self.value_shape = [2, 4]
+        self.dtype = 'float32'
+        self.axis = 1
+        self.index = 1
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_values = np.random.rand(*self.value_shape).astype(self.dtype)
+
+    def get_ref_out(self):
+        ref_out = self.np_x.copy()
+        ref_out[:, self.index, :] = self.np_values
+        return ref_out
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        values = paddle.to_tensor(self.np_values)
+        out1 = paddle.select_scatter(x, values, self.axis, self.index)
+        out2 = paddle.select_scatter(
+            x=x, values=values, axis=self.axis, index=self.index
+        )
+        out3 = paddle.select_scatter(
+            input=x, src=values, dim=self.axis, index=self.index
+        )
+        out4 = paddle.select_scatter(
+            x, src=values, dim=self.axis, index=self.index
+        )
+        out5 = x.select_scatter(values, self.axis, self.index)
+        out6 = x.select_scatter(values=values, axis=self.axis, index=self.index)
+        ref_out = self.get_ref_out()
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            values = paddle.static.data(
+                name="values", shape=self.value_shape, dtype=self.dtype
+            )
+            out1 = paddle.select_scatter(x, values, self.axis, self.index)
+            out2 = paddle.select_scatter(
+                x=x, values=values, axis=self.axis, index=self.index
+            )
+            out3 = paddle.select_scatter(
+                input=x, src=values, dim=self.axis, index=self.index
+            )
+            out4 = paddle.select_scatter(
+                x, src=values, dim=self.axis, index=self.index
+            )
+            out5 = x.select_scatter(values, self.axis, self.index)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "values": self.np_values},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+            ref_out = self.get_ref_out()
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
 # Test cauchy_ inplace compatibility
 class TestCauchyInplace(unittest.TestCase):
     def setUp(self):
