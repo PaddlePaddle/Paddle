@@ -447,7 +447,6 @@ class FSDPCommManager:
         gid = self.buffer_manager.param_to_buffer_id[param.name]
         group = self.buffer_manager.buffer_groups[gid]
         group.grads_use_cnt += 1
-        param.main_grad = None  # TODO: Need fix for acc
 
         if group.grads_use_cnt == group.grads_use_sum:
             group.grads_use_cnt = 0
@@ -492,9 +491,19 @@ class FSDPCommManager:
                 grads_buffer.comm_task = None
             grads_buffer.clear_tmp_buffer()
 
-    def finish_grad_sync(self):
+    def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
         self._wait_for_grad_comm(queue_limit=0)
+
+    def reset_params_buffer_status(self):
+        for group in self.buffer_manager.buffer_groups:
+            params_buffer = group.params_buffer
+            if params_buffer.status in (BufferState.READY, BufferState.USING):
+                # Clear stale tmp_buffer to force re-all_gather with updated data_buffer
+                params_buffer.clear_tmp_buffer()
+                params_buffer.status = BufferState.FREED
+                if self.buffer_cnt_in_using > 0:
+                    self.buffer_cnt_in_using -= 1
 
 
 class FusionBackwardHook(PyLayer):
@@ -536,7 +545,7 @@ class FullyShardFusion:
     def __init__(self, model, mesh, fsdp_unit_layers=None):
         self.model = model
         self.mesh = self._check_mesh(mesh)
-        self._shard_all_param()
+        self._shard_all_params()
         self.buffer_manager = FSDPBufferManager(
             self.model, self.mesh, fsdp_unit_layers
         )
@@ -549,7 +558,7 @@ class FullyShardFusion:
             mesh = mesh.get_mesh_with_dim("pp", pp_idx)
         return mesh
 
-    def _shard_all_param(self):
+    def _shard_all_params(self):
         def shard_layer_param(layer):
             for param_name in list(layer._parameters.keys()):
                 param = getattr(layer, param_name)
@@ -566,8 +575,13 @@ class FullyShardFusion:
         for name, layer in self.model.named_sublayers(include_self=True):
             shard_layer_param(layer)
 
-    def finish_grad_sync(self):
-        self.comm_manager.finish_grad_sync()
+    def comm_sync_and_reset_status(self):
+        self.comm_manager.finish_grads_sync()
+        self.comm_manager.reset_params_buffer_status()
+        # Reset main_grad for all trainable parameters
+        for param in self.model.parameters():
+            if param.trainable:
+                param.main_grad = None
 
     def register_tensor_fusion_hooks(self, model):
         def _pre_forward_hook(sublayers):

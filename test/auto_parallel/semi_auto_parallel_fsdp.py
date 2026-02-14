@@ -204,7 +204,8 @@ class TestSemiAutoParallelFSDP:
         losses_fsdp_with_auto_dp = self.test_fsdp_with_auto_dp()
         assert losses_fsdp_with_auto_dp == losses_fsdp
 
-        losses_fsdp_with_tf = self.test_fsdp_with_tensor_fusion_and_overlap()
+        losses_fsdp_fusion = self.test_fsdp_with_tensor_fusion_and_overlap()
+        assert losses_fsdp_fusion == losses_fsdp
 
 
 if __name__ == '__main__':

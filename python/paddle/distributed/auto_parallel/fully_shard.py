@@ -21,7 +21,7 @@ import paddle.distributed as dist
 from paddle.autograd import PyLayer
 
 from .auto_dp_utils import in_auto_dp_mode
-from .fully_shard_utils import FullyShardFusion
+from .fully_shard_fusion import FullyShardFusion
 
 
 def shard_accumulators(parameters_and_grads, optimizer, target_block):
