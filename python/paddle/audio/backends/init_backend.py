@@ -42,7 +42,7 @@ def list_available_backends() -> list[str]:
         list[str]: The list of available backends.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -101,7 +101,7 @@ def get_current_backend() -> str:
         the wave_backend or backend imported from paddleaudio
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -147,7 +147,7 @@ def set_backend(backend_name: str) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
