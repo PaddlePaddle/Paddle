@@ -273,6 +273,10 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             self.assertEqual(len(batch), 10)
             self.assertTrue(all(item == "a" for item in batch))
 
+    @unittest.skipIf(
+        paddle.device.is_compiled_with_custom_device("dcu"),
+        "non-tensor multiprocess DataLoader case is unstable on current DCU CI runners",
+    )
     def test_string_data_multi_process(self):
         dataset = StringDataset(20)
         loader = DataLoader(
@@ -302,6 +306,10 @@ class TestDataLoaderNonTensorData(unittest.TestCase):
             self.assertEqual(len(batch), 3)
             self.assertTrue(all(isinstance(item, CustomObj) for item in batch))
 
+    @unittest.skipIf(
+        paddle.device.is_compiled_with_custom_device("dcu"),
+        "non-tensor multiprocess DataLoader case is unstable on current DCU CI runners",
+    )
     def test_custom_obj_data_multi_process(self):
         dataset = CustomObjDataset(6)
         loader = DataLoader(
