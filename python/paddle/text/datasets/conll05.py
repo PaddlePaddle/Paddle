@@ -72,7 +72,7 @@ class Conll05st(Dataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.text.datasets import Conll05st
@@ -373,7 +373,7 @@ class Conll05st(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import Conll05st
 
@@ -389,7 +389,7 @@ class Conll05st(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import Conll05st
 
