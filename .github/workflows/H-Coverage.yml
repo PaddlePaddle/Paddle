@@ -216,7 +216,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -443,7 +443,7 @@ jobs:
           python /bos/BosClient.py paddldfleet.tar.gz ${target_path}
           '
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'bash ci/clean_uv_cache.sh; rm -rf * .[^.]*'
@@ -555,7 +555,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -661,7 +661,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'

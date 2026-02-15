@@ -46,7 +46,7 @@ jobs:
 
   check-bypass:
     name: Check bypass
-    needs: [clone, build-docker]
+    needs: [clone]
     if: needs.clone.outputs.can-skip != 'true'
     uses: ./.github/workflows/check-bypass.yml
     with:
@@ -169,7 +169,6 @@ jobs:
           '
 
       - name: Build
-
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
@@ -180,7 +179,6 @@ jobs:
           '
 
       - name: Check added unittests
-
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -250,7 +248,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -259,7 +257,7 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build, build-docker]
+    needs: [build]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
