@@ -420,7 +420,7 @@
 - op : poisson
   name : [paddle.poisson]
   args_alias :
-    x : [input]
+    use_default_mapping : True
 
 - op : nextafter
   name : [paddle.nextafter, paddle.Tensor.nextafter]

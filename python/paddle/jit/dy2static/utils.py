@@ -96,6 +96,8 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
 
 DYNAMIC_DIMS_ATTR_NAME = "__sot_dynamic_dims"
 
+_CORE_OPS_ARGS_INFO = None
+
 
 class Backend(Enum):
     CINN = auto()
@@ -301,14 +303,33 @@ def parse_arg_and_kwargs(function):
     """
     Returns full argument names as list. e.g ['x', 'y', 'z']
     """
-    fullargspec = inspect.getfullargspec(function)
-    arg_names = fullargspec.args
+    global _CORE_OPS_ARGS_INFO
+    try:
+        fullargspec = inspect.getfullargspec(function)
+        arg_names = fullargspec.args
+        defaults = fullargspec.defaults
+    except (TypeError, ValueError):
+        # NOTE: Some Paddle core ops are CPython builtins generated from C-API.
+        # They may not provide a signature that `inspect.getfullargspec` can parse.
+        if _CORE_OPS_ARGS_INFO is None:
+            try:
+                _CORE_OPS_ARGS_INFO = core.eager.ops.get_core_ops_args_info()
+            except:
+                _CORE_OPS_ARGS_INFO = {}
+
+        op_name = getattr(function, "__name__", "")
+        if op_name in _CORE_OPS_ARGS_INFO:
+            arg_names = _CORE_OPS_ARGS_INFO[op_name]
+            defaults = None
+        else:
+            raise
+
     if arg_names and 'self' == arg_names[0]:
-        arg_names = fullargspec.args[1:]
+        arg_names = arg_names[1:]
 
     # parse default kwargs
     default_kwargs = {}
-    default_values = fullargspec.defaults
+    default_values = defaults
     if default_values:
         assert len(default_values) <= len(arg_names)
         default_kwarg_names = arg_names[-len(default_values) :]
