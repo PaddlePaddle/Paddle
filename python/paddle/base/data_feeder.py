@@ -454,7 +454,11 @@ class DataFeeder:
             >>> # print(feed_data['data_1'])
             >>> # print(feed_data['data_2'])
 
-            >>> outs = exe.run(program=main_program, feed=feed_data, fetch_list=[out],)
+            >>> outs = exe.run(
+            ...     program=main_program,
+            ...     feed=feed_data,
+            ...     fetch_list=[out],
+            ... )
             >>> print(outs)
 
     """
