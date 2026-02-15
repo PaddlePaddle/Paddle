@@ -156,7 +156,7 @@ jobs:
           '
 
       - name: Download flashattn cache
-        
+
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set +e
@@ -169,7 +169,7 @@ jobs:
           '
 
       - name: Build
-        
+
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -178,7 +178,7 @@ jobs:
           '
 
       - name: Packaging of products
-        
+
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
@@ -194,7 +194,7 @@ jobs:
           '
 
       - name: Upload product to bos
-        
+
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py

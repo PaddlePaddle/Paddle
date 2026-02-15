@@ -99,7 +99,7 @@ jobs:
           '
 
       - name: Determine ci trigger
-        
+
         env:
           work_dir: ${{ github.workspace }}
         run: |
