@@ -174,7 +174,7 @@ def load_profiler_result(filename: str) -> _ProfilerResult:
             >>> import paddle.profiler as profiler
             >>> import paddle
             >>> paddle.device.set_device('gpu')
-            >>> with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU], scheduler=(3, 10)) as p:
+            >>> with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU], scheduler=(3, 10),) as p:
             ...     for iter in range(10):
             ...         # train()
             ...         p.step()
