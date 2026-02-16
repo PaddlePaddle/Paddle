@@ -18,6 +18,17 @@
 #include <vector>
 #include "gtest/gtest.h"
 
+namespace {
+
+c10::FunctionSchema ParseAsSchema(const std::string& schema_text) {
+  auto parsed = torch::jit::parseSchemaOrName(schema_text);
+  EXPECT_TRUE(std::holds_alternative<c10::FunctionSchema>(parsed))
+      << "schema: " << schema_text;
+  return std::get<c10::FunctionSchema>(std::move(parsed));
+}
+
+}  // namespace
+
 TEST(schema_parser_type_test, TorchCodecSchemasSmoke) {
   struct SchemaCase {
     const char* reason;
@@ -119,4 +130,77 @@ TEST(schema_parser_type_test, OptionalReturnType) {
   const auto optional_inner = schema.returns()[0].type()->containedTypes();
   ASSERT_EQ(optional_inner.size(), 1UL);
   EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::TensorType);
+}
+
+TEST(schema_parser_type_test, KwOnlyDefaultAndAliasMetadata) {
+  // Reason: parser should preserve kw-only/default/alias metadata for callers.
+  const auto schema = ParseAsSchema(
+      "alias_and_kwonly(Tensor(a! -> b) x, *, int? idx=None, str "
+      "mode=\"nearest\") -> ()");
+  ASSERT_EQ(schema.arguments().size(), 3UL);
+
+  const auto& x = schema.arguments()[0];
+  EXPECT_FALSE(x.kwarg_only());
+  ASSERT_NE(x.alias_info(), nullptr);
+  EXPECT_TRUE(x.alias_info()->isWrite());
+  EXPECT_EQ(x.alias_info()->beforeSets().count("a"), 1UL);
+  EXPECT_EQ(x.alias_info()->afterSets().count("b"), 1UL);
+
+  const auto& idx = schema.arguments()[1];
+  EXPECT_TRUE(idx.kwarg_only());
+  ASSERT_TRUE(idx.default_value().has_value());
+  EXPECT_TRUE(idx.default_value()->is_none());
+  ASSERT_NE(idx.type(), nullptr);
+  EXPECT_EQ(idx.type()->kind(), c10::TypeKind::OptionalType);
+  ASSERT_EQ(idx.type()->containedTypes().size(), 1UL);
+  EXPECT_EQ(idx.type()->containedTypes()[0]->kind(), c10::TypeKind::IntType);
+
+  const auto& mode = schema.arguments()[2];
+  EXPECT_TRUE(mode.kwarg_only());
+  ASSERT_TRUE(mode.default_value().has_value());
+  EXPECT_EQ(mode.default_value()->to_string(), "nearest");
+}
+
+TEST(schema_parser_type_test, MultiReturnVersusTupleReturn) {
+  // Reason: "(T1, T2)" is two return slots, not one Tuple return.
+  const auto multi_ret = ParseAsSchema("f(Tensor x) -> (Tensor, Tensor)");
+  ASSERT_EQ(multi_ret.returns().size(), 2UL);
+  EXPECT_EQ(multi_ret.returns()[0].type()->kind(), c10::TypeKind::TensorType);
+  EXPECT_EQ(multi_ret.returns()[1].type()->kind(), c10::TypeKind::TensorType);
+
+  // Reason: a single Tuple return needs an extra layer of parentheses.
+  const auto tuple_ret =
+      ParseAsSchema("f_tuple(Tensor x) -> ((Tensor, Tensor))");
+  ASSERT_EQ(tuple_ret.returns().size(), 1UL);
+  ASSERT_NE(tuple_ret.returns()[0].type(), nullptr);
+  EXPECT_EQ(tuple_ret.returns()[0].type()->kind(), c10::TypeKind::TupleType);
+  const auto tuple_elems = tuple_ret.returns()[0].type()->containedTypes();
+  ASSERT_EQ(tuple_elems.size(), 2UL);
+  EXPECT_EQ(tuple_elems[0]->kind(), c10::TypeKind::TensorType);
+  EXPECT_EQ(tuple_elems[1]->kind(), c10::TypeKind::TensorType);
+}
+
+TEST(schema_parser_type_test, VariadicFlagsAndValidation) {
+  // Reason: variadic arg/ret markers should map to FunctionSchema flags.
+  const auto variadic = ParseAsSchema("variadic(Tensor x, ...) -> ...");
+  EXPECT_TRUE(variadic.is_vararg());
+  EXPECT_TRUE(variadic.is_varret());
+  ASSERT_EQ(variadic.arguments().size(), 1UL);
+  EXPECT_EQ(variadic.arguments()[0].name(), "x");
+  EXPECT_TRUE(variadic.returns().empty());
+
+  // Reason: parser currently forbids defaults when vararg is present.
+  EXPECT_ANY_THROW(torch::jit::parseSchema("broken(int x=1, ...) -> int"));
+}
+
+TEST(schema_parser_type_test, ParseNameAndParseSchemaBoundaries) {
+  // Reason: parseName and parseSchema should reject mismatched inputs.
+  EXPECT_EQ(torch::jit::parseName("just_name"), "just_name");
+
+  const auto schema = torch::jit::parseSchema("named(int x) -> int");
+  ASSERT_EQ(schema.arguments().size(), 1UL);
+  EXPECT_EQ(schema.arguments()[0].name(), "x");
+
+  EXPECT_ANY_THROW(torch::jit::parseSchema("name_only"));
+  EXPECT_ANY_THROW(torch::jit::parseName("has_schema(int x) -> int"));
 }

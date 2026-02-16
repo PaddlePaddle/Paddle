@@ -230,12 +230,24 @@ void OperatorRegistry::register_schema(const std::string& qualified_name,
                                        const std::string& schema) {
   auto& op = get_or_create_operator(qualified_name);
   op.schemaOrName_ = torch::jit::parseSchemaOrName(schema);
+  if (std::holds_alternative<c10::FunctionSchema>(op.schemaOrName_.value())) {
+    const auto& parsed_schema =
+        std::get<c10::FunctionSchema>(op.schemaOrName_.value());
+    for (auto& [dispatch_key, impl] : op.implementations) {
+      (void)dispatch_key;
+      impl.bind_schema(parsed_schema);
+    }
+  }
   VLOG(3) << "Registered schema: " << qualified_name << " -> " << schema;
 }
 
 void OperatorRegistry::register_implementation(
     const std::string& qualified_name, DispatchKey key, CppFunction&& func) {
   auto& op = get_or_create_operator(qualified_name);
+  if (op.schemaOrName_.has_value() &&
+      std::holds_alternative<c10::FunctionSchema>(op.schemaOrName_.value())) {
+    func.bind_schema(std::get<c10::FunctionSchema>(op.schemaOrName_.value()));
+  }
   op.implementations[key] = std::move(func);
   VLOG(3) << "Registered implementation: " << qualified_name << " for "
           << dispatch_key_to_string(key);

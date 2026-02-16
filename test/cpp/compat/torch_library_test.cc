@@ -606,8 +606,8 @@ TEST(test_torch_library,
 
     torch::FunctionArgs function_args;
     function_args.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
-    function_args.add_arg(torch::IValue(int64_t(2)));
-    function_args.add_arg(torch::IValue(std::string("nearest")));
+    function_args.add_arg(torch::arg("mode") = "nearest");
+    function_args.add_arg(torch::arg("idx") = int64_t(2));
     auto result = impl_it->second.call_with_args(function_args);
     EXPECT_TRUE(result.get_value().is_none());
   }
@@ -630,6 +630,51 @@ TEST(test_torch_library,
     ASSERT_TRUE(result.get_value().is_int());
     EXPECT_EQ(result.get_value().to_int(), 42);
   }
+}
+
+TEST(test_torch_library, TestMDefKeywordOnlyCallBehavior) {
+  auto qualified_name = "example_library_mdef_schema_matrix::alias_and_kwonly";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  {
+    torch::FunctionArgs args_with_optional_none;
+    args_with_optional_none.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
+    args_with_optional_none.add_arg(torch::arg("idx") = torch::IValue());
+    args_with_optional_none.add_arg(torch::arg("mode") = "nearest");
+    auto result = impl_it->second.call_with_args(args_with_optional_none);
+    EXPECT_TRUE(result.get_value().is_none());
+  }
+
+  {
+    torch::FunctionArgs args_with_defaults;
+    args_with_defaults.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
+    auto result = impl_it->second.call_with_args(args_with_defaults);
+    EXPECT_TRUE(result.get_value().is_none());
+  }
+
+  {
+    torch::FunctionArgs positional_kwonly_args;
+    positional_kwonly_args.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
+    positional_kwonly_args.add_arg(torch::IValue(int64_t(2)));
+    EXPECT_ANY_THROW(
+        (void)impl_it->second.call_with_args(positional_kwonly_args));
+  }
+}
+
+TEST(test_torch_library, TestMDefSchemaDefaultsAppliedByCallWithArgs) {
+  auto qualified_name = "example_library_mdef_schema_matrix::defaults_mix";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs args_without_values;
+  auto result = impl_it->second.call_with_args(args_without_values);
+  ASSERT_TRUE(result.get_value().is_string());
+  EXPECT_EQ(result.get_value().to_string(), "3|-25|1|abc|cpu");
 }
 
 at::Tensor cast_with_scalar_type(at::Tensor input, c10::ScalarType dtype) {
