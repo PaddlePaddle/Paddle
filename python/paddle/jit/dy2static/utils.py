@@ -312,10 +312,9 @@ def parse_arg_and_kwargs(function):
         # NOTE: Some Paddle core ops are CPython builtins generated from C-API.
         # They may not provide a signature that `inspect.getfullargspec` can parse.
         if _CORE_OPS_ARGS_INFO is None:
-            try:
-                _CORE_OPS_ARGS_INFO = core.eager.ops.get_core_ops_args_info()
-            except:
-                _CORE_OPS_ARGS_INFO = {}
+            _CORE_OPS_ARGS_INFO = getattr(
+                core.eager.ops, "get_core_ops_args_info", lambda: {}
+            )()
 
         op_name = getattr(function, "__name__", "")
         if op_name in _CORE_OPS_ARGS_INFO:
