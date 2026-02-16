@@ -622,7 +622,9 @@ def compare_accuracy(
             ... except ImportError:
             ...     import subprocess
             ...
-            ...     subprocess.check_call(['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9'])
+            ...     subprocess.check_call(
+            ...         ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9'],
+            ...     )
             ...     import xlsxwriter as xlw
             ...
             ...     if core.is_compiled_with_cuda():
@@ -633,7 +635,13 @@ def compare_accuracy(
             ...         y = paddle.to_tensor([1, 5, 2, 0], dtype="float32")
             ...         z1 = x + y
             ...         out_excel = "compare_accuracy_out_excel.csv"
-            ...         paddle.amp.debugging.compare_accuracy(path, path, out_excel, loss_scale=1, dump_all_tensors=False)
+            ...         paddle.amp.debugging.compare_accuracy(
+            ...             path,
+            ...             path,
+            ...             out_excel,
+            ...             loss_scale=1,
+            ...             dump_all_tensors=False,
+            ...         )
     """
     assert dump_all_tensors is False, "It is currently not supported."
     paddle.amp.accuracy_compare.compare_accuracy(
