@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <cassert>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -22,6 +21,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "ATen/core/type_ptr.h"
 #include "c10/util/ArrayRef.h"
@@ -180,13 +180,8 @@ struct PADDLE_API Type {
   };
 
   using TypePtr = SingletonOrSharedTypePtr<Type>;
-  using Ptr = TypePtr;
-  using ElementType = Type;
 
   virtual bool isSubtypeOfExt(const Type& rhs, std::ostream* why_not) const;
-  bool isSubtypeOf(const Type& rhs) const {
-    return isSubtypeOfExt(rhs, nullptr);
-  }
 
   virtual std::string str() const = 0;
 
@@ -203,17 +198,6 @@ struct PADDLE_API Type {
   virtual std::string repr_str() const { return annotation_str(); }
 
   TypeKind kind() const { return kind_; }
-
-  virtual bool isUnionType() const { return false; }
-
-  virtual bool requires_grad() const {
-    for (const auto& ct : containedTypes()) {
-      if (ct->requires_grad()) {
-        return true;
-      }
-    }
-    return false;
-  }
 
   template <typename T,
             std::enable_if_t<!detail::IsSingletonType<T>::value, bool> = true>
@@ -247,22 +231,8 @@ struct PADDLE_API Type {
     }
     return nullptr;
   }
-  template <typename T>
-  auto expect() {
-    auto r = cast<T>();
-    assert(r);
-    return r;
-  }
-  template <typename T>
-  auto expect() const {
-    auto r = cast<const T>();
-    assert(r);
-    return r;
-  }
   virtual ~Type() = default;
-  virtual bool hasFreeVariables() const { return false; }
   virtual at::ArrayRef<TypePtr> containedTypes() const { return {}; }
-  TypePtr withContained(std::vector<TypePtr> contained_types);
   virtual TypePtr createWithContained(
       std::vector<TypePtr> /*contained_types*/) const {
     TORCH_CHECK(
@@ -277,18 +247,6 @@ using SingletonOrSharedTypePtr = Type::SingletonOrSharedTypePtr<T>;
 
 template <typename T, typename U>
 bool operator==(const SingletonOrSharedTypePtr<T>& x,
-                const SingletonOrSharedTypePtr<U>& y) {
-  return static_cast<const void*>(x.get()) == static_cast<const void*>(y.get());
-}
-
-template <typename T, typename U>
-bool operator==(const SingletonOrSharedTypePtr<T>& x,
-                const std::shared_ptr<U>& y) {
-  return static_cast<const void*>(x.get()) == static_cast<const void*>(y.get());
-}
-
-template <typename T, typename U>
-bool operator==(const std::shared_ptr<T>& x,
                 const SingletonOrSharedTypePtr<U>& y) {
   return static_cast<const void*>(x.get()) == static_cast<const void*>(y.get());
 }
@@ -313,18 +271,6 @@ bool operator!=(const SingletonOrSharedTypePtr<T>& x,
 
 template <typename T, typename U>
 bool operator!=(const SingletonOrSharedTypePtr<T>& x,
-                const std::shared_ptr<U>& y) {
-  return !(x == y);
-}
-
-template <typename T, typename U>
-bool operator!=(const std::shared_ptr<T>& x,
-                const SingletonOrSharedTypePtr<U>& y) {
-  return !(x == y);
-}
-
-template <typename T, typename U>
-bool operator!=(const SingletonOrSharedTypePtr<T>& x,
                 const SingletonTypePtr<U>& y) {
   return !(x == y);
 }
@@ -336,24 +282,12 @@ bool operator!=(const SingletonTypePtr<T>& x,
 }
 
 using TypePtr = SingletonOrSharedTypePtr<Type>;
-using ConstTypePtr = SingletonOrSharedTypePtr<const Type>;
 
 // Base class for Types that are guaranteed to be owned by std::shared_ptr.
 struct PADDLE_API SharedType : public Type,
                                public std::enable_shared_from_this<SharedType> {
   using Type::Type;
 };
-
-inline TypePtr Type::withContained(std::vector<TypePtr> contained_types) {
-  auto current_contained = containedTypes();
-  TORCH_INTERNAL_ASSERT(!current_contained.empty() &&
-                        current_contained.size() == contained_types.size());
-  if (current_contained.equals(contained_types)) {
-    return std::static_pointer_cast<Type>(
-        static_cast<SharedType*>(this)->shared_from_this());
-  }
-  return createWithContained(std::move(contained_types));
-}
 
 inline bool operator==(const Type& lhs, const Type& rhs) {
   if (!rhs.symmetric()) {

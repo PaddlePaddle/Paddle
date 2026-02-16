@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <cassert>
 #include <ostream>
 #include <set>
 #include <string>
@@ -50,13 +49,7 @@ class AliasInfo {
     }
   }
 
-  void setIsWrite(bool isWrite) { isWrite_ = isWrite; }
-
   bool isWrite() const { return isWrite_; }
-
-  void addBeforeSet(std::string aliasSet) { beforeSets_.insert(aliasSet); }
-
-  void addAfterSet(std::string aliasSet) { afterSets_.insert(aliasSet); }
 
   const std::unordered_set<std::string>& beforeSets() const {
     return beforeSets_;
@@ -64,11 +57,6 @@ class AliasInfo {
 
   const std::unordered_set<std::string>& afterSets() const {
     return afterSets_;
-  }
-
-  std::string beforeSet() const {
-    assert(beforeSets_.size() == 1);
-    return *beforeSets_.begin();
   }
 
   // the alias info for the contained types of the type

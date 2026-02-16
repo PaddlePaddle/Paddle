@@ -106,23 +106,22 @@ class FunctionArgs {
     return args;
   }
 
+  void add_arg(torch::arg keyword) {
+    if (!keyword.value_.has_value()) {
+      throw std::runtime_error("Keyword argument `" + keyword.name_ +
+                               "` must be assigned a value");
+    }
+    auto [it, inserted] =
+        named_args_.emplace(keyword.name_, std::move(*keyword.value_));
+    if (!inserted) {
+      throw std::runtime_error("Duplicate keyword argument `" + keyword.name_ +
+                               "`");
+    }
+  }
+
   template <typename T>
   void add_arg(T&& arg) {
     using Decayed = std::decay_t<T>;
-
-    if constexpr (std::is_same_v<Decayed, torch::arg>) {
-      if (!arg.value_.has_value()) {
-        throw std::runtime_error("Keyword argument `" + arg.name_ +
-                                 "` must be assigned a value");
-      }
-      auto [it, inserted] =
-          named_args_.emplace(arg.name_, std::move(*arg.value_));
-      if (!inserted) {
-        throw std::runtime_error("Duplicate keyword argument `" + arg.name_ +
-                                 "`");
-      }
-      return;
-    }
 
     if constexpr (std::is_same_v<Decayed, const char*> ||
                   (std::is_array_v<Decayed> &&
