@@ -229,7 +229,7 @@ OperatorRegistry& OperatorRegistry::instance() {
 void OperatorRegistry::register_schema(const std::string& qualified_name,
                                        const std::string& schema) {
   auto& op = get_or_create_operator(qualified_name);
-  op.schema = schema;
+  op.schemaOrName_ = torch::jit::parseSchemaOrName(schema);
   VLOG(3) << "Registered schema: " << qualified_name << " -> " << schema;
 }
 
@@ -252,8 +252,15 @@ void OperatorRegistry::print_all_operators() const {
   oss << "\n=== Registered Operators ===" << std::endl;
   for (const auto& [name, op] : operators_) {
     oss << "Operator: " << name << std::endl;
-    if (!op.schema.empty()) {
-      oss << "  Schema: " << op.schema << std::endl;
+    if (op.schemaOrName_.has_value()) {
+      const auto& schema_or_name = op.schemaOrName_.value();
+      oss << "  Schema: ";
+      if (std::holds_alternative<std::string>(schema_or_name)) {
+        oss << std::get<std::string>(schema_or_name);
+      } else {
+        oss << std::get<c10::FunctionSchema>(schema_or_name);
+      }
+      oss << std::endl;
     }
     oss << "  Implementations: ";
     for (const auto& [key, impl] : op.implementations) {

@@ -29,7 +29,9 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include "ATen/core/function_schema.h"
 #include "paddle/common/macros.h"  // For macro PADDLE_API
+#include "torch/csrc/jit/function_schema_parser.h"
 
 namespace torch {
 class Library;
@@ -678,12 +680,14 @@ inline std::string dispatch_key_to_string(DispatchKey key) {
 // Operator Registration
 struct OperatorRegistration {
   std::string qualified_name;  // namespace::op_name
-  std::string schema;
+  std::optional<std::variant<std::string, FunctionSchema>> schemaOrName_;
   std::unordered_map<DispatchKey, CppFunction> implementations;
 
   OperatorRegistration(const std::string& name,
                        const std::string& schema_str = "")
-      : qualified_name(name), schema(schema_str) {}
+      : qualified_name(name) {
+    schemaOrName_ = torch::jit::parseSchemaOrName(schema_str);
+  }
 };
 
 class PADDLE_API OperatorRegistry {
