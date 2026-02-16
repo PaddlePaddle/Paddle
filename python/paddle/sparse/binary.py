@@ -93,7 +93,7 @@ def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             >>> # csr @ dense -> dense
             >>> crows = [0, 1, 2, 3]
             >>> cols = [1, 2, 0]
-            >>> values = [1., 2., 3.]
+            >>> values = [1.0, 2.0, 3.0]
             >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
             >>> print(csr)
             Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
@@ -111,7 +111,7 @@ def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
             >>> # coo @ dense -> dense
             >>> indices = [[0, 1, 2], [1, 2, 0]]
-            >>> values = [1., 2., 3.]
+            >>> values = [1.0, 2.0, 3.0]
             >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
             >>> print(coo)
             Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
@@ -172,7 +172,7 @@ def masked_matmul(
             >>> # dense @ dense * csr_mask -> csr
             >>> crows = [0, 2, 3, 5]
             >>> cols = [1, 3, 2, 0, 1]
-            >>> values = [1., 2., 3., 4., 5.]
+            >>> values = [1.0, 2.0, 3.0, 4.0, 5.0]
             >>> dense_shape = [3, 4]
             >>> mask = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
             >>> print(mask)
@@ -233,7 +233,7 @@ def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
             >>> # csr @ dense -> dense
             >>> crows = [0, 2, 3, 5]
             >>> cols = [1, 3, 2, 0, 1]
-            >>> values = [1., 2., 3., 4., 5.]
+            >>> values = [1.0, 2.0, 3.0, 4.0, 5.0]
             >>> dense_shape = [3, 4]
             >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
             >>> print(csr)
@@ -518,7 +518,7 @@ def mask_as(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             >>> # csr sparse tensor
             >>> crows = [0, 2, 3, 5]
             >>> cols = [1, 3, 2, 0, 1]
-            >>> values = [1., 2., 3., 4., 5.]
+            >>> values = [1.0, 2.0, 3.0, 4.0, 5.0]
             >>> dense_shape = [3, 4]
             >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
             >>> paddle.seed(2024)
