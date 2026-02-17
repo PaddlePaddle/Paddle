@@ -59,7 +59,7 @@ jobs:
 
       - name: cleanup
         run: |
-          rm -rf /home/paddle/actions-runner/_work/Paddle/Paddle/.git/modules/third_party/
+          rm -rf /home/paddle/actions-runner/_work/Paddle/Paddle/.git
 
       - name: Clone paddle
         uses: actions/checkout@v4
