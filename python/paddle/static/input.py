@@ -113,7 +113,14 @@ def data(
             >>> feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
 
             >>> exe = paddle.static.Executor(paddle.framework.CPUPlace())
-            >>> out = exe.run(paddle.static.default_main_program(), feed={'x': feed_data, 'y': feed_data}, fetch_list=[z.name])
+            >>> out = exe.run(
+            ...     paddle.static.default_main_program(),
+            ...     feed={
+            ...         'x': feed_data,
+            ...         'y': feed_data,
+            ...     },
+            ...     fetch_list=[z.name],
+            ... )
 
             # np-ndarray of shape=[3, 2, 1], dtype=float32, whose elements are 2
             >>> print(out)
