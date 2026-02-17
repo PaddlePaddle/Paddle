@@ -7007,6 +7007,7 @@ def moveaxis(
         return out
 
 
+@param_one_alias(["x", "input"])
 def masked_fill(
     x, mask: Tensor, value: Numeric, name: str | None = None
 ) -> Tensor:
