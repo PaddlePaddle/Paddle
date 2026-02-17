@@ -21,8 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/functional/hash.hpp>
-
 namespace c10 {
 /**
  * class AliasInfo
@@ -117,6 +115,11 @@ inline std::ostream& operator<<(std::ostream& out, const AliasInfo& aliasInfo) {
 }
 }  // namespace c10
 
+inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
+}
+
 namespace std {
 template <>
 struct hash<c10::AliasInfo> {
@@ -137,11 +140,11 @@ struct hash<c10::AliasInfo> {
       after_set_hash_seed = after_set_hash_seed ^ symbol_hash;
     }
 
-    boost::hash_combine(hash, before_set_hash_seed);
-    boost::hash_combine(hash, after_set_hash_seed);
+    hash_combine(hash, before_set_hash_seed);
+    hash_combine(hash, after_set_hash_seed);
     for (auto& e : aliasInfo.containedTypes()) {
       auto contained_type_hash = std::hash<c10::AliasInfo>()(e);
-      boost::hash_combine(hash, contained_type_hash);
+      hash_combine(hash, contained_type_hash);
     }
     return hash;
   }
