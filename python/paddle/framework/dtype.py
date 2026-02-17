@@ -255,7 +255,7 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
             - dtype: str, The string name of the argument dtype.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
