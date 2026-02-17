@@ -287,7 +287,12 @@ def shard_tensor(
             >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
 
             >>> # dense tensor
-            >>> a = paddle.to_tensor([[1, 2, 3], [5, 6, 7]])
+            >>> a = paddle.to_tensor(
+            ...     [
+            ...         [1, 2, 3],
+            ...         [5, 6, 7],
+            ...     ]
+            ... )
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # distributed tensor
@@ -3742,10 +3747,18 @@ def to_static(
 
             >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
             >>> layer = DemoNet(mesh)
-            >>> opt = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
+            >>> opt = paddle.optimizer.SGD(
+            ...     learning_rate=0.1,
+            ...     parameters=layer.parameters(),
+            ... )
             >>> loss_fn = nn.MSELoss()
             >>> dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
-            >>> dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
+            >>> dist_model = dist.to_static(
+            ...     layer,
+            ...     dist_loader,
+            ...     loss_fn,
+            ...     opt,
+            ... )
             >>> # training
             >>> dist_model.train()
             >>> for batch_id, (image, label) in enumerate(dist_loader()):
@@ -4277,8 +4290,16 @@ def shard_dataloader(
             >>> class MlpModel(paddle.nn.Layer):
             ...     def __init__(self):
             ...         super(MlpModel, self).__init__()
-            ...         self.w0 = dist.shard_tensor(self.create_parameter(shape=[8, 8]), mesh0, [dist.Replicate(), dist.Shard(1)])
-            ...         self.w1 = dist.shard_tensor(self.create_parameter(shape=[8, 8]), mesh1, [dist.Replicate(), dist.Shard(0)])
+            ...         self.w0 = dist.shard_tensor(
+            ...             self.create_parameter(shape=[8, 8]),
+            ...             mesh0,
+            ...             [dist.Replicate(), dist.Shard(1)],
+            ...         )
+            ...         self.w1 = dist.shard_tensor(
+            ...             self.create_parameter(shape=[8, 8]),
+            ...             mesh1,
+            ...             [dist.Replicate(), dist.Shard(0)],
+            ...         )
 
             ...     def forward(self, x):
             ...         y = paddle.matmul(x, self.w0)
@@ -4296,7 +4317,11 @@ def shard_dataloader(
             ...     dataset,
             ...     batch_sampler=sampler,
             ... )
-            >>> dist_dataloader = dist.shard_dataloader(dataloader=dataloader, meshes=[mesh0, mesh1], shard_dims="x")
+            >>> dist_dataloader = dist.shard_dataloader(
+            ...     dataloader=dataloader,
+            ...     meshes=[mesh0, mesh1],
+            ...     shard_dims="x",
+            ... )
             >>> opt = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters())
             >>> dist_opt = dist.shard_optimizer(opt)
             >>> def loss_fn(logits, label):
@@ -4316,7 +4341,12 @@ def shard_dataloader(
             ...         dist_opt.clear_grad()
 
             >>> def run_static():
-            ...     dist_model = dist.to_static(model, dist_dataloader, loss_fn, opt)
+            ...     dist_model = dist.to_static(
+            ...         model,
+            ...         dist_dataloader,
+            ...         loss_fn,
+            ...         opt,
+            ...     )
             ...     dist_model.train()
             ...     for step, (input, label) in enumerate(dist_dataloader()):
             ...         print("label:", label)
