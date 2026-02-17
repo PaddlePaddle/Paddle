@@ -187,7 +187,6 @@ jobs:
           '
 
       - name: Check coverage build size requires approval
-
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -196,7 +195,6 @@ jobs:
           '
 
       - name: Clean up env
-
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -217,7 +215,6 @@ jobs:
           '
 
       - name: Upload coverage product
-
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
