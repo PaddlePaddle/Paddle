@@ -57,10 +57,6 @@ jobs:
       - name: Check submodules status
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 
-      - name: cleanup
-        run: |
-          rm -rf /home/paddle/actions-runner/_work/Paddle/Paddle/.git
-
       - name: Clone paddle
         uses: actions/checkout@v4
         with:
