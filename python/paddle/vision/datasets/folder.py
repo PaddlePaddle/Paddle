@@ -156,10 +156,17 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
             ...             make_directory(root / dirname, subpath[dirname])
 
             >>> directory_hierarchy = [
-            ...     {"class_0": ["abc.jpg", "def.png"]},
-            ...     {"class_1": ["ghi.jpeg", "jkl.png", {"mno": ["pqr.jpeg", "stu.jpg"]}]},
+            ...     {"class_0": [
+            ...         "abc.jpg",
+            ...         "def.png"]},
+            ...     {"class_1": [
+            ...         "ghi.jpeg",
+            ...         "jkl.png",
+            ...         {"mno": [
+            ...             "pqr.jpeg",
+            ...             "stu.jpg"]}]},
             ...     "this_will_be_ignored.txt",
-            ... ]
+            ... ]  # fmt: skip
 
             >>> # You can replace this with any directory to explore the structure
             >>> # of generated data. e.g. fake_data_dir = "./temp_dir"
@@ -396,9 +403,12 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
             >>> directory_hierarchy = [
             ...     "abc.jpg",
             ...     "def.png",
-            ...     {"ghi": ["jkl.jpeg", {"mno": ["pqr.jpg"]}]},
+            ...     {"ghi": [
+            ...         "jkl.jpeg",
+            ...         {"mno": [
+            ...             "pqr.jpg"]}]},
             ...     "this_will_be_ignored.txt",
-            ... ]
+            ... ]  # fmt: skip
 
             >>> # You can replace this with any directory to explore the structure
             >>> # of generated data. e.g. fake_data_dir = "./temp_dir"
