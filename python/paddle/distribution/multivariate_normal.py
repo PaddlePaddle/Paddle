@@ -62,7 +62,10 @@ class MultivariateNormal(distribution.Distribution):
             >>> paddle.set_device("cpu")
             >>> paddle.seed(100)
 
-            >>> rv = MultivariateNormal(loc=paddle.to_tensor([2.0, 5.0]), covariance_matrix=paddle.to_tensor([[2.0, 1.0], [1.0, 2.0]]))
+            >>> rv = MultivariateNormal(
+            ...     loc=paddle.to_tensor([2.0, 5.0]),
+            ...     covariance_matrix=paddle.to_tensor([[2.0, 1.0], [1.0, 2.0]]),
+            ... )
 
             >>> print(rv.sample([3, 2]))
             Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -85,7 +88,10 @@ class MultivariateNormal(distribution.Distribution):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             3.38718319)
 
-            >>> rv1 = MultivariateNormal(loc=paddle.to_tensor([2.0, 5.0]), covariance_matrix=paddle.to_tensor([[2.0, 1.0], [1.0, 2.0]]))
+            >>> rv1 = MultivariateNormal(
+            ...     loc=paddle.to_tensor([2.0, 5.0]),
+            ...     covariance_matrix=paddle.to_tensor([[2.0, 1.0], [1.0, 2.0]]),
+            ... )
             >>> rv2 = MultivariateNormal(
             ...     loc=paddle.to_tensor([-1.0, 3.0]), covariance_matrix=paddle.to_tensor([[3.0, 2.0], [2.0, 3.0]])
             ... )
