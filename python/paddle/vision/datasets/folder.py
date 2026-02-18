@@ -126,7 +126,7 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
 
     Example:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import shutil
             >>> import tempfile
@@ -156,15 +156,8 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
             ...             make_directory(root / dirname, subpath[dirname])
 
             >>> directory_hierarchy = [
-            ...     {"class_0": [
-            ...         "abc.jpg",
-            ...         "def.png"]},
-            ...     {"class_1": [
-            ...         "ghi.jpeg",
-            ...         "jkl.png",
-            ...         {"mno": [
-            ...             "pqr.jpeg",
-            ...             "stu.jpg"]}]},
+            ...     {"class_0": ["abc.jpg", "def.png"]},
+            ...     {"class_1": ["ghi.jpeg", "jkl.png", {"mno": ["pqr.jpeg", "stu.jpg"]}]},
             ...     "this_will_be_ignored.txt",
             ... ]
 
@@ -371,7 +364,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
 
     Example:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import shutil
             >>> import tempfile
@@ -403,10 +396,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
             >>> directory_hierarchy = [
             ...     "abc.jpg",
             ...     "def.png",
-            ...     {"ghi": [
-            ...         "jkl.jpeg",
-            ...         {"mno": [
-            ...             "pqr.jpg"]}]},
+            ...     {"ghi": ["jkl.jpeg", {"mno": ["pqr.jpg"]}]},
             ...     "this_will_be_ignored.txt",
             ... ]
 
