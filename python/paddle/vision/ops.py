@@ -501,7 +501,13 @@ def prior_box(
 
             >>> input = paddle.rand((1, 3, 6, 9), dtype=paddle.float32)
             >>> image = paddle.rand((1, 3, 9, 12), dtype=paddle.float32)
-            >>> box, var = paddle.vision.ops.prior_box(input=input, image=image, min_sizes=[2.0, 4.0], clip=True, flip=True)
+            >>> box, var = paddle.vision.ops.prior_box(
+            ...     input=input,
+            ...     image=image,
+            ...     min_sizes=[2.0, 4.0],
+            ...     clip=True,
+            ...     flip=True,
+            ... )
     """
 
     def _is_list_or_tuple_(data):
@@ -2014,7 +2020,14 @@ def nms(
             >>> scores = paddle.to_tensor([0.6, 0.7, 0.4, 0.233])
             >>> categories = [0, 1, 2, 3]
             >>> category_idxs = paddle.to_tensor([2, 0, 0, 3], dtype="int64")
-            >>> out = paddle.vision.ops.nms(boxes, 0.1, paddle.to_tensor(scores), paddle.to_tensor(category_idxs), categories, 4)
+            >>> out = paddle.vision.ops.nms(
+            ...     boxes,
+            ...     0.1,
+            ...     paddle.to_tensor(scores),
+            ...     paddle.to_tensor(category_idxs),
+            ...     categories,
+            ...     4,
+            ... )
             >>> print(out)
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 0, 2, 3])
