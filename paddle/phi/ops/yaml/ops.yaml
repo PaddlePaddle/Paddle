@@ -3910,8 +3910,8 @@
   backward : moe_gate_dispatch_permute_grad
 
 - op : moe_permute
-  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather, bool using_ue8m0_scale = false)
-  output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather, bool using_ue8m0_scale = false, bool return_expert_indices=false, int override_buffer_size = -1)
+  output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped), Tensor(expert_indices)
   infer_meta:
     func : MoePermuteInferMeta
   kernel :
@@ -3920,7 +3920,7 @@
   optional : scale
 
 - op : moe_unpermute
-  args : (Tensor hidden_states_unzipped, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor token_prob_unzipped, int total_zipped_tokens_num, int num_experts, bool use_mix_precision)
+  args : (Tensor hidden_states_unzipped, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor token_prob_unzipped, int total_zipped_tokens_num, int num_experts, bool use_mix_precision, bool using_weighted_combine=false)
   output : Tensor(hidden_states), Tensor(expert_prob_topk)
   infer_meta :
     func : MoeUnpermuteInferMeta

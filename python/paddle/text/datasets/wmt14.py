@@ -64,7 +64,7 @@ class WMT14(Dataset):
             - trg_ids_next (np.array) - The next sequence of token ids of target language.
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.text.datasets import WMT14
