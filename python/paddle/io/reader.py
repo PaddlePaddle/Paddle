@@ -411,8 +411,17 @@ class DataLoader:
             ...     def forward(self, image, label=None):
             ...         return self.fc(image)
             >>> simple_net = SimpleNet()
-            >>> opt = paddle.optimizer.SGD(learning_rate=1e-3, parameters=simple_net.parameters())
-            >>> loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+            >>> opt = paddle.optimizer.SGD(
+            ...     learning_rate=1e-3,
+            ...     parameters=simple_net.parameters(),
+            ... )
+            >>> loader = DataLoader(
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2,
+            ... )
             >>> for e in range(EPOCH_NUM):
             ...     for i, (image, label) in enumerate(loader()):
             ...         out = simple_net(image)
