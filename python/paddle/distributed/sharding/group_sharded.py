@@ -100,7 +100,10 @@ def group_sharded_parallel(
 
             >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
             >>> optimizer = paddle.optimizer.AdamW(
-            ...     learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip
+            ...     learning_rate=0.001,
+            ...     parameters=model.parameters(),
+            ...     weight_decay=0.00001,
+            ...     grad_clip=clip,
             ... )
 
             >>> # wrap sharding model, optimizer and scaler
@@ -228,7 +231,10 @@ def save_group_sharded_model(
 
             >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
             >>> optimizer = paddle.optimizer.AdamW(
-            ...     learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip
+            ...     learning_rate=0.001,
+            ...     parameters=model.parameters(),
+            ...     weight_decay=0.00001,
+            ...     grad_clip=clip,
             ... )
 
             >>> # wrap sharding model, optimizer and scaler
