@@ -911,7 +911,11 @@ class Normalize(BaseTransform[_InputT, _RetT]):
             >>> from paddle.vision.transforms import Normalize
             >>> paddle.seed(2023)
 
-            >>> normalize = Normalize(mean=[127.5, 127.5, 127.5], std=[127.5, 127.5, 127.5], data_format='HWC')
+            >>> normalize = Normalize(
+            ...     mean=[127.5, 127.5, 127.5],
+            ...     std=[127.5, 127.5, 127.5],
+            ...     data_format='HWC',
+            ... )
             >>> fake_img = paddle.rand([300, 320, 3]).numpy() * 255.0
             >>> fake_img = normalize(fake_img)
             >>> print(fake_img.shape)
