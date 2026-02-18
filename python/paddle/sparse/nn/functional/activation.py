@@ -43,7 +43,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -92,7 +92,7 @@ def softmax(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
         Tensor: SparseCoo or SparseCsr, whose layout is the same with `x` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -169,7 +169,7 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -209,7 +209,7 @@ def leaky_relu(
         A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
