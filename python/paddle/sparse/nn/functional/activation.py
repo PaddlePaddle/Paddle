@@ -47,7 +47,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.nn.functional.relu(sparse_x)
             >>> print(out)
@@ -173,7 +173,7 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 8.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 8.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
