@@ -664,6 +664,20 @@ TEST(test_torch_library, TestMDefKeywordOnlyCallBehavior) {
   }
 }
 
+TEST(test_torch_library, TestFunctionArgsRejectsDuplicateKeywordArgument) {
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::arg("idx") = int64_t(1));
+  try {
+    function_args.add_arg(torch::arg("idx") = int64_t(2));
+    FAIL() << "Expected duplicate keyword argument to throw";
+  } catch (const std::runtime_error& e) {
+    EXPECT_NE(std::string(e.what()).find("Duplicate keyword argument `idx`"),
+              std::string::npos);
+  } catch (...) {
+    FAIL() << "Expected std::runtime_error for duplicate keyword argument";
+  }
+}
+
 TEST(test_torch_library, TestMDefSchemaDefaultsAppliedByCallWithArgs) {
   auto qualified_name = "example_library_mdef_schema_matrix::defaults_mix";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
