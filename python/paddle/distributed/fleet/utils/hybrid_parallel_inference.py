@@ -145,7 +145,11 @@ class HybridParallelInferenceHelper:
             ...         # use a empty lod_tensor_array to clear lod_tensor_array
             ...         paddle.assign(paddle.tensor.create_array(data.dtype), data)
             >>> helper = hybrid_parallel_inference.HybridParallelInferenceHelper(
-            ...     startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks > 1
+            ...     startup_program,
+            ...     main_program,
+            ...     micro_batch_size=2,
+            ...     num_pp=2,
+            ...     init_comm=nranks > 1,
             ... )
             >>> helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
             >>> exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))

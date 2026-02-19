@@ -72,13 +72,24 @@ def recompute(
             ...         (block_name + "_relu_2", paddle.nn.ReLU()),
             ...     )
             ...     if is_last:
-            ...         block.add_sublayer(block_name + "_fc_2", paddle.nn.Linear(input_size, 1, bias_attr=False))
+            ...         block.add_sublayer(
+            ...             block_name + "_fc_2",
+            ...             paddle.nn.Linear(input_size, 1, bias_attr=False),
+            ...         )
             ...     else:
-            ...         block.add_sublayer(block_name + "_fc_2", paddle.nn.Linear(input_size, input_size, bias_attr=False))
+            ...         block.add_sublayer(
+            ...             block_name + "_fc_2",
+            ...             paddle.nn.Linear(input_size, input_size, bias_attr=False),
+            ...         )
             ...     return block
 
             >>> class Naive_fc_net(paddle.nn.Layer):
-            ...     def __init__(self, input_size=10, recompute_blocks=[1, 3], recompute_kwargs={}):
+            ...     def __init__(
+            ...         self,
+            ...         input_size=10,
+            ...         recompute_blocks=[1, 3],
+            ...         recompute_kwargs={},
+            ...     ):
             ...         super().__init__()
             ...         self.recompute_blocks = recompute_blocks
             ...         self.recompute_kwargs = recompute_kwargs
@@ -105,7 +116,11 @@ def recompute(
             ...     if cuda_state:
             ...         paddle.set_cuda_rng_state(cuda_state)
             ...     batch_size, input_size = 1, 10
-            ...     model = Naive_fc_net(input_size, recompute_blocks=recompute_block, recompute_kwargs=recompute_kwargs)
+            ...     model = Naive_fc_net(
+            ...         input_size,
+            ...         recompute_blocks=recompute_block,
+            ...         recompute_kwargs=recompute_kwargs,
+            ...     )
             ...     optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     loss_ = []
             ...     param_ = []
