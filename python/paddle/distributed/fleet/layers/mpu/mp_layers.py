@@ -66,7 +66,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
                None by default.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distributed import fleet
@@ -75,19 +75,14 @@ class VocabParallelEmbedding(paddle.nn.Layer):
             ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
             ...         super().__init__()
             ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            ...             hidden_size,
-            ...             inner_size,
-            ...             gather_output=False,
-            ...             has_bias=True)
+            ...             hidden_size, inner_size, gather_output=False, has_bias=True
+            ...         )
             ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            ...             inner_size,
-            ...             hidden_size,
-            ...             input_is_parallel=True,
-            ...             has_bias=True)
+            ...             inner_size, hidden_size, input_is_parallel=True, has_bias=True
+            ...         )
             ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            ...                         vocab_size,
-            ...                         hidden_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size, hidden_size)
+            ...
             ...     def forward(self, x):
             ...         x = self.embedding(x)
             ...         x = self.linear1(x)
@@ -360,7 +355,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
             For detailed information, please refer to :ref:`api_guide_Name` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distributed import fleet
@@ -369,19 +364,14 @@ class ColumnParallelLinear(paddle.nn.Layer):
             ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
             ...         super().__init__()
             ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            ...             hidden_size,
-            ...             inner_size,
-            ...             gather_output=False,
-            ...             has_bias=True)
+            ...             hidden_size, inner_size, gather_output=False, has_bias=True
+            ...         )
             ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            ...             inner_size,
-            ...             hidden_size,
-            ...             input_is_parallel=True,
-            ...             has_bias=True)
+            ...             inner_size, hidden_size, input_is_parallel=True, has_bias=True
+            ...         )
             ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            ...                         vocab_size,
-            ...                         hidden_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size, hidden_size)
+            ...
             ...     def forward(self, x):
             ...         x = self.embedding(x)
             ...         x = self.linear1(x)
@@ -576,7 +566,7 @@ class RowParallelLinear(paddle.nn.Layer):
             For detailed information, please refer to :ref:`api_guide_Name` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distributed import fleet
@@ -585,19 +575,14 @@ class RowParallelLinear(paddle.nn.Layer):
             ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
             ...         super().__init__()
             ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            ...             hidden_size,
-            ...             inner_size,
-            ...             gather_output=False,
-            ...             has_bias=True)
+            ...             hidden_size, inner_size, gather_output=False, has_bias=True
+            ...         )
             ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            ...             inner_size,
-            ...             hidden_size,
-            ...             input_is_parallel=True,
-            ...             has_bias=True)
+            ...             inner_size, hidden_size, input_is_parallel=True, has_bias=True
+            ...         )
             ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
-            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            ...                         vocab_size,
-            ...                         hidden_size)
+            ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size, hidden_size)
+            ...
             ...     def forward(self, x):
             ...         x = self.embedding(x)
             ...         x = self.linear1(x)
@@ -782,7 +767,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             needs to be ignored. Default is -100 .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No img to demonstrate')
             >>> from paddle.distributed.fleet.layers.mpu import ParallelCrossEntropy
@@ -835,7 +820,7 @@ class ParallelMultiLabelCrossEntropy(paddle.nn.Layer):
         sum_multi_label_loss (bool, optional): Whether to sum the loss. Default is True .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('No img to demonstrate')
             >>> from paddle.distributed.fleet.layers.mpu import ParallelMultiLabelCrossEntropy
