@@ -831,7 +831,10 @@ class IpuStrategy:
 
                 >>> ipu_strategy = static.IpuStrategy()
                 >>> ipu_strategy.set_pipelining_config(
-                ...     enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1,,
+                ...     enable_pipelining=False,
+                ...     batches_per_step=1,
+                ...     enable_gradient_accumulation=False,
+                ...     accumulation_factor=1,
                 ... )
         """
         enable_manual_shard = self.get_option('enable_manual_shard')
@@ -1179,7 +1182,10 @@ class IpuCompiledProgram:
                 >>> ipu_strategy = static.IpuStrategy()
                 >>> ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
                 >>> ipu_strategy.set_pipelining_config(
-                ...     enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1,,
+                ...     enable_pipelining=False,
+                ...     batches_per_step=1,
+                ...     enable_gradient_accumulation=False,
+                ...     accumulation_factor=1,
                 ... )
                 >>> ipu_strategy.set_precision_config(enable_fp16=False)
 
