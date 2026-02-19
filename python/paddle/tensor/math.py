@@ -2167,7 +2167,7 @@ def mm(
 
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.matmul(input, mat2, False, False, out=out)
 
     def __check_input(x, y):
@@ -2206,14 +2206,17 @@ def mm(
                     )
 
     __check_input(input, mat2)
-    helper = LayerHelper('mm', **locals())
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='matmul_v2',
-        inputs={'X': input, 'Y': mat2},
-        outputs={'Out': out},
-    )
-    return out
+    if in_pir_mode():
+        return _C_ops.matmul(input, mat2, False, False, out=out)
+    else:
+        helper = LayerHelper('mm', **locals())
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='matmul_v2',
+            inputs={'X': input, 'Y': mat2},
+            outputs={'Out': out},
+        )
+        return out
 
 
 def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
