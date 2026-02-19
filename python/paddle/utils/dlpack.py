@@ -96,7 +96,12 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
             >>> import paddle
             >>> # x is a tensor with shape [2, 4]
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ]
+            ... )
             >>> dlpack = paddle.to_dlpack(x)
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
@@ -175,7 +180,13 @@ def from_dlpack(
 
             >>> import paddle
             >>> # From DLPack capsule
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]], place="cpu")
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ],
+            ...     place="cpu",
+            ... )
             >>> dlpack = paddle.to_dlpack(x)
 
             >>> y = paddle.from_dlpack(dlpack)
@@ -202,7 +213,12 @@ def from_dlpack(
             >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
             >>> import paddle
             >>> import numpy as np
-            >>> x = np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])
+            >>> x = np.array(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ]
+            ... )
             >>> y = paddle.from_dlpack(x)
             >>> y[0, 0] = 10.0
             >>> # data of tensor x is shared with tensor y
