@@ -2088,7 +2088,13 @@ def trunc_(input: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.trunc_(input)
 
 
-def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
+def mm(
+    input: Tensor,
+    mat2: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
 
     Applies matrix multiplication to two tensors.
@@ -2107,6 +2113,9 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
         mat2 (Tensor): The input tensor which is a Tensor. Support data types: bfloat16, float16, float32,
             float64, int8, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keywords Argument:
+        out (Tensor, optional): The output Tensor. It must have the same data type and shape as the expected output. Default is None, and a new Tensor will be created to store the result.
 
     Returns:
         Tensor: The product Tensor, with same data type of the input Tensor.
@@ -2158,8 +2167,8 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
 
 
     """
-    if in_dynamic_mode():
-        return _C_ops.matmul(input, mat2, False, False)
+    if in_dynamic_or_pir_mode():
+        return _C_ops.matmul(input, mat2, False, False, out=out)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -2197,17 +2206,14 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
                     )
 
     __check_input(input, mat2)
-    if in_pir_mode():
-        return _C_ops.matmul(input, mat2, False, False)
-    else:
-        helper = LayerHelper('mm', **locals())
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-        helper.append_op(
-            type='matmul_v2',
-            inputs={'X': input, 'Y': mat2},
-            outputs={'Out': out},
-        )
-        return out
+    helper = LayerHelper('mm', **locals())
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='matmul_v2',
+        inputs={'X': input, 'Y': mat2},
+        outputs={'Out': out},
+    )
+    return out
 
 
 def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
