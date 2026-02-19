@@ -75,10 +75,16 @@ class VocabParallelEmbedding(paddle.nn.Layer):
             ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
             ...         super().__init__()
             ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            ...             hidden_size, inner_size, gather_output=False, has_bias=True
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True,
             ...         )
             ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            ...             inner_size, hidden_size, input_is_parallel=True, has_bias=True
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True,
             ...         )
             ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
             ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size, hidden_size)
@@ -364,10 +370,16 @@ class ColumnParallelLinear(paddle.nn.Layer):
             ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
             ...         super().__init__()
             ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            ...             hidden_size, inner_size, gather_output=False, has_bias=True
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True,
             ...         )
             ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            ...             inner_size, hidden_size, input_is_parallel=True, has_bias=True
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True,
             ...         )
             ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
             ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size, hidden_size)
@@ -575,10 +587,16 @@ class RowParallelLinear(paddle.nn.Layer):
             ...     def __init__(self, vocab_size, hidden_size, inner_size, output_size):
             ...         super().__init__()
             ...         self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            ...             hidden_size, inner_size, gather_output=False, has_bias=True
+            ...             hidden_size,
+            ...             inner_size,
+            ...             gather_output=False,
+            ...             has_bias=True,
             ...         )
             ...         self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            ...             inner_size, hidden_size, input_is_parallel=True, has_bias=True
+            ...             inner_size,
+            ...             hidden_size,
+            ...             input_is_parallel=True,
+            ...             has_bias=True,
             ...         )
             ...         self.linear3 = paddle.nn.Linear(hidden_size, output_size)
             ...         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(vocab_size, hidden_size)
