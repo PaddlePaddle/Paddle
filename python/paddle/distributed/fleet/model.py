@@ -64,7 +64,10 @@ def distributed_model(model):
             >>> # 2. create layer & optimizer
             >>> layer = LinearNet()
             >>> loss_fn = nn.MSELoss()
-            >>> adam = paddle.optimizer.Adam(learning_rate=0.001, parameters=layer.parameters())
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.001,
+            ...     parameters=layer.parameters(),
+            ... )
 
             >>> # 3. get data_parallel model using fleet
             >>> adam = fleet.distributed_optimizer(adam)

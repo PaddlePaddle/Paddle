@@ -82,7 +82,10 @@ def gloo_init_parallel_env(
             ...     jobs = []
             ...     server_endpoint = "127.0.0.1:%s" % (find_free_port())
             ...     for id in range(num_of_ranks):
-            ...         p = multiprocessing.Process(target=test_gloo_init, args=(id, num_of_ranks, server_endpoint))
+            ...         p = multiprocessing.Process(
+            ...             target=test_gloo_init,
+            ...             args=(id, num_of_ranks, server_endpoint),
+            ...         )
             ...         jobs.append(p)
             ...         p.start()
             ...     for proc in jobs:
@@ -175,7 +178,10 @@ def gloo_barrier() -> None:
             ...     jobs = []
             ...     server_endpoint = "127.0.0.1:%s" % (find_free_port())
             ...     for id in range(num_of_ranks):
-            ...         p = multiprocessing.Process(target=test_gloo_barrier, args=(id, num_of_ranks, server_endpoint))
+            ...         p = multiprocessing.Process(
+            ...             target=test_gloo_barrier,
+            ...             args=(id, num_of_ranks, server_endpoint),
+            ...         )
             ...         jobs.append(p)
             ...         p.start()
             ...     for proc in jobs:
@@ -231,7 +237,10 @@ def gloo_release() -> None:
             ...     jobs = []
             ...     server_endpoint = "127.0.0.1:%s" % (find_free_port())
             ...     for id in range(num_of_ranks):
-            ...         p = multiprocessing.Process(target=test_gloo_release, args=(id, num_of_ranks, server_endpoint))
+            ...         p = multiprocessing.Process(
+            ...             target=test_gloo_release,
+            ...             args=(id, num_of_ranks, server_endpoint),
+            ...         )
             ...         jobs.append(p)
             ...         p.start()
             ...     for proc in jobs:
