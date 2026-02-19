@@ -2940,7 +2940,6 @@ class Model:
         Examples:
             .. code-block:: pycon
 
-                >>> # doctest: +TIMEOUT(120)
                 >>> import paddle
                 >>> from paddle.static import InputSpec
 
