@@ -363,6 +363,7 @@ def load_state_dict_from_url(
     Examples:
         .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
             >>> paddle.hub.load_state_dict_from_url(
             ...     url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', model_dir="./paddle/test_load_from_url"
