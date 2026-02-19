@@ -3591,7 +3591,11 @@ def embedding(
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name="x", shape=[2, 4], dtype=np.int64)
-            >>> output = paddle.static.nn.embedding(x, (10, 3), param_attr=paddle.nn.initializer.Constant(value=1.0))
+            >>> output = paddle.static.nn.embedding(
+            ...     x,
+            ...     (10, 3),
+            ...     param_attr=paddle.nn.initializer.Constant(value=1.0),
+            ... )
             >>> m_output = paddle.mean(output)
             >>> place = paddle.CPUPlace()
             >>> exe = paddle.static.Executor(place)
@@ -3762,7 +3766,10 @@ def sparse_embedding(
             ...     size=[sparse_feature_dim, embedding_size],
             ...     is_test=False,
             ...     entry=entry,
-            ...     param_attr=paddle.ParamAttr(name="SparseFeatFactors", initializer=paddle.nn.initializer.Uniform()),
+            ...     param_attr=paddle.ParamAttr(
+            ...         name="SparseFeatFactors",
+            ...         initializer=paddle.nn.initializer.Uniform(),
+            ...     ),
             ... )
 
     """

@@ -551,17 +551,15 @@ class While:
             >>> loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
             >>> one = paddle.full(shape=[1], dtype='float32', fill_value=1)
             >>> data = paddle.static.data(name='data', shape=[1], dtype='float32')
-            >>> sums = paddle.full(
-            ...     shape=[1], dtype='float32', fill_value=0
-            ... )  # Define the variable to be obtained outside of While, which name should be different from the variable inside the While to be obtained
+            >>> # Define the variable to be obtained outside of While, which name should be different from the variable inside the While to be obtained
+            >>> sums = paddle.full(shape=[1], dtype='float32', fill_value=0)
 
             >>> cond = paddle.less_than(x=i, y=loop_len)
             >>> while_op = paddle.static.nn.control_flow.While(cond=cond)
             >>> with while_op.block():
             ...     sums_tensor = paddle.add(x=data, y=data)
-            ...     paddle.assign(
-            ...         sums_tensor, sums
-            ...     )  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
+            ...     # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
+            ...     paddle.assign(sums_tensor, sums)
             ...     i = paddle.increment(x=i, value=1)
             ...     data = paddle.add(x=data, y=one)
             ...     paddle.assign(paddle.less_than(x=i, y=loop_len), output=cond)
@@ -570,9 +568,8 @@ class While:
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
             >>> res = exe.run(paddle.static.default_main_program(), feed={'data': feed_data}, fetch_list=sums)
-            >>> print(
-            ...     res[0]
-            ... )  # Because the data in While does not update the value outside the While, the value of sums is [2.] after the loop
+            >>> # Because the data in While does not update the value outside the While, the value of sums is [2.] after the loop
+            >>> print(res[0])
             [2.]
     """
 
@@ -1716,14 +1713,26 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             >>> #     return 3, 2
 
             >>> def true_func():
-            ...     return paddle.full(shape=[1, 2], dtype='int32', fill_value=1), paddle.full(
-            ...         shape=[2, 3], dtype='bool', fill_value=True
+            ...     return paddle.full(
+            ...         shape=[1, 2],
+            ...         dtype='int32',
+            ...         fill_value=1,
+            ...     ), paddle.full(
+            ...         shape=[2, 3],
+            ...         dtype='bool',
+            ...         fill_value=True,
             ...     )
 
 
             >>> def false_func():
-            ...     return paddle.full(shape=[3, 4], dtype='float32', fill_value=3), paddle.full(
-            ...         shape=[4, 5], dtype='int64', fill_value=2
+            ...     return paddle.full(
+            ...         shape=[3, 4],
+            ...         dtype='float32',
+            ...         fill_value=3,
+            ...     ), paddle.full(
+            ...         shape=[4, 5],
+            ...         dtype='int64',
+            ...         fill_value=2,
             ...     )
 
 

@@ -74,7 +74,10 @@ def accuracy(input, label, k=1, correct=None, total=None):
             >>> np.random.seed(1107)
             >>> x = np.random.rand(3, 32, 32).astype("float32")
             >>> y = np.array([[1], [0], [1]])
-            >>> output = exe.run(feed={"input": x, "label": y}, fetch_list=[result])
+            >>> output = exe.run(
+            ...     feed={"input": x, "label": y},
+            ...     fetch_list=[result],
+            ... )
             >>> print(output)
             [array(0.33333334, dtype=float32)]
 
