@@ -551,7 +551,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     PaddleCloudRoleMaker is an interface for distributed configuration initialization based on obtaining distributed related information from environment variables.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> import paddle.distributed.fleet as fleet
@@ -1216,7 +1216,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     UserDefinedRoleMaker is an interface for distributed configuration initialization based on obtaining distributed related information from user-defined parameters.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.distributed.fleet as fleet
             >>> from paddle.distributed.fleet.base.role_maker import Role

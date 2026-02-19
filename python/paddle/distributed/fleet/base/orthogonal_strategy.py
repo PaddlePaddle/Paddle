@@ -34,7 +34,7 @@ class OrthogonalStrategy:
         The instance of strategy.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
