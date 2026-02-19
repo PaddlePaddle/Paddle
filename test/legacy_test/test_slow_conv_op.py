@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import unittest
+from unittest import mock
 
 import numpy as np
 
 import paddle
 import paddle.nn.functional as F
+from paddle.nn.functional.conv import (
+    _MEMORY_FORMAT_CHANNELS_LAST,
+    _MEMORY_FORMAT_CHANNELS_LAST_3D,
+    _MEMORY_FORMAT_CONTIGUOUS,
+    _cudnn_conv_suggest_memory_format,
+)
 
 
 @unittest.skipIf(
@@ -225,57 +232,99 @@ class TestSlowConv3dDilated(unittest.TestCase):
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda(), "CUDA is required for coverage test"
 )
-class TestConvCudnnCoverage(unittest.TestCase):
+class TestCudnnConvCoverage(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
 
-        self.old_acc_flag = paddle.get_flags(
-            ['FLAGS_use_accuracy_compatible_kernel']
+    def test_cudnn_conv_suggest_memory_format_coverage(self):
+        x_fp32 = paddle.randn([1, 3, 16, 16], dtype='float32')
+        w_fp32_4d = paddle.randn([3, 3, 3, 3], dtype='float32')
+        w_fp32_5d = paddle.randn([3, 3, 3, 3, 3], dtype='float32')
+        x_fp64 = paddle.cast(x_fp32, 'float64')
+        w_fp64_4d = paddle.cast(w_fp32_4d, 'float64')
+
+        self.assertEqual(
+            _cudnn_conv_suggest_memory_format(x_fp64, w_fp32_4d),
+            _MEMORY_FORMAT_CONTIGUOUS,
         )
-        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
-
-        self.old_cudnn_flag = paddle.get_flags(
-            ['FLAGS_conv2d_disable_cudnn', 'FLAGS_conv3d_disable_cudnn']
+        self.assertEqual(
+            _cudnn_conv_suggest_memory_format(x_fp32, w_fp64_4d),
+            _MEMORY_FORMAT_CONTIGUOUS,
         )
-        paddle.set_flags({'FLAGS_conv2d_disable_cudnn': 0})
-        paddle.set_flags({'FLAGS_conv3d_disable_cudnn': 0})
 
-    def tearDown(self):
-        paddle.set_flags(self.old_acc_flag)
-        paddle.set_flags(self.old_cudnn_flag)
+        with mock.patch(
+            'paddle.nn.functional.conv.get_cudnn_version', return_value=8500
+        ):
+            self.assertEqual(
+                _cudnn_conv_suggest_memory_format(
+                    x_fp32, w_fp32_4d, data_format="NHWC"
+                ),
+                _MEMORY_FORMAT_CHANNELS_LAST,
+            )
 
-    def test_conv2d_fp64_coverage(self):
-        x = paddle.randn([1, 3, 16, 16], dtype='float64')
-        w = paddle.randn([3, 3, 3, 3], dtype='float64')
+            self.assertEqual(
+                _cudnn_conv_suggest_memory_format(
+                    x_fp32, w_fp32_5d, data_format="NHWC"
+                ),
+                _MEMORY_FORMAT_CHANNELS_LAST_3D,
+            )
 
-        out = F.conv2d(x, w, use_cudnn=True)
+            self.assertEqual(
+                _cudnn_conv_suggest_memory_format(
+                    x_fp32, w_fp32_4d, data_format="NCHW"
+                ),
+                _MEMORY_FORMAT_CONTIGUOUS,
+            )
 
-    def test_conv2d_nhwc_coverage(self):
-        x = paddle.randn([1, 16, 16, 3], dtype='float32')
-        w = paddle.randn([3, 3, 3, 3], dtype='float32')
+        with mock.patch(
+            'paddle.nn.functional.conv.get_cudnn_version', return_value=7000
+        ):
+            self.assertEqual(
+                _cudnn_conv_suggest_memory_format(
+                    x_fp32, w_fp32_4d, data_format="NHWC"
+                ),
+                _MEMORY_FORMAT_CONTIGUOUS,
+            )
 
-        out = F.conv2d(x, w, data_format="NHWC", use_cudnn=True)
+    def test_is_cudnn_supported_coverage(self):
+        from paddle.nn.functional.conv import _is_cudnn_supported
 
-    def test_conv3d_ndhwc_coverage(self):
-        x = paddle.randn([1, 8, 8, 8, 3], dtype='float32')
-        w = paddle.randn([3, 3, 3, 3, 3], dtype='float32')
+        x_gpu_fp16 = paddle.randn([1, 3, 8, 8, 8], dtype='float16').to(
+            self.place
+        )
+        x_cpu = paddle.randn([1, 3, 8, 8, 8], dtype='float16').cpu()
 
-        out = F.conv3d(x, w, data_format="NDHWC", use_cudnn=True)
-        self.assertEqual(out.shape, [1, 6, 6, 6, 3])
+        self.assertFalse(_is_cudnn_supported(x_gpu_fp16, None, "NCDHW", False))
 
-    def test_conv3d_fp16_bug_logic_coverage(self):
-        x = paddle.randn([1, 3, 8, 8, 8], dtype='float16')
-        w = paddle.randn([3, 3, 3, 3, 3], dtype='float16')
-        out = F.conv3d(x, w, data_format="NCDHW", use_cudnn=True)
+        self.assertFalse(_is_cudnn_supported(x_cpu, None, "NCDHW", True))
 
-        self.assertEqual(out.dtype, paddle.float16)
+        w_trivial = paddle.randn([3, 3, 1, 1, 1], dtype='float16')
+        w_non_trivial = paddle.randn([3, 3, 3, 3, 3], dtype='float16')
 
-    def test_cudnn_disabled_coverage(self):
-        x = paddle.randn([1, 3, 16, 16], dtype='float32')
-        w = paddle.randn([3, 3, 3, 3], dtype='float32')
+        with mock.patch(
+            'paddle.nn.functional.conv.get_cudnn_version', return_value=91000
+        ):
+            self.assertFalse(
+                _is_cudnn_supported(x_gpu_fp16, w_non_trivial, "NCDHW", True)
+            )
 
-        out = F.conv2d(x, w, use_cudnn=False)
-        self.assertTrue(out is not None)
+            self.assertTrue(
+                _is_cudnn_supported(x_gpu_fp16, w_trivial, "NCDHW", True)
+            )
+
+            x_gpu_fp32 = paddle.randn([1, 3, 8, 8, 8], dtype='float32').to(
+                self.place
+            )
+            self.assertTrue(
+                _is_cudnn_supported(x_gpu_fp32, w_non_trivial, "NCDHW", True)
+            )
+
+        with mock.patch(
+            'paddle.nn.functional.conv.get_cudnn_version', return_value=85000
+        ):
+            self.assertTrue(
+                _is_cudnn_supported(x_gpu_fp16, w_non_trivial, "NCDHW", True)
+            )
 
 
 if __name__ == '__main__':

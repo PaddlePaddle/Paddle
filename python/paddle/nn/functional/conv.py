@@ -184,24 +184,24 @@ def _is_cudnn_supported(
         return False
 
     cudnn_version = get_cudnn_version()
+    is_low_precision = x.dtype in [paddle.bfloat16, paddle.float16]
 
     # cuDNN Version Specific Bugs (9.8 - 9.14) for 3D Conv
-    if 90800 <= cudnn_version < 91500:
-        is_low_precision = x.dtype in [paddle.bfloat16, paddle.float16]
-        if (
-            _cudnn_conv_suggest_memory_format(x, weight, data_format)
-            == _MEMORY_FORMAT_CONTIGUOUS
-            and is_low_precision
-            and weight.ndim == 5
-        ):
-            kernel_is_trivial = True
-            for k in weight.shape[2:]:
-                if k != 1:
-                    kernel_is_trivial = False
-                    break
+    if (
+        90800 <= cudnn_version < 91500
+        and _cudnn_conv_suggest_memory_format(x, weight, data_format)
+        == _MEMORY_FORMAT_CONTIGUOUS
+        and is_low_precision
+        and weight.ndim == 5
+    ):
+        kernel_is_trivial = True
+        for k in weight.shape[2:]:
+            if k != 1:
+                kernel_is_trivial = False
+                break
 
-            if not kernel_is_trivial:
-                return False
+        if not kernel_is_trivial:
+            return False
 
     return True
 
