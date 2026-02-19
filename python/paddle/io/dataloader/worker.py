@@ -129,7 +129,13 @@ def get_worker_info() -> WorkerInfo:
             ...             yield np.array([i])
             >>> place = paddle.CPUPlace()
             >>> dataset = SplitedIterableDataset(start=2, end=9)
-            >>> dataloader = DataLoader(dataset, places=place, num_workers=2, batch_size=1, drop_last=True)
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     places=place,
+            ...     num_workers=2,
+            ...     batch_size=1,
+            ...     drop_last=True,
+            ... )
             >>> for data in dataloader:
             ...     print(data)  # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,

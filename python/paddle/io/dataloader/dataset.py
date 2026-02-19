@@ -177,7 +177,12 @@ class IterableDataset(Dataset[_T]):
             ...         for i in range(iter_start, iter_end):
             ...             yield np.array([i])
             >>> dataset = SplitedIterableDataset(start=2, end=9)
-            >>> dataloader = DataLoader(dataset, num_workers=2, batch_size=1, drop_last=True)
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     num_workers=2,
+            ...     batch_size=1,
+            ...     drop_last=True,
+            ... )
             >>> for data in dataloader:
             ...     print(data)  # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -226,7 +231,13 @@ class IterableDataset(Dataset[_T]):
             ...     worker_id = worker_info.id
             ...     dataset.start = start + worker_id * num_per_worker
             ...     dataset.end = min(dataset.start + num_per_worker, end)
-            >>> dataloader = DataLoader(dataset, num_workers=2, batch_size=1, drop_last=True, worker_init_fn=worker_init_fn)
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     num_workers=2,
+            ...     batch_size=1,
+            ...     drop_last=True,
+            ...     worker_init_fn=worker_init_fn,
+            ... )
             >>> for data in dataloader:
             ...     print(data)  # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,

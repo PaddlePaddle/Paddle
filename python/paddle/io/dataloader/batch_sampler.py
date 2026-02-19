@@ -77,7 +77,12 @@ class BatchSampler(Sampler[Sequence[int]]):
             ...
             ...     def __len__(self):
             ...         return self.num_samples
-            >>> bs = BatchSampler(dataset=RandomDataset(100), shuffle=False, batch_size=16, drop_last=False)
+            >>> bs = BatchSampler(
+            ...     dataset=RandomDataset(100),
+            ...     shuffle=False,
+            ...     batch_size=16,
+            ...     drop_last=False,
+            ... )
             >>> for batch_indices in bs:
             ...     print(batch_indices)
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -85,7 +90,11 @@ class BatchSampler(Sampler[Sequence[int]]):
             [96, 97, 98, 99]
             >>> # init with sampler
             >>> sampler = RandomSampler(RandomDataset(100))
-            >>> bs = BatchSampler(sampler=sampler, batch_size=8, drop_last=True)
+            >>> bs = BatchSampler(
+            ...     sampler=sampler,
+            ...     batch_size=8,
+            ...     drop_last=True,
+            ... )
             >>> for batch_indices in bs:
             ...     print(batch_indices)
             [56, 12, 68, 0, 82, 66, 91, 44]
