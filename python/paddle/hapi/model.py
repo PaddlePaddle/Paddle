@@ -2975,7 +2975,7 @@ class Model:
                 Params size (MB): 0.24
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
-                {'total_params': np.int64(61610), 'trainable_params': np.int64(61610)}
+                {'total_params': 61610, 'trainable_params': 61610}
 
         """
         assert input_size is not None or self._inputs is not None, (
