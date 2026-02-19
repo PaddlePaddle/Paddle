@@ -88,7 +88,7 @@ class HybridParallelInferenceHelper:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)

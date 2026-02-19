@@ -55,7 +55,7 @@ def recompute(
         Output of function on args.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
             >>> import paddle
