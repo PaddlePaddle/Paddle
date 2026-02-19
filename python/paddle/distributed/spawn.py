@@ -526,7 +526,10 @@ def spawn(
             ...     layer = LinearNet()
             ...     dp_layer = paddle.DataParallel(layer, group=process_group)  # type: ignore[arg-type]
             ...     loss_fn = nn.MSELoss()
-            ...     adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
+            ...     adam = opt.Adam(
+            ...         learning_rate=0.001,
+            ...         parameters=dp_layer.parameters(),
+            ...     )
             ...     # 3. run layer
             ...     inputs = paddle.randn([10, 10], 'float32')
             ...     outputs = dp_layer(inputs)
