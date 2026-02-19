@@ -109,7 +109,11 @@ class UtilBase:
                 >>> os.environ["PADDLE_WITH_GLOO"] = "2"
 
                 >>> def train():
-                ...     role = PaddleCloudRoleMaker(is_collective=False, init_gloo=True, path="./tmp_gloo")
+                ...     role = PaddleCloudRoleMaker(
+                ...         is_collective=False,
+                ...         init_gloo=True,
+                ...         path="./tmp_gloo",
+                ...     )
                 ...     fleet.init(role)
                 ...
                 ...     if fleet.is_server():
@@ -153,7 +157,11 @@ class UtilBase:
                 >>> os.environ["PADDLE_WITH_GLOO"] = "2"
 
                 >>> def train():
-                ...     role = PaddleCloudRoleMaker(is_collective=False, init_gloo=True, path="./tmp_gloo")
+                ...     role = PaddleCloudRoleMaker(
+                ...         is_collective=False,
+                ...         init_gloo=True,
+                ...         path="./tmp_gloo",
+                ...     )
                 ...     fleet.init(role)
                 ...
                 ...     if fleet.is_server():
@@ -199,7 +207,11 @@ class UtilBase:
                 >>> os.environ["PADDLE_WITH_GLOO"] = "2"
 
                 >>> def train():
-                ...     role = PaddleCloudRoleMaker(is_collective=False, init_gloo=True, path="./tmp_gloo")
+                ...     role = PaddleCloudRoleMaker(
+                ...         is_collective=False,
+                ...         init_gloo=True,
+                ...         path="./tmp_gloo",
+                ...     )
                 ...     fleet.init(role)
                 ...
                 ...     if fleet.is_server():
