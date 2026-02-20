@@ -403,7 +403,11 @@ class OptimizerWithMixedPrecision:
                 ...     # 4) The entry of Paddle AMP.
                 ...     # Enable pure fp16 training by setting `use_pure_fp16` to True.
                 ...     optimizer = paddle.static.amp.decorate(
-                ...         optimizer, amp_list, init_loss_scaling=128.0, use_dynamic_loss_scaling=True, use_pure_fp16=True
+                ...         optimizer,
+                ...         amp_list,
+                ...         init_loss_scaling=128.0,
+                ...         use_dynamic_loss_scaling=True,
+                ...         use_pure_fp16=True,
                 ...     )
                 ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
@@ -846,7 +850,11 @@ def decorate(
             ...     # 4) The entry of Paddle AMP.
             ...     # Enable pure fp16 training by setting `use_pure_fp16` to True.
             ...     optimizer = paddle.static.amp.decorate(
-            ...         optimizer, amp_list, init_loss_scaling=128.0, use_dynamic_loss_scaling=True, use_pure_fp16=True
+            ...         optimizer,
+            ...         amp_list,
+            ...         init_loss_scaling=128.0,
+            ...         use_dynamic_loss_scaling=True,
+            ...         use_pure_fp16=True,
             ...     )
             ...     # If you don't use the default_startup_program(), you should pass
             ...     # your defined `startup_program` into `minimize`.
