@@ -88,7 +88,11 @@ class RecomputeOptimizer(Optimizer):
             >>> step = 10
 
             >>> for i in range(step):
-            ...     cost_val = exe.run(feed=gen_data(), program=paddle.static.default_main_program(), fetch_list=[cost.name])
+            ...     cost_val = exe.run(
+            ...         feed=gen_data(),
+            ...         program=paddle.static.default_main_program(),
+            ...         fetch_list=[cost.name],
+            ...     )
             ...     print("step=%d cost=%f" % (i, cost_val[0]))
             var x : DENSE_TENSOR.shape(-1, 32).dtype(float32).stop_gradient(True)
             Finished optimize
