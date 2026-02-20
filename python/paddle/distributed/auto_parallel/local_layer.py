@@ -75,7 +75,11 @@ class LocalLayer(Layer):
             ... ]
             >>> local_input = paddle.arange(0, 10, dtype="float32")
             >>> local_input = local_input + dist.get_rank()
-            >>> input_dist = dist.auto_parallel.api.dtensor_from_local(local_input, mesh, [dist.Shard(0)])
+            >>> input_dist = dist.auto_parallel.api.dtensor_from_local(
+            ...     local_input,
+            ...     mesh,
+            ...     [dist.Shard(0)],
+            ... )
             >>> custom_layer = CustomLayer(dist_attrs, dist_attrs)
             >>> output_dist = custom_layer(input_dist)
 

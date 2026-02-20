@@ -168,7 +168,12 @@ def shard_op(
             >>> x = paddle.ones([4, 6])
             >>> y = paddle.zeros([4, 6])
             >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            >>> dist_add = auto.shard_op(paddle.add, mesh, in_shard_specs=[["x", "y"], ["y", None]], out_shard_specs=[[None, "x"]])
+            >>> dist_add = auto.shard_op(
+            ...     paddle.add,
+            ...     mesh,
+            ...     in_shard_specs=[["x", "y"], ["y", None]],
+            ...     out_shard_specs=[[None, "x"]],
+            ... )
             >>> dist_add(x, y)
 
     """

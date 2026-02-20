@@ -159,7 +159,9 @@ def parallelize(
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.gate_up_proj = paddle.nn.Linear(
-            ...             model_config.hidden_size, model_config.intermediate_size * 2, bias_attr=False
+            ...             model_config.hidden_size,
+            ...             model_config.intermediate_size * 2,
+            ...             bias_attr=False,
             ...         )
             ...
             ...         self.down_proj = paddle.nn.Linear(model_config.intermediate_size, model_config.hidden_size, bias_attr=False)

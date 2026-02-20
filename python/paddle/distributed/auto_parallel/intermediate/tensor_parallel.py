@@ -140,7 +140,9 @@ class ColWiseParallel(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.ColWiseParallel()}
+            >>> mp_config = {
+            ...     'fc1': dist.ColWiseParallel(),
+            ... }
 
     """
 
@@ -244,7 +246,9 @@ class RowWiseParallel(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.RowWiseParallel()}
+            >>> mp_config = {
+            ...     'fc1': dist.RowWiseParallel(),
+            ... }
     """
 
     def __init__(self, is_input_parallel: bool = True) -> None:
@@ -338,7 +342,9 @@ class PrepareLayerInput(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.PrepareLayerOutput(layer_input_hook)}
+            >>> mp_config = {
+            ...     'fc1': dist.PrepareLayerOutput(layer_input_hook),
+            ... }
     """
 
     def __init__(
@@ -392,7 +398,9 @@ class PrepareLayerOutput(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.PrepareLayerOutput(layer_output_hook)}
+            >>> mp_config = {
+            ...     'fc1': dist.PrepareLayerOutput(layer_output_hook),
+            ... }
     """
 
     def __init__(
@@ -445,7 +453,9 @@ class SequenceParallelBegin(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.SequenceParallelBegin()}
+            >>> mp_config = {
+            ...     'fc1': dist.SequenceParallelBegin(),
+            ... }
     """
 
     def __init__(self, need_transpose: bool = True) -> None:
@@ -495,7 +505,9 @@ class SequenceParallelEnd(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.SequenceParallelEnd()}
+            >>> mp_config = {
+            ...     'fc1': dist.SequenceParallelEnd(),
+            ... }
     """
 
     def __init__(self, need_transpose: bool = True) -> None:
@@ -537,7 +549,9 @@ class SequenceParallelEnable(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.SequenceParallelEnable()}
+            >>> mp_config = {
+            ...     'fc1': dist.SequenceParallelEnable(),
+            ... }
     """
 
     def __init__(self) -> None:
@@ -598,7 +612,9 @@ class SequenceParallelDisable(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {'fc1': dist.SequenceParallelDisable()}
+            >>> mp_config = {
+            ...     'fc1': dist.SequenceParallelDisable(),
+            ... }
     """
 
     def __init__(self, need_transpose: bool = True) -> None:
@@ -658,7 +674,13 @@ class ConvParallel(PlanBase):
             >>> class SimpleConvNet(nn.Layer):
             ...     def __init__(self, data_format="NCHW"):
             ...         super().__init__()
-            ...         self.conv1 = nn.Conv2D(3, 8, kernel_size=3, padding=1, data_format=data_format)
+            ...         self.conv1 = nn.Conv2D(
+            ...             3,
+            ...             8,
+            ...             kernel_size=3,
+            ...             padding=1,
+            ...             data_format=data_format,
+            ...         )
             ...         self.relu = nn.ReLU()
             ...
             ...     def forward(self, x):
@@ -666,7 +688,11 @@ class ConvParallel(PlanBase):
             ...         return self.relu(x)
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> model = SimpleConvNet(data_format="NCHW")
-            >>> mp_config = {"parallelize_plan": {"conv1": dist.ConvParallel()}}
+            >>> mp_config = {
+            ...     "parallelize_plan": {
+            ...         "conv1": dist.ConvParallel(),
+            ...     },
+            ... }
     """
 
     def __init__(self) -> None:
