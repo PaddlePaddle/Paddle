@@ -74,7 +74,11 @@ def forward_grad(
             ...     paddle.incubate.autograd.prim2orig()
             >>> exe = paddle.static.Executor()
             >>> exe.run(startup_program)
-            >>> y_grad = exe.run(main_program, feed={'x': np.array([2.0]).astype('float32')}, fetch_list=[y_grad])
+            >>> y_grad = exe.run(
+            ...     main_program,
+            ...     feed={'x': np.array([2.0]).astype('float32')},
+            ...     fetch_list=[y_grad],
+            ... )
             >>> print(y_grad)
             [array([4.], dtype=float32)]
 
@@ -169,7 +173,11 @@ def grad(
             ...     paddle.incubate.autograd.prim2orig()
             >>> exe = paddle.static.Executor()
             >>> exe.run(startup_program)
-            >>> x_grad = exe.run(main_program, feed={'x': np.array([2.0]).astype('float32')}, fetch_list=[x_grad])
+            >>> x_grad = exe.run(
+            ...     main_program,
+            ...     feed={'x': np.array([2.0]).astype('float32')},
+            ...     fetch_list=[x_grad],
+            ... )
             >>> print(x_grad)
             [array([4.], dtype=float32)]
 
