@@ -1023,6 +1023,7 @@ def conv3d(
 
             >>> np.random.seed(1107)
             >>> paddle.seed(1107)
+            >>> # doctest: +SKIP("paddle.static.nn.conv3d doesn't support PIR mode")
             >>> paddle.enable_static()
             >>> data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
             >>> param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
