@@ -982,7 +982,10 @@ def batch_fc(
             ...         name="w_0",
             ...     ),
             ...     bias_size=[16, 10],
-            ...     bias_attr=paddle.ParamAttr(learning_rate=1.0, name="b_0"),
+            ...     bias_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="b_0",
+            ...     ),
             ...     act="relu",
             ... )
     """
@@ -1049,10 +1052,22 @@ def correlation(
             >>> import paddle
             >>> paddle.enable_static()
             >>> x1 = paddle.static.data(name='x1', shape=[2, 3, 4, 5], dtype="float32")
-            >>> x2 = paddle.static.data(name='x2', shape=[2, 3, 4, 5], dtype="float32")
+            >>> x2 = paddle.static.data(
+            ...     name='x2',
+            ...     shape=[2, 3, 4, 5],
+            ...     dtype="float32",
+            ... )
 
 
-            >>> out = paddle.incubate.layers.correlation(x1, x2, pad_size=4, kernel_size=1, max_displacement=4, stride1=1, stride2=1)
+            >>> out = paddle.incubate.layers.correlation(
+            ...     x1,
+            ...     x2,
+            ...     pad_size=4,
+            ...     kernel_size=1,
+            ...     max_displacement=4,
+            ...     stride1=1,
+            ...     stride2=1,
+            ... )
 
     """
 
