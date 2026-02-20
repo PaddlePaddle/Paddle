@@ -148,7 +148,10 @@ class ImperativeQuantAware:
 
                 >>> model = resnet.resnet50(pretrained=True)
 
-                >>> imperative_qat = ImperativeQuantAware(weight_quantize_type='abs_max', activation_quantize_type='moving_average_abs_max')
+                >>> imperative_qat = ImperativeQuantAware(
+                ...     weight_quantize_type='abs_max',
+                ...     activation_quantize_type='moving_average_abs_max',
+                ... )
 
                 >>> # Add the fake quant logical.
                 >>> # The original model will be rewrite.
@@ -162,7 +165,9 @@ class ImperativeQuantAware:
                 >>> imperative_qat.save_quantized_model(
                 ...     layer=model,
                 ...     model_path="./resnet50_qat",
-                ...     input_spec=[paddle.static.InputSpec(shape=[None, 3, 224, 224], dtype='float32')],
+                ...     input_spec=[
+                ...         paddle.static.InputSpec(shape=[None, 3, 224, 224], dtype='float32'),
+                ...     ],
                 ... )
 
             .. code-block:: pycon
@@ -189,7 +194,10 @@ class ImperativeQuantAware:
                 ...         return x
 
                 >>> model = ImperativeModel()
-                >>> imperative_qat = ImperativeQuantAware(weight_quantize_type='abs_max', activation_quantize_type='moving_average_abs_max')
+                >>> imperative_qat = ImperativeQuantAware(
+                ...     weight_quantize_type='abs_max',
+                ...     activation_quantize_type='moving_average_abs_max',
+                ... )
 
                 >>> # Add the fake quant logical.
                 >>> # The original model will be rewrite.
@@ -202,7 +210,10 @@ class ImperativeQuantAware:
                 >>> # ...
 
                 >>> # Save quant model for the inference.
-                >>> imperative_qat.save_quantized_model(layer=model, model_path="./imperative_model_qat")
+                >>> imperative_qat.save_quantized_model(
+                ...     layer=model,
+                ...     model_path="./imperative_model_qat",
+                ... )
         """
         super().__init__()
         self.fuse_conv_bn = fuse_conv_bn
@@ -264,7 +275,10 @@ class ImperativeQuantAware:
                 ...         return x
 
                 >>> model = ImperativeModel()
-                >>> imperative_qat = ImperativeQuantAware(weight_quantize_type='abs_max', activation_quantize_type='moving_average_abs_max')
+                >>> imperative_qat = ImperativeQuantAware(
+                ...     weight_quantize_type='abs_max',
+                ...     activation_quantize_type='moving_average_abs_max',
+                ... )
 
                 >>> # Add the fake quant logical.
                 >>> # The original model will be rewrite.
