@@ -77,7 +77,7 @@ def set_config(config: _ConfigKernel | str | None = None) -> None:
             dataloader will be enabled.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import json
