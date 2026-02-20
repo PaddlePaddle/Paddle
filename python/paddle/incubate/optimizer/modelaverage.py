@@ -358,7 +358,10 @@ class ModelAverage(Optimizer):
                 >>> sgd.minimize(loss)
 
                 >>> modelaverage = paddle.incubate.ModelAverage(
-                ...     0.15, parameters=linear.parameters(), min_average_window=2, max_average_window=4
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4,
                 ... )
                 >>> modelaverage.minimize(loss)
                 >>> sgd.clear_grad()
@@ -388,7 +391,10 @@ class ModelAverage(Optimizer):
                 >>> loss = paddle.mean(out)
                 >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
                 >>> modelaverage = paddle.incubate.ModelAverage(
-                ...     0.15, parameters=linear.parameters(), min_average_window=2, max_average_window=4
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4,
                 ... )
                 >>> loss.backward()
                 >>> sgd.step()
@@ -438,7 +444,10 @@ class ModelAverage(Optimizer):
                 >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
 
                 >>> modelaverage = paddle.incubate.ModelAverage(
-                ...     0.15, parameters=linear.parameters(), min_average_window=2, max_average_window=4
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4,
                 ... )
                 >>> sgd.step()
                 >>> modelaverage.step()
@@ -511,7 +520,10 @@ class ModelAverage(Optimizer):
                 >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
 
                 >>> modelaverage = paddle.incubate.ModelAverage(
-                ...     0.15, parameters=linear.parameters(), min_average_window=2, max_average_window=4
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4,
                 ... )
                 >>> sgd.step()
                 >>> modelaverage.step()

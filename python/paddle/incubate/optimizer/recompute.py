@@ -63,7 +63,12 @@ class RecomputeOptimizer(Optimizer):
             ...     print(input_x)
             ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
             ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-            ...     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y, reduction='none', use_softmax=False)
+            ...     cost = paddle.nn.functional.cross_entropy(
+            ...         input=prediction,
+            ...         label=input_y,
+            ...         reduction='none',
+            ...         use_softmax=False,
+            ...     )
             ...     sum_cost = paddle.mean(cost)
             ...     return sum_cost, fc_1, prediction
             >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
@@ -147,7 +152,12 @@ class RecomputeOptimizer(Optimizer):
                 >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                ...     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y, reduction='none', use_softmax=False)
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
+                ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
@@ -192,7 +202,12 @@ class RecomputeOptimizer(Optimizer):
                 >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                ...     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y, reduction='none', use_softmax=False)
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
+                ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
@@ -205,7 +220,12 @@ class RecomputeOptimizer(Optimizer):
                 >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
                 >>> sgd._set_checkpoints([fc_1, pred])
-                >>> params_grads = sgd.backward(cost, startup_program=None, parameter_list=None, no_grad_set=None)
+                >>> params_grads = sgd.backward(
+                ...     cost,
+                ...     startup_program=None,
+                ...     parameter_list=None,
+                ...     no_grad_set=None,
+                ... )
 
                 >>> program = cost.block.program
                 >>> with framework.program_guard(program, None):
@@ -632,7 +652,12 @@ class RecomputeOptimizer(Optimizer):
                 >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                ...     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y, reduction='none', use_softmax=False)
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
+                ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
@@ -645,7 +670,12 @@ class RecomputeOptimizer(Optimizer):
                 >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
                 >>> sgd._set_checkpoints([fc_1, pred])
-                >>> params_grads = sgd.backward(cost, startup_program=None, parameter_list=None, no_grad_set=None)
+                >>> params_grads = sgd.backward(
+                ...     cost,
+                ...     startup_program=None,
+                ...     parameter_list=None,
+                ...     no_grad_set=None,
+                ... )
                 >>> print("Finished backward")
                 Finished backward
         """
@@ -708,7 +738,12 @@ class RecomputeOptimizer(Optimizer):
                 >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
-                ...     cost = paddle.nn.functional.cross_entropy(input=prediction, label=input_y, reduction='none', use_softmax=False)
+                ...     cost = paddle.nn.functional.cross_entropy(
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
+                ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
@@ -721,9 +756,18 @@ class RecomputeOptimizer(Optimizer):
                 >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 >>> sgd = paddle.incubate.optimizer.RecomputeOptimizer(sgd)
                 >>> sgd._set_checkpoints([fc_1, pred])
-                >>> params_grads = sgd.backward(cost, startup_program=None, parameter_list=None, no_grad_set=None)
+                >>> params_grads = sgd.backward(
+                ...     cost,
+                ...     startup_program=None,
+                ...     parameter_list=None,
+                ...     no_grad_set=None,
+                ... )
 
-                >>> optimize_ops = sgd.apply_optimize(cost, startup_program=None, params_grads=params_grads)
+                >>> optimize_ops = sgd.apply_optimize(
+                ...     cost,
+                ...     startup_program=None,
+                ...     params_grads=params_grads,
+                ... )
 
                 >>> print("Finished apply_optimize")
                 Finished apply_optimize

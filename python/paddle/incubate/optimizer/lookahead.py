@@ -110,7 +110,13 @@ class LookAhead(Optimizer):
 
             >>> # create data loader
             >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+            >>> loader = paddle.io.DataLoader(
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2,
+            ... )
 
             >>> # doctest: +SKIP('The run time is too long to pass the CI check.')
             >>> train(layer, loader, loss_fn, lookahead)
