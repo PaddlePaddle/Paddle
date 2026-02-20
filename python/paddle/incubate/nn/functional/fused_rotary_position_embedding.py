@@ -89,6 +89,7 @@ def fused_rotary_position_embedding(
             ...     q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False
             ... )
             >>> print(out_q)
+            >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 2, 2, 2], dtype=float16, place=Place(gpu:0), stop_gradient=True,
             [[[[-0.54931641,  0.64990234],
                [-1.08691406,  1.18261719]],
@@ -97,18 +98,8 @@ def fused_rotary_position_embedding(
              [[[-0.77050781,  0.07733154],
                [-0.73730469, -0.16735840]],
               [[ 0.07116699, -0.90966797],
-           >>> print(out_q)
-           >>> # doctest: +SKIP("Random output")
-           Tensor(shape=[2, 2, 2, 2], dtype=float16, place=Place(gpu:0), stop_gradient=True,
-           [[[[-0.54931641,  0.64990234],
-              [-1.08691406,  1.18261719]],
-             [[ 0.57812500,  0.11749268],
-              [-0.63281250,  0.15551758]]],
-            [[[-0.77050781,  0.07733154],
-              [-0.73730469, -0.16735840]],
-             [[ 0.07116699, -0.90966797],
-              [-0.03628540, -0.20202637]]]])
-           >>> # doctest: -SKIP
+               [-0.03628540, -0.20202637]]]])
+            >>> # doctest: -SKIP
     """
     if (sin is None) or (cos is None):
         assert position_ids is None, (
