@@ -58,7 +58,10 @@ class PipelineOptimizer:
             ...     x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             ...     y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64')
             ...     data_loader = base.io.DataLoader.from_generator(
-            ...         feed_list=[x, y], capacity=64, use_double_buffer=True, iterable=False
+            ...         feed_list=[x, y],
+            ...         capacity=64,
+            ...         use_double_buffer=True,
+            ...         iterable=False,
             ...     )
 
             ...     emb_x = layers.embedding(input=x, param_attr=base.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
