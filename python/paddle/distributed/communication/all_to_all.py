@@ -153,7 +153,14 @@ def alltoall_single(
             >>> # data for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
             >>> output = paddle.empty([(rank + 1) * size, size], dtype='float32')
             >>> group = dist.new_group([0, 1])
-            >>> task = dist.alltoall_single(data, output, in_split_sizes, out_split_sizes, sync_op=False, group=group)
+            >>> task = dist.alltoall_single(
+            ...     data,
+            ...     output,
+            ...     in_split_sizes,
+            ...     out_split_sizes,
+            ...     sync_op=False,
+            ...     group=group,
+            ... )
             >>> task.wait()
             >>> print(output)
             >>> # output for rank 0: [[0., 0.], [1., 1.]]

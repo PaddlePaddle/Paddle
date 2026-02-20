@@ -199,7 +199,12 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
             >>> expert_count = paddle.to_tensor([0, 3, 1, 3, 0, 0, 0, 0], dtype='int64')
             >>> n_worker = 1
             >>> n_expert = 8
-            >>> new_gate_id = utils._prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker)
+            >>> new_gate_id = utils._prune_gate_by_capacity(
+            ...     gate_idx,
+            ...     expert_count,
+            ...     n_expert,
+            ...     n_worker,
+            ... )
             >>> print(new_gate_id)
             Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [1, 3, 3, 3, -1, 2, 1, 1])
