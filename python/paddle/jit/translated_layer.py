@@ -1344,7 +1344,13 @@ class TranslatedLayer(layers.Layer):
 
             >>> # create data loader
             >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+            >>> loader = paddle.io.DataLoader(
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2,
+            ... )
             >>> # train
             >>> train(layer, loader, loss_fn, adam)
 
@@ -1543,7 +1549,13 @@ class TranslatedLayer(layers.Layer):
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+                >>> loader = paddle.io.DataLoader(
+                ...     dataset,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2,
+                ... )
                 >>> # train
                 >>> train(layer, loader, loss_fn, adam)
 

@@ -995,7 +995,13 @@ def save(
 
             >>> # create data loader
             >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+            >>> loader = paddle.io.DataLoader(
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2,
+            ... )
 
             >>> # train
             >>> train(layer, loader, loss_fn, adam)
@@ -1547,7 +1553,13 @@ def load(
 
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+                >>> loader = paddle.io.DataLoader(
+                ...     dataset,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2,
+                ... )
 
                 >>> # train
                 >>> train(layer, loader, loss_fn, adam)
@@ -1635,10 +1647,19 @@ def load(
 
                 >>> # 1. train and save inference model
                 >>> for data in loader():
-                ...     exe.run(static.default_main_program(), feed=data, fetch_list=[avg_loss])
+                ...     exe.run(
+                ...         static.default_main_program(),
+                ...         feed=data,
+                ...         fetch_list=[avg_loss],
+                ...     )
 
                 >>> model_path = "fc.example.model"
-                >>> paddle.static.save_inference_model(model_path, [image], [pred], exe)
+                >>> paddle.static.save_inference_model(
+                ...     model_path,
+                ...     [image],
+                ...     [pred],
+                ...     exe,
+                ... )
 
                 >>> # 2. load model
 
@@ -1657,7 +1678,14 @@ def load(
                 >>> fc.train()
                 >>> loss_fn = nn.CrossEntropyLoss()
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=fc.parameters())
-                >>> loader = paddle.io.DataLoader(dataset, places=place, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+                >>> loader = paddle.io.DataLoader(
+                ...     dataset,
+                ...     places=place,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2,
+                ... )
                 >>> for epoch_id in range(EPOCH_NUM):
                 ...     for batch_id, (image, label) in enumerate(loader()):
                 ...         out = fc(image)
