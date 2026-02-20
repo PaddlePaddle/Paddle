@@ -136,9 +136,9 @@ class Engine:
             >>> model = paddle.vision.models.LeNet()
             >>> loss = paddle.nn.CrossEntropyLoss()
             >>> optimizer = paddle.optimizer.Adam(
-            ...     learning_rate=0.001,
-            ...     parameters=model.parameters(),
-            ... )
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
             >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
             >>> engine = auto.Engine(model, loss, optimizer, metrics)
@@ -1658,9 +1658,9 @@ class Engine:
                 >>> model = paddle.vision.models.LeNet()
                 >>> loss = paddle.nn.CrossEntropyLoss()
                 >>> optimizer = paddle.optimizer.Adam(
-            ...     learning_rate=0.001,
-            ...     parameters=model.parameters(),
-            ... )
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
                 >>> engine = auto.Engine(model, loss, optimizer, metrics)
@@ -2407,9 +2407,9 @@ class Engine:
                 >>> model = paddle.vision.models.LeNet()
                 >>> loss = paddle.nn.CrossEntropyLoss()
                 >>> optimizer = paddle.optimizer.Adam(
-            ...     learning_rate=0.001,
-            ...     parameters=model.parameters(),
-            ... )
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
                 >>> engine = auto.Engine(model, loss, optimizer, metrics)
@@ -2494,9 +2494,9 @@ class Engine:
                 >>> model = paddle.vision.models.LeNet()
                 >>> loss = paddle.nn.CrossEntropyLoss()
                 >>> optimizer = paddle.optimizer.Adam(
-            ...     learning_rate=0.001,
-            ...     parameters=model.parameters(),
-            ... )
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
                 >>> engine = auto.Engine(model, loss, optimizer, metrics)

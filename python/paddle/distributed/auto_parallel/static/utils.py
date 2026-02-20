@@ -1225,7 +1225,13 @@ def _get_sliced_param_index(
             >>> print(slice_param)
             [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
-            >>> index = _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape, process_group)
+            >>> index = _get_sliced_param_index(
+            ...     rank,
+            ...     complete_shape,
+            ...     dims_mapping,
+            ...     process_shape,
+            ...     process_group,
+            ... )
             >>> print(index)
             2
     """
