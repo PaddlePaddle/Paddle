@@ -163,7 +163,11 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
             >>> exe = base.Executor(base.CPUPlace())
             >>> param_path = "./my_paddle_model"
             >>> prog = base.default_main_program()
-            >>> paddle.distributed.io.load_persistables(executor=exe, dirname=param_path, main_program=None)
+            >>> paddle.distributed.io.load_persistables(
+            ...     executor=exe,
+            ...     dirname=param_path,
+            ...     main_program=None,
+            ... )
     """
 
     if main_program and main_program._is_distributed:
@@ -523,7 +527,11 @@ def load_inference_model_distributed(
             >>> # Save the inference model
             >>> path = "./infer_model"
             >>> base.io.save_inference_model(
-            ...     dirname=path, feeded_var_names=['img'], target_vars=[hidden_b], executor=exe, main_program=main_prog
+            ...     dirname=path,
+            ...     feeded_var_names=['img'],
+            ...     target_vars=[hidden_b],
+            ...     executor=exe,
+            ...     main_program=main_prog,
             ... )
             >>> # Demo one. Not need to set the distributed look up table, because the
             >>> # training doesn't use a distributed look up table.
@@ -531,13 +539,21 @@ def load_inference_model_distributed(
             ...     dirname=path, executor=exe
             ... )
             >>> tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
-            >>> results = exe.run(inference_program, feed={feed_target_names[0]: tensor_img}, fetch_list=fetch_targets)
+            >>> results = exe.run(
+            ...     inference_program,
+            ...     feed={feed_target_names[0]: tensor_img},
+            ...     fetch_list=fetch_targets,
+            ... )
             >>> # Demo two. If the training uses a distributed look up table, the pserver
             >>> # endpoints list should be supported when loading the inference model.
             >>> # The below is just an example.
             >>> endpoints = ["127.0.0.1:2023", "127.0.0.1:2024"]
             >>> [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (
-            ...     paddle.distributed.io.load_inference_model_distributed(dirname=path, executor=exe, pserver_endpoints=endpoints)
+            ...     paddle.distributed.io.load_inference_model_distributed(
+            ...         dirname=path,
+            ...         executor=exe,
+            ...         pserver_endpoints=endpoints,
+            ...     )
             ... )
             >>> # In this example, the inference program was saved in the file
             >>> # "./infer_model/__model__" and parameters were saved in
