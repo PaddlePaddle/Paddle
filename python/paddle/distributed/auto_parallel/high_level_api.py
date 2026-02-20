@@ -603,7 +603,12 @@ def to_distributed(
             >>> input_seqs = np.random.randint(low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)).astype("int64")
             >>> labels = np.random.randint(low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)).astype("int64")
             >>> dataset = RandomDataset(input_seqs, labels, BATCH_SIZE * BATCH_NUM)
-            >>> sampler = paddle.io.BatchSampler(dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True)
+            >>> sampler = paddle.io.BatchSampler(
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=False,
+            ...     drop_last=True,
+            ... )
             >>> loader = paddle.io.DataLoader(dataset, batch_sampler=sampler)
             >>> opt = paddle.optimizer.SGD(learning_rate=0.1, parameters=model.parameters())
             >>> input_seq_spec = paddle.static.InputSpec([BATCH_SIZE, SEQ_LENGTH], 'float32', 'input_seq', True)
