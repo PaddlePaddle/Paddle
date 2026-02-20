@@ -1292,7 +1292,7 @@ class TranslatedLayer(layers.Layer):
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import numpy as np
@@ -1502,7 +1502,7 @@ class TranslatedLayer(layers.Layer):
             Program
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np

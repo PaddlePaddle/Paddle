@@ -68,7 +68,7 @@ def not_to_static(func=None):
         callable: A function which won't be converted in Dynamic-to-Static.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
