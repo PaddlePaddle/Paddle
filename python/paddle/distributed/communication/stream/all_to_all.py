@@ -348,7 +348,13 @@ def alltoall_single(
             ...     data = paddle.to_tensor([[1., 1.], [1., 1.], [1., 1.]])
             >>> out_split_sizes = [local_rank + 1 for i in range(size)]
             >>> in_split_sizes = [i + 1 for i in range(size)]
-            >>> task = dist.stream.alltoall_single(output, data, out_split_sizes, in_split_sizes, sync_op=False)
+            >>> task = dist.stream.alltoall_single(
+            ...     output,
+            ...     data,
+            ...     out_split_sizes,
+            ...     in_split_sizes,
+            ...     sync_op=False,
+            ... )
             >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
