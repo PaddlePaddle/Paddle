@@ -551,7 +551,10 @@ def tdm_child(
             >>> node_nums = 7
             >>> child_nums = 2
             >>> child, leaf_mask = paddle.incubate.layers.tdm_child(
-            ...     x, node_nums, child_nums, param_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(tree_info_np))
+            ...     x,
+            ...     node_nums,
+            ...     child_nums,
+            ...     param_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(tree_info_np)),
             ... )
 
     """
@@ -718,8 +721,12 @@ def tdm_sampler(
             ...     neg_samples_num_list,
             ...     layer_node_num_list,
             ...     leaf_node_num,
-            ...     tree_travel_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(travel_array)),
-            ...     tree_layer_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(layer_array)),
+            ...     tree_travel_attr=paddle.ParamAttr(
+            ...         initializer=paddle.nn.initializer.Assign(travel_array),
+            ...     ),
+            ...     tree_layer_attr=paddle.ParamAttr(
+            ...         initializer=paddle.nn.initializer.Assign(layer_array),
+            ...     ),
             ...     output_positive=True,
             ...     output_list=True,
             ...     seed=0,
@@ -899,7 +906,10 @@ def rank_attention(
             ...     input=input,
             ...     rank_offset=rank_offset,
             ...     rank_param_shape=[18, 3],
-            ...     rank_param_attr=paddle.ParamAttr(learning_rate=1.0, name="ubm_rank_param.w_0"),
+            ...     rank_param_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="ubm_rank_param.w_0",
+            ...     ),
             ...     max_rank=3,
             ...     max_size=0,
             ... )
@@ -967,9 +977,15 @@ def batch_fc(
             >>> out = paddle.incubate.layers.batch_fc(
             ...     input=input,
             ...     param_size=[16, 3, 10],
-            ...     param_attr=paddle.ParamAttr(learning_rate=1.0, name="w_0"),
+            ...     param_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="w_0",
+            ...     ),
             ...     bias_size=[16, 10],
-            ...     bias_attr=paddle.ParamAttr(learning_rate=1.0, name="b_0"),
+            ...     bias_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="b_0",
+            ...     ),
             ...     act="relu",
             ... )
     """
@@ -1036,10 +1052,22 @@ def correlation(
             >>> import paddle
             >>> paddle.enable_static()
             >>> x1 = paddle.static.data(name='x1', shape=[2, 3, 4, 5], dtype="float32")
-            >>> x2 = paddle.static.data(name='x2', shape=[2, 3, 4, 5], dtype="float32")
+            >>> x2 = paddle.static.data(
+            ...     name='x2',
+            ...     shape=[2, 3, 4, 5],
+            ...     dtype="float32",
+            ... )
 
 
-            >>> out = paddle.incubate.layers.correlation(x1, x2, pad_size=4, kernel_size=1, max_displacement=4, stride1=1, stride2=1)
+            >>> out = paddle.incubate.layers.correlation(
+            ...     x1,
+            ...     x2,
+            ...     pad_size=4,
+            ...     kernel_size=1,
+            ...     max_displacement=4,
+            ...     stride1=1,
+            ...     stride2=1,
+            ... )
 
     """
 
@@ -1140,18 +1168,45 @@ def fused_bn_add_act(
             ...         x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
             ...         y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             ...         conv1_1 = paddle.static.nn.conv2d(
-            ...             input=x, filter_size=3, num_filters=32, stride=1, padding=1, act=None, bias_attr=False, data_format='NHWC'
+            ...             input=x,
+            ...             filter_size=3,
+            ...             num_filters=32,
+            ...             stride=1,
+            ...             padding=1,
+            ...             act=None,
+            ...             bias_attr=False,
+            ...             data_format='NHWC',
             ...         )
             ...         conv1_2 = paddle.static.nn.conv2d(
-            ...             input=x, filter_size=3, num_filters=32, stride=1, padding=1, act=None, bias_attr=False, data_format='NHWC'
+            ...             input=x,
+            ...             filter_size=3,
+            ...             num_filters=32,
+            ...             stride=1,
+            ...             padding=1,
+            ...             act=None,
+            ...             bias_attr=False,
+            ...             data_format='NHWC',
             ...         )
-            ...         bn = paddle.static.nn.batch_norm(input=conv1_1, act=None, data_layout='NHWC')
+            ...         bn = paddle.static.nn.batch_norm(
+            ...             input=conv1_1,
+            ...             act=None,
+            ...             data_layout='NHWC',
+            ...         )
             ...         fused_bn_add_act = paddle.incubate.layers.fused_bn_add_act(conv1_2, bn)
             ...         prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
-            ...         loss = paddle.nn.functional.cross_entropy(input=prediction, label=y, reduction='none', use_softmax=False)
+            ...         loss = paddle.nn.functional.cross_entropy(
+            ...             input=prediction,
+            ...             label=y,
+            ...             reduction='none',
+            ...             use_softmax=False,
+            ...         )
             ...         loss = paddle.mean(loss)
             ...         sgd = paddle.optimizer.SGD(learning_rate=0.001)
-            ...         sgd = paddle.static.amp.decorate(sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
+            ...         sgd = paddle.static.amp.decorate(
+            ...             sgd,
+            ...             use_dynamic_loss_scaling=True,
+            ...             init_loss_scaling=128.0,
+            ...         )
             ...         sgd.minimize(loss)
             ...
             ...     return x, y, loss
