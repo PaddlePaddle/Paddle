@@ -129,7 +129,7 @@ void BindXpuStream(py::module *m_ptr) {
               If device is positive integer, it must less than the device count. Default: None.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:XPU)
               >>> import paddle
@@ -173,7 +173,7 @@ void BindXpuStream(py::module *m_ptr) {
           Waits for stream tasks to complete.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:XPU)
                   >>> import paddle
@@ -239,7 +239,7 @@ void BindXpuStream(py::module *m_ptr) {
       The handle of the XPU event.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:XPU)
               >>> import paddle
@@ -287,7 +287,7 @@ void BindXpuStream(py::module *m_ptr) {
               If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:XPU)
               >>> import paddle
@@ -303,7 +303,7 @@ void BindXpuStream(py::module *m_ptr) {
           Waits for stream tasks to complete.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
