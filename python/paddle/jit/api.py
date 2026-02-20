@@ -268,7 +268,6 @@ def to_static(
             ...     else:
             ...         x_v = x + 1
             ...     return x_v
-            ...
             >>> x = paddle.ones([1, 2], dtype='float32')
             >>> x_v = func(x)
             >>> print(x_v)
@@ -772,12 +771,10 @@ def _register_save_pre_hook(hook):
             ...
             ...     def forward(self, x):
             ...         return self._linear(x)
-            ...
             >>> saving_count = 0
             >>> def save_pre_hook(layer, input_spec, configs):
             ...     global saving_count
             ...     saving_count += 1
-            ...
             >>> remove_handler = paddle.jit.api._register_save_pre_hook(save_pre_hook)
 
             >>> layer = LinearNet()
@@ -958,13 +955,13 @@ def save(
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
-            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
             ...         return image, label
             ...
             ...     def __len__(self):
@@ -987,8 +984,7 @@ def save(
             ...             loss.backward()
             ...             opt.step()
             ...             opt.clear_grad()
-            ...             print("Epoch {} batch {}: loss = {}".format(
-            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+            ...             print("Epoch {} batch {}: loss = {}".format(epoch_id, batch_id, np.mean(loss.numpy())))
 
             >>> # 1. train & save model.
 
@@ -999,12 +995,7 @@ def save(
 
             >>> # create data loader
             >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            >>> loader = paddle.io.DataLoader(dataset,
-            ...     batch_size=BATCH_SIZE,
-            ...     shuffle=True,
-            ...     drop_last=True,
-            ...     num_workers=2
-            ... )
+            >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
 
             >>> # train
             >>> train(layer, loader, loss_fn, adam)
@@ -1517,13 +1508,13 @@ def load(
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+                >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...
                 ...     def __getitem__(self, idx):
                 ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
-                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
                 ...         return image, label
                 ...
                 ...     def __len__(self):
@@ -1537,7 +1528,6 @@ def load(
                 ...     @paddle.jit.to_static
                 ...     def forward(self, x):
                 ...         return self._linear(x)
-                ...
                 >>> def train(layer, loader, loss_fn, opt):
                 ...     for epoch_id in range(EPOCH_NUM):
                 ...         for batch_id, (image, label) in enumerate(loader()):
@@ -1546,8 +1536,7 @@ def load(
                 ...             loss.backward()
                 ...             opt.step()
                 ...             opt.clear_grad()
-                ...             print("Epoch {} batch {}: loss = {}".format(
-                ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+                ...             print("Epoch {} batch {}: loss = {}".format(epoch_id, batch_id, np.mean(loss.numpy())))
 
                 >>> # 1. train & save model.
 
@@ -1558,13 +1547,7 @@ def load(
 
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                >>> loader = paddle.io.DataLoader(
-                ...     dataset,
-                ...     batch_size=BATCH_SIZE,
-                ...     shuffle=True,
-                ...     drop_last=True,
-                ...     num_workers=2
-                ... )
+                >>> loader = paddle.io.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
 
                 >>> # train
                 >>> train(layer, loader, loss_fn, adam)
@@ -1610,13 +1593,13 @@ def load(
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+                >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...
                 ...     def __getitem__(self, idx):
                 ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
-                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
                 ...         return image, label
                 ...
                 ...     def __len__(self):
@@ -1639,31 +1622,23 @@ def load(
 
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                >>> loader = paddle.io.DataLoader(dataset,
+                >>> loader = paddle.io.DataLoader(
+                ...     dataset,
                 ...     feed_list=[image, label],
                 ...     places=place,
                 ...     batch_size=BATCH_SIZE,
                 ...     shuffle=True,
                 ...     drop_last=True,
                 ...     return_list=False,
-                ...     num_workers=2
+                ...     num_workers=2,
                 ... )
 
                 >>> # 1. train and save inference model
                 >>> for data in loader():
-                ...     exe.run(
-                ...         static.default_main_program(),
-                ...         feed=data,
-                ...         fetch_list=[avg_loss]
-                ...     )
+                ...     exe.run(static.default_main_program(), feed=data, fetch_list=[avg_loss])
 
                 >>> model_path = "fc.example.model"
-                >>> paddle.static.save_inference_model(
-                ...     model_path,
-                ...     [image],
-                ...     [pred],
-                ...     exe
-                ... )
+                >>> paddle.static.save_inference_model(model_path, [image], [pred], exe)
 
                 >>> # 2. load model
 
@@ -1682,13 +1657,7 @@ def load(
                 >>> fc.train()
                 >>> loss_fn = nn.CrossEntropyLoss()
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=fc.parameters())
-                >>> loader = paddle.io.DataLoader(dataset,
-                ...     places=place,
-                ...     batch_size=BATCH_SIZE,
-                ...     shuffle=True,
-                ...     drop_last=True,
-                ...     num_workers=2
-                ... )
+                >>> loader = paddle.io.DataLoader(dataset, places=place, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
                 >>> for epoch_id in range(EPOCH_NUM):
                 ...     for batch_id, (image, label) in enumerate(loader()):
                 ...         out = fc(image)
@@ -1696,8 +1665,7 @@ def load(
                 ...         loss.backward()
                 ...         adam.step()
                 ...         adam.clear_grad()
-                ...         print("Epoch {} batch {}: loss = {}".format(
-                ...             epoch_id, batch_id, np.mean(loss.numpy())))
+                ...         print("Epoch {} batch {}: loss = {}".format(epoch_id, batch_id, np.mean(loss.numpy())))
     """
     # 1. construct correct config
     config = _parse_load_config(configs)

@@ -85,7 +85,6 @@ def not_to_static(func=None):
             ...     else:
             ...         out = x + 1
             ...     return out
-            ...
             >>> x = paddle.ones([1, 2], dtype='float32')
             >>> out = func(x)
             >>> print(out)
