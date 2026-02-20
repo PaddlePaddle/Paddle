@@ -284,7 +284,11 @@ class MoELayer(nn.Layer):
             >>> from paddle.distributed.collective import Group
             >>> from paddle.distributed import fleet
 
-            >>> moe_group = Group(fleet.worker_index(), 0, list(range(fleet.worker_num())))
+            >>> moe_group = Group(
+            ...     fleet.worker_index(),
+            ...     0,
+            ...     list(range(fleet.worker_num())),
+            ... )
             >>> mp_group = None
 
             >>> num_experts = 8
