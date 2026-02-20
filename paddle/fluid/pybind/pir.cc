@@ -433,7 +433,7 @@ void BindProgram(py::module *m) {
         Program: An empty Program.
 
     Examples:
-        .. code-block:: pycon
+        .. code-block:: python
 
             >>> import paddle
             >>> import paddle.static as static
@@ -2635,7 +2635,7 @@ void BindUtils(pybind11::module *m) {
             PreconditionNotMet: If legacy_program has multi block will raise error.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
@@ -2710,7 +2710,7 @@ void BindUtils(pybind11::module *m) {
             PreconditionNotMet: If legacy_program has multi block will raise error.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
