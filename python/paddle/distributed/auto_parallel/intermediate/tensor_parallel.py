@@ -124,7 +124,7 @@ class ColWiseParallel(PlanBase):
             The default value is `False`, which means keeping the output as a local tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -140,9 +140,7 @@ class ColWiseParallel(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.ColWiseParallel()
-            ... }
+            >>> mp_config = {'fc1': dist.ColWiseParallel()}
 
     """
 
@@ -230,7 +228,7 @@ class RowWiseParallel(PlanBase):
             which means the input is a local tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -246,9 +244,7 @@ class RowWiseParallel(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.RowWiseParallel()
-            ... }
+            >>> mp_config = {'fc1': dist.RowWiseParallel()}
     """
 
     def __init__(self, is_input_parallel: bool = True) -> None:
@@ -320,7 +316,7 @@ class PrepareLayerInput(PlanBase):
             one parameter named `process_mesh` and return the pre hook.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -337,13 +333,12 @@ class PrepareLayerInput(PlanBase):
             >>> def layer_input_hook(process_mesh):
             ...     def hook(layer, input, output):
             ...         return input
+            ...
             ...     return hook
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.PrepareLayerOutput(layer_input_hook)
-            ... }
+            >>> mp_config = {'fc1': dist.PrepareLayerOutput(layer_input_hook)}
     """
 
     def __init__(
@@ -375,7 +370,7 @@ class PrepareLayerOutput(PlanBase):
             one parameter named `process_mesh` and return the post hook.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -392,13 +387,12 @@ class PrepareLayerOutput(PlanBase):
             >>> def layer_output_hook(process_mesh):
             ...     def hook(layer, input, output):
             ...         return output
+            ...
             ...     return hook
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.PrepareLayerOutput(layer_output_hook)
-            ... }
+            >>> mp_config = {'fc1': dist.PrepareLayerOutput(layer_output_hook)}
     """
 
     def __init__(
@@ -435,7 +429,7 @@ class SequenceParallelBegin(PlanBase):
             the output from [s, b, h] to [s/mp, b, h].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -451,9 +445,7 @@ class SequenceParallelBegin(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.SequenceParallelBegin()
-            ... }
+            >>> mp_config = {'fc1': dist.SequenceParallelBegin()}
     """
 
     def __init__(self, need_transpose: bool = True) -> None:
@@ -487,7 +479,7 @@ class SequenceParallelEnd(PlanBase):
             input from [s/mp, b, h] to [s, b, h].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -503,9 +495,7 @@ class SequenceParallelEnd(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.SequenceParallelEnd()
-            ... }
+            >>> mp_config = {'fc1': dist.SequenceParallelEnd()}
     """
 
     def __init__(self, need_transpose: bool = True) -> None:
@@ -531,7 +521,7 @@ class SequenceParallelEnable(PlanBase):
     Do sequence parallel on the layer. Note the input should be in [b, s, h] format.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -547,9 +537,7 @@ class SequenceParallelEnable(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.SequenceParallelEnable()
-            ... }
+            >>> mp_config = {'fc1': dist.SequenceParallelEnable()}
     """
 
     def __init__(self) -> None:
@@ -594,7 +582,7 @@ class SequenceParallelDisable(PlanBase):
             then transfer the output from [s, b, h] to [s/mp, b, h].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -610,9 +598,7 @@ class SequenceParallelDisable(PlanBase):
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
-            >>> mp_config = {
-            ...     'fc1': dist.SequenceParallelDisable()
-            ... }
+            >>> mp_config = {'fc1': dist.SequenceParallelDisable()}
     """
 
     def __init__(self, need_transpose: bool = True) -> None:
@@ -663,7 +649,7 @@ class ConvParallel(PlanBase):
         - The total input width must be at least half the kernel width.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -672,21 +658,15 @@ class ConvParallel(PlanBase):
             >>> class SimpleConvNet(nn.Layer):
             ...     def __init__(self, data_format="NCHW"):
             ...         super().__init__()
-            ...         self.conv1 = nn.Conv2D(
-            ...             3, 8, kernel_size=3, padding=1, data_format=data_format
-            ...         )
+            ...         self.conv1 = nn.Conv2D(3, 8, kernel_size=3, padding=1, data_format=data_format)
             ...         self.relu = nn.ReLU()
+            ...
             ...     def forward(self, x):
             ...         x = self.conv1(x)
             ...         return self.relu(x)
-            ...
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> model = SimpleConvNet(data_format="NCHW")
-            >>> mp_config = {
-            ...    "parallelize_plan": {
-            ...        "conv1": dist.ConvParallel()
-            ...     }
-            ... }
+            >>> mp_config = {"parallelize_plan": {"conv1": dist.ConvParallel()}}
     """
 
     def __init__(self) -> None:
