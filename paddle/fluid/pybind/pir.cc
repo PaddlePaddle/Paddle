@@ -443,11 +443,9 @@ void BindProgram(py::module *m) {
             >>> main_program = static.Program()
             >>> startup_program = static.Program()
             >>> with static.program_guard(main_program=main_program, startup_program=startup_program):
-            ...    x = static.data(name="x", shape=[-1, 784], dtype='float32')
-            ...    y = static.data(name="y", shape=[-1, 1], dtype='int32')
-           ...     x = static.data(name="x", shape=[-1, 784], dtype='float32')
-           ...     y = static.data(name="y", shape=[-1, 1], dtype='int32')
-           ...     z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            ...     x = static.data(name="x", shape=[-1, 784], dtype='float32')
+            ...     y = static.data(name="y", shape=[-1, 1], dtype='int32')
+            ...     z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
             >>> print("main program is: {}".format(main_program))
             >>> print("start up program is: {}".format(startup_program))
   )DOC");
@@ -2650,22 +2648,16 @@ void BindUtils(pybind11::module *m) {
 
                 >>> x = paddle.randn([4, 4])
                 >>> main_program, start_program = (
-                ...    paddle.static.Program(),
-                ...    paddle.static.Program(),
-               ...     paddle.static.Program(),
-               ...     paddle.static.Program(),
-               ... )
+                ...     paddle.static.Program(),
+                ...     paddle.static.Program(),
+                ... )
 
                 >>> with paddle.static.program_guard(main_program, start_program):
-                ...    x_s = paddle.static.data('x', [4, 4], x.dtype)
-                ...    x_s.stop_gradient = False
-                ...    y_s = paddle.matmul(x_s, x_s)
-                ...    z_s = paddle.add(y_s, y_s)
-               ...     x_s = paddle.static.data('x', [4, 4], x.dtype)
-               ...     x_s.stop_gradient = False
-               ...     y_s = paddle.matmul(x_s, x_s)
-               ...     z_s = paddle.add(y_s, y_s)
-               ...     k_s = paddle.tanh(z_s)
+                ...     x_s = paddle.static.data('x', [4, 4], x.dtype)
+                ...     x_s.stop_gradient = False
+                ...     y_s = paddle.matmul(x_s, x_s)
+                ...     z_s = paddle.add(y_s, y_s)
+                ...     k_s = paddle.tanh(z_s)
                 >>> pir_program = pir.translate_to_pir(main_program.desc)
 
                 >>> print(pir_program)
