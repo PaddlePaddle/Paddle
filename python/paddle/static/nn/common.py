@@ -3026,7 +3026,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             >>> print(out[0].shape)
             ()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # doctest: +SKIP("paddle.static.py_func doesn't support PIR mode")
