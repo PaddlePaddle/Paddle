@@ -30,4 +30,6 @@ PADDLE_API std::variant<std::string, c10::FunctionSchema> parseSchemaOrName(
     const std::string& schemaOrName);
 PADDLE_API c10::FunctionSchema parseSchema(const std::string& schema);
 PADDLE_API std::string parseName(const std::string& name);
+PADDLE_API std::string schemaTypeTreeToDebugString(
+    const c10::FunctionSchema& schema);
 }  // namespace torch::jit

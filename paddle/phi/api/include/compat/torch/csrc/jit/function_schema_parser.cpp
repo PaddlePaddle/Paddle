@@ -81,7 +81,8 @@ void appendTypeTree(std::ostringstream& os,
   }
 }
 
-std::string functionSchemaTypesToDebugString(const FunctionSchema& schema) {
+std::string buildFunctionSchemaTypeTreeDebugString(
+    const FunctionSchema& schema) {
   std::ostringstream os;
   os << "schema_type_tree";
   for (size_t i = 0; i < schema.arguments().size(); ++i) {
@@ -545,7 +546,7 @@ std::variant<std::string, c10::FunctionSchema> parseSchemaOrName(
   VLOG(3) << "parseSchemaOrName input=`" << schemaOrName
           << "` parsed=" << parsedDeclarationToDebugString(parsed);
   if (VLOG_IS_ON(4) && std::holds_alternative<FunctionSchema>(parsed)) {
-    VLOG(4) << functionSchemaTypesToDebugString(
+    VLOG(4) << buildFunctionSchemaTypeTreeDebugString(
         std::get<FunctionSchema>(parsed));
   }
   return parsed;
@@ -569,6 +570,10 @@ std::string parseName(const std::string& name) {
   VLOG(3) << "parseName input=`" << name
           << "` output=" << std::get<std::string>(parsed);
   return std::get<std::string>(std::move(parsed));
+}
+
+std::string schemaTypeTreeToDebugString(const c10::FunctionSchema& schema) {
+  return buildFunctionSchemaTypeTreeDebugString(schema);
 }
 
 }  // namespace torch::jit

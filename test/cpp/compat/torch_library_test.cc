@@ -16,6 +16,7 @@
 #include <torch/library.h>
 
 #include "gtest/gtest.h"
+#include "test/cpp/utils/exception_test_utils.h"
 
 at::Tensor mymuladd_cpu(at::Tensor a, const at::Tensor& b, double c) {
   TORCH_CHECK(a.sizes() == b.sizes());
@@ -597,23 +598,6 @@ TEST(test_torch_library,
 
   {
     auto qualified_name =
-        "example_library_mdef_schema_matrix::alias_and_kwonly";
-    auto* op =
-        torch::OperatorRegistry::instance().find_operator(qualified_name);
-    ASSERT_NE(op, nullptr);
-    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
-    ASSERT_NE(impl_it, op->implementations.end());
-
-    torch::FunctionArgs function_args;
-    function_args.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
-    function_args.add_arg(torch::arg("mode") = "nearest");
-    function_args.add_arg(torch::arg("idx") = int64_t(2));
-    auto result = impl_it->second.call_with_args(function_args);
-    EXPECT_TRUE(result.get_value().is_none());
-  }
-
-  {
-    auto qualified_name =
         "example_library_mdef_schema_matrix::variadic_signature";
     auto* op =
         torch::OperatorRegistry::instance().find_operator(qualified_name);
@@ -667,15 +651,214 @@ TEST(test_torch_library, TestMDefKeywordOnlyCallBehavior) {
 TEST(test_torch_library, TestFunctionArgsRejectsDuplicateKeywordArgument) {
   torch::FunctionArgs function_args;
   function_args.add_arg(torch::arg("idx") = int64_t(1));
-  try {
-    function_args.add_arg(torch::arg("idx") = int64_t(2));
-    FAIL() << "Expected duplicate keyword argument to throw";
-  } catch (const std::runtime_error& e) {
-    EXPECT_NE(std::string(e.what()).find("Duplicate keyword argument `idx`"),
-              std::string::npos);
-  } catch (...) {
-    FAIL() << "Expected std::runtime_error for duplicate keyword argument";
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { function_args.add_arg(torch::arg("idx") = int64_t(2)); },
+      "Duplicate keyword argument `idx`");
+}
+
+TEST(test_torch_library, TestFunctionArgsAdditionalBranches) {
+  torch::FunctionArgs args;
+  EXPECT_THROW(args.add_arg(torch::arg("missing")), std::runtime_error);
+
+  args.add_arg("cpu");
+  args.add_arg(torch::IValue(int64_t(7)));
+  args.add_arg(int64_t(3));
+  args.add_arg(torch::arg("mode") = "nearest");
+
+  ASSERT_EQ(args.size(), 3UL);
+  ASSERT_EQ(args.named_size(), 1UL);
+  EXPECT_TRUE(args.has_named_args());
+  EXPECT_FALSE(args.empty());
+  EXPECT_EQ(args.get<std::string>(0), "cpu");
+
+  const int64_t& ref_value = args.get<const int64_t&>(1);
+  const int64_t const_value = args.get<const int64_t>(2);
+  EXPECT_EQ(ref_value, 7);
+  EXPECT_EQ(const_value, 3);
+
+  const auto args_text = args.to_string();
+  EXPECT_NE(args_text.find("kwargs={"), std::string::npos);
+  EXPECT_NE(args_text.find("mode"), std::string::npos);
+
+  auto from_vector = torch::FunctionArgs::from_vector(
+      std::vector<torch::IValue>{torch::IValue(int64_t(11))});
+  EXPECT_EQ(from_vector.get<int64_t>(0), 11);
+}
+
+TEST(test_torch_library, TestFunctionArgsErrorBranches) {
+  torch::FunctionArgs args;
+  args.add_arg(torch::IValue(int64_t(1)));
+
+  EXPECT_THROW((void)args.get<std::string>(0), std::runtime_error);
+  EXPECT_THROW((void)args.get_value(1), std::out_of_range);
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)args.to_tuple<int64_t, int64_t>(); },
+      "Argument count mismatch");
+}
+
+TEST(test_torch_library, TestFunctionResultErrorBranches) {
+  torch::FunctionResult empty_result;
+  EXPECT_FALSE(empty_result.has_value());
+  EXPECT_THROW((void)empty_result.get<int64_t>(), std::runtime_error);
+
+  torch::FunctionResult string_result(torch::IValue(std::string("abc")));
+  EXPECT_THROW((void)string_result.get<int64_t>(), std::runtime_error);
+}
+
+TEST(test_torch_library, TestCppFunctionWrapperAndUninitializedErrors) {
+  torch::CppFunction uninitialized;
+  EXPECT_FALSE(uninitialized.valid());
+  EXPECT_THROW((void)uninitialized.call(), std::runtime_error);
+  EXPECT_THROW((void)uninitialized.call(1), std::runtime_error);
+  EXPECT_THROW((void)uninitialized.call_with_args(torch::FunctionArgs()),
+               std::runtime_error);
+
+  std::function<torch::IValue(const torch::FunctionArgs&)> ctor_thrower =
+      [](const torch::FunctionArgs& args) -> torch::IValue {
+    (void)args;
+    throw std::runtime_error("boom_ctor");
+  };
+  torch::CppFunction ctor_wrapped(ctor_thrower);
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)ctor_wrapped.call_with_args(torch::FunctionArgs()); },
+      "Constructor failed: boom_ctor");
+
+  auto throw_in_free_function = +[](int x) -> int {
+    (void)x;
+    throw std::runtime_error("boom_fn");
+  };
+  torch::CppFunction free_fn_wrapped(throw_in_free_function);
+  torch::FunctionArgs single_arg;
+  single_arg.add_arg(torch::IValue(int64_t(1)));
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)free_fn_wrapped.call_with_args(single_arg); },
+      "Function call failed: boom_fn");
+
+  auto throwing_callable =
+      [](const torch::FunctionArgs& args) -> torch::IValue {
+    (void)args;
+    throw std::runtime_error("boom_lambda");
+  };
+  torch::CppFunction lambda_wrapped(throwing_callable);
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)lambda_wrapped.call_with_args(torch::FunctionArgs()); },
+      "Lambda execution failed: boom_lambda");
+}
+
+TEST(test_torch_library, TestCppFunctionSchemaNormalizationErrorBranches) {
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(torch::jit::parseSchema("normalize(int a, int b=1) -> int"));
+
+    torch::FunctionArgs too_many_positional;
+    too_many_positional.add_arg(torch::IValue(int64_t(1)));
+    too_many_positional.add_arg(torch::IValue(int64_t(2)));
+    too_many_positional.add_arg(torch::IValue(int64_t(3)));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(too_many_positional); },
+        "Too many positional arguments");
   }
+
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(
+        torch::jit::parseSchema("normalize_kw(int a, *, int b=1) -> int"));
+
+    torch::FunctionArgs positional_kwonly;
+    positional_kwonly.add_arg(torch::IValue(int64_t(1)));
+    positional_kwonly.add_arg(torch::IValue(int64_t(2)));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(positional_kwonly); }, "keyword-only");
+
+    torch::FunctionArgs unknown_kw;
+    unknown_kw.add_arg(torch::IValue(int64_t(1)));
+    unknown_kw.add_arg(torch::arg("unknown") = int64_t(2));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(unknown_kw); },
+        "Unknown keyword argument `unknown`");
+  }
+
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(
+        torch::jit::parseSchema("normalize_dup(int a, int b) -> int"));
+
+    torch::FunctionArgs duplicated;
+    duplicated.add_arg(torch::IValue(int64_t(1)));
+    duplicated.add_arg(torch::IValue(int64_t(2)));
+    duplicated.add_arg(torch::arg("b") = int64_t(3));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(duplicated); }, "already provided");
+  }
+
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(
+        torch::jit::parseSchema("normalize_missing(int a, int b) -> int"));
+
+    torch::FunctionArgs missing_required;
+    missing_required.add_arg(torch::IValue(int64_t(1)));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(missing_required); },
+        "Missing required argument `b`");
+  }
+}
+
+TEST(test_torch_library, TestCppFunctionSchemaNormalizationVarargPassthrough) {
+  torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+    int64_t sum = 0;
+    for (size_t i = 0; i < args.size(); ++i) {
+      sum += args.get<int64_t>(i);
+    }
+    return torch::IValue(sum);
+  });
+  fn.bind_schema(
+      torch::jit::parseSchema("normalize_vararg(int a, ...) -> int"));
+
+  torch::FunctionArgs inputs;
+  inputs.add_arg(torch::IValue(int64_t(1)));
+  inputs.add_arg(torch::IValue(int64_t(2)));
+  inputs.add_arg(torch::IValue(int64_t(3)));
+  auto result = fn.call_with_args(inputs);
+  ASSERT_TRUE(result.get_value().is_int());
+  EXPECT_EQ(result.get_value().to_int(), 6);
+}
+
+TEST(test_torch_library, TestCppFunctionArityMismatchFromFunctionTraits) {
+  torch::CppFunction add_two_ints(&schema_only_add);
+  torch::FunctionArgs missing_one;
+  missing_one.add_arg(torch::IValue(int64_t(1)));
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)add_two_ints.call_with_args(missing_one); },
+      "Function expects 2 arguments, got 1");
+}
+
+TEST(test_torch_library, TestClassMethodArityMismatchFromFunctionTraits) {
+  auto qualified_name = "example_library::TestClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+
+  torch::FunctionArgs constructor_args;
+  constructor_args.add_arg(torch::IValue(10));
+  constructor_args.add_arg(torch::IValue("example"));
+  auto instance = class_registry.call_constructor_with_args(qualified_name,
+                                                            constructor_args);
+
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() {
+        (void)class_registry.call_method_with_args(qualified_name,
+                                                   "setValue",
+                                                   instance.get_value(),
+                                                   torch::FunctionArgs());
+      },
+      "Method expects 1 arguments");
 }
 
 TEST(test_torch_library, TestMDefSchemaDefaultsAppliedByCallWithArgs) {
@@ -1041,13 +1224,6 @@ TEST(test_torch_library, TestConstRefParameterFix) {
   ASSERT_TRUE(result.get_value().is_none());  // void function returns None
 }
 
-TEST(test_torch_library, TestClassRegistryHasClass) {
-  auto qualified_name = "example_library::TestClass";
-  const auto& class_registry = torch::ClassRegistry::instance();
-  bool has_class = class_registry.has_class(qualified_name);
-  ASSERT_TRUE(has_class);
-}
-
 TEST(test_torch_library, TestClassRegistryHasNonExistentClass) {
   auto qualified_name = "example_library::NonExistentClass";
   const auto& class_registry = torch::ClassRegistry::instance();
@@ -1058,13 +1234,6 @@ TEST(test_torch_library, TestClassRegistryHasNonExistentClass) {
 TEST(test_torch_library, TestClassRegistryPrintAllClasses) {
   const auto& class_registry = torch::ClassRegistry::instance();
   class_registry.print_all_classes();
-}
-
-TEST(test_torch_library, TestOperatorRegistryHasOperator) {
-  auto qualified_name = "example_library::mymuladd";
-  const auto& operator_registry = torch::OperatorRegistry::instance();
-  bool has_operator = operator_registry.has_operator(qualified_name);
-  ASSERT_TRUE(has_operator);
 }
 
 TEST(test_torch_library, TestOperatorRegistryHasNonExistentOperator) {

@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
+#include "test/cpp/utils/exception_test_utils.h"
+#include "torch/csrc/jit/schema_type_parser.h"
 
 namespace {
 
@@ -68,68 +70,54 @@ TEST(schema_parser_type_test, TorchCodecSchemasSmoke) {
   }
 }
 
-TEST(schema_parser_type_test, OptionalScalarArgumentType) {
-  // Reason: torchcodec uses `float? stop_seconds` in range APIs.
-  const std::string schema_text =
-      "get_frames_by_pts_in_range_audio(Tensor(a!) decoder, *, float "
-      "start_seconds, float? stop_seconds) -> (Tensor, Tensor)";
-  auto parsed = torch::jit::parseSchemaOrName(schema_text);
-  ASSERT_TRUE(std::holds_alternative<c10::FunctionSchema>(parsed));
+TEST(schema_parser_type_test, OptionalTypeShapes) {
+  // Reason: cover optional scalar arg, optional tuple arg, and optional return.
+  {
+    const auto schema = ParseAsSchema(
+        "get_frames_by_pts_in_range_audio(Tensor(a!) decoder, *, float "
+        "start_seconds, float? stop_seconds) -> (Tensor, Tensor)");
+    ASSERT_EQ(schema.arguments().size(), 3UL);
 
-  const auto schema = std::get<c10::FunctionSchema>(parsed);
-  ASSERT_EQ(schema.arguments().size(), 3UL);
+    const auto& stop_seconds = schema.arguments()[2];
+    ASSERT_EQ(stop_seconds.name(), "stop_seconds");
+    ASSERT_NE(stop_seconds.type(), nullptr);
+    EXPECT_EQ(stop_seconds.type()->kind(), c10::TypeKind::OptionalType);
+    const auto optional_inner = stop_seconds.type()->containedTypes();
+    ASSERT_EQ(optional_inner.size(), 1UL);
+    EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::FloatType);
+  }
 
-  const auto& stop_seconds = schema.arguments()[2];
-  ASSERT_EQ(stop_seconds.name(), "stop_seconds");
-  ASSERT_NE(stop_seconds.type(), nullptr);
-  EXPECT_EQ(stop_seconds.type()->kind(), c10::TypeKind::OptionalType);
+  {
+    const auto schema = ParseAsSchema(
+        "_add_video_stream(Tensor(a!) decoder, *, (Tensor, Tensor, Tensor)? "
+        "custom_frame_mappings=None) -> ()");
+    ASSERT_EQ(schema.arguments().size(), 2UL);
 
-  const auto optional_inner = stop_seconds.type()->containedTypes();
-  ASSERT_EQ(optional_inner.size(), 1UL);
-  EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::FloatType);
-}
+    const auto& mappings = schema.arguments()[1];
+    ASSERT_EQ(mappings.name(), "custom_frame_mappings");
+    ASSERT_NE(mappings.type(), nullptr);
+    EXPECT_EQ(mappings.type()->kind(), c10::TypeKind::OptionalType);
+    const auto optional_inner = mappings.type()->containedTypes();
+    ASSERT_EQ(optional_inner.size(), 1UL);
+    EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::TupleType);
 
-TEST(schema_parser_type_test, OptionalTupleArgumentType) {
-  // Reason: torchcodec uses optional tuple payloads for frame mappings.
-  const std::string schema_text =
-      "_add_video_stream(Tensor(a!) decoder, *, (Tensor, Tensor, Tensor)? "
-      "custom_frame_mappings=None) -> ()";
-  auto parsed = torch::jit::parseSchemaOrName(schema_text);
-  ASSERT_TRUE(std::holds_alternative<c10::FunctionSchema>(parsed));
+    const auto tuple_elements = optional_inner[0]->containedTypes();
+    ASSERT_EQ(tuple_elements.size(), 3UL);
+    EXPECT_EQ(tuple_elements[0]->kind(), c10::TypeKind::TensorType);
+    EXPECT_EQ(tuple_elements[1]->kind(), c10::TypeKind::TensorType);
+    EXPECT_EQ(tuple_elements[2]->kind(), c10::TypeKind::TensorType);
+  }
 
-  const auto schema = std::get<c10::FunctionSchema>(parsed);
-  ASSERT_EQ(schema.arguments().size(), 2UL);
-
-  const auto& mappings = schema.arguments()[1];
-  ASSERT_EQ(mappings.name(), "custom_frame_mappings");
-  ASSERT_NE(mappings.type(), nullptr);
-  EXPECT_EQ(mappings.type()->kind(), c10::TypeKind::OptionalType);
-
-  const auto optional_inner = mappings.type()->containedTypes();
-  ASSERT_EQ(optional_inner.size(), 1UL);
-  EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::TupleType);
-
-  const auto tuple_elements = optional_inner[0]->containedTypes();
-  ASSERT_EQ(tuple_elements.size(), 3UL);
-  EXPECT_EQ(tuple_elements[0]->kind(), c10::TypeKind::TensorType);
-  EXPECT_EQ(tuple_elements[1]->kind(), c10::TypeKind::TensorType);
-  EXPECT_EQ(tuple_elements[2]->kind(), c10::TypeKind::TensorType);
-}
-
-TEST(schema_parser_type_test, OptionalReturnType) {
-  // Reason: optional return type should be parsed as Optional[T], not raw T.
-  const std::string schema_text = "maybe_decode(Tensor decoder) -> Tensor?";
-  auto parsed = torch::jit::parseSchemaOrName(schema_text);
-  ASSERT_TRUE(std::holds_alternative<c10::FunctionSchema>(parsed));
-
-  const auto schema = std::get<c10::FunctionSchema>(parsed);
-  ASSERT_EQ(schema.returns().size(), 1UL);
-  ASSERT_NE(schema.returns()[0].type(), nullptr);
-  EXPECT_EQ(schema.returns()[0].type()->kind(), c10::TypeKind::OptionalType);
-
-  const auto optional_inner = schema.returns()[0].type()->containedTypes();
-  ASSERT_EQ(optional_inner.size(), 1UL);
-  EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::TensorType);
+  {
+    const auto schema =
+        ParseAsSchema("maybe_decode(Tensor decoder) -> Tensor?");
+    ASSERT_EQ(schema.returns().size(), 1UL);
+    ASSERT_NE(schema.returns()[0].type(), nullptr);
+    EXPECT_EQ(schema.returns()[0].type()->kind(), c10::TypeKind::OptionalType);
+    const auto optional_inner = schema.returns()[0].type()->containedTypes();
+    ASSERT_EQ(optional_inner.size(), 1UL);
+    EXPECT_EQ(optional_inner[0]->kind(), c10::TypeKind::TensorType);
+  }
 }
 
 TEST(schema_parser_type_test, KwOnlyDefaultAndAliasMetadata) {
@@ -203,4 +191,196 @@ TEST(schema_parser_type_test, ParseNameAndParseSchemaBoundaries) {
 
   EXPECT_ANY_THROW(torch::jit::parseSchema("name_only"));
   EXPECT_ANY_THROW(torch::jit::parseName("has_schema(int x) -> int"));
+}
+
+TEST(schema_parser_type_test, SchemaTypeTreeDebugStringCoversNestedTypes) {
+  // Reason: appendTypeTree() is only used by debug-tree rendering and should
+  // recursively print nested Optional/Tuple structures.
+  const auto schema = ParseAsSchema(
+      "tree_dbg((Tensor, float?)? payload=None) -> (Tensor, Tensor?)");
+  const auto debug_str = torch::jit::schemaTypeTreeToDebugString(schema);
+
+  EXPECT_NE(debug_str.find("schema_type_tree"), std::string::npos);
+  EXPECT_NE(debug_str.find("arg[0] `payload`"), std::string::npos);
+  EXPECT_NE(debug_str.find("kind=OptionalType"), std::string::npos);
+  EXPECT_NE(debug_str.find("kind=TupleType"), std::string::npos);
+  EXPECT_NE(debug_str.find("kind=TensorType"), std::string::npos);
+  EXPECT_NE(debug_str.find("kind=FloatType"), std::string::npos);
+  EXPECT_NE(debug_str.find("ret[1] ``"), std::string::npos);
+}
+
+TEST(schema_parser_type_test, DefaultsFixedListAndNamedReturns) {
+  // Reason: cover default-literal parsing branches and fixed-size list suffix.
+  const auto schema = ParseAsSchema(
+      R"schema(defaults(int[3]? xs=None, bool bt=true, bool bf=false, str ident=truevalue, float exp=1.25e-1, int plus=+42, str esc="a\n\t\r\\\'\"\q") -> (Tensor out, int idx))schema");
+
+  ASSERT_EQ(schema.arguments().size(), 7UL);
+  const auto& xs = schema.arguments()[0];
+  ASSERT_TRUE(xs.N().has_value());
+  EXPECT_EQ(*xs.N(), 3);
+  ASSERT_NE(xs.type(), nullptr);
+  EXPECT_EQ(xs.type()->kind(), c10::TypeKind::OptionalType);
+  ASSERT_TRUE(xs.default_value().has_value());
+  EXPECT_TRUE(xs.default_value()->is_none());
+
+  const auto& bt = schema.arguments()[1];
+  ASSERT_TRUE(bt.default_value().has_value());
+  EXPECT_TRUE(bt.default_value()->is_bool());
+  EXPECT_TRUE(bt.default_value()->to_bool());
+
+  const auto& bf = schema.arguments()[2];
+  ASSERT_TRUE(bf.default_value().has_value());
+  EXPECT_TRUE(bf.default_value()->is_bool());
+  EXPECT_FALSE(bf.default_value()->to_bool());
+
+  const auto& ident = schema.arguments()[3];
+  ASSERT_TRUE(ident.default_value().has_value());
+  EXPECT_TRUE(ident.default_value()->is_string());
+  EXPECT_EQ(ident.default_value()->to_string(), "truevalue");
+
+  const auto& exp = schema.arguments()[4];
+  ASSERT_TRUE(exp.default_value().has_value());
+  EXPECT_TRUE(exp.default_value()->is_double());
+  EXPECT_DOUBLE_EQ(exp.default_value()->to_double(), 0.125);
+
+  const auto& plus = schema.arguments()[5];
+  ASSERT_TRUE(plus.default_value().has_value());
+  EXPECT_TRUE(plus.default_value()->is_int());
+  EXPECT_EQ(plus.default_value()->to_int(), 42);
+
+  const auto& esc = schema.arguments()[6];
+  ASSERT_TRUE(esc.default_value().has_value());
+  EXPECT_TRUE(esc.default_value()->is_string());
+  const std::string esc_value = esc.default_value()->to_string();
+  EXPECT_NE(esc_value.find('\n'), std::string::npos);
+  EXPECT_NE(esc_value.find('\t'), std::string::npos);
+  EXPECT_NE(esc_value.find('\r'), std::string::npos);
+  EXPECT_NE(esc_value.find('\\'), std::string::npos);
+  EXPECT_NE(esc_value.find('\''), std::string::npos);
+  EXPECT_NE(esc_value.find('"'), std::string::npos);
+  EXPECT_EQ(esc_value.back(), 'q');
+
+  ASSERT_EQ(schema.returns().size(), 2UL);
+  EXPECT_EQ(schema.returns()[0].name(), "out");
+  EXPECT_EQ(schema.returns()[0].type()->kind(), c10::TypeKind::TensorType);
+  EXPECT_EQ(schema.returns()[1].name(), "idx");
+  EXPECT_EQ(schema.returns()[1].type()->kind(), c10::TypeKind::IntType);
+}
+
+TEST(schema_parser_type_test, ParserErrorBranchMatrix) {
+  // Reason: explicitly cover parser error branches that are easy to miss.
+  const auto empty = torch::jit::parseSchemaOrName("   ");
+  ASSERT_TRUE(std::holds_alternative<std::string>(empty));
+  EXPECT_EQ(std::get<std::string>(empty), "");
+
+  const std::vector<std::string> bad_schemas = {
+      "op(int x) -> int trailing extra",
+      "dup_vararg(..., ...) -> int",
+      "vararg_not_last(..., int x) -> int",
+      "dup_varret() -> (..., ...)",
+      "varret_not_last() -> (..., int)",
+      "missing_default(int x=) -> int",
+      "unsupported_default(int x=@) -> int",
+      "identifier_for_non_string(int x=cpu) -> int",
+      "malformed_number(float x=1e) -> int",
+      "overflow_number(int x=999999999999999999999999999999999999999999)",
+      "(int x) -> int",
+      "missing_arg_name(int ) -> int",
+      "missing_unsigned(int[] x) -> int",
+      "missing_arrow(int x) int",
+      "missing_rparen(int x -> int",
+      "invalid_fixed_size(int[999999999999999999999999999999999999] x) -> int",
+  };
+  for (const auto& schema_text : bad_schemas) {
+    EXPECT_ANY_THROW(torch::jit::parseSchemaOrName(schema_text))
+        << "schema: " << schema_text;
+  }
+
+  EXPECT_ANY_THROW(torch::jit::parseSchemaOrName("unterminated(str s=\"abc"));
+  EXPECT_ANY_THROW(torch::jit::parseSchemaOrName(
+      std::string("unterminated_escape(str s=\"abc\\")));
+}
+
+TEST(schema_parser_type_test, SchemaTypeParserErrorDiagnostics) {
+  // Reason: schema_type_parser.cpp has dedicated diagnostics for these inputs.
+  struct ErrorCase {
+    const char* schema;
+    const char* expected_substr;
+  };
+  const std::vector<ErrorCase> cases = {
+      {"bad(double x) -> int", "Use `float` instead of `double`"},
+      {"bad(int64_t x) -> int", "Use `int` instead of `int64_t`"},
+      {"bad(foo.bar x) -> int", "Unsupported type specifier `foo.bar`"},
+      {"alias_missing_rparen(Tensor(a! x) -> ()", "Expected `)`"},
+      {"alias_bad_set(Tensor(!) x) -> ()", "Expected alias set"}};
+  for (const auto& test_case : cases) {
+    test::utils::ExpectThrowContains<std::exception>(
+        [&]() { (void)torch::jit::parseSchemaOrName(test_case.schema); },
+        test_case.expected_substr,
+        std::string("schema: ") + test_case.schema);
+  }
+}
+
+TEST(schema_parser_type_test, SchemaTypeParserAliasAndTupleForms) {
+  // Reason: cover alias shapes and tuple parsing in a single table-like test.
+  {
+    const auto schema =
+        ParseAsSchema("fresh_alias(Tensor! a, Tensor! b) -> ()");
+    ASSERT_EQ(schema.arguments().size(), 2UL);
+
+    const auto* alias_a = schema.arguments()[0].alias_info();
+    ASSERT_NE(alias_a, nullptr);
+    EXPECT_TRUE(alias_a->isWrite());
+    EXPECT_EQ(alias_a->beforeSets().count("$0"), 1UL);
+    EXPECT_EQ(alias_a->afterSets().count("$0"), 1UL);
+
+    const auto* alias_b = schema.arguments()[1].alias_info();
+    ASSERT_NE(alias_b, nullptr);
+    EXPECT_TRUE(alias_b->isWrite());
+    EXPECT_EQ(alias_b->beforeSets().count("$1"), 1UL);
+    EXPECT_EQ(alias_b->afterSets().count("$1"), 1UL);
+  }
+
+  {
+    const auto schema = ParseAsSchema("wild_alias(Tensor(*! -> a|*) x) -> ()");
+    ASSERT_EQ(schema.arguments().size(), 1UL);
+    const auto* alias = schema.arguments()[0].alias_info();
+    ASSERT_NE(alias, nullptr);
+    EXPECT_TRUE(alias->isWrite());
+    EXPECT_EQ(alias->beforeSets().count("*"), 1UL);
+    EXPECT_EQ(alias->afterSets().count("a"), 1UL);
+    EXPECT_EQ(alias->afterSets().count("*"), 1UL);
+  }
+
+  {
+    const auto schema =
+        ParseAsSchema("tuple_alias((Tensor(a), Tensor(b!)) x) -> ()");
+    ASSERT_EQ(schema.arguments().size(), 1UL);
+    const auto* alias = schema.arguments()[0].alias_info();
+    ASSERT_NE(alias, nullptr);
+    EXPECT_TRUE(alias->beforeSets().empty());
+    EXPECT_TRUE(alias->afterSets().empty());
+    ASSERT_EQ(alias->containedTypes().size(), 2UL);
+    EXPECT_EQ(alias->containedTypes()[0].beforeSets().count("a"), 1UL);
+    EXPECT_FALSE(alias->containedTypes()[0].isWrite());
+    EXPECT_EQ(alias->containedTypes()[1].beforeSets().count("b"), 1UL);
+    EXPECT_TRUE(alias->containedTypes()[1].isWrite());
+  }
+
+  {
+    const auto schema = ParseAsSchema("empty_tuple_arg(() x) -> ()");
+    ASSERT_EQ(schema.arguments().size(), 1UL);
+    ASSERT_NE(schema.arguments()[0].type(), nullptr);
+    EXPECT_EQ(schema.arguments()[0].type()->kind(), c10::TypeKind::TupleType);
+    EXPECT_TRUE(schema.arguments()[0].type()->containedTypes().empty());
+  }
+}
+
+TEST(schema_parser_type_test, SchemaTypeParserCtorRejectsNullPointers) {
+  // Reason: cover refFromPtr null-check branch.
+  size_t pos = 0;
+  size_t fresh_id = 0;
+  EXPECT_ANY_THROW(
+      (void)torch::jit::SchemaTypeParser("Tensor", nullptr, &fresh_id));
+  EXPECT_ANY_THROW((void)torch::jit::SchemaTypeParser("Tensor", &pos, nullptr));
 }
