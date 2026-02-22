@@ -14,8 +14,6 @@
 
 #include <torch/library.h>
 
-#include <string>
-#include <vector>
 #include "gtest/gtest.h"
 #include "test/cpp/utils/exception_test_utils.h"
 #include "torch/csrc/jit/schema_type_parser.h"
@@ -25,6 +23,97 @@ c10::FunctionSchema ParseAsSchema(const std::string& schema_text) {
   EXPECT_TRUE(std::holds_alternative<c10::FunctionSchema>(parsed))
       << "schema: " << schema_text;
   return std::get<c10::FunctionSchema>(std::move(parsed));
+}
+
+c10::Argument MakeSchemaTestArg(const std::string& name,
+                                int32_t n,
+                                int64_t default_v,
+                                bool kwarg_only,
+                                std::optional<c10::AliasInfo> alias_info) {
+  return c10::Argument(name,
+                       c10::IntType::get(),
+                       c10::FloatType::get(),
+                       std::optional<int32_t>(n),
+                       std::optional<torch::IValue>(torch::IValue(default_v)),
+                       kwarg_only,
+                       std::move(alias_info));
+}
+
+void ExpectAssignedArgFields(const c10::Argument& arg,
+                             const std::string& expected_name,
+                             int32_t expected_n,
+                             int64_t expected_default_v,
+                             bool expected_kwarg_only,
+                             bool expected_is_out) {
+  EXPECT_EQ(arg.name(), expected_name);
+  EXPECT_EQ(arg.type()->kind(), c10::TypeKind::IntType);
+  EXPECT_EQ(arg.real_type()->kind(), c10::TypeKind::FloatType);
+  EXPECT_TRUE(arg.N().has_value());
+  EXPECT_TRUE(arg.default_value().has_value());
+  if (!arg.N().has_value() || !arg.default_value().has_value()) {
+    return;
+  }
+  EXPECT_EQ(*arg.N(), expected_n);
+  EXPECT_EQ(arg.default_value()->to_int(), expected_default_v);
+  EXPECT_EQ(arg.kwarg_only(), expected_kwarg_only);
+  EXPECT_EQ(arg.is_out(), expected_is_out);
+}
+
+c10::TypePtr MakeSchemaTuple(std::vector<c10::TypePtr> types) {
+  return c10::makeSchemaTupleType(std::move(types));
+}
+
+void ExpectTypeText(const c10::Type& type,
+                    const std::string& expected_str,
+                    const std::string& expected_annotation) {
+  EXPECT_EQ(type.str(), expected_str);
+  EXPECT_EQ(type.annotation_str(), expected_annotation);
+}
+
+TEST(schema_parser_type_test, ArgumentCopyAssignmentCoversAliasBranches) {
+  // Reason: explicitly cover Argument::operator=(const Argument&) when rhs has
+  // alias_info (deep-copy branch), rhs has no alias_info (nullptr branch), and
+  // self-assignment.
+  c10::AliasInfo alias(/*is_write=*/true, std::set<std::string>{"a"}, {"b"});
+  c10::Argument assigned_arg;
+  c10::Argument with_alias =
+      MakeSchemaTestArg("out",
+                        3,
+                        5,
+                        /*kwarg_only=*/true,
+                        std::optional<c10::AliasInfo>(alias));
+  assigned_arg = with_alias;
+  ExpectAssignedArgFields(assigned_arg,
+                          "out",
+                          3,
+                          5,
+                          /*kwarg_only=*/true,
+                          /*is_out=*/true);
+  ASSERT_NE(assigned_arg.alias_info(), nullptr);
+  ASSERT_NE(with_alias.alias_info(), nullptr);
+  EXPECT_NE(assigned_arg.alias_info(), with_alias.alias_info());
+  EXPECT_EQ(*assigned_arg.alias_info(), *with_alias.alias_info());
+
+  // Explicitly hit copy-assignment branch where rhs.alias_info_ is nullptr.
+  c10::Argument no_alias_src =
+      MakeSchemaTestArg("plain", 2, 9, /*kwarg_only=*/false, std::nullopt);
+  assigned_arg = no_alias_src;
+  ExpectAssignedArgFields(assigned_arg,
+                          "plain",
+                          2,
+                          9,
+                          /*kwarg_only=*/false,
+                          /*is_out=*/false);
+  EXPECT_EQ(assigned_arg.alias_info(), nullptr);
+
+  // self-assignment should be a no-op.
+  assigned_arg = assigned_arg;
+  ExpectAssignedArgFields(assigned_arg,
+                          "plain",
+                          2,
+                          9,
+                          /*kwarg_only=*/false,
+                          /*is_out=*/false);
 }
 
 TEST(schema_parser_type_test, TorchCodecSchemasSmoke) {
@@ -164,8 +253,19 @@ TEST(schema_parser_type_test, MultiReturnVersusTupleReturn) {
   EXPECT_EQ(tuple_elems[1]->kind(), c10::TypeKind::TensorType);
 }
 
-TEST(schema_parser_type_test, VariadicFlagsAndValidation) {
-  // Reason: variadic arg/ret markers should map to FunctionSchema flags.
+TEST(schema_parser_type_test, ParseEntryBoundariesAndVariadicValidation) {
+  // Reason: keep parse entrypoint boundary checks and variadic behavior in one
+  // place because both target parseName/parseSchema contract edges.
+  EXPECT_EQ(torch::jit::parseName("just_name"), "just_name");
+
+  const auto named_schema = torch::jit::parseSchema("named(int x) -> int");
+  ASSERT_EQ(named_schema.arguments().size(), 1UL);
+  EXPECT_EQ(named_schema.arguments()[0].name(), "x");
+
+  EXPECT_ANY_THROW(torch::jit::parseSchema("name_only"));
+  EXPECT_ANY_THROW(torch::jit::parseName("has_schema(int x) -> int"));
+
+  // Variadic arg/ret markers should map to FunctionSchema flags.
   const auto variadic = ParseAsSchema("variadic(Tensor x, ...) -> ...");
   EXPECT_TRUE(variadic.is_vararg());
   EXPECT_TRUE(variadic.is_varret());
@@ -173,20 +273,8 @@ TEST(schema_parser_type_test, VariadicFlagsAndValidation) {
   EXPECT_EQ(variadic.arguments()[0].name(), "x");
   EXPECT_TRUE(variadic.returns().empty());
 
-  // Reason: parser currently forbids defaults when vararg is present.
+  // Parser currently forbids defaults when vararg is present.
   EXPECT_ANY_THROW(torch::jit::parseSchema("broken(int x=1, ...) -> int"));
-}
-
-TEST(schema_parser_type_test, ParseNameAndParseSchemaBoundaries) {
-  // Reason: parseName and parseSchema should reject mismatched inputs.
-  EXPECT_EQ(torch::jit::parseName("just_name"), "just_name");
-
-  const auto schema = torch::jit::parseSchema("named(int x) -> int");
-  ASSERT_EQ(schema.arguments().size(), 1UL);
-  EXPECT_EQ(schema.arguments()[0].name(), "x");
-
-  EXPECT_ANY_THROW(torch::jit::parseSchema("name_only"));
-  EXPECT_ANY_THROW(torch::jit::parseName("has_schema(int x) -> int"));
 }
 
 TEST(schema_parser_type_test, SchemaTypeTreeDebugStringCoversNestedTypes) {
@@ -263,53 +351,50 @@ TEST(schema_parser_type_test, DefaultsFixedListAndNamedReturns) {
   EXPECT_EQ(schema.returns()[1].type()->kind(), c10::TypeKind::IntType);
 }
 
-TEST(schema_parser_type_test, ParserErrorBranchMatrix) {
-  // Reason: explicitly cover parser error branches that are easy to miss.
+TEST(schema_parser_type_test, ParserErrorMatrixAndDiagnostics) {
+  // Reason: combine parser branch errors and message-specific diagnostics in
+  // one table-driven matrix to reduce duplication with the same parse path.
   const auto empty = torch::jit::parseSchemaOrName("   ");
   ASSERT_TRUE(std::holds_alternative<std::string>(empty));
   EXPECT_EQ(std::get<std::string>(empty), "");
 
-  const std::vector<std::string> bad_schemas = {
-      "op(int x) -> int trailing extra",
-      "dup_vararg(..., ...) -> int",
-      "vararg_not_last(..., int x) -> int",
-      "dup_varret() -> (..., ...)",
-      "varret_not_last() -> (..., int)",
-      "missing_default(int x=) -> int",
-      "unsupported_default(int x=@) -> int",
-      "identifier_for_non_string(int x=cpu) -> int",
-      "malformed_number(float x=1e) -> int",
-      "overflow_number(int x=999999999999999999999999999999999999999999)",
-      "(int x) -> int",
-      "missing_arg_name(int ) -> int",
-      "missing_unsigned(int[] x) -> int",
-      "missing_arrow(int x) int",
-      "missing_rparen(int x -> int",
-      "invalid_fixed_size(int[999999999999999999999999999999999999] x) -> int",
-  };
-  for (const auto& schema_text : bad_schemas) {
-    EXPECT_ANY_THROW(torch::jit::parseSchemaOrName(schema_text))
-        << "schema: " << schema_text;
-  }
-
-  EXPECT_ANY_THROW(torch::jit::parseSchemaOrName("unterminated(str s=\"abc"));
-  EXPECT_ANY_THROW(torch::jit::parseSchemaOrName(
-      std::string("unterminated_escape(str s=\"abc\\")));
-}
-
-TEST(schema_parser_type_test, SchemaTypeParserErrorDiagnostics) {
-  // Reason: schema_type_parser.cpp has dedicated diagnostics for these inputs.
-  struct ErrorCase {
+  struct ParserErrorCase {
     const char* schema;
-    const char* expected_substr;
+    const char* expected_substr;  // null -> only require throw
   };
-  const std::vector<ErrorCase> cases = {
+  const std::vector<ParserErrorCase> cases = {
+      {"op(int x) -> int trailing extra", nullptr},
+      {"dup_vararg(..., ...) -> int", nullptr},
+      {"vararg_not_last(..., int x) -> int", nullptr},
+      {"dup_varret() -> (..., ...)", nullptr},
+      {"varret_not_last() -> (..., int)", nullptr},
+      {"missing_default(int x=) -> int", nullptr},
+      {"unsupported_default(int x=@) -> int", nullptr},
+      {"identifier_for_non_string(int x=cpu) -> int", nullptr},
+      {"malformed_number(float x=1e) -> int", nullptr},
+      {"overflow_number(int x=999999999999999999999999999999999999999999)",
+       nullptr},
+      {"(int x) -> int", nullptr},
+      {"missing_arg_name(int ) -> int", nullptr},
+      {"missing_unsigned(int[] x) -> int", nullptr},
+      {"missing_arrow(int x) int", nullptr},
+      {"missing_rparen(int x -> int", nullptr},
+      {"invalid_fixed_size(int[999999999999999999999999999999999999] x) -> int",
+       nullptr},
+      {"unterminated(str s=\"abc", nullptr},
+      {R"schema(unterminated_escape(str s="abc\)schema", nullptr},
       {"bad(double x) -> int", "Use `float` instead of `double`"},
       {"bad(int64_t x) -> int", "Use `int` instead of `int64_t`"},
       {"bad(foo.bar x) -> int", "Unsupported type specifier `foo.bar`"},
       {"alias_missing_rparen(Tensor(a! x) -> ()", "Expected `)`"},
       {"alias_bad_set(Tensor(!) x) -> ()", "Expected alias set"}};
+
   for (const auto& test_case : cases) {
+    if (test_case.expected_substr == nullptr) {
+      EXPECT_ANY_THROW(torch::jit::parseSchemaOrName(test_case.schema))
+          << "schema: " << test_case.schema;
+      continue;
+    }
     test::utils::ExpectThrowContains<std::exception>(
         [&]() { (void)torch::jit::parseSchemaOrName(test_case.schema); },
         test_case.expected_substr,
@@ -510,6 +595,114 @@ TEST(schema_parser_type_test, JitTypeBaseEqualityAndSubtypeBranches) {
   EXPECT_TRUE(c10::IntType::get()->isSubtypeOfExt(*optional_dynamic, nullptr));
   EXPECT_FALSE(
       c10::TensorType::get()->isSubtypeOfExt(*optional_dynamic, nullptr));
+}
+
+TEST(schema_parser_type_test, JitTypeSchemaContainerBranchMatrix) {
+  // Reason: cover uncovered Optional/Tuple branches in jit_type.h.
+  auto optional_int = c10::makeSchemaOptionalType(c10::IntType::get());
+  auto optional_float = c10::makeSchemaOptionalType(c10::FloatType::get());
+  auto optional_int_same = c10::makeSchemaOptionalType(c10::IntType::get());
+  ASSERT_NE(optional_int, nullptr);
+  ASSERT_NE(optional_float, nullptr);
+  ASSERT_NE(optional_int_same, nullptr);
+
+  EXPECT_FALSE(*optional_int == *c10::IntType::get());
+  EXPECT_TRUE(*optional_int == *optional_int_same);
+  EXPECT_FALSE(*optional_int == *optional_float);
+
+  auto optional_rebound =
+      optional_int->createWithContained({c10::FloatType::get()});
+  ASSERT_NE(optional_rebound, nullptr);
+  EXPECT_EQ(optional_rebound->kind(), c10::TypeKind::OptionalType);
+  ASSERT_EQ(optional_rebound->containedTypes().size(), 1UL);
+  EXPECT_EQ(optional_rebound->containedTypes()[0]->kind(),
+            c10::TypeKind::FloatType);
+  EXPECT_EQ(optional_rebound->annotation_str(), "Optional[float]");
+
+  test::utils::ExpectThrowContains<std::exception>(
+      [&]() {
+        (void)optional_int->createWithContained(
+            {c10::IntType::get(), c10::FloatType::get()});
+      },
+      "Optional type expects exactly one contained type");
+
+  auto tuple_int_float =
+      MakeSchemaTuple({c10::IntType::get(), c10::FloatType::get()});
+  auto tuple_int = MakeSchemaTuple({c10::IntType::get()});
+  auto tuple_int_bool =
+      MakeSchemaTuple({c10::IntType::get(), c10::BoolType::get()});
+  auto tuple_int_float_same =
+      MakeSchemaTuple({c10::IntType::get(), c10::FloatType::get()});
+  ASSERT_NE(tuple_int_float, nullptr);
+  ASSERT_NE(tuple_int, nullptr);
+  ASSERT_NE(tuple_int_bool, nullptr);
+  ASSERT_NE(tuple_int_float_same, nullptr);
+
+  EXPECT_FALSE(*tuple_int_float == *c10::FloatType::get());
+  EXPECT_FALSE(*tuple_int_float == *tuple_int);
+  EXPECT_FALSE(*tuple_int_float == *tuple_int_bool);
+  EXPECT_TRUE(*tuple_int_float == *tuple_int_float_same);
+
+  auto tuple_rebound = tuple_int->createWithContained(
+      {c10::StringType::get(), c10::DeviceObjType::get()});
+  ASSERT_NE(tuple_rebound, nullptr);
+  EXPECT_EQ(tuple_rebound->kind(), c10::TypeKind::TupleType);
+  ASSERT_EQ(tuple_rebound->containedTypes().size(), 2UL);
+  EXPECT_EQ(tuple_rebound->containedTypes()[0]->kind(),
+            c10::TypeKind::StringType);
+  EXPECT_EQ(tuple_rebound->containedTypes()[1]->kind(),
+            c10::TypeKind::DeviceObjType);
+
+  EXPECT_EQ(tuple_int_float->annotation_str(), "Tuple[int, float]");
+  const c10::TypePrinter float_printer = [](const c10::Type& type) {
+    if (type.kind() == c10::TypeKind::FloatType) {
+      return std::optional<std::string>("F");
+    }
+    return std::optional<std::string>();
+  };
+  EXPECT_EQ(tuple_int_float->annotation_str(float_printer), "Tuple[int, F]");
+}
+
+TEST(schema_parser_type_test, JitTypeBuiltinKindsBranchMatrix) {
+  // Reason: cover uncovered scalar/string/none/device branches in jit_type.h.
+  auto number_type = c10::NumberType::get();
+  auto float_type = c10::FloatType::get();
+  auto int_type = c10::IntType::get();
+  auto bool_type = c10::BoolType::get();
+  auto string_type = c10::StringType::get();
+  auto none_type = c10::NoneType::get();
+  auto device_type = c10::DeviceObjType::get();
+  auto tensor_type = c10::TensorType::get();
+
+  EXPECT_TRUE(*number_type == *number_type);
+  ExpectTypeText(*number_type, "Scalar", "number");
+  EXPECT_TRUE(*float_type == *float_type);
+  ExpectTypeText(*float_type, "float", "float");
+  EXPECT_TRUE(*int_type == *int_type);
+  ExpectTypeText(*int_type, "int", "int");
+  EXPECT_TRUE(*bool_type == *bool_type);
+  ExpectTypeText(*bool_type, "bool", "bool");
+  EXPECT_TRUE(*string_type == *string_type);
+  ExpectTypeText(*string_type, "str", "str");
+  EXPECT_TRUE(*none_type == *none_type);
+  ExpectTypeText(*none_type, "NoneType", "NoneType");
+  EXPECT_TRUE(*device_type == *device_type);
+  ExpectTypeText(*device_type, "Device", "Device");
+
+  EXPECT_FALSE(*int_type != *int_type);
+  EXPECT_TRUE(*int_type != *float_type);
+
+  auto optional_int = c10::makeSchemaOptionalType(int_type);
+  EXPECT_EQ(number_type->isSubtypeOfExt(*number_type, nullptr), true);
+  EXPECT_EQ(number_type->isSubtypeOfExt(*tensor_type, nullptr), false);
+  EXPECT_EQ(float_type->isSubtypeOfExt(*number_type, nullptr), true);
+  EXPECT_EQ(float_type->isSubtypeOfExt(*tensor_type, nullptr), false);
+  EXPECT_EQ(none_type->isSubtypeOfExt(*optional_int, nullptr), true);
+  EXPECT_EQ(none_type->isSubtypeOfExt(*int_type, nullptr), false);
+
+  std::ostringstream os;
+  os << *device_type;
+  EXPECT_EQ(os.str(), "Device");
 }
 
 TEST(schema_parser_type_test, TypePtrSingletonTypePtrCtorAndGet) {

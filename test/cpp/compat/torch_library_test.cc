@@ -378,52 +378,53 @@ TORCH_LIBRARY(example_library_mdef_schema_matrix, m) {
         });
 }
 
-TEST(test_torch_library, TestMDefSchemaOnlyRegistersSchemaAndImpl) {
-  auto qualified_name = "example_library_with_mdef_cases::schema_only_add";
-  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
-  ASSERT_NE(op, nullptr);
+TEST(test_torch_library, TestMDefRegistrationPathsCallResult) {
+  struct CallCase {
+    const char* qualified_name;
+    std::vector<torch::IValue> args;
+    int64_t expected;
+  };
 
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
-  ASSERT_NE(impl_it, op->implementations.end());
+  const std::vector<CallCase> cases = {
+      {"example_library_with_mdef_cases::schema_only_add",
+       {torch::IValue(11), torch::IValue(31)},
+       42},
+      {"example_library_with_mdef_cases::schema_and_impl_add",
+       {torch::IValue(19), torch::IValue(23)},
+       42},
+      {"example_library_with_mdef_cases::name_only_add",
+       {torch::IValue(20), torch::IValue(22)},
+       42},
+      // Dotted overload-style names should preserve suffix before '('.
+      {"example_library_with_mdef_cases::overload.name",
+       {torch::IValue(40), torch::IValue(2)},
+       42},
+      // def(schema, fn) inside IMPL block still registers through template
+      // def().
+      {"example_library_mdef_impl_block::impl_block_schema_and_fn",
+       {torch::IValue(21)},
+       42},
+  };
 
-  torch::FunctionArgs function_args;
-  function_args.add_arg(torch::IValue(11));
-  function_args.add_arg(torch::IValue(31));
-  auto result = impl_it->second.call_with_args(function_args);
-  ASSERT_TRUE(result.get_value().is_int());
-  EXPECT_EQ(result.get_value().to_int(), 42);
-}
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.qualified_name);
 
-TEST(test_torch_library, TestMDefSchemaWithFunctionRegistersSchemaAndImpl) {
-  auto qualified_name = "example_library_with_mdef_cases::schema_and_impl_add";
-  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
-  ASSERT_NE(op, nullptr);
+    auto* op = torch::OperatorRegistry::instance().find_operator(
+        test_case.qualified_name);
+    ASSERT_NE(op, nullptr);
 
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
-  ASSERT_NE(impl_it, op->implementations.end());
+    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+    ASSERT_NE(impl_it, op->implementations.end());
 
-  torch::FunctionArgs function_args;
-  function_args.add_arg(torch::IValue(19));
-  function_args.add_arg(torch::IValue(23));
-  auto result = impl_it->second.call_with_args(function_args);
-  ASSERT_TRUE(result.get_value().is_int());
-  EXPECT_EQ(result.get_value().to_int(), 42);
-}
+    torch::FunctionArgs function_args;
+    for (const auto& arg : test_case.args) {
+      function_args.add_arg(arg);
+    }
 
-TEST(test_torch_library, TestMDefNameWithFunctionRegistersImplOnly) {
-  auto qualified_name = "example_library_with_mdef_cases::name_only_add";
-  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
-  ASSERT_NE(op, nullptr);
-
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
-  ASSERT_NE(impl_it, op->implementations.end());
-
-  torch::FunctionArgs function_args;
-  function_args.add_arg(torch::IValue(20));
-  function_args.add_arg(torch::IValue(22));
-  auto result = impl_it->second.call_with_args(function_args);
-  ASSERT_TRUE(result.get_value().is_int());
-  EXPECT_EQ(result.get_value().to_int(), 42);
+    auto result = impl_it->second.call_with_args(function_args);
+    ASSERT_TRUE(result.get_value().is_int());
+    EXPECT_EQ(result.get_value().to_int(), test_case.expected);
+  }
 }
 
 TEST(test_torch_library, TestMDefSchemaOnlyWithoutImplHasNoImplementation) {
@@ -431,23 +432,6 @@ TEST(test_torch_library, TestMDefSchemaOnlyWithoutImplHasNoImplementation) {
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
   EXPECT_TRUE(op->implementations.empty());
-}
-
-TEST(test_torch_library, TestMDefSchemaExtractsOverloadLikeName) {
-  // op name extraction should keep dotted suffix before '('.
-  auto qualified_name = "example_library_with_mdef_cases::overload.name";
-  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
-  ASSERT_NE(op, nullptr);
-
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
-  ASSERT_NE(impl_it, op->implementations.end());
-
-  torch::FunctionArgs function_args;
-  function_args.add_arg(torch::IValue(40));
-  function_args.add_arg(torch::IValue(2));
-  auto result = impl_it->second.call_with_args(function_args);
-  ASSERT_TRUE(result.get_value().is_int());
-  EXPECT_EQ(result.get_value().to_int(), 42);
 }
 
 TEST(test_torch_library, TestMDefRegistersMultipleDispatchImplementations) {
@@ -476,22 +460,6 @@ TEST(test_torch_library, TestMDefSchemaOnlyInImplBlockIsNoop) {
       "example_library_mdef_impl_block::impl_block_schema_only";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   EXPECT_EQ(op, nullptr);
-}
-
-TEST(test_torch_library, TestMDefSchemaWithFunctionInImplBlockStillRegisters) {
-  // def(schema, fn) in IMPL block goes through template def() and registers.
-  auto qualified_name =
-      "example_library_mdef_impl_block::impl_block_schema_and_fn";
-  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
-  ASSERT_NE(op, nullptr);
-
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
-  ASSERT_NE(impl_it, op->implementations.end());
-  torch::FunctionArgs function_args;
-  function_args.add_arg(torch::IValue(21));
-  auto result = impl_it->second.call_with_args(function_args);
-  ASSERT_TRUE(result.get_value().is_int());
-  EXPECT_EQ(result.get_value().to_int(), 42);
 }
 
 TEST(test_torch_library, TestMDefSchemaMatrixBasicTypesCallResult) {
@@ -1248,6 +1216,35 @@ TEST(test_torch_library, TestOperatorRegistryHasNonExistentOperator) {
 TEST(test_torch_library, TestOperatorRegistryPrintAllOperators) {
   const auto& operator_registry = torch::OperatorRegistry::instance();
   operator_registry.print_all_operators();
+}
+
+TEST(test_torch_library, TestOperatorRegistryLateSchemaBindsExistingImpl) {
+  auto& operator_registry = torch::OperatorRegistry::instance();
+  const std::string qualified_name =
+      "example_library_registry_branch::late_schema_bind";
+
+  operator_registry.register_implementation(
+      qualified_name,
+      torch::DispatchKey::CPU,
+      torch::CppFunction([](const torch::FunctionArgs& args) -> torch::IValue {
+        return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+      }));
+
+  auto* op = operator_registry.find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs one_arg;
+  one_arg.add_arg(torch::IValue(int64_t(5)));
+  EXPECT_ANY_THROW((void)impl_it->second.call_with_args(one_arg));
+
+  operator_registry.register_schema(qualified_name,
+                                    "late_schema_bind(int x, int y=3) -> int");
+
+  auto bound_result = impl_it->second.call_with_args(one_arg);
+  ASSERT_TRUE(bound_result.get_value().is_int());
+  EXPECT_EQ(bound_result.get_value().to_int(), 8);
 }
 
 TEST(test_torch_library, TestLibraryPrintInfo) {
