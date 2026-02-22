@@ -664,9 +664,10 @@ TEST(test_torch_library, TestFunctionArgsAdditionalBranches) {
   args.add_arg(torch::IValue(int64_t(7)));
   args.add_arg(int64_t(3));
   args.add_arg(torch::arg("mode") = "nearest");
+  args.add_arg(torch::arg("idx") = int64_t(2));
 
   ASSERT_EQ(args.size(), 3UL);
-  ASSERT_EQ(args.named_size(), 1UL);
+  ASSERT_EQ(args.named_size(), 2UL);
   EXPECT_TRUE(args.has_named_args());
   EXPECT_FALSE(args.empty());
   EXPECT_EQ(args.get<std::string>(0), "cpu");
@@ -679,6 +680,7 @@ TEST(test_torch_library, TestFunctionArgsAdditionalBranches) {
   const auto args_text = args.to_string();
   EXPECT_NE(args_text.find("kwargs={"), std::string::npos);
   EXPECT_NE(args_text.find("mode"), std::string::npos);
+  EXPECT_NE(args_text.find("idx"), std::string::npos);
 
   auto from_vector = torch::FunctionArgs::from_vector(
       std::vector<torch::IValue>{torch::IValue(int64_t(11))});

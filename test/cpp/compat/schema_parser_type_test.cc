@@ -20,16 +20,12 @@
 #include "test/cpp/utils/exception_test_utils.h"
 #include "torch/csrc/jit/schema_type_parser.h"
 
-namespace {
-
 c10::FunctionSchema ParseAsSchema(const std::string& schema_text) {
   auto parsed = torch::jit::parseSchemaOrName(schema_text);
   EXPECT_TRUE(std::holds_alternative<c10::FunctionSchema>(parsed))
       << "schema: " << schema_text;
   return std::get<c10::FunctionSchema>(std::move(parsed));
 }
-
-}  // namespace
 
 TEST(schema_parser_type_test, TorchCodecSchemasSmoke) {
   struct SchemaCase {
@@ -383,4 +379,157 @@ TEST(schema_parser_type_test, SchemaTypeParserCtorRejectsNullPointers) {
   EXPECT_ANY_THROW(
       (void)torch::jit::SchemaTypeParser("Tensor", nullptr, &fresh_id));
   EXPECT_ANY_THROW((void)torch::jit::SchemaTypeParser("Tensor", &pos, nullptr));
+}
+
+TEST(schema_parser_type_test, JitTypeAtomicTypeOperatorsAndAnnotation) {
+  // Reason: cover jit_type.h atomic helpers used by schema parser internals.
+  auto tensor_type_a =
+      c10::makeSchemaAtomicType(c10::TypeKind::TensorType, "Tensor");
+  auto tensor_type_b =
+      c10::makeSchemaAtomicType(c10::TypeKind::TensorType, "Tensor");
+  auto int_type = c10::makeSchemaAtomicType(c10::TypeKind::IntType, "int");
+
+  ASSERT_NE(tensor_type_a, nullptr);
+  ASSERT_NE(tensor_type_b, nullptr);
+  ASSERT_NE(int_type, nullptr);
+
+  // Hits SchemaAtomicType::equals and global Type operator!=.
+  EXPECT_TRUE(*tensor_type_a == *tensor_type_b);
+  EXPECT_FALSE(*tensor_type_a != *tensor_type_b);
+  EXPECT_TRUE(*tensor_type_a != *int_type);
+
+  // Hits SchemaAtomicType::annotation_str_impl.
+  EXPECT_EQ(tensor_type_a->annotation_str(), "Tensor");
+}
+
+TEST(schema_parser_type_test, JitTypeBaseWrapperAndAnnotationBranches) {
+  // Reason: cover jit_type_base.h wrapper constructors/assignments and
+  // Type::annotation_str/repr_str/createWithContained branches.
+  c10::SingletonOrSharedTypePtr<c10::Type> from_singleton(c10::IntType::get());
+  c10::SingletonOrSharedTypePtr<c10::IntType> from_singleton_exact(
+      c10::IntType::get());
+  c10::SingletonOrSharedTypePtr<c10::Type> from_nullptr(nullptr);
+  EXPECT_EQ(from_nullptr, nullptr);
+  EXPECT_FALSE(static_cast<bool>(from_nullptr));
+
+  c10::SingletonOrSharedTypePtr<c10::Type> assigned;
+  assigned = from_singleton;
+  ASSERT_NE(assigned, nullptr);
+  ASSERT_NE(assigned.get(), nullptr);
+  ASSERT_NE(from_singleton_exact.get(), nullptr);
+
+  auto shared_atomic =
+      c10::makeSchemaAtomicType(c10::TypeKind::DynamicType, "shared");
+  ASSERT_NE(shared_atomic, nullptr);
+  c10::Type& shared_as_base = *shared_atomic;
+  auto shared_roundtrip = shared_as_base.cast<c10::detail::SchemaAtomicType>();
+  ASSERT_NE(shared_roundtrip, nullptr);
+  EXPECT_EQ(shared_roundtrip->str(), "shared");
+
+  const c10::Type& shared_as_const = *shared_atomic;
+  auto shared_const_roundtrip =
+      shared_as_const.cast<c10::detail::SchemaAtomicType>();
+  ASSERT_NE(shared_const_roundtrip, nullptr);
+  EXPECT_EQ(shared_const_roundtrip->str(), "shared");
+
+  c10::SingletonOrSharedTypePtr<c10::detail::SchemaAtomicType> shared_exact_ptr(
+      shared_roundtrip);
+  c10::SingletonOrSharedTypePtr<c10::Type> shared_base_ptr(shared_roundtrip);
+  ASSERT_NE(shared_exact_ptr.get(), nullptr);
+  ASSERT_NE(shared_base_ptr.get(), nullptr);
+
+  EXPECT_EQ(shared_as_base.cast<c10::detail::SchemaTupleType>(), nullptr);
+  EXPECT_EQ(shared_as_const.cast<c10::detail::SchemaTupleType>(), nullptr);
+
+  c10::Type& int_as_base = *c10::IntType::get();
+  ASSERT_TRUE(static_cast<bool>(int_as_base.cast<c10::IntType>()));
+  EXPECT_FALSE(static_cast<bool>(int_as_base.cast<c10::TensorType>()));
+
+  const c10::Type& int_as_const = *c10::IntType::get();
+  ASSERT_TRUE(static_cast<bool>(int_as_const.cast<c10::IntType>()));
+  EXPECT_FALSE(static_cast<bool>(int_as_const.cast<c10::TensorType>()));
+
+  EXPECT_EQ(from_singleton, c10::IntType::get());
+  EXPECT_EQ(c10::IntType::get(), from_singleton);
+  EXPECT_NE(shared_base_ptr, c10::IntType::get());
+  EXPECT_NE(from_singleton, shared_base_ptr);
+
+  const c10::Type& plain = *c10::TensorType::get();
+  const c10::TypePrinter rename_printer = [](const c10::Type&) {
+    return std::optional<std::string>("renamed");
+  };
+  const c10::TypePrinter passthrough_printer = [](const c10::Type&) {
+    return std::optional<std::string>();
+  };
+  EXPECT_EQ(plain.annotation_str(), "Tensor");
+  EXPECT_EQ(plain.annotation_str(rename_printer), "renamed");
+  EXPECT_EQ(plain.annotation_str(passthrough_printer), "Tensor");
+  EXPECT_EQ(plain.repr_str(), "Tensor");
+
+  test::utils::ExpectThrowContains<std::exception>(
+      [&]() {
+        (void)plain.createWithContained(
+            std::vector<c10::TypePtr>{c10::IntType::get()});
+      },
+      "type with contained types did not overload createWithContained");
+}
+
+TEST(schema_parser_type_test, JitTypeBaseEqualityAndSubtypeBranches) {
+  // Reason: cover operator== symmetric/asymmetric branches and
+  // Type::isSubtypeOfExt optional-inner matching.
+  class AsymmetricRhsType final : public c10::Type {
+   public:
+    AsymmetricRhsType() : Type(c10::TypeKind::DynamicType) {}
+
+    bool equals(const c10::Type& rhs) const override {
+      (void)rhs;
+      ++equals_calls_;
+      return true;
+    }
+
+    bool symmetric() const override { return false; }
+
+    std::string str() const override { return "asymmetric_rhs"; }
+
+    int equals_calls() const { return equals_calls_; }
+
+   private:
+    mutable int equals_calls_{0};
+  };
+
+  const c10::Type& lhs = *c10::TensorType::get();
+  AsymmetricRhsType rhs;
+  EXPECT_TRUE(lhs == rhs);
+  EXPECT_EQ(rhs.equals_calls(), 1);
+
+  EXPECT_TRUE(*c10::IntType::get() == *c10::IntType::get());
+  EXPECT_FALSE(*c10::IntType::get() == *c10::FloatType::get());
+
+  auto optional_dynamic =
+      c10::makeSchemaOptionalType(c10::TypePtr(c10::IntType::get()));
+  EXPECT_TRUE(c10::IntType::get()->isSubtypeOfExt(*optional_dynamic, nullptr));
+  EXPECT_FALSE(
+      c10::TensorType::get()->isSubtypeOfExt(*optional_dynamic, nullptr));
+}
+
+TEST(schema_parser_type_test, TypePtrSingletonTypePtrCtorAndGet) {
+  // Reason: cover type_ptr.h raw-pointer constructor and get().
+  int value = 7;
+  c10::SingletonTypePtr<int> ptr(&value);
+  EXPECT_EQ(ptr.get(), &value);
+  EXPECT_TRUE(static_cast<bool>(ptr));
+  EXPECT_EQ(*ptr, 7);
+  EXPECT_EQ(ptr.operator->(), &value);
+
+  *ptr = 9;
+  EXPECT_EQ(value, 9);
+
+  c10::SingletonTypePtr<int> same_ptr(&value);
+  EXPECT_TRUE(ptr == same_ptr);
+  EXPECT_FALSE(ptr != same_ptr);
+
+  int other = 3;
+  c10::SingletonTypePtr<int> other_ptr(&other);
+  EXPECT_FALSE(ptr == other_ptr);
+  EXPECT_TRUE(ptr != other_ptr);
 }
