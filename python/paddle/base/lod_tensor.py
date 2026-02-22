@@ -60,7 +60,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> import numpy as np

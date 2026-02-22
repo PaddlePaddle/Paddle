@@ -462,7 +462,7 @@ class PirTranslatedLayer(layers.Layer):
         The PirTranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import numpy as np
@@ -478,18 +478,17 @@ class PirTranslatedLayer(layers.Layer):
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
-            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
             ...         return image, label
             ...
             ...     def __len__(self):
             ...         return self.num_samples
-            ...
             >>> class LinearNet(nn.Layer):
             ...     def __init__(self):
             ...         super().__init__()
@@ -498,7 +497,6 @@ class PirTranslatedLayer(layers.Layer):
             ...     @paddle.jit.to_static
             ...     def forward(self, x):
             ...         return self._linear(x)
-            ...
             >>> def train(layer, loader, loss_fn, opt):
             ...     for epoch_id in range(EPOCH_NUM):
             ...         for batch_id, (image, label) in enumerate(loader()):
@@ -507,9 +505,7 @@ class PirTranslatedLayer(layers.Layer):
             ...             loss.backward()
             ...             opt.step()
             ...             opt.clear_grad()
-            ...             print("Epoch {} batch {}: loss = {}".format(
-            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
-            ...
+            ...             print("Epoch {} batch {}: loss = {}".format(epoch_id, batch_id, np.mean(loss.numpy())))
             >>> # 1. train & save model.
             >>> # create network
             >>> layer = LinearNet()
@@ -518,11 +514,12 @@ class PirTranslatedLayer(layers.Layer):
 
             >>> # create data loader
             >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            >>> loader = paddle.io.DataLoader(dataset,
+            >>> loader = paddle.io.DataLoader(
+            ...     dataset,
             ...     batch_size=BATCH_SIZE,
             ...     shuffle=True,
             ...     drop_last=True,
-            ...     num_workers=2
+            ...     num_workers=2,
             ... )
             >>> # train
             >>> train(layer, loader, loss_fn, adam)
@@ -672,7 +669,7 @@ class PirTranslatedLayer(layers.Layer):
             Program
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np
@@ -688,18 +685,17 @@ class PirTranslatedLayer(layers.Layer):
                 >>> CLASS_NUM = 10
 
                 >>> # define a random dataset
-                >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+                >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
                 ...     def __init__(self, num_samples):
                 ...         self.num_samples = num_samples
                 ...
                 ...     def __getitem__(self, idx):
                 ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
-                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
                 ...         return image, label
                 ...
                 ...     def __len__(self):
                 ...         return self.num_samples
-                ...
                 >>> class LinearNet(nn.Layer):
                 ...     def __init__(self):
                 ...         super().__init__()
@@ -708,7 +704,6 @@ class PirTranslatedLayer(layers.Layer):
                 ...     @paddle.jit.to_static
                 ...     def forward(self, x):
                 ...         return self._linear(x)
-                ...
                 >>> def train(layer, loader, loss_fn, opt):
                 ...     for epoch_id in range(EPOCH_NUM):
                 ...         for batch_id, (image, label) in enumerate(loader()):
@@ -717,20 +712,19 @@ class PirTranslatedLayer(layers.Layer):
                 ...             loss.backward()
                 ...             opt.step()
                 ...             opt.clear_grad()
-                ...             print("Epoch {} batch {}: loss = {}".format(
-                ...                 epoch_id, batch_id, np.mean(loss.numpy())))
-                ...
+                ...             print("Epoch {} batch {}: loss = {}".format(epoch_id, batch_id, np.mean(loss.numpy())))
                 >>> # create network
                 >>> layer = LinearNet()
                 >>> loss_fn = nn.CrossEntropyLoss()
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
                 >>> # create data loader
                 >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                >>> loader = paddle.io.DataLoader(dataset,
+                >>> loader = paddle.io.DataLoader(
+                ...     dataset,
                 ...     batch_size=BATCH_SIZE,
                 ...     shuffle=True,
                 ...     drop_last=True,
-                ...     num_workers=2
+                ...     num_workers=2,
                 ... )
                 >>> # train
                 >>> train(layer, loader, loss_fn, adam)

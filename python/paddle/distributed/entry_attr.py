@@ -21,7 +21,7 @@ class EntryAttr:
     Entry Config for paddle.static.nn.sparse_embedding with Parameter Server.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -40,8 +40,8 @@ class EntryAttr:
             ...     entry=entry,
             ...     param_attr=paddle.ParamAttr(
             ...         name="SparseFeatFactors",
-            ...         initializer=paddle.nn.initializer.Uniform()
-            ...     )
+            ...         initializer=paddle.nn.initializer.Uniform(),
+            ...     ),
             ... )
 
     """

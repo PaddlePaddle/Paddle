@@ -78,7 +78,7 @@ def current_stream(device: _CudaPlaceLike | None = None) -> core.CUDAStream:
             CUDAStream: the stream to the device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -123,7 +123,7 @@ def synchronize(device: _CudaPlaceLike | None = None) -> None:
                 If device is None, the device is the current device. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -170,7 +170,7 @@ def device_count() -> int:
         int: the number of GPUs available.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -195,7 +195,7 @@ def empty_cache() -> None:
     Because it keeps gpu memory in a pool so that next allocations can be done much faster.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -305,7 +305,7 @@ def max_memory_allocated(device: _CudaPlaceLike | None = None) -> int:
         int: The peak size of memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -344,7 +344,7 @@ def max_memory_reserved(device: _CudaPlaceLike | None = None) -> int:
         int: The peak size of memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -380,7 +380,7 @@ def reset_max_memory_allocated(device: _CudaPlaceLike | None = None) -> None:
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -417,7 +417,7 @@ def reset_max_memory_reserved(device: _CudaPlaceLike | None = None) -> None:
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -461,7 +461,7 @@ def memory_allocated(device: _CudaPlaceLike | None = None) -> int:
         int: The current size of memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -500,7 +500,7 @@ def memory_reserved(device: _CudaPlaceLike | None = None) -> int:
         int: The current size of memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -565,7 +565,7 @@ def stream_guard(stream: Stream) -> NoReturn:
         stream(paddle.device.cuda.Stream): the selected stream. If stream is None, just yield.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -736,7 +736,7 @@ def get_rng_state(device: _CudaPlaceLike | None = None) -> core.GeneratorState:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -766,7 +766,7 @@ def set_rng_state(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -832,7 +832,7 @@ def vmm_compact(device: _CudaPlaceLike | None = None) -> int:
         int: The amount of memory (in bytes) that was moved during the compaction.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -870,7 +870,7 @@ def memory_summary(device: _CudaPlaceLike | None = None) -> None:
        (split by common sizes like 1M, 10M, ... 3G).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -895,7 +895,7 @@ def allocate_record_table(
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -936,7 +936,7 @@ def allocate_record_plot(
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -976,7 +976,7 @@ def allocate_record_guard(flag: bool) -> NoReturn:
         flag(bool): whether to record allocate events.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle

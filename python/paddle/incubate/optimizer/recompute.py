@@ -47,7 +47,7 @@ class RecomputeOptimizer(Optimizer):
         optimizer (Optimizer): The optimizer that is applied to parameters.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -55,20 +55,24 @@ class RecomputeOptimizer(Optimizer):
             >>> paddle.enable_static()
 
             >>> def gen_data():
-            ...     return {"x": np.random.random(size=(32, 32)).astype('float32'),
-            ...     "y": np.random.randint(2, size=(32, 1)).astype('int64')}
+            ...     return {
+            ...         "x": np.random.random(size=(32, 32)).astype('float32'),
+            ...         "y": np.random.randint(2, size=(32, 1)).astype('int64'),
+            ...     }
             >>> def mlp(input_x, input_y, hid_dim=128, label_dim=2):
             ...     print(input_x)
             ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
             ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
             ...     cost = paddle.nn.functional.cross_entropy(
-            ...         input=prediction, label=input_y,
-            ...         reduction='none', use_softmax=False
+            ...         input=prediction,
+            ...         label=input_y,
+            ...         reduction='none',
+            ...         use_softmax=False,
             ...     )
             ...     sum_cost = paddle.mean(cost)
             ...     return sum_cost, fc_1, prediction
-            >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-            >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+            >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+            >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             >>> cost, fc_1, pred = mlp(input_x, input_y)
 
             >>> sgd = paddle.optimizer.Adam(learning_rate=0.01)
@@ -84,9 +88,11 @@ class RecomputeOptimizer(Optimizer):
             >>> step = 10
 
             >>> for i in range(step):
-            ...     cost_val = exe.run(feed=gen_data(),
-            ...             program=paddle.static.default_main_program(),
-            ...             fetch_list=[cost.name])
+            ...     cost_val = exe.run(
+            ...         feed=gen_data(),
+            ...         program=paddle.static.default_main_program(),
+            ...         fetch_list=[cost.name],
+            ...     )
             ...     print("step=%d cost=%f" % (i, cost_val[0]))
             var x : DENSE_TENSOR.shape(-1, 32).dtype(float32).stop_gradient(True)
             Finished optimize
@@ -142,7 +148,7 @@ class RecomputeOptimizer(Optimizer):
             state_dict: the dict load by load_persistable method
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -151,14 +157,16 @@ class RecomputeOptimizer(Optimizer):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                 ...     cost = paddle.nn.functional.cross_entropy(
-                ...         input=prediction, label=input_y,
-                ...         reduction='none', use_softmax=False
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
                 ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
-                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                 >>> cost, fc_1, pred = mlp(input_x, input_y)
                 >>> print("Finished FF")
                 Finished FF
@@ -188,7 +196,7 @@ class RecomputeOptimizer(Optimizer):
             list: A list of operators appended to the current program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.base.framework as framework
@@ -199,14 +207,16 @@ class RecomputeOptimizer(Optimizer):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                 ...     cost = paddle.nn.functional.cross_entropy(
-                ...         input=prediction, label=input_y,
-                ...         reduction='none', use_softmax=False
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
                 ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
-                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                 >>> cost, fc_1, pred = mlp(input_x, input_y)
                 >>> print("Finished FF")
                 Finished FF
@@ -218,7 +228,8 @@ class RecomputeOptimizer(Optimizer):
                 ...     cost,
                 ...     startup_program=None,
                 ...     parameter_list=None,
-                ...     no_grad_set=None)
+                ...     no_grad_set=None,
+                ... )
 
                 >>> program = cost.block.program
                 >>> with framework.program_guard(program, None):
@@ -636,7 +647,7 @@ class RecomputeOptimizer(Optimizer):
             checkpoints (list): list of Variables as checkpoints
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -646,14 +657,16 @@ class RecomputeOptimizer(Optimizer):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                 ...     cost = paddle.nn.functional.cross_entropy(
-                ...         input=prediction, label=input_y,
-                ...         reduction='none', use_softmax=False
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
                 ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
-                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                 >>> cost, fc_1, pred = mlp(input_x, input_y)
                 >>> print("Finished FF")
                 Finished FF
@@ -665,7 +678,8 @@ class RecomputeOptimizer(Optimizer):
                 ...     cost,
                 ...     startup_program=None,
                 ...     parameter_list=None,
-                ...     no_grad_set=None)
+                ...     no_grad_set=None,
+                ... )
                 >>> print("Finished backward")
                 Finished backward
         """
@@ -719,7 +733,7 @@ class RecomputeOptimizer(Optimizer):
                 in `parameter_list`.
             params_grads (list): list of (param, grad) pair to do optimization.
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -729,14 +743,16 @@ class RecomputeOptimizer(Optimizer):
                 ...     fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim)
                 ...     prediction = paddle.static.nn.fc(x=[fc_1], size=label_dim, activation='softmax')
                 ...     cost = paddle.nn.functional.cross_entropy(
-                ...         input=prediction, label=input_y,
-                ...         reduction='none', use_softmax=False
+                ...         input=prediction,
+                ...         label=input_y,
+                ...         reduction='none',
+                ...         use_softmax=False,
                 ...     )
                 ...     sum_cost = paddle.mean(cost)
                 ...     return sum_cost, fc_1, prediction
 
-                >>> input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
-                >>> input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
+                >>> input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+                >>> input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                 >>> cost, fc_1, pred = mlp(input_x, input_y)
                 >>> print("Finished FF")
                 Finished FF
@@ -748,10 +764,14 @@ class RecomputeOptimizer(Optimizer):
                 ...     cost,
                 ...     startup_program=None,
                 ...     parameter_list=None,
-                ...     no_grad_set=None)
+                ...     no_grad_set=None,
+                ... )
 
                 >>> optimize_ops = sgd.apply_optimize(
-                ...     cost, startup_program=None, params_grads=params_grads)
+                ...     cost,
+                ...     startup_program=None,
+                ...     params_grads=params_grads,
+                ... )
 
                 >>> print("Finished apply_optimize")
                 Finished apply_optimize
