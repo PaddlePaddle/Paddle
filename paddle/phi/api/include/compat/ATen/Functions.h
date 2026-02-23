@@ -17,14 +17,17 @@
 #include <ATen/ops/abs.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/cat.h>
+#include <ATen/ops/clamp.h>
 #include <ATen/ops/empty.h>
 #include <ATen/ops/empty_like.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
+#include <ATen/ops/index_put.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/reshape.h>
 #include <ATen/ops/sparse_coo_tensor.h>
 #include <ATen/ops/sparse_csr_tensor.h>
+#include <ATen/ops/std.h>
 #include <ATen/ops/transpose.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>
