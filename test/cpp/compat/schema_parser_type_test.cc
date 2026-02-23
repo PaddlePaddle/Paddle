@@ -71,9 +71,8 @@ void ExpectTypeText(const c10::Type& type,
 }
 
 TEST(schema_parser_type_test, ArgumentCopyAssignmentCoversAliasBranches) {
-  // Reason: explicitly cover Argument::operator=(const Argument&) when rhs has
-  // alias_info (deep-copy branch), rhs has no alias_info (nullptr branch), and
-  // self-assignment.
+  // Reason: cover Argument::operator=(const Argument&) alias branches, plus
+  // AliasInfo stream/hash/equality branches in one place to reduce test split.
   c10::AliasInfo alias(/*is_write=*/true, std::set<std::string>{"a"}, {"b"});
   c10::Argument assigned_arg;
   c10::Argument with_alias =
@@ -114,6 +113,69 @@ TEST(schema_parser_type_test, ArgumentCopyAssignmentCoversAliasBranches) {
                           9,
                           /*kwarg_only=*/false,
                           /*is_out=*/false);
+
+  c10::AliasInfo child(
+      /*is_write=*/false, std::set<std::string>{"inner"}, {"inner"});
+  c10::AliasInfo rich_alias(
+      /*is_write=*/true, std::set<std::string>{"a", "b"}, {"c", "d"});
+  rich_alias.addContainedType(child);
+
+  ASSERT_EQ(rich_alias.containedTypes().size(), 1UL);
+  EXPECT_FALSE(rich_alias.containedTypes()[0].isWrite());
+  EXPECT_EQ(rich_alias.containedTypes()[0].beforeSets().count("inner"), 1UL);
+  EXPECT_EQ(rich_alias.containedTypes()[0].afterSets().count("inner"), 1UL);
+
+  c10::AliasInfo same_alias(
+      /*is_write=*/true, std::set<std::string>{"a", "b"}, {"c", "d"});
+  same_alias.addContainedType(child);
+  EXPECT_TRUE(rich_alias == same_alias);
+
+  c10::AliasInfo different_write(
+      /*is_write=*/false, std::set<std::string>{"a", "b"}, {"c", "d"});
+  EXPECT_FALSE(rich_alias == different_write);
+
+  c10::AliasInfo different_sets(
+      /*is_write=*/true, std::set<std::string>{"a"}, {"c", "d"});
+  EXPECT_FALSE(rich_alias == different_sets);
+
+  std::ostringstream with_arrow;
+  with_arrow << rich_alias;
+  const std::string with_arrow_str = with_arrow.str();
+  ASSERT_FALSE(with_arrow_str.empty());
+  EXPECT_EQ(with_arrow_str.front(), '(');
+  EXPECT_EQ(with_arrow_str.back(), ')');
+  EXPECT_NE(with_arrow_str.find('!'), std::string::npos);
+  EXPECT_NE(with_arrow_str.find(" -> "), std::string::npos);
+  EXPECT_NE(with_arrow_str.find("a"), std::string::npos);
+  EXPECT_NE(with_arrow_str.find("b"), std::string::npos);
+  EXPECT_NE(with_arrow_str.find("c"), std::string::npos);
+  EXPECT_NE(with_arrow_str.find("d"), std::string::npos);
+  size_t pipe_count = 0;
+  for (char ch : with_arrow_str) {
+    if (ch == '|') {
+      ++pipe_count;
+    }
+  }
+  EXPECT_GE(pipe_count, 2UL);
+
+  c10::AliasInfo no_arrow(
+      /*is_write=*/false, std::set<std::string>{"z"}, {"z"});
+  std::ostringstream no_arrow_stream;
+  no_arrow_stream << no_arrow;
+  EXPECT_EQ(no_arrow_stream.str(), "(z)");
+
+  EXPECT_NE(::hash_combine(1U, 2U), 1U);
+
+  std::hash<c10::AliasInfo> hasher;
+  const auto hash_alias = hasher(rich_alias);
+  const auto hash_same_alias = hasher(same_alias);
+  const auto hash_different_write = hasher(different_write);
+  EXPECT_EQ(hash_alias, hash_same_alias);
+  EXPECT_NE(hash_alias, hash_different_write);
+
+  // Also hit zero-sized before/after/contained loops in std::hash<AliasInfo>.
+  const auto hash_empty = hasher(c10::AliasInfo());
+  EXPECT_NE(hash_empty, hash_alias);
 }
 
 TEST(schema_parser_type_test, TorchCodecSchemasSmoke) {
