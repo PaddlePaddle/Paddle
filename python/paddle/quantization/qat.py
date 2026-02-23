@@ -31,7 +31,7 @@ class QAT(Quantization):
         config(QuantConfig): Quantization configuration
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.quantization import QAT, QuantConfig
             >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
@@ -57,7 +57,7 @@ class QAT(Quantization):
         Return: The prepared model for quantization-aware training.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.quantization import QAT, QuantConfig
                 >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver

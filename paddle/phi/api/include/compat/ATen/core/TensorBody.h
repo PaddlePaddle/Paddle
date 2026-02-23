@@ -17,27 +17,31 @@
 #include <ATen/core/TensorBase.h>
 #include <ATen/indexing.h>
 #include <c10/core/Backend.h>
-#include <c10/core/Device.h>
-#include <c10/core/List.h>
 #include <c10/core/Scalar.h>
-#include <c10/core/ScalarType.h>
-#include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
-#include <limits>
-#include <optional>
-#include <utility>
-#include <vector>
-#include "paddle/common/ddim.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime_api.h>
+#endif
+
+#include <c10/core/Device.h>
+#include <c10/core/List.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/SymIntArrayRef.h>
+#include <limits>
+#include <optional>
+#include <utility>
+#include <vector>
+#include "paddle/common/ddim.h"
+#include "paddle/phi/common/place.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/forwards.h"
 #endif
 

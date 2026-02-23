@@ -73,7 +73,7 @@ def local_map(
         Callable: A function that applies func to local shards of input dist_tensors and returns dist_tensors or original values.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from __future__ import annotations
             >>> import paddle
@@ -97,14 +97,12 @@ def local_map(
             >>> mesh = ProcessMesh([0, 1], dim_names=["x"])
             >>> local_input = paddle.arange(0, 10, dtype="float32")
             >>> local_input = local_input + dist.get_rank()
-            >>> input_dist = dist.auto_parallel.api.dtensor_from_local(
-            ...     local_input, mesh, [dist.Shard(0)]
-            ... )
+            >>> input_dist = dist.auto_parallel.api.dtensor_from_local(local_input, mesh, [dist.Shard(0)])
             >>> wrapped_func = dist.local_map(
             ...     custom_function,
             ...     out_placements=[[dist.Partial(dist.ReduceType.kRedSum)]],
             ...     in_placements=[[dist.Shard(0)]],
-            ...     process_mesh=mesh
+            ...     process_mesh=mesh,
             ... )
             >>> output_dist = wrapped_func(input_dist)
 

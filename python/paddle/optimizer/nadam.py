@@ -102,7 +102,7 @@ class NAdam(Optimizer):
         Currently, NAdam doesn't support sparse parameter optimization.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

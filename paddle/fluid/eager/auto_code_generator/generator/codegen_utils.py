@@ -520,7 +520,6 @@ class FunctionGeneratorBase:
         )
 
         self.forward_api_name = ""
-        self.python_api_info = {}
 
         self.orig_forward_inputs_list = []  # [ [arg_name, arg_type, orig_position], ...]
         self.orig_forward_attrs_list = []  # [ [attr_name, attr_type, default_value, orig_position], ...]

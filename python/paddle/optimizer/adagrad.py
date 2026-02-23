@@ -93,7 +93,7 @@ class Adagrad(Optimizer):
             The default value is 0.0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -101,8 +101,10 @@ class Adagrad(Optimizer):
             >>> linear = paddle.nn.Linear(10, 10)
             >>> out = linear(inp)
             >>> loss = paddle.mean(out)
-            >>> adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
-            ...         parameters=linear.parameters())
+            >>> adagrad = paddle.optimizer.Adagrad(
+            ...     learning_rate=0.1,
+            ...     parameters=linear.parameters(),
+            ... )
             >>> out.backward()
             >>> adagrad.step()
             >>> adagrad.clear_grad()
@@ -116,14 +118,18 @@ class Adagrad(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adagrad = paddle.optimizer.Adagrad(
             ...     learning_rate=0.1,
-            ...     parameters=[{  # type: ignore
-            ...         'params': linear_1.parameters()
-            ...     }, {
-            ...         'params': linear_2.parameters(),
-            ...         'weight_decay': 0.001,
-            ...         'learning_rate': 0.1,
-            ...     }],
-            ...     weight_decay=0.01)
+            ...     parameters=[  # type: ignore
+            ...         {
+            ...             'params': linear_1.parameters(),
+            ...         },
+            ...         {
+            ...             'params': linear_2.parameters(),
+            ...             'weight_decay': 0.001,
+            ...             'learning_rate': 0.1,
+            ...         },
+            ...     ],
+            ...     weight_decay=0.01,
+            ... )
             >>> out.backward()
             >>> adagrad.step()
             >>> adagrad.clear_grad()

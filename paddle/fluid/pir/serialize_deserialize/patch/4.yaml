@@ -88,3 +88,21 @@ op_patches:
         object : using_ue8m0_scale
         type : pir::BoolAttribute
         data : "false"
+      - action : add_attr
+        object : return_expert_indices
+        type : pir::BoolAttribute
+        data : "false"
+      - action : add_attr
+        object : override_buffer_size
+        type : pir::Int32Attribute
+        data : -1
+  - op_name : pd_op.moe_unpermute
+    actions:
+      - action : add_attr
+        object : using_ue8m0_scale
+        type : pir::BoolAttribute
+        data : "false"
+      - action : add_attr
+        object : using_weighted_combine
+        type : pir::BoolAttribute
+        data : "false"

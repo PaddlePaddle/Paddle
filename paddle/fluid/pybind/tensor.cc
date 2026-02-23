@@ -693,7 +693,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -713,7 +713,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -823,7 +823,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 None.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -874,7 +874,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 None.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -904,7 +904,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                list[list[int]]: The lod of the Tensor.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -1044,7 +1044,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims, lod information, device index.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1093,7 +1093,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims, lod information, device index.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1333,7 +1333,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims and lod information.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1383,7 +1383,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims and lod information.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 

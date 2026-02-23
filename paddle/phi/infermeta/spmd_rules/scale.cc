@@ -19,4 +19,8 @@ SpmdInfo ScaleInferSpmd(const DistMetaTensor& x,
                         bool bias_after_scale) {
   return ElementwiseUnaryInferSpmd(x);
 }
+
+SpmdInfo DivScaleInferSpmd(const DistMetaTensor& x, const Scalar& scale) {
+  return ElementwiseUnaryInferSpmd(x);
+}
 }  // namespace phi::distributed

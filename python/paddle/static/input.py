@@ -87,7 +87,7 @@ def data(
         Variable: The global variable that gives access to the data.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import numpy as np
@@ -113,12 +113,14 @@ def data(
             >>> feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
 
             >>> exe = paddle.static.Executor(paddle.framework.CPUPlace())
-            >>> out = exe.run(paddle.static.default_main_program(),
-            ...             feed={
-            ...                 'x': feed_data,
-            ...                 'y': feed_data
-            ...             },
-            ...             fetch_list=[z.name])
+            >>> out = exe.run(
+            ...     paddle.static.default_main_program(),
+            ...     feed={
+            ...         'x': feed_data,
+            ...         'y': feed_data,
+            ...     },
+            ...     fetch_list=[z.name],
+            ... )
 
             # np-ndarray of shape=[3, 2, 1], dtype=float32, whose elements are 2
             >>> print(out)
@@ -218,7 +220,7 @@ class InputSpec:
         stop_gradient (bool, optional): A boolean that mentions whether gradient should flow. Default is False, means don't stop calculate gradients.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.static import InputSpec
@@ -269,7 +271,7 @@ class InputSpec:
             A InputSpec instance generated from Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.static import InputSpec
@@ -303,7 +305,7 @@ class InputSpec:
             A InputSpec instance generated from Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> from paddle.static import InputSpec
@@ -327,7 +329,7 @@ class InputSpec:
             The original InputSpec instance by inserting `batch_size` in front of `shape`.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.static import InputSpec
 
@@ -361,13 +363,13 @@ class InputSpec:
             The original InputSpec instance by removing the first element of `shape` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.static import InputSpec
 
                 >>> x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
                 >>> x_spec.unbatch()
-                >>> print(x_spec) # InputSpec(shape=(64,), dtype=paddle.float32, name=x)
+                >>> print(x_spec)  # InputSpec(shape=(64,), dtype=paddle.float32, name=x)
                 InputSpec(shape=(64,), dtype=paddle.float32, name=x, stop_gradient=False)
 
         """
