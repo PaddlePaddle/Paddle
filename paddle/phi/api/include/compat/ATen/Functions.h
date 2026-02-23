@@ -30,6 +30,7 @@
 #include <ATen/ops/slice.h>
 #include <ATen/ops/sparse_coo_tensor.h>
 #include <ATen/ops/sparse_csr_tensor.h>
+#include <ATen/ops/squeeze.h>
 #include <ATen/ops/std.h>
 #include <ATen/ops/transpose.h>
 #include <ATen/ops/unflatten.h>
