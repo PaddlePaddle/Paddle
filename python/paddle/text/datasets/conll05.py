@@ -72,7 +72,7 @@ class Conll05st(Dataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.text.datasets import Conll05st
@@ -88,13 +88,13 @@ class Conll05st(Dataset):
             >>> conll05st = Conll05st()
 
             >>> for i in range(10):
-            ...     pred_idx, mark, label= conll05st[i][-3:]
+            ...     pred_idx, mark, label = conll05st[i][-3:]
             ...     pred_idx = paddle.to_tensor(pred_idx)
             ...     mark = paddle.to_tensor(mark)
             ...     label = paddle.to_tensor(label)
             ...
             ...     model = SimpleNet()
-            ...     pred_idx, mark, label= model(pred_idx, mark, label)
+            ...     pred_idx, mark, label = model(pred_idx, mark, label)
             ...     print(pred_idx.item(), mark.item(), label.item())
             >>> # doctest: +SKIP('label will change')
             65840 5 1991
@@ -373,7 +373,7 @@ class Conll05st(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import Conll05st
 
@@ -389,7 +389,7 @@ class Conll05st(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import Conll05st
 

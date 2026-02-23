@@ -119,7 +119,7 @@ def sparse_coo_tensor(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -256,7 +256,7 @@ def sparse_csr_tensor(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

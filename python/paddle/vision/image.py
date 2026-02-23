@@ -46,7 +46,7 @@ def set_image_backend(backend: _ImageBackend) -> None:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> import shutil
@@ -111,7 +111,7 @@ def get_image_backend() -> _ImageBackend:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.vision import get_image_backend
 
@@ -139,7 +139,7 @@ def image_load(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image

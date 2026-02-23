@@ -96,6 +96,3 @@ inline Tensor from_blob(void* data,
 }
 
 }  // namespace at
-namespace torch {
-using at::from_blob;
-}  // namespace torch

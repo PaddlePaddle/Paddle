@@ -81,6 +81,18 @@
   optional : rois_num
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : div_scale
+  args : (Tensor x, Scalar scale=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : DivScaleInferSpmd
+  kernel :
+    func : div_scale {dense -> dense}
+    data_type : x
+  backward : div_scale_grad
+
 - op : divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)

@@ -95,7 +95,7 @@ def save(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('TODO: the error will be fixed in the future')
             >>> # type: ignore
@@ -110,10 +110,14 @@ def save(
             >>> dist_model = paddle.distributed_optimizer(model)
 
             >>> # gather params to rank 0 and then save
-            >>> paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params")
+            >>> paddle.incubate.distributed.utils.io.save(
+            ...     model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params"
+            ... )
 
             >>> # save whole params on all ranks
-            >>> paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0,1], state_type="params")
+            >>> paddle.incubate.distributed.utils.io.save(
+            ...     model.state_dict(), path="path/to/save.pdparams", gather_to=[0, 1], state_type="params"
+            ... )
 
             >>> # save optimizer state dict on rank 0
             >>> paddle.incubate.distributed.utils.io.save(optimizer.state_dict(), path="path/to/save.pdopt", gather=0, state_type="opt")

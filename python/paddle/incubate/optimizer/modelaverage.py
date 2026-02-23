@@ -83,7 +83,7 @@ class ModelAverage(Optimizer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("Cannot get source code by to_static in REPL")
             >>> import numpy as np
@@ -345,7 +345,7 @@ class ModelAverage(Optimizer):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> inp = paddle.rand([1, 10], dtype="float32")
@@ -354,14 +354,14 @@ class ModelAverage(Optimizer):
                 >>> loss = paddle.mean(out)
                 >>> loss.backward()
 
-                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
                 >>> sgd.minimize(loss)
 
                 >>> modelaverage = paddle.incubate.ModelAverage(
                 ...     0.15,
                 ...     parameters=linear.parameters(),
                 ...     min_average_window=2,
-                ...     max_average_window=4
+                ...     max_average_window=4,
                 ... )
                 >>> modelaverage.minimize(loss)
                 >>> sgd.clear_grad()
@@ -382,19 +382,19 @@ class ModelAverage(Optimizer):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> inp = paddle.rand([1, 10], dtype="float32")
                 >>> linear = paddle.nn.Linear(10, 1)
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
-                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
                 >>> modelaverage = paddle.incubate.ModelAverage(
                 ...     0.15,
                 ...     parameters=linear.parameters(),
                 ...     min_average_window=2,
-                ...     max_average_window=4
+                ...     max_average_window=4,
                 ... )
                 >>> loss.backward()
                 >>> sgd.step()
@@ -432,7 +432,7 @@ class ModelAverage(Optimizer):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> inp = paddle.rand([1, 10], dtype="float32")
@@ -441,13 +441,13 @@ class ModelAverage(Optimizer):
                 >>> loss = paddle.mean(out)
                 >>> loss.backward()
 
-                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
 
                 >>> modelaverage = paddle.incubate.ModelAverage(
                 ...     0.15,
                 ...     parameters=linear.parameters(),
                 ...     min_average_window=2,
-                ...     max_average_window=4
+                ...     max_average_window=4,
                 ... )
                 >>> sgd.step()
                 >>> modelaverage.step()
@@ -508,7 +508,7 @@ class ModelAverage(Optimizer):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> inp = paddle.rand([1, 10], dtype="float32")
@@ -517,13 +517,13 @@ class ModelAverage(Optimizer):
                 >>> loss = paddle.mean(out)
                 >>> loss.backward()
 
-                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
 
                 >>> modelaverage = paddle.incubate.ModelAverage(
                 ...     0.15,
                 ...     parameters=linear.parameters(),
                 ...     min_average_window=2,
-                ...     max_average_window=4
+                ...     max_average_window=4,
                 ... )
                 >>> sgd.step()
                 >>> modelaverage.step()

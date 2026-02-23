@@ -61,7 +61,7 @@ class Beta(exponential_family.ExponentialFamily):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
