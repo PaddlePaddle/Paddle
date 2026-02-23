@@ -1,18 +1,56 @@
 if(NOT WIN32)
   if(WITH_GPU)
-    nv_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc)
-    nv_test(compat_basic_test SRCS compat_basic_test.cc)
-    nv_test(ATen_tensor_data_test SRCS ATen_tensor_data_test.cc)
-    nv_test(ATen_narrow_test SRCS ATen_narrow_test.cc)
-    nv_test(ATen_flatten_test SRCS ATen_flatten_test.cc)
-    nv_test(compat_squeeze_test SRCS compat_squeeze_test.cc)
-    nv_test(compat_toString_test SRCS compat_toString_test.cc)
-    nv_test(c10_ptr_test SRCS c10_ptr_test.cc)
-    nv_test(c10_MemoryFormat_test SRCS c10_MemoryFormat_test.cc)
-    nv_test(c10_ScalarType_test SRCS c10_ScalarType_test.cc)
-    nv_test(c10_storage_test SRCS c10_storage_test.cc)
-    nv_test(c10_SizesAndStrides_test SRCS c10_SizesAndStrides_test.cc)
-    nv_test(c10_layout_test SRCS c10_layout_test.cc)
-    cc_test(torch_library_test SRCS torch_library_test.cc)
+    nv_test(
+      ATen_TensorAccessor_test
+      SRCS ATen_TensorAccessor_test.cc
+      DEPS paddle)
+    nv_test(
+      compat_basic_test
+      SRCS compat_basic_test.cc
+      DEPS paddle)
+    nv_test(
+      ATen_narrow_test
+      SRCS ATen_narrow_test.cc
+      DEPS paddle)
+    nv_test(
+      ATen_flatten_test
+      SRCS ATen_flatten_test.cc
+      DEPS paddle)
+    nv_test(
+      compat_squeeze_test
+      SRCS compat_squeeze_test.cc
+      DEPS paddle)
+    nv_test(
+      compat_toString_test
+      SRCS compat_toString_test.cc
+      DEPS paddle)
+    nv_test(
+      c10_ptr_test
+      SRCS c10_ptr_test.cc
+      DEPS paddle)
+    nv_test(
+      c10_MemoryFormat_test
+      SRCS c10_MemoryFormat_test.cc
+      DEPS paddle)
+    nv_test(
+      c10_ScalarType_test
+      SRCS c10_ScalarType_test.cc
+      DEPS paddle)
+    nv_test(
+      c10_storage_test
+      SRCS c10_storage_test.cc
+      DEPS paddle)
+    nv_test(
+      c10_SizesAndStrides_test
+      SRCS c10_SizesAndStrides_test.cc
+      DEPS paddle)
+    nv_test(
+      c10_layout_test
+      SRCS c10_layout_test.cc
+      DEPS paddle)
+    cc_test(
+      torch_library_test
+      SRCS torch_library_test.cc
+      DEPS paddle)
   endif()
 endif()
