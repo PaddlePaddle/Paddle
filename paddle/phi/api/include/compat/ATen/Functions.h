@@ -15,13 +15,18 @@
 #pragma once
 
 #include <ATen/ops/abs.h>
+#include <ATen/ops/any.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/cat.h>
+#include <ATen/ops/chunk.h>
 #include <ATen/ops/empty.h>
 #include <ATen/ops/empty_like.h>
+#include <ATen/ops/expand.h>
+#include <ATen/ops/expand_as.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
 #include <ATen/ops/ones.h>
+#include <ATen/ops/rename.h>
 #include <ATen/ops/reshape.h>
 #include <ATen/ops/sparse_coo_tensor.h>
 #include <ATen/ops/sparse_csr_tensor.h>

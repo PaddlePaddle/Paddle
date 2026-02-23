@@ -1,0 +1,50 @@
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <ATen/core/Tensor.h>
+#include <vector>
+
+#include "paddle/phi/api/include/api.h"
+
+namespace at {
+
+// chunk - splits tensor into chunks
+inline std::vector<Tensor> chunk(const Tensor& self,
+                                 int64_t chunks,
+                                 int64_t dim = 0) {
+  std::vector<Tensor> result;
+  paddle::Tensor pd_tensor = self._PD_GetInner();
+  int64_t dim_size = pd_tensor.dims().size() > 0 ? pd_tensor.dims()[dim] : 1;
+  int64_t chunk_size = (dim_size + chunks - 1) / chunks;
+  int64_t remaining = dim_size;
+
+  for (int64_t i = 0; i < chunks && remaining > 0; ++i) {
+    int64_t current_chunk_size = std::min(chunk_size, remaining);
+    auto chunk_tensor = paddle::experimental::slice(
+        pd_tensor,
+        phi::IntArray({dim}),
+        phi::IntArray({i * chunk_size}),
+        phi::IntArray({i * chunk_size + current_chunk_size}),
+        phi::IntArray({1}),
+        {});
+    result.push_back(Tensor(chunk_tensor));
+    remaining -= current_chunk_size;
+  }
+
+  return result;
+}
+
+}  // namespace at
