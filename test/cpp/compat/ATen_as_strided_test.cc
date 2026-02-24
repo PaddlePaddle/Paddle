@@ -29,7 +29,7 @@ TEST(TensorAsStridedTest, AsStrided) {
 
   ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 3}));
   float* data = result.data_ptr<float>();
-  // Should see [0,1,2,3,4,5] (first 6 elements with strides {3,1})
+  // Should see [0,1,2,3,4,5]
   ASSERT_FLOAT_EQ(data[0], 0.0f);
   ASSERT_FLOAT_EQ(data[1], 1.0f);
 }
