@@ -23,7 +23,10 @@
 #include <ATen/ops/flatten.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
+#include <ATen/ops/index.h>
 #include <ATen/ops/index_put.h>
+#include <ATen/ops/narrow.h>
+#include <ATen/ops/narrow_copy.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/permute.h>
 #include <ATen/ops/reshape.h>
