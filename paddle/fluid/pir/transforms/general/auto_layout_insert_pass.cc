@@ -73,21 +73,21 @@ class AutoLayoutInsertPass : public Pass {
     // BinaryElementWiseTrait, then use input operands to rewrite the Layout.
     if (auto layout_interface =
             op->dyn_cast<paddle::dialect::LayoutTransformationInterface>()) {
-      layout_interface.RewriteByLayout(op, common::DataLayout::NHWC);
+      layout_interface.RewriteByLayout(op, DataLayout::NHWC);
     } else if (op->HasTrait<UnaryElementWiseTrait>() ||
                op->HasTrait<BinaryElementWiseTrait>()) {
       TransLayoutCallbackFn callback = nullptr;
 #ifdef PADDLE_WITH_CINN
       auto& shape_analysis =
           ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-      callback = [&](Value value, common::DataLayout new_layout) -> void {
+      callback = [&](Value value, DataLayout new_layout) -> void {
         shape_analysis.UpdateShapeOrDataByTransLayout(
             value, TransLayoutType::NCHW2NHWC);
       };
 #endif
       for (size_t i = 0; i < op->results().size(); ++i) {
         op->result(i).set_type(op->operands_source().at(i).type());
-        SetNewLayoutForValue(op->result(i), common::DataLayout::NHWC, callback);
+        SetNewLayoutForValue(op->result(i), DataLayout::NHWC, callback);
       }
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -210,8 +210,8 @@ class AutoLayoutInsertPass : public Pass {
       if (kOpsNhwc_.count(op_name)) {
         auto layout_interface =
             op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-        common::DataLayout new_layout = layout_interface.PreferLayout(op);
-        if (new_layout != common::DataLayout::NHWC) continue;
+        DataLayout new_layout = layout_interface.PreferLayout(op);
+        if (new_layout != DataLayout::NHWC) continue;
 
         if (op->HasAttribute("data_format") &&
             op->attribute<StrAttribute>("data_format").AsString() == "NCHW") {
@@ -264,8 +264,7 @@ class AutoLayoutInsertPass : public Pass {
             reshape_op
                 ->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
         if (layout_interface.CanBeModified(reshape_op)) {
-          layout_interface.RewriteByLayout(reshape_op,
-                                           common::DataLayout::NHWC);
+          layout_interface.RewriteByLayout(reshape_op, DataLayout::NHWC);
           operand->set_source(reshape_op->result(0));
           return;
         }
@@ -275,7 +274,7 @@ class AutoLayoutInsertPass : public Pass {
       transpose_op->set_attribute(
           "source",
           StrAttribute::get(transpose_op->ir_context(), "auto_layout_pass"));
-      SetNewLayoutForValue(transpose_op->result(0), common::DataLayout::NHWC);
+      SetNewLayoutForValue(transpose_op->result(0), DataLayout::NHWC);
       operand->set_source(transpose_op->result(0));
     };
 
@@ -306,7 +305,7 @@ class AutoLayoutInsertPass : public Pass {
       transpose_op->set_attribute(
           "source",
           StrAttribute::get(transpose_op->ir_context(), "auto_layout_pass"));
-      SetNewLayoutForValue(transpose_op->result(0), common::DataLayout::NCHW);
+      SetNewLayoutForValue(transpose_op->result(0), DataLayout::NCHW);
       result.ReplaceAllUsesWith(transpose_op->result(0));
       transpose_op->operand(0).set_source(result);
     }

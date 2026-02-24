@@ -38,7 +38,7 @@ void GPUUniformRandomKernel(const Context& dev_ctx,
   out->set_height(input.height());
   DenseTensor* tensor = out->mutable_value();
   dev_ctx.template Alloc<T>(tensor);
-  funcs::UniformRandom<T>(reinterpret_cast<const phi::GPUContext&>(dev_ctx),
+  funcs::UniformRandom<T>(reinterpret_cast<const GPUContext&>(dev_ctx),
                           tensor,
                           seed,
                           min,

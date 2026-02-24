@@ -200,7 +200,7 @@ def set_verbosity(level: int = 0, also_to_stdout: bool = False) -> None:
         also_to_stdout(bool): Whether to also output log messages to `sys.stdout`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> import paddle
@@ -240,7 +240,7 @@ def set_code_level(
         also_to_stdout(bool): Whether to also output code to `sys.stdout`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> import paddle

@@ -101,7 +101,7 @@ class Momentum(Optimizer):
                 :ref:`api_guide_Name` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

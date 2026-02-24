@@ -58,7 +58,7 @@ void LuSolveKernel(const Context& dev_ctx,
 
   auto outdims = out->dims();
   auto outrank = outdims.size();
-  auto batchsize_64 = product(common::slice_ddim(outdims, 0, outrank - 2));
+  auto batchsize_64 = product(slice_ddim(outdims, 0, outrank - 2));
   PADDLE_ENFORCE_LE_INT_MAX(
       batchsize_64,
       "TODO(large-tensor): LAPACK batch size does not support int64 overflow.");

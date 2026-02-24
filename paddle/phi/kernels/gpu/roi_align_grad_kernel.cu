@@ -155,11 +155,10 @@ __global__ void GPURoiAlignBackward(const IndexType nthreads,
         T diff3 = out_grad_this_bin * w3 / count;
         T diff4 = out_grad_this_bin * w4 / count;
         if (x_low >= 0 && x_high >= 0 && y_low >= 0 && y_high >= 0) {
-          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
-          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
-          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
-          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_high,
-                             diff4);
+          CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
+          CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
+          CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
+          CudaAtomicAdd(offset_input_grad + y_high * width + x_high, diff4);
         }
       }
     }

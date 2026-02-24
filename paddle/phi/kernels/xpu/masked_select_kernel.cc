@@ -32,14 +32,14 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x.numel() == 0 || mask.numel() == 0) {
-    out->Resize(common::make_ddim({0}));
+    out->Resize(make_ddim({0}));
     dev_ctx.template Alloc<T>(out);
     return;
   }
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
       vectorize(x.dims()), vectorize(mask.dims()));
-  DDim expand_dims = common::make_ddim(expanded_size);
+  DDim expand_dims = make_ddim(expanded_size);
   DenseTensor mask_expand;
   DenseTensor x_expand;
   if (mask.dims() != expand_dims) {

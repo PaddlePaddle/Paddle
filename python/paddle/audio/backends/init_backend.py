@@ -42,7 +42,7 @@ def list_available_backends() -> list[str]:
         list[str]: The list of available backends.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -63,7 +63,6 @@ def list_available_backends() -> list[str]:
             >>> # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
             >>> if 'soundfile' in backends:
             ...     paddle.audio.backends.set_backend('soundfile')
-            ...
             >>> paddle.audio.save(wav_path, waveform, sample_rate)
 
     """
@@ -101,7 +100,7 @@ def get_current_backend() -> str:
         the wave_backend or backend imported from paddleaudio
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -123,7 +122,6 @@ def get_current_backend() -> str:
 
             >>> if 'soundfile' in backends:
             ...     paddle.audio.backends.set_backend('soundfile')
-            ...
             >>> paddle.audio.save(wav_path, waveform, sample_rate)
 
     """
@@ -147,7 +145,7 @@ def set_backend(backend_name: str) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -169,7 +167,6 @@ def set_backend(backend_name: str) -> None:
 
             >>> if 'soundfile' in backends:
             ...     paddle.audio.backends.set_backend('soundfile')
-            ...
             >>> paddle.audio.save(wav_path, waveform, sample_rate)
 
     """

@@ -124,7 +124,7 @@ def masked_multihead_attention(
         If "beam_cache_offset_out" is none, return the tuple (output, cache_kvs_out).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -141,7 +141,10 @@ def masked_multihead_attention(
             >>> cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
 
             >>> output = F.masked_multihead_attention(
-            ...     x, src_mask=src_mask, cache_kv=cache_kv)
+            ...     x,
+            ...     src_mask=src_mask,
+            ...     cache_kv=cache_kv,
+            ... )
 
     """
 

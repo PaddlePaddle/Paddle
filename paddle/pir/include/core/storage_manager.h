@@ -141,12 +141,12 @@ class IR_API StorageManager {
   std::unordered_map<TypeId, std::unique_ptr<ParametricStorageManager>>
       parametric_instance_;
 
-  pir::SpinLock parametric_instance_lock_;
+  SpinLock parametric_instance_lock_;
 
   // This map is a mapping between type id and parameterless type storage.
   std::unordered_map<TypeId, StorageBase *> parameterless_instance_;
 
-  pir::SpinLock parameterless_instance_lock_;
+  SpinLock parameterless_instance_lock_;
 };
 
 }  // namespace pir

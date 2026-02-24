@@ -44,7 +44,6 @@ if(WITH_CINN)
       phi
       common
       cinnapi
-      device_context
       op_registry
       ${DEVICE_EVENT_LIBS})
 endif()

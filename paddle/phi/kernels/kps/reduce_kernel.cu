@@ -159,8 +159,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool reduce_all,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     return;
   }
 
@@ -234,7 +233,7 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
     (*reduce_dims)[i] += added_dims;
   }
   auto eigen_reduce_dim =
-      EigenDim<ReducedDimSize>::From(common::make_ddim(*reduce_dims));
+      EigenDim<ReducedDimSize>::From(make_ddim(*reduce_dims));
   // Calculate
   eigen_out_tensor.device(*dev_ctx.eigen_device()) =
       eigen_x_tensor.sum(eigen_reduce_dim);

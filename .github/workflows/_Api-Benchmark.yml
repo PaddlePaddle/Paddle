@@ -45,7 +45,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'api-benchmark'
+      workflow-name: "api-benchmark"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -56,6 +56,7 @@ jobs:
     runs-on:
       group: Api-bm
       labels: [self-hosted, "${{ inputs.run-labels }}"]
+    timeout-minutes: 60
     steps:
       - name: Determine the runner
         run: |
@@ -108,6 +109,7 @@ jobs:
       - name: Download PaddleTest.tar.gz
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig

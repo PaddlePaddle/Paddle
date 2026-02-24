@@ -85,7 +85,7 @@ class LBFGS(Optimizer):
         loss (Tensor): the final loss of closure.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np

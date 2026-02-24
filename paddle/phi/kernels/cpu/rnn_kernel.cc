@@ -216,7 +216,7 @@ struct Layer {
     const int64_t& hidden_size = weight.dims()[0];
     // NOLINT
     cache_input->Resize(
-        common::make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
+        make_ddim({input.dims()[0], input.dims()[1], hidden_size}));
     if (is_test) {
       dev_ctx.Alloc<T>(cache_input);
     }
@@ -236,8 +236,8 @@ struct Layer {
 
     auto in =
         EigenMatrix<T>::Reshape(*cache_input, cache_input->dims().size() - 1);
-    auto bias_ih_tmp = EigenMatrix<T>::From(
-        bias_ih, common::make_ddim({1, bias_ih.dims()[0]}));
+    auto bias_ih_tmp =
+        EigenMatrix<T>::From(bias_ih, make_ddim({1, bias_ih.dims()[0]}));
     const int row_num = static_cast<int>(common::product(cache_input->dims()) /
                                          cache_input->dims()[2]);
     in = in + bias_ih_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
@@ -250,12 +250,12 @@ struct Layer {
       funcs::SetConstant<CPUContext, T> zero;
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
-      auto bias_hh_after_mask = EigenMatrix<T>::From(
-          bias_hh_tmp, common::make_ddim({1, bias_hh.dims()[0]}));
+      auto bias_hh_after_mask =
+          EigenMatrix<T>::From(bias_hh_tmp, make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_after_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     } else {
-      auto bias_hh_no_mask = EigenMatrix<T>::From(
-          bias_hh, common::make_ddim({1, bias_hh.dims()[0]}));
+      auto bias_hh_no_mask =
+          EigenMatrix<T>::From(bias_hh, make_ddim({1, bias_hh.dims()[0]}));
       in = in + bias_hh_no_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     }
   }
@@ -271,8 +271,8 @@ struct Layer {
     // in the output, if mask flag is 0, we will return the zero data
     auto& place = *dev_ctx.eigen_device();
     auto out = EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
-    auto mask = EigenMatrix<T>::From(
-        mask_tensor, common::make_ddim({mask_tensor.dims()[1], 1}));
+    auto mask = EigenMatrix<T>::From(mask_tensor,
+                                     make_ddim({mask_tensor.dims()[1], 1}));
     auto pre_h = EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
     auto curr_h = EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
     auto mask_broadcast = mask.broadcast(
@@ -352,7 +352,7 @@ struct Layer {
     DenseTensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(common::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(make_ddim({time_step, input->dims()[1]}));
 
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
@@ -552,7 +552,7 @@ struct Layer {
     DenseTensor mask_matrix;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(common::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(make_ddim({time_step, input->dims()[1]}));
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);

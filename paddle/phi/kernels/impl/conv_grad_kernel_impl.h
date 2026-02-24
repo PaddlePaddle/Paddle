@@ -99,7 +99,7 @@ void ConvGradKernel(const Context& dev_ctx,
     col_shape_vec[j + 1] = filter_shape_vec[j + 2];
     col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
   }
-  DDim col_shape(common::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
 
   // use col_matrix_shape in the gemm calculation
   // size: (i_c/g * k_h * k_w, o_h * o_w)
@@ -336,7 +336,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     col_shape_vec[j + 1] = filter_shape_vec[j + 2];
     col_shape_vec[j + data_dim + 1] = output_shape_vec[j + 2];
   }
-  DDim col_shape(common::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
   // col_matrix_shape [in_channel/group * kh * kw, oh * ow]
   DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim + 1);
   // input_shape [Cin, H, W]

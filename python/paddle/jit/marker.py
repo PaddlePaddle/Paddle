@@ -68,7 +68,7 @@ def not_to_static(func=None):
         callable: A function which won't be converted in Dynamic-to-Static.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
@@ -85,7 +85,6 @@ def not_to_static(func=None):
             ...     else:
             ...         out = x + 1
             ...     return out
-            ...
             >>> x = paddle.ones([1, 2], dtype='float32')
             >>> out = func(x)
             >>> print(out)

@@ -85,7 +85,7 @@ def graph_reindex(
           nodes in the back.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
