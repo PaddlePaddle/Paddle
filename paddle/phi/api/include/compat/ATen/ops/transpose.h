@@ -45,8 +45,23 @@ inline at::Tensor transpose(const at::Tensor& self,
   return paddle::experimental::transpose(self._PD_GetInner(), perm);
 }
 
+inline at::Tensor transpose(const at::Tensor& self,
+                            int64_t dim0,
+                            int64_t dim1) {
+  std::vector<int> perm(self.dim());
+  for (size_t i = 0; i < perm.size(); i++) {
+    perm[i] = static_cast<int>(i);
+  }
+  std::swap(perm[dim0], perm[dim1]);
+  return paddle::experimental::transpose(self._PD_GetInner(), perm);
+}
+
 }  // namespace at
 
-namespace torch {
-using at::transpose;
-}  // namespace torch
+namespace at {
+
+inline at::Tensor Tensor::transpose(int64_t dim0, int64_t dim1) const {
+  return at::transpose(*this, dim0, dim1);
+}
+
+}  // namespace at

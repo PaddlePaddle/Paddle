@@ -80,29 +80,29 @@ class LogNormal(TransformedDistribution):
         scale(int|float|list|tuple|numpy.ndarray|Tensor): The stddevs of the underlying Normal distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import LogNormal
 
             >>> # Define a single scalar LogNormal distribution.
-            >>> dist = LogNormal(loc=0., scale=3.)
+            >>> dist = LogNormal(loc=0.0, scale=3.0)
             >>> # Define a batch of two scalar valued LogNormals.
             >>> # The underlying Normal of first has mean 1 and standard deviation 11, the underlying Normal of second 2 and 22.
-            >>> dist = LogNormal(loc=[1., 2.], scale=[11., 22.])
+            >>> dist = LogNormal(loc=[1.0, 2.0], scale=[11.0, 22.0])
             >>> # Get 3 samples, returning a 3 x 2 tensor.
-            >>> dist.sample((3, ))
+            >>> dist.sample((3,))
 
             >>> # Define a batch of two scalar valued LogNormals.
             >>> # Their underlying Normal have mean 1, but different standard deviations.
-            >>> dist = LogNormal(loc=1., scale=[11., 22.])
+            >>> dist = LogNormal(loc=1.0, scale=[11.0, 22.0])
 
             >>> # Complete example
             >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-            >>> lognormal_a = LogNormal([0.], [1.])
-            >>> lognormal_b = LogNormal([0.5], [2.])
-            >>> sample = lognormal_a.sample((2, ))
+            >>> lognormal_a = LogNormal([0.0], [1.0])
+            >>> lognormal_b = LogNormal([0.5], [2.0])
+            >>> sample = lognormal_a.sample((2,))
             >>> # a random tensor created by lognormal distribution with shape: [2, 1]
             >>> entropy = lognormal_a.entropy()
             >>> print(entropy)

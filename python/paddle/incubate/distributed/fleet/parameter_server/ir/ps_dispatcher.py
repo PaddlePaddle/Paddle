@@ -53,12 +53,12 @@ class HashName(PSDispatcher):
         pserver_endpoints (list): list of endpoint(ip:port).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
 
             >>> pserver_endpoints = ["127.0.0.1:6007", "127.0.0.1:6008"]
-            >>> vars = ["var1","var2","var3","var4","var5"]
+            >>> vars = ["var1", "var2", "var3", "var4", "var5"]
 
             >>> rr = HashName(pserver_endpoints)
             >>> rr.dispatch(vars)
@@ -95,12 +95,12 @@ class RoundRobin(PSDispatcher):
         pserver_endpoints (list): list of endpoint(ip:port).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
 
             >>> pserver_endpoints = ["127.0.0.1:6007", "127.0.0.1:6008"]
-            >>> vars = ["var1","var2","var3","var4","var5"]
+            >>> vars = ["var1", "var2", "var3", "var4", "var5"]
 
             >>> rr = RoundRobin(pserver_endpoints)
             >>> rr.dispatch(vars)

@@ -231,10 +231,9 @@ def create_parameter(
         The created parameter.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')

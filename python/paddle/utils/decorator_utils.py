@@ -837,6 +837,67 @@ def index_add_decorator() -> Callable[
     return decorator
 
 
+def maxpool_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "input" in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["x"] = args[0]
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from nn.MaxPool in PyTorch
+                if len(args) > 5:
+                    kwargs["ceil_mode"] = args[5]
+                if len(args) > 6:
+                    kwargs["return_mask"] = args[6]
+                args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def maxpool_layer_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from F.max_pool in PyTorch
+                if len(args) > 5:
+                    kwargs["return_mask"] = args[5]
+                if len(args) > 6:
+                    kwargs["ceil_mode"] = args[6]
+                args = (args[0],)
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def use_first_signature(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:

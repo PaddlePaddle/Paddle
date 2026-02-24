@@ -174,7 +174,7 @@ class QuantizationTransformPass:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # The original graph will be rewrite.
                 >>> import paddle.static as static
@@ -2438,7 +2438,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 Default is None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # The original graph will be rewrite.
                 >>> import paddle
@@ -2830,7 +2830,7 @@ class AddQuantDequantPassV2:
             scale_dict(dict, optional): calibration ranges of tensors output.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # The original graph will be rewrite.
                 >>> import paddle
@@ -3011,7 +3011,7 @@ class ReplaceFakeQuantDequantPass:
             quant_bits(int, optional): quantization bit number for activation. Default is 8.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # The original graph will be rewrite.
                 >>> import paddle
@@ -3180,7 +3180,7 @@ class QuantWeightPass:
         save_int_weight(bool, optional): Whether the type saving the weight is int. Default is True.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # The original graph will be rewrite.
             >>> import paddle
