@@ -1769,7 +1769,7 @@ class TestRenormAPI_Compatibility(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.shape = [2, 2, 3]
+        self.shape = (2, 2, 3)
         self.dtype = 'float32'
         self.init_data()
 
