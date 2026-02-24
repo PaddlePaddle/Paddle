@@ -42,8 +42,8 @@ TEST(TensorClampTest, ClampWithTensor) {
   at::Tensor min_t = at::full({2, 3}, 1.0f, at::kFloat);
   at::Tensor max_t = at::full({2, 3}, 4.0f, at::kFloat);
 
-  at::Tensor result = t.clamp(
-      ::std::optional<at::Tensor>(min_t), ::std::optional<at::Tensor>(max_t));
+  at::Tensor result = t.clamp(::std::optional<at::Tensor>(min_t),
+                              ::std::optional<at::Tensor>(max_t));
 
   float* data = result.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 1.0f);
