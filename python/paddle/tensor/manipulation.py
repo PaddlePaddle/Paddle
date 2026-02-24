@@ -7035,7 +7035,7 @@ def masked_fill(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -7722,7 +7722,7 @@ def index_add(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle

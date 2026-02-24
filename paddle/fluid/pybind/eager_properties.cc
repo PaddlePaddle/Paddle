@@ -53,7 +53,7 @@ Returns:
     str: Tensor's name.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -88,7 +88,7 @@ Returns:
     VarType: Tensor's type.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -129,7 +129,7 @@ Returns:
     bool: Whether a Tensor is leaf Tensor.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -178,7 +178,7 @@ Returns:
     bool: Tensor's stop_gradient.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -208,7 +208,7 @@ Returns:
     Tensor: self.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -257,7 +257,7 @@ Returns:
     Tensor: grad Tensor.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -387,7 +387,7 @@ Returns:
     bool: persistable.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -426,7 +426,7 @@ Returns:
     core.ProcessMesh: the process mesh of shard tensor
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
@@ -473,7 +473,7 @@ Returns:
     List[core.Placement]: the process mesh of shard tensor
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
@@ -519,7 +519,7 @@ Returns:
     int64_t: Tensor's num_shard.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
@@ -673,7 +673,7 @@ Returns:
     List: strides.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -712,7 +712,7 @@ Returns:
     int: offset.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -759,7 +759,7 @@ Returns:
     Layout: layout.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -794,7 +794,7 @@ Returns:
     Place: place.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -861,7 +861,7 @@ Returns:
     paddle dtype: dtype.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 

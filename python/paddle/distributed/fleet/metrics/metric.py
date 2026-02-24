@@ -35,7 +35,7 @@ def sum(input, scope=None, util=None):
         global_metric(numpy.array): sum array
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
@@ -76,7 +76,7 @@ def max(input, scope=None, util=None):
         global_metric(numpy.array): max array
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
@@ -117,7 +117,7 @@ def min(input, scope=None, util=None):
         global_metric(numpy.array): min array
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
@@ -159,13 +159,14 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
         auc_value(float): auc value
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
             >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(output, min=-15.0, max=15.0))
             >>> binary_predict = paddle.concat(
-            ...     input=[paddle.subtract(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
+            ...     input=[paddle.subtract(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1
+            ... )
             >>> self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
             ...     paddle.static.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
 
@@ -243,11 +244,13 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         mae(float): mae value
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
-            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(
+            ...     similarity_norm, paddle.cast(x=label, dtype='float32')
+            ... )
 
             >>> # in train.py, after train or infer
             >>> res = np.array(scope.find_var(abserr.name).get_tensor())
@@ -294,11 +297,13 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         rmse(float): rmse value
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
-            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(
+            ...     similarity_norm, paddle.cast(x=label, dtype='float32')
+            ... )
 
             >>> # in train.py, after train or infer
             >>> res = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -345,11 +350,13 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         mse(float): mse value
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
-            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
+            >>> sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(
+            ...     similarity_norm, paddle.cast(x=label, dtype='float32')
+            ... )
 
             >>> # in train.py, after train or infer
             >>> metric = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -395,7 +402,7 @@ def acc(correct, total, scope=None, util=None):
         acc(float): accuracy value
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # in model.py
