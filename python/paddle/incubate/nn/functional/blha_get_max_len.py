@@ -38,7 +38,7 @@ def blha_get_max_len(
         Tensor|(max_enc_len_this_time, max_dec_len_this_time)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -48,7 +48,9 @@ def blha_get_max_len(
             >>> seq_lens_decoder = paddle.cast(paddle.randn(shape=[10]), dtype=paddle.int32)
             >>> bsz = 10
             >>> batch_size = paddle.ones(shape=[bsz])
-            >>> max_enc_len_this_time, max_dec_len_this_time = paddle.incubate.nn.functional.blha_get_max_len(seq_lens_encoder, seq_lens_decoder, batch_size)
+            >>> max_enc_len_this_time, max_dec_len_this_time = paddle.incubate.nn.functional.blha_get_max_len(
+            ...     seq_lens_encoder, seq_lens_decoder, batch_size
+            ... )
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.blha_get_max_len(

@@ -69,7 +69,3 @@ inline at::Tensor ones_symint(c10::SymIntArrayRef size,
 }
 
 }  // namespace at
-namespace torch {
-using at::ones;
-using at::ones_symint;
-}  // namespace torch

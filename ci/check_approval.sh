@@ -65,11 +65,6 @@ if [[ $changed_deprecated_tests_count -gt 0 ]]; then
     check_approval 1 wanghuancoder
 fi
 
-if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
-    echo_line="You must have raindrops2sea or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
-    check_approval 1 raindrops2sea XiaoguangHu01
-fi
-
 for API_FILE in ${API_FILES[*]}; do
   API_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
   if [ "${API_CHANGE}" ] && [ "${PR_ID}" != "" ]; then
@@ -367,6 +362,19 @@ if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
         echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
         echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo, ooooo-create) approval for the changes.\n"
         check_approval 1 sunzhongkai588 SigureMo ooooo-create
+    fi
+fi
+
+if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
+    CODE_BLOCK_PYTHON_MARKER=$(git diff -U0 upstream/$BRANCH -- ${HAS_MODIFIED_PY_OR_CPP_FILES} \
+        | grep '^+' \
+        | grep -Pv '^\+\s*(#|//|/\*|\*)' \
+        | grep -P '\.\.\s+code-block::\s+python\b' || true)
+    if [ "${CODE_BLOCK_PYTHON_MARKER}" != "" ]; then
+        echo_line="Your PR adds '.. code-block:: python' marker in docstrings/comments. Please confirm whether this marker is expected and follows our docstring rules.\n"
+        echo_line=${echo_line}"The matched lines are as follows:\n${CODE_BLOCK_PYTHON_MARKER}\n"
+        echo_line=${echo_line}"If you believe this is necessary, please request one of the RD (SigureMo(Recommend), sunzhongkai588, ShigureNyako) approval for the changes.\n"
+        check_approval 1 SigureMo sunzhongkai588 ShigureNyako
     fi
 fi
 

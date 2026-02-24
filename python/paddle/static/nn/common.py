@@ -152,7 +152,7 @@ def fc(
         Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
@@ -165,7 +165,8 @@ def fc(
             ...     size=1,
             ...     num_flatten_dims=2,
             ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
-            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)),
+            ... )
             >>> print(out)
             var fc_0.tmp_1 : DENSE_TENSOR.shape(1, 2, 1).dtype(float32).stop_gradient(False)
 
@@ -177,7 +178,8 @@ def fc(
             ...     x=[x0, x1],
             ...     size=2,
             ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
-            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)),
+            ... )
             >>> print(out)
             var fc_1.tmp_3 : DENSE_TENSOR.shape(1, 2).dtype(float32).stop_gradient(False)
 
@@ -432,7 +434,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         Variable: A 2-D DenseTensor with shape :math:`[N, M]` . if :attr:`use_cvm` = True, M is equal to input dim D. if False, M is equal to `D - 2`. \
         A Tensor with same type as input.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -704,7 +706,7 @@ def conv2d(
         and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -1014,8 +1016,9 @@ def conv3d(
         convolution and non-linearity activation result.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.nn.conv3d doesn't support PIR mode")
             >>> import paddle
             >>> import numpy as np
 
@@ -2039,7 +2042,7 @@ def deformable_conv(
         Tensor: The tensor variable storing the deformable convolution \
                   result. A Tensor with type float32, float64.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # deformable conv v2:
             >>> import paddle
@@ -2776,7 +2779,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
@@ -3187,14 +3190,13 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> # for DenseTensor inputs
             >>> import paddle
             >>> paddle.enable_static()
-            >>> x = paddle.static.data(name='x', shape=[9, 16],
-            ...                     dtype='float32', lod_level=1)
+            >>> x = paddle.static.data(name='x', shape=[9, 16], dtype='float32', lod_level=1)
             >>> out_x = paddle.static.nn.row_conv(input=x, future_context_size=2)
 
             >>> # for Tensor inputs
@@ -3582,23 +3584,26 @@ def embedding(
         Tensor: Embedding Tensor or DenseTensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Static Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
 
-            >>> x = paddle.static.data(name="x", shape = [2, 4], dtype=np.int64)
-            >>> output = paddle.static.nn.embedding(x, (10, 3),
-            ...             param_attr=paddle.nn.initializer.Constant(value=1.0))
-            >>> m_output=paddle.mean(output)
+            >>> x = paddle.static.data(name="x", shape=[2, 4], dtype=np.int64)
+            >>> output = paddle.static.nn.embedding(
+            ...     x,
+            ...     (10, 3),
+            ...     param_attr=paddle.nn.initializer.Constant(value=1.0),
+            ... )
+            >>> m_output = paddle.mean(output)
             >>> place = paddle.CPUPlace()
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
-            >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
+            >>> x = np.array([[7, 2, 4, 5], [4, 3, 2, 9]], dtype=np.int64)
+            >>> (out,) = exe.run(paddle.static.default_main_program(), feed={'x': x}, fetch_list=[output])
             >>> print(out)
             [[[1. 1. 1.]
               [1. 1. 1.]
@@ -3743,7 +3748,7 @@ def sparse_embedding(
         Tensor: Embedding Tensor or DenseTensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
@@ -3762,8 +3767,11 @@ def sparse_embedding(
             ...     size=[sparse_feature_dim, embedding_size],
             ...     is_test=False,
             ...     entry=entry,
-            ...     param_attr=paddle.ParamAttr(name="SparseFeatFactors",
-            ...     initializer=paddle.nn.initializer.Uniform()))
+            ...     param_attr=paddle.ParamAttr(
+            ...         name="SparseFeatFactors",
+            ...         initializer=paddle.nn.initializer.Uniform(),
+            ...     ),
+            ... )
 
     """
 

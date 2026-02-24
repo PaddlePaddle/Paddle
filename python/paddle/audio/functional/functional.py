@@ -37,14 +37,13 @@ def hz_to_mel(freq: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
         Union[Tensor, float]: Frequency in mels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> val = 3.0
             >>> htk_flag = True
-            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-            ...     paddle.to_tensor(val), htk_flag)
+            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(paddle.to_tensor(val), htk_flag)
     """
 
     if htk:
@@ -91,15 +90,13 @@ def mel_to_hz(mel: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
         Union[float, Tensor]: Frequencies in Hz.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> val = 3.0
             >>> htk_flag = True
-            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(
-            ...     paddle.to_tensor(val), htk_flag)
-            ...
+            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(paddle.to_tensor(val), htk_flag)
     """
     if htk:
         return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
@@ -143,7 +140,7 @@ def mel_frequencies(
         Tensor: Tensor of n_mels frequencies in Hz with shape `(n_mels,)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -152,8 +149,7 @@ def mel_frequencies(
             >>> f_max = 10000
             >>> htk_flag = True
 
-            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(
-            ...     n_mels, f_min, f_max, htk_flag, 'float64')
+            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(n_mels, f_min, f_max, htk_flag, 'float64')
     """
     # 'Center freqs' of mel bands - uniformly spaced between limits
     min_mel = hz_to_mel(f_min, htk=htk)
@@ -175,7 +171,7 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
         Tensor: FFT frequencies in Hz with shape `(n_fft//2 + 1,)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -212,7 +208,7 @@ def compute_fbank_matrix(
         Tensor: Mel transform matrix with shape `(n_mels, n_fft//2 + 1)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -277,13 +273,12 @@ def power_to_db(
         Tensor: Power spectrogram in db scale.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> val = 3.0
-            >>> decibel_paddle = paddle.audio.functional.power_to_db(
-            ...     paddle.to_tensor(val))
+            >>> decibel_paddle = paddle.audio.functional.power_to_db(paddle.to_tensor(val))
     """
     if amin <= 0:
         raise Exception("amin must be strictly positive")
@@ -321,7 +316,7 @@ def create_dct(
         Tensor: The DCT matrix with shape `(n_mels, n_mfcc)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> n_mfcc = 23

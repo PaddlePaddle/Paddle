@@ -7007,6 +7007,7 @@ def moveaxis(
         return out
 
 
+@param_one_alias(["x", "input"])
 def masked_fill(
     x, mask: Tensor, value: Numeric, name: str | None = None
 ) -> Tensor:
@@ -7034,7 +7035,7 @@ def masked_fill(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -7721,7 +7722,7 @@ def index_add(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle

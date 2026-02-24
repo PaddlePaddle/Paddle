@@ -218,7 +218,7 @@ def run_check() -> None:
     on your system.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -109,7 +109,7 @@ def generate(key: str) -> str:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> name1 = paddle.utils.unique_name.generate('fc')
@@ -168,7 +168,7 @@ def switch(new_generator=None, new_para_name_checker=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> name1 = paddle.utils.unique_name.generate('fc')
@@ -176,12 +176,12 @@ def switch(new_generator=None, new_para_name_checker=None):
             >>> print(name1, name2)
             fc_0 fc_1
 
-            >>> pre_generator, pre_dygraph_name_checker = paddle.utils.unique_name.switch() # switch to a new anonymous namespace.
+            >>> pre_generator, pre_dygraph_name_checker = paddle.utils.unique_name.switch()  # switch to a new anonymous namespace.
             >>> name2 = paddle.utils.unique_name.generate('fc')
             >>> print(name2)
             fc_0
 
-            >>> paddle.utils.unique_name.switch(pre_generator, pre_dygraph_name_checker) # switch back to pre_generator.
+            >>> paddle.utils.unique_name.switch(pre_generator, pre_dygraph_name_checker)  # switch back to pre_generator.
             >>> name3 = paddle.utils.unique_name.generate('fc')
             >>> print(name3)
             fc_2
@@ -220,7 +220,7 @@ def guard(new_generator=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> with paddle.utils.unique_name.guard():

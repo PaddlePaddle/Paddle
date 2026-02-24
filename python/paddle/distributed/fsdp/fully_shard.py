@@ -111,7 +111,7 @@ def fully_shard(
         module: A wrapper module that applies FSDP to the input module.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # type: ignore
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)

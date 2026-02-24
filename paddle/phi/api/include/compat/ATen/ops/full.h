@@ -79,7 +79,3 @@ inline at::Tensor full_symint(c10::SymIntArrayRef size,
 }
 
 }  // namespace at
-namespace torch {
-using at::full;
-using at::full_symint;
-}  // namespace torch

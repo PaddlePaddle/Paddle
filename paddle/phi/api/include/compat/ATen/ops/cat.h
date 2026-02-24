@@ -34,7 +34,3 @@ inline at::Tensor cat(const std::vector<at::Tensor>& tensors, int64_t dim = 0) {
 }
 
 }  // namespace at
-
-namespace torch {
-using at::cat;
-}  // namespace torch
