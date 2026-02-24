@@ -432,7 +432,7 @@
     func : RenormPreProcess(x, axis)
 
 - op : renorm_
-  name : [paddle.renorm_, paddle.Tensor.renorm]
+  name : [paddle.renorm_, paddle.Tensor.renorm_]
   args_alias :
     x : [input]
     axis : [dim]
