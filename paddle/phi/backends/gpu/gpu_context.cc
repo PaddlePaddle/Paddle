@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(use_default_stream);
+COMMON_DECLARE_bool(use_legacy_gemm);
 namespace phi {
 
 namespace internal {
@@ -304,18 +305,33 @@ struct GPUContext::Impl {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     std::call_once(flag_cublas_workspace_, [&]() {
       size_t workspace_size = GetCublasWorkspaceSize(compute_capability_);
+      LOG(INFO) << "[SetCublasWorkspace] InitCublasWorkspace: "
+                << "compute_capability=" << compute_capability_
+                << ", workspace_size=" << workspace_size;
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMalloc(&cublas_workspace_, workspace_size));
       cublas_workspace_size_ = workspace_size;
+      LOG(INFO) << "[SetCublasWorkspace] InitCublasWorkspace done: "
+                << "cublas_workspace_=" << cublas_workspace_
+                << ", cublas_workspace_size_=" << cublas_workspace_size_;
     });
 #endif
   }
 
   void SetCublasWorkspace(blasHandle_t handle) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+    LOG(INFO) << "[SetCublasWorkspace] begin: handle=" << handle;
+    // cublasSetWorkspace requires cuBLAS >= 11.4 (CUDA >= 11.4).
+    // The dynload wrapper does not check for null, so we must verify
+    // the symbol exists before calling to avoid a null-function-pointer
+    // segfault on older CUDA versions.
     InitCublasWorkspace();
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace(
+    LOG(INFO) << "[SetCublasWorkspace] calling cublasSetWorkspace: "
+              << "handle=" << handle << ", workspace=" << cublas_workspace_
+              << ", size=" << cublas_workspace_size_;
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace_v2(
         handle, cublas_workspace_, cublas_workspace_size_));
+    LOG(INFO) << "[SetCublasWorkspace] done for handle=" << handle;
 #endif
   }
 
@@ -474,6 +490,21 @@ struct GPUContext::Impl {
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+      }
+#endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm) {
+        LOG(INFO) << "[SetCublasWorkspace] GetBlasHandle: "
+                  << "blas_handle_=" << blas_handle_
+                  << ", blas_tensor_core_handle_=" << blas_tensor_core_handle_
+                  << ", blas_tf32_tensor_core_handle_="
+                  << blas_tf32_tensor_core_handle_;
+        if (blas_handle_) SetCublasWorkspace(blas_handle_);
+        if (blas_tensor_core_handle_)
+          SetCublasWorkspace(blas_tensor_core_handle_);
+        if (blas_tf32_tensor_core_handle_)
+          SetCublasWorkspace(blas_tf32_tensor_core_handle_);
+        LOG(INFO) << "[SetCublasWorkspace] GetBlasHandle done";
       }
 #endif
     });
@@ -689,6 +720,21 @@ struct GPUContext::Impl {
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
 #endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm) {
+        LOG(INFO) << "[SetCublasWorkspace] CublasCall: "
+                  << "blas_handle_=" << blas_handle_
+                  << ", blas_tensor_core_handle_=" << blas_tensor_core_handle_
+                  << ", blas_tf32_tensor_core_handle_="
+                  << blas_tf32_tensor_core_handle_;
+        if (blas_handle_) SetCublasWorkspace(blas_handle_);
+        if (blas_tensor_core_handle_)
+          SetCublasWorkspace(blas_tensor_core_handle_);
+        if (blas_tf32_tensor_core_handle_)
+          SetCublasWorkspace(blas_tf32_tensor_core_handle_);
+        LOG(INFO) << "[SetCublasWorkspace] CublasCall done";
+      }
+#endif
     });
     if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
@@ -728,6 +774,22 @@ struct GPUContext::Impl {
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+      }
+#endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm) {
+        LOG(INFO) << "[SetCublasWorkspace] TensorCoreCublasCallIfAvailable: "
+                  << "blas_handle_=" << blas_handle_
+                  << ", blas_tensor_core_handle_=" << blas_tensor_core_handle_
+                  << ", blas_tf32_tensor_core_handle_="
+                  << blas_tf32_tensor_core_handle_;
+        if (blas_handle_) SetCublasWorkspace(blas_handle_);
+        if (blas_tensor_core_handle_)
+          SetCublasWorkspace(blas_tensor_core_handle_);
+        if (blas_tf32_tensor_core_handle_)
+          SetCublasWorkspace(blas_tf32_tensor_core_handle_);
+        LOG(INFO)
+            << "[SetCublasWorkspace] TensorCoreCublasCallIfAvailable done";
       }
 #endif
     });
