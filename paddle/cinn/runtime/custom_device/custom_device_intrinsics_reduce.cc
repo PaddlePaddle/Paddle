@@ -225,3 +225,4 @@ void ForceRegisterCustomDeviceIntrinsicsReduce() {
 }  // namespace custom_device
 }  // namespace runtime
 }  // namespace cinn
+#endif  // CINN_WITH_CUSTOM_DEVICE
