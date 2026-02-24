@@ -1165,7 +1165,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.1.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.5.4.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.6.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.6.77; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.6.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.11.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
@@ -1541,6 +1541,9 @@ def get_package_data_and_package_dir():
                     + ext_suffix
                 ]
                 shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
+        if os.name == 'nt':
+            package_data['paddle.libs'] += ['phi.lib']
+            shutil.copy(env_dict.get("PHI_LINK"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -2509,6 +2512,7 @@ def get_setup_parameters():
         'paddle',
         'paddle.libs',
         'paddle.utils',
+        'paddle.utils.data',
         'paddle.utils.gast',
         'paddle.utils.cpp_extension',
         'paddle.dataset',

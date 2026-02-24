@@ -118,7 +118,7 @@ class ProcessMesh(core.ProcessMesh):
             i-th dimension of the mesh.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -331,7 +331,7 @@ class ProcessMesh(core.ProcessMesh):
             A :class:`ProcessMesh` object
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed as dist
@@ -349,7 +349,7 @@ class ProcessMesh(core.ProcessMesh):
                 >>> # ProcessMesh:([0, 1, 2, 3]) on rank 0, 1, 2, 3
                 >>> # ProcessMesh:([4, 5, 6, 7]) on rank 4, 5, 6, 7
 
-                >>> mesh_3d = dist.ProcessMesh([[[0, 1],[2, 3]], [[4, 5], [6, 7]]], dim_names=["pp","dp","tp"])
+                >>> mesh_3d = dist.ProcessMesh([[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=["pp", "dp", "tp"])
 
                 >>> pp_mesh = mesh_3d.get_submesh_with_dim("pp")
                 >>> # ProcessMesh:([0, 4]) on rank 0, 4

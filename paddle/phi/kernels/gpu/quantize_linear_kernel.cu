@@ -52,8 +52,8 @@ __global__ void DequantizeOneScaleQuantAxisN(const T* in,
 }
 
 template <typename T>
-struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct ChannelDequantizeFunctorV2<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor* in,
                   const DenseTensor* scale,
                   T max_range,
@@ -90,8 +90,8 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
 };
 
 template <typename T>
-struct DequantizeFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct DequantizeFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor* in,
                   const DenseTensor* scale,
                   T max_range,
@@ -114,12 +114,12 @@ struct DequantizeFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::GPUContext, phi::float16>;
-template struct DequantizeFunctor<phi::GPUContext, float>;
-template struct DequantizeFunctor<phi::GPUContext, double>;
-template struct ChannelDequantizeFunctorV2<phi::GPUContext, float16>;
-template struct ChannelDequantizeFunctorV2<phi::GPUContext, float>;
-template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
+template struct DequantizeFunctor<GPUContext, phi::float16>;
+template struct DequantizeFunctor<GPUContext, float>;
+template struct DequantizeFunctor<GPUContext, double>;
+template struct ChannelDequantizeFunctorV2<GPUContext, float16>;
+template struct ChannelDequantizeFunctorV2<GPUContext, float>;
+template struct ChannelDequantizeFunctorV2<GPUContext, double>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(dequantize_linear,

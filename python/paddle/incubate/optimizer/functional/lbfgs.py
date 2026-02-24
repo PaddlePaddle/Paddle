@@ -88,13 +88,13 @@ def minimize_lbfgs(
             - objective_gradient (Tensor): objective function gradient at the `position`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: 1D Grid Parameters
             >>> import paddle
             >>> # Randomly simulate a batch of input data
-            >>> inputs = paddle. normal(shape=(100, 1))
+            >>> inputs = paddle.normal(shape=(100, 1))
             >>> labels = inputs * 2.0
             >>> # define the loss function
             >>> def loss(w):
@@ -109,15 +109,15 @@ def minimize_lbfgs(
             ...     # Use paddle.assign to update parameters in place
             ...     paddle.assign(w_update, w)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: Multidimensional Grid Parameters
             >>> import paddle
             >>> def flatten(x):
-            ...     return x. flatten()
+            ...     return x.flatten()
             >>> def unflatten(x):
-            ...     return x.reshape((2,2))
+            ...     return x.reshape((2, 2))
             >>> # Assume the network parameters are more than one dimension
             >>> def net(x):
             ...     assert len(x.shape) > 1
@@ -125,7 +125,7 @@ def minimize_lbfgs(
             >>> # function to be optimized
             >>> def bfgs_f(flatten_x):
             ...     return net(unflatten(flatten_x))
-            >>> x = paddle.rand([2,2])
+            >>> x = paddle.rand([2, 2])
             >>> for i in range(0, 10):
             ...     # Flatten x before using minimize_bfgs
             ...     x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]

@@ -87,13 +87,13 @@ def minimize_bfgs(
             - inverse_hessian_estimate (Tensor): the estimate of inverse hessian at the `position`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: 1D Grid Parameters
             >>> import paddle
             >>> # Randomly simulate a batch of input data
-            >>> inputs = paddle. normal(shape=(100, 1))
+            >>> inputs = paddle.normal(shape=(100, 1))
             >>> labels = inputs * 2.0
             >>> # define the loss function
             >>> def loss(w):
@@ -106,17 +106,17 @@ def minimize_bfgs(
             ...     # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
             ...     w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
             ...     # Use paddle.assign to update parameters in place
-            ...     paddle. assign(w_update, w)
+            ...     paddle.assign(w_update, w)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: Multidimensional Grid Parameters
             >>> import paddle
             >>> def flatten(x):
-            ...     return x. flatten()
+            ...     return x.flatten()
             >>> def unflatten(x):
-            ...     return x.reshape((2,2))
+            ...     return x.reshape((2, 2))
             >>> # Assume the network parameters are more than one dimension
             >>> def net(x):
             ...     assert len(x.shape) > 1
@@ -124,7 +124,7 @@ def minimize_bfgs(
             >>> # function to be optimized
             >>> def bfgs_f(flatten_x):
             ...     return net(unflatten(flatten_x))
-            >>> x = paddle.rand([2,2])
+            >>> x = paddle.rand([2, 2])
             >>> for i in range(0, 10):
             ...     # Flatten x before using minimize_bfgs
             ...     x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]

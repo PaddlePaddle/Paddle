@@ -53,7 +53,7 @@ Returns:
     str: Tensor's name.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -88,7 +88,7 @@ Returns:
     VarType: Tensor's type.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -129,7 +129,7 @@ Returns:
     bool: Whether a Tensor is leaf Tensor.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -178,7 +178,7 @@ Returns:
     bool: Tensor's stop_gradient.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -208,7 +208,7 @@ Returns:
     Tensor: self.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -257,7 +257,7 @@ Returns:
     Tensor: grad Tensor.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -387,7 +387,7 @@ Returns:
     bool: persistable.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -426,7 +426,7 @@ Returns:
     core.ProcessMesh: the process mesh of shard tensor
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
@@ -473,7 +473,7 @@ Returns:
     List[core.Placement]: the process mesh of shard tensor
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
@@ -519,7 +519,7 @@ Returns:
     int64_t: Tensor's num_shard.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
         >>> import paddle
@@ -673,7 +673,7 @@ Returns:
     List: strides.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -712,7 +712,7 @@ Returns:
     int: offset.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -759,7 +759,7 @@ Returns:
     Layout: layout.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -794,7 +794,7 @@ Returns:
     Place: place.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -861,7 +861,7 @@ Returns:
     paddle dtype: dtype.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -874,15 +874,15 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   if (FLAGS_enable_pir_api) {
     if (!self->tensor.defined()) {
       // be same to old dygraph
-      return ToPyObject(phi::DataType::FLOAT32);
+      return ToPyObject(DataType::FLOAT32);
     }
     if (egr::IsVariableCompatTensor(self->tensor)) {
       auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
           self->tensor.impl().get());
       if (var_tensor->IsType<phi::Vocab>()) {
-        return ToPyObject(phi::DataType::UNDEFINED);
+        return ToPyObject(DataType::UNDEFINED);
       } else if (var_tensor->IsType<phi::Strings>()) {
-        return ToPyObject(phi::DataType::PSTRING);
+        return ToPyObject(DataType::PSTRING);
       } else {
         PADDLE_THROW(common::errors::Unavailable(
             "VariableCompatTensor only support get shape from Vocab or "

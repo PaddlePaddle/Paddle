@@ -65,19 +65,24 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
-            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
-            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> linear = paddle.nn.Linear(
+            ...     in_features=10,
+            ...     out_features=10,
+            ...     weight_attr=paddle.ParamAttr(need_clip=True),
+            ...     bias_attr=paddle.ParamAttr(need_clip=False),
+            ... )
             >>> out = linear(x)
             >>> loss = paddle.mean(out)
             >>> loss.backward()
 
-            >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0) # Cause paddle.nn hasn't this interface, so we use ClipGradByGlobalNorm here.
+            >>> clip = paddle.nn.ClipGradByGlobalNorm(
+            ...     clip_norm=1.0
+            ... )  # Cause paddle.nn hasn't this interface, so we use ClipGradByGlobalNorm here.
             >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             >>> sdg.step()
     """

@@ -15,7 +15,7 @@ on:
 jobs:
   check-bypass:
     name: Check bypass
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
     env:

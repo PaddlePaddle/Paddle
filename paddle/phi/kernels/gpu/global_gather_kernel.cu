@@ -32,8 +32,8 @@ struct GlobalGatherFunctor {
                   DenseTensor *out);
 };
 template <typename T>
-struct GlobalGatherFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &dev_ctx,
+struct GlobalGatherFunctor<GPUContext, T> {
+  void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &x_in,
                   const DenseTensor &local_count_in,
                   const DenseTensor &global_count_in,
@@ -149,7 +149,7 @@ void GlobalGatherKernel(const Context &dev_ctx,
                         const DenseTensor &local_count,
                         const DenseTensor &global_count,
                         DenseTensor *out) {
-  GlobalGatherFunctor<phi::GPUContext, T> functor_;
+  GlobalGatherFunctor<GPUContext, T> functor_;
   functor_(dev_ctx, x, local_count, global_count, out);
 }
 

@@ -90,7 +90,7 @@ __global__ void GPUMaskedFillKernel(const T* input,
 }
 
 template <typename T>
-void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
+void DispatchMaskFillKernel(const GPUContext& dev_ctx,
                             const T* input,
                             const bool* mask,
                             const T* value,
@@ -120,7 +120,7 @@ void DispatchMaskFillKernel(const phi::GPUContext& dev_ctx,
 
 template <typename T>
 void DispatchMaskFillOneValueKernel(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const T* input,
     const bool* mask,
     const T* value,
@@ -149,7 +149,7 @@ void DispatchMaskFillOneValueKernel(
 }
 
 template <typename T>
-void GPUMaskedFill(const phi::GPUContext& dev_ctx,
+void GPUMaskedFill(const GPUContext& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& mask,
                    const DenseTensor& value,

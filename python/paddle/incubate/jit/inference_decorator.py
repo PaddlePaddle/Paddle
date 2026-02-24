@@ -585,7 +585,7 @@ def inference(
         function (callable): the decorated function which can be used for inference.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.incubate.jit.inference` can not run in xdoctest')
             >>> import paddle
@@ -593,12 +593,14 @@ def inference(
             ...     def __init__(self, hidd):
             ...         super().__init__()
             ...         self.fn = paddle.nn.Linear(hidd, hidd, bias_attr=False)
+            ...
             ...     def forward(self, x):
             ...         for i in range(10):
-            ...             x = paddle.nn.functional.softmax(x,-1)
+            ...             x = paddle.nn.functional.softmax(x, -1)
             ...         x = x.cast("float32")
             ...         x = self.func(x)
             ...         return x
+            ...
             ...     def func(self, x):
             ...         x = x + x
             ...         return self.fn(x)
@@ -606,7 +608,7 @@ def inference(
             >>> batch = 4096
             >>> hidd = 1024
             >>> dtype = "bfloat16"
-            >>> x = paddle.rand([batch, hidd], dtype=dtype) # type: ignore[arg-type]
+            >>> x = paddle.rand([batch, hidd], dtype=dtype)  # type: ignore[call-overload]
             >>> mylayer = ExampleLayer(hidd)
             >>> dynamic_result = mylayer(x)
             >>> mylayer = paddle.incubate.jit.inference(mylayer)

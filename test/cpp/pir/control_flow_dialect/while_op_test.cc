@@ -188,7 +188,7 @@ TEST(while_op_test, network_with_backward) {
 #ifdef PADDLE_WITH_CUDA
   place = phi::GPUPlace(0);
 #endif
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program, place);
+  auto kernel_program = pir::PdOpLowerToKernelPass(&program, place);
   paddle::framework::Scope scope;
   paddle::framework::InterpreterCore test_core(
       place, {}, kernel_program->block(), &scope);

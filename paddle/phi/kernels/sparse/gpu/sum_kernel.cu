@@ -65,8 +65,8 @@ __global__ void SumCooCudaKernel(const IntT* x_indices_data,
       }
       if (same) {
         for (int j = 0; j < dense_dim; ++j) {
-          phi::CudaAtomicAdd(&out_values_data[j + index_i * dense_dim],
-                             x_values_data[j + index_j * dense_dim]);
+          CudaAtomicAdd(&out_values_data[j + index_i * dense_dim],
+                        x_values_data[j + index_j * dense_dim]);
         }
       }
     }

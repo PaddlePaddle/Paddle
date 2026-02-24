@@ -95,7 +95,7 @@ __global__ void ScatterCUDAKernel(const T* params,
       VecType* dst = reinterpret_cast<VecType*>(output + out_i);
       *dst = *src;
     } else {
-      phi::CudaAtomicAdd(output + out_i, *(params + i));
+      CudaAtomicAdd(output + out_i, *(params + i));
     }
   }
 }
@@ -149,7 +149,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
 
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      phi::CudaAtomicAdd(&(dst->val[k]), src->val[k]);
+      CudaAtomicAdd(&(dst->val[k]), src->val[k]);
     }
   }
 }

@@ -32,8 +32,8 @@ struct GlobalScatterFunctor {
                   DenseTensor* out);
 };
 template <typename T>
-struct GlobalScatterFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct GlobalScatterFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& x_in,
                   const DenseTensor& local_count_in,
                   const DenseTensor& global_count_in,
@@ -150,7 +150,7 @@ void GlobalScatterKernel(const Context& dev_ctx,
                          const DenseTensor& local_count,
                          const DenseTensor& global_count,
                          DenseTensor* out) {
-  GlobalScatterFunctor<phi::GPUContext, T> functor_;
+  GlobalScatterFunctor<GPUContext, T> functor_;
   functor_(dev_ctx, x, local_count, global_count, out);
 }
 

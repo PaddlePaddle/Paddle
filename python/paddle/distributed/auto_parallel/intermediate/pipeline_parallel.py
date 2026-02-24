@@ -34,7 +34,7 @@ class SplitPoint(Enum):
     END: will split the model after the specified layer.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -51,7 +51,7 @@ class SplitPoint(Enum):
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> layer = MLP()
             >>> pp_config = {
-            ...     'fc1': dist.SplitPoint.END
+            ...     'fc1': dist.SplitPoint.END,
             ... }
     """
 

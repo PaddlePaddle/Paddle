@@ -65,14 +65,14 @@ __global__ void KernelHistogram(const T* input,
     if (input_value >= *min_value && input_value <= *max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, *min_value, *max_value, nbins);
-      phi::CudaAtomicAdd(&buf_hist[output_index],
-                         weight ? static_cast<float>(weight[input_index]) : 1);
+      CudaAtomicAdd(&buf_hist[output_index],
+                    weight ? static_cast<float>(weight[input_index]) : 1);
     }
   }
   __syncthreads();
 
   for (int64_t i = threadIdx.x; i < nbins; i += blockDim.x) {
-    phi::CudaAtomicAdd(&output[i], buf_hist[i]);
+    CudaAtomicAdd(&output[i], buf_hist[i]);
   }
 }
 
