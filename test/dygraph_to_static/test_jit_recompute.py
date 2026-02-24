@@ -20,6 +20,7 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
+from paddle.distributed.fleet.utils import recompute
 
 
 class ManualPyLayerRecompute(paddle.autograd.PyLayer):
@@ -71,6 +72,60 @@ class TestManualPyLayerRecompute(Dy2StTestBase):
 
         np.testing.assert_allclose(grad_x1, grad_x2, rtol=1e-05)
         np.testing.assert_allclose(grad_y1, grad_y2, rtol=1e-05)
+
+
+class SimpleRecomputeNetToStatic(paddle.nn.Layer):
+    def __init__(self, input_size=10):
+        super().__init__()
+        self.block = paddle.nn.Sequential(
+            paddle.nn.Linear(input_size, input_size, bias_attr=False),
+            paddle.nn.ReLU(),
+        )
+        self.block = paddle.jit.to_static(self.block)
+
+    def forward(self, inputs):
+        return recompute(self.block, inputs)
+
+
+class SimpleRecomputeNet(paddle.nn.Layer):
+    def __init__(self, input_size=10):
+        super().__init__()
+        self.block = paddle.nn.Sequential(
+            paddle.nn.Linear(input_size, input_size, bias_attr=False),
+            paddle.nn.ReLU(),
+        )
+
+    def forward(self, inputs):
+        return self.block(inputs)
+
+
+class TestDistributedPyLayerRecompute(Dy2StTestBase):
+    def test_recompute(self):
+        input_size = 10
+        inp = np.random.rand(2, input_size).astype("float32")
+        x = paddle.to_tensor(inp)
+        x.stop_gradient = False
+        y = paddle.to_tensor(inp)
+        y.stop_gradient = False
+
+        weight = np.random.rand(input_size, input_size).astype("float32")
+        model_x = SimpleRecomputeNet(input_size)
+        model_y = SimpleRecomputeNetToStatic(input_size)
+
+        with paddle.no_grad():
+            model_x.block[0].weight.set_value(weight)
+            model_y.block[0].weight.set_value(weight)
+
+        out_x = model_x(x)
+        loss_x = out_x.mean()
+        loss_x.backward()
+
+        out_y = model_y(y)
+        loss_y = out_y.mean()
+        loss_y.backward()
+
+        np.testing.assert_allclose(out_x.numpy(), out_y.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(x.grad.numpy(), y.grad.numpy(), rtol=1e-05)
 
 
 if __name__ == '__main__':

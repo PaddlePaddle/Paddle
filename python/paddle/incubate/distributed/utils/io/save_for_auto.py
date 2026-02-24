@@ -61,7 +61,7 @@ def save_for_auto_inference(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('model not exist')
             >>> from paddle.incubate.distributed.utils.io import save_for_auto_inference

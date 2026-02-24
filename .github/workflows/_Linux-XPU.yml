@@ -227,6 +227,7 @@ jobs:
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            -v /ssd1/cibuild/tmp:/tmp \
             --device ${XPU_CODE_1} \
             --device ${XPU_CODE_2} \
             --device /dev/xpuctrl \

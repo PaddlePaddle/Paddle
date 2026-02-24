@@ -78,7 +78,7 @@ def device_count(device_type: str | None = None) -> int:
         int: the number of custom devices available.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.device_count()
@@ -99,7 +99,7 @@ def empty_cache() -> None:
     application and visible in device-specific tools.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.empty_cache()
@@ -119,13 +119,13 @@ def max_memory_allocated(device: _CustomPlaceLike | None = None) -> int:
         int: The peak size of memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.max_memory_allocated('npu:0')
             >>> paddle.device.max_memory_allocated('npu')
             >>> paddle.device.max_memory_allocated(0)
-            >>> paddle.device.max_memory_allocated(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.max_memory_allocated(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -171,13 +171,13 @@ def max_memory_reserved(device: _CustomPlaceLike | None = None) -> int:
         int: The peak size of memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.max_memory_reserved('npu:0')
             >>> paddle.device.max_memory_reserved('npu')
             >>> paddle.device.max_memory_reserved(0)
-            >>> paddle.device.max_memory_reserved(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.max_memory_reserved(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -220,13 +220,13 @@ def reset_max_memory_allocated(device: _CustomPlaceLike | None = None) -> None:
             If None, the device is the first available custom device with index 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.reset_max_memory_allocated('npu:0')
             >>> paddle.device.reset_max_memory_allocated('npu')
             >>> paddle.device.reset_max_memory_allocated(0)
-            >>> paddle.device.reset_max_memory_allocated(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.reset_max_memory_allocated(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -269,13 +269,13 @@ def reset_max_memory_reserved(device: _CustomPlaceLike | None = None) -> None:
             If None, the device is the first available custom device with index 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.reset_max_memory_reserved('npu:0')
             >>> paddle.device.reset_max_memory_reserved('npu')
             >>> paddle.device.reset_max_memory_reserved(0)
-            >>> paddle.device.reset_max_memory_reserved(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.reset_max_memory_reserved(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -321,13 +321,13 @@ def memory_allocated(device: _CustomPlaceLike | None = None) -> int:
         int: The current size of memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.memory_allocated('npu:0')
             >>> paddle.device.memory_allocated('npu')
             >>> paddle.device.memory_allocated(0)
-            >>> paddle.device.memory_allocated(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.memory_allocated(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -373,13 +373,13 @@ def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
         int: The current size of memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.memory_reserved('npu:0')
             >>> paddle.device.memory_reserved('npu')
             >>> paddle.device.memory_reserved(0)
-            >>> paddle.device.memory_reserved(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.memory_reserved(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -425,13 +425,13 @@ def current_stream(device: _CustomPlaceLike | None = None) -> core.CustomStream:
         Stream: The stream to the device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.current_stream('npu:0')
             >>> paddle.device.current_stream('npu')
             >>> paddle.device.current_stream(0)
-            >>> paddle.device.current_stream(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.current_stream(Paddle.CustomPlace('npu', 0))
     '''
     device_id = 0
 
@@ -474,13 +474,13 @@ def synchronize(device: _CustomPlaceLike | None = None) -> None:
             If None, the device is the first available custom device with index 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.synchronize('npu:0')
             >>> paddle.device.synchronize('npu')
             >>> paddle.device.synchronize(0)
-            >>> paddle.device.synchronize(Paddle.CustomPlace('npu',0))
+            >>> paddle.device.synchronize(Paddle.CustomPlace('npu', 0))
     """
     device_id = 0
 
@@ -525,7 +525,7 @@ def get_rng_state(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -555,7 +555,7 @@ def set_rng_state(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # Save RNG state

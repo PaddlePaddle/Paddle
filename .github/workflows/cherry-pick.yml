@@ -188,3 +188,20 @@ jobs:
               git branch -D "$NEW_BRANCH"
             fi
           done <<< "$LABELS"
+
+      - name: Remove Cherry Pick Labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO_NAME" --json labels --jq '.labels[].name')
+          if [ -z "$LABELS" ]; then
+            exit 0
+          fi
+          while read -r label; do
+            if [[ "$label" == cherry-pick:* ]]; then
+              echo "Removing label: $label"
+              gh pr edit "$PR_NUMBER" --repo "$REPO_NAME" --remove-label "$label"
+            fi
+          done <<< "$LABELS"

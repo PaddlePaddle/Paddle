@@ -76,6 +76,12 @@ void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
 // Baddbmm broadcast validation for static graph
 void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
 
+// Inplace API broadcast validation for dygraph
+void InplaceShapePreProcess(Tensor* x, Tensor* y);
+
+// Inplace API broadcast validation for static graph
+void InplaceShapePreProcess(pir::Value* x, pir::Value* y);
+
 }  // namespace pybind
 
 }  // namespace paddle

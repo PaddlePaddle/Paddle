@@ -111,22 +111,22 @@ class LRScheduler:
     Examples:
         Here is an example of a simple ``StepDecay`` implementation.
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.optimizer.lr import LRScheduler
 
             >>> class StepDecay(LRScheduler):
-            ...     def __init__(self,
-            ...                 learning_rate,
-            ...                 step_size,
-            ...                 gamma=0.1,
-            ...                 last_epoch=-1,
-            ...                 verbose=False):
+            ...     def __init__(
+            ...         self,
+            ...         learning_rate,
+            ...         step_size,
+            ...         gamma=0.1,
+            ...         last_epoch=-1,
+            ...         verbose=False,
+            ...     ):
             ...         if not isinstance(step_size, int):
-            ...             raise TypeError(
-            ...                 "The type of 'step_size' must be 'int', but received %s." %
-            ...                 type(step_size))
+            ...             raise TypeError(f"The type of 'step_size' must be 'int', but received {type(step_size)}.")
             ...         if gamma >= 1.0:
             ...             raise ValueError('gamma should be < 1.0.')
             ...
@@ -137,7 +137,6 @@ class LRScheduler:
             ...     def get_lr(self):
             ...         i = self.last_epoch // self.step_size
             ...         return self.base_lr * (self.gamma**i)
-            ...
     """
 
     base_lr: float
@@ -183,27 +182,35 @@ class LRScheduler:
         Returns:
             None
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> value = paddle.arange(26, dtype='float32')
                 >>> a = paddle.reshape(value, [2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
-                >>> adadelta = paddle.optimizer.Adadelta(learning_rate=0.0003, epsilon=1e-06, rho=0.95,
-                ...                             parameters = linear.parameters())
+                >>> adadelta = paddle.optimizer.Adadelta(
+                ...     learning_rate=0.0003,
+                ...     epsilon=1e-06,
+                ...     rho=0.95,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adadelta.step()
                 >>> adadelta.clear_grad()
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> value = paddle.arange(26, dtype='float32')
                 >>> a = paddle.reshape(value, [2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
-                >>> adadelta = paddle.optimizer.Adadelta(learning_rate=0.0003, epsilon=1e-06, rho=0.95,
-                ...                             parameters = linear.parameters())
+                >>> adadelta = paddle.optimizer.Adadelta(
+                ...     learning_rate=0.0003,
+                ...     epsilon=1e-06,
+                ...     rho=0.95,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adadelta.step()
@@ -1843,13 +1850,17 @@ class MultiplicativeDecay(LRScheduler):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # train on default dynamic graph mode
             >>> linear = paddle.nn.Linear(10, 10)
-            >>> scheduler = paddle.optimizer.lr.MultiplicativeDecay(learning_rate=0.5, lr_lambda=lambda x:0.95, verbose=True)
+            >>> scheduler = paddle.optimizer.lr.MultiplicativeDecay(
+            ...     learning_rate=0.5,
+            ...     lr_lambda=lambda x: 0.95,
+            ...     verbose=True,
+            ... )
             >>> sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             >>> for epoch in range(20):
             ...     for batch_id in range(5):
@@ -1859,9 +1870,8 @@ class MultiplicativeDecay(LRScheduler):
             ...         loss.backward()
             ...         sgd.step()
             ...         sgd.clear_gradients()
-            ...         scheduler.step()    # If you update learning rate each step
+            ...         scheduler.step()  # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
     """
 
     lr_lambda: Callable[[int], float]
@@ -2662,12 +2672,15 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         Variable: The auto-increased Variable with data type int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
             >>> global_step = paddle.optimizer.lr.autoincreased_step_counter(
-            ...     counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
+            ...     counter_name='@LR_DECAY_COUNTER@',
+            ...     begin=0,
+            ...     step=1,
+            ... )
     """
     helper = LayerHelper('global_step_counter')
     if counter_name is None:
@@ -2711,7 +2724,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
 
     Noam decay method. The numpy implementation of noam decay as follows.
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import numpy as np
         >>> # set hyper parameters
@@ -2720,9 +2733,11 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         >>> current_steps = 20
         >>> warmup_steps = 200
         >>> # compute
-        >>> lr_value = base_lr * np.power(d_model, -0.5) * np.min([
-        ...                         np.power(current_steps, -0.5),
-        ...                         np.power(warmup_steps, -1.5) * current_steps])
+        >>> lr_value = (
+        ...     base_lr
+        ...     * np.power(d_model, -0.5)
+        ...     * np.min([np.power(current_steps, -0.5), np.power(warmup_steps, -1.5) * current_steps]),
+        ... )
 
     Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
@@ -2737,15 +2752,16 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         The decayed learning rate.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> warmup_steps = 100
             >>> learning_rate = 0.01
             >>> lr = paddle.optimizer.lr.noam_decay(
-            ...                 1/(warmup_steps *(learning_rate ** 2)),
-            ...                 warmup_steps,
-            ...                 learning_rate)
+            ...     1 / (warmup_steps * (learning_rate**2)),
+            ...     warmup_steps,
+            ...     learning_rate,
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2795,7 +2811,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         Variable: The decayed learning rate. The data type is float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2805,7 +2821,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
             ...     learning_rate=base_lr,
             ...     decay_steps=10000,
             ...     decay_rate=0.5,
-            ...     staircase=True
+            ...     staircase=True,
             ... )
     """
     with default_main_program()._lr_schedule_guard():
@@ -2855,7 +2871,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         The decayed learning rate. The data type is float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2865,7 +2881,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
             ...     learning_rate=base_lr,
             ...     decay_steps=10000,
             ...     decay_rate=0.5,
-            ...     staircase=True
+            ...     staircase=True,
             ... )
     """
     with default_main_program()._lr_schedule_guard():
@@ -2914,7 +2930,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         Variable: The decayed learning rate. The data type is float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -2923,7 +2939,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
             ...     learning_rate=base_lr,
             ...     decay_steps=10000,
             ...     decay_rate=0.5,
-            ...     staircase=True
+            ...     staircase=True,
             ... )
     """
     with default_main_program()._lr_schedule_guard():
@@ -2969,7 +2985,7 @@ def polynomial_decay(
         Variable: The decayed learning rate
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> start_lr = 0.01
@@ -2979,7 +2995,7 @@ def polynomial_decay(
             ...     start_lr,
             ...     total_step,
             ...     end_lr,
-            ...     power=1
+            ...     power=1,
             ... )
     """
     with default_main_program()._lr_schedule_guard():
@@ -3044,7 +3060,7 @@ def piecewise_decay(boundaries, values):
         The decayed learning rate.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -3053,7 +3069,7 @@ def piecewise_decay(boundaries, values):
             >>> optimizer = paddle.optimizer.Momentum(
             ...     momentum=0.9,
             ...     learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
-            ...     weight_decay=paddle.regularizer.L2Decay(1e-4)
+            ...     weight_decay=paddle.regularizer.L2Decay(1e-4),
             ... )
     """
     with default_main_program()._lr_schedule_guard():
@@ -3120,7 +3136,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
         Variable: The decayed learning rate.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> base_lr = 0.1
@@ -3181,27 +3197,27 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
             >>> boundaries = [100, 200]
             >>> lr_steps = [0.1, 0.01, 0.001]
-            >>> learning_rate = paddle.optimizer.lr.piecewise_decay(boundaries, lr_steps) # case1, 1D-Tensor
+            >>> learning_rate = paddle.optimizer.lr.piecewise_decay(boundaries, lr_steps)  # case1, 1D-Tensor
             >>> # learning_rate = 0.1  # case2, single-value
             >>> warmup_steps = 50
             >>> start_lr = 0.1
-            >>> end_lr = 1. / 3.
+            >>> end_lr = 1.0 / 3.0
             >>> decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
             ...     learning_rate,
             ...     warmup_steps,
             ...     start_lr,
-            ...     end_lr
+            ...     end_lr,
             ... )
             >>> place = paddle.CPUPlace()
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
-            >>> out, = exe.run(fetch_list=[decayed_lr.name])
+            >>> (out,) = exe.run(fetch_list=[decayed_lr.name])
             >>> print(out)
             [0.1]
     """

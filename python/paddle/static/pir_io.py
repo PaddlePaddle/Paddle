@@ -244,7 +244,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
         Program: Normalized/Optimized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -814,7 +814,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
         we can get inference results.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -837,12 +837,13 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
             >>> path_prefix = "./infer_model"
             >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
-            >>> [inference_program, feed_target_names, fetch_targets] = (
-            ...     paddle.static.load_inference_model(path_prefix, exe))
+            >>> [inference_program, feed_target_names, fetch_targets] = paddle.static.load_inference_model(path_prefix, exe)
             >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
-            >>> results = exe.run(inference_program,
-            ...               feed={feed_target_names[0]: tensor_img},
-            ...               fetch_list=fetch_targets)
+            >>> results = exe.run(
+            ...     inference_program,
+            ...     feed={feed_target_names[0]: tensor_img},
+            ...     fetch_list=fetch_targets,
+            ... )
 
             # In this example, the inference program was saved in file
             # "./infer_model.pdmodel" and parameters were saved in file

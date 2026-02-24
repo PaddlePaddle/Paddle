@@ -62,7 +62,3 @@ inline at::Tensor empty_like(const at::Tensor& self,
 }
 
 }  // namespace at
-
-namespace torch {
-using at::empty_like;
-}  // namespace torch

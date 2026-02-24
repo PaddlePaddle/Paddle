@@ -48,7 +48,7 @@ def device_count() -> int:
         This function returns 0 when compiled without CUDA support.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -69,7 +69,7 @@ def get_rng_state(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -96,7 +96,7 @@ def set_rng_state(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # Save RNG state
@@ -125,7 +125,7 @@ def manual_seed(seed: int) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.manual_seed(102)
