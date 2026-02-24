@@ -31,9 +31,31 @@
 #endif
 
 #include <c10/core/Device.h>
+#include <c10/core/List.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/SymIntArrayRef.h>
+#include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/forwards.h"
+#endif
+
+namespace at {
+class Tensor;
+
+// Type aliases for ATen compatibility
+using Scalar = c10::Scalar;
+using TensorOptions = c10::TensorOptions;
+using MemoryFormat = c10::MemoryFormat;
+using IntArrayRef = c10::IntArrayRef;
+using OptionalIntArrayRef = c10::OptionalIntArrayRef;
+using ScalarType = c10::ScalarType;
+}  // namespace at
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
@@ -236,6 +258,163 @@ class Tensor : public TensorBase {
     return *(cpu_tensor.data<T>());
   }
 
+  // Clamp functions
+  at::Tensor clamp(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
+                   const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor& clamp_(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+                     const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor clamp_max(const at::Scalar& max) const;
+  at::Tensor clamp_max(const at::Tensor& max) const;
+  at::Tensor& clamp_max_(const at::Scalar& max) const;
+  at::Tensor& clamp_max_(const at::Tensor& max) const;
+
+  at::Tensor clamp_min(const at::Scalar& min) const;
+  at::Tensor clamp_min(const at::Tensor& min) const;
+  at::Tensor& clamp_min_(const at::Scalar& min) const;
+  at::Tensor& clamp_min_(const at::Tensor& min) const;
+
+  // as_strided: Create a tensor view with custom size, stride, and
+  // storage_offset
+  at::Tensor as_strided(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
+    auto src_impl = tensor_.impl();
+    auto* src_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+    if (!src_tensor) {
+      PD_THROW("as_strided: tensor must be a DenseTensor");
+    }
+    auto new_tensor = std::make_shared<phi::DenseTensor>();
+    new_tensor->ShareDataWith(*src_tensor);
+    std::vector<int64_t> size_vec(size.begin(), size.end());
+    std::vector<int64_t> stride_vec(stride.begin(), stride.end());
+    new_tensor->Resize(common::make_ddim(size_vec));
+    new_tensor->set_strides(common::make_ddim(stride_vec));
+    int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
+    if (offset != 0) {
+      auto meta = phi::DenseTensorMeta(new_tensor->meta());
+      meta.offset = static_cast<size_t>(offset);
+      new_tensor->set_meta(meta);
+    }
+    PaddleTensor result;
+    result.set_impl(new_tensor);
+    return Tensor(result);
+  }
+
+  // as_strided_: Inplace version
+  const at::Tensor& as_strided_(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
+    auto src_impl = tensor_.impl();
+    auto* src_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+    if (!src_tensor) {
+      PD_THROW("as_strided_: tensor must be a DenseTensor");
+    }
+    std::vector<int64_t> size_vec(size.begin(), size.end());
+    std::vector<int64_t> stride_vec(stride.begin(), stride.end());
+    src_tensor->Resize(common::make_ddim(size_vec));
+    src_tensor->set_strides(common::make_ddim(stride_vec));
+    int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
+    if (offset != 0) {
+      auto meta = phi::DenseTensorMeta(src_tensor->meta());
+      meta.offset = static_cast<size_t>(offset);
+      src_tensor->set_meta(meta);
+    }
+    return *this;
+  }
+
+  // as_strided_scatter: Scatter src into a strided view
+  at::Tensor as_strided_scatter(
+      const at::Tensor& src,
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
+    at::Tensor strided_view = as_strided(size, stride, storage_offset);
+    strided_view.copy_(src);
+    return strided_view;
+  }
+
+  // Standard deviation functions
+  Tensor std(int dim) const;
+  Tensor std(bool unbiased = true) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const;
+
+  Tensor tensor_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    } else {
+      result = paddle::experimental::assign(tensor_);
+    }
+    return Tensor(result);
+  }
+
+  Tensor variable_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    } else {
+      result = paddle::experimental::assign(tensor_);
+    }
+    return Tensor(result);
+  }
+
+  // index: Get values at specified tensor indices
+  at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
+
+  // index_put_: Set values at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Tensor& values,
+                         bool accumulate = false) const;
+
+  // index_put_: Set scalar value at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Scalar& v,
+                         bool accumulate = false) const;
+
+  // index_put: Non-inplace version of index_put_
+  at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
+                       const at::Tensor& values,
+                       bool accumulate = false) const;
+
   at::Tensor to(
       at::ScalarType dtype,
       bool non_blocking = false,
@@ -393,7 +572,7 @@ class Tensor : public TensorBase {
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
         const_cast<PaddleTensor&>(tensor_),
-        paddle::experimental::full({}, other, other.dtype()));
+        paddle::experimental::full({}, other, tensor_.dtype()));
     return const_cast<at::Tensor&>(*this);
   }
 
@@ -432,14 +611,7 @@ class Tensor : public TensorBase {
 
   at::Tensor& absolute_() const { return abs_(); }
 
-  Tensor operator[](int64_t index) const {
-    return paddle::experimental::slice(tensor_,
-                                       /*axes=*/{0},
-                                       /*starts=*/{index},
-                                       /*ends=*/{index + 1},
-                                       /*infer_flags=*/{1},
-                                       /*decrease_axis=*/{0});
-  }
+  Tensor operator[](int64_t index) const;
 
 #if defined(PADDLE_WITH_CUDA)
   void record_stream(const cudaStream_t& stream) const {
@@ -577,7 +749,9 @@ class Tensor : public TensorBase {
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
+
 }  // namespace at
+
 namespace torch {
 using at::Tensor;
 }  // namespace torch
