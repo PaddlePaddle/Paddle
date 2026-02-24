@@ -572,7 +572,7 @@ class Tensor : public TensorBase {
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
         const_cast<PaddleTensor&>(tensor_),
-        paddle::experimental::full({}, other, tensor_.dtype()));
+        paddle::experimental::full({}, other, other.dtype()));
     return const_cast<at::Tensor&>(*this);
   }
 
