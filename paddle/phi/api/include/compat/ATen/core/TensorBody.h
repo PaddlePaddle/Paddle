@@ -38,6 +38,10 @@
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
+
+// Stub for DimnameList (not supported in Paddle)
+using DimnameList = c10::ArrayRef<std::string>;
+
 class Tensor : public TensorBase {
  public:
   Tensor() = default;
@@ -642,8 +646,6 @@ class Tensor : public TensorBase {
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
 
-namespace at {
-
 // Implementation of any
 inline Tensor Tensor::any(int64_t dim, bool keepdim) const {
   auto result = paddle::experimental::sum(
@@ -680,10 +682,10 @@ inline std::vector<Tensor> Tensor::chunk(int64_t chunks, int64_t dim) const {
     int64_t current_chunk_size = std::min(chunk_size, remaining);
     auto chunk_tensor = paddle::experimental::slice(
         tensor_,
-        phi::IntArray({dim}),
-        phi::IntArray({i * chunk_size}),
-        phi::IntArray({i * chunk_size + current_chunk_size}),
-        phi::IntArray({1}),
+        {dim},
+        {static_cast<int64_t>(i * chunk_size)},
+        {static_cast<int64_t>(i * chunk_size + current_chunk_size)},
+        {1},
         {});
     result.push_back(Tensor(chunk_tensor));
     remaining -= current_chunk_size;
@@ -701,9 +703,10 @@ inline Tensor Tensor::rename(::std::optional<at::DimnameList>) const {
 inline Tensor Tensor::new_empty(at::IntArrayRef size,
                                 at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
-  auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
+  auto actual_device = options.device_opt().has_value()
+                           ? options.device_opt().value()
+                           : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -718,7 +721,7 @@ inline Tensor Tensor::new_empty(at::IntArrayRef size,
                                 ::std::optional<at::Layout>,
                                 ::std::optional<at::Device> device,
                                 ::std::optional<bool>) const {
-  auto actual_dtype = dtype.has_value() ? dtype.value() : dtype();
+  auto actual_dtype = dtype.has_value() ? dtype.value() : this->dtype();
   auto actual_device = device.has_value() ? device.value() : this->device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
@@ -734,9 +737,10 @@ inline Tensor Tensor::new_full(at::IntArrayRef size,
                                const at::Scalar& fill_value,
                                at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
-  auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
+  auto actual_device = options.device_opt().has_value()
+                           ? options.device_opt().value()
+                           : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -767,9 +771,10 @@ inline Tensor Tensor::new_full(at::IntArrayRef size,
 inline Tensor Tensor::new_zeros(at::IntArrayRef size,
                                 at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
-  auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
+  auto actual_device = options.device_opt().has_value()
+                           ? options.device_opt().value()
+                           : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -799,9 +804,10 @@ inline Tensor Tensor::new_zeros(at::IntArrayRef size,
 inline Tensor Tensor::new_ones(at::IntArrayRef size,
                                at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
-  auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
+  auto actual_device = options.device_opt().has_value()
+                           ? options.device_opt().value()
+                           : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -843,7 +849,7 @@ inline Tensor Tensor::expand(at::IntArrayRef size, bool) const {
   }
 
   std::vector<int64_t> target_size_vec;
-  for (int64_t i = 0; i < size.size(); ++i) {
+  for (size_t i = 0; i < size.size(); ++i) {
     target_size_vec.push_back(size[i]);
   }
 
