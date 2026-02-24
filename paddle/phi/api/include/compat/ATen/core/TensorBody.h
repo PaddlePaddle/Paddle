@@ -38,6 +38,10 @@
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
+
+// Stub for DimnameList (not supported in Paddle)
+using DimnameList = c10::ArrayRef<std::string>;
+
 class Tensor : public TensorBase {
  public:
   Tensor() = default;
@@ -642,8 +646,6 @@ class Tensor : public TensorBase {
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
 
-namespace at {
-
 // Implementation of any
 inline Tensor Tensor::any(int64_t dim, bool keepdim) const {
   auto result = paddle::experimental::sum(
@@ -680,10 +682,10 @@ inline std::vector<Tensor> Tensor::chunk(int64_t chunks, int64_t dim) const {
     int64_t current_chunk_size = std::min(chunk_size, remaining);
     auto chunk_tensor = paddle::experimental::slice(
         tensor_,
-        phi::IntArray({dim}),
-        phi::IntArray({i * chunk_size}),
-        phi::IntArray({i * chunk_size + current_chunk_size}),
-        phi::IntArray({1}),
+        {dim},
+        {static_cast<int64_t>(i * chunk_size)},
+        {static_cast<int64_t>(i * chunk_size + current_chunk_size)},
+        {1},
         {});
     result.push_back(Tensor(chunk_tensor));
     remaining -= current_chunk_size;
@@ -701,9 +703,9 @@ inline Tensor Tensor::rename(::std::optional<at::DimnameList>) const {
 inline Tensor Tensor::new_empty(at::IntArrayRef size,
                                 at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
   auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.device_opt().has_value() ? options.device_opt().value() : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -718,7 +720,7 @@ inline Tensor Tensor::new_empty(at::IntArrayRef size,
                                 ::std::optional<at::Layout>,
                                 ::std::optional<at::Device> device,
                                 ::std::optional<bool>) const {
-  auto actual_dtype = dtype.has_value() ? dtype.value() : dtype();
+  auto actual_dtype = dtype.has_value() ? dtype.value() : this->dtype();
   auto actual_device = device.has_value() ? device.value() : this->device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
@@ -734,9 +736,9 @@ inline Tensor Tensor::new_full(at::IntArrayRef size,
                                const at::Scalar& fill_value,
                                at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
   auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.device_opt().has_value() ? options.device_opt().value() : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -767,9 +769,9 @@ inline Tensor Tensor::new_full(at::IntArrayRef size,
 inline Tensor Tensor::new_zeros(at::IntArrayRef size,
                                 at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
   auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.device_opt().has_value() ? options.device_opt().value() : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -799,9 +801,9 @@ inline Tensor Tensor::new_zeros(at::IntArrayRef size,
 inline Tensor Tensor::new_ones(at::IntArrayRef size,
                                at::TensorOptions options) const {
   auto actual_dtype =
-      options.dtype().has_value() ? options.dtype().value() : dtype();
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
   auto actual_device =
-      options.device().has_value() ? options.device().value() : device();
+      options.device_opt().has_value() ? options.device_opt().value() : device();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
   auto pd_place = actual_device._PD_GetInner();
@@ -836,6 +838,8 @@ inline const Tensor& Tensor::resize_(at::IntArrayRef size,
 }
 
 // Implementation of expand
+// If dimensions are not compatible for expand (i.e., non-1 dims don't match),
+// falls back to tile operation to replicate the tensor, then slices to exact size
 inline Tensor Tensor::expand(at::IntArrayRef size, bool) const {
   std::vector<int64_t> current_size_vec;
   for (int64_t i = 0; i < tensor_.dims().size(); ++i) {
@@ -843,7 +847,7 @@ inline Tensor Tensor::expand(at::IntArrayRef size, bool) const {
   }
 
   std::vector<int64_t> target_size_vec;
-  for (int64_t i = 0; i < size.size(); ++i) {
+  for (size_t i = 0; i < size.size(); ++i) {
     target_size_vec.push_back(size[i]);
   }
 
@@ -853,6 +857,7 @@ inline Tensor Tensor::expand(at::IntArrayRef size, bool) const {
   int64_t start_dim = ndims - current_ndims;
 
   std::vector<int64_t> repeat_vec(ndims, 1);
+  bool need_tile = false;
   for (int64_t i = 0; i < current_ndims; ++i) {
     int64_t target_dim = start_dim + i;
     if (target_dim >= 0 && target_dim < ndims) {
@@ -861,12 +866,52 @@ inline Tensor Tensor::expand(at::IntArrayRef size, bool) const {
       } else if (current_size_vec[i] == 1) {
         repeat_vec[target_dim] = target_size_vec[target_dim];
       } else {
-        PD_CHECK(false, "expand size mismatch");
+        // Cannot expand directly - need to use tile
+        need_tile = true;
+        // Calculate how many times to repeat to cover the target size
+        repeat_vec[target_dim] = (target_size_vec[target_dim] + current_size_vec[i] - 1) / current_size_vec[i];
       }
     }
   }
 
-  auto result = paddle::experimental::tile(tensor_, phi::IntArray(repeat_vec));
+  paddle::Tensor result;
+  if (need_tile) {
+    // Use tile to get at least the target size
+    result = paddle::experimental::tile(tensor_, phi::IntArray(repeat_vec));
+
+    // If tiled result is larger than target, slice to exact size
+    std::vector<int64_t> tiled_size;
+    for (int64_t i = 0; i < result.dims().size(); ++i) {
+      tiled_size.push_back(result.dims()[i]);
+    }
+
+    bool need_slice = false;
+    for (int64_t i = 0; i < ndims; ++i) {
+      if (tiled_size[i] > target_size_vec[i]) {
+        need_slice = true;
+        break;
+      }
+    }
+
+    if (need_slice) {
+      std::vector<int64_t> starts_vec(ndims, 0);
+      std::vector<int64_t> ends_vec = target_size_vec;
+      std::vector<int64_t> axes_vec;
+      for (int64_t i = 0; i < ndims; ++i) {
+        axes_vec.push_back(i);
+      }
+      result = paddle::experimental::slice(
+          result,
+          axes_vec,
+          phi::IntArray(starts_vec),
+          phi::IntArray(ends_vec),
+          {1},
+          {});
+    }
+  } else {
+    result = paddle::experimental::tile(tensor_, phi::IntArray(repeat_vec));
+  }
+
   return Tensor(result);
 }
 

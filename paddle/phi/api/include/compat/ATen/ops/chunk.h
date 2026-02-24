@@ -35,10 +35,10 @@ inline std::vector<Tensor> chunk(const Tensor& self,
     int64_t current_chunk_size = std::min(chunk_size, remaining);
     auto chunk_tensor = paddle::experimental::slice(
         pd_tensor,
-        phi::IntArray({dim}),
-        phi::IntArray({i * chunk_size}),
-        phi::IntArray({i * chunk_size + current_chunk_size}),
-        phi::IntArray({1}),
+        {dim},
+        {i * chunk_size},
+        {i * chunk_size + current_chunk_size},
+        {1},
         {});
     result.push_back(Tensor(chunk_tensor));
     remaining -= current_chunk_size;
