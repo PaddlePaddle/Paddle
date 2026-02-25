@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(use_default_stream);
+COMMON_DECLARE_bool(use_legacy_gemm);
 namespace phi {
 
 namespace internal {
@@ -313,8 +314,12 @@ struct GPUContext::Impl {
 
   void SetCublasWorkspace(blasHandle_t handle) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+    // cublasSetWorkspace requires cuBLAS >= 11.4 (CUDA >= 11.4).
+    // The dynload wrapper does not check for null, so we must verify
+    // the symbol exists before calling to avoid a null-function-pointer
+    // segfault on older CUDA versions.
     InitCublasWorkspace();
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace(
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace_v2(
         handle, cublas_workspace_, cublas_workspace_size_));
 #endif
   }
@@ -474,6 +479,15 @@ struct GPUContext::Impl {
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+      }
+#endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm) {
+        if (blas_handle_) SetCublasWorkspace(blas_handle_);
+        if (blas_tensor_core_handle_)
+          SetCublasWorkspace(blas_tensor_core_handle_);
+        if (blas_tf32_tensor_core_handle_)
+          SetCublasWorkspace(blas_tf32_tensor_core_handle_);
       }
 #endif
     });
@@ -689,6 +703,15 @@ struct GPUContext::Impl {
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
 #endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm) {
+        if (blas_handle_) SetCublasWorkspace(blas_handle_);
+        if (blas_tensor_core_handle_)
+          SetCublasWorkspace(blas_tensor_core_handle_);
+        if (blas_tf32_tensor_core_handle_)
+          SetCublasWorkspace(blas_tf32_tensor_core_handle_);
+      }
+#endif
     });
     if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
@@ -728,6 +751,15 @@ struct GPUContext::Impl {
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+      }
+#endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm) {
+        if (blas_handle_) SetCublasWorkspace(blas_handle_);
+        if (blas_tensor_core_handle_)
+          SetCublasWorkspace(blas_tensor_core_handle_);
+        if (blas_tf32_tensor_core_handle_)
+          SetCublasWorkspace(blas_tf32_tensor_core_handle_);
       }
 #endif
     });

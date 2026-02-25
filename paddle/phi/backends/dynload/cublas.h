@@ -130,7 +130,7 @@ extern void *cublas_dso_handle;
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 #if !defined(_WIN32)
-#define CUBLAS_WORKSPACE_ROUTINE(__macro) __macro(cublasSetWorkspace);
+#define CUBLAS_WORKSPACE_ROUTINE(__macro) __macro(cublasSetWorkspace_v2);
 CUBLAS_WORKSPACE_ROUTINE(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif
 
