@@ -484,7 +484,13 @@ class Tensor : public TensorBase {
       PD_THROW("allclose: unsupported result dtype");
     }
   }
+  at::Tensor abs() const;
 
+  at::Tensor& abs_() const;
+
+  at::Tensor absolute() const { return abs(); }
+
+  at::Tensor& absolute_() const { return abs_(); }
   Tensor operator[](int64_t index) const {
     return paddle::experimental::slice(tensor_,
                                        /*axes=*/{0},
