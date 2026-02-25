@@ -22,7 +22,6 @@
 #include <ATen/ops/empty.h>
 #include <ATen/ops/empty_like.h>
 #include <ATen/ops/expand.h>
-#include <ATen/ops/expand_as.h>
 #include <ATen/ops/flatten.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
