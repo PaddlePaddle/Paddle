@@ -22,7 +22,8 @@ namespace at {
 
 // expand - expands tensor to new size
 // If dimensions are not compatible for expand (i.e., non-1 dims don't match),
-// falls back to tile operation to replicate the tensor, then slices to exact size
+// falls back to tile operation to replicate the tensor, then slices to exact
+// size
 inline Tensor expand(const Tensor& self,
                      at::IntArrayRef size,
                      bool implicit = false) {
@@ -56,7 +57,9 @@ inline Tensor expand(const Tensor& self,
         // Cannot expand directly - need to use tile
         need_tile = true;
         // Calculate how many times to repeat to cover the target size
-        repeat_vec[target_dim] = (target_size_vec[target_dim] + current_size_vec[i] - 1) / current_size_vec[i];
+        repeat_vec[target_dim] =
+            (target_size_vec[target_dim] + current_size_vec[i] - 1) /
+            current_size_vec[i];
       }
     }
   }
@@ -87,13 +90,12 @@ inline Tensor expand(const Tensor& self,
       for (int64_t i = 0; i < ndims; ++i) {
         axes_vec.push_back(i);
       }
-      result = paddle::experimental::slice(
-          result,
-          axes_vec,
-          phi::IntArray(starts_vec),
-          phi::IntArray(ends_vec),
-          {1},
-          {});
+      result = paddle::experimental::slice(result,
+                                           axes_vec,
+                                           phi::IntArray(starts_vec),
+                                           phi::IntArray(ends_vec),
+                                           {1},
+                                           {});
     }
   } else {
     result = paddle::experimental::tile(pd_tensor, phi::IntArray(repeat_vec));
