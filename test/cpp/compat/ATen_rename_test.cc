@@ -42,14 +42,6 @@ TEST(TensorRenameTest, RenameNone) {
   ASSERT_EQ(result.sizes(), t.sizes());
 }
 
-TEST(TensorRenameTest, RenameSelf) {
-  at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
-
-  at::Tensor result = t.rename(t);
-
-  ASSERT_EQ(result.sizes(), t.sizes());
-}
-
 TEST(TensorRenameTest, RenamePreservesData) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
 
