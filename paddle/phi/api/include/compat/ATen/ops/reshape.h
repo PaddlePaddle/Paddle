@@ -41,4 +41,14 @@ inline at::Tensor Tensor::reshape(at::IntArrayRef shape) const {
   return at::reshape(*this, shape);
 }
 
+// resize_ - in-place resize using reshape
+inline const at::Tensor& Tensor::resize_(
+    at::IntArrayRef size,
+    ::std::optional<at::MemoryFormat> memory_format) const {
+  auto result =
+      paddle::experimental::reshape(tensor_, size._PD_ToPaddleIntArray());
+  const_cast<Tensor*>(this)->tensor_ = result;
+  return *this;
+}
+
 }  // namespace at

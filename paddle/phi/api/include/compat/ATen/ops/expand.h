@@ -27,6 +27,15 @@ namespace at {
 inline Tensor expand(const Tensor& self,
                      at::IntArrayRef size,
                      bool implicit = false) {
+  // Paddle does not support the implicit parameter from PyTorch.
+  // implicit=true is used by PyTorch's vmap for internal optimization.
+  if (implicit) {
+    throw std::runtime_error(
+        "expand with implicit=true is not supported in Paddle. "
+        "This parameter is used by PyTorch's vmap and is not implemented in "
+        "Paddle.");
+  }
+
   paddle::Tensor pd_tensor = self._PD_GetInner();
 
   std::vector<int64_t> current_size_vec;
@@ -102,6 +111,25 @@ inline Tensor expand(const Tensor& self,
   }
 
   return Tensor(result);
+}
+
+// expand_as - expands to same size as another tensor
+inline Tensor expand_as(const Tensor& self, const Tensor& other) {
+  return expand(self, other.sizes());
+}
+
+}  // namespace at
+
+namespace at {
+
+// Member function: Tensor::expand
+inline Tensor Tensor::expand(at::IntArrayRef size, bool implicit) const {
+  return at::expand(*this, size, implicit);
+}
+
+// Member function: Tensor::expand_as
+inline Tensor Tensor::expand_as(const Tensor& other) const {
+  return at::expand_as(*this, other);
 }
 
 }  // namespace at
