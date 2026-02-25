@@ -210,8 +210,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
   VLOG(4) << classname << ":"
           << "Construct PyLayerContext";
-  PyObject* backward_function =
-      PyObject_GetAttrString(cls, "_backward_function");
+  static PyObject* kBackwardFunctionAttr =
+      PyUnicode_InternFromString("_backward_function");
+  PyObject* backward_function = PyObject_GetAttr(cls, kBackwardFunctionAttr);
   if (!backward_function) {
     PADDLE_THROW(
         common::errors::InvalidArgument("Get _backward_function failed."));
@@ -263,7 +264,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(obj)->tensor;
     if (!tensor.defined() || !tensor.is_dist_tensor()) return false;
     mesh =
-        &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(tensor.impl())
+        &(std::static_pointer_cast<phi::distributed::DistTensor>(tensor.impl())
               ->dist_attr()
               .process_mesh());
     return true;
@@ -281,16 +282,16 @@ PyObject* pylayer_method_apply(PyObject* cls,
       int64_t len = PyList_Size(obj);
       for (int64_t j = len - 1; j >= 0; --j) {
         PyObject* o = PyList_GetItem(obj, j);
-        mesh_found = TrySetMeshFromTensor(o);
+        mesh_found |= TrySetMeshFromTensor(o);
       }
     } else if (PyTuple_Check(obj)) {
       int64_t len = PyTuple_Size(obj);
       for (int64_t j = len - 1; j >= 0; --j) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        mesh_found = TrySetMeshFromTensor(o);
+        mesh_found |= TrySetMeshFromTensor(o);
       }
     } else {
-      mesh_found = TrySetMeshFromTensor(obj);
+      mesh_found |= TrySetMeshFromTensor(obj);
     }
     if (mesh_found) break;
   }
@@ -397,7 +398,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
       << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
   // call forward
-  auto forward_fn = PyObject_GetAttrString(cls, "forward");
+  static PyObject* kForwardAttr = PyUnicode_InternFromString("forward");
+  auto forward_fn = PyObject_GetAttr(cls, kForwardAttr);
   if (!forward_fn) {
     PADDLE_THROW(
         common::errors::InvalidArgument("Get forward function failed."));
@@ -471,10 +473,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
             if (not_inplace_tensorbases.count(
                     reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
-              PyTuple_SetItem(obj,
-                              j,
-                              new_tensor_with_impl(&(
-                                  reinterpret_cast<TensorObject*>(o)->tensor)));
+              PyList_SetItem(obj,
+                             j,
+                             new_tensor_with_impl(&(
+                                 reinterpret_cast<TensorObject*>(o)->tensor)));
             } else {
               inplace_tensors.insert(
                   &(reinterpret_cast<TensorObject*>(o)->tensor));
