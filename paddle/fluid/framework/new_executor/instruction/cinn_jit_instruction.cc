@@ -260,8 +260,8 @@ class CinnJitInstruction::FnPtrImpl {
 
 CinnJitInstruction::CinnJitInstruction(
     size_t id,
-    const phi::Place& place,
-    ::pir::Operation* op,
+    const Place& place,
+    pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();

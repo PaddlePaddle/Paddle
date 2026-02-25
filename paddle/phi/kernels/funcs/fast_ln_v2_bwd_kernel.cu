@@ -217,8 +217,8 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
         (params.dscale_part != nullptr)
             ? static_cast<compute_t *>(params.dscale_part) + bidm * COLS + tidx
             : nullptr;
-    for (int jt = 0; jt < NUM_RES; jt++) {
-      if (dgamma_part != nullptr) {
+    if (dgamma_part != nullptr) {
+      for (int jt = 0; jt < NUM_RES; jt++) {
         *dgamma_part = cta_dzy_sum[jt];
         dgamma_part += Ktraits::THREADS_PER_CTA;
       }

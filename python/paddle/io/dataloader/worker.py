@@ -102,14 +102,14 @@ def get_worker_info() -> WorkerInfo:
 
     Example:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import math
             >>> import paddle
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class SplitedIterableDataset(IterableDataset): # type: ignore[type-arg]
+            >>> class SplitedIterableDataset(IterableDataset):  # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -120,16 +120,13 @@ def get_worker_info() -> WorkerInfo:
             ...             iter_start = self.start
             ...             iter_end = self.end
             ...         else:
-            ...             per_worker = int(
-            ...                 math.ceil((self.end - self.start) / float(
-            ...                     worker_info.num_workers)))
+            ...             per_worker = int(math.ceil((self.end - self.start) / float(worker_info.num_workers)))
             ...             worker_id = worker_info.id
             ...             iter_start = self.start + worker_id * per_worker
             ...             iter_end = min(iter_start + per_worker, self.end)
             ...
             ...         for i in range(iter_start, iter_end):
             ...             yield np.array([i])
-            ...
             >>> place = paddle.CPUPlace()
             >>> dataset = SplitedIterableDataset(start=2, end=9)
             >>> dataloader = DataLoader(
@@ -137,10 +134,10 @@ def get_worker_info() -> WorkerInfo:
             ...     places=place,
             ...     num_workers=2,
             ...     batch_size=1,
-            ...     drop_last=True)
-            ...
+            ...     drop_last=True,
+            ... )
             >>> for data in dataloader:
-            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
+            ...     print(data)  # doctest: +SKIP("The output depends on the environment.")
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2]])
             Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,

@@ -72,7 +72,7 @@ static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
@@ -376,9 +376,9 @@ void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                               const phi::DataType& dtype,
                               const phi::DataLayout& layout,
                               phi::TensorBase* tensor) {
-  if (phi::DenseTensor::classof(tensor)) {
+  if (DenseTensor::classof(tensor)) {
     FakeInitializeTensor(
-        dev_ctx, place, dtype, layout, dynamic_cast<phi::DenseTensor*>(tensor));
+        dev_ctx, place, dtype, layout, dynamic_cast<DenseTensor*>(tensor));
   } else if (phi::SelectedRows::classof(tensor)) {
     FakeInitializeTensor(dev_ctx,
                          place,

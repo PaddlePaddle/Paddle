@@ -629,7 +629,7 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
   }
 
   const int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  if (axis != common::DDim::kMaxRank) {
+  if (axis != DDim::kMaxRank) {
     const int dim = axis < 0 ? axis + x_dim : axis;
     infer_context->AddEqualCstr(x_shape[dim], symbol::DimExpr{3});
     infer_context->AddEqualCstr(y_shape[dim], symbol::DimExpr{3});

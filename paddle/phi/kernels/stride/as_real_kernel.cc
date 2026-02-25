@@ -34,7 +34,7 @@ void AsRealStridedKernel(const Context& dev_ctx,
     v *= 2;
   }
   out_stride_v.push_back(1);
-  out->set_strides(common::make_ddim(out_stride_v));
+  out->set_strides(make_ddim(out_stride_v));
 
   if (x.dtype() == DataType::COMPLEX64) {
     out->set_type(DataType::FLOAT32);

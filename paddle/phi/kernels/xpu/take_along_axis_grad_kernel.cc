@@ -50,7 +50,9 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                         x_grad->numel(),
                         XPUType(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-
+  if (out_grad.numel() == 0 || index.numel() == 0) {
+    return;
+  }
   auto x_shape = vectorize<int64_t>(x.dims());
   auto out_grad_shape = vectorize<int64_t>(out_grad.dims());
   auto index_shape = vectorize<int64_t>(index.dims());

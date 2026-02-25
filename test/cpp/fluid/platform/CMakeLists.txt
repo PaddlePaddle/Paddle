@@ -28,7 +28,7 @@ cc_test(
 cc_test(
   init_test
   SRCS init_test.cc
-  DEPS device_context)
+  DEPS phi)
 
 if(WITH_GPU)
   nv_test(
@@ -38,11 +38,11 @@ if(WITH_GPU)
   nv_test(
     device_context_test
     SRCS device_context_test.cu
-    DEPS device_context phi common)
+    DEPS phi common)
   nv_test(
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
-    DEPS device_context phi common)
+    DEPS phi common)
 endif()
 
 if(WITH_ROCM)
@@ -53,7 +53,7 @@ if(WITH_ROCM)
   hip_test(
     device_context_test
     SRCS device_context_test.cu
-    DEPS device_context phi common)
+    DEPS phi common)
 endif()
 
 cc_test(

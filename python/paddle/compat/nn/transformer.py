@@ -65,7 +65,7 @@ class MultiheadAttention(nn.Layer):
         dtype (DTypeLike|None, optional): The data type of the parameters. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.compat import nn

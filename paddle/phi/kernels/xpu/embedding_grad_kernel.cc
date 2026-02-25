@@ -60,6 +60,9 @@ void EmbeddingGradKernel(const Context& dev_ctx,
   int64_t ym = ids_numel;
   int64_t n = d_table_t->dims()[1];
 
+  if (xm == 0 || ym == 0 || n == 0) {
+    return;
+  }
   int r = xpu::embedding_grad<XPUType, int64_t>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(d_output_data),

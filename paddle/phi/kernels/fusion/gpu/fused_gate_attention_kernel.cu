@@ -227,12 +227,12 @@ void FusedGateAttentionOpKernel(const Context &dev_ctx,
         dev_ctx, config, query, qkv_out, qkv_weight_in.get());
 
     if (config.CanUseFlashAttn()) {
-      qkv_transpose_out->Resize(common::make_ddim({3,
-                                                   config.batch_size,
-                                                   config.seq_len_m,
-                                                   config.seq_len_r,
-                                                   config.num_heads,
-                                                   config.head_dim}));
+      qkv_transpose_out->Resize(make_ddim({3,
+                                           config.batch_size,
+                                           config.seq_len_m,
+                                           config.seq_len_r,
+                                           config.num_heads,
+                                           config.head_dim}));
     }
     funcs::AllocWithDebugInfo<T>(
         dev_ctx, "qkv_transpose_out", qkv_transpose_out);

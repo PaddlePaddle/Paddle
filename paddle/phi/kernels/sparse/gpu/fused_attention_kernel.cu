@@ -213,8 +213,7 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
       q_dim[1],
       batch_nnz);
 
-  softmax->set_dims(
-      common::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
+  softmax->set_dims(make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
 #else
   PADDLE_THROW(common::errors::Unimplemented(

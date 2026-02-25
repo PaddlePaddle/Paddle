@@ -55,7 +55,7 @@ void SolveLinearSystemGPU(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
 template <>
 void SolveLinearSystemGPU<phi::dtype::complex<float>>(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const phi::dtype::complex<float>*
         matrix_data,  // device ptr, row-major, size batch*order*order
     const phi::dtype::complex<float>*
@@ -230,7 +230,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
 
 template <>
 void SolveLinearSystemGPU<phi::dtype::complex<double>>(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const phi::dtype::complex<double>*
         matrix_data,  // device ptr, row-major, size batch*order*order
     const phi::dtype::complex<double>*
@@ -413,7 +413,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
 #ifdef PADDLE_WITH_HIP
 template <>
 void SolveLinearSystemGPU<phi::dtype::complex<float>>(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const phi::dtype::complex<float>*
         matrix_data,  // device ptr, row-major, size batch*order*order
     const phi::dtype::complex<float>*
@@ -591,7 +591,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
 
 template <>
 void SolveLinearSystemGPU<phi::dtype::complex<double>>(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const phi::dtype::complex<double>*
         matrix_data,  // device ptr, row-major, size batch*order*order
     const phi::dtype::complex<double>*

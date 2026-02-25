@@ -60,7 +60,7 @@ static DDim BroadCastInferShape(const DDim x_dims,
                                   max_dim,
                                   axis);
 
-    return common::make_ddim(out_dims_array);
+    return make_ddim(out_dims_array);
   }
   return x_dims;
 }

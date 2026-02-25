@@ -327,53 +327,21 @@ void FusedFeedForwardGradKernel(const Context& dev_ctx,
   if (d_x->numel() == 0) {
     // for 0-size Tensor init the grad tensor to 0
     if (d_ln1_scale)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln1_scale->dims())),
-          0,
-          d_ln1_scale);
+      Full<U, Context>(dev_ctx, d_ln1_scale->dims(), 0, d_ln1_scale);
     if (d_ln1_bias)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln1_bias->dims())),
-          0,
-          d_ln1_bias);
+      Full<U, Context>(dev_ctx, d_ln1_bias->dims(), 0, d_ln1_bias);
     if (d_ln2_scale)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln2_scale->dims())),
-          0,
-          d_ln2_scale);
+      Full<U, Context>(dev_ctx, d_ln2_scale->dims(), 0, d_ln2_scale);
     if (d_ln2_bias)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln2_bias->dims())),
-          0,
-          d_ln2_bias);
+      Full<U, Context>(dev_ctx, d_ln2_bias->dims(), 0, d_ln2_bias);
     if (d_linear1_bias)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear1_bias->dims())),
-          0,
-          d_linear1_bias);
+      Full<T, Context>(dev_ctx, d_linear1_bias->dims(), 0, d_linear1_bias);
     if (d_linear2_bias)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear2_bias->dims())),
-          0,
-          d_linear2_bias);
+      Full<T, Context>(dev_ctx, d_linear2_bias->dims(), 0, d_linear2_bias);
     if (d_linear1_weight)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear1_weight->dims())),
-          0,
-          d_linear1_weight);
+      Full<T, Context>(dev_ctx, d_linear1_weight->dims(), 0, d_linear1_weight);
     if (d_linear2_weight)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear2_weight->dims())),
-          0,
-          d_linear2_weight);
+      Full<T, Context>(dev_ctx, d_linear2_weight->dims(), 0, d_linear2_weight);
 
     return;
   }

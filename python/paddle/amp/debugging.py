@@ -91,7 +91,7 @@ def check_layer_numerics(
         None.
 
     Example:
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> class MyLayer(paddle.nn.Layer):
@@ -99,13 +99,13 @@ def check_layer_numerics(
             ...         super().__init__()
             ...         self._w = self.create_parameter([2, 3], dtype=dtype)
             ...         self._b = self.create_parameter([2, 3], dtype=dtype)
+            ...
             ...     @paddle.amp.debugging.check_layer_numerics
             ...     def forward(self, x):
             ...         # return 1/x * self._w + self._b   open it you will see the error log
             ...         return x @ self._w + self._b
-            ...
             >>> dtype = 'float32'
-            >>> x = paddle.rand([10, 2, 2], dtype=dtype) # type: ignore[arg-type]
+            >>> x = paddle.rand([10, 2, 2], dtype=dtype)  # type: ignore[call-overload]
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)
@@ -191,11 +191,13 @@ class TensorCheckerConfig:
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(
+            ...     enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF
+            ... )
             >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
             >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
@@ -381,12 +383,13 @@ def check_numerics(
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(
-            ...     enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            ...     enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF
+            ... )
 
             >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32')
             >>> y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
@@ -486,7 +489,7 @@ def enable_operator_stats_collection() -> None:
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -525,7 +528,7 @@ def disable_operator_stats_collection() -> None:
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -565,7 +568,7 @@ def collect_operator_stats() -> Generator[None, None, None]:
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -610,7 +613,7 @@ def compare_accuracy(
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.base import core
@@ -618,26 +621,26 @@ def compare_accuracy(
             ...     import xlsxwriter as xlw
             ... except ImportError:
             ...     import subprocess
+            ...
             ...     subprocess.check_call(
-            ...         ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
+            ...         ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9'],
             ...     )
             ...     import xlsxwriter as xlw
+            ...
             ...     if core.is_compiled_with_cuda():
-            ...         paddle.set_flags(
-            ...             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-            ...         )
+            ...         paddle.set_flags({"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3})
             ...         path = "workerlog_log_dir"
             ...         paddle.base.core.set_nan_inf_debug_path(path)
-            ...         x = paddle.to_tensor(
-            ...             [2, 3, 4, 0], dtype="float32"
-            ...         )
-            ...         y = paddle.to_tensor(
-            ...             [1, 5, 2, 0], dtype="float32"
-            ...         )
+            ...         x = paddle.to_tensor([2, 3, 4, 0], dtype="float32")
+            ...         y = paddle.to_tensor([1, 5, 2, 0], dtype="float32")
             ...         z1 = x + y
             ...         out_excel = "compare_accuracy_out_excel.csv"
             ...         paddle.amp.debugging.compare_accuracy(
-            ...             path, path, out_excel, loss_scale=1, dump_all_tensors=False
+            ...             path,
+            ...             path,
+            ...             out_excel,
+            ...             loss_scale=1,
+            ...             dump_all_tensors=False,
             ...         )
     """
     assert dump_all_tensors is False, "It is currently not supported."
@@ -663,11 +666,13 @@ def enable_tensor_checker(checker_config: TensorCheckerConfig) -> None:
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(
+            ...     enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF
+            ... )
             >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
             >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
@@ -675,7 +680,7 @@ def enable_tensor_checker(checker_config: TensorCheckerConfig) -> None:
             >>> res = paddle.pow(x, y)
             >>> paddle.autograd.backward(res, retain_graph=True)
             >>> paddle.amp.debugging.disable_tensor_checker()
-            >>> #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            >>> # [PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
             >>> # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
             >>> # Traceback (most recent call last):
@@ -701,11 +706,13 @@ def disable_tensor_checker() -> None:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(
+            ...     enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF
+            ... )
             >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
             >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)

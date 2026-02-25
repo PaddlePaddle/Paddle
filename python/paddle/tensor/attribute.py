@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import param_one_alias
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
@@ -145,7 +145,7 @@ def shape(input: Tensor) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def is_complex(x: Tensor) -> bool:
     """Return whether x is a tensor of complex data type(complex64 or complex128).
 

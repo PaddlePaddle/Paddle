@@ -88,14 +88,13 @@ def cache(reader: _Reader[_T]) -> _Reader[_T]:
         generator: a decorated reader object which yields data from cached memory.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> def reader():
             ...     for i in range(3):
             ...         yield i
-            ...
             >>> # All data is cached into memory
             >>> cached_reader = paddle.base.io.cache(reader)
 
@@ -178,7 +177,7 @@ def map_readers(func, *readers):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.reader
             >>> d = {"h": 0, "i": 1}
@@ -214,7 +213,7 @@ def shuffle(reader: _Reader[_T], buf_size: int) -> _Reader[_T]:
         callable: a decorated reader.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('outputs are 0~4 unordered arrangement')
             >>> def reader():
@@ -268,7 +267,7 @@ def chain(*readers: _Reader[_T]) -> _Reader[_T]:
         callable: the new chained data reader.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -276,8 +275,8 @@ def chain(*readers: _Reader[_T]) -> _Reader[_T]:
             ...     def reader():
             ...         for i in range(start, start + 3):
             ...             yield [i, i, i]
-            ...     return reader
             ...
+            ...     return reader
             >>> c = paddle.reader.chain(reader_creator_3(0), reader_creator_3(10), reader_creator_3(20))
             >>> for e in c():
             ...     print(e)
@@ -329,12 +328,13 @@ def compose(
         the new data reader (Reader).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> def reader_creator_10(dur):
             ...     def reader():
             ...         for i in range(10):
             ...             yield i
+            ...
             ...     return reader
             >>> reader = paddle.reader.decorator.compose(reader_creator_10(0), reader_creator_10(0))
     """
@@ -382,14 +382,13 @@ def buffered(reader: _Reader[_T], size: int) -> _Reader[_T]:
         generator: the buffered data reader.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> def reader():
             ...     for i in range(3):
             ...         yield i
-            ...
             >>> # Create a buffered reader, and the buffer size is 2.
             >>> buffered_reader = paddle.reader.decorator.buffered(reader, 2)
 
@@ -442,7 +441,7 @@ def firstn(reader: _Reader[_T], n: int) -> _Reader[_T]:
         callable: the decorated reader.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> def reader():
             ...     for i in range(100):
@@ -606,7 +605,7 @@ def multiprocess_reader(
 
     Example:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -618,16 +617,14 @@ def multiprocess_reader(
             ...         np.savez(f, a=np.array([1, 2]), b=np.array([3, 4]), c=np.array([5, 6]), d=np.array([7, 8]))
             ...     with open(sample_files[1], 'wb') as f:
             ...         np.savez(f, a=np.array([9, 10]), b=np.array([11, 12]), c=np.array([13, 14]))
-            ...
-            ...
             >>> def generate_reader(file_name):
             ...     # load data file
             ...     def _impl():
             ...         data = np.load(file_name)
             ...         for item in sorted(data.files):
-            ...             yield data[item],
-            ...     return _impl
+            ...             yield (data[item],)
             ...
+            ...     return _impl
             >>> if __name__ == '__main__':
             ...     # generate sample input files
             ...     fake_input_files()
@@ -643,7 +640,8 @@ def multiprocess_reader(
             ...         reader = base.io.PyReader(feed_list=[image], capacity=2)
             ...
             ...         decorated_reader = paddle.reader.multiprocess_reader(
-            ...             [generate_reader(sample_files[0]), generate_reader(sample_files[1])], False)
+            ...             [generate_reader(sample_files[0]), generate_reader(sample_files[1])], False
+            ...         )
             ...
             ...         reader.decorate_sample_generator(decorated_reader, batch_size=2, places=[place])
             ...

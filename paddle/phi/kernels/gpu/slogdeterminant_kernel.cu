@@ -228,7 +228,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
     if (size_0) {
       tmp_dim_vec.insert(tmp_dim_vec.begin(),
                          2);  // make the output dims as same as numpy
-      out->Resize(common::make_ddim(tmp_dim_vec));
+      out->Resize(make_ddim(tmp_dim_vec));
       dev_ctx.template Alloc<T>(out);
       return;
     }
@@ -254,7 +254,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   }
   output_dim_vec.insert(output_dim_vec.begin(),
                         2);  // make the output dims as same as numpy
-  auto output_dims = common::make_ddim(output_dim_vec);
+  auto output_dims = make_ddim(output_dim_vec);
   out->Resize(output_dims);
   VLOG(2) << "output dim:" << out->dims();
 }
@@ -385,7 +385,7 @@ struct SlogDeterminantV2Functor {
     }
     phi::TensorFromVector(sign_vec, dev_ctx, sign);
     phi::TensorFromVector(log_vec, dev_ctx, logdet);
-    if (out_dims == common::make_ddim({})) {
+    if (out_dims == make_ddim({})) {
       // TensorFromVector Converting inputTensor dimensions from () (scalar) to
       // (1,)
       sign->Resize(out_dims);
@@ -544,7 +544,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     }
     phi::TensorFromVector(sign_vec, dev_ctx, sign);
     phi::TensorFromVector(log_vec, dev_ctx, logdet);
-    if (out_dims == common::make_ddim({})) {
+    if (out_dims == make_ddim({})) {
       // TensorFromVector Converting inputTensor dimensions from () (scalar) to
       // (1,)
       sign->Resize(out_dims);

@@ -407,7 +407,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     during inference.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # Given codes in ./customized_quanter.py
             >>> class CustomizedQuantedLayer(ConvertibleQuantedLayer):

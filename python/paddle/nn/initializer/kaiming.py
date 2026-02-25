@@ -309,7 +309,7 @@ class KaimingNormal(MSRAInitializer):
         It is recommended to set fan_in to None for most cases.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -363,7 +363,7 @@ class KaimingUniform(MSRAInitializer):
         It is recommended to set fan_in to None for most cases.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn

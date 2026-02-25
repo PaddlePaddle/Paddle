@@ -23,7 +23,7 @@ void AtanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  if (x.numel() == 0) return;
   const T* x_ptr = x.data<T>();
   T* out_ptr = dev_ctx.template Alloc<T>(out);
 

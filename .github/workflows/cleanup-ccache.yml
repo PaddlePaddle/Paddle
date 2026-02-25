@@ -20,6 +20,7 @@ defaults:
 jobs:
   cleanup-ccache:
     name: Cleanup L2 ccache
+    if: github.repository == 'PaddlePaddle/Paddle'
     runs-on:
       group: GZ_BD-CPU
 
@@ -55,7 +56,7 @@ jobs:
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
-      - name: Cleanup L2 ccache inside container
+      - name: Cleanup L2 ccache in CFS
         run: |
           docker exec -t ${container_name} bash -c '
             CFS_CCACHE_DIR="${CCACHE_SECONDARY_STORAGE#file://}"

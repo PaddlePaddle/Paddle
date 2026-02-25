@@ -181,7 +181,7 @@ class Callback:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -377,8 +377,9 @@ class ProgBarLogger(Callback):
             Default: 2.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(90)
             >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
@@ -387,23 +388,34 @@ class ProgBarLogger(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ],
+            ... )
             >>> train_dataset = MNIST(mode='train', transform=transform)
 
             >>> lenet = paddle.vision.models.LeNet()
-            >>> model = paddle.Model(lenet,
-            ...     inputs, labels)
+            >>> model = paddle.Model(
+            ...     lenet,
+            ...     inputs,
+            ...     labels,
+            ... )
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> callback = paddle.callbacks.ProgBarLogger(log_freq=10)
-            >>> model.fit(train_dataset, batch_size=64, callbacks=callback)
+            >>> model.fit(
+            ...     train_dataset,
+            ...     batch_size=64,
+            ...     callbacks=callback,
+            ... )
     """
 
     epochs: int | None
@@ -1000,7 +1012,7 @@ class VisualDL(Callback):
         log_dir (str): The directory to save visualdl log file.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.vision.transforms as T
@@ -1009,10 +1021,12 @@ class VisualDL(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ]
+            ... )
             >>> train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             >>> eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
@@ -1020,9 +1034,11 @@ class VisualDL(Callback):
             >>> model = paddle.Model(net, inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> ## uncomment following lines to fit model with visualdl callback function
             >>> # callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
@@ -1133,7 +1149,7 @@ class WandbCallback(Callback):
         job_type(str|None, optional): the type of run, for grouping runs together. Default: None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.vision.transforms as T
@@ -1142,10 +1158,12 @@ class WandbCallback(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ]
+            ... )
             >>> train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             >>> eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
@@ -1153,9 +1171,11 @@ class WandbCallback(Callback):
             >>> model = paddle.Model(net, inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> ## uncomment following lines to fit model with wandb callback function
             >>> # callback = paddle.callbacks.WandbCallback(project='paddle_mnist')
@@ -1318,8 +1338,9 @@ class ReduceLROnPlateau(Callback):
         min_lr(float, optional): lower bound on the learning rate. Default: 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(120)
             >>> import paddle
             >>> from paddle import Model
             >>> from paddle.static import InputSpec
@@ -1330,27 +1351,33 @@ class ReduceLROnPlateau(Callback):
             >>> import paddle.vision.transforms as T
             >>> sample_num = 200
             >>> transform = T.Compose(
-            ...      [T.Transpose(), T.Normalize([127.5], [127.5])])
+            ...     [T.Transpose(), T.Normalize([127.5], [127.5])],
+            ... )
             >>> train_dataset = MNIST(mode='train', transform=transform)
             >>> val_dataset = MNIST(mode='test', transform=transform)
             >>> net = LeNet()
             >>> optim = paddle.optimizer.Adam(
-            ...     learning_rate=0.001, parameters=net.parameters())
+            ...     learning_rate=0.001,
+            ...     parameters=net.parameters(),
+            ... )
             >>> inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
             >>> model = Model(net, inputs=inputs, labels=labels)
             >>> model.prepare(
             ...     optim,
             ...     loss=CrossEntropyLoss(),
-            ...     metrics=[Accuracy()])
-            >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
-            >>> model.fit(train_dataset,
-            ...             val_dataset,
-            ...             batch_size=64,
-            ...             log_freq=200,
-            ...             save_freq=10,
-            ...             epochs=20,
-            ...             callbacks=[callbacks])
+            ...     metrics=[Accuracy()],
+            ... )
+            >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=2, verbose=1)
+            >>> model.fit(
+            ...     train_dataset,
+            ...     val_dataset,
+            ...     batch_size=64,
+            ...     log_freq=200,
+            ...     save_freq=10,
+            ...     epochs=4,
+            ...     callbacks=[callbacks],
+            ... )
 
     """
 

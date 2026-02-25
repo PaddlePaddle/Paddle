@@ -581,12 +581,11 @@ void FasterTokenizerKernel(const Context& dev_ctx,
     }
   }
 
-  input_ids->Resize(
-      common::make_ddim({static_cast<int64_t>(batch_size),
-                         static_cast<int64_t>(batch_max_seq_len)}));
+  input_ids->Resize(make_ddim({static_cast<int64_t>(batch_size),
+                               static_cast<int64_t>(batch_max_seq_len)}));
   auto* input_ids_data = dev_ctx.template Alloc<T>(input_ids);
-  seg_ids->Resize(common::make_ddim({static_cast<int64_t>(batch_size),
-                                     static_cast<int64_t>(batch_max_seq_len)}));
+  seg_ids->Resize(make_ddim({static_cast<int64_t>(batch_size),
+                             static_cast<int64_t>(batch_max_seq_len)}));
   auto* seg_ids_data = dev_ctx.template Alloc<T>(seg_ids);
 
   auto pad_token_id = tokenizer.GetPadTokenID();

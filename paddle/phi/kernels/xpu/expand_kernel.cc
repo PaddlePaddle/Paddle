@@ -91,7 +91,7 @@ void ExpandKernel(const Context& dev_ctx,
           shape_size,
           rank));
 
-  DDim out_dims = common::make_ddim(final_expand_shape);
+  DDim out_dims = make_ddim(final_expand_shape);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
   if (has_zero_dim || numel == 0) {
