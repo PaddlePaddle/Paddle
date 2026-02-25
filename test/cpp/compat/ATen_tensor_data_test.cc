@@ -111,3 +111,78 @@ TEST(TensorItemTest, ItemInt16) {
   at::Scalar s = t.item();
   ASSERT_EQ(s.to<int16_t>(), 300);
 }
+
+TEST(TensorItemTest, ItemFloat16) {
+  at::Tensor t = at::full({1}, 1.5f, at::kHalf);
+  at::Scalar s = t.item();
+  ASSERT_NEAR(s.to<float>(), 1.5f, 1e-3);
+}
+
+TEST(TensorItemTest, ItemBFloat16) {
+  at::Tensor t = at::full({1}, 2.5f, at::kBFloat16);
+  at::Scalar s = t.item();
+  ASSERT_NEAR(s.to<float>(), 2.5f, 1e-2);
+}
+
+// ======================= Additional tensor_data edge cases
+// =======================
+
+TEST(TensorDataTest, TensorDataUninitialized) {
+  // Test tensor_data on uninitialized tensor
+  at::Tensor t;
+  at::Tensor td = t.tensor_data();
+  ASSERT_FALSE(td.defined());
+}
+
+TEST(TensorDataTest, VariableDataUninitialized) {
+  // Test variable_data on uninitialized tensor
+  at::Tensor t;
+  at::Tensor vd = t.variable_data();
+  ASSERT_FALSE(vd.defined());
+}
+
+TEST(TensorDataTest, TensorDataNonContiguous) {
+  // Test tensor_data on non-contiguous tensor
+  at::Tensor t = at::arange(12, at::kFloat).reshape({3, 4});
+  at::Tensor t_transposed = t.transpose(0, 1);
+  at::Tensor td = t_transposed.tensor_data();
+
+  ASSERT_EQ(td.sizes()[0], 4);
+  ASSERT_EQ(td.sizes()[1], 3);
+}
+
+// ======================== data_ptr tests ========================
+
+TEST(TensorDataPtrTest, DataPtrBasic) {
+  at::Tensor t = at::arange(6, at::kFloat);
+  void* ptr = t.data_ptr();
+  ASSERT_NE(ptr, nullptr);
+}
+
+TEST(TensorDataPtrTest, DataPtrTyped) {
+  at::Tensor t = at::arange(6, at::kFloat);
+  float* ptr = t.data_ptr<float>();
+  ASSERT_NE(ptr, nullptr);
+  ASSERT_FLOAT_EQ(ptr[0], 0.0f);
+}
+
+TEST(TensorDataPtrTest, DataPtrInt) {
+  at::Tensor t = at::arange(6, at::kInt);
+  int* ptr = t.data_ptr<int>();
+  ASSERT_NE(ptr, nullptr);
+  ASSERT_EQ(ptr[0], 0);
+}
+
+TEST(TensorDataPtrTest, DataPtrLong) {
+  at::Tensor t = at::arange(6, at::kLong);
+  int64_t* ptr = t.data_ptr<int64_t>();
+  ASSERT_NE(ptr, nullptr);
+  ASSERT_EQ(ptr[0], 0);
+}
+
+TEST(TensorDataPtrTest, DataPtrDouble) {
+  at::Tensor t = at::full({1}, 3.14159, at::kDouble);
+  double* ptr = t.data_ptr<double>();
+  ASSERT_NE(ptr);
+  ASSERT_NEAR(ptr[0], 3.14159, 1e-5);
+}

@@ -113,3 +113,75 @@ TEST(TensorVarTest, VarSingleDim) {
 
   ASSERT_EQ(result.numel(), 3);
 }
+
+// ======================= Additional std edge case tests
+// ========================
+
+TEST(TensorStdTest, StdWithKeepdim) {
+  at::Tensor t = at::arange(1, 7, at::kFloat).reshape({2, 3});
+  at::Tensor result =
+      t.std(at::OptionalIntArrayRef({1}), /*unbiased=*/true, /*keepdim=*/true);
+
+  // keepdim should preserve dimension
+  ASSERT_EQ(result.sizes().size(), 2);
+  ASSERT_EQ(result.size(0), 2);
+  ASSERT_EQ(result.size(1), 1);
+}
+
+TEST(TensorStdTest, StdWithMultipleDims) {
+  at::Tensor t = at::arange(1, 13, at::kFloat).reshape({2, 2, 3});
+  at::Tensor result = t.std(
+      at::OptionalIntArrayRef({0, 2}), /*unbiased=*/true, /*keepdim=*/false);
+
+  ASSERT_EQ(result.numel(), 2);
+}
+
+TEST(TensorStdTest, StdWithCorrectionValue) {
+  at::Tensor t = at::arange(1, 7, at::kFloat);
+  // Test with custom correction value (ddof)
+  at::Tensor result = t.std(
+      at::OptionalIntArrayRef({}), ::std::optional<at::Scalar>(2.0), false);
+
+  ASSERT_EQ(result.numel(), 1);
+}
+
+TEST(TensorStdTest, StdNegativeDim) {
+  at::Tensor t = at::arange(1, 7, at::kFloat).reshape({2, 3});
+  // Test with negative dimension (-1 means last dimension)
+  at::Tensor result = t.std(-1);
+
+  ASSERT_EQ(result.numel(), 2);
+}
+
+TEST(TensorVarTest, VarWithKeepdim) {
+  at::Tensor t = at::arange(1, 7, at::kFloat).reshape({2, 3});
+  at::Tensor result =
+      t.var(at::OptionalIntArrayRef({1}), /*unbiased=*/true, /*keepdim=*/true);
+
+  ASSERT_EQ(result.sizes().size(), 2);
+  ASSERT_EQ(result.size(0), 2);
+  ASSERT_EQ(result.size(1), 1);
+}
+
+TEST(TensorVarTest, VarWithMultipleDims) {
+  at::Tensor t = at::arange(1, 13, at::kFloat).reshape({2, 2, 3});
+  at::Tensor result = t.var(
+      at::OptionalIntArrayRef({0, 2}), /*unbiased=*/true, /*keepdim=*/false);
+
+  ASSERT_EQ(result.numel(), 2);
+}
+
+TEST(TensorVarTest, VarWithCorrectionValue) {
+  at::Tensor t = at::arange(1, 7, at::kFloat);
+  at::Tensor result = t.var(
+      at::OptionalIntArrayRef({}), ::std::optional<at::Scalar>(2.0), false);
+
+  ASSERT_EQ(result.numel(), 1);
+}
+
+TEST(TensorVarTest, VarNegativeDim) {
+  at::Tensor t = at::arange(1, 7, at::kFloat).reshape({2, 3});
+  at::Tensor result = t.var(-1);
+
+  ASSERT_EQ(result.numel(), 2);
+}

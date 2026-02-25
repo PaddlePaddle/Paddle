@@ -120,3 +120,112 @@ TEST(TensorIndexPutTest, IndexPutNonInplace) {
   ASSERT_FLOAT_EQ(rdata[1], 42.0f);
   ASSERT_FLOAT_EQ(rdata[3], 42.0f);
 }
+
+// ======================= Additional index edge case tests
+// =======================
+
+TEST(TensorIndexTest, IndexWithEmptyList) {
+  // Test index with empty indices list (should return self)
+  at::Tensor t = at::arange(5, at::kFloat);
+  c10::List<::std::optional<at::Tensor>> indices;
+
+  at::Tensor result = t.index(indices);
+  ASSERT_EQ(result.numel(), 5);
+}
+
+TEST(TensorIndexTest, IndexWithMultipleIndices) {
+  // Test index with multiple indices (2D indexing)
+  at::Tensor t = at::arange(9, at::kFloat).reshape({3, 3});
+
+  at::Tensor idx0 = at::empty({2}, at::kLong);
+  int64_t* idx0_data = idx0.data_ptr<int64_t>();
+  idx0_data[0] = 0;
+  idx0_data[1] = 1;
+
+  at::Tensor idx1 = at::empty({2}, at::kLong);
+  int64_t* idx1_data = idx1.data_ptr<int64_t>();
+  idx1_data[0] = 0;
+  idx1_data[1] = 2;
+
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(idx0);
+  indices.push_back(idx1);
+
+  at::Tensor result = t.index(indices);
+  ASSERT_EQ(result.numel(), 2);
+}
+
+TEST(TensorIndexTest, IndexWithOptionalNone) {
+  // Test index with optional None in indices
+  at::Tensor t = at::arange(9, at::kFloat).reshape({3, 3});
+
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 0;
+  idx.data_ptr<int64_t>()[1] = 2;
+
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(::std::nullopt);
+  indices.push_back(idx);
+
+  at::Tensor result = t.index(indices);
+  ASSERT_EQ(result.numel(), 2);
+}
+
+TEST(TensorIndexPutTest, IndexPutAccumulate) {
+  // Test index_put_ with accumulate=true
+  at::Tensor t = at::zeros({5}, at::kFloat);
+
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 1;
+  idx.data_ptr<int64_t>()[1] = 1;
+
+  at::Tensor values = at::full({2}, 5.0f, at::kFloat);
+
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(idx);
+
+  t.index_put_(indices, values, true);  // accumulate=true
+
+  float* data = t.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 0.0f);
+  ASSERT_FLOAT_EQ(data[1], 10.0f);  // 5 + 5 (accumulated)
+  ASSERT_FLOAT_EQ(data[2], 0.0f);
+}
+
+TEST(TensorIndexPutTest, IndexPutWith2D) {
+  // Test index_put_ with 2D tensor
+  at::Tensor t = at::zeros({3, 3}, at::kFloat);
+
+  at::Tensor idx0 = at::tensor({0, 1}, at::kLong);
+  at::Tensor idx1 = at::tensor({0, 1}, at::kLong);
+
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(idx0);
+  indices.push_back(idx1);
+
+  at::Tensor values = at::full({2}, 9.0f, at::kFloat);
+
+  t.index_put_(indices, values);
+
+  float* data = t.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 9.0f);  // [0,0]
+  ASSERT_FLOAT_EQ(data[4], 9.0f);  // [1,1]
+}
+
+TEST(TensorIndexPutTest, IndexPutNonInplaceAccumulate) {
+  // Test index_put with accumulate=true (non-inplace)
+  at::Tensor t = at::zeros({5}, at::kFloat);
+
+  at::Tensor idx = at::tensor({1, 1}, at::kLong);
+  at::Tensor values = at::full({2}, 3.0f, at::kFloat);
+
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(idx);
+
+  at::Tensor result = t.index_put(indices, values, true);
+
+  // Original unchanged
+  ASSERT_FLOAT_EQ(t.data_ptr<float>()[1], 0.0f);
+  // Result has accumulated
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[1], 6.0f);
+}
