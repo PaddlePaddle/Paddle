@@ -319,7 +319,7 @@ struct GPUContext::Impl {
     // the symbol exists before calling to avoid a null-function-pointer
     // segfault on older CUDA versions.
     InitCublasWorkspace();
-    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace_v2(
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetWorkspace(
         handle, cublas_workspace_, cublas_workspace_size_));
 #endif
   }
