@@ -196,8 +196,12 @@ TEST(TensorIndexPutTest, IndexPutWith2D) {
   // Test index_put_ with 2D tensor
   at::Tensor t = at::zeros({3, 3}, at::kFloat);
 
-  at::Tensor idx0 = at::tensor({0, 1}, at::kLong);
-  at::Tensor idx1 = at::tensor({0, 1}, at::kLong);
+  at::Tensor idx0 = at::arange(2, at::kLong);
+  idx0.data_ptr<int64_t>()[0] = 0;
+  idx0.data_ptr<int64_t>()[1] = 1;
+  at::Tensor idx1 = at::arange(2, at::kLong);
+  idx1.data_ptr<int64_t>()[0] = 0;
+  idx1.data_ptr<int64_t>()[1] = 1;
 
   c10::List<::std::optional<at::Tensor>> indices;
   indices.push_back(idx0);
@@ -216,7 +220,9 @@ TEST(TensorIndexPutTest, IndexPutNonInplaceAccumulate) {
   // Test index_put with accumulate=true (non-inplace)
   at::Tensor t = at::zeros({5}, at::kFloat);
 
-  at::Tensor idx = at::tensor({1, 1}, at::kLong);
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 1;
+  idx.data_ptr<int64_t>()[1] = 1;
   at::Tensor values = at::full({2}, 3.0f, at::kFloat);
 
   c10::List<::std::optional<at::Tensor>> indices;
