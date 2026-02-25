@@ -183,6 +183,6 @@ TEST(TensorDataPtrTest, DataPtrLong) {
 TEST(TensorDataPtrTest, DataPtrDouble) {
   at::Tensor t = at::full({1}, 3.14159, at::kDouble);
   double* ptr = t.data_ptr<double>();
-  ASSERT_NE(ptr);
+  ASSERT_NE(ptr, nullptr);
   ASSERT_NEAR(ptr[0], 3.14159, 1e-5);
 }
