@@ -48,3 +48,12 @@ inline std::vector<Tensor> chunk(const Tensor& self,
 }
 
 }  // namespace at
+
+namespace at {
+
+// Member function: Tensor::chunk
+inline std::vector<Tensor> Tensor::chunk(int64_t chunks, int64_t dim) const {
+  return at::chunk(*this, chunks, dim);
+}
+
+}  // namespace at

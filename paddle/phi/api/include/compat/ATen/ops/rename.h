@@ -24,3 +24,12 @@ inline Tensor rename(const Tensor& self, ::std::optional<at::DimnameList>) {
 }
 
 }  // namespace at
+
+namespace at {
+
+// Member function: Tensor::rename
+inline Tensor Tensor::rename(::std::optional<at::DimnameList>) const {
+  return *this;
+}
+
+}  // namespace at

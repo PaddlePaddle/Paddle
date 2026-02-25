@@ -75,3 +75,40 @@ inline at::Tensor zeros_symint(c10::SymIntArrayRef size,
 }
 
 }  // namespace at
+
+namespace at {
+
+// Member function: Tensor::new_zeros
+inline Tensor Tensor::new_zeros(at::IntArrayRef size,
+                                at::TensorOptions options) const {
+  auto actual_dtype =
+      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
+  auto actual_device = options.device_opt().has_value()
+                           ? options.device_opt().value()
+                           : device();
+
+  auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
+  auto pd_place = actual_device._PD_GetInner();
+
+  auto result = paddle::experimental::zeros(
+      size._PD_ToPaddleIntArray(), pd_dtype, pd_place);
+  return Tensor(result);
+}
+
+inline Tensor Tensor::new_zeros(at::IntArrayRef size,
+                                ::std::optional<at::ScalarType> dtype,
+                                ::std::optional<at::Layout>,
+                                ::std::optional<at::Device> device,
+                                ::std::optional<bool>) const {
+  auto actual_dtype = dtype.has_value() ? dtype.value() : this->dtype();
+  auto actual_device = device.has_value() ? device.value() : this->device();
+
+  auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
+  auto pd_place = actual_device._PD_GetInner();
+
+  auto result = paddle::experimental::zeros(
+      size._PD_ToPaddleIntArray(), pd_dtype, pd_place);
+  return Tensor(result);
+}
+
+}  // namespace at
