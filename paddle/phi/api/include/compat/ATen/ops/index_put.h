@@ -108,8 +108,9 @@ inline at::Tensor index(const at::Tensor& self,
        ++i) {
     if (has_index[i]) {
       // Use the index tensor for this dimension
+      paddle::Tensor pd_result = result._PD_GetInner();
       result = paddle::experimental::index_select(
-          result, pd_indices[i], static_cast<int>(i));
+          pd_result, pd_indices[i], static_cast<int>(i));
     }
     // If None, we select all along this dimension (do nothing)
   }
