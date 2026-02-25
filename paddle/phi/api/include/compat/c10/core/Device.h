@@ -35,7 +35,7 @@ struct Device final {
   using Type = DeviceType;
   Device(phi::Place place) : inner_(place) {}
   Device(DeviceType type, DeviceIndex index = 0)
-      : inner_(phi::Place(type, index)) {}  // NOLINT
+      : inner_(c10DeviceTypeToPhiAllocationType(type), index) {}  // NOLINT
 
   /// Constructs a `Device` from a string description, for convenience.
   /// The string supplied must follow the following schema:
@@ -48,11 +48,19 @@ struct Device final {
 
   bool has_index() const noexcept { return index() != -1; }
 
-  DeviceType type() const { return inner_.GetType(); }
+  // 返回与 PyTorch 兼容的 DeviceType
+  DeviceType type() const {
+    return phiAllocationTypeToC10DeviceType(inner_.GetType());
+  }
 
-  bool is_cuda() const noexcept { return phi::is_gpu_place(inner_); }
+  bool is_cuda() const noexcept {
+    auto t = inner_.GetType();
+    return t == phi::AllocationType::GPU;
+  }
 
-  bool is_cpu() const noexcept { return phi::is_cpu_place(inner_); }
+  bool is_cpu() const noexcept {
+    return inner_.GetType() == phi::AllocationType::CPU;
+  }
 
   std::string str() const;
 
