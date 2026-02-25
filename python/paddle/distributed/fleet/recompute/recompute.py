@@ -684,7 +684,16 @@ def recompute(function, *args, **kwargs):
 
     if use_reentrant:
         offload_indices = kwargs.pop('offload_indices', [])
-        input_args = []
+        if not kwargs:  # fast path
+            return RecomputeFunction.apply(
+                function,
+                preserve,
+                offload_indices,
+                custom_get_state_func,
+                custom_set_state_func,
+                *args,
+            )
+
         # rearrange `position-args + keyword-args` into `position-args`
         target = (
             function.forward
@@ -693,11 +702,17 @@ def recompute(function, *args, **kwargs):
         )
         if isinstance(target, StaticFunction):
             target = target.dygraph_function
-        dyfunc_sig = inspect.signature(target)
+
+        # Use getattr to get the cached signature. If it doesn't exist, parse and mount it to the target.
+        # This avoids the heavy overhead of inspect.signature during repeated executions.
+        dyfunc_sig = getattr(target, "_cached_signature", None)
+        if dyfunc_sig is None:
+            dyfunc_sig = inspect.signature(target)
+            target._cached_signature = dyfunc_sig
 
         bound_args = dyfunc_sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
-
+        input_args = []
         for arg, param in zip(
             bound_args.arguments.values(), dyfunc_sig.parameters.values()
         ):

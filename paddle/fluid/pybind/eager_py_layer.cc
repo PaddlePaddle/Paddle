@@ -213,16 +213,15 @@ PyObject* pylayer_method_apply(PyObject* cls,
   static PyObject* kBackwardFunctionAttr =
       PyUnicode_InternFromString("_backward_function");
   PyObject* backward_function = PyObject_GetAttr(cls, kBackwardFunctionAttr);
-  if (!backward_function) {
+  if (!backward_function) [[unlikely]] {
     PADDLE_THROW(
         common::errors::InvalidArgument("Get _backward_function failed."));
   }
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
-  if (!ctx) {
+  if (!ctx) [[unlikely]] {
     PADDLE_THROW(
         common::errors::External(pybind11::detail::error_string().c_str()));
-    return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
   if (FLAGS_check_cuda_error) [[unlikely]] {
@@ -250,9 +249,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
   VLOG(6) << classname << ":Prepare Pylayer forward args ";
   VLOG(6) << classname << ":Input size is " << inputs_size;
-  std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
+  paddle::small_vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   inputs_autograd_meta.reserve(inputs_size);
-  std::vector<std::vector<Tensor*>> inputs_tensor;
+  paddle::small_vector<std::vector<Tensor*>> inputs_tensor;
   inputs_tensor.reserve(inputs_size);
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
@@ -400,7 +399,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   // call forward
   static PyObject* kForwardAttr = PyUnicode_InternFromString("forward");
   auto forward_fn = PyObject_GetAttr(cls, kForwardAttr);
-  if (!forward_fn) {
+  if (!forward_fn) [[unlikely]] {
     PADDLE_THROW(
         common::errors::InvalidArgument("Get forward function failed."));
   }
@@ -435,9 +434,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
-  std::vector<std::vector<Tensor*>> outputs_tensor;
+  paddle::small_vector<std::vector<Tensor*>> outputs_tensor;
   outputs_tensor.reserve(outputs_size);
-  std::vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
+  paddle::small_vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
   outputs_autograd_meta.reserve(outputs_size);
   ctx->forward_output_tensor_is_duplicable.clear();
   ctx->forward_output_tensor_is_duplicable.reserve(outputs_size);
@@ -520,7 +519,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
   }
-  if (outputs_tensor.empty()) {
+  if (outputs_tensor.empty()) [[unlikely]] {
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s : At least one output of `PyLayer.forward` is a `Tensor`.",
         classname));
