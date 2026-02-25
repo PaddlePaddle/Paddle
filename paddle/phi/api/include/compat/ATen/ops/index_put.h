@@ -38,65 +38,83 @@ inline std::vector<at::Tensor> convert_indices_list(
 // index: Get values at specified indices
 inline at::Tensor index(const at::Tensor& self,
                         const c10::List<::std::optional<at::Tensor>>& indices) {
-  std::vector<paddle::Tensor> pd_indices;
-  pd_indices.reserve(indices.size());
-
-  for (const auto& idx : indices) {
-    if (idx.has_value()) {
-      pd_indices.push_back(idx.value()._PD_GetInner());
-    }
-  }
-
-  if (pd_indices.empty()) {
+  // Handle empty indices - return self
+  if (indices.empty()) {
     return self;
   }
 
-  if (pd_indices.size() == 1 && indices.size() == 1) {
+  // Check if all indices are None (select all)
+  bool all_none = true;
+  for (const auto& idx : indices) {
+    if (idx.has_value()) {
+      all_none = false;
+      break;
+    }
+  }
+  if (all_none) {
+    return self;
+  }
+
+  // Build vector of indices while tracking which dimensions have None
+  std::vector<paddle::Tensor> pd_indices;
+  std::vector<bool> has_index(indices.size(), false);
+  pd_indices.reserve(indices.size());
+
+  for (size_t i = 0; i < indices.size(); ++i) {
+    if (indices[i].has_value()) {
+      pd_indices.push_back(indices[i].value()._PD_GetInner());
+      has_index[i] = true;
+    } else {
+      // None - will be handled as "select all"
+      pd_indices.push_back(paddle::Tensor());
+      has_index[i] = false;
+    }
+  }
+
+  // If only one non-None index at position 0, use index_select
+  int non_none_count = 0;
+  size_t first_non_none = 0;
+  for (size_t i = 0; i < has_index.size(); ++i) {
+    if (has_index[i]) {
+      non_none_count++;
+      first_non_none = i;
+    }
+  }
+
+  // Simple case: single index tensor
+  if (non_none_count == 1 && first_non_none == 0) {
     return paddle::experimental::index_select(
         self._PD_GetInner(), pd_indices[0], 0);
   }
 
-  if (pd_indices.size() == indices.size()) {
+  // Case: All indices are tensors (no None) - use gather_nd
+  if (non_none_count == static_cast<int>(indices.size())) {
     auto stacked_indices = paddle::experimental::stack(pd_indices, -1);
     return paddle::experimental::gather_nd(self._PD_GetInner(),
                                            stacked_indices);
   }
 
+  // Mixed case: some indices are None (select all) and some are tensors
+  // Handle by using a combination of operations
   auto self_dims = self._PD_GetInner().dims();
-  std::vector<int64_t> input_dims;
-  std::vector<int64_t> input_strides;
+  int self_rank = self_dims.size();
 
-  int64_t stride = 1;
-  for (int64_t i = self_dims.size() - 1; i >= 0; --i) {
-    input_dims.insert(input_dims.begin(), self_dims[i]);
-    input_strides.insert(input_strides.begin(), stride);
-    stride *= self_dims[i];
-  }
+  // Build result by iterating over dimensions
+  // For dimensions with None, we select all; for dimensions with tensor, we use
+  // the index
+  at::Tensor result = self;
 
-  if (!pd_indices.empty()) {
-    auto idx_dims = pd_indices[0].dims();
-    std::vector<int64_t> index_dims;
-    std::vector<int64_t> index_strides_vec;
-
-    int64_t idx_stride = 1;
-    for (int64_t i = idx_dims.size() - 1; i >= 0; --i) {
-      index_dims.insert(index_dims.begin(), idx_dims[i]);
-      index_strides_vec.insert(index_strides_vec.begin(), idx_stride);
-      idx_stride *= idx_dims[i];
+  for (size_t i = 0; i < indices.size() && i < static_cast<size_t>(self_rank);
+       ++i) {
+    if (has_index[i]) {
+      // Use the index tensor for this dimension
+      result = paddle::experimental::index_select(
+          result, pd_indices[i], static_cast<int>(i));
     }
-
-    return paddle::experimental::index_elementwise_get(self._PD_GetInner(),
-                                                       pd_indices,
-                                                       input_dims,
-                                                       input_strides,
-                                                       index_dims,
-                                                       index_strides_vec,
-                                                       /*slice_offset=*/0,
-                                                       /*accumulate=*/false,
-                                                       /*is_combined=*/false);
+    // If None, we select all along this dimension (do nothing)
   }
 
-  return self;
+  return result;
 }
 
 // index_put_: Set values at specified indices (in-place)

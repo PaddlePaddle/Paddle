@@ -157,6 +157,7 @@ TEST(TensorIndexTest, IndexWithMultipleIndices) {
 
 TEST(TensorIndexTest, IndexWithOptionalNone) {
   // Test index with optional None in indices
+  // None means "select all" along that dimension
   at::Tensor t = at::arange(9, at::kFloat).reshape({3, 3});
 
   at::Tensor idx = at::empty({2}, at::kLong);
@@ -164,11 +165,13 @@ TEST(TensorIndexTest, IndexWithOptionalNone) {
   idx.data_ptr<int64_t>()[1] = 2;
 
   c10::List<::std::optional<at::Tensor>> indices;
-  indices.push_back(::std::nullopt);
-  indices.push_back(idx);
+  indices.push_back(::std::nullopt);  // None = select all rows
+  indices.push_back(idx);             // [0, 2] = select columns 0 and 2
 
   at::Tensor result = t.index(indices);
-  ASSERT_EQ(result.numel(), 2);
+  // Result should be shape {3, 2} = 6 elements
+  // Columns 0 and 2 from all rows: [[0,2], [3,5], [6,8]]
+  ASSERT_EQ(result.numel(), 6);
 }
 
 TEST(TensorIndexPutTest, IndexPutAccumulate) {

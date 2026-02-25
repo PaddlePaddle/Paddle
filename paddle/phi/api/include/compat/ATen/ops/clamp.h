@@ -99,12 +99,19 @@ namespace at {
 
 inline at::Tensor Tensor::clamp(const ::std::optional<at::Scalar>& min,
                                 const ::std::optional<at::Scalar>& max) const {
-  c10::ScalarType dtype = this->dtype();
-  at::Scalar min_scalar =
-      min.has_value() ? min.value() : detail::get_default_min_value(dtype);
-  at::Scalar max_scalar =
-      max.has_value() ? max.value() : detail::get_default_max_value(dtype);
-  return Tensor(paddle::experimental::clip(tensor_, min_scalar, max_scalar));
+  // Handle cases where min or max is nullopt - don't apply that bound
+  if (min.has_value() && !max.has_value()) {
+    // Only min is specified - use clamp_min
+    return clamp_min(min.value());
+  } else if (!min.has_value() && max.has_value()) {
+    // Only max is specified - use clamp_max
+    return clamp_max(max.value());
+  } else if (!min.has_value() && !max.has_value()) {
+    // Neither specified - return copy of tensor
+    return *this;
+  }
+  // Both specified - apply full clamp
+  return Tensor(paddle::experimental::clip(tensor_, min.value(), max.value()));
 }
 
 inline at::Tensor Tensor::clamp(const ::std::optional<at::Tensor>& min,
@@ -122,13 +129,20 @@ inline at::Tensor Tensor::clamp(const ::std::optional<at::Tensor>& min,
 inline at::Tensor& Tensor::clamp_(
     const ::std::optional<at::Scalar>& min,
     const ::std::optional<at::Scalar>& max) const {
-  c10::ScalarType dtype = this->dtype();
-  at::Scalar min_scalar =
-      min.has_value() ? min.value() : detail::get_default_min_value(dtype);
-  at::Scalar max_scalar =
-      max.has_value() ? max.value() : detail::get_default_max_value(dtype);
+  // Handle cases where min or max is nullopt - don't apply that bound
+  if (min.has_value() && !max.has_value()) {
+    // Only min is specified - use clamp_min_
+    return clamp_min_(min.value());
+  } else if (!min.has_value() && max.has_value()) {
+    // Only max is specified - use clamp_max_
+    return clamp_max_(max.value());
+  } else if (!min.has_value() && !max.has_value()) {
+    // Neither specified - nothing to do
+    return const_cast<at::Tensor&>(*this);
+  }
+  // Both specified - apply full clamp
   paddle::experimental::clip_(
-      const_cast<PaddleTensor&>(tensor_), min_scalar, max_scalar);
+      const_cast<PaddleTensor&>(tensor_), min.value(), max.value());
   return const_cast<at::Tensor&>(*this);
 }
 

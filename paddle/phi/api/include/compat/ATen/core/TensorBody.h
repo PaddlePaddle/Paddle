@@ -371,9 +371,9 @@ class Tensor : public TensorBase {
       } else {
         result = paddle::experimental::assign(tensor_);
       }
-    } else {
-      result = paddle::experimental::assign(tensor_);
     }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
     return Tensor(result);
   }
 
@@ -391,9 +391,9 @@ class Tensor : public TensorBase {
       } else {
         result = paddle::experimental::assign(tensor_);
       }
-    } else {
-      result = paddle::experimental::assign(tensor_);
     }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
     return Tensor(result);
   }
 
