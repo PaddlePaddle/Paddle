@@ -19,7 +19,7 @@
 
 bool PD_PlaceIsHost(PD_Place* place) {
   auto cc_place = reinterpret_cast<phi::Place*>(place);
-  return cc_place->GetType() == phi::AllocationType::CPU;
+  return cc_place->GetType() == AllocationType::CPU;
 }
 
 int8_t PD_PlaceGetDeviceId(PD_Place* place) {

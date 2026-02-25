@@ -47,11 +47,11 @@ bool PhiKernelSupportPrecision(
 
 static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
   switch (place.GetType()) {
-    case phi::AllocationType::CPU:
+    case AllocationType::CPU:
       return phi::Backend::CPU;
-    case phi::AllocationType::GPU:
+    case AllocationType::GPU:
       return phi::Backend::GPU;
-    case phi::AllocationType::XPU:
+    case AllocationType::XPU:
       return phi::Backend::XPU;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
