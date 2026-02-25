@@ -21,94 +21,21 @@
 namespace at {
 
 // expand - expands tensor to new size
-// If dimensions are not compatible for expand (i.e., non-1 dims don't match),
-// falls back to tile operation to replicate the tensor, then slices to exact
-// size
+// PyTorch's expand works by right-aligning dimensions and broadcasting
+// dimensions with size 1 to the target size
 inline Tensor expand(const Tensor& self,
                      at::IntArrayRef size,
                      bool implicit = false) {
-  // Paddle does not support the implicit parameter from PyTorch.
-  // implicit=true is used by PyTorch's vmap for internal optimization.
-  if (implicit) {
-    throw std::runtime_error(
-        "expand with implicit=true is not supported in Paddle. "
-        "This parameter is used by PyTorch's vmap and is not implemented in "
-        "Paddle.");
-  }
+  // implicit parameter is used by PyTorch's vmap for internal optimization.
+  // It doesn't affect the actual expand operation, so we can safely ignore it.
 
   paddle::Tensor pd_tensor = self._PD_GetInner();
 
-  std::vector<int64_t> current_size_vec;
-  for (int64_t i = 0; i < pd_tensor.dims().size(); ++i) {
-    current_size_vec.push_back(pd_tensor.dims()[i]);
-  }
+  // Target sizes - convert to vector
+  std::vector<int64_t> target_size_vec(size.begin(), size.end());
 
-  std::vector<int64_t> target_size_vec;
-  for (int64_t i = 0; i < size.size(); ++i) {
-    target_size_vec.push_back(size[i]);
-  }
-
-  // Calculate repeat factors
-  int64_t ndims = target_size_vec.size();
-  int64_t current_ndims = current_size_vec.size();
-  int64_t start_dim = ndims - current_ndims;
-
-  std::vector<int64_t> repeat_vec(ndims, 1);
-  bool need_tile = false;
-  for (int64_t i = 0; i < current_ndims; ++i) {
-    int64_t target_dim = start_dim + i;
-    if (target_dim >= 0 && target_dim < ndims) {
-      if (target_size_vec[target_dim] == current_size_vec[i]) {
-        repeat_vec[target_dim] = 1;
-      } else if (current_size_vec[i] == 1) {
-        repeat_vec[target_dim] = target_size_vec[target_dim];
-      } else {
-        // Cannot expand directly - need to use tile
-        need_tile = true;
-        // Calculate how many times to repeat to cover the target size
-        repeat_vec[target_dim] =
-            (target_size_vec[target_dim] + current_size_vec[i] - 1) /
-            current_size_vec[i];
-      }
-    }
-  }
-
-  paddle::Tensor result;
-  if (need_tile) {
-    // Use tile to get at least the target size
-    result = paddle::experimental::tile(pd_tensor, phi::IntArray(repeat_vec));
-
-    // If tiled result is larger than target, slice to exact size
-    std::vector<int64_t> tiled_size;
-    for (int64_t i = 0; i < result.dims().size(); ++i) {
-      tiled_size.push_back(result.dims()[i]);
-    }
-
-    bool need_slice = false;
-    for (int64_t i = 0; i < ndims; ++i) {
-      if (tiled_size[i] > target_size_vec[i]) {
-        need_slice = true;
-        break;
-      }
-    }
-
-    if (need_slice) {
-      std::vector<int64_t> starts_vec(ndims, 0);
-      std::vector<int64_t> ends_vec = target_size_vec;
-      std::vector<int64_t> axes_vec;
-      for (int64_t i = 0; i < ndims; ++i) {
-        axes_vec.push_back(i);
-      }
-      result = paddle::experimental::slice(result,
-                                           axes_vec,
-                                           phi::IntArray(starts_vec),
-                                           phi::IntArray(ends_vec),
-                                           {1},
-                                           {});
-    }
-  } else {
-    result = paddle::experimental::tile(pd_tensor, phi::IntArray(repeat_vec));
-  }
+  // Use Paddle's native expand API
+  paddle::Tensor result = pd_tensor.expand(phi::IntArray(target_size_vec));
 
   return Tensor(result);
 }
