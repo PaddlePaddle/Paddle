@@ -284,7 +284,7 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_allow_tf32
- * Since Version: 3.2.0
+ * Since Version: 3.3.0
  * Value Range: bool, default=true
  * Example:
  * Note: whether to allow using TensorFloat-32 (TF32) in cudnn convolution.
@@ -301,7 +301,7 @@ PHI_DEFINE_EXPORTED_bool(
 /**
  * CUBLAS related FLAG
  * Name: FLAGS_cublas_allow_tf32
- * Since Version: 3.2.0
+ * Since Version: 3.3.0
  * Value Range: bool, default=false
  * Example:
  * Note: whether to allow using TensorFloat-32 (TF32) in cublas matmul.
