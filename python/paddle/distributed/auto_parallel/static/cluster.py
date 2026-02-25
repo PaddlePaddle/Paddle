@@ -544,7 +544,7 @@ class AlphaLatency:
         if self._switch is not None:
             try:
                 self._switch = float(self._switch)
-            except:
+            except Exception:
                 raise TypeError("The switch latency must be float")
         self._base_ring = (
             self._base.get("ring", None) if self._base is not None else None
@@ -558,12 +558,12 @@ class AlphaLatency:
         if self._base_ring is not None:
             try:
                 self._base_ring = float(self._base_ring)
-            except:
+            except Exception:
                 raise TypeError("The base ring latency must be float.")
         if self._base_tree is not None:
             try:
                 self._base_tree = float(self._base_tree)
-            except:
+            except Exception:
                 raise TypeError("The base ring latency must be float.")
 
         self._inter_ring = self._inter.get("ring", None)
@@ -578,7 +578,7 @@ class AlphaLatency:
             else:
                 try:
                     self._inter_ring = float(self._inter_ring)
-                except:
+                except Exception:
                     raise TypeError("The inter ring latency must be float.")
 
         if self._inter_tree is not None:
@@ -588,7 +588,7 @@ class AlphaLatency:
             else:
                 try:
                     self._inter_tree = float(self._inter_tree)
-                except:
+                except Exception:
                     raise TypeError("The inter tree latency must be float.")
 
         if self._intra_ring is not None:
@@ -598,7 +598,7 @@ class AlphaLatency:
             else:
                 try:
                     self._intra_ring = float(self._intra_ring)
-                except:
+                except Exception:
                     raise TypeError("The intra ring latency must be float.")
 
         if self._intra_tree is not None:
@@ -608,7 +608,7 @@ class AlphaLatency:
             else:
                 try:
                     self._intra_tree = float(self._intra_tree)
-                except:
+                except Exception:
                     raise TypeError("The intra tree latency must be float.")
 
     @property
@@ -1399,7 +1399,7 @@ def get_default_cluster(json_config=None, auto_config=None):
                 re_result = re.split(r'[ , -]', gpu_name)
                 gpu_model = re_result[1]
                 memory = int(re_result[-1][:-2])
-            except:
+            except Exception:
                 memory = int(gpu_info.total_memory) // (1000**3)
                 gpu_model = gpu_name
 

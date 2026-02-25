@@ -326,7 +326,7 @@ def launch() -> None:
         try:
             with open(ctx.args.auto_tuner_json, "r") as f:
                 tuner_cfg = json.load(f)
-        except:
+        except Exception:
             raise ValueError("Please check your auto tuner json whether valid.")
 
         logger = logging.getLogger('auto_tuner')
@@ -402,7 +402,7 @@ def launch() -> None:
             try:
                 hostname = socket.gethostname()
                 ip = socket.gethostbyname(socket.getfqdn(hostname))
-            except:
+            except Exception:
                 ip = '127.0.0.1'
             assert ip != '127.0.0.1'
             if tuner_cfg["search_algo"].get("estimated_num_gpus", None):

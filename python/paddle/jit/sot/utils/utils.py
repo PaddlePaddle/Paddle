@@ -178,7 +178,7 @@ def no_eval_frame(func):
         old_cb = paddle.framework.core.set_eval_frame(None)
         try:
             retval = func(*args, **kwargs)
-        except:
+        except Exception:
             raise
         finally:
             paddle.framework.core.set_eval_frame(old_cb)

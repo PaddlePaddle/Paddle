@@ -28,7 +28,7 @@ def numpy_ref(_x, value, axes, starts, ends, strides):
 
     try:
         value = np.broadcast_to(value, x.shape)
-    except:
+    except Exception:
         pass
 
     indices_x = []

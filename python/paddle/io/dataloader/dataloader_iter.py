@@ -71,7 +71,7 @@ def _clear_loader():
         try:
             _loader.__del__()
             del _loader
-        except:
+        except Exception:
             pass
 
 
@@ -283,7 +283,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
                 try:
                     self._blocking_queue.push(array)
-                except:
+                except Exception:
                     self._exit_thread_expectedly()
 
             except Exception as e:
@@ -421,7 +421,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         ]:
             try:
                 self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
-            except:
+            except Exception:
                 self._worker_shm_buffer_size = 0
                 warnings.warn(
                     "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
@@ -497,7 +497,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             while True:
                 try:
                     self._data_queue.get_nowait()
-                except:
+                except Exception:
                     self._data_queue.cancel_join_thread()
                     self._data_queue.close()
                     break

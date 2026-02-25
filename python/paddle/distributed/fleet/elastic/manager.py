@@ -398,7 +398,7 @@ class ElasticManager:
     def _get_host(self):
         try:
             return socket.gethostbyname(socket.getfqdn(socket.gethostname()))
-        except:
+        except Exception:
             return '127.0.0.1'
 
     def _completed(self):

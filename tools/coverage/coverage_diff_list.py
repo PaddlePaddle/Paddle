@@ -49,7 +49,7 @@ def filter_by(list_file, max_rate):
 
                 if rate >= max_rate:
                     continue
-            except:
+            except Exception:
                 pass
 
             print(name, rate)

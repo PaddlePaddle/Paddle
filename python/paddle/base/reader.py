@@ -125,7 +125,7 @@ def _reader_process_loop(
     except KeyboardInterrupt:
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
-    except:
+    except Exception:
         raise
 
 

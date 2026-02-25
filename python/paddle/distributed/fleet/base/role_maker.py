@@ -940,7 +940,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     self._previous_heter_trainer_endpoints = (
                         previous_heter_trainer_eplist.split(",")
                     )
-                except:
+                except Exception:
                     raise ValueError(
                         "Can not Find PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
                     )
@@ -955,7 +955,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     self._next_heter_trainer_endpoints = (
                         next_heter_trainer_eplist.split(",")
                     )
-                except:
+                except Exception:
                     raise ValueError(
                         "Can not Find PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
                     )

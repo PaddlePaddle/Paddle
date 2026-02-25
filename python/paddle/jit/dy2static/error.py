@@ -256,7 +256,7 @@ class ErrorData:
                     )
                 ):
                     self._simplify_error_value()
-            except:
+            except Exception:
                 pass
             else:
                 message_lines.append(str(self.error_value))

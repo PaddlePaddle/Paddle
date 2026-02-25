@@ -201,7 +201,7 @@ err_module = ""
                 cmd_context_loop_template = """
 try:
     {run_cmd}
-except:
+except Exception:
     count += 1
 else:
     err_module = "{module}"

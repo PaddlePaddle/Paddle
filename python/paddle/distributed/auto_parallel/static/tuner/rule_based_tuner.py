@@ -1118,7 +1118,7 @@ class RuleBasedTuner:
                 self._strategy_path = self._dist_context._json_config[
                     "tuner_save_path"
                 ]
-            except:
+            except Exception:
                 self._strategy_path = None
 
     @property

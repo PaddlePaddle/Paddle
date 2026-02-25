@@ -32,7 +32,7 @@ class KVClient:
                 return True
             else:
                 return False
-        except:
+        except Exception:
             return False
 
     def get(self, key):
@@ -45,7 +45,7 @@ class KVClient:
                 return ret.get(key, '')
             else:
                 return "error"
-        except:
+        except Exception:
             return ""
 
     def get_prefix(self, key):
@@ -55,7 +55,7 @@ class KVClient:
             r = httpx.get(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return r.json()
-        except:
+        except Exception:
             return ""
 
     def delete(self, key):
@@ -67,7 +67,7 @@ class KVClient:
                 return True
             else:
                 return False
-        except:
+        except Exception:
             return False
 
     def wait_server_ready(self, timeout=3):

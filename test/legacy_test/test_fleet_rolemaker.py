@@ -100,7 +100,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             adam = fleet.distributed_optimizer(adam)
             adam.minimize([cost], [scope])
             fleet.run_server()
-        except:
+        except Exception:
             print("do not support pslib test, skip")
             return
         fleet.clear_one_table(0)
@@ -111,22 +111,22 @@ class TestCloudRoleMaker(unittest.TestCase):
         try:
             role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2])
-        except:
+        except Exception:
             print("catch expected error of not inited")
         try:
             role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2], "min")
-        except:
+        except Exception:
             print("catch expected error of not inited")
         try:
             role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2], "max")
-        except:
+        except Exception:
             print("catch expected error of not inited")
         try:
             role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2], "unknown")
-        except:
+        except Exception:
             print("catch expected error of unknown type")
 
 

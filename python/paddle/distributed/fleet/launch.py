@@ -439,7 +439,7 @@ def launch_collective(args):
 
             time.sleep(3)
 
-        except:
+        except Exception:
             logger.warning("Terminating... exit")
             terminate_local_procs(procs)
             sys.exit(1)

@@ -180,7 +180,7 @@ class CheckpointSaver:
             try:
                 n = int(g[1])
                 a.append(n)
-            except:
+            except Exception:
                 continue
 
         a.sort()

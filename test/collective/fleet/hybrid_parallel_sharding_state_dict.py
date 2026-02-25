@@ -268,7 +268,7 @@ class TestDistShardingTraining(unittest.TestCase):
         try:
             sharding_opt._set_inner_opt_attr(123, 123)
             self.assertTrue(False)
-        except:
+        except Exception:
             pass
 
 

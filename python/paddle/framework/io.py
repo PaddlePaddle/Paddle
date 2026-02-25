@@ -1306,7 +1306,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             try:
                 tensor, _ = _load_selected_rows(path)
                 return tensor
-            except:
+            except Exception:
                 try:
                     tensor, _ = _load_dense_tensor(path)
                     if config.return_numpy:
@@ -1322,7 +1322,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
-                except:
+                except Exception:
                     try:
                         if in_pir_mode():
                             program = paddle.static.Program()
@@ -1360,7 +1360,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                                     for op in remove_op_list:
                                         block.remove_op(op)
                             return program
-                    except:
+                    except Exception:
                         raise ValueError(
                             f"`paddle.load` can not parse the file:{path}."
                         )

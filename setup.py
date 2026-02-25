@@ -109,7 +109,7 @@ def parse_input_command(input_parameters):
     )
     try:
         dist.parse_command_line()
-    except:
+    except Exception:
         print(
             f"An error occurred while parsing the parameters, {dist.script_args}"
         )
@@ -305,7 +305,7 @@ def git_commit() -> str:
             .communicate()[0]
             .strip()
         )
-    except:
+    except Exception:
         git_commit = 'Unknown'
     git_commit = git_commit.decode('utf-8')
     return str(git_commit)
@@ -434,7 +434,7 @@ def is_tagged() -> bool:
             .strip()
         )
         git_tag = git_tag.decode()
-    except:
+    except Exception:
         return False
     if str(git_tag).replace('v', '') == env_dict.get("PADDLE_VERSION"):
         return True
@@ -1373,7 +1373,7 @@ def build_cutlass3_src_code():
             .communicate()[0]
             .strip()
         )
-    except:
+    except Exception:
         git_commit = 'Unknown'
         raise Exception("obtain commit id of third_party cutlass failed")
     commit_id = str(git_commit.decode())

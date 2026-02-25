@@ -78,7 +78,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             http_server_d["running"] = False
             size_d = {}
             role_maker._GeneralRoleMaker__start_kv_server(http_server_d, size_d)
-        except:
+        except Exception:
             print("do not support pslib test, skip")
             return
 

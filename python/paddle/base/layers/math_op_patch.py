@@ -126,7 +126,7 @@ def monkey_patch_variable():
     def safe_get_dtype(var):
         try:
             dtype = var.dtype
-        except:
+        except Exception:
             raise ValueError(f"Cannot get data type from {var.name}")
         return dtype
 

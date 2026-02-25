@@ -37,7 +37,7 @@ class TestBroadcastOpCpu(OpTest):
     def test_check_output_cpu(self):
         try:
             self.check_output_with_place(place=core.CPUPlace())
-        except:
+        except Exception:
             print("do not support cpu test, skip")
 
     def init_dtype(self):

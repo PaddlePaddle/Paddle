@@ -61,7 +61,7 @@ class DatasetFactory:
         try:
             dataset = globals()[datafeed_class]()
             return dataset
-        except:
+        except Exception:
             raise ValueError(f"datafeed class {datafeed_class} does not exist")
 
 

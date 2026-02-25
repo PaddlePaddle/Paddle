@@ -29,7 +29,7 @@ import httpx
 
 try:
     from tqdm import tqdm
-except:
+except Exception:
 
     class tqdm:
         def __init__(self, total=None):

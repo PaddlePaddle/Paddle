@@ -89,7 +89,7 @@ def scoped_function(func):
     enter_local_scope()
     try:
         func()
-    except:
+    except Exception:
         raise
     finally:
         leave_local_scope()

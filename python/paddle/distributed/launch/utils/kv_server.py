@@ -44,7 +44,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.server.kv[self.path] = value
                 self.output(200)
                 return
-        except:
+        except Exception:
             self.output(500)
 
     def do_DELETE(self):

@@ -590,7 +590,7 @@ def is_bf16_supported(including_emulation: bool = True) -> bool:
     try:
         paddle.tensor([1.0], dtype=paddle.bfloat16, device=device)
         return True
-    except:
+    except Exception:
         return False
 
 

@@ -48,7 +48,7 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
                 try:
                     g[var.name] = False
                     self.assertTrue(False)
-                except:
+                except Exception:
                     self.assertTrue(True)
 
         name = "__any_non_exist_name__"

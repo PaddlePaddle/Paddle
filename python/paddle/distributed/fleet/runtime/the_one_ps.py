@@ -1286,7 +1286,7 @@ class TheOnePSRuntime(RuntimeBase):
                 # only save sparse param to local
                 try:
                     self._worker.recv_and_save_model(id, model_path)
-                except:
+                except Exception:
                     pass
             # save sparse & distributed param on server
             self._worker.save_one_model(id, dirname, mode)

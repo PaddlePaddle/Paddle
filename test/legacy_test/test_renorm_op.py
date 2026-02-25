@@ -97,13 +97,13 @@ class TestRenormAPI(unittest.TestCase):
             exp = False
             try:
                 paddle.renorm(x, 1.0, 8, 2.05)
-            except:
+            except Exception:
                 exp = True
             self.assertTrue(exp)
             exp = False
             try:
                 paddle.renorm(x, 1.0, -4, 2.05)
-            except:
+            except Exception:
                 exp = True
             self.assertTrue(exp)
             y = paddle.renorm(x, 1.0, -1, 2.05)

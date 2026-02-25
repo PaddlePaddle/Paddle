@@ -76,7 +76,7 @@ class TestDistPPSaveTraining(unittest.TestCase):
         )
         try:
             os.makedirs(output_dir)
-        except:
+        except Exception:
             # dir is already created, do nothing
             pass
         for step_id in range(2):

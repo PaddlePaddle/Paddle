@@ -42,7 +42,7 @@ def is_flashattn_supported():
         major, minor = capability[0], capability[1]
         # Support sm8x or sm90
         return (major == 8 and minor >= 0) or (major == 9 and minor == 0)
-    except:
+    except Exception:
         return False
 
 

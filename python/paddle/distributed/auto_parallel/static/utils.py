@@ -1651,7 +1651,7 @@ def get_standalone_cost_data(distributed_programs):
         runtime = 0
         try:
             runtime = float(op_cost["op_time"])
-        except:
+        except Exception:
             return runtime
         op_config = op_cost["config"]
         total_static_input_size = 0

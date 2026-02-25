@@ -586,7 +586,7 @@ class SpecialInferMeta(metaclass=Singleton):
         try:
             funcname = fn.__name__
             return getattr(self, f"infermeta_{funcname}")
-        except:
+        except Exception:
             pass
         return None
 

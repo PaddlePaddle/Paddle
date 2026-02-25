@@ -51,7 +51,7 @@ class TestIpuStrategy(unittest.TestCase):
                 assert new_value == set_value, (
                     f"set {option_name} to {set_value} failed"
                 )
-            except:
+            except Exception:
                 raise Exception(f"set {option_name} to {set_value} failed")
 
     def test_set_string_options(self):

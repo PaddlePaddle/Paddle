@@ -452,7 +452,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             try:
                 layer_idx = int(layer._full_name.split('_')[-1])
-            except:
+            except Exception:
                 layer_idx = len(summary)
 
             m_key = f"{class_name}-{layer_idx + 1}"
@@ -460,13 +460,13 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             try:
                 summary[m_key]["input_shape"] = _get_shape_from_tensor(input)
-            except:
+            except Exception:
                 warnings.warn('Get layer {} input shape failed!')
                 summary[m_key]["input_shape"] = []
 
             try:
                 summary[m_key]["output_shape"] = _get_output_shape(output)
-            except:
+            except Exception:
                 warnings.warn('Get layer {} output shape failed!')
                 summary[m_key]["output_shape"]
 
@@ -493,7 +493,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                         trainable_flag = True
                     elif not trainable_flag:
                         summary[m_key]["trainable"] = False
-                except:
+                except Exception:
                     summary[m_key]["trainable"] = True
 
             summary[m_key]["nb_params"] = params
@@ -618,7 +618,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             total_output += int(
                 np.sum(np.prod(summary[layer]["output_shape"], axis=-1))
             )
-        except:
+        except Exception:
             for output_shape in summary[layer]["output_shape"]:
                 total_output += int(np.sum(np.prod(output_shape, axis=-1)))
 

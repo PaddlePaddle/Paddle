@@ -291,7 +291,7 @@ class CostModel:
                     graph[op_id][PRED].append(var_node.id)
                     graph[var_id][SUCC].append(op_node.id)
                     comm_input_shape = var_node.shape
-                except:
+                except Exception:
                     continue
 
             for i in range(len(op.output_names)):
@@ -301,7 +301,7 @@ class CostModel:
                     graph[op_id][SUCC].append(var_node.id)
                     graph[var_id][PRED].append(op_node.id)
                     comm_output_shape = var_node.shape
-                except:
+                except Exception:
                     continue
             if op_node.type == CostNodeType.COMMUNICATION:
                 op_node.set_shapes(comm_input_shape, comm_output_shape)
@@ -523,36 +523,36 @@ class CostModel:
                     runtime_graph[merged_node_id][PRED] = runtime_graph[
                         pred_id
                     ][PRED]
-                except:
+                except Exception:
                     pass
                 try:
                     for i in runtime_graph[pred_id][PRED]:
                         try:
                             runtime_graph[i][SUCC].remove(pred_id)
-                        except:
+                        except Exception:
                             continue
                         runtime_graph[i][SUCC].append(merged_node_id)
-                except:
+                except Exception:
                     pass
 
                 try:
                     for i in edges[SUCC]:
                         runtime_graph[i][PRED].remove(node_id)
                         runtime_graph[i][PRED].append(merged_node_id)
-                except:
+                except Exception:
                     pass
                 if succ is not None:
                     for i in succ:
                         try:
                             runtime_graph[i][PRED].remove(pred_id)
-                        except:
+                        except Exception:
                             continue
                         runtime_graph[i][PRED].append(merged_node_id)
 
                 runtime_graph.pop(node_id)
                 try:
                     runtime_graph.pop(pred_id)
-                except:
+                except Exception:
                     continue
                 reduct_cnt += 1
                 self.eliminate_multi_edges(runtime_graph)
@@ -576,7 +576,7 @@ class CostModel:
                     for succ_2_id in succ_nodes_id:
                         try:
                             tmp = runtime_graph[succ_2_id][SUCC]
-                        except:
+                        except Exception:
                             continue
                         if succ_id in tmp:
                             succ_to_elim.append(succ_id)
@@ -593,7 +593,7 @@ class CostModel:
                         or len(runtime_graph[edges[SUCC][0]][SUCC]) < 1
                     ):
                         continue
-                except:
+                except Exception:
                     continue
                 end_node_id = runtime_graph[edges[SUCC][0]][SUCC][0]
                 for i in succ_nodes_id:
@@ -604,7 +604,7 @@ class CostModel:
                         ):
                             to_merge = False  # if branches has different end node, we don't merge them
                             break
-                    except:
+                    except Exception:
                         continue
                 if to_merge and len(succ_nodes_id) > 1:
                     to_merge_node_list = [nodes[i] for i in succ_nodes_id]
@@ -626,7 +626,7 @@ class CostModel:
                             runtime_graph.pop(i)
                         reduct_cnt += len(to_merge_node_list) - 1
                         break
-                    except:
+                    except Exception:
                         pass
         return reduct_cnt
 

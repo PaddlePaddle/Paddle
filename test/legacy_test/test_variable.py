@@ -564,7 +564,7 @@ class TestListIndex(unittest.TestCase):
             try:
                 getitem_np = array[np.array(index_mod)]
 
-            except:
+            except Exception:
                 with self.assertRaises(ValueError):
                     getitem_pp = pt[index_mod]
                 array = array[0]
@@ -689,7 +689,7 @@ class TestListIndex(unittest.TestCase):
 
         try:
             value_np = array2[index]
-        except:
+        except Exception:
             with self.assertRaises(ValueError):
                 getitem_pp = exe.run(
                     prog, feed={x.name: array}, fetch_list=fetch_list
@@ -751,7 +751,7 @@ class TestListIndex(unittest.TestCase):
                 else index
             )
             array2[index] = value_np
-        except:
+        except Exception:
             with self.assertRaises(ValueError):
                 setitem_pp = exe.run(
                     prog,

@@ -547,7 +547,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
                         generate_op.input_arg_names[0]
                     ]
                     return var.shape
-        except:
+        except Exception:
             return None
 
         return None

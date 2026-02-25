@@ -101,7 +101,7 @@ class TestBatchFCOp1(OpTest):
     def test_check_output_cpu(self):
         try:
             self.check_output_with_place(place=core.CPUPlace())
-        except:
+        except Exception:
             print("do not support cpu test, skip")
 
     def test_check_grad_cpu(self):
@@ -109,7 +109,7 @@ class TestBatchFCOp1(OpTest):
             self.check_grad_with_place(
                 core.CPUPlace(), ["Bias", "W", "Input"], "Out"
             )
-        except:
+        except Exception:
             print("do not support cpu test, skip")
 
 

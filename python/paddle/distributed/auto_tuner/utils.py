@@ -846,7 +846,7 @@ def gen_sharding_overlap_args_of_grid_search(res_args, cfg, tuner_cfg):
             try:
                 with open(file_path, "r") as f:
                     cmd_cfg = json.load(f)
-            except:
+            except Exception:
                 raise ValueError(
                     "Please check your auto tuner json whether valid."
                 )
@@ -870,7 +870,7 @@ def gen_sharding_overlap_args_of_grid_search(res_args, cfg, tuner_cfg):
             try:
                 with open(file_path, "r") as f:
                     cmd_cfg = yaml.safe_load(f)
-            except:
+            except Exception:
                 raise ValueError(
                     "Please check your auto tuner json whether valid."
                 )
@@ -934,7 +934,7 @@ def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = json.load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -957,7 +957,7 @@ def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = yaml.safe_load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1009,14 +1009,14 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     // cfg["micro_batch_size"]
                 )
                 cfg["gradient_accumulation_steps"] = gradient_accumulation_steps
-            except:
+            except Exception:
                 return
 
         if arg == "sequence_parallel" and arg in cmd:
             try:
                 sequence_parallel = 1 if cfg["mp_degree"] > 1 else 0
                 cfg["sequence_parallel"] = sequence_parallel
-            except:
+            except Exception:
                 return
 
         if arg == "global_batch_size" and arg in cmd:
@@ -1027,7 +1027,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     else tuner_cfg["model_cfg"]["global_batch_size"]
                 )
                 cfg["global_batch_size"] = global_batch_size
-            except:
+            except Exception:
                 return
 
     def _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg):
@@ -1048,7 +1048,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = json.load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1090,7 +1090,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = yaml.safe_load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1141,7 +1141,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = json.load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1185,7 +1185,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = yaml.safe_load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1261,7 +1261,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = json.load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1284,7 +1284,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = yaml.safe_load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1315,7 +1315,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = json.load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1338,7 +1338,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 try:
                     with open(file_path, "r") as f:
                         cmd_cfg = yaml.safe_load(f)
-                except:
+                except Exception:
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
@@ -1442,7 +1442,7 @@ def read_metric_log(
                         value = float(item)
                         metric_list.append(value)
                         break
-                    except:
+                    except Exception:
                         continue
                 assert value is not None
 
@@ -1489,7 +1489,7 @@ def read_step_time_log(
                         value = float(item)
                         metric_list.append(value)
                         break
-                    except:
+                    except Exception:
                         continue
                 assert value is not None
         if not metric_list:
@@ -1529,7 +1529,7 @@ def read_allocated_memory_log(
                         value = int(float(item))
                         metric_list.append(value)
                         break
-                    except:
+                    except Exception:
                         continue
                 assert value is not None
         if not metric_list:
@@ -1624,7 +1624,7 @@ def read_log(
     try:
         res_memory, memory_flag = read_memory_log(path, memory_file)
         err_code = (memory_flag << 2) | err_code
-    except:
+    except Exception:
         res_memory = 0.0
         err_code = (1 << 2) | err_code
     return res_metric, res_memory, err_code

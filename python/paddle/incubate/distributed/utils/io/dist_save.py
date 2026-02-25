@@ -186,7 +186,7 @@ def save(
         if dist.get_rank() in gather_to:
             configs = _remove_not_supported_conf(configs)
             paddle.save(gathered_state_dict, path, **configs)
-    except:
+    except Exception:
         raise RuntimeError(
             f'''Saving failed. Following are some suggestions:
     1) pass the param max_grouped_size to turn the grouped size smaller (current value of max_grouped_size is {max_size})
@@ -350,7 +350,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
     for k, v in state_data_dict.items():
         try:
             numpy_dict[k] = v.numpy()
-        except:
+        except Exception:
             raise TypeError(
                 f"the object (type of {type(v)}) of '{k}' is neither tensor nor parameter"
             )

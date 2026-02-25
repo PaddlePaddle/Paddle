@@ -49,7 +49,7 @@ class TestBase(unittest.TestCase):
         try:
             t.set(large_np, place)
             self.assertTrue(False)
-        except:
+        except Exception:
             self.assertTrue(True)
 
 

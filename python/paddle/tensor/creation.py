@@ -938,7 +938,7 @@ def _to_tensor_static(
 
                     data = array_data
 
-                except:
+                except Exception:
                     to_stack_list = [None] * len(data)
                     for idx, d in enumerate(data):
                         to_stack_list[idx] = _to_tensor_static(

@@ -134,7 +134,7 @@ class TestDiffOp(unittest.TestCase):
             try:
                 out.backward()
                 x_grad = x.grad
-            except:
+            except Exception:
                 raise RuntimeError("Check Diff Gradient Failed")
 
     def test_grad(self):

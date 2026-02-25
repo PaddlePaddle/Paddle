@@ -127,7 +127,7 @@ def train_mlp(
     if test_minimize:
         try:
             optimizer.minimize()
-        except:
+        except Exception:
             print(
                 "====== Find sharding_stage2_optimizer.minimize() error ======"
             )

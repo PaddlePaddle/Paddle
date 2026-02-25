@@ -148,7 +148,7 @@ def monkey_patch_value():
     def safe_get_dtype(var):
         try:
             dtype = var.dtype
-        except:
+        except Exception:
             raise ValueError("Cannot get data type from var")
         return dtype
 

@@ -107,7 +107,7 @@ class Container:
             if not os.path.isdir(d):
                 os.makedirs(d, exist_ok=True)
             return open(pth, self.log_mode)
-        except:
+        except Exception:
             return None
 
     def start(self):
@@ -192,7 +192,7 @@ class Container:
                     return False
                 fn.write(line)
             return True
-        except:
+        except Exception:
             return
 
     def tail(self, length=3000):
@@ -202,7 +202,7 @@ class Container:
         try:
             self._log_handler.seek(0, 2)
             ed = self._log_handler.tell()
-        except:
+        except Exception:
             pass
 
         if ed > length:

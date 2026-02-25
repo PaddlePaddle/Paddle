@@ -78,7 +78,7 @@ class Planner:
         if self._dist_context._json_config:
             try:
                 path = self._dist_context._json_config["tuner_load_path"]
-            except:
+            except Exception:
                 path = None
         if path and os.path.exists(path):
             try:
@@ -115,7 +115,7 @@ class Planner:
                     need_set_dist_attr = False
                 else:
                     need_set_dist_attr = True
-            except:
+            except Exception:
                 need_set_dist_attr = False
 
             if need_set_dist_attr:

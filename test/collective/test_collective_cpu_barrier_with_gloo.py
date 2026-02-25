@@ -59,7 +59,7 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
             out_dict[id] = end - start
             # Release
             paddle.distributed.gloo_release()
-        except:
+        except Exception:
             out_dict[id] = 0
 
     def barrier_op(self, id, rank_num, server_endpoint, out_dict, sleep_time):
@@ -85,7 +85,7 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
             out_dict[id] = end - start
             # Release
             paddle.distributed.gloo_release()
-        except:
+        except Exception:
             out_dict[id] = 0
 
     def test_barrier_func_with_multiprocess(self):

@@ -1751,7 +1751,7 @@ def load(
             except RuntimeError as e:
                 _logger.error(e)
                 raise e
-            except:
+            except Exception:
                 raise RuntimeError(
                     "Failed to load model file, please make sure model file is saved with the "
                     "following APIs: save_params, save_persistables, save_vars"
@@ -1784,7 +1784,7 @@ def load(
             except RuntimeError as e:
                 _logger.error(e)
                 raise e
-            except:
+            except Exception:
                 raise RuntimeError(
                     "Failed to load model file , please make sure model file is saved with the "
                     "the following APIs: [ save_params, save_persistables, save_vars ]. "
@@ -2081,7 +2081,7 @@ def load_program_state(
                         filename=filename,
                     )
                     return True
-                except:
+                except Exception:
                     error_str = (
                         "Failed to load model/variables `%s`, please make sure "
                         "model/variables file is saved with the following APIs: "

@@ -162,7 +162,7 @@ class QuantizationPass(PassBase):
                 )
                 # for sub_graph in main_graph.all_sub_graphs():
                 #     out_scale_infer_pass.apply(sub_graph)
-            except:
+            except Exception:
                 logging.warning(
                     "Unable to convert quant model with onnx_format=True, please update PaddlePaddle >= 2.4.0"
                 )

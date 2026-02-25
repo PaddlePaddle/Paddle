@@ -788,7 +788,7 @@ class CommOpCost(OpCost):
                 # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overridden
                 try:
                     var_name = self.op.input("X")[0]
-                except:
+                except Exception:
                     var_name = self.op.output("Out")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.op.block.program

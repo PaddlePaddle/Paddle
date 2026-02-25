@@ -52,7 +52,7 @@ def log_pruned_info(cur_cfg, pruned_reason, tuner_cfg):
         ctx.logger.info(
             f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"
         )
-    except:
+    except Exception:
         pass
     logger.info(
         f"Strategy {pruned_strategy} has been pruned that {pruned_reason}"

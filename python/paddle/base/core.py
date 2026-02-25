@@ -208,7 +208,7 @@ def load_dso(dso_absolute_path):
             from ctypes import cdll
 
             cdll.LoadLibrary(dso_absolute_path)
-        except:
+        except Exception:
             warnings.warn(f"Load {dso_absolute_path} failed")
 
 

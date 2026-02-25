@@ -1273,7 +1273,7 @@ class DownpourOptimizer(DistributedOptimizer):
             try:
                 if op.output("Out")[0] in table_name:
                     need_remove_op_index.append(ids)
-            except:
+            except Exception:
                 pass
 
         need_remove_op_index.sort(reverse=True)

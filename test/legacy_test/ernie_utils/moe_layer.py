@@ -43,7 +43,7 @@ except ImportError:
     moe_router_loss_ops = None
 try:
     from paddle.distributed import in_auto_parallel_align_mode
-except:
+except Exception:
 
     def in_auto_parallel_align_mode():
         """

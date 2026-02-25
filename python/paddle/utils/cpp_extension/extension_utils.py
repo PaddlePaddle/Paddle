@@ -779,7 +779,7 @@ def find_ccache_home():
             ccache_path = (
                 subprocess.check_output([which_cmd, 'ccache']).decode().strip()
             )
-        except:
+        except Exception:
             ccache_path = None
 
     if ccache_path is None:
@@ -811,7 +811,7 @@ def find_cuda_home():
 
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
-        except:
+        except Exception:
             if IS_WINDOWS:
                 # search from default NVIDIA GPU path
                 candidate_paths = glob.glob(
@@ -852,7 +852,7 @@ def find_rocm_home():
 
                 # for example: /opt/rocm/bin/hipcc
                 rocm_home = os.path.dirname(os.path.dirname(hipcc_path))
-        except:
+        except Exception:
             rocm_home = "/opt/rocm"
     # step 3. check whether path is valid
     if (

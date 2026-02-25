@@ -345,7 +345,7 @@ def get_host_name_ip():
         host_name = socket.gethostname()
         host_ip = socket.gethostbyname(host_name)
         return host_name, host_ip
-    except:
+    except Exception:
         return None
 
 
@@ -650,7 +650,7 @@ def watch_local_trainers(procs, nranks):
         )
         terminate_local_procs(procs)
         raise
-    except:
+    except Exception:
         logger.error(
             f"ABORT!!! Out of all {nranks} trainers, the trainer process with rank={error_rank} was aborted. Please check its log."
         )

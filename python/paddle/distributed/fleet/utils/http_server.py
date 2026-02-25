@@ -81,7 +81,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         content_length = int(self.headers['Content-Length'])
         try:
             value = self.rfile.read(content_length)
-        except:
+        except Exception:
             print("receive error invalid request")
             self.send_status_code(404)
             return

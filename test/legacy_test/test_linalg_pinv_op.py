@@ -96,7 +96,7 @@ class LinalgPinvTestCase(unittest.TestCase):
                 out.backward()
                 x_grad = x.grad
                 # print(x_grad)
-            except:
+            except Exception:
                 raise RuntimeError("Check PINV Grad Failed")
 
 

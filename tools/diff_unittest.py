@@ -20,7 +20,7 @@ try:
     f1 = open(sys.argv[1], 'r')
     origin = f1.read()
     origin = origin.splitlines()
-except:
+except Exception:
     sys.exit(0)
 else:
     f1.close()
@@ -29,7 +29,7 @@ try:
     f2 = open(sys.argv[2], 'r')
     new = f2.read()
     new = new.splitlines()
-except:
+except Exception:
     sys.exit(0)
 else:
     f2.close()

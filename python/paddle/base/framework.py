@@ -2133,7 +2133,7 @@ class Variable(metaclass=VariableMetaClass):
             )
         try:
             return func(self)
-        except:
+        except Exception:
             raise ValueError(f"The PyFunc {func.__name__} could not be applied")
 
     def __str__(self):

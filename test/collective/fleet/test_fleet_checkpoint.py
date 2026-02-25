@@ -106,7 +106,7 @@ class FleetTest(unittest.TestCase):
                 cache_path=cache_path,
             )
             self.assertFalse(True)
-        except:
+        except Exception:
             pass
 
         # can't load under a file
@@ -120,7 +120,7 @@ class FleetTest(unittest.TestCase):
                 cache_path=cache_path,
             )
             self.assertFalse(True)
-        except:
+        except Exception:
             pass
         fs.delete(cache_path)
 

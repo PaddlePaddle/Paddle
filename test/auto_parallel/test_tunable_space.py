@@ -140,7 +140,7 @@ class TestTunableSpace(unittest.TestCase):
         try:
             val = space.get_value("test")
             flag = False
-        except:
+        except Exception:
             pass
         self.assertTrue(flag)
 

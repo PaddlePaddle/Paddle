@@ -40,7 +40,7 @@ class Node:
             self.hostname = socket.gethostname()
             self.ip = socket.gethostbyname(socket.getfqdn(self.hostname))
             return self.ip
-        except:
+        except Exception:
             return '127.0.0.1'
 
     def get_free_ports(self, n=1, rank=0):
@@ -66,7 +66,7 @@ class Node:
             try:
                 s.bind(('', port))
                 return s.getsockname()[1]
-            except:
+            except Exception:
                 return -1
 
     def _update_port_cur(self):

@@ -43,7 +43,7 @@ def get_paddle_info():
 
         envs['paddle_version'] = paddle.__version__
         envs['paddle_with_cuda'] = paddle.base.core.is_compiled_with_cuda()
-    except:
+    except Exception:
         envs['paddle_version'] = 'N/A'
         envs['paddle_with_cuda'] = 'N/A'
 
@@ -69,7 +69,7 @@ def get_gcc_version():
         envs['gcc_version'] = (
             run_shell_command("gcc --version").split('\n')[0].split("gcc ")[1]
         )
-    except:
+    except Exception:
         envs['gcc_version'] = 'N/A'
 
 
@@ -80,7 +80,7 @@ def get_clang_version():
             .split('\n')[0]
             .split("clang version ")[1]
         )
-    except:
+    except Exception:
         envs['clang_version'] = 'N/A'
 
 
@@ -91,7 +91,7 @@ def get_cmake_version():
             .split('\n')[0]
             .split("cmake ")[1]
         )
-    except:
+    except Exception:
         envs['cmake_version'] = 'N/A'
 
 
@@ -191,7 +191,7 @@ def get_nvidia_gpu_driver():
         for gpu_info in gpu_list.split("\n"):
             result += gpu_info.split(" (UUID:")[0] + "\n"
         envs['nvidia_gpu_driver'] = result
-    except:
+    except Exception:
         envs['nvidia_gpu_driver'] = 'N/A'
 
 

@@ -2562,7 +2562,7 @@ class DataClassInstanceVariable(VariableBase):
             )
             try:
                 data_dict = dataclass_as_dict(value)
-            except:
+            except Exception:
                 data_dict = {}
             var = DataClassInstanceVariable(
                 data_dict,

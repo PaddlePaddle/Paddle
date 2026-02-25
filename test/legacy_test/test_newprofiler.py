@@ -264,7 +264,7 @@ class TestGetProfiler(unittest.TestCase):
 
         try:
             profiler = profiler.get_profiler(filehandle.name)
-        except:
+        except Exception:
             pass
 
         # test scheduler

@@ -56,7 +56,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         exe = base.Executor(place)
         try:
             fleet.init(None)
-        except:
+        except Exception:
             print("no mpi4py, skip test_pslib_2")
             return
         train_program = base.Program()
@@ -77,14 +77,14 @@ class TestCloudRoleMaker2(unittest.TestCase):
             adam = fleet.distributed_optimizer(adam)
             adam.minimize([cost], [scope])
             fleet.run_server()
-        except:
+        except Exception:
             print("do not support pslib test, skip")
             return
         os.environ["TRAINING_ROLE"] = "wrong"
         try:
             role1 = GeneralRoleMaker(path="./test_gloo_1")
             role1.generate_role()
-        except:
+        except Exception:
             print("catch expected error of wrong TRAINING_ROLE")
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"

@@ -58,7 +58,7 @@ class TestRaiseVarargs(TestCaseBase):
             except ZeroDivisionError:
                 x += 3
                 raise  # RAISE_VARARGS(0)
-        except:
+        except Exception:
             x += 4
         return x + 5
 
@@ -73,7 +73,7 @@ class TestRaiseVarargs(TestCaseBase):
             except ZeroDivisionError:
                 x += 3
                 raise  # RAISE_VARARGS(0)
-        except:
+        except Exception:
             x += 4
         return x + 5
 
@@ -84,13 +84,13 @@ class TestRaiseVarargs(TestCaseBase):
         try:
             try:
                 x += 2
-            except:
+            except Exception:
                 x += 3
             else:
                 x += 4
                 raise NotImplementedError  # RAISE_VARARGS(1)
                 x += 5
-        except:
+        except Exception:
             x += 6
         return x + 7
 
@@ -121,7 +121,7 @@ class TestRaiseVarargs(TestCaseBase):
             except NameError as e:
                 x -= 4
                 raise TimeoutError("TESTING") from e  # RAISE_VARARGS(2)
-        except:
+        except Exception:
             x /= 5
         return x + 6
 
@@ -237,7 +237,7 @@ class TestTryExcept(TestCaseBase):
     def try_except_wo_error(x):
         try:
             x = x + 1
-        except:
+        except Exception:
             x = x * 2
         return x
 
@@ -268,7 +268,7 @@ class TestTryExcept(TestCaseBase):
             x = x + 1
             raise ValueError(f"{__class__.__name__}")
             x = x * 3
-        except:
+        except Exception:
             y = x * 2
         return y
 
@@ -280,7 +280,7 @@ class TestTryExcept(TestCaseBase):
             x = x + 1
             raise ValueError
             x = x * 3
-        except:
+        except Exception:
             y = x * 2
         return y
 
@@ -472,7 +472,7 @@ class TestTryExceptElse(TestCaseBase):
     def try_except_else(x):
         try:
             x += 1
-        except:
+        except Exception:
             x += 2
         else:
             x += 3
@@ -559,7 +559,7 @@ class TestTryExceptFinally(TestCaseBase):
     def try_except_finally(x):
         try:
             x -= 1
-        except:
+        except Exception:
             x -= 2
         finally:
             x -= 3
@@ -571,7 +571,7 @@ class TestTryExceptFinally(TestCaseBase):
         try:
             x -= 1
             raise ValueError
-        except:
+        except Exception:
             x -= 2
         finally:
             x -= 3
@@ -649,7 +649,7 @@ class TestTryExceptElseFinally(TestCaseBase):
     def try_except_else_finally(x):
         try:
             x -= 1
-        except:
+        except Exception:
             x -= 2
         else:
             x -= 3
@@ -777,7 +777,7 @@ class TestNestingCase(TestCaseBase):
                             raise TimeoutError(
                                 "TESTING"
                             ) from e  # RAISE_VARARGS(2)
-                    except:
+                    except Exception:
                         x /= 8
                         raise AssertionError
                 except IndentationError as e:
@@ -836,7 +836,7 @@ class TestNestingCase(TestCaseBase):
                     x -= 3
                 except ValueError:
                     x *= 4
-            except:
+            except Exception:
                 x += 5
             return x  # / 6
 
@@ -866,10 +866,10 @@ class TestAssertException(TestCaseBase):
             try:
                 x /= 2
                 raise TimeoutError("TESTING")
-            except:
+            except Exception:
                 x -= 3
                 assert condition
-        except:
+        except Exception:
             x *= 4
         return x / 5
 
@@ -910,7 +910,7 @@ class TestAssertException(TestCaseBase):
                 x += 2
                 assert y > -10000
                 x += 3
-            except:
+            except Exception:
                 x += 4
 
         self.assert_results(try_assert_except, paddle.to_tensor(10), 10)

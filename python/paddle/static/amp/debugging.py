@@ -81,7 +81,7 @@ def _get_var_dtype_from_block(block, op, arg_name, is_input):
     try:
         var = block._var_recursive(var_name)
         return var.dtype
-    except:
+    except Exception:
         _logger.warning(
             "Operator < {} > gets {} < {} : {} > error!".format(
                 op.type, "input" if is_input else "output", arg_name, var_name

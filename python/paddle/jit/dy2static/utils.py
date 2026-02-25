@@ -595,7 +595,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         if hasattr(func, '__self__'):
             try:
                 prefix = f"{func.__self__.__class__.__name__}_{func.__name__}"
-            except:
+            except Exception:
                 pass
         return prefix
 
@@ -789,7 +789,7 @@ def _compatible_non_tensor_spec(src_spec, desired_spec):
     def hash_value(spec):
         try:
             hash_val = make_hashable(spec)
-        except:
+        except Exception:
             hash_val = None
         return hash_val
 

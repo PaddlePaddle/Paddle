@@ -331,7 +331,7 @@ def _worker_loop(
             fetcher = _DatasetKind.create_fetcher(
                 dataset_kind, dataset, auto_collate_batch, collate_fn, drop_last
             )
-        except:
+        except Exception:
             init_exception = _WorkerException(worker_id)
 
         iterator_drained = False
@@ -409,7 +409,7 @@ def _worker_loop(
     except KeyboardInterrupt:
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
-    except:
+    except Exception:
         raise
     finally:
         if use_shared_memory:

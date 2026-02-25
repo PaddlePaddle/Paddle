@@ -62,7 +62,7 @@ def get_current_device_type():
             current_device = _current_expected_place_()
             try:
                 device_type = current_device.get_device_type()
-            except:
+            except Exception:
                 device_type = "unknown"
         assert device_type in alignment.keys(), (
             f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."

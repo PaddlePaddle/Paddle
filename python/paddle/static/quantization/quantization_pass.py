@@ -19,7 +19,7 @@ import numpy as np
 
 try:
     from tqdm import tqdm
-except:
+except Exception:
     from .utils import tqdm
 
 import paddle
@@ -525,7 +525,7 @@ class QuantizationTransformPass:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
             )
-        except:
+        except Exception:
             scale_value = np.zeros([1], dtype=data_type)
         scale_var_node = graph.create_persistable_node(
             name=scale_name,
@@ -572,7 +572,7 @@ class QuantizationTransformPass:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
             )
-        except:
+        except Exception:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=scale_name,
@@ -654,7 +654,7 @@ class QuantizationTransformPass:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
             )
-        except:
+        except Exception:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=scale_name,
@@ -762,7 +762,7 @@ class QuantizationTransformPass:
             scale_value = np.array(
                 self._scope.find_var(scale_name).get_tensor()
             )
-        except:
+        except Exception:
             scale_value = np.zeros(
                 [var_node.shape()[quant_axis]], dtype=data_type
             )
@@ -1653,7 +1653,7 @@ class OutScaleForTrainingPass:
                             self._scale_name(in_node.name()),
                         )
                         continue
-                    except:
+                    except Exception:
                         scale_node = graph.create_persistable_node(
                             name=self._scale_name(in_node.name()),
                             var_type=core.VarDesc.VarType.DENSE_TENSOR,
@@ -1665,7 +1665,7 @@ class OutScaleForTrainingPass:
                                 scale_value = np.array(
                                     [self._scale_dict[in_node.name()]]
                                 )
-                            except:
+                            except Exception:
                                 scale_value = np.ones([1], dtype=data_type)
                         else:
                             scale_value = np.ones([1], dtype=data_type)
@@ -2013,7 +2013,7 @@ class AddQuantDequantPass:
                     self._scope.find_var(scale_name).get_tensor(),
                     dtype=data_type,
                 )
-        except:
+        except Exception:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
 
         scale_in_node = graph.create_persistable_node(
@@ -3408,7 +3408,7 @@ class AddQuantDequantForInferencePass:
             scale_var_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(), self._scale_name(var_name)
             )
-        except:
+        except Exception:
             if (
                 self._calibration_range_dict
                 and var_name in self._calibration_range_dict
@@ -3441,7 +3441,7 @@ class AddQuantDequantForInferencePass:
                 graph.all_persistable_nodes(),
                 f"{quant_var_node.name()}@zero_point",
             )
-        except:
+        except Exception:
             zero_point_node = graph.create_persistable_node(
                 name=f"{quant_var_node.name()}@zero_point",
                 var_type=core.VarDesc.VarType.DENSE_TENSOR,

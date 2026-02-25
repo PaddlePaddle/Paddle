@@ -119,7 +119,7 @@ def visit_all_module(mod):
                         f"Found alias API, alias name is: {member_name}, original name is: {instance.__name__}",
                         file=sys.stderr,
                     )
-        except:
+        except Exception:
             if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
 

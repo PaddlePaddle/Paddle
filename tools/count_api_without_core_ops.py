@@ -70,7 +70,7 @@ def split_with_and_without_core_ops(member, cur_name):
                     api_with_ops.append(cur_name)
                 else:
                     api_without_ops.append(cur_name)
-        except:
+        except Exception:
             # If getsource failed (pybind API or function inherit from father class), just skip
             pass
 
@@ -87,7 +87,7 @@ def get_md5_of_func(member, cur_name):
         try:
             source = inspect.getsource(member)
             func_dict[cur_name] = md5(source)
-        except:
+        except Exception:
             # If getsource failed (pybind API or function inherit from father class), just skip
             pass
 
@@ -162,7 +162,7 @@ def visit_all_module(mod, func):
                     continue
                 IdSet.add(instance_id)
                 visit_member(mod.__name__, instance, func)
-        except:
+        except Exception:
             if cur_name not in ErrorSet:
                 ErrorSet.add(cur_name)
 

@@ -1018,7 +1018,7 @@ def auto_recompute_pir_program(pir_program, is_forward_op_func=None):
             fwd_op_end_idx = max(
                 get_forward_op_idxs(pir_program, is_forward_op_func)
             )
-        except:
+        except Exception:
             logger.info("No Forward Ops Found!")
 
     if fwd_op_end_idx == -1:

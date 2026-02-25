@@ -71,7 +71,7 @@ def merge_configs(cfg, sec, args_dict):
         try:
             if hasattr(sec_dict, k):
                 setattr(sec_dict, k, v)
-        except:
+        except Exception:
             pass
     return cfg
 

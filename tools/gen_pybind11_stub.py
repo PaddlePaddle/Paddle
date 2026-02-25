@@ -712,7 +712,7 @@ class OpsYamlBaseAPI:
         else:
             try:
                 eval(info_value)
-            except:
+            except Exception:
                 info_value = f'"{info_value}"'
 
         return info_name + ' = ' + info_value
@@ -853,7 +853,7 @@ class OpsYamlBaseAPI:
                                     python_api_info,
                                 )
                             )
-                        except:
+                        except Exception:
                             print(
                                 op_name, op_inputs, op_attrs, output_type_list
                             )

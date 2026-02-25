@@ -20,7 +20,7 @@ import numpy as np
 
 try:
     from tqdm import tqdm
-except:
+except Exception:
     from .utils import tqdm
 
 from paddle.base.framework import IrGraph, _get_var

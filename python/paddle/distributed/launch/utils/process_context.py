@@ -82,7 +82,7 @@ class ProcessContext:
 
             if not self._stderr.isatty():
                 self._stderr.close()
-        except:
+        except Exception:
             pass
 
     def alive(self):

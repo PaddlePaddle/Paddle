@@ -975,7 +975,7 @@ def get_profiler(config_path):
                     translated_config_dict['targets'].append(ProfilerTarget.CPU)
                 elif target.lower() == 'gpu':
                     translated_config_dict['targets'].append(ProfilerTarget.GPU)
-        except:
+        except Exception:
             print('Set targets parameter error, use default parameter instead.')
             translated_config_dict['targets'] = None
     if "scheduler" in config_dict:
@@ -998,7 +998,7 @@ def get_profiler(config_path):
                     config_dict['scheduler'][1],
                 ]
 
-        except:
+        except Exception:
             print(
                 'Set scheduler parameter error, use default parameter instead.'
             )
@@ -1017,7 +1017,7 @@ def get_profiler(config_path):
                         )
                     else:
                         translated_config_dict['on_trace_ready'] = method
-        except:
+        except Exception:
             print(
                 'Set on_trace_ready parameter error, use default parameter instead.'
             )

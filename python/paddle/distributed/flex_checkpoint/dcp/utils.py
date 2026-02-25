@@ -363,7 +363,7 @@ def is_list_string(s):
     try:
         result = ast.literal_eval(s)
         return (True, result) if isinstance(result, list) else (False, None)
-    except:
+    except Exception:
         return False, None
 
 

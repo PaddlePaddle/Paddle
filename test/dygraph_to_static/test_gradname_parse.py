@@ -91,7 +91,7 @@ class TestTanhHighOrderGrad(Dy2StTestBase):
         try:
             dy_out = self.func(*self.dy_input)
             dy_grad = paddle.grad(dy_out, self.dy_grad_input, allow_unused=True)
-        except:
+        except Exception:
             dy_grad = [None for i in self.dy_grad_input]
         dy_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad

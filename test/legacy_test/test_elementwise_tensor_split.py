@@ -38,7 +38,7 @@ class TestElementwiseOp(unittest.TestCase):
         try:
             re_result = re.split(r'[ , -]', gpu_name)
             memory = int(re_result[-1][:-2])
-        except:
+        except Exception:
             memory = int(gpu_info.total_memory) // (1000**3)
         if memory < 37:  # 37GB
             return

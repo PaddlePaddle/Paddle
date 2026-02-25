@@ -39,7 +39,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 KVHTTPServer,
                 KVServer,
             )
-        except:
+        except Exception:
             print("warning: no fleet, skip test_pslib_4")
             return
 
@@ -118,7 +118,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     """
                     pass
 
-        except:
+        except Exception:
             print("warning: no KVHandler, skip test_pslib_4")
             return
 
@@ -136,7 +136,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     self.kv_lock = threading.Lock()
                     self.kv = {}
 
-        except:
+        except Exception:
             print("warning: no KVHTTPServer, skip test_pslib_4")
             return
 
@@ -154,7 +154,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     self.size = {}
                     self.size["a"] = 999
 
-        except:
+        except Exception:
             print("warning: no KVServer, skip test_pslib_4")
             return
 

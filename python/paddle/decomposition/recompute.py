@@ -1003,14 +1003,14 @@ def get_real_define_op_name(value_node):
 def is_dynamic_value_node(value_node):
     try:
         return -1 in value_node.shape
-    except:
+    except Exception:
         raise ValueError(f"value node not found in program: {value_node} ")
 
 
 def is_vector_value_node(value_node):
     try:
         return value_node.type().as_vec_type() is not None
-    except:
+    except Exception:
         raise ValueError(f"value node illegal: {value_node} ")
 
 

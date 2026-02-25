@@ -155,7 +155,7 @@ class AllReduceOpCost(CommOpCost):
                 vars = self.op.block.vars
                 try:
                     var_name = self.op.input("x")[0]
-                except:
+                except Exception:
                     var_name = self.op.output("out")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.op.block.program
@@ -214,7 +214,7 @@ class AllgatherOpCost(CommOpCost):
                 vars = self.op.block.vars
                 try:
                     var_name = self.op.input("x")[0]
-                except:
+                except Exception:
                     var_name = self.op.output("out")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.op.block.program
