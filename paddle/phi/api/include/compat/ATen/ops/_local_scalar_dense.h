@@ -29,9 +29,6 @@ namespace at {
 inline at::Scalar _local_scalar_dense(const at::Tensor& self) {
   PD_CHECK(self.numel() > 0, "_local_scalar_dense: Empty tensor not supported");
 
-  using PaddleTensor = paddle::Tensor;
-  using PaddlePlace = phi::Place;
-
   // Move to CPU if necessary (for compatibility with PyTorch behavior)
   const PaddleTensor& inner = self._PD_GetInner();
   PaddleTensor cpu_tensor = inner;
