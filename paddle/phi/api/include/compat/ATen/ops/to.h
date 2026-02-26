@@ -44,7 +44,7 @@ inline at::Tensor Tensor::to(
         place = phi::GPUPlace(dev.has_index() ? dev.index() : 0);
         break;
       default:
-        place = phi::CPUPlace();
+        PD_THROW("Unsupported device type: ", dev.type());
         break;
     }
     if (place != tensor_.place()) {
