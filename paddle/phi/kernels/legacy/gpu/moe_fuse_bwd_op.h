@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <limits>
+
 #include "paddle/common/exception.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_kernel_impl.h"
@@ -195,7 +197,7 @@ void gather_with_mask_launcher(const T* dy,                   // [s*k, d]
                                int64_t world_size = -1,
                                int64_t num_local_experts = -1,
                                int64_t capacity = -1) {
-  int numel = num_rows * dim;
+  int64_t numel = num_rows * dim;
 
   int64_t threads = 512;
   if (dim % 4 == 0) {
@@ -284,14 +286,14 @@ __global__ void topk_grad_with_mask(const T* dy,               // [s, k]
                                     int64_t num_experts        // e
 ) {
   // init dx to zero
-  for (int i = blockIdx.x; i < num_rows; i += gridDim.x) {
-    int base_grad = i * num_experts;
-    for (int j = threadIdx.x; j < num_experts; j += blockDim.x) {
+  for (int64_t i = blockIdx.x; i < num_rows; i += gridDim.x) {
+    int64_t base_grad = i * num_experts;
+    for (int64_t j = threadIdx.x; j < num_experts; j += blockDim.x) {
       dx[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
-    int base_index = i * k;
-    for (int j = threadIdx.x; j < k; j += blockDim.x) {
+    int64_t base_index = i * k;
+    for (int64_t j = threadIdx.x; j < k; j += blockDim.x) {
       int64_t idx = topk_idx[base_index + j];
       if (combine_weights[base_index + j] > static_cast<T>(0)) {
         dx[base_grad + idx] = dy[base_index + j];
@@ -313,7 +315,8 @@ void topk_grad_with_mask_launcher(const T* dy,               // [s, k]
                                   int64_t k,                 // k
                                   int64_t num_experts,       // e
                                   cudaStream_t stream) {
-  int blocks = num_rows;
+  int64_t blocks =
+      std::min(num_rows, static_cast<int64_t>(std::numeric_limits<int>::max()));
   int threads = 1024;
 
   topk_grad_with_mask<T><<<blocks, threads, 0, stream>>>(
