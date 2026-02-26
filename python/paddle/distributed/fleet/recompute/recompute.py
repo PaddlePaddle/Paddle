@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 
 __all__ = []
-_SIGNATURE_CACHE = {}
+_SIGNATURE_CACHE = weakref.WeakKeyDictionary()
 
 
 def _varbase_help(param):
@@ -158,12 +158,14 @@ def switch_rng_state_tracker(
     paddle.set_rng_state(rng_state)
     get_rng_state_tracker().set_states_tracker(tracker)
 
-    orig_numpy_state = np.random.get_state()
-    orig_random_state = random.getstate()
+    orig_numpy_state = None
+    orig_random_state = None
 
     if numpy_state is not None:
+        orig_numpy_state = np.random.get_state()
         np.random.set_state(numpy_state)
     if random_state is not None:
+        orig_random_state = random.getstate()
         random.setstate(random_state)
 
     if custom_state is not None:
@@ -176,8 +178,10 @@ def switch_rng_state_tracker(
     finally:
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
-        np.random.set_state(orig_numpy_state)
-        random.setstate(orig_random_state)
+        if orig_numpy_state is not None:
+            np.random.set_state(orig_numpy_state)
+        if orig_random_state is not None:
+            random.setstate(orig_random_state)
 
         if custom_state is not None:
             custom_set_state_func(orig_custom_state)
