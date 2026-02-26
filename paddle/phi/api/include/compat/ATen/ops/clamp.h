@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <ATen/core/TensorBase.h>
+#include <ATen/ops/full.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
 #include <limits>
@@ -163,7 +164,9 @@ inline at::Tensor& Tensor::clamp_(
 }
 
 inline at::Tensor Tensor::clamp_max(const at::Scalar& max) const {
-  return clamp(::std::nullopt, max);
+  // Create a tensor with the same shape filled with the max value
+  at::Tensor max_tensor = at::full(tensor_.shape(), max, {});
+  return clamp_max(max_tensor);
 }
 
 inline at::Tensor Tensor::clamp_max(const at::Tensor& max) const {
@@ -171,7 +174,9 @@ inline at::Tensor Tensor::clamp_max(const at::Tensor& max) const {
 }
 
 inline at::Tensor& Tensor::clamp_max_(const at::Scalar& max) const {
-  return clamp_(::std::nullopt, max);
+  // Create a tensor with the same shape filled with the max value
+  at::Tensor max_tensor = at::full(tensor_.shape(), max, {});
+  return clamp_max_(max_tensor);
 }
 
 inline at::Tensor& Tensor::clamp_max_(const at::Tensor& max) const {
@@ -182,7 +187,9 @@ inline at::Tensor& Tensor::clamp_max_(const at::Tensor& max) const {
 }
 
 inline at::Tensor Tensor::clamp_min(const at::Scalar& min) const {
-  return clamp(min, ::std::nullopt);
+  // Create a tensor with the same shape filled with the min value
+  at::Tensor min_tensor = at::full(tensor_.shape(), min, {});
+  return clamp_min(min_tensor);
 }
 
 inline at::Tensor Tensor::clamp_min(const at::Tensor& min) const {
@@ -190,7 +197,9 @@ inline at::Tensor Tensor::clamp_min(const at::Tensor& min) const {
 }
 
 inline at::Tensor& Tensor::clamp_min_(const at::Scalar& min) const {
-  return clamp_(min, ::std::nullopt);
+  // Create a tensor with the same shape filled with the min value
+  at::Tensor min_tensor = at::full(tensor_.shape(), min, {});
+  return clamp_min_(min_tensor);
 }
 
 inline at::Tensor& Tensor::clamp_min_(const at::Tensor& min) const {
