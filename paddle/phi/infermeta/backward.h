@@ -770,6 +770,14 @@ PADDLE_API void IndexAddGradInferMeta(const MetaTensor& index,
                                       MetaTensor* x_grad,
                                       MetaTensor* add_tensor_grad);
 
+PADDLE_API void IndexFillGradInferMeta(const MetaTensor& x,
+                                       const MetaTensor& index,
+                                       int dim,
+                                       const Scalar& value,
+                                       const MetaTensor& out_grad,
+                                       MetaTensor* x_grad,
+                                       MetaTensor* value_grad);
+
 PADDLE_API void IndexPutGradInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& indices,

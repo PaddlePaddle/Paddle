@@ -8179,6 +8179,32 @@ def _index_fill_impl(
     if axis < 0:
         axis = axis + x_dim
 
+    if in_dynamic_or_pir_mode() and (
+        paddle.is_compiled_with_cuda() or x.place.is_cpu_place()
+        if hasattr(x.place, 'is_cpu_place')
+        else True
+    ):
+        if in_dynamic_mode() and index.numel() == 0:
+            return x if inplace else x.clone()
+
+        if isinstance(value, (Variable, paddle.pir.Value)):
+            if value.numel() != 1:
+                raise ValueError("value must be scalar or 0-D tensor")
+            value = float(value)
+        else:
+            value = float(value)
+
+        if inplace:
+            return _C_ops.index_fill_(x, index, axis, value)
+        else:
+            return _C_ops.index_fill(x, index, axis, value)
+
+    if not isinstance(value, Variable):
+        value = paddle.to_tensor(value, dtype=x.dtype)
+    else:
+        if len(value.shape) > 0:
+            raise ValueError("value must be scalar or 0-D tensor")
+
     perm = list(range(len(x.shape)))
     perm[0] = axis
     perm[axis] = 0
