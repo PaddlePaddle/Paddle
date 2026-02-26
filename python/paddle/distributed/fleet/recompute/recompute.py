@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 
 
 __all__ = []
+_SIGNATURE_CACHE = {}
 
 
 def _varbase_help(param):
@@ -705,10 +706,11 @@ def recompute(function, *args, **kwargs):
 
         # Use getattr to get the cached signature. If it doesn't exist, parse and mount it to the target.
         # This avoids the heavy overhead of inspect.signature during repeated executions.
-        dyfunc_sig = getattr(target, "_cached_signature", None)
+        cache_key = getattr(target, "__func__", target)
+        dyfunc_sig = _SIGNATURE_CACHE.get(cache_key)
         if dyfunc_sig is None:
             dyfunc_sig = inspect.signature(target)
-            target._cached_signature = dyfunc_sig
+            _SIGNATURE_CACHE[cache_key] = dyfunc_sig
 
         bound_args = dyfunc_sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
