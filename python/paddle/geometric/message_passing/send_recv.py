@@ -110,7 +110,7 @@ def send_u_recv(
           If `out_size` is set correctly, then it should have the same shape as `x` except the 0th dimension.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -276,7 +276,7 @@ def send_ue_recv(
           If `out_size` is set correctly, then it should have the same shape as `x` except the 0th dimension.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -467,7 +467,7 @@ def send_uv(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

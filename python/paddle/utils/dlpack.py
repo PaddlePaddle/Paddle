@@ -91,18 +91,22 @@ def to_dlpack(x: Tensor) -> CapsuleType:
         dltensor, and the data type is PyCapsule.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-paddle-to-paddle
 
             >>> import paddle
             >>> # x is a tensor with shape [2, 4]
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-            ...                       [0.1, 0.2, 0.6, 0.7]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ]
+            ... )
             >>> dlpack = paddle.to_dlpack(x)
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "dltensor" at 0x7f6103c681b0>
-            >>> #doctest: -SKIP
+            >>> # doctest: -SKIP
 
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
             >>> y = paddle.from_dlpack(dlpack)
@@ -110,7 +114,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-paddle-to-torch
 
             >>> # doctest: +SKIP('torch will not be installed')
@@ -171,13 +175,18 @@ def from_dlpack(
             The device of returned tensor can be one of: ``CPU``, ``CUDAPlace``, ``CUDAPinnedPlace``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-paddle-from-paddle
 
             >>> import paddle
             >>> # From DLPack capsule
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-            ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ],
+            ...     place="cpu",
+            ... )
             >>> dlpack = paddle.to_dlpack(x)
 
             >>> y = paddle.from_dlpack(dlpack)
@@ -198,14 +207,18 @@ def from_dlpack(
                    [[10.       , 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-paddle-from-numpy
 
             >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
             >>> import paddle
             >>> import numpy as np
-            >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
-            ...              [0.1, 0.2, 0.6, 0.7]])
+            >>> x = np.array(
+            ...     [
+            ...         [0.2, 0.3, 0.5, 0.9],
+            ...         [0.1, 0.2, 0.6, 0.7],
+            ...     ]
+            ... )
             >>> y = paddle.from_dlpack(x)
             >>> y[0, 0] = 10.0
             >>> # data of tensor x is shared with tensor y

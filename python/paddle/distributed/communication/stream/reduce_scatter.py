@@ -143,7 +143,7 @@ def reduce_scatter(
         This API only supports the dygraph mode now.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -228,7 +228,7 @@ def _reduce_scatter_base(
         This API will be deprecated in the future, and only supports the dygraph mode now.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle

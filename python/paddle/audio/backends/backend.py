@@ -56,7 +56,7 @@ def info(filepath: str | BinaryIO) -> AudioInfo:
         AudioInfo: info of the given audio.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> import paddle
@@ -100,7 +100,7 @@ def load(
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> import paddle
@@ -146,7 +146,7 @@ def save(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

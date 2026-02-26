@@ -37,15 +37,25 @@ jobs:
       workflow-name: "coverage"
       clone_dir: h-ci
 
-  build:
-    name: Coverage build
+  check-bypass:
+    name: Check bypass
     needs: [clone]
     if: needs.clone.outputs.can-skip != 'true'
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: h-ci
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Coverage build
+    needs: [clone, check-bypass]
+    if: needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
     outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
 
     steps:
       - name: Check docker image and run container
@@ -136,15 +146,7 @@ jobs:
           git submodule update
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: h-ci
-
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           flashattn_version=$(git submodule status|grep flashattn|awk "{print \$1}"|sed "s#-##g")
@@ -172,7 +174,6 @@ jobs:
           '
 
       - name: Clean up env
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -188,7 +189,6 @@ jobs:
           '
 
       - name: Upload coverage product
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -216,7 +216,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -443,7 +443,7 @@ jobs:
           python /bos/BosClient.py paddldfleet.tar.gz ${target_path}
           '
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'bash ci/clean_uv_cache.sh; rm -rf * .[^.]*'
@@ -555,7 +555,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
@@ -661,7 +661,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'

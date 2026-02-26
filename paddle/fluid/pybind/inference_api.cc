@@ -1115,7 +1115,7 @@ void BindAnalysisConfig(py::module *m) {
                 None.
 
             Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> from paddle.inference import Config
 
@@ -1136,7 +1136,7 @@ void BindAnalysisConfig(py::module *m) {
                 None.
 
             Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> from paddle.inference import Config
 
