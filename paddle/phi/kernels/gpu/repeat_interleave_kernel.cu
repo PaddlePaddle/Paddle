@@ -302,6 +302,7 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
@@ -312,4 +313,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
