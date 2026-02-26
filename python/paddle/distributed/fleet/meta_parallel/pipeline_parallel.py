@@ -54,7 +54,15 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     FusedCommBuffer,
     assign_group_by_size,
 )
+from paddle.framework import core
 
+from ..recompute.global_states import (
+    get_state,
+    get_states_keys,
+    reset_state_idx,
+    set_state,
+)
+from ..recompute.recompute import detach_variable, switch_rng_state_tracker
 from .pipeline_hooks import (
     PipelineHook,
 )
@@ -64,6 +72,78 @@ g_profile_pipeline_details_steps = int(
 )
 
 __all__ = []
+
+
+def load_state(key):
+    """
+    When recompute_overlap is enabled, the forward inside recompute is executed earlier to enable overlap.
+    """
+    state = get_state(key)
+    with paddle.base.dygraph.guard():
+        # TODO need to check the recompute calling is valid or not
+        # Restore inputs
+        inputs = list(state["inputs"])
+        tensor_indices = state["tensor_indices"]
+        duplicate_tensor = state["duplicate_tensor"]
+        tensors = state["tensor_inputs"]
+        for i, idx in enumerate(tensor_indices):
+            inputs[idx] = (
+                tensors[i].to(paddle.base.framework._current_expected_place())
+                if i in state["offload_indices"]
+                else tensors[i]
+            )
+            if i in state["offload_indices"]:
+                # NOTE(zhiqiu): tensor.to(device) will set stop_gradient=True, which may break the gragh
+                inputs[idx].stop_gradient = tensors[i].stop_gradient
+        tracer = framework._dygraph_tracer()
+        tracer._has_grad = True
+
+        # NOTE support AMP
+        # need restore auto_cast state as well as w/b list
+        if state["preserve_rng_state"]:
+            with (
+                switch_rng_state_tracker(
+                    state["fw_rng_state"],
+                    state["fwd_rng_state_tracker"],
+                    state["fwd_numpy_state"],
+                    state["fwd_random_state"],
+                    state["fwd_custom_state"],
+                    state["custom_get_state_func"],
+                    state["custom_set_state_func"],
+                ),
+                paddle.amp.auto_cast(
+                    enable=state["is_fw_autocast"],
+                    custom_white_list=state["amp_white_list"],
+                    custom_black_list=state["amp_black_list"],
+                    level=state["amp_level"],
+                    dtype=state["amp_dtype"],
+                ),
+            ):
+                detached_inputs = detach_variable(tuple(inputs))
+                outputs = state["run_function"](
+                    *detached_inputs, **state["kwargs"]
+                )
+        else:
+            with paddle.amp.auto_cast(
+                enable=state["is_fw_autocast"],
+                custom_white_list=state["amp_white_list"],
+                custom_black_list=state["amp_black_list"],
+                level=state["amp_level"],
+                dtype=state["amp_dtype"],
+            ):
+                detached_inputs = detach_variable(tuple(inputs))
+                outputs = state["run_function"](
+                    *detached_inputs, **state["kwargs"]
+                )
+
+        if isinstance(outputs, core.eager.Tensor):
+            outputs = (outputs,)
+
+        state = {}
+        state["outputs"] = outputs
+        state["detached_inputs"] = detached_inputs
+        state["duplicate_tensor"] = duplicate_tensor
+        set_state(state, key)
 
 
 def profile_pipeline_details(msg):
@@ -495,6 +575,10 @@ class PipelineParallel(MetaParallelBase):
         # only support user hooks during training
         self.user_hooks_enabled = True
 
+        self._recompute_overlap = self._strategy.hybrid_configs[
+            'pp_configs'
+        ].recompute_overlap
+
     def register_hook(
         self, location: PipelineParallelMicroStepLocations, hook: Callable
     ):
@@ -796,6 +880,8 @@ class PipelineParallel(MetaParallelBase):
 
         input_buffers = []
         output_buffers = []
+        if self._recompute_overlap:
+            recompute_idx_buffers = []
 
         micro_dataset = self._wrap_data(data)
 
@@ -813,11 +899,18 @@ class PipelineParallel(MetaParallelBase):
             input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
 
             self._record_stamp("F", step_id, '"B"', self._forward_color)
+
+            if self._recompute_overlap:
+                recompute_before_fwd = set(get_states_keys())
             output_tensor, _, _ = self._forward_step(
                 input_tensor=input_tensor_dict if use_dict else input_tensor,
                 micro_dataset=micro_dataset,
                 step_id=step_id,
             )
+            if self._recompute_overlap:
+                recompute_after_fwd = set(get_states_keys())
+                recompute_idx = recompute_after_fwd - recompute_before_fwd
+                recompute_idx_buffers.append(recompute_idx)
 
             # convert dict to tuple whose tensor element has a key attribution
             output_tensor_tuple = dict_to_tuple_helper(output_tensor)
@@ -856,15 +949,27 @@ class PipelineParallel(MetaParallelBase):
             self._record_stamp(
                 "F", startup_steps + i, '"B"', self._forward_color
             )
+
+            if self._recompute_overlap:
+                recompute_before_fwd = set(get_states_keys())
             output_tensor, _, _ = self._forward_step(
                 input_tensor=input_tensor_dict if use_dict else input_tensor,
                 micro_dataset=micro_dataset,
                 step_id=startup_steps + i,
             )
+            if self._recompute_overlap:
+                recompute_after_fwd = set(get_states_keys())
+                recompute_idx = recompute_after_fwd - recompute_before_fwd
+                recompute_idx_buffers.append(recompute_idx)
+
             self._record_stamp(
                 "F", startup_steps + i, '"E"', self._forward_color
             )
 
+            if self._recompute_overlap:
+                recompute_idx = recompute_idx_buffers.pop(0)
+                for key in recompute_idx:
+                    load_state(key)
             output_tensor_tuple = dict_to_tuple_helper(output_tensor)
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
@@ -925,6 +1030,11 @@ class PipelineParallel(MetaParallelBase):
             input_tensor = input_buffers.pop(0)
             output_tensor = output_buffers.pop(0)
 
+            if self._recompute_overlap:
+                recompute_idx = recompute_idx_buffers.pop(0)
+                for key in recompute_idx:
+                    load_state(key)
+
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
@@ -983,6 +1093,7 @@ class PipelineParallel(MetaParallelBase):
             )
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
+        reset_state_idx()
         return train_loss
 
     def register_sharding_comm_overlap_hook(self, optimizer):
