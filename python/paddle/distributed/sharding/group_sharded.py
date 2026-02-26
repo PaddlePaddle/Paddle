@@ -85,7 +85,7 @@ def group_sharded_parallel(
         scaler: A wrapper for group sharded given scaler.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # type: ignore
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
@@ -99,7 +99,12 @@ def group_sharded_parallel(
             >>> model = Linear(1000, 1000)
 
             >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-            >>> optimizer = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip)
+            >>> optimizer = paddle.optimizer.AdamW(
+            ...     learning_rate=0.001,
+            ...     parameters=model.parameters(),
+            ...     weight_decay=0.00001,
+            ...     grad_clip=clip,
+            ... )
 
             >>> # wrap sharding model, optimizer and scaler
             >>> model, optimizer, scaler = group_sharded_parallel(model, optimizer, "p_g", scaler=scaler)
@@ -211,7 +216,7 @@ def save_group_sharded_model(
         optimizer (Optimizer, optional): Group sharded encapsulated optimizer. Defaults to None, indicating that the optimizer state is not saved.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # type: ignore
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
@@ -225,7 +230,12 @@ def save_group_sharded_model(
             >>> model = Linear(1000, 1000)
 
             >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-            >>> optimizer = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters(), weight_decay=0.00001, grad_clip=clip)
+            >>> optimizer = paddle.optimizer.AdamW(
+            ...     learning_rate=0.001,
+            ...     parameters=model.parameters(),
+            ...     weight_decay=0.00001,
+            ...     grad_clip=clip,
+            ... )
 
             >>> # wrap sharding model, optimizer and scaler
             >>> model, optimizer, scaler = group_sharded_parallel(model, optimizer, "p_g", scaler=scaler)

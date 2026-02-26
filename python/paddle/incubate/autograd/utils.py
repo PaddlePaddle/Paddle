@@ -52,7 +52,7 @@ def prim_enabled() -> bool:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
@@ -83,7 +83,7 @@ def enable_prim() -> None:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.incubate.autograd import enable_prim, prim_enabled
@@ -109,7 +109,7 @@ def disable_prim() -> None:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled

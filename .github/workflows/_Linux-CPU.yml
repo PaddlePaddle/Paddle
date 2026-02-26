@@ -9,7 +9,7 @@ on:
     outputs:
       can-skip:
         description: "Whether to skip the job"
-        value: ${{ jobs.build-and-test.outputs.can-skip }}
+        value: ${{ jobs.check-bypass.outputs.can-skip }}
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -27,10 +27,22 @@ defaults:
     shell: bash
 
 jobs:
+
+  check-bypass:
+    name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: cpu
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-test:
     name: Build and test
     outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
@@ -131,15 +143,7 @@ jobs:
           git submodule update
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: cpu
-
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -150,7 +154,6 @@ jobs:
           '
 
       - name: Test
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -161,7 +164,6 @@ jobs:
           '
 
       - name: Upload paddle_whl
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py

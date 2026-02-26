@@ -65,14 +65,14 @@ def all_gather(
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> tensor_list = [] # type: ignore
+            >>> tensor_list = []  # type: ignore
             >>> if dist.get_rank() == 0:
             ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             >>> else:
@@ -103,7 +103,7 @@ def all_gather_object(
         This API only supports the dygraph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle

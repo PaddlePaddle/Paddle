@@ -52,7 +52,7 @@ class Imikolov(Dataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +TIMEOUT(60)
             >>> import paddle
