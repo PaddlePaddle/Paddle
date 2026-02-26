@@ -462,6 +462,47 @@ def amax(
 )
 
 add_doc_and_signature(
+    "clone",
+    r"""
+    Returns a copy of input Tensor. It will always have a Tensor copy.
+
+    In addition, This function is derivable, so gradients will flow back from the output to input.
+
+    Args:
+        x (Tensor): The input Tensor.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A Tensor copied from ``input``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> x = paddle.ones([2])
+            >>> x.stop_gradient = False
+            >>> x.retain_grads()
+            >>> clone_x = paddle.clone(x)
+            >>> clone_x.retain_grads()
+
+            >>> y = clone_x**3
+            >>> y.backward()
+            >>> print(clone_x.grad.numpy())
+            [3. 3.]
+            >>> print(x.grad.numpy())
+            [3. 3.]
+    """,
+    """
+def clone(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "angle",
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while

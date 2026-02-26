@@ -3686,41 +3686,6 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     return output
 
 
-def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
-    """
-    Returns a copy of input Tensor. It will always have a Tensor copy.
-
-    In addition, This function is derivable, so gradients will flow back from the output to input.
-
-    Parameters:
-        x (Tensor): The input Tensor.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, A Tensor copied from ``input``.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> import numpy as np
-
-            >>> x = paddle.ones([2])
-            >>> x.stop_gradient = False
-            >>> x.retain_grads()
-            >>> clone_x = paddle.clone(x)
-            >>> clone_x.retain_grads()
-
-            >>> y = clone_x**3
-            >>> y.backward()
-            >>> print(clone_x.grad.numpy())  # type: ignore
-            [3. 3.]
-            >>> print(x.grad.numpy())  # type: ignore
-            [3. 3.]
-    """
-    return x.clone()
-
-
 # NOTE(zhiqiu): not public
 def _memcpy(input, place=None, output=None) -> paddle.Tensor:
     """

@@ -55,6 +55,7 @@ __all__ = [
     'median',
     'nanmedian',
     'seed',
+    'clone',
 ]
 
 
@@ -322,6 +323,60 @@ def seed() -> int:
     seed = core.default_cpu_generator().seed()
     paddle.seed(seed)
     return seed
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x"},
+    func_name="paddle.compat.clone",
+    correct_name="paddle.clone",
+)
+def clone(
+    input: Tensor,
+    *,
+    memory_format: str | None = None,
+) -> Tensor:
+    r"""
+    The cloned tensor is detached from the computational graph and has a copy of the
+    original tensor's data. The gradient will flow back from the output to the input.
+
+    Args:
+        input (Tensor): The input tensor to clone.
+        memory_format (str|None, optional): The desired memory format of the returned tensor.
+            This parameter is for PyTorch compatibility. PaddlePaddle currently does not
+            support different memory formats, so this parameter is ignored.
+            Default: None.
+
+    Returns:
+        Tensor: A cloned copy of the input tensor.
+
+    Note:
+        This is a PyTorch compatible API that follows the function signature of torch.clone.
+        The `memory_format` parameter is accepted for compatibility but not used in PaddlePaddle.
+        To use the original clone of paddle, please consider `paddle.clone`.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> x.stop_gradient = False
+            >>> y = paddle.compat.clone(x)
+            >>> print(y)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=False,
+                   [1, 2, 3])
+
+            >>> # Clone with gradient propagation
+            >>> x = paddle.to_tensor([2.0, 3.0, 4.0], dtype='float32')
+            >>> x.stop_gradient = False
+            >>> y = paddle.compat.clone(x)
+            >>> z = y * 2
+            >>> z.backward()
+            >>> print(x.grad)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [2., 2., 2.])
+    """
+    return paddle.clone(input)
 
 
 class MinMaxRetType(NamedTuple):

@@ -206,6 +206,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : clone
+  name : [paddle.clone, paddle.Tensor.clone]
+  args_alias :
+    use_default_mapping : True
+
 - op : conj
   name: [paddle.conj, paddle.Tensor.conj]
   args_alias :
