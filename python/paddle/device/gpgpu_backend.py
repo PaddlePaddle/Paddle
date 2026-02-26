@@ -52,7 +52,7 @@ def get_device_properties(
             and the number of multiprocessors on the device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.device.get_device_properties('metax_gpu:0')

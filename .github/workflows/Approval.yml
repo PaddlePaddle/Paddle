@@ -12,8 +12,18 @@ env:
   token: ${{ vars.ACTION_GITHUB_TOKEN }}
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'approval'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   check-approvers:
     name: Check approval
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,14 +43,6 @@ jobs:
           git config --global user.email "paddle_ci@example.com"
           git merge test
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: approval
-
       - name: Display Required Approvers
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           bash ci/check_approval.sh

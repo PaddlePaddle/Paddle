@@ -2427,7 +2427,7 @@ All parameter, weight, gradient are variables in Paddle.
     You can create var in a scope and get it from the scope.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -3456,7 +3456,7 @@ All parameter, weight, gradient are variables in Paddle.
                                 or an int variable that represents the verbosity level set globally for all modules.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # case1: Set GLOG_v=1
@@ -3531,7 +3531,7 @@ All parameter, weight, gradient are variables in Paddle.
     DenseTensorArray is array of DenseTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> arr = paddle.framework.core.DenseTensorArray()
@@ -3572,7 +3572,7 @@ All parameter, weight, gradient are variables in Paddle.
                    None.
 
              Examples:
-                    .. code-block:: python
+                    .. code-block:: pycon
 
                         >>> import paddle
                         >>> import numpy as np

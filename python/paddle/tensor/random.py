@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops
@@ -970,6 +970,30 @@ def standard_normal(
         )
 
 
+@overload
+def randn(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def randn(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
 @size_args_decorator
 def randn(
     shape: ShapeLike,
@@ -1057,6 +1081,14 @@ def randn(
                 (-0.67300206-0.09163689j)],
               [ (0.17453042-0.90028328j),  (0.16270922-1.30863023j),
                 (0.94287461+0.06869461j)]])
+
+            >>> # example 5: attr shape is *shape (integers as variable-length arguments).
+            >>> paddle.seed(200)
+            >>> out5 = paddle.randn(2, 3)
+            >>> print(out5)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.19452949,  0.13181525,  1.12500870],
+             [-0.59116811, -0.95176864, -0.12959413]])
     """
     device = (
         _get_paddle_place(device)
@@ -2262,6 +2294,30 @@ def randperm(
         return out
 
 
+@overload
+def rand(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def rand(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
 @size_args_decorator
 def rand(
     shape: ShapeLike,
@@ -2337,6 +2393,14 @@ def rand(
             [[0.77650446, 0.12870903, 0.05153799],
              [0.27029657, 0.03963696, 0.42487794]])
             >>> # doctest: -SKIP
+
+            >>> # example 4: attr shape is *shape (integers as variable-length arguments).
+            >>> paddle.seed(200)
+            >>> out4 = paddle.rand(2, 3)
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.77663314, 0.90824795, 0.15685187],
+             [0.04279523, 0.34468332, 0.79557180]])
     """
     device = (
         _get_paddle_place(device)

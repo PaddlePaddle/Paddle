@@ -184,7 +184,7 @@ class DistAttr(core.TensorDistAttr):
         sharding_specs(list[str|None]): The specification describing how to shard the Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -279,7 +279,7 @@ def shard_tensor(
         Tensor: A Tensor constructed from ``data`` with distributed attributes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -287,8 +287,12 @@ def shard_tensor(
             >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
 
             >>> # dense tensor
-            >>> a = paddle.to_tensor([[1,2,3],
-            ...                       [5,6,7]])
+            >>> a = paddle.to_tensor(
+            ...     [
+            ...         [1, 2, 3],
+            ...         [5, 6, 7],
+            ...     ]
+            ... )
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> # distributed tensor
@@ -809,7 +813,7 @@ def dtensor_from_fn(
         Tensor: A Tensor constructed from ``fn`` with distributed attributes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -843,7 +847,7 @@ def reshard(
         Tensor: A Distributed Tensor resharded with distributed attributes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -998,7 +1002,7 @@ def shard_layer(
             that are all `paddle.Tensor` with distributed attributes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2132,7 +2136,7 @@ class ShardingStage1(_ShardingStageBase):
         mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters. Note: Currently, only one mesh configuration is supported for all dense parameters. If there is a need for multiple mesh configurations, please configure them yourself in the upper layer networking code.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2196,7 +2200,7 @@ class ShardingStage2(_ShardingStageBase):
         mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters. Note: Currently, only one mesh configuration is supported for all dense parameters. If there is a need for multiple mesh configurations, please configure them yourself in the upper layer networking code.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2262,7 +2266,7 @@ class ShardingStage3(_ShardingStageBase):
         mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters. Note: Currently, only one mesh configuration is supported for all dense parameters. If there is a need for multiple mesh configurations, please configure them yourself in the upper layer networking code.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2367,7 +2371,7 @@ def shard_optimizer(
         An optimizer with distributed view.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2408,7 +2412,7 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
         A GradScaler with distributed view.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2650,7 +2654,7 @@ class Strategy(auto_strategy.BaseConfig):
             configurations, and the others remain the default values.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -2666,7 +2670,7 @@ class Strategy(auto_strategy.BaseConfig):
             >>> strategy.gradient_merge.avg = False
 
             >>> strategy.pipeline.enable = True
-            >>> strategy.pipeline.schedule_mode = "1F1B" # default is "1F1B"
+            >>> strategy.pipeline.schedule_mode = "1F1B"  # default is "1F1B"
             >>> strategy.pipeline.micro_batch_size = 2
     """
 
@@ -2785,7 +2789,7 @@ class Strategy(auto_strategy.BaseConfig):
             ``degree`` (int): the number of segmentation pieces. Default: 8.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed as dist
@@ -2811,7 +2815,7 @@ class Strategy(auto_strategy.BaseConfig):
             ``avg`` (bool): whether to average the gradients of each step. Default: True.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed as dist
@@ -2838,7 +2842,7 @@ class Strategy(auto_strategy.BaseConfig):
             "dropout_add" (bool): whether to fuse ``dropout`` and ``add`` computation. Default: False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed as dist
@@ -2866,7 +2870,7 @@ class Strategy(auto_strategy.BaseConfig):
             ``accumulate_steps`` (int): number of steps for accumulating. Default: 1.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed as dist
@@ -2901,7 +2905,7 @@ class Strategy(auto_strategy.BaseConfig):
             ``use_master_grad``, (bool): whether to use master grad. Default: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed as dist
@@ -3684,7 +3688,7 @@ def to_static(
         DistModel: A ``DistModel`` instance converted the input ``layer``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -3696,13 +3700,15 @@ def to_static(
             >>> BATCH_NUM = 4
             >>> IMAGE_SIZE = 16
             >>> CLASS_NUM = 8
-            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, images, labels, num_samples):
             ...         self.images = images
             ...         self.labels = labels
             ...         self.num_samples = num_samples
+            ...
             ...     def __getitem__(self, idx):
             ...         return self.images[idx], self.labels[idx]
+            ...
             ...     def __len__(self):
             ...         return self.num_samples
 
@@ -3726,6 +3732,7 @@ def to_static(
             ...             [Shard(0)],
             ...             stop_gradient=False,
             ...         )
+            ...
             ...     def forward(self, x):
             ...         out = self.linear_0(x)
             ...         out = self.relu(out)
@@ -3741,12 +3748,16 @@ def to_static(
             >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
             >>> layer = DemoNet(mesh)
             >>> opt = paddle.optimizer.SGD(
-            ...     learning_rate=0.1, parameters=layer.parameters()
+            ...     learning_rate=0.1,
+            ...     parameters=layer.parameters(),
             ... )
             >>> loss_fn = nn.MSELoss()
             >>> dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
             >>> dist_model = dist.to_static(
-            ...     layer, dist_loader, loss_fn, opt
+            ...     layer,
+            ...     dist_loader,
+            ...     loss_fn,
+            ...     opt,
             ... )
             >>> # training
             >>> dist_model.train()
@@ -3833,7 +3844,7 @@ def unshard_dtensor(dist_tensor: Tensor) -> Tensor:
         paddle.Tensor: The original dense tensor of the input ``dist_tensor``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -4246,7 +4257,7 @@ def shard_dataloader(
         ShardDataloader: The sharded dataloader.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-1
 
             >>> import os
@@ -4281,10 +4292,14 @@ def shard_dataloader(
             ...         super(MlpModel, self).__init__()
             ...         self.w0 = dist.shard_tensor(
             ...             self.create_parameter(shape=[8, 8]),
-            ...             mesh0, [dist.Replicate(), dist.Shard(1)])
+            ...             mesh0,
+            ...             [dist.Replicate(), dist.Shard(1)],
+            ...         )
             ...         self.w1 = dist.shard_tensor(
             ...             self.create_parameter(shape=[8, 8]),
-            ...             mesh1, [dist.Replicate(), dist.Shard(0)])
+            ...             mesh1,
+            ...             [dist.Replicate(), dist.Shard(0)],
+            ...         )
 
             ...     def forward(self, x):
             ...         y = paddle.matmul(x, self.w0)
@@ -4305,7 +4320,7 @@ def shard_dataloader(
             >>> dist_dataloader = dist.shard_dataloader(
             ...     dataloader=dataloader,
             ...     meshes=[mesh0, mesh1],
-            ...     shard_dims="x"
+            ...     shard_dims="x",
             ... )
             >>> opt = paddle.optimizer.AdamW(learning_rate=0.001, parameters=model.parameters())
             >>> dist_opt = dist.shard_optimizer(opt)
@@ -4327,7 +4342,10 @@ def shard_dataloader(
 
             >>> def run_static():
             ...     dist_model = dist.to_static(
-            ...         model, dist_dataloader, loss_fn, opt
+            ...         model,
+            ...         dist_dataloader,
+            ...         loss_fn,
+            ...         opt,
             ...     )
             ...     dist_model.train()
             ...     for step, (input, label) in enumerate(dist_dataloader()):
@@ -4345,7 +4363,7 @@ def shard_dataloader(
             >>> # RUN_STATIC=1 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
             >>> # RUN_STATIC=0 python -u -m paddle.distributed.launch --gpus "0,1,2,3,4,5,6,7" {test_case}.py
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-2
 
             >>> import paddle
@@ -4354,32 +4372,26 @@ def shard_dataloader(
             >>> import numpy as np
             >>> mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
             >>> mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=['dp', 'mp'])
-            >>> class RandomDataset(Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, seq_len, hidden, num_samples=8):
             ...         super().__init__()
             ...         self.seq_len = seq_len
             ...         self.hidden = hidden
             ...         self.num_samples = num_samples
             ...         self.inputs1 = [
-            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype(
-            ...                 "float32"
-            ...             )
-            ...             for _ in range(num_samples)
+            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype("float32") for _ in range(num_samples)
             ...         ]
             ...         self.inputs2 = [
-            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype(
-            ...                 "float32"
-            ...             )
-            ...             for _ in range(num_samples)
+            ...             np.random.uniform(size=[self.seq_len, self.hidden]).astype("float32") for _ in range(num_samples)
             ...         ]
-            ...         self.labels = [
-            ...             np.array(index, dtype="float32") for index in range(num_samples)
-            ...         ]
+            ...         self.labels = [np.array(index, dtype="float32") for index in range(num_samples)]
+            ...
             ...     def __getitem__(self, index):
             ...         return {
             ...             "inputs": [self.inputs1[index], self.inputs2[index]],
             ...             "label": self.labels[index],
             ...         }
+            ...
             ...     def __len__(self):
             ...         return self.num_samples
 
@@ -4459,7 +4471,7 @@ def enable_auto_dp():
         recognize and act upon the environment variable.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -4480,10 +4492,12 @@ def enable_auto_dp():
             ...         rank = dist.get_rank() if dist.get_world_size() > 1 else 0
             ...         np.random.seed(42 + rank)
             ...         self.num_samples = num_samples
+            ...
             ...     def __getitem__(self, idx):
             ...         x = np.random.rand(INPUT_DIM).astype('float32')
             ...         y = np.random.randint(0, CLASS_NUM, (1,)).astype('int64')
             ...         return x, y
+            ...
             ...     def __len__(self):
             ...         return self.num_samples
 
@@ -4495,6 +4509,7 @@ def enable_auto_dp():
             ...             nn.Linear(102400, INPUT_DIM),
             ...             nn.Linear(INPUT_DIM, CLASS_NUM),
             ...         )
+            ...
             ...     def forward(self, x):
             ...         return self.net(x)
 

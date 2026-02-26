@@ -27,9 +27,19 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: static-check
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: check-bypass
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 30
@@ -110,15 +120,7 @@ jobs:
           git checkout test
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: static-check
-
       - name: Static check
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -126,7 +128,6 @@ jobs:
           '
 
       - name: Check api approval
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -139,7 +140,6 @@ jobs:
           '
 
       - name: Check GPU Kernel approval
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy

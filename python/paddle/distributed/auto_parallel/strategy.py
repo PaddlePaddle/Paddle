@@ -200,7 +200,7 @@ class Strategy(BaseConfig):
         corresponding default configurations.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distributed.fleet import auto

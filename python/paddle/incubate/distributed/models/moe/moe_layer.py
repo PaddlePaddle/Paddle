@@ -276,7 +276,7 @@ class MoELayer(nn.Layer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Until Distributed move successfully, just skip it')
             >>> from paddle.nn import layer, LayerList
@@ -284,18 +284,20 @@ class MoELayer(nn.Layer):
             >>> from paddle.distributed.collective import Group
             >>> from paddle.distributed import fleet
 
-            >>> moe_group = Group(fleet.worker_index(),
-            ...                   0,
-            ...                   list(range(fleet.worker_num())))
+            >>> moe_group = Group(
+            ...     fleet.worker_index(),
+            ...     0,
+            ...     list(range(fleet.worker_num())),
+            ... )
             >>> mp_group = None
 
-            >>> num_experts=8
-            >>> dim_feedforward=512
-            >>> d_model=8
-            >>> top_k=2
+            >>> num_experts = 8
+            >>> dim_feedforward = 512
+            >>> d_model = 8
+            >>> top_k = 2
 
             >>> class ExpertLayer(Layer):
-            ...     def __init__(self, d_model, d_hidden, name=None,rank=0, windex = 0, num_expert=1):
+            ...     def __init__(self, d_model, d_hidden, name=None, rank=0, windex=0, num_expert=1):
             ...         super().__init__()
             ...         self.htoh4 = nn.Linear(d_model, d_hidden)
             ...         self.h4toh = nn.Linear(d_hidden, d_model)
@@ -306,8 +308,8 @@ class MoELayer(nn.Layer):
             ...         return x
 
             >>> gate_config = {
-            ...         "type": "gshard",
-            ...         "top_k": top_k,
+            ...     "type": "gshard",
+            ...     "top_k": top_k,
             ... }
 
             >>> experts_list = LayerList()
@@ -315,12 +317,14 @@ class MoELayer(nn.Layer):
             ...     exp_layer = ExpertLayer(d_model, dim_feedforward // top_k, windex=expi, num_expert=num_experts)
             ...     experts_list.append(exp_layer)
 
-            >>> moeLayer = MoELayer(d_model = d_model,
-            ...                     experts=experts_list,
-            ...                     gate=gate_config,
-            ...                     moe_group=moe_group,
-            ...                     mp_group=mp_group,
-            ...                     recompute_interval=0)
+            >>> moeLayer = MoELayer(
+            ...     d_model=d_model,
+            ...     experts=experts_list,
+            ...     gate=gate_config,
+            ...     moe_group=moe_group,
+            ...     mp_group=mp_group,
+            ...     recompute_interval=0,
+            ... )
 
     """
 

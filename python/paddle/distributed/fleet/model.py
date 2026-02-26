@@ -43,7 +43,7 @@ def distributed_model(model):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -54,6 +54,7 @@ def distributed_model(model):
             ...         super().__init__()
             ...         self._linear1 = nn.Linear(10, 10)
             ...         self._linear2 = nn.Linear(10, 1)
+            ...
             ...     def forward(self, x):
             ...         return self._linear2(self._linear1(x))
 
@@ -64,7 +65,9 @@ def distributed_model(model):
             >>> layer = LinearNet()
             >>> loss_fn = nn.MSELoss()
             >>> adam = paddle.optimizer.Adam(
-            ...     learning_rate=0.001, parameters=layer.parameters())
+            ...     learning_rate=0.001,
+            ...     parameters=layer.parameters(),
+            ... )
 
             >>> # 3. get data_parallel model using fleet
             >>> adam = fleet.distributed_optimizer(adam)

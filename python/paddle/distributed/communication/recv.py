@@ -52,7 +52,7 @@ def recv(
         Return a task object.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -92,7 +92,7 @@ def irecv(
         This API only supports the dygraph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -131,7 +131,7 @@ def recv_object_list(
         This function does not return any value.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
