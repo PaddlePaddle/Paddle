@@ -21,7 +21,7 @@ namespace at {}  // namespace at
 
 namespace at {
 
-at::Scalar Tensor::item() const {
+inline at::Scalar Tensor::item() const {
   auto numel = this->sym_numel();
   PD_CHECK(numel == 1,
            "a Tensor with ",
