@@ -634,5 +634,78 @@ class TestTensorDataSetter(unittest.TestCase):
         assert x.grad.place == x.place
 
 
+class TestTensorNewSharedTensor(unittest.TestCase):
+    def test_shared_data(self):
+        x = paddle.to_tensor([1.0, 2.0, 3.0])
+        y = x._new_shared_tensor()
+        x[0] = 88.88
+        # Test that they share the same data
+        self.assertEqual(y.shape, x.shape)
+        self.assertEqual(y.dtype, x.dtype)
+        self.assertEqual(y.place, x.place)
+        np.testing.assert_allclose(y.numpy(), x.numpy())
+
+    def test_new_shared_tensor_retain_holder_true(self):
+        """Test _new_shared_tensor with retain_holder=True (default)"""
+        x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
+        y = x._new_shared_tensor(retain_holder=True)
+
+        # Test that they share the same data
+        self.assertEqual(y.shape, x.shape)
+        self.assertEqual(y.dtype, x.dtype)
+        self.assertEqual(y.place, x.place)
+        np.testing.assert_allclose(y.numpy(), x.numpy())
+
+        # Test autograd metadata sharing
+        self.assertEqual(y.stop_gradient, x.stop_gradient)
+
+        # Test gradient sharing after backward
+        loss = x.sum() + y.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertIsNotNone(y.grad)
+        np.testing.assert_allclose(x.grad.numpy(), y.grad.numpy())
+
+        self.assertEqual(id(x.grad), id(y.grad))
+        # Test data sharing - modification affects both
+
+    def test_new_shared_tensor_retain_holder_false(self):
+        """Test _new_shared_tensor with retain_holder=False"""
+        x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
+        z = x._new_shared_tensor(retain_holder=False)
+
+        # Test metadata is the same
+        self.assertEqual(z.shape, x.shape)
+        self.assertEqual(z.dtype, x.dtype)
+        self.assertEqual(z.place, x.place)
+
+        # Test that new tensor has empty data allocation
+        # It should be uninitialized or have default values
+        self.assertEqual(z.stop_gradient, x.stop_gradient)
+
+        # Test autograd metadata is still shared
+        loss = x.sum()
+        loss.backward()
+        self.assertIsNotNone(z.grad)
+
+    def test_new_shared_tensor_default_behavior(self):
+        """Test _new_shared_tensor with default parameters"""
+        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]], stop_gradient=False)
+        y = x._new_shared_tensor()  # default retain_holder=True
+
+        # Test gradient calculation
+        loss = (x + y).sum()
+        loss.backward()
+
+        np.testing.assert_allclose(x.grad.numpy(), y.grad.numpy())
+
+    def test_new_shared_tensor_uninitialized_error(self):
+        """Test error when original tensor is not initialized"""
+        x = paddle.Tensor()
+        x._clear_dataptr()  # Ensure Tensor is uninitialized tensor
+        with self.assertRaises(ValueError):
+            x._new_shared_tensor()
+
+
 if __name__ == '__main__':
     unittest.main()

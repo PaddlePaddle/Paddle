@@ -421,7 +421,7 @@ class DataFeeder:
         :code:`ValueError` - If some Variables are not in this Program.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -431,8 +431,10 @@ class DataFeeder:
             >>> place = paddle.CPUPlace()
             >>> def reader():
             ...     for _ in range(4):
-            ...         yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
-            ...
+            ...         yield (
+            ...             np.random.random([4]).astype('float32'),
+            ...             np.random.random([3]).astype('float32'),
+            ...         )
             >>> main_program = paddle.static.Program()
             >>> startup_program = paddle.static.Program()
 
@@ -455,7 +457,7 @@ class DataFeeder:
             >>> outs = exe.run(
             ...     program=main_program,
             ...     feed=feed_data,
-            ...     fetch_list=[out]
+            ...     fetch_list=[out],
             ... )
             >>> print(outs)
 
@@ -508,7 +510,7 @@ class DataFeeder:
             :code:`dict`: a :code:`dict` that contains (variable name - converted tensor) pairs
 
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # In this example, reader - generator will return a list of ndarray of 3 elements
                 >>> # feed API will convert each ndarray input into a tensor
@@ -523,12 +525,15 @@ class DataFeeder:
 
                 >>> def reader(limit=5):
                 ...     for i in range(1, limit + 1):
-                ...         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
-                ...
+                ...         yield (
+                ...             np.ones([6]).astype('float32') * i,
+                ...             np.ones([1]).astype('int64') * i,
+                ...             np.random.random([9]).astype('float32'),
+                ...         )
                 >>> data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
                 >>> data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
                 >>> data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
-                >>> feeder = base.DataFeeder(['data_1','data_2', 'data_3'], paddle.CPUPlace())
+                >>> feeder = base.DataFeeder(['data_1', 'data_2', 'data_3'], paddle.CPUPlace())
 
                 >>> result = feeder.feed(reader())
                 >>> print(result['data_1'])
