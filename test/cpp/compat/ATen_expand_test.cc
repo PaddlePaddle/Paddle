@@ -20,11 +20,21 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "test/cpp/prim/init_env_utils.h"
 #include "torch/all.h"
+
+namespace {
+
+class TensorExpandTest : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() { paddle::prim::InitTensorOperants(); }
+};
+
+}  // namespace
 
 // ======================== expand tests ========================
 
-TEST(TensorExpandTest, ExpandBasic) {
+TEST_F(TensorExpandTest, ExpandBasic) {
   at::Tensor t = at::arange(3, at::kFloat);
 
   at::Tensor result = t.expand({3, 4});
@@ -33,7 +43,7 @@ TEST(TensorExpandTest, ExpandBasic) {
   ASSERT_EQ(result.sizes()[1], 4);
 }
 
-TEST(TensorExpandTest, ExpandSingleDim) {
+TEST_F(TensorExpandTest, ExpandSingleDim) {
   at::Tensor t = at::full({1}, 5.0f, at::kFloat);
 
   at::Tensor result = t.expand({5});
@@ -41,7 +51,7 @@ TEST(TensorExpandTest, ExpandSingleDim) {
   ASSERT_EQ(result.numel(), 5);
 }
 
-TEST(TensorExpandTest, ExpandMultipleDims) {
+TEST_F(TensorExpandTest, ExpandMultipleDims) {
   at::Tensor t = at::full({1, 3}, 1.0f, at::kFloat);
 
   at::Tensor result = t.expand({2, 3, 4});
@@ -51,7 +61,7 @@ TEST(TensorExpandTest, ExpandMultipleDims) {
   ASSERT_EQ(result.sizes()[2], 4);
 }
 
-TEST(TensorExpandTest, ExpandWithImplicit) {
+TEST_F(TensorExpandTest, ExpandWithImplicit) {
   at::Tensor t = at::arange(3, at::kFloat);
 
   at::Tensor result = t.expand({3, 4}, true);
@@ -60,7 +70,7 @@ TEST(TensorExpandTest, ExpandWithImplicit) {
   ASSERT_EQ(result.sizes()[1], 4);
 }
 
-TEST(TensorExpandTest, ExpandPreservesValue) {
+TEST_F(TensorExpandTest, ExpandPreservesValue) {
   at::Tensor t = at::full({3}, 7.0f, at::kFloat);
 
   at::Tensor result = t.expand({3, 4});
@@ -71,7 +81,7 @@ TEST(TensorExpandTest, ExpandPreservesValue) {
 
 // ======================== expand_as tests ========================
 
-TEST(TensorExpandTest, ExpandAsBasic) {
+TEST_F(TensorExpandTest, ExpandAsBasic) {
   at::Tensor t = at::arange(3, at::kFloat).reshape({1, 3});
   at::Tensor other = at::zeros({2, 3}, at::kFloat);
 
@@ -81,7 +91,7 @@ TEST(TensorExpandTest, ExpandAsBasic) {
   ASSERT_EQ(result.sizes()[1], 3);
 }
 
-TEST(TensorExpandTest, ExpandAsMatchSize) {
+TEST_F(TensorExpandTest, ExpandAsMatchSize) {
   at::Tensor t = at::full({1}, 7.0f, at::kFloat);
   at::Tensor other = at::zeros({3, 3, 3}, at::kFloat);
 
@@ -91,7 +101,7 @@ TEST(TensorExpandTest, ExpandAsMatchSize) {
   ASSERT_EQ(result.numel(), other.numel());
 }
 
-TEST(TensorExpandTest, ExpandAsPreservesValue) {
+TEST_F(TensorExpandTest, ExpandAsPreservesValue) {
   at::Tensor t = at::full({2, 1}, 5.0f, at::kFloat);
   at::Tensor other = at::zeros({2, 3}, at::kFloat);
 
