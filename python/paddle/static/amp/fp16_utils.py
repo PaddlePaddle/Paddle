@@ -382,7 +382,7 @@ def fp16_guard():
     transformed as float16 type.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle

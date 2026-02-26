@@ -38,7 +38,7 @@ MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 class Imdb(Dataset):
     """
-    Implementation of `IMDB <https://www.imdb.com/interfaces/>`_ dataset.
+    Implementation of `IMDB <https://datasets.imdbws.com/>`_ dataset.
 
     Args:
         data_file(str|None): path to data tar file, can be set None if

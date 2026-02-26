@@ -1110,16 +1110,6 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
       v_descale.is_initialized(),
       false,
       common::errors::InvalidArgument("v_descale is not supported"));
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(

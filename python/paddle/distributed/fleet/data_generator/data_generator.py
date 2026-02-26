@@ -41,7 +41,7 @@ class DataGenerator:
 
         Example:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet.data_generator as dg
                 >>> class MyData(dg.DataGenerator):
@@ -49,6 +49,7 @@ class DataGenerator:
                 ...         def local_iter():
                 ...             int_words = [int(x) for x in line.split()]
                 ...             yield ("words", int_words)
+                ...
                 ...         return local_iter
                 ...
                 ...     def generate_batch(self, samples):
@@ -67,7 +68,7 @@ class DataGenerator:
         debug and benchmarking
 
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('raise NotImplementedError')
                 >>> import paddle.distributed.fleet.data_generator as dg
@@ -75,6 +76,7 @@ class DataGenerator:
                 ...     def generate_sample(self, line):
                 ...         def local_iter():
                 ...             yield ("words", [1, 2, 3, 4])
+                ...
                 ...         return local_iter
                 >>> mydata = MyData()
                 >>> mydata.run_from_memory()
@@ -105,7 +107,7 @@ class DataGenerator:
 
         Example:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet.data_generator as dg
                 >>> class MyData(dg.DataGenerator):
@@ -113,6 +115,7 @@ class DataGenerator:
                 ...         def local_iter():
                 ...             int_words = [int(x) for x in line.split()]
                 ...             yield ("words", [int_words])
+                ...
                 ...         return local_iter
                 >>> mydata = MyData()
                 >>> mydata.run_from_stdin()
@@ -176,7 +179,7 @@ class DataGenerator:
 
         Example:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet.data_generator as dg
                 >>> class MyData(dg.DataGenerator):
@@ -184,6 +187,7 @@ class DataGenerator:
                 ...         def local_iter():
                 ...             int_words = [int(x) for x in line.split()]
                 ...             yield ("words", [int_words])
+                ...
                 ...         return local_iter
         '''
         raise NotImplementedError(
@@ -207,7 +211,7 @@ class DataGenerator:
 
         Example:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet.data_generator as dg
                 >>> class MyData(dg.DataGenerator):
@@ -215,6 +219,7 @@ class DataGenerator:
                 ...         def local_iter():
                 ...             int_words = [int(x) for x in line.split()]
                 ...             yield ("words", int_words)
+                ...
                 ...         return local_iter
                 ...
                 ...     def generate_batch(self, samples):

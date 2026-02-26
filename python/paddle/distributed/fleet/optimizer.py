@@ -36,7 +36,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
     Returns:
         Fleet: instance of fleet.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed.fleet as fleet

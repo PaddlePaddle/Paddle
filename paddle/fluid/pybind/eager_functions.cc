@@ -594,7 +594,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       ctx.EmplaceBackInput(Tensor());
       continue;
     }
-    if (paddle::framework::detail::IsDuplicableVar(input)) {
+    if (framework::detail::IsDuplicableVar(input)) {
       std::vector<Tensor> tensors = CastPyArg2VectorOfTensor(obj, i + 1);
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
@@ -626,7 +626,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         ctx.EmplaceBackInput(Tensor());
         continue;
       }
-      if (paddle::framework::detail::IsDuplicableVar(input)) {
+      if (framework::detail::IsDuplicableVar(input)) {
         std::vector<Tensor> tensors =
             CastPyArg2VectorOfTensor(obj, i + 1, mesh);
         ctx.EmplaceBackInputs(std::move(tensors));
@@ -711,7 +711,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         const auto& input_range = ctx.InputRangeAt(in_idx);
         const auto& input_tensor = ctx.InputAt(input_range.first);
         // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
-        if (paddle::framework::detail::IsOptionalVar(output) &&
+        if (framework::detail::IsOptionalVar(output) &&
             !input_tensor.has_allocation()) {
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
@@ -720,7 +720,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
           continue;
         }
         /// inplace vector<Tensor>, initialized tensor.
-        if (paddle::framework::detail::IsDuplicableVar(output)) {
+        if (framework::detail::IsDuplicableVar(output)) {
           std::vector<Tensor> empty_tensors;
           size_t vector_size = input_range.second - input_range.first;
           empty_tensors.resize(vector_size);
@@ -750,7 +750,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         Tensor* out_tensor = ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->has_allocation()) {
           PADDLE_ENFORCE(
-              paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
+              framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
               common::errors::InvalidArgument(
                   "Custom operator[%s]'s %d-th output is not initialized. "
