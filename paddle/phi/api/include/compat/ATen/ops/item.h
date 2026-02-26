@@ -38,20 +38,7 @@ at::Scalar Tensor::item() const {
 
 template <typename T>
 T Tensor::item() const {
-  auto numel = this->sym_numel();
-  PD_CHECK(numel == 1,
-           "a Tensor with ",
-           numel,
-           " elements cannot be converted to Scalar");
-
-  // Move to CPU if necessary (for compatibility with PyTorch behavior)
-  PaddleTensor cpu_tensor = tensor_;
-  if (!phi::is_cpu_place(tensor_.place())) {
-    PaddlePlace place(phi::AllocationType::CPU);
-    cpu_tensor = tensor_.copy_to(place, true);
-  }
-
-  return *(cpu_tensor.data<T>());
+  return item().to<T>();
 }
 
 }  // namespace at

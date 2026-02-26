@@ -203,6 +203,8 @@ class Tensor : public TensorBase {
   template <typename T>
   T item() const;
 
+  bool equal(const at::Tensor& other) const;
+
   Tensor toType(ScalarType t) const {
     return Tensor(paddle::experimental::cast(
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));

@@ -23,6 +23,7 @@
 #include <ATen/ops/coalesce.h>
 #include <ATen/ops/empty.h>
 #include <ATen/ops/empty_like.h>
+#include <ATen/ops/equal.h>
 #include <ATen/ops/flatten.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
