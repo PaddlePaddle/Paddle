@@ -49,7 +49,7 @@ class Exponential(exponential_family.ExponentialFamily):
         rate (float|Tensor): Rate parameter. The value of rate must be positive.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

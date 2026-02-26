@@ -353,7 +353,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import argparse
             >>> from paddle.distributed.fleet.launch_utils import add_arguments

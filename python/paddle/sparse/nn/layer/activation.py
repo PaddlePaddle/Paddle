@@ -44,11 +44,11 @@ class ReLU(Layer):
         - output: Sparse Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 1.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> relu = paddle.sparse.nn.ReLU()
             >>> out = relu(sparse_x)
@@ -96,7 +96,7 @@ class Softmax(Layer):
         - output: Sparse Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2022)
@@ -174,11 +174,11 @@ class ReLU6(Layer):
         - output: Sparse Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([-2., 0., 8.])
+            >>> dense_x = paddle.to_tensor([-2.0, 0.0, 8.0])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> relu6 = paddle.sparse.nn.ReLU6()
             >>> out = relu6(sparse_x)
@@ -222,7 +222,7 @@ class LeakyReLU(Layer):
         - output: Sparse Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

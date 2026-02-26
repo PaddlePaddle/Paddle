@@ -446,18 +446,20 @@ def RegisterPass(function=None, input_specs={}):
         callables: Callable pair(s).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.incubate.passes.ir import RegisterPass
 
             >>> @RegisterPass
             >>> def multi_add_to_addn():
-            ...    def pattern(x, y, z):
-            ...        return paddle.add(paddle.add(x, y), z)
-            ...    def replace(x, y, z):
-            ...        return paddle.add_n([x, y, z])
-            ...    return pattern, replace
+            ...     def pattern(x, y, z):
+            ...         return paddle.add(paddle.add(x, y), z)
+            ...
+            ...     def replace(x, y, z):
+            ...         return paddle.add_n([x, y, z])
+            ...
+            ...     return pattern, replace
     """
 
     def _is_pass_pair(check_pair):

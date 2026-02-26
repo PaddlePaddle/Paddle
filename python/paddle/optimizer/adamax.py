@@ -106,7 +106,7 @@ class Adamax(Optimizer):
         **Currently, Adamax doesn't support sparse parameter optimization.**
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -124,7 +124,7 @@ class Adamax(Optimizer):
             ...     parameters=linear.parameters(),
             ...     beta1=beta1,
             ...     beta2=beta2,
-            ...     weight_decay=0.01
+            ...     weight_decay=0.01,
             ... )
             >>> out.backward()
             >>> adamax.step()
@@ -140,16 +140,19 @@ class Adamax(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adamax = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
-            ...     parameters=[{  # type: ignore
-            ...         'params': linear_1.parameters()
-            ...     }, {
-            ...         'params': linear_2.parameters(),
-            ...         'weight_decay': 0.001,
-            ...         'learning_rate': 0.1,
-            ...         'beta1': 0.8
-            ...     }],
+            ...     parameters=[  # type: ignore
+            ...         {
+            ...             'params': linear_1.parameters(),
+            ...         },
+            ...         {
+            ...             'params': linear_2.parameters(),
+            ...             'weight_decay': 0.001,
+            ...             'learning_rate': 0.1,
+            ...             'beta1': 0.8,
+            ...         },
+            ...     ],
             ...     weight_decay=0.01,
-            ...     beta1=0.9
+            ...     beta1=0.9,
             ... )
             >>> out.backward()
             >>> adamax.step()
