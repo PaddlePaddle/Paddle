@@ -27,6 +27,7 @@ from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .creation import _complex_to_real_dtype, assign
+from paddle.incubate.api_export import api_declare 
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -344,6 +345,12 @@ def real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@api_declare(  
+    compat=True,
+    level=1,
+    func_name='paddle.imag',
+    alias_name=['paddle.tensor.imag', 'paddle.tensor.attribute.imag']
+)
 def imag(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns a new tensor containing the imaginary parts of the input tensor.
@@ -381,21 +388,22 @@ def imag(x: Tensor, name: str | None = None) -> Tensor:
             [[6., 5., 4.],
              [3., 2., 1.]])
 
-            >>> # Real input example (newly added for alignment)
+            >>> # Real input example
             >>> x_real = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> print(paddle.imag(x_real))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0., 0., 0.])
     """
-    if not paddle.is_complex(x):
-        return paddle.zeros_like(x, dtype=x.dtype, name=name)
-
     if in_dynamic_or_pir_mode():
-        return _C_ops.imag(x, name=name)
-    else:
-        helper = LayerHelper('imag', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=_complex_to_real_dtype(helper.input_dtype())
-        )
-        helper.append_op(type='imag', inputs={'X': x}, outputs={'Out': out})
-        return out
+        return _C_ops.imag(x, name)
+    helper = LayerHelper('imag', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=_complex_to_real_dtype(helper.input_dtype())
+    )
+    helper.append_op(
+        type='imag',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'name': name} if name else {}
+    )
+    return out
