@@ -39,7 +39,7 @@ jobs:
       PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
-      WITH_TPCACHE: "ON"
+      WITH_TPCACHE: "OFF"
       WITH_SCCACHE: "ON"
       WITH_SHARED_PHI: "ON"
       GIT_PR_ID: ${{ github.event.pull_request.number }}
