@@ -123,3 +123,46 @@ TEST(TensorIsVariableTest, AlwaysTrueFor1D) {
   at::Tensor t = at::arange(10, at::kFloat);
   ASSERT_TRUE(t.is_variable());
 }
+
+// ============================================================
+// Tests for at::Tensor::item() — sparse tensor paths
+// ============================================================
+
+TEST(TensorItemSparseTest, EmptySparseCOO_ItemReturnsZero) {
+  // A sparse tensor with nnz == 0: item() must return zero (Scalar(0)).
+  at::Tensor indices = at::zeros({2, 0}, at::kLong);
+  at::Tensor values = at::zeros({0}, at::kFloat);
+  // 1x1 empty sparse tensor
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values, {1, 1});
+  sparse = sparse.coalesce();
+
+  at::Scalar s = sparse.item();
+
+  ASSERT_NEAR(s.to<float>(), 0.0f, 1e-6f);
+}
+
+TEST(TensorItemSparseTest, CoalescedSparseCOO_SingleNonZero_ReturnsValue) {
+  // 1x1 sparse COO with one non-zero at (0,0) = 5.0.
+  at::Tensor indices = at::tensor({0, 0}, at::kLong).reshape({2, 1});
+  at::Tensor values = at::tensor({5.0f}, at::kFloat);
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values, {1, 1});
+  sparse = sparse.coalesce();
+
+  ASSERT_TRUE(sparse.is_coalesced());
+  at::Scalar s = sparse.item();
+
+  ASSERT_NEAR(s.to<float>(), 5.0f, 1e-5f);
+}
+
+TEST(TensorItemSparseTest, NonCoalescedSparseCOO_DuplicateIndices_SumsValues) {
+  // Two entries both at (0,0): item() must sum them (3 + 7 = 10).
+  at::Tensor indices = at::tensor({0, 0, 0, 0}, at::kLong).reshape({2, 2});
+  at::Tensor values = at::tensor({3.0f, 7.0f}, at::kFloat);
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values, {1, 1});
+
+  // Do NOT coalesce — exercising the non-coalesced path.
+  ASSERT_FALSE(sparse.is_coalesced());
+  at::Scalar s = sparse.item();
+
+  ASSERT_NEAR(s.to<float>(), 10.0f, 1e-5f);
+}
