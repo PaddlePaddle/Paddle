@@ -324,3 +324,46 @@ class TestRealAPIZeroDtype(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+    
+class TestRealImagOp(OpTest):
+    def setUp(self):
+        self.op_type = "imag"
+        self.paddle_apis = {
+            "imag": paddle.imag,
+        }
+        self.numpy_apis = {
+            "imag": np.imag,
+        }
+        self.init_input_output()
+        self.init_grad_input_output()
+
+    def init_input_output(self):
+        self.inputs = {
+            'X': np.random.rand(2, 3).astype(np.complex64) + 1j * np.random.rand(2, 3).astype(np.complex64)
+        }
+        self.outputs = {'Out': self.numpy_apis[self.op_type](self.inputs['X'])}
+
+    def init_grad_input_output(self):
+        self.grad_outputs = {'Out': np.random.rand(2, 3).astype(np.float32)}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_imag_real_input(self):
+        x = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
+        out = paddle.imag(x)
+        expected = paddle.to_tensor([0.0, 0.0, 0.0], dtype='float32')
+        paddle.testing.assert_allclose(out, expected)
+
+        x = paddle.to_tensor([1, 2, 3], dtype='int32')
+        out = paddle.imag(x)
+        expected = paddle.to_tensor([0, 0, 0], dtype='int32')
+        paddle.testing.assert_allclose(out, expected)
+
+        x = paddle.to_tensor([1+2j, 3+4j], dtype='complex64')
+        out = paddle.imag(x)
+        expected = paddle.to_tensor([2.0, 4.0], dtype='float32')
+        paddle.testing.assert_allclose(out, expected)
