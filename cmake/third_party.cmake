@@ -628,7 +628,9 @@ if(NOT WITH_GPU
    OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
   set(WITH_NVSHMEM OFF)
 endif()
-if(WITH_SLEEF)
+if(WITH_SLEEF
+   AND NOT WITH_ROCM
+   AND NOT WIN32)
   include(cmake/sleef.cmake)
   if(TARGET extern_sleef)
     list(APPEND third_party_deps extern_sleef)

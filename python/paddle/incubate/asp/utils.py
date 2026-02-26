@@ -63,7 +63,7 @@ class CheckMethod(Enum):
         Returns:
             CheckMethod: The corresponded sparsity checking method.
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> from paddle.incubate.asp import CheckMethod, MaskAlgo
@@ -95,13 +95,17 @@ def calculate_density(x: npt.NDArray[Any]) -> float:
         float, The density of :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
 
-            >>> x = np.array([[0, 1, 3, 0],
-            ...             [1, 1, 0, 1]])
+            >>> x = np.array(
+            ...     [
+            ...         [0, 1, 3, 0],
+            ...         [1, 1, 0, 1],
+            ...     ]
+            ... )
             >>> out = paddle.incubate.asp.calculate_density(x)
             >>> print(out)
             0.625
@@ -154,26 +158,38 @@ def check_mask_1d(mat: npt.NDArray[Any], n: int, m: int) -> bool:
     Returns:
         bool: True if every row of :attr:`mat` is in 1D n:m sparse pattern, else False.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
 
-          >>> x = np.array([[0, 1, 3, 0],
-          ...               [1, 0, 0, 1]])
+          >>> x = np.array(
+          ...     [
+          ...         [0, 1, 3, 0],
+          ...         [1, 0, 0, 1],
+          ...     ]
+          ... )
           >>> y = sparsity.check_mask_1d(x, 2, 4)
           >>> print(y)
           True
 
-          >>> x = np.array([[0, 1, 5, 4],
-          ...               [1, 0, 0, 1]])
+          >>> x = np.array(
+          ...     [
+          ...         [0, 1, 5, 4],
+          ...         [1, 0, 0, 1],
+          ...     ]
+          ... )
           >>> y = sparsity.check_mask_1d(x, 2, 4)
           >>> print(y)
           False
 
           >>> # x would be padded to shape (2, 8)
-          >>> x = np.array([[0, 1, 0, 4, 6],
-          ...               [1, 0, 0, 1, 7]])
+          >>> x = np.array(
+          ...     [
+          ...         [0, 1, 0, 4, 6],
+          ...         [1, 0, 0, 1, 7],
+          ...     ]
+          ... )
           >>> y = sparsity.check_mask_1d(x, 2, 4)
           >>> print(y)
           True
@@ -204,12 +220,16 @@ def get_mask_1d(mat: npt.NDArray[Any], n: int, m: int) -> npt.NDArray[Any]:
     Returns:
         nparray: The 1D `n:m` sparse mask of :attr:`mat`.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
-          >>> mat = np.array([[0, 1, 5, 4],
-          ...                 [2, 7, 3, 6]])
+          >>> mat = np.array(
+          ...     [
+          ...         [0, 1, 5, 4],
+          ...         [2, 7, 3, 6],
+          ...     ]
+          ... )
           >>> mask = sparsity.get_mask_1d(mat, 2, 4)
           >>> print(mask)
           [[0 0 1 1]
@@ -290,33 +310,45 @@ def check_mask_2d(mat: npt.NDArray[Any], n: int, m: int) -> bool:
     Returns:
         bool: True if  every :math:`m \times m` block of the input matrix :attr:`mat` is in 2D `n:m` sparse pattern, else False.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
 
-          >>> x = np.array([[0, 8, 9, 0],
-          ...               [9, 0, 0, 10],
-          ...               [5, 0, 0, 6],
-          ...               [0, 4, 6, 0]])
+          >>> x = np.array(
+          ...     [
+          ...         [0, 8, 9, 0],
+          ...         [9, 0, 0, 10],
+          ...         [5, 0, 0, 6],
+          ...         [0, 4, 6, 0],
+          ...     ]
+          ... )
           >>> y = sparsity.check_mask_2d(x, 2, 4)
           >>> print(y)
           True
 
-          >>> x = np.array([[0, 8, 0, 9],
-          ...               [9, 0, 0, 10],
-          ...               [0, 5, 0, 6],
-          ...               [0, 4, 6, 0]])
+          >>> x = np.array(
+          ...     [
+          ...         [0, 8, 0, 9],
+          ...         [9, 0, 0, 10],
+          ...         [0, 5, 0, 6],
+          ...         [0, 4, 6, 0],
+          ...     ]
+          ... )
           >>> y = sparsity.check_mask_2d(x, 2, 4)
           >>> print(y)
           True
 
           >>> # x would be padded to shape (8, 8)
-          >>> x = np.array([[0, 8, 0, 9],
-          ...               [9, 0, 7, 0],
-          ...               [0, 5, 0, 6],
-          ...               [3, 0, 6, 0],
-          ...               [1, 1, 0, 1]])
+          >>> x = np.array(
+          ...     [
+          ...         [0, 8, 0, 9],
+          ...         [9, 0, 7, 0],
+          ...         [0, 5, 0, 6],
+          ...         [3, 0, 6, 0],
+          ...         [1, 1, 0, 1],
+          ...     ]
+          ... )
           >>> y = sparsity.check_mask_2d(x, 2, 4)
           >>> print(y)
           True
@@ -349,15 +381,19 @@ def get_mask_2d_greedy(
     Returns:
         nparray: The 2D `n:m` sparse mask of :attr:`mat`.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
 
-          >>> mat = np.array([[9, 8, 3, 7],
-          ...                 [9, 2, 1, 10],
-          ...                 [5, 1, 3, 6],
-          ...                 [2, 4, 6, 1]])
+          >>> mat = np.array(
+          ...     [
+          ...         [9, 8, 3, 7],
+          ...         [9, 2, 1, 10],
+          ...         [5, 1, 3, 6],
+          ...         [2, 4, 6, 1],
+          ...     ]
+          ... )
           >>> mask = sparsity.get_mask_2d_greedy(mat, 2, 4)
           >>> print(mask)
           [[1. 1. 0. 0.]
@@ -467,15 +503,19 @@ def get_mask_2d_best(mat: npt.NDArray[Any], n: int, m: int) -> npt.NDArray[Any]:
     Returns:
         nparray: The 1D `n:m` sparse mask of :attr:`mat`.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
 
-          >>> mat = np.array([[2, 8, 9, 9],
-          ...                 [9, 1, 3, 9],
-          ...                 [5, 6, 3, 9],
-          ...                 [2, 4, 6, 9]])
+          >>> mat = np.array(
+          ...     [
+          ...         [2, 8, 9, 9],
+          ...         [9, 1, 3, 9],
+          ...         [5, 6, 3, 9],
+          ...         [2, 4, 6, 9],
+          ...     ]
+          ... )
           >>> mask_greedy = sparsity.get_mask_2d_greedy(mat, 2, 4)
           >>> mask_best = sparsity.get_mask_2d_best(mat, 2, 4)
           >>> print("L1 norm of `greedy` sparse matrix", np.multiply(mat, mask_greedy).sum())
@@ -523,15 +563,19 @@ def create_mask(
     Returns:
         nparray: The `n:m` sparse mask of :attr:`tensor` generated by :attr:`func_name`.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
 
-          >>> tensor = np.array([[2, 8, 9, 9],
-          ...                    [9, 1, 3, 9],
-          ...                    [5, 6, 3, 9],
-          ...                    [2, 4, 6, 9]])
+          >>> tensor = np.array(
+          ...     [
+          ...         [2, 8, 9, 9],
+          ...         [9, 1, 3, 9],
+          ...         [5, 6, 3, 9],
+          ...         [2, 4, 6, 9],
+          ...     ]
+          ... )
           >>> mask_1d = sparsity.create_mask(tensor, func_name=sparsity.MaskAlgo.MASK_1D)
           >>> print(mask_1d)
           [[0 0 1 1]
@@ -599,15 +643,19 @@ def check_sparsity(
     Returns:
         bool: True if tensor pass checking of function given by :attr:`func_name`, else False.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
 
-          >>> tensor = np.array([[2, 8, 9, 9],
-          ...                    [9, 1, 3, 9],
-          ...                    [5, 6, 3, 9],
-          ...                    [2, 4, 6, 9]])
+          >>> tensor = np.array(
+          ...     [
+          ...         [2, 8, 9, 9],
+          ...         [9, 1, 3, 9],
+          ...         [5, 6, 3, 9],
+          ...         [2, 4, 6, 9],
+          ...     ]
+          ... )
           >>> mask_1d = sparsity.create_mask(tensor, func_name=sparsity.MaskAlgo.MASK_1D)
           >>> print(mask_1d)
           [[0 0 1 1]

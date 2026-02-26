@@ -89,7 +89,7 @@ class Input:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # example 1:
                 >>> from paddle.tensorrt.export import Input
@@ -98,8 +98,8 @@ class Input:
                 >>>     optim_input_shape=(4,100),
                 >>>     max_input_shape=(8,100),
                 >>> )
-                >>> input_config.input_data_type='int64'
-                >>> input_config.input_range=(1,10)
+                >>> input_config.input_data_type = 'int64'
+                >>> input_config.input_range = (1, 10)
 
                 >>> # example 2:
                 >>> from paddle.tensorrt.export import Input
@@ -645,7 +645,7 @@ def convert(model_path, config):
         program:The TensorRT optimized program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # example 1:
             >>> # This example takes the user-specified model input shape, and Paddle internally generates corresponding random data.

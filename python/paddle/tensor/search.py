@@ -487,7 +487,7 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1538,14 +1538,14 @@ def top_p_sampling(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> paddle.device.set_device('gpu')
             >>> paddle.seed(2023)
-            >>> x = paddle.randn([2,3])
+            >>> x = paddle.randn([2, 3])
             >>> print(x)
             Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
              [[-0.32012719, -0.07942779,  0.26011357],

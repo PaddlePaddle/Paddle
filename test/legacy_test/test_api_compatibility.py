@@ -941,6 +941,73 @@ class TestSquareAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
+# Test masked_fill compatibility
+class TestMaskedFillAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [3, 3]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randint(1, 10, self.shape).astype(self.dtype)
+        self.np_mask = np.random.randint(0, 2, self.shape).astype(bool)
+
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        mask = paddle.to_tensor(self.np_mask)
+        paddle_dygraph_out = []
+
+        # Position args (args)
+        out1 = paddle.masked_fill(x, mask, 0.0)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args (kwargs)
+        out2 = paddle.masked_fill(x=x, mask=mask, value=0.0)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args (input alias)
+        out3 = paddle.masked_fill(input=x, mask=mask, value=0.0)
+        paddle_dygraph_out.append(out3)
+
+        # Verify all outputs are equal
+        for i in range(1, len(paddle_dygraph_out)):
+            np.testing.assert_allclose(
+                paddle_dygraph_out[0].numpy(), paddle_dygraph_out[i].numpy()
+            )
+        paddle.enable_static()
+
+    def test_static_compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            mask = paddle.static.data(
+                name="mask", shape=self.shape, dtype='bool'
+            )
+
+            # Position args
+            out1 = paddle.masked_fill(x, mask, 0.0)
+            # Paddle keyword args
+            out2 = paddle.masked_fill(x=x, mask=mask, value=0.0)
+            # Torch keyword args (input alias)
+            out3 = paddle.masked_fill(input=x, mask=mask, value=0.0)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "mask": self.np_mask},
+                fetch_list=[out1, out2, out3],
+            )
+
+        # Verify all outputs are equal
+        for i in range(1, len(fetches)):
+            np.testing.assert_allclose(fetches[0], fetches[i])
+
+
 class TestTanAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
