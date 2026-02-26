@@ -34,8 +34,9 @@ inline Tensor expand(const Tensor& self,
   // Target sizes - convert to vector
   std::vector<int64_t> target_size_vec(size.begin(), size.end());
 
-  // Use Paddle's native expand API
-  paddle::Tensor result = pd_tensor.expand(phi::IntArray(target_size_vec));
+  // Use Paddle's experimental expand API
+  paddle::Tensor result =
+      paddle::experimental::expand(pd_tensor, phi::IntArray(target_size_vec));
 
   return Tensor(result);
 }
