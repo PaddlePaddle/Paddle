@@ -8179,12 +8179,12 @@ def _index_fill_impl(
     if axis < 0:
         axis = axis + x_dim
 
-    if in_dynamic_or_pir_mode() and (
+    if in_dynamic_mode() and (
         paddle.is_compiled_with_cuda() or x.place.is_cpu_place()
         if hasattr(x.place, 'is_cpu_place')
         else True
     ):
-        if in_dynamic_mode() and index.numel() == 0:
+        if index.numel() == 0:
             return x if inplace else x.clone()
 
         if isinstance(value, (Variable, paddle.pir.Value)):
