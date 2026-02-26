@@ -48,6 +48,9 @@ inline at::Tensor transpose(const at::Tensor& self,
 inline at::Tensor transpose(const at::Tensor& self,
                             int64_t dim0,
                             int64_t dim1) {
+  int64_t ndim = self.dim();
+  if (dim0 < 0) dim0 += ndim;
+  if (dim1 < 0) dim1 += ndim;
   std::vector<int> perm(self.dim());
   for (size_t i = 0; i < perm.size(); i++) {
     perm[i] = static_cast<int>(i);
@@ -65,6 +68,9 @@ inline at::Tensor Tensor::transpose(int64_t dim0, int64_t dim1) const {
 }
 
 inline at::Tensor& Tensor::transpose_(int64_t dim0, int64_t dim1) const {
+  int64_t ndim = this->dim();
+  if (dim0 < 0) dim0 += ndim;
+  if (dim1 < 0) dim1 += ndim;
   std::vector<int> perm(this->dim());
   for (size_t i = 0; i < perm.size(); i++) {
     perm[i] = static_cast<int>(i);
