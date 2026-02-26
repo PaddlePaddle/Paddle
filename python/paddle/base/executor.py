@@ -740,6 +740,22 @@ def _as_lodtensor(data, place, dtype=None):
                 f"Convert data of type {type(data)} to Tensor is not supported"
             )
 
+    if core.is_compiled_with_custom_device("iluvatar_gpu") and os.environ.get(
+        'FLAG_FORCE_FLOAT32', ''
+    ).lower() in ['1', 'true', 'on']:
+        import logging
+
+        if data.dtype == np.float64:
+            logging.warning(
+                "Input data type is float64 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to float32!"
+            )
+            data = data.astype(np.float32)
+        elif data.dtype == np.complex128:
+            logging.warning(
+                "Input data type is complex128 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to complex64!"
+            )
+            data = data.astype(np.complex64)
+
     # convert numpy.ndarray to tensor
     tensor = core.DenseTensor()
     tensor.set(data, place)
