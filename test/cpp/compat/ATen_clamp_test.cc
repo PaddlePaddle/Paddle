@@ -20,9 +20,24 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "test/cpp/prim/init_env_utils.h"
 #include "torch/all.h"
 
-TEST(TensorClampTest, ClampWithScalar) {
+namespace {
+
+class TensorClampTest : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() { paddle::prim::InitTensorOperants(); }
+};
+
+class TensorOperatorIndexTest : public ::testing::Test {
+ protected:
+  static void SetUpTestSuite() { paddle::prim::InitTensorOperants(); }
+};
+
+}  // namespace
+
+TEST_F(TensorClampTest, ClampWithScalar) {
   // Create tensor with values [0, 1, 2, 3, 4, 5]
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   at::Tensor result = t.clamp(at::Scalar(1.0), at::Scalar(4.0));
@@ -37,7 +52,7 @@ TEST(TensorClampTest, ClampWithScalar) {
   ASSERT_FLOAT_EQ(data[5], 4.0f);
 }
 
-TEST(TensorClampTest, ClampWithTensor) {
+TEST_F(TensorClampTest, ClampWithTensor) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   at::Tensor min_t = at::full({2, 3}, 1.0f, at::kFloat);
   at::Tensor max_t = at::full({2, 3}, 4.0f, at::kFloat);
@@ -50,7 +65,7 @@ TEST(TensorClampTest, ClampWithTensor) {
   ASSERT_FLOAT_EQ(data[5], 4.0f);
 }
 
-TEST(TensorClampTest, ClampInplaceScalar) {
+TEST_F(TensorClampTest, ClampInplaceScalar) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   t.clamp_(at::Scalar(2.0), at::Scalar(3.0));
 
@@ -64,7 +79,7 @@ TEST(TensorClampTest, ClampInplaceScalar) {
   ASSERT_FLOAT_EQ(data[5], 3.0f);
 }
 
-TEST(TensorClampTest, ClampInplaceTensor) {
+TEST_F(TensorClampTest, ClampInplaceTensor) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   at::Tensor min_t = at::full({2, 3}, 1.0f, at::kFloat);
   at::Tensor max_t = at::full({2, 3}, 4.0f, at::kFloat);
@@ -77,7 +92,7 @@ TEST(TensorClampTest, ClampInplaceTensor) {
   ASSERT_FLOAT_EQ(data[5], 4.0f);
 }
 
-TEST(TensorClampTest, ClampMaxScalar) {
+TEST_F(TensorClampTest, ClampMaxScalar) {
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor result = t.clamp_max(at::Scalar(3.0));
 
@@ -87,7 +102,7 @@ TEST(TensorClampTest, ClampMaxScalar) {
   ASSERT_FLOAT_EQ(data[5], 3.0f);
 }
 
-TEST(TensorClampTest, ClampMaxTensor) {
+TEST_F(TensorClampTest, ClampMaxTensor) {
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor max_t = at::full({6}, 3.0f, at::kFloat);
   at::Tensor result = t.clamp_max(max_t);
@@ -97,7 +112,7 @@ TEST(TensorClampTest, ClampMaxTensor) {
   ASSERT_FLOAT_EQ(data[5], 3.0f);
 }
 
-TEST(TensorClampTest, ClampMaxInplaceScalar) {
+TEST_F(TensorClampTest, ClampMaxInplaceScalar) {
   at::Tensor t = at::arange(6, at::kFloat);
   t.clamp_max_(at::Scalar(3.0));
 
@@ -106,7 +121,7 @@ TEST(TensorClampTest, ClampMaxInplaceScalar) {
   ASSERT_FLOAT_EQ(data[5], 3.0f);
 }
 
-TEST(TensorClampTest, ClampMaxInplaceTensor) {
+TEST_F(TensorClampTest, ClampMaxInplaceTensor) {
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor max_t = at::full({6}, 3.0f, at::kFloat);
   t.clamp_max_(max_t);
@@ -116,7 +131,7 @@ TEST(TensorClampTest, ClampMaxInplaceTensor) {
   ASSERT_FLOAT_EQ(data[5], 3.0f);
 }
 
-TEST(TensorClampTest, ClampMinScalar) {
+TEST_F(TensorClampTest, ClampMinScalar) {
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor result = t.clamp_min(at::Scalar(2.0));
 
@@ -126,7 +141,7 @@ TEST(TensorClampTest, ClampMinScalar) {
   ASSERT_FLOAT_EQ(data[1], 2.0f);
 }
 
-TEST(TensorClampTest, ClampMinTensor) {
+TEST_F(TensorClampTest, ClampMinTensor) {
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor min_t = at::full({6}, 2.0f, at::kFloat);
   at::Tensor result = t.clamp_min(min_t);
@@ -136,7 +151,7 @@ TEST(TensorClampTest, ClampMinTensor) {
   ASSERT_FLOAT_EQ(data[1], 2.0f);
 }
 
-TEST(TensorClampTest, ClampMinInplaceScalar) {
+TEST_F(TensorClampTest, ClampMinInplaceScalar) {
   at::Tensor t = at::arange(6, at::kFloat);
   t.clamp_min_(at::Scalar(2.0));
 
@@ -145,7 +160,7 @@ TEST(TensorClampTest, ClampMinInplaceScalar) {
   ASSERT_FLOAT_EQ(data[1], 2.0f);
 }
 
-TEST(TensorClampTest, ClampMinInplaceTensor) {
+TEST_F(TensorClampTest, ClampMinInplaceTensor) {
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor min_t = at::full({6}, 2.0f, at::kFloat);
   t.clamp_min_(min_t);
@@ -157,7 +172,7 @@ TEST(TensorClampTest, ClampMinInplaceTensor) {
 
 // ======================== operator[] tests ========================
 
-TEST(TensorOperatorIndexTest, OperatorIndexBasic) {
+TEST_F(TensorOperatorIndexTest, OperatorIndexBasic) {
   // Create tensor [[0,1,2],[3,4,5]]
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
 
@@ -171,7 +186,7 @@ TEST(TensorOperatorIndexTest, OperatorIndexBasic) {
   ASSERT_FLOAT_EQ(result1.item<float>(), 3.0f);  // First element of the row
 }
 
-TEST(TensorOperatorIndexTest, OperatorIndexNegative) {
+TEST_F(TensorOperatorIndexTest, OperatorIndexNegative) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
 
   // Test negative index - returns last row
@@ -180,7 +195,7 @@ TEST(TensorOperatorIndexTest, OperatorIndexNegative) {
   ASSERT_FLOAT_EQ(result.item<float>(), 3.0f);  // First element of last row
 }
 
-TEST(TensorOperatorIndexTest, OperatorIndexOutOfBounds) {
+TEST_F(TensorOperatorIndexTest, OperatorIndexOutOfBounds) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
 
   // Test out of bounds index - should throw an exception
@@ -199,7 +214,7 @@ TEST(TensorOperatorIndexTest, OperatorIndexOutOfBounds) {
 // ======================= Additional clamp edge case tests
 // =======================
 
-TEST(TensorClampTest, ClampNoMinMax) {
+TEST_F(TensorClampTest, ClampNoMinMax) {
   // Test clamp with no min and max (should be identity)
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor result = t.clamp(::std::optional<at::Scalar>(::std::nullopt),
@@ -212,7 +227,7 @@ TEST(TensorClampTest, ClampNoMinMax) {
   }
 }
 
-TEST(TensorClampTest, ClampOnlyMin) {
+TEST_F(TensorClampTest, ClampOnlyMin) {
   // Test clamp with only min value
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor result =
@@ -224,7 +239,7 @@ TEST(TensorClampTest, ClampOnlyMin) {
   ASSERT_FLOAT_EQ(data[2], 2.0f);
 }
 
-TEST(TensorClampTest, ClampOnlyMax) {
+TEST_F(TensorClampTest, ClampOnlyMax) {
   // Test clamp with only max value
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor result =
@@ -237,7 +252,7 @@ TEST(TensorClampTest, ClampOnlyMax) {
   ASSERT_FLOAT_EQ(data[3], 2.5f);
 }
 
-TEST(TensorClampTest, ClampMinOnlyTensor) {
+TEST_F(TensorClampTest, ClampMinOnlyTensor) {
   // Test clamp_min with Tensor
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor min_t = at::full({6}, 2.5f, at::kFloat);
@@ -249,7 +264,7 @@ TEST(TensorClampTest, ClampMinOnlyTensor) {
   ASSERT_FLOAT_EQ(data[2], 2.0f);
 }
 
-TEST(TensorClampTest, ClampMaxOnlyTensor) {
+TEST_F(TensorClampTest, ClampMaxOnlyTensor) {
   // Test clamp_max with Tensor
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor max_t = at::full({6}, 2.5f, at::kFloat);
@@ -262,7 +277,7 @@ TEST(TensorClampTest, ClampMaxOnlyTensor) {
   ASSERT_FLOAT_EQ(data[3], 2.5f);
 }
 
-TEST(TensorClampTest, ClampWithTensorBothNone) {
+TEST_F(TensorClampTest, ClampWithTensorBothNone) {
   // Test clamp with both min and max as empty optional
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   at::Tensor result = t.clamp(::std::optional<at::Tensor>(::std::nullopt),
@@ -271,7 +286,7 @@ TEST(TensorClampTest, ClampWithTensorBothNone) {
   ASSERT_EQ(result.numel(), 6);
 }
 
-TEST(TensorClampTest, ClampMinTensorMaxNone) {
+TEST_F(TensorClampTest, ClampMinTensorMaxNone) {
   // Test clamp with min tensor, max none
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor min_t = at::full({6}, 2.0f, at::kFloat);
@@ -282,7 +297,7 @@ TEST(TensorClampTest, ClampMinTensorMaxNone) {
   ASSERT_FLOAT_EQ(data[0], 2.0f);
 }
 
-TEST(TensorClampTest, ClampMinNoneMaxTensor) {
+TEST_F(TensorClampTest, ClampMinNoneMaxTensor) {
   // Test clamp with min none, max tensor
   at::Tensor t = at::arange(6, at::kFloat);
   at::Tensor max_t = at::full({6}, 3.0f, at::kFloat);
@@ -294,7 +309,7 @@ TEST(TensorClampTest, ClampMinNoneMaxTensor) {
   ASSERT_FLOAT_EQ(data[4], 3.0f);
 }
 
-TEST(TensorClampTest, ClampInplaceMinNoneMax) {
+TEST_F(TensorClampTest, ClampInplaceMinNoneMax) {
   // Test clamp_ with min none
   at::Tensor t = at::arange(6, at::kFloat);
   t.clamp_(::std::optional<at::Scalar>(::std::nullopt), at::Scalar(2.5));
@@ -303,7 +318,7 @@ TEST(TensorClampTest, ClampInplaceMinNoneMax) {
   ASSERT_FLOAT_EQ(data[3], 2.5f);
 }
 
-TEST(TensorClampTest, ClampInplaceMaxNoneMin) {
+TEST_F(TensorClampTest, ClampInplaceMaxNoneMin) {
   // Test clamp_ with max none
   at::Tensor t = at::arange(6, at::kFloat);
   t.clamp_(at::Scalar(2.0), ::std::optional<at::Scalar>(::std::nullopt));
