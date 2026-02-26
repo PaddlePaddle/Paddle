@@ -179,11 +179,13 @@ TEST_F(TensorOperatorIndexTest, OperatorIndexBasic) {
   // Test operator[](int64_t index) - returns first row
   at::Tensor result0 = t[0];
   ASSERT_EQ(result0.numel(), 3);  // First row has 3 elements [0,1,2]
-  ASSERT_FLOAT_EQ(result0.item<float>(), 0.0f);  // First element of the row
+  ASSERT_FLOAT_EQ(result0.data_ptr<float>()[0],
+                  0.0f);  // First element of the row
 
   at::Tensor result1 = t[1];
   ASSERT_EQ(result1.numel(), 3);  // Second row has 3 elements [3,4,5]
-  ASSERT_FLOAT_EQ(result1.item<float>(), 3.0f);  // First element of the row
+  ASSERT_FLOAT_EQ(result1.data_ptr<float>()[0],
+                  3.0f);  // First element of the row
 }
 
 TEST_F(TensorOperatorIndexTest, OperatorIndexNegative) {
@@ -192,7 +194,8 @@ TEST_F(TensorOperatorIndexTest, OperatorIndexNegative) {
   // Test negative index - returns last row
   at::Tensor result = t[-1];
   ASSERT_EQ(result.numel(), 3);  // Last row has 3 elements [3,4,5]
-  ASSERT_FLOAT_EQ(result.item<float>(), 3.0f);  // First element of last row
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[0],
+                  3.0f);  // First element of last row
 }
 
 TEST_F(TensorOperatorIndexTest, OperatorIndexOutOfBounds) {
@@ -234,9 +237,9 @@ TEST_F(TensorClampTest, ClampOnlyMin) {
       t.clamp(at::Scalar(2.5), ::std::optional<at::Scalar>(::std::nullopt));
 
   float* data = result.data_ptr<float>();
-  ASSERT_FLOAT_EQ(data[0], 2.5f);
-  ASSERT_FLOAT_EQ(data[1], 2.5f);
-  ASSERT_FLOAT_EQ(data[2], 2.0f);
+  ASSERT_FLOAT_EQ(data[0], 2.5f);  // 0 < 2.5 -> 2.5
+  ASSERT_FLOAT_EQ(data[1], 2.5f);  // 1 < 2.5 -> 2.5
+  ASSERT_FLOAT_EQ(data[2], 2.5f);  // 2 < 2.5 -> 2.5
 }
 
 TEST_F(TensorClampTest, ClampOnlyMax) {
@@ -259,9 +262,9 @@ TEST_F(TensorClampTest, ClampMinOnlyTensor) {
   at::Tensor result = t.clamp_min(min_t);
 
   float* data = result.data_ptr<float>();
-  ASSERT_FLOAT_EQ(data[0], 2.5f);
-  ASSERT_FLOAT_EQ(data[1], 2.5f);
-  ASSERT_FLOAT_EQ(data[2], 2.0f);
+  ASSERT_FLOAT_EQ(data[0], 2.5f);  // 0 < 2.5 -> 2.5
+  ASSERT_FLOAT_EQ(data[1], 2.5f);  // 1 < 2.5 -> 2.5
+  ASSERT_FLOAT_EQ(data[2], 2.5f);  // 2 < 2.5 -> 2.5
 }
 
 TEST_F(TensorClampTest, ClampMaxOnlyTensor) {

@@ -210,6 +210,16 @@ inline at::Tensor& Tensor::clamp_min_(const at::Tensor& min) const {
 }
 
 inline at::Tensor Tensor::operator[](int64_t index) const {
+  // Handle negative index
+  int64_t ndim = tensor_.dims().size();
+  if (ndim == 0) {
+    // Scalar tensor - return as is for any index
+    return *this;
+  }
+  int64_t dim0 = tensor_.dims()[0];
+  if (index < 0) {
+    index = index + dim0;
+  }
   return paddle::experimental::slice(tensor_,
                                      /*axes=*/{0},
                                      /*starts=*/{index},
