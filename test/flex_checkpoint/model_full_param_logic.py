@@ -261,9 +261,6 @@ class TestFullParamHVGroupLogic(TestFullParamLogic):
             memory_growth_threshold=memory_growth_threshold,
         )
 
-        print("=======> PP_GROUP")
-        print("=======> pp_group: ", pp_group)
-
         full_param = dict(full_param_iter)
         param_shape = {
             "_layers.shared_layers.shared_embedding.weight": [24, 32],
