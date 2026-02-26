@@ -346,15 +346,18 @@ def real(x: Tensor, name: str | None = None) -> Tensor:
 
 def imag(x: Tensor, name: str | None = None) -> Tensor:
     """
-    Returns a new tensor containing imaginary values of input tensor.
+    Returns a new tensor containing the imaginary parts of the input tensor.
+    If the input is a real tensor, all elements of the result will be zero.
 
     Args:
-        x (Tensor): the input tensor, its data type could be complex64 or complex128.
+        x (Tensor): the input tensor. Its data type can be real or complex.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: a tensor containing imaginary values of the input tensor.
+        Tensor: a tensor containing the imaginary parts of the input tensor.
+            If the input is real, the dtype of the returned tensor is the same as the input.
+            If the input is complex, the dtype of the returned tensor is the corresponding real dtype.
 
     Examples:
         .. code-block:: pycon
@@ -378,16 +381,18 @@ def imag(x: Tensor, name: str | None = None) -> Tensor:
             [[6., 5., 4.],
              [3., 2., 1.]])
 
-            >>> imag_t = x.imag()
-            >>> print(imag_t)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[6., 5., 4.],
-             [3., 2., 1.]])
+            >>> # Real input example (newly added for alignment)
+            >>> x_real = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> print(paddle.imag(x_real))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0., 0., 0.])
     """
+    if not paddle.is_complex(x):
+        return paddle.zeros_like(x, dtype=x.dtype, name=name)
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.imag(x)
+        return _C_ops.imag(x, name=name)
     else:
-        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
         helper = LayerHelper('imag', **locals())
         out = helper.create_variable_for_type_inference(
             dtype=_complex_to_real_dtype(helper.input_dtype())
