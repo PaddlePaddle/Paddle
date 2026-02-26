@@ -174,7 +174,7 @@ def save_state_dict(
         safetensors(bool): Whether to save using safetensors format. Default is False.
         save_replicas (bool): Whether to save all tensor replicas (e.g., from different ranks) instead of only one deduplicated copy per tensor. Default is False.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode')
             >>> import paddle

@@ -56,7 +56,7 @@ class Multinomial(distribution.Distribution):
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> paddle.seed(2023)

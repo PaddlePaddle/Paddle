@@ -20,10 +20,6 @@ limitations under the License. */
 #define CPP_STANDARD _MSVC_LANG
 #endif
 
-#ifndef CUSTOM_OP_WITH_SPMD
-#define CUSTOM_OP_WITH_SPMD
-#endif
-
 // All paddle apis in C++ frontend
 // phi headers
 #include "paddle/phi/api/all.h"

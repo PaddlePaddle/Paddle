@@ -44,15 +44,25 @@ jobs:
       clone_dir: Paddle-coverage
       task: coverage
 
+  check-bypass:
+    name: Check bypass
+    needs: [clone]
+    if: needs.clone.outputs.can-skip != 'true'
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: coverage
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Coverage build
-    needs: [clone, build-docker]
-    if: needs.clone.outputs.can-skip != 'true'
+    needs: [clone, build-docker, check-bypass]
+    if: needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
     outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
 
     steps:
       - name: Check docker image and run container
@@ -158,15 +168,7 @@ jobs:
           git submodule update
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: coverage
-
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
@@ -177,7 +179,6 @@ jobs:
           '
 
       - name: Check added unittests
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -186,7 +187,6 @@ jobs:
           '
 
       - name: Check coverage build size requires approval
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -195,7 +195,6 @@ jobs:
           '
 
       - name: Clean up env
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -216,7 +215,6 @@ jobs:
           '
 
       - name: Upload coverage product
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -247,7 +245,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
+        if: always()
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'

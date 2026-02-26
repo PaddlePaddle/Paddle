@@ -342,7 +342,7 @@ def get_host_name_ip():
 def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import argparse
             >>> from paddle.distributed.utils import launch_utils

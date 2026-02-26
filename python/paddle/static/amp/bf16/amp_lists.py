@@ -36,7 +36,7 @@ class AutoMixedPrecisionListsBF16:
         custom_fp32_varnames (set): Users' custom fp32 variables' names.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
