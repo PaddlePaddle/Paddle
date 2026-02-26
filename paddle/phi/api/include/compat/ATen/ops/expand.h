@@ -23,6 +23,8 @@ namespace at {
 // expand - expands tensor to new size
 // PyTorch's expand works by right-aligning dimensions and broadcasting
 // dimensions with size 1 to the target size
+// Unlike Paddle's expand_v2, PyTorch allows non-singleton dimensions to be
+// preserved when they match the corresponding target dimension
 inline Tensor expand(const Tensor& self,
                      at::IntArrayRef size,
                      bool implicit = false) {
@@ -33,12 +35,103 @@ inline Tensor expand(const Tensor& self,
 
   // Target sizes - convert to vector
   std::vector<int64_t> target_size_vec(size.begin(), size.end());
+  auto target_rank = target_size_vec.size();
+  auto input_dims = pd_tensor.dims();
+  auto input_rank = input_dims.size();
 
-  // Use Paddle's experimental expand API
-  paddle::Tensor result =
-      paddle::experimental::expand(pd_tensor, phi::IntArray(target_size_vec));
+  // PyTorch's expand uses right-alignment semantics:
+  // - For 1D tensor expand to 2D: {3}.expand({3,4}) treats input as {3,1},
+  // expands to {3,4}
+  // - Non-singleton dimensions are preserved, singleton dimensions (1) can
+  // expand
+  //
+  // For example:
+  //   {3}.expand({3, 4}) -> input {3} becomes {3, 1} implicitly
+  //   then expand: dim 0: 3 stays 3, dim 1: 1 -> 4 -> result {3, 4}
 
-  return Tensor(result);
+  if (input_rank < target_rank) {
+    // Add trailing 1s to right-align with target shape (PyTorch behavior)
+    // Input {3}, target {3, 4} -> reshape to {3, 1}
+    std::vector<int64_t> reshape_vec(input_rank, 1);
+    for (size_t i = 0; i < input_rank; ++i) {
+      reshape_vec[i] = input_dims[i];
+    }
+    // Add trailing 1s
+    while (reshape_vec.size() < target_rank) {
+      reshape_vec.push_back(1);
+    }
+
+    // Check if Paddle's expand can handle this right-aligned shape
+    // Paddle allows: input[i] == 1 (can expand), or input[i] == target[i]
+    // (match)
+    bool can_use_paddle_expand = true;
+    for (size_t i = 0; i < target_rank; ++i) {
+      bool dim_can_expand = (reshape_vec[i] == 1);
+      bool dim_is_matching = (reshape_vec[i] == target_size_vec[i]);
+      if (!dim_can_expand && !dim_is_matching) {
+        can_use_paddle_expand = false;
+        break;
+      }
+    }
+
+    if (can_use_paddle_expand) {
+      // Reshape to right-aligned shape, then expand
+      paddle::Tensor reshaped = pd_tensor.reshape(reshape_vec);
+      paddle::Tensor result = paddle::experimental::expand(
+          reshaped, phi::IntArray(target_size_vec));
+      return Tensor(result);
+    }
+
+    // If Paddle's expand can't handle it, use tile as fallback
+    // Compute repeat_times: target_size / reshape_size
+    std::vector<int64_t> repeat_times(target_rank, 1);
+    for (size_t i = 0; i < target_rank; ++i) {
+      if (reshape_vec[i] == 0) {
+        repeat_times[i] = 0;
+      } else {
+        repeat_times[i] = target_size_vec[i] / reshape_vec[i];
+      }
+    }
+
+    paddle::Tensor reshaped = pd_tensor.reshape(reshape_vec);
+    paddle::Tensor result = reshaped.tile(phi::IntArray(repeat_times));
+    return Tensor(result);
+  } else if (input_rank == target_rank) {
+    // Same rank - check if we can use expand directly or need tile
+    bool can_use_paddle_expand = true;
+    for (size_t i = 0; i < target_rank; ++i) {
+      auto in_size = input_dims[i];
+      auto target_size = target_size_vec[i];
+      if (in_size != 1 && in_size != target_size) {
+        can_use_paddle_expand = false;
+        break;
+      }
+    }
+
+    if (can_use_paddle_expand) {
+      paddle::Tensor result = paddle::experimental::expand(
+          pd_tensor, phi::IntArray(target_size_vec));
+      return Tensor(result);
+    }
+
+    // Need tile fallback
+    std::vector<int64_t> repeat_times(target_rank, 1);
+    for (size_t i = 0; i < target_rank; ++i) {
+      if (input_dims[i] == 0) {
+        repeat_times[i] = 0;
+      } else {
+        repeat_times[i] = target_size_vec[i] / input_dims[i];
+      }
+    }
+
+    paddle::Tensor result = pd_tensor.tile(phi::IntArray(repeat_times));
+    return Tensor(result);
+  } else {
+    // Input has more dimensions - this is tricky, let Paddle handle it
+    paddle::Tensor result =
+        paddle::experimental::expand(pd_tensor, phi::IntArray(target_size_vec));
+    return Tensor(result);
+  }
 }
 
 // expand_as - expands to same size as another tensor
