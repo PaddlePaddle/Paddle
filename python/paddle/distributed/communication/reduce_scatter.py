@@ -57,7 +57,7 @@ def reduce_scatter(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -136,7 +136,7 @@ def _reduce_scatter_base(
         None, if sync_op or if not part of the group.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle

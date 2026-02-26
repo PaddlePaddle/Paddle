@@ -27,9 +27,20 @@ defaults:
     shell: bash
 
 jobs:
+
+  check-bypass:
+    name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: ce-cinn-framework
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   cinn:
     name: CINN
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: check-bypass
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 120
@@ -87,15 +98,8 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ce-cinn-framework
-
       - name: Determine ci trigger
-        if: steps.check-bypass.outputs.can-skip != 'true'
+
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -109,7 +113,7 @@ jobs:
           '
 
       - name: Run check
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && env.skip_ci != 'true' }}
+        if: ${{ env.skip_ci != 'true' }}
         env:
           work_dir: ${{ github.workspace }}
         run: |

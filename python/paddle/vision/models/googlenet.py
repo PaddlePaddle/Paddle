@@ -140,7 +140,7 @@ class GoogLeNet(nn.Layer):
         :ref:`api_paddle_nn_Layer`. An instance of GoogLeNet (Inception v1) model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import GoogLeNet
@@ -271,7 +271,7 @@ def googlenet(
         :ref:`api_paddle_nn_Layer`. An instance of GoogLeNet (Inception v1) model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.models import googlenet

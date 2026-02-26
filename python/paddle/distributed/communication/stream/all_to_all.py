@@ -169,7 +169,7 @@ def alltoall(
         Return a task object.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -178,7 +178,7 @@ def alltoall(
             >>> dist.init_parallel_env()
 
             >>> # all_to_all with equal split sizes
-            >>> out_tensor_list = [] # type: ignore[var-annotated]
+            >>> out_tensor_list = []  # type: ignore[var-annotated]
             >>> if dist.get_rank() == 0:
             ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             ...     data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
@@ -193,8 +193,8 @@ def alltoall(
 
             >>> # all_to_all with unequal split sizes
             >>> if dist.get_rank() == 0:
-            ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])       # shape: (2, 3)
-            ...     data2 = paddle.to_tensor([7])                          # shape: (1, )
+            ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])  # shape: (2, 3)
+            ...     data2 = paddle.to_tensor([7])  # shape: (1, )
             ...     out_data1 = paddle.empty((2, 3), dtype=data1.dtype)
             ...     out_data2 = paddle.empty((3, 2), dtype=data1.dtype)
             >>> else:
@@ -317,7 +317,7 @@ def alltoall_single(
         This API only supports the dygraph mode now.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -343,16 +343,18 @@ def alltoall_single(
             >>> size = dist.get_world_size()
             >>> output = paddle.empty([(local_rank + 1) * size, size], dtype='float32')
             >>> if local_rank == 0:
-            ...     data = paddle.to_tensor([[0., 0.], [0., 0.], [0., 0.]])
+            ...     data = paddle.to_tensor([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
             >>> else:
             ...     data = paddle.to_tensor([[1., 1.], [1., 1.], [1., 1.]])
             >>> out_split_sizes = [local_rank + 1 for i in range(size)]
             >>> in_split_sizes = [i + 1 for i in range(size)]
-            >>> task = dist.stream.alltoall_single(output,
-            ...                                 data,
-            ...                                 out_split_sizes,
-            ...                                 in_split_sizes,
-            ...                                 sync_op=False)
+            >>> task = dist.stream.alltoall_single(
+            ...     output,
+            ...     data,
+            ...     out_split_sizes,
+            ...     in_split_sizes,
+            ...     sync_op=False,
+            ... )
             >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)

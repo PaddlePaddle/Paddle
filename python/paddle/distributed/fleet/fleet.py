@@ -159,7 +159,7 @@ class Fleet:
         Fleet: A Fleet instance
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1: for collective training
@@ -176,7 +176,7 @@ class Fleet:
 
             >>> # do distributed training
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2: for parameter server training
@@ -248,38 +248,38 @@ class Fleet:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-init-example1
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-init-example2
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init(is_collective=True)
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-init-example3
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> role = fleet.PaddleCloudRoleMaker()
                 >>> fleet.init(role)
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-init-example4
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> fleet.init(strategy=strategy)
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-init-example5
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> fleet.init(log_level = "DEBUG")
+                >>> fleet.init(log_level="DEBUG")
 
         """
         from paddle.distributed import parallel_helper
@@ -660,13 +660,13 @@ class Fleet:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init(is_collective=True)
                 >>> # run two tests, one with 1MB (threshold 0.5s) and another with 1GB (threshold 1s)
-                >>> size_and_time = {1<<20: 0.5, 1<<30: 1}
-                >>> fleet.collective_perf("allreduce", round=50, size_and_time = size_and_time)
+                >>> size_and_time = {1 << 20: 0.5, 1 << 30: 1}
+                >>> fleet.collective_perf("allreduce", round=50, size_and_time=size_and_time)
         """
         if not self._is_collective:
             logger.warning(
@@ -781,7 +781,7 @@ class Fleet:
             bool: True if this is the first node of worker, False if not.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -799,7 +799,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -817,7 +817,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -848,7 +848,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -869,7 +869,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -890,7 +890,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -907,7 +907,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -925,7 +925,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -948,7 +948,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -966,7 +966,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -987,7 +987,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1008,7 +1008,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1053,7 +1053,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1078,7 +1078,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1103,7 +1103,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1128,7 +1128,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1152,7 +1152,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1177,7 +1177,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1263,7 +1263,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1319,7 +1319,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -1374,7 +1374,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1406,13 +1406,13 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
                 >>> import paddle
                 >>> place = paddle.CPUPlace()
-                >>> exe =  paddle.static.Executor(place)
+                >>> exe = paddle.static.Executor(place)
 
                 >>> # build net
                 >>> # fleet.distributed_optimizer(...)
@@ -1435,7 +1435,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> fleet.init()
@@ -1498,7 +1498,7 @@ class Fleet:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed.fleet as fleet

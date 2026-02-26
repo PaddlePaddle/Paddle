@@ -47,7 +47,7 @@ def softmax_mask_fuse_upper_triangle(x: Tensor) -> Tensor:
         4-D Tensor. A location into which the result is stored. It's dimension is 4D. Has same dimension with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -57,7 +57,7 @@ def softmax_mask_fuse_upper_triangle(x: Tensor) -> Tensor:
             >>> paddle.set_device("gpu")
             >>> x = paddle.rand((1, 1, 32, 32))
 
-            >>> rst = incubate.softmax_mask_fuse_upper_triangle(x) # type: ignore[operator]
+            >>> rst = incubate.softmax_mask_fuse_upper_triangle(x)  # type: ignore[operator]
             >>> print(rst)
             Tensor(shape=[1, 1, 32, 32], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[[[1.        , 0.        , 0.        , ..., 0.        ,

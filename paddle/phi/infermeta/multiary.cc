@@ -6164,10 +6164,13 @@ void MoePermuteInferMeta(const MetaTensor& X,
                          const int padding_alignment,
                          const bool do_gather,
                          const bool using_ue8m0_scale,
+                         const bool return_expert_indices,
+                         const int override_buffer_size,
                          MetaTensor* X_unzipped,
                          MetaTensor* zipped_expertwise_rowmap,
                          MetaTensor* token_prob_unzipped,
-                         MetaTensor* XScale_unzipped) {
+                         MetaTensor* XScale_unzipped,
+                         MetaTensor* expert_indices) {
   PADDLE_ENFORCE_EQ(
       X.dims().size(),
       2,
@@ -6188,11 +6191,20 @@ void MoePermuteInferMeta(const MetaTensor& X,
                         "Input expert_prob_topk's dtype should be FLOAT32"));
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
+  const int64_t topk = expert_routemap_topk.dims()[1];
   int64_t output_rows = 0;
-  for (int i = 0; i < num_experts; ++i) {
-    const int64_t tokens = tokens_per_expert[i];
-    output_rows += ((tokens + padding_alignment - 1) / padding_alignment) *
-                   padding_alignment;
+
+  // Using -1 as default value for not overriding buffer size,
+  // which also means that tokens_per_expert(CPU) is valid
+  // and will be used to calculate the output_rows.
+  if (override_buffer_size != -1) {
+    output_rows = override_buffer_size;
+  } else {
+    for (int i = 0; i < num_experts; ++i) {
+      const int64_t tokens = tokens_per_expert[i];
+      output_rows += ((tokens + padding_alignment - 1) / padding_alignment) *
+                     padding_alignment;
+    }
   }
   if (XScale && do_gather) {
     if (using_ue8m0_scale) {
@@ -6223,6 +6235,14 @@ void MoePermuteInferMeta(const MetaTensor& X,
     X_unzipped->set_dims({0, cols});
     X_unzipped->set_dtype(X.dtype());
   }
+  if (return_expert_indices) {
+    // This size is determined in runtime, so no shape inference available.
+    expert_indices->set_dims({output_rows});
+    expert_indices->set_dtype(expert_routemap_topk.dtype());
+  } else {
+    expert_indices->set_dims({0});
+    expert_indices->set_dtype(expert_routemap_topk.dtype());
+  }
 
   zipped_expertwise_rowmap->set_dims({rows, num_experts});
   zipped_expertwise_rowmap->set_dtype(DataType::INT32);
@@ -6237,6 +6257,7 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                            const int total_zipped_tokens_num,
                            const int num_experts,
                            const bool MP,
+                           const bool using_weighted_combine,
                            MetaTensor* zipped_tokens,
                            MetaTensor* zipped_probs_topk) {
   PADDLE_ENFORCE_EQ(unzipped_tokens.dtype() == DataType::BFLOAT16,

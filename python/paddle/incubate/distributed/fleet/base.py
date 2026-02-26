@@ -341,7 +341,7 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
             list: A list of operators appended to the current program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('The network is not defined.')
                 >>> loss = network()
