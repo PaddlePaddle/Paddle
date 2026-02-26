@@ -101,7 +101,7 @@ TEST(TensorSumTest, SumAlongDimWithDtypeCast) {
   }
 }
 
-TEST(TensorSumTest, SumPreservesNunel) {
+TEST(TensorSumTest, SumPreservesNumel) {
   // Verify that sum of known values is correct
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   // t = [[0,1,2],[3,4,5]], total = 15
