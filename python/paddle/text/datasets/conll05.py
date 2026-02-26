@@ -45,8 +45,7 @@ UNK_IDX = 0
 
 class Conll05st(Dataset):
     """
-    Implementation of `Conll05st <https://www.cs.upc.edu/~srlconll/soft.html>`_
-    test dataset.
+    This class implements the Conll05st test dataset. For details, please refer to the relevant documentation:https://aclanthology.org/W05-0620.pdf
 
     Note: only support download test dataset automatically for that
           only test dataset of Conll05st is public.
