@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,22 +31,23 @@
 
 TEST(TestAll, AllNoDim) {
   // Test all() without arguments - check all elements in tensor
-  at::Tensor tensor = at::tensor({true, true, true}, at::kBool);
+  at::Tensor tensor = at::ones({3}, at::kBool);
+  tensor[1] = at::scalar_tensor(false, at::kBool);
   at::Tensor result = tensor.all();
 
   ASSERT_EQ(result.numel(), 1);
-  ASSERT_EQ(result.item<bool>(), true);
+  ASSERT_EQ(result.item<bool>(), false);
 
-  // Test with some false values
-  at::Tensor tensor_false = at::tensor({true, false, true}, at::kBool);
-  at::Tensor result_false = tensor_false.all();
-
-  ASSERT_EQ(result_false.item<bool>(), false);
+  // Test with all true values
+  at::Tensor tensor_all_true = at::ones({3}, at::kBool);
+  at::Tensor result_all_true = tensor_all_true.all();
+  ASSERT_EQ(result_all_true.item<bool>(), true);
 }
 
 TEST(TestAll, AllWithDim) {
   // Test all(dim) - check along specific dimension
-  at::Tensor tensor = at::tensor({{true, true}, {false, true}}, at::kBool);
+  at::Tensor tensor = at::ones({2, 2}, at::kBool);
+  tensor[1][0] = at::scalar_tensor(false, at::kBool);
 
   // All along dimension 0
   at::Tensor result_dim0 = tensor.all(0);
@@ -63,7 +64,7 @@ TEST(TestAll, AllWithDim) {
 
 TEST(TestAll, AllWithDimKeepdim) {
   // Test all(dim, keepdim) - keep the dimension
-  at::Tensor tensor = at::tensor({{true, true}, {false, true}}, at::kBool);
+  at::Tensor tensor = at::ones({2, 2}, at::kBool);
 
   at::Tensor result = tensor.all(0, true);
   ASSERT_EQ(result.sizes(), c10::IntArrayRef({1, 2}));
@@ -71,7 +72,7 @@ TEST(TestAll, AllWithDimKeepdim) {
 
 TEST(TestAll, AllWithOptionalDim) {
   // Test all(OptionalIntArrayRef dim, keepdim)
-  at::Tensor tensor = at::tensor({{true, true}, {false, true}}, at::kBool);
+  at::Tensor tensor = at::ones({2, 2}, at::kBool);
 
   // With specific dimensions
   at::Tensor result = tensor.all(c10::IntArrayRef({0}), false);
@@ -80,7 +81,8 @@ TEST(TestAll, AllWithOptionalDim) {
 
 TEST(TestAll, StandaloneFunction) {
   // Test at::all() standalone function
-  at::Tensor tensor = at::tensor({true, true, false}, at::kBool);
+  at::Tensor tensor = at::ones({3}, at::kBool);
+  tensor[2] = at::scalar_tensor(false, at::kBool);
   at::Tensor result = at::all(tensor);
 
   ASSERT_EQ(result.item<bool>(), false);
@@ -97,9 +99,9 @@ TEST(TestAllclose, AllcloseBasic) {
 
 TEST(TestAllclose, AllcloseWithTolerance) {
   // Test allclose with rtol/atol tolerance
-  at::Tensor tensor1 = at::tensor({1.0, 2.0, 3.0}, at::kFloat);
+  at::Tensor tensor1 = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
   at::Tensor tensor2 =
-      at::tensor({1.0 + 1e-6, 2.0 + 1e-6, 3.0 + 1e-6}, at::kFloat);
+      at::tensor({1.0f + 1e-6f, 2.0f + 1e-6f, 3.0f + 1e-6f}, at::kFloat);
 
   // Within default tolerance
   bool result_default = tensor1.allclose(tensor2);
@@ -116,8 +118,8 @@ TEST(TestAllclose, AllcloseWithTolerance) {
 
 TEST(TestAllclose, AllcloseNotEqual) {
   // Test allclose - tensors that are not close
-  at::Tensor tensor1 = at::tensor({1.0, 2.0, 3.0}, at::kFloat);
-  at::Tensor tensor2 = at::tensor({1.0, 2.0, 4.0}, at::kFloat);
+  at::Tensor tensor1 = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
+  at::Tensor tensor2 = at::tensor({1.0f, 2.0f, 4.0f}, at::kFloat);
 
   bool result = tensor1.allclose(tensor2);
   ASSERT_EQ(result, false);
@@ -125,8 +127,8 @@ TEST(TestAllclose, AllcloseNotEqual) {
 
 TEST(TestAllclose, AllcloseEqualNan) {
   // Test allclose with equal_nan
-  at::Tensor tensor1 = at::tensor({1.0, NAN, 3.0}, at::kFloat);
-  at::Tensor tensor2 = at::tensor({1.0, NAN, 3.0}, at::kFloat);
+  at::Tensor tensor1 = at::tensor({1.0f, NAN, 3.0f}, at::kFloat);
+  at::Tensor tensor2 = at::tensor({1.0f, NAN, 3.0f}, at::kFloat);
 
   // With equal_nan = true
   bool result_nan = tensor1.allclose(tensor2, 1e-05, 1e-08, true);
@@ -148,8 +150,8 @@ TEST(TestAllclose, StandaloneFunction) {
 
 TEST(TestAllclose, AllcloseDifferentShapes) {
   // Test allclose with different shapes - should return false
-  at::Tensor tensor1 = at::tensor({1.0, 2.0, 3.0}, at::kFloat);
-  at::Tensor tensor2 = at::tensor({1.0, 2.0}, at::kFloat);
+  at::Tensor tensor1 = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
+  at::Tensor tensor2 = at::tensor({1.0f, 2.0f}, at::kFloat);
 
   bool result = tensor1.allclose(tensor2);
   ASSERT_EQ(result, false);
