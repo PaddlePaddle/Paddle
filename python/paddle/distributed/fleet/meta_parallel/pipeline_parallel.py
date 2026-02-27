@@ -1969,6 +1969,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             if p2p_async_handle is not None:
                 p2p_async_handle.forward_async_comm(output_tensor)
+                self._release_output(output_tensor)
                 p2p_async_handle.backward_handle_wait()
 
             # backward
@@ -2460,11 +2461,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._overlap_p2p_comm:
                 backward_micro_step_id = micro_step
 
-                def forward_handle_wait(fwd_wait_handles, output_tensor):
+                def forward_handle_wait(fwd_wait_handles):
                     if fwd_wait_handles is not None:
                         for req in fwd_wait_handles:
                             req.wait()
-                    self._release_output(output_tensor)
 
                 def forward_async_comm(forward_micro_step_id, output_tensor):
                     forward_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -2601,7 +2601,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     partial(
                         forward_handle_wait,
                         fwd_wait_handles=fwd_wait_handles,
-                        output_tensor=output_tensor,
                     ),
                     partial(
                         forward_async_comm,
