@@ -175,13 +175,13 @@ def transpose(
         A transposed Sparse Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('indices overflow')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
-            >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            >>> dense_x = paddle.to_tensor([[-2.0, 0.0], [1.0, 2.0]])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.transpose(sparse_x, [1, 0])
             >>> out
@@ -1150,7 +1150,7 @@ def pca_lowrank(
         tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of a centered matrix :math:`X`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle

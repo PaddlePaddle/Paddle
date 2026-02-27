@@ -23,10 +23,8 @@ namespace paddle {
 namespace primitive {
 namespace backend {
 
-using Tensor = paddle::Tensor;
 using Scalar = phi::Scalar;
 using IntArray = paddle::experimental::IntArray;
-using DataType = phi::DataType;
 
 template <typename T>
 std::vector<Tensor> add_n_grad(const std::vector<Tensor>& x,
@@ -43,7 +41,7 @@ template <typename T>
 std::tuple<Tensor, Tensor, Tensor> fused_gemm_epilogue_grad(
     const Tensor& x,
     const Tensor& y,
-    const paddle::optional<Tensor>& reserve_space,
+    const optional<Tensor>& reserve_space,
     const Tensor& out_grad,
     bool trans_x,
     bool trans_y,

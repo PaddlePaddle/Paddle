@@ -119,7 +119,7 @@ class Engine:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.vision.transforms as T
@@ -136,20 +136,18 @@ class Engine:
             >>> model = paddle.vision.models.LeNet()
             >>> loss = paddle.nn.CrossEntropyLoss()
             >>> optimizer = paddle.optimizer.Adam(
-            ...     learning_rate=0.001, parameters=model.parameters())
+            ...     learning_rate=0.001,
+            ...     parameters=model.parameters(),
+            ... )
             >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
             >>> engine = auto.Engine(model, loss, optimizer, metrics)
             >>> # fit
-            >>> engine.fit(train_dataset,
-            ...            epochs=2,
-            ...            batch_size=64)
+            >>> engine.fit(train_dataset, epochs=2, batch_size=64)
             >>> # evaluate
-            >>> engine.evaluate(valid_dataset,
-            ...                 batch_size=64)
+            >>> engine.evaluate(valid_dataset, batch_size=64)
             >>> # predict
-            >>> engine.predict(valid_dataset,
-            ...                batch_size=64)
+            >>> engine.predict(valid_dataset, batch_size=64)
             >>> # save
             >>> engine.save("./my_model")
             >>> # load
@@ -1644,7 +1642,7 @@ class Engine:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
@@ -1660,13 +1658,13 @@ class Engine:
                 >>> model = paddle.vision.models.LeNet()
                 >>> loss = paddle.nn.CrossEntropyLoss()
                 >>> optimizer = paddle.optimizer.Adam(
-                ...     learning_rate=0.001, parameters=model.parameters())
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
                 >>> engine = auto.Engine(model, loss, optimizer, metrics)
-                >>> engine.fit(train_dataset,
-                ...             epochs=2,
-                ...             batch_size=64)
+                >>> engine.fit(train_dataset, epochs=2, batch_size=64)
         """
         self._mode = 'train'
 
@@ -1808,7 +1806,7 @@ class Engine:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
@@ -1921,7 +1919,7 @@ class Engine:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
@@ -2393,7 +2391,7 @@ class Engine:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
@@ -2409,13 +2407,13 @@ class Engine:
                 >>> model = paddle.vision.models.LeNet()
                 >>> loss = paddle.nn.CrossEntropyLoss()
                 >>> optimizer = paddle.optimizer.Adam(
-                ...     learning_rate=0.001, parameters=model.parameters())
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
                 >>> engine = auto.Engine(model, loss, optimizer, metrics)
-                >>> engine.fit(train_dataset,
-                ...             epochs=1,
-                ...             batch_size=64)
+                >>> engine.fit(train_dataset, epochs=1, batch_size=64)
                 >>> engine.save("./my_model")
 
         """
@@ -2480,7 +2478,7 @@ class Engine:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
@@ -2496,13 +2494,13 @@ class Engine:
                 >>> model = paddle.vision.models.LeNet()
                 >>> loss = paddle.nn.CrossEntropyLoss()
                 >>> optimizer = paddle.optimizer.Adam(
-                ...     learning_rate=0.001, parameters=model.parameters())
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
                 >>> engine = auto.Engine(model, loss, optimizer, metrics)
-                >>> engine.fit(train_dataset,
-                ...             epochs=1,
-                ...             batch_size=64)
+                >>> engine.fit(train_dataset, epochs=1, batch_size=64)
                 >>> engine.save("./my_model")
                 >>> engine.load("./my_model")
 

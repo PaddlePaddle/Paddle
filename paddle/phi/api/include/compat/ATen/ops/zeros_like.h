@@ -86,6 +86,3 @@ inline at::Tensor zeros_like(const at::Tensor& self,
 }
 
 }  // namespace at
-namespace torch {
-using at::zeros_like;
-}  // namespace torch

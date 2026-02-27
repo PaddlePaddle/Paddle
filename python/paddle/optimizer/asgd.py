@@ -87,7 +87,7 @@ class ASGD(Optimizer):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -197,7 +197,7 @@ void BindCudaStream(py::module *m_ptr) {
               If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:GPU)
               >>> import paddle
@@ -219,7 +219,7 @@ void BindCudaStream(py::module *m_ptr) {
               event(CUDAEvent): The event to wait on.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -241,7 +241,7 @@ void BindCudaStream(py::module *m_ptr) {
               stream(CUDAStream): The stream to synchronize with.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -259,7 +259,7 @@ void BindCudaStream(py::module *m_ptr) {
           Returns: A boolean value.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -274,7 +274,7 @@ void BindCudaStream(py::module *m_ptr) {
           Waits for stream tasks to complete.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -302,7 +302,7 @@ void BindCudaStream(py::module *m_ptr) {
               The record event.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -321,7 +321,7 @@ void BindCudaStream(py::module *m_ptr) {
           return the raw cuda stream of type cudaStream_t as type int.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -343,7 +343,7 @@ void BindCudaStream(py::module *m_ptr) {
           return the raw cuda stream of type cudaStream_t as type int.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -437,7 +437,7 @@ void BindCudaStream(py::module *m_ptr) {
           interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:GPU)
               >>> import paddle
@@ -460,7 +460,7 @@ void BindCudaStream(py::module *m_ptr) {
               stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -479,7 +479,7 @@ void BindCudaStream(py::module *m_ptr) {
           Returns: A boolean which indicates all work currently captured by the event has been completed.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -500,7 +500,7 @@ void BindCudaStream(py::module *m_ptr) {
           Returns: A int which indicates the elapsed time.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
@@ -521,7 +521,7 @@ void BindCudaStream(py::module *m_ptr) {
             Waits for an event to complete.
 
             Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +REQUIRES(env:GPU)
                     >>> import paddle

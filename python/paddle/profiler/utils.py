@@ -56,7 +56,7 @@ class RecordEvent(ContextDecorator):
             purpose, and it is better not to specify this parameter.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> import paddle
@@ -110,7 +110,7 @@ class RecordEvent(ContextDecorator):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example2
 
                 >>> import paddle
@@ -140,7 +140,7 @@ class RecordEvent(ContextDecorator):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example3
 
                 >>> import paddle
@@ -168,17 +168,18 @@ def load_profiler_result(filename: str) -> _ProfilerResult:
         ``ProfilerResult`` object, which stores profiling data.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle.profiler as profiler
             >>> import paddle
             >>> paddle.device.set_device('gpu')
             >>> with profiler.Profiler(
-            ...         targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
-            ...         scheduler = (3, 10)) as p:
+            ...     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+            ...     scheduler=(3, 10),
+            ... ) as p:
             ...     for iter in range(10):
-            ...         #train()
+            ...         # train()
             ...         p.step()
             >>> p.export('test_export_protobuf.pb', format='pb')
             >>> profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
@@ -222,7 +223,7 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
     """
     A range profiler interface (not public yet).
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> model = Model()
