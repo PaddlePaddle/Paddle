@@ -57,9 +57,9 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
                              DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const DenseTensor x_matrix =
-      x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims) : x;
+      x.dims().size() > 2 ? ReshapeToMatrix(x, x_num_col_dims) : x;
   const DenseTensor y_matrix =
-      y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims) : y;
+      y.dims().size() > 2 ? ReshapeToMatrix(y, y_num_col_dims) : y;
   dev_ctx.template Alloc<T>(out);
 
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x_matrix.data<T>());
