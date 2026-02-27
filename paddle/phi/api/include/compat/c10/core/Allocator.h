@@ -19,10 +19,12 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <utility>
 
+#include "c10/util/Exception.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 
@@ -76,6 +78,18 @@ class DataPtr {
     allocation_.reset();
   }
 
+  // Release context ownership without calling deleter.
+  // The caller takes responsibility for freeing via the deleter.
+  // Used by raw_allocate() / raw_deallocate() API.
+  void* release_context() {
+    void* ctx = ctx_;
+    ctx_ = nullptr;
+    deleter_ = nullptr;
+    ptr_ = nullptr;
+    allocation_.reset();
+    return ctx;
+  }
+
   // Get the underlying allocation (if available)
   std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
 
@@ -102,6 +116,70 @@ inline bool operator!=(const DataPtr& dp, std::nullptr_t) noexcept {
 inline bool operator!=(std::nullptr_t, const DataPtr& dp) noexcept {
   return static_cast<bool>(dp);
 }
+
+struct Allocator {
+  virtual ~Allocator() = default;
+
+  virtual DataPtr allocate(size_t n) = 0;
+
+  // Clones an allocation that came from this allocator.
+  //
+  // To perform the copy, this function calls `copy_data`, which
+  // must be implemented by derived classes.
+  //
+  // Note that this explicitly ignores any context that may have been
+  // attached to the input data.
+  //
+  // Requires: input data was allocated by the same allocator.
+  DataPtr clone(const void* data, std::size_t n) {
+    auto new_data = allocate(n);
+    copy_data(new_data.get(), data, n);
+    return new_data;
+  }
+
+  // Checks if DataPtr has a simple context, not wrapped with any out of the
+  // ordinary contexts.
+  virtual bool is_simple_data_ptr(const DataPtr& data_ptr) const {
+    return data_ptr.get_context() == nullptr ||
+           data_ptr.get_context() == data_ptr.get();
+  }
+
+  // If this returns a non nullptr, it means that allocate()
+  // is guaranteed to return a unique_ptr with this deleter attached;
+  // it means the rawAllocate and rawDeallocate APIs are safe to use.
+  // This function MUST always return the same BoundDeleter.
+  virtual DeleterFnPtr raw_deleter() const { return nullptr; }
+  void* raw_allocate(size_t n) {
+    auto dptr = allocate(n);
+    TORCH_CHECK(dptr.get() == dptr.get_context(),
+                "raw_allocate: DataPtr context must equal data pointer");
+    return dptr.release_context();
+  }
+  void raw_deallocate(void* ptr) {
+    auto d = raw_deleter();
+    TORCH_CHECK(d != nullptr, "raw_deallocate: deleter must not be null");
+    d(ptr);
+  }
+
+  // Copies data from one allocation to another.
+  // Pure virtual, so derived classes must define behavior.
+  // Derived class implementation can simply call `default_copy_data`
+  // to use `std::memcpy`.
+  //
+  // Requires: src and dest were allocated by this allocator
+  // Requires: src and dest both have length >= count
+  virtual void copy_data(void* dest,
+                         const void* src,
+                         std::size_t count) const = 0;
+
+ protected:
+  // Uses `std::memcpy` to copy data.
+  // Child classes can use this as `copy_data` when an alternative copy
+  // API is not needed.
+  void default_copy_data(void* dest, const void* src, std::size_t count) const {
+    std::memcpy(dest, src, count);
+  }
+};
 
 }  // namespace c10
 
