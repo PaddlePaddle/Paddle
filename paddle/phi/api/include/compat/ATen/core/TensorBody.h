@@ -41,10 +41,6 @@
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/gpu/forwards.h"
-#endif
-
 namespace at {
 class Tensor;
 
