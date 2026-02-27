@@ -57,7 +57,7 @@ void ClipKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
   const T* x_data = x.data<T>();
   int64_t numel = x.numel();
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
+  if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
     std::vector<const DenseTensor*> ins = {&x};
     std::vector<DenseTensor*> outs = {out};

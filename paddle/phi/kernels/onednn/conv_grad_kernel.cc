@@ -240,7 +240,7 @@ KernelKey ConvGradGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
       (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = common::StringToDataLayout(data_format);
+    auto dl = StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != DataLayout::ANY) {

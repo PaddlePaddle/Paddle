@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 
 namespace paddle::framework {
 class Scope;
@@ -26,9 +27,6 @@ class Scope;
 namespace paddle::framework::ir {
 class Graph;
 }  // namespace paddle::framework::ir
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 namespace paddle::framework::ir {
 
@@ -178,7 +176,7 @@ Graph *Pass::Apply(Graph *graph) const {
 #ifdef PADDLE_WITH_DNNL
   // Clear one-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
-  platform::ClearONEDNNCache(phi::CPUPlace());
+  platform::ClearONEDNNCache(CPUPlace());
 #endif
   VLOG(10) << "finish to apply pass " << Type() << " to graph";
   return graph;

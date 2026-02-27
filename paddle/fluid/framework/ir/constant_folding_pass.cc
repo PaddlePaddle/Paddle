@@ -150,16 +150,15 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     if (input_persis) {
       for (auto in_node : op_node->inputs) {
         local_scope->Var(in_node->Var()->Name());
-        local_scope->FindVar(in_node->Var()->Name())
-            ->GetMutable<phi::DenseTensor>();
+        local_scope->FindVar(in_node->Var()->Name())->GetMutable<DenseTensor>();
         // This persistable input node is exclusive, and can be removed
         if (in_node->outputs.size() == 1L) remove_nodes.emplace(in_node);
 
         auto in_shape = in_node->Var()->GetShape();
         auto *global_persis_x_tensor =
-            scope->FindVar(in_node->Name())->GetMutable<phi::DenseTensor>();
-        auto *local_x_tensor = local_scope->FindVar(in_node->Name())
-                                   ->GetMutable<phi::DenseTensor>();
+            scope->FindVar(in_node->Name())->GetMutable<DenseTensor>();
+        auto *local_x_tensor =
+            local_scope->FindVar(in_node->Name())->GetMutable<DenseTensor>();
         local_x_tensor->Resize(global_persis_x_tensor->dims());
         *local_x_tensor = *global_persis_x_tensor;
       }
@@ -169,11 +168,11 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       for (auto out_node : op_node->outputs) {
         local_scope->Var(out_node->Var()->Name());
         local_scope->FindVar(out_node->Var()->Name())
-            ->GetMutable<phi::DenseTensor>();
+            ->GetMutable<DenseTensor>();
         // useless out_node can be removed, not need set it persistable !
         if (out_node->outputs.empty()) remove_nodes.emplace(out_node);
       }
-      op->Run(*local_scope, phi::CPUPlace());
+      op->Run(*local_scope, CPUPlace());
       folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable
@@ -181,7 +180,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
         auto *local_out_tensor =
-            local_scope->FindVar(out_name)->GetMutable<phi::DenseTensor>();
+            local_scope->FindVar(out_name)->GetMutable<DenseTensor>();
         std::vector<int64_t> out_shape;
         for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
           out_shape.push_back(local_out_tensor->dims()[static_cast<int>(i)]);
@@ -193,7 +192,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         var_desc_out->SetPersistable(true);
         var_desc_out->Flush();
         auto *global_out_tensor =
-            scope->Var(out_name)->GetMutable<phi::DenseTensor>();
+            scope->Var(out_name)->GetMutable<DenseTensor>();
         *global_out_tensor = *local_out_tensor;
       }
       GraphSafeRemoveNodes(graph, remove_nodes);

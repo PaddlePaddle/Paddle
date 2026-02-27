@@ -61,13 +61,13 @@ void IOConverterTester(const phi::DeviceContext& ctx) {
 }
 
 TEST(EngineIOConverterTester, DefaultCPU) {
-  phi::CPUPlace place;
+  CPUPlace place;
   phi::CPUContext ctx(place);
   IOConverterTester(ctx);
 }
 
 TEST(EngineIOConverterTester, DefaultGPU) {
-  phi::GPUPlace place;
+  GPUPlace place;
   phi::GPUContext ctx(place);
   IOConverterTester(ctx);
 }

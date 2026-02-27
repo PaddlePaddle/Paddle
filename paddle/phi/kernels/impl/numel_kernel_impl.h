@@ -25,7 +25,7 @@ void NumelKernel(const Context& dev_ctx,
   auto place = dev_ctx.GetPlace();
   auto out_data = dev_ctx.template Alloc<int64_t>(out);
 
-  if (place == phi::CPUPlace()) {
+  if (place == CPUPlace()) {
     out_data[0] = input.numel();
   } else {
     DenseTensor cpu_tensor;

@@ -22,21 +22,22 @@
 #include <limits>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-template <typename T>
+template <typename T, typename MPType>
 struct GPUTruncatedNormal {
-  T mean, std, a, b;
-  T a_normal_cdf;
-  T b_normal_cdf;
+  MPType mean, std, a, b;
+  MPType a_normal_cdf;
+  MPType b_normal_cdf;
   unsigned int seed;
-  T numeric_min;
+  MPType numeric_min;
 
-  __host__ __device__
-  GPUTruncatedNormal(T mean, T std, T numeric_min, int seed, T a, T b)
+  __host__ __device__ GPUTruncatedNormal(
+      MPType mean, MPType std, MPType numeric_min, int seed, MPType a, MPType b)
       : mean(mean), std(std), seed(seed), numeric_min(numeric_min), a(a), b(b) {
     a_normal_cdf = (1.0 + erff((a - mean) / std / sqrtf(2.0))) / 2.0;
     b_normal_cdf = (1.0 + erff((b - mean) / std / sqrtf(2.0))) / 2.0;
@@ -45,26 +46,31 @@ struct GPUTruncatedNormal {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
+    thrust::uniform_real_distribution<MPType> dist(numeric_min, 1);
     rng.discard(n);
-    T value = dist(rng);
+    MPType value = dist(rng);
     auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
-    T ret = std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
-    return std::clamp(ret, a, b);
+    MPType ret = std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
+    return static_cast<T>(std::clamp(ret, a, b));
   }
 };
 
-template <typename T>
+template <typename T, typename MPType>
 struct TruncatedNormalOffset {
-  T mean, std, a, b;
-  T a_normal_cdf;
-  T b_normal_cdf;
+  MPType mean, std, a, b;
+  MPType a_normal_cdf;
+  MPType b_normal_cdf;
   unsigned int seed;
-  T numeric_min;
+  MPType numeric_min;
   int offset_;
 
-  __host__ __device__ TruncatedNormalOffset(
-      T mean, T std, T numeric_min, int seed, int offset, T a, T b)
+  __host__ __device__ TruncatedNormalOffset(MPType mean,
+                                            MPType std,
+                                            MPType numeric_min,
+                                            int seed,
+                                            int offset,
+                                            MPType a,
+                                            MPType b)
       : mean(mean),
         std(std),
         seed(seed),
@@ -79,12 +85,12 @@ struct TruncatedNormalOffset {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
+    thrust::uniform_real_distribution<MPType> dist(numeric_min, 1);
     rng.discard(n + offset_);
-    T value = dist(rng);
+    MPType value = dist(rng);
     auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
-    T ret = std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
-    return std::clamp(ret, a, b);
+    MPType ret = std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
+    return static_cast<T>(std::clamp(ret, a, b));
   }
 };
 
@@ -100,6 +106,8 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
 
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   thrust::counting_iterator<int64_t> index_sequence_begin(0);
   int64_t size = out->numel();
 
@@ -109,24 +117,25 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
     auto seed_offset = gen_cuda->IncrementOffset(1);
     uint64_t seed = seed_offset.first;
     uint64_t offset = seed_offset.second;
-    thrust::transform(index_sequence_begin,
-                      index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      TruncatedNormalOffset<T>(mean,
-                                               std,
-                                               std::numeric_limits<T>::min(),
-                                               seed,
-                                               size * offset,
-                                               a,
-                                               b));
+    thrust::transform(
+        index_sequence_begin,
+        index_sequence_begin + size,
+        thrust::device_ptr<T>(data),
+        TruncatedNormalOffset<T, MPType>(mean,
+                                         std,
+                                         std::numeric_limits<MPType>::min(),
+                                         seed,
+                                         size * offset,
+                                         a,
+                                         b));
   } else {
     // use OP seed
     thrust::transform(
         index_sequence_begin,
         index_sequence_begin + size,
         thrust::device_ptr<T>(data),
-        GPUTruncatedNormal<T>(
-            mean, std, std::numeric_limits<T>::min(), seed, a, b));
+        GPUTruncatedNormal<T, MPType>(
+            mean, std, std::numeric_limits<MPType>::min(), seed, a, b));
   }
 }
 
@@ -137,4 +146,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::bfloat16) {}

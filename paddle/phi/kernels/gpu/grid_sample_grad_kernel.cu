@@ -36,7 +36,7 @@ static __forceinline__ __device__ void AtomicAdd(T* data,
                                                  IndexT W,
                                                  T delta) {
   if (InBounds(h, w, H, W)) {
-    phi::CudaAtomicAdd(data + h * sH + w * sW, delta);
+    CudaAtomicAdd(data + h * sH + w * sW, delta);
   }
 }
 
@@ -53,7 +53,7 @@ static __forceinline__ __device__ void AtomicAdd3D(T* data,
                                                    IndexT W,
                                                    T delta) {
   if (InBounds3D(d, h, w, D, H, W)) {
-    phi::CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
+    CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
   }
 }
 
@@ -585,14 +585,10 @@ void GridSampleGradKernel(const Context& dev_ctx,
                           DenseTensor* grid_grad) {
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (grid_grad) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(grid_grad->dims())),
-                            0,
-                            grid_grad);
+      Full<T, Context>(dev_ctx, grid_grad->dims(), 0, grid_grad);
     }
     return;
   }

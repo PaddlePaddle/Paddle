@@ -32,8 +32,8 @@ struct GlobalGatherFunctor {
                   DenseTensor *out);
 };
 template <typename T>
-struct GlobalGatherFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &dev_ctx,
+struct GlobalGatherFunctor<GPUContext, T> {
+  void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &x_in,
                   const DenseTensor &local_count_in,
                   const DenseTensor &global_count_in,
@@ -59,20 +59,20 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     auto local_count_len = 0;
 
     DenseTensor cpu_local_count;
-    if (local_count->place().GetType() == phi::AllocationType::CPU) {
+    if (local_count->place().GetType() == AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
     } else {
-      Copy(dev_ctx, *local_count, phi::CPUPlace(), true, &cpu_local_count);
+      Copy(dev_ctx, *local_count, CPUPlace(), true, &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
 
     DenseTensor cpu_global_count;
-    if (global_count->place().GetType() == phi::AllocationType::CPU) {
+    if (global_count->place().GetType() == AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
-      Copy(dev_ctx, *global_count, phi::CPUPlace(), true, &cpu_global_count);
+      Copy(dev_ctx, *global_count, CPUPlace(), true, &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
@@ -99,7 +99,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    DDim out_dims = make_ddim({fwd_count, in_feat});
     int64_t *expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -149,7 +149,7 @@ void GlobalGatherKernel(const Context &dev_ctx,
                         const DenseTensor &local_count,
                         const DenseTensor &global_count,
                         DenseTensor *out) {
-  GlobalGatherFunctor<phi::GPUContext, T> functor_;
+  GlobalGatherFunctor<GPUContext, T> functor_;
   functor_(dev_ctx, x, local_count, global_count, out);
 }
 

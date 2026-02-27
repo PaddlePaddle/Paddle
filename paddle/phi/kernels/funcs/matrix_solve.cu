@@ -179,7 +179,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   // 2. Transpose B and save it in out, because cuBlas assumes column-major
   // while Paddle uses row-majar.
   const auto& new_b_dims = getNewDimsVec(b_dims);
-  out->Resize(common::make_ddim(new_b_dims));
+  out->Resize(make_ddim(new_b_dims));
   dev_ctx.template Alloc<T>(out);
   funcs::TransposeNormal<Context, T> trans;
   std::vector<int> new_axis = getNewAxis(b_rank);
@@ -201,7 +201,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      tmp_gpu_ptrs_data->ptr(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      static_cast<void*>(cpu_ptrs.data()),
                      cpu_ptrs.size() * sizeof(T*),
                      dev_ctx.stream());
@@ -235,7 +235,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   // After: P @ A^T = L @ U
 
   // check whether BatchedGETRF is executed successfully or not
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      info.data(),
                      dev_ctx.GetPlace(),
                      gpu_info_ptr,

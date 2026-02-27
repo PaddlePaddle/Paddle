@@ -46,7 +46,7 @@ template <typename Context>
 struct Transform {
   // The unary version.
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const Context& context,
+  void operator()(const Context& dev_ctx,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
@@ -57,7 +57,7 @@ struct Transform {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const Context& context,
+  void operator()(const Context& dev_ctx,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
@@ -68,9 +68,9 @@ struct Transform {
 // NOTE: After the phi kernel is migrated, it needs to be deleted.
 
 template <>
-struct Transform<phi::CPUContext> {
+struct Transform<CPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
@@ -82,7 +82,7 @@ struct Transform<phi::CPUContext> {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
@@ -135,14 +135,14 @@ auto CastToCUDATransformIterator(T t) ->
 }
 
 template <>
-struct Transform<phi::GPUContext> {
+struct Transform<GPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const phi::GPUContext& context,
+  void operator()(const GPUContext& dev_ctx,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
                   UnaryOperation op) {
-    auto place = context.GetPlace();
+    auto place = dev_ctx.GetPlace();
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
@@ -155,13 +155,13 @@ struct Transform<phi::GPUContext> {
                           "The CUDA Transform must be used in CUSTOM place."));
 #endif
 #ifdef __HIPCC__
-    thrust::transform(thrust::hip::par.on(context.stream()),
+    thrust::transform(thrust::hip::par.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first),
                       CastToCUDATransformIterator(last),
                       CastToCUDATransformIterator(result),
                       op);
 #else
-    thrust::transform(thrust::cuda::par.on(context.stream()),
+    thrust::transform(thrust::cuda::par.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first),
                       CastToCUDATransformIterator(last),
                       CastToCUDATransformIterator(result),
@@ -173,13 +173,13 @@ struct Transform<phi::GPUContext> {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const phi::GPUContext& context,
+  void operator()(const GPUContext& dev_ctx,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
                   OutputIter result,
                   BinaryOperation op) {
-    auto place = context.GetPlace();
+    auto place = dev_ctx.GetPlace();
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
@@ -192,14 +192,14 @@ struct Transform<phi::GPUContext> {
                           "The CUDA Transform must be used in CUSTOM place."));
 #endif
 #ifdef __HIPCC__
-    thrust::transform(thrust::hip::par.on(context.stream()),
+    thrust::transform(thrust::hip::par.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first1),
                       CastToCUDATransformIterator(last1),
                       CastToCUDATransformIterator(first2),
                       CastToCUDATransformIterator(result),
                       op);
 #else
-    thrust::transform(thrust::cuda::par.on(context.stream()),
+    thrust::transform(thrust::cuda::par.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first1),
                       CastToCUDATransformIterator(last1),
                       CastToCUDATransformIterator(first2),

@@ -355,7 +355,7 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<phi::DenseTensor>("X");
+    auto input = ctx.Input<DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }

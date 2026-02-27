@@ -30,17 +30,17 @@ namespace allocation {
 
 class PADDLE_API NaiveBestFitAllocator : public Allocator {
  public:
-  explicit NaiveBestFitAllocator(const phi::Place &p) : place_(p) {}
+  explicit NaiveBestFitAllocator(const Place &p) : place_(p) {}
 
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation *allocation) override;
-  uint64_t ReleaseImpl(const phi::Place &place) override;
+  uint64_t ReleaseImpl(const Place &place) override;
 
  private:
-  phi::Place place_;
+  Place place_;
 };
 
 }  // namespace allocation

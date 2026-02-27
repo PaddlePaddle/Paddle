@@ -21,28 +21,28 @@ limitations under the License. */
 namespace phi {
 
 template <>
-void GetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
-                                      const DenseTensor& in_num_accumulates,
-                                      const DenseTensor& in_old_num_accumulates,
-                                      const DenseTensor& in_num_updates,
-                                      int64_t* num_updates,
-                                      int64_t* num_accumulates,
-                                      int64_t* old_num_accumulates) {
+void GetAccumulators<GPUContext>(const GPUContext& dev_ctx,
+                                 const DenseTensor& in_num_accumulates,
+                                 const DenseTensor& in_old_num_accumulates,
+                                 const DenseTensor& in_num_updates,
+                                 int64_t* num_updates,
+                                 int64_t* num_accumulates,
+                                 int64_t* old_num_accumulates) {
   auto stream = dev_ctx.stream();
   auto cuda_place = in_old_num_accumulates.place();
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      old_num_accumulates,
                      cuda_place,
                      in_old_num_accumulates.data<int64_t>(),
                      sizeof(int64_t),
                      stream);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      num_accumulates,
                      cuda_place,
                      in_num_accumulates.data<int64_t>(),
                      sizeof(int64_t),
                      stream);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      num_updates,
                      cuda_place,
                      in_num_updates.data<int64_t>(),
@@ -51,13 +51,13 @@ void GetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
-                                      int64_t num_updates,
-                                      int64_t num_accumulates,
-                                      int64_t old_num_accumulates,
-                                      DenseTensor* out_num_accumulates,
-                                      DenseTensor* out_old_num_accumulates,
-                                      DenseTensor* out_num_updates) {
+void SetAccumulators<GPUContext>(const GPUContext& dev_ctx,
+                                 int64_t num_updates,
+                                 int64_t num_accumulates,
+                                 int64_t old_num_accumulates,
+                                 DenseTensor* out_num_accumulates,
+                                 DenseTensor* out_old_num_accumulates,
+                                 DenseTensor* out_num_updates) {
   int64_t* out_num_accumulates_ptr =
       dev_ctx.template Alloc<int64_t>(out_num_accumulates);
   int64_t* out_old_num_accumulates_ptr =
@@ -70,21 +70,21 @@ void SetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
   auto cuda_place = out_old_num_accumulates->place();
   memory_utils::Copy(dev_ctx.GetPlace(),
                      out_num_accumulates_ptr,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &num_accumulates,
                      sizeof(int64_t),
                      stream);
 
   memory_utils::Copy(dev_ctx.GetPlace(),
                      out_old_num_accumulates_ptr,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &old_num_accumulates,
                      sizeof(int64_t),
                      stream);
 
   memory_utils::Copy(cuda_place,
                      out_num_updates_ptr,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      &num_updates,
                      sizeof(int64_t),
                      stream);

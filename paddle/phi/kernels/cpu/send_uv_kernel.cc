@@ -112,8 +112,7 @@ void SendUVKernel(const Context& dev_ctx,
 
   if (x.numel() == 0 || y.numel() == 0 || src_index.numel() == 0 ||
       dst_index.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 

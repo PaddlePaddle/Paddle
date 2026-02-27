@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename OffsetT = uint32_t>
-void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
+void GPUIndexElementwisePutKernel(const GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const Scalar& value,
                                   const std::vector<const DenseTensor*>& index,
@@ -74,7 +74,11 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
 
@@ -127,7 +131,7 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
 
 template <typename T, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutWithTensorKernel(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const DenseTensor& input,
     const DenseTensor& value,
     const std::vector<const DenseTensor*>& index,
@@ -169,8 +173,8 @@ void GPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -179,6 +183,11 @@ void GPUIndexElementwisePutWithTensorKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
+  for (auto s : desired_shape) {
+    if (s == 0) {
+      return;
+    }
+  }
 
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);

@@ -102,7 +102,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   auto* input_grad = x_grad;
   auto* output_grad = &out_grad;
   int t = seg_num;
-  const DataLayout data_layout = common::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = StringToDataLayout(data_format_str);
 
   const int64_t nt = output_grad->dims()[0];
   const int64_t c = (data_layout == DataLayout::NCHW ? output_grad->dims()[1]
@@ -121,8 +121,8 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   const int64_t c2 = static_cast<int64_t>(c * 2 * shift_ratio);
 
   DDim in_grad_dims =
-      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
-                                       : common::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::NCHW ? make_ddim({nt, c, h, w})
+                                       : make_ddim({nt, h, w, c}));
   const T* output_grad_data = output_grad->data<T>();
   input_grad->Resize(in_grad_dims);
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);

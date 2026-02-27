@@ -83,7 +83,10 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
         infer_context->GetShapeOrDataForValue(input_values[0]).shape();
 
     size_t rank = out_dims.size();
-    axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+    // NOTE(large-tensor): axis is a small integer.
+    axis = axis >= 0
+               ? axis
+               : static_cast<int>(std::max(int64_t(0), int64_t(axis + rank)));
 
     for (size_t i = 1; i < input_size; ++i) {
       const auto &operand_shape_or_data =

@@ -70,7 +70,7 @@ class FeedOp : public framework::OperatorWithKernel {
       const auto& feed_item = CheckAndGetFeedItem(x, col);
 
       auto& feed_tensor = feed_item;
-      phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor* out_tensor = out_var->GetMutable<DenseTensor>();
       phi::DenseTensorMeta meta = out_tensor->meta();
       meta.dims = feed_tensor.dims();
       meta.dtype = feed_tensor.dtype();
@@ -103,11 +103,11 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<phi::DenseTensor>) "
+             "(vector<DenseTensor>) "
              "A feeding list of phi::DenseTensor, which may have "
              "different dimension and data type.");
     AddOutput("Out",
-              "(phi::DenseTensor) The phi::DenseTensor which is a copy "
+              "(phi::DenseTensor) The DenseTensor which is a copy "
               "of the col-th feeding "
               "object.");
     AddAttr<int>("col", "(int) The column index of current feeding object.");

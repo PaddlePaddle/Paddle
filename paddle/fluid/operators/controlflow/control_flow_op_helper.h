@@ -58,8 +58,8 @@ static void BuildScopeForControlFlowOp(
 
 static void AssignZeroToOutsideTensor(const phi::Place &place,
                                       const framework::Scope &cur_scope,
-                                      const phi::DenseTensor &input_tensor,
-                                      phi::DenseTensor *outside_tensor) {
+                                      const DenseTensor &input_tensor,
+                                      DenseTensor *outside_tensor) {
   if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
     return;
   }
@@ -92,9 +92,9 @@ static void AssignZeroToParentScope(
       continue;
     }
 
-    if (input_var->IsType<phi::DenseTensor>()) {
+    if (input_var->IsType<DenseTensor>()) {
       PADDLE_ENFORCE_EQ(
-          outside_var->IsType<phi::DenseTensor>(),
+          outside_var->IsType<DenseTensor>(),
           true,
           common::errors::InvalidArgument(
               "Type of outside_var %s is NOT phi::DenseTensor, which "
@@ -103,8 +103,8 @@ static void AssignZeroToParentScope(
               input_name));
       AssignZeroToOutsideTensor(place,
                                 scope,
-                                input_var->Get<phi::DenseTensor>(),
-                                outside_var->GetMutable<phi::DenseTensor>());
+                                input_var->Get<DenseTensor>(),
+                                outside_var->GetMutable<DenseTensor>());
     } else if (input_var->IsType<phi::TensorArray>()) {
       PADDLE_ENFORCE_EQ(outside_var->IsType<phi::TensorArray>(),
                         true,
@@ -132,7 +132,7 @@ static void AssignZeroToParentScope(
     } else {
       // TODO(huihuangzheng): add support for SelectedRows
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Conditional block grad op doesn't support non-phi::DenseTensor "
+          "Conditional block grad op doesn't support non-DenseTensor "
           "output "
           "now."));
     }

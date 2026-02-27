@@ -24,6 +24,13 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/cub.h"
+#include "paddle/phi/kernels/funcs/cumprod.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/inclusive_scan.h"
+
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -457,6 +464,39 @@ void CumsumKernel(const Context& dev_ctx,
                                     std::is_same<T, phi::complex128>::value,
                                 ComplexSum,
                                 cub::Sum>::type;
+  if (FLAGS_use_accuracy_compatible_kernel && !exclusive) {
+    if (out && out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    dev_ctx.template Alloc<T>(out);
+
+    size_t outer_dim = 1;
+    size_t mid_dim = 1;
+    size_t inner_dim = 1;
+
+    if (flatten) {
+      mid_dim = x.numel();
+    } else {
+      GetCumprodDimInfo(
+          x.dims(), axis.to<int>(), &outer_dim, &mid_dim, &inner_dim);
+    }
+
+    const T* x_data = x.data<T>();
+    T* out_data = out->data<T>();
+
+    funcs::InclusiveScan(x_data,
+                         out_data,
+                         outer_dim,
+                         mid_dim,
+                         inner_dim,
+                         static_cast<T>(0),
+                         funcs::AddFunctor<T>(),
+                         /*reverse=*/reverse,
+                         dev_ctx);
+
+    return;
+  }
   auto op = Op();
   ScanKernel<T, Context, Op>(
       dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);

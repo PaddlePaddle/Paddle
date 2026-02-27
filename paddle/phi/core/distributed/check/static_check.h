@@ -81,6 +81,8 @@ struct CommStaticCheck {
       int cur_rank,
       int world_size,
       phi::AllocationType place = phi::AllocationType::GPU);
+
+  static void CheckGatherShape(const phi::DenseTensor& tensor);
 };
 
 }  //  namespace distributed

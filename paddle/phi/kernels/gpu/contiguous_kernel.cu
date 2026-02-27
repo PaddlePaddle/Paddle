@@ -230,7 +230,7 @@ bool is_only_transposed(const DDim& shape,
 }
 
 template <typename T, typename Context>
-bool LaunchContiguousCazeZeroKernel(
+bool LaunchContiguousCaseZeroKernel(
     const Context& dev_ctx,
     const T* input_data,
     const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
@@ -302,7 +302,7 @@ bool LaunchContiguousCazeZeroKernel(
 }
 
 template <typename T, typename Context>
-bool LaunchContiguousCazeOneKernel(
+bool LaunchContiguousCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
     const phi::Array<int64_t, DDim::kMaxRank + 1>& input_stride,
@@ -543,9 +543,9 @@ void ContiguousKernel(const Context& dev_ctx,
     input_stride[0] = 1;
   }
 
-  if (LaunchContiguousCazeZeroKernel<T, Context>(
+  if (LaunchContiguousCaseZeroKernel<T, Context>(
           dev_ctx, input_data, input_stride, input_dims, rank, output_data)) {
-  } else if (LaunchContiguousCazeOneKernel<T, Context>(dev_ctx,
+  } else if (LaunchContiguousCaseOneKernel<T, Context>(dev_ctx,
                                                        input_data,
                                                        input_stride,
                                                        input_dims,

@@ -87,8 +87,8 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
     return;
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder(), event, ctx);
+  if (var->IsType<DenseTensor>()) {
+    Add(var->GetMutable<DenseTensor>()->MoveMemoryHolder(), event, ctx);
   } else if (
       var->IsType<
           operators::reader::

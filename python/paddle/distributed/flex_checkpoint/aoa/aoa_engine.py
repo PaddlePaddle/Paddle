@@ -423,6 +423,11 @@ class AOAEngine:
             "When concatenating multiple tensors, there should be at least one!"
         )
         shape = list(tensors[0].shape)
+        ndim = len(shape)
+        assert 0 <= axis < ndim, (
+            f"when concat, the axis {axis} is out of range for tensors "
+            f"with shape {shape} (valid range: {0} to {ndim - 1})."
+        )
         shape[axis] = sum(t.shape[axis] for t in tensors)
         dtype = tensors[0].dtype
         assert all(t.dtype == dtype for t in tensors), (
@@ -533,6 +538,11 @@ class AOAEngine:
                     if len(left_vars) == 1:
                         in_name = left_vars[0].name
                         in_ref = _get_var_ref(left_vars[0])
+                        ndim = len(in_ref.shape)
+                        assert 0 <= axis < ndim, (
+                            f"when split, the axis {axis} is out of range for tensor {in_name} "
+                            f"with shape {in_ref.shape} (valid range: {0} to {ndim - 1})."
+                        )
                         assert in_ref.shape[axis] % len(right_vars) == 0, (
                             f"when split, the shape of the input tensor {in_name} is {in_ref.shape}, the axis is {axis}, the number of right_vars is {len(right_vars)}, but the shape of the input tensor {in_name} is not divisible by the number of right_vars."
                         )
@@ -666,13 +676,18 @@ class AOAEngine:
             for name in self.destination_state_shard_info:
                 model_state_key, _ = split_optimizer_state_key(name)
                 if model_state_key not in self.output_vars:
-                    self.output_vars[model_state_key] = (
-                        None
-                        if model_state_key in self.need_add_output_vars
-                        else self.input_vars[
+                    if model_state_key in self.need_add_output_vars:
+                        self.output_vars[model_state_key] = None
+                    else:
+                        assert model_state_key in self.input_vars, (
+                            f"{model_state_key} needs to be loaded, "
+                            f"but not found in checkpoint. "
+                            f"If the key exists in the current model but not in the loaded checkpoint, please use the add primitive in aoa_statements: "
+                            f"_ -> {model_state_key}, and {model_state_key} will be randomly initialized."
+                        )
+                        self.output_vars[model_state_key] = self.input_vars[
                             model_state_key
-                        ]  # Assertion implied by direct access
-                    )
+                        ]
         else:
             # When destination_state_shard_info is not provided, the AOAEngine automatically derives it
             # from source_state_shard_info and aha_statements. In this case, all destination_states

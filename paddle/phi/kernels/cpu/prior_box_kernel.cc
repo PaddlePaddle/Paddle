@@ -36,10 +36,8 @@ void PriorBoxKernel(const Context& dev_ctx,
                     DenseTensor* out,
                     DenseTensor* var) {
   if (input.numel() == 0 || image.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<T, Context>(dev_ctx, var->dims(), 0, var);
     return;
   }
 
@@ -146,7 +144,7 @@ void PriorBoxKernel(const Context& dev_ctx,
   }
 
   DenseTensor var_t;
-  var_t.Resize(common::make_ddim({1, static_cast<int>(variances.size())}));
+  var_t.Resize(make_ddim({1, static_cast<int>(variances.size())}));
   dev_ctx.template Alloc<T>(&var_t);
   auto var_et = EigenTensor<T, 2>::From(var_t);
 

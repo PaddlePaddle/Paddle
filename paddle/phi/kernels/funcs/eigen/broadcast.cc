@@ -71,7 +71,8 @@ struct EigenBroadcastGrad<Eigen::DefaultDevice, T, Rank> {
   template struct FUNCTOR<Eigen::DefaultDevice, T, 5>; \
   template struct FUNCTOR<Eigen::DefaultDevice, T, 6>; \
   template struct FUNCTOR<Eigen::DefaultDevice, T, 7>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, T, 8>
+  template struct FUNCTOR<Eigen::DefaultDevice, T, 8>; \
+  template struct FUNCTOR<Eigen::DefaultDevice, T, 9>
 INSTANTIATION(EigenBroadcast, bool);
 INSTANTIATION(EigenBroadcast, dtype::float16);
 INSTANTIATION(EigenBroadcast, dtype::bfloat16);

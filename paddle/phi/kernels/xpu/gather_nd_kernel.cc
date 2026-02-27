@@ -56,7 +56,7 @@ void GatherNdKernel(const Context &dev_ctx,
         0,
         common::errors::InvalidArgument("end_size[%d] should be 0", end_size));
     // remain dim
-    auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+    auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
     int64_t remain_numel = common::product(remain_ddim);
 
     int64_t x_numel = x.numel();
@@ -93,8 +93,8 @@ void GatherNdKernel(const Context &dev_ctx,
                         DataType::INT32,
                         DataType::INT64));
 
-  auto x_shape = common::vectorize<int64_t>(x.dims());
-  auto index_shape = common::vectorize<int64_t>(index.dims());
+  auto x_shape = vectorize<int64_t>(x.dims());
+  auto index_shape = vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }

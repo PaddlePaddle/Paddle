@@ -31,9 +31,9 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "Input(GRAD@Out) of SquaredL2NormGradOP should be a scalar."));
 
-  auto input = phi::EigenVector<T>::Flatten(x);
-  auto d_out = phi::EigenVector<T>::Flatten(dout);
-  auto d_x = phi::EigenVector<T>::Flatten(*dx);
+  auto input = EigenVector<T>::Flatten(x);
+  auto d_out = EigenVector<T>::Flatten(dout);
+  auto d_x = EigenVector<T>::Flatten(*dx);
   auto* place = dev_ctx.eigen_device();
   Eigen::DSizes<int, 1> x_dsize(x.numel());
   d_x.device(*place) = (d_out.broadcast(x_dsize) * input) * static_cast<T>(2.0);

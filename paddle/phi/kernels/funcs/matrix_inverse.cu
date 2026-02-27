@@ -75,7 +75,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      tmp_gpu_ptrs_data->ptr(),
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      static_cast<void*>(cpu_ptrs.data()),
                      cpu_ptrs.size() * sizeof(T*),
                      dev_ctx.stream());
@@ -118,7 +118,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                       gpu_info_ptr,
                       batch_size);
   }
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      info.data(),
                      dev_ctx.GetPlace(),
                      gpu_info_ptr,

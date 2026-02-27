@@ -350,10 +350,32 @@ class FunctionGraph:
             inputs,
         )
 
+    def load_builtin_stringified_guards(self) -> list[StringifiedExpression]:
+        return [
+            # paddle.is_grad_enabled()
+            StringifiedExpression(
+                f"paddle.is_grad_enabled() is {paddle.is_grad_enabled()}",
+                [],
+                free_vars={"paddle": paddle},
+            )
+        ]
+
+    def load_builtin_guard_chain(
+        self,
+    ) -> list[paddle.framework.core.GuardNodeBase]:
+        is_current_grad_enabled = paddle.is_grad_enabled()
+        return [
+            # paddle.is_grad_enabled()
+            paddle.framework.core.IsGradEnabledGuardNode(
+                is_current_grad_enabled
+            ),
+        ]
+
     @property
     @event_register("guard_chain")
     def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
         guard_chain: list[paddle.framework.core.GuardNodeBase] = []
+        guard_chain.extend(self.load_builtin_guard_chain())
 
         with EventGuard("guard_fn: find vars and make faster guard"):
             for variable in find_traceable_vars(
@@ -367,6 +389,7 @@ class FunctionGraph:
     def guard_fn(self) -> Guard:
         with switch_symbol_registry():
             guards: list[StringifiedExpression] = []
+            guards.extend(self.load_builtin_stringified_guards())
             with EventGuard("guard_fn: find vars and make stringified guard"):
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)

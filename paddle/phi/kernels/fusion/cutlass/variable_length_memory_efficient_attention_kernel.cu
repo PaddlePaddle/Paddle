@@ -18,18 +18,17 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void MultiHeadAttentionVariableForwardKernel(
-    const Context& dev_ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const DenseTensor& seq_lens,
-    const DenseTensor& kv_seq_lens,
-    const paddle::optional<DenseTensor>& mask,
-    const float scale,
-    const bool causal,
-    const int pre_cache_length,
-    DenseTensor* output) {
+void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
+                                             const DenseTensor& query,
+                                             const DenseTensor& key,
+                                             const DenseTensor& value,
+                                             const DenseTensor& seq_lens,
+                                             const DenseTensor& kv_seq_lens,
+                                             const optional<DenseTensor>& mask,
+                                             const float scale,
+                                             const bool causal,
+                                             const int pre_cache_length,
+                                             DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
   if (output->numel() == 0) return;
 

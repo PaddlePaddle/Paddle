@@ -55,7 +55,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
     }
     auto y_dim = common::vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(common::make_ddim(y_dim));
+    y->Resize(make_ddim(y_dim));
   }
   if (x_numel == 0) {
     dev_ctx.Alloc(y, out_dtype);
@@ -70,16 +70,15 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SequenceMaskKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& max_len_tensor,
+                        const optional<DenseTensor>& max_len_tensor,
                         int maxlen,
                         DataType out_dtype,
                         DenseTensor* y) {
   if (max_len_tensor) {
-    bool is_gpu_place =
-        dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+    bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
     if (is_gpu_place) {
       DenseTensor temp;
-      Copy(dev_ctx, *max_len_tensor.get_ptr(), phi::CPUPlace(), false, &temp);
+      Copy(dev_ctx, *max_len_tensor.get_ptr(), CPUPlace(), false, &temp);
       maxlen = *temp.data<int32_t>();
     } else {
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();
@@ -87,7 +86,7 @@ void SequenceMaskKernel(const Context& dev_ctx,
 
     auto y_dim = common::vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(common::make_ddim(y_dim));
+    y->Resize(make_ddim(y_dim));
 
     PADDLE_ENFORCE_GT(
         maxlen,

@@ -183,7 +183,7 @@ struct GetMaxValue {
                   const DenseTensor& input,
                   T* max_value) {
     DenseTensor out_data;
-    out_data.Resize(common::make_ddim({1}));
+    out_data.Resize(make_ddim({1}));
     dev_ctx.template Alloc<T>(&out_data);
     switch (ComputeBlockSize(input.numel())) {
       FIXED_BLOCK_DIM_CASE(
@@ -196,7 +196,7 @@ struct GetMaxValue {
                                                   out_data.data<int64_t>()));
     }
     DenseTensor max_value_tensor;
-    Copy(dev_ctx, out_data, phi::CPUPlace(), false, &max_value_tensor);
+    Copy(dev_ctx, out_data, CPUPlace(), false, &max_value_tensor);
     *max_value = max_value_tensor.data<T>()[0];
   }
 };

@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void RoiPoolGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& boxes,
-                       const paddle::optional<DenseTensor>& boxes_num,
+                       const optional<DenseTensor>& boxes_num,
                        const DenseTensor& arg_max,
                        const DenseTensor& out_grad,
                        int pooled_height,
@@ -34,8 +34,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
                        float spatial_scale,
                        DenseTensor* dx) {
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
 

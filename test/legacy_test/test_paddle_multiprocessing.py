@@ -56,7 +56,7 @@ def check_ipc_tensor(event, ipc_metas):
     ground_truth1 = paddle.to_tensor([1, 2, 3])
     ground_truth2 = paddle.to_tensor([3, 4, 5])
     shared_ipc_tensor = paddle.to_tensor(
-        paddle.base.core.DenseTensor._new_from_ipc(ipc_metas)
+        paddle.base.core.DenseTensor._new_shared_cuda(ipc_metas)
     )
     paddle.cuda.ipc_collect()
 
@@ -235,7 +235,7 @@ class TestMultiprocessingGpu(TestMultiprocessingBase):
         paddle.device.set_device(get_device())
         initial_tensor = paddle.to_tensor([1, 2, 3])
         bonus = paddle.to_tensor([2])
-        ipc_metas = initial_tensor.value().get_tensor()._share_device_ipc()
+        ipc_metas = initial_tensor.value().get_tensor()._share_cuda()
         ctx = mp.get_context("spawn")
         event = ctx.Event()
         process = ctx.Process(target=check_ipc_tensor, args=(event, ipc_metas))

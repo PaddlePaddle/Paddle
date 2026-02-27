@@ -40,12 +40,10 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
                                DenseTensor* dy) {
   if (out.numel() == 0) {
     if (dx) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     if (dy) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
     }
     return;
   }
@@ -55,7 +53,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
       funcs::MatrixGetBroadcastDims(x, y);
 
   IntArray y_bst_dims_array(y_bst_dims_vec);
-  DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims_array);
+  DenseTensor dy_bst = Empty<T, Context>(dev_ctx, y_bst_dims_array);
   if (dy) {
     // calculate x's conjugate for complex
     DenseTensor x_conj;
@@ -82,7 +80,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
   }
 
   IntArray x_bst_dims_array(x_bst_dims_vec);
-  DenseTensor dx_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims_array);
+  DenseTensor dx_bst = Empty<T, Context>(dev_ctx, x_bst_dims_array);
   if (dx) {
     // calculate x's conjugate for complex
     DenseTensor out_conj;
@@ -117,8 +115,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     }
 
     // get upper or lower triangular
-    DenseTensor dx_bst_upper =
-        phi::Empty<T, Context>(dev_ctx, x_bst_dims_array);
+    DenseTensor dx_bst_upper = Empty<T, Context>(dev_ctx, x_bst_dims_array);
 
     const auto& dims = dx_bst.dims();
     const auto H = dims[dims.size() - 2];

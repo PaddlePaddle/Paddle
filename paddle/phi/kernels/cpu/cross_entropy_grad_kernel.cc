@@ -43,7 +43,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
   DenseTensor* logit_grad = logits_grad;
 
   if (logit_grad != &softmax || !use_softmax) {
-    phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
+    Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
   }
 
   const int rank = logit_grad->dims().size();

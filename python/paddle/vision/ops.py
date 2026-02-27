@@ -188,22 +188,24 @@ def yolo_loss(
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.rand([2, 14, 8, 8]).astype('float32')
             >>> gt_box = paddle.rand([2, 10, 4]).astype('float32')
             >>> gt_label = paddle.rand([2, 10]).astype('int32')
-            >>> loss = paddle.vision.ops.yolo_loss(x,
-            ...                                    gt_box=gt_box,
-            ...                                    gt_label=gt_label,
-            ...                                    anchors=[10, 13, 16, 30],
-            ...                                    anchor_mask=[0, 1],
-            ...                                    class_num=2,
-            ...                                    ignore_thresh=0.7,
-            ...                                    downsample_ratio=8,
-            ...                                    use_label_smooth=True,
-            ...                                    scale_x_y=1.)
+            >>> loss = paddle.vision.ops.yolo_loss(
+            ...     x,
+            ...     gt_box=gt_box,
+            ...     gt_label=gt_label,
+            ...     anchors=[10, 13, 16, 30],
+            ...     anchor_mask=[0, 1],
+            ...     class_num=2,
+            ...     ignore_thresh=0.7,
+            ...     downsample_ratio=8,
+            ...     use_label_smooth=True,
+            ...     scale_x_y=1.0,
+            ... )
     """
 
     if in_dynamic_or_pir_mode():
@@ -368,20 +370,22 @@ def yolo_box(
         scores of boxes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.rand([2, 14, 8, 8]).astype('float32')
             >>> img_size = paddle.ones((2, 2)).astype('int32')
-            >>> boxes, scores = paddle.vision.ops.yolo_box(x,
-            ...                                             img_size=img_size,
-            ...                                             anchors=[10, 13, 16, 30],
-            ...                                             class_num=2,
-            ...                                             conf_thresh=0.01,
-            ...                                             downsample_ratio=8,
-            ...                                             clip_bbox=True,
-            ...                                             scale_x_y=1.)
+            >>> boxes, scores = paddle.vision.ops.yolo_box(
+            ...     x,
+            ...     img_size=img_size,
+            ...     anchors=[10, 13, 16, 30],
+            ...     class_num=2,
+            ...     conf_thresh=0.01,
+            ...     downsample_ratio=8,
+            ...     clip_bbox=True,
+            ...     scale_x_y=1.0,
+            ... )
     """
     if in_dynamic_or_pir_mode():
         boxes, scores = _C_ops.yolo_box(
@@ -491,7 +495,7 @@ def prior_box(
             The expanded variances is a 4-D tensor, same shape as the prior boxes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -502,8 +506,8 @@ def prior_box(
             ...     image=image,
             ...     min_sizes=[2.0, 4.0],
             ...     clip=True,
-            ...     flip=True)
-            ...
+            ...     flip=True,
+            ... )
     """
 
     def _is_list_or_tuple_(data):
@@ -668,7 +672,7 @@ def box_coder(
             and M represents the number of decoded boxes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -680,8 +684,8 @@ def box_coder(
             ...     prior_box=prior_box_encode,
             ...     prior_box_var=prior_box_var_encode,
             ...     target_box=target_box_encode,
-            ...     code_type="encode_center_size")
-            ...
+            ...     code_type="encode_center_size",
+            ... )
             >>> # For decode
             >>> prior_box_decode = paddle.rand((80, 4), dtype=paddle.float32)
             >>> prior_box_var_decode = paddle.rand((80, 4), dtype=paddle.float32)
@@ -691,8 +695,8 @@ def box_coder(
             ...     prior_box_var=prior_box_var_decode,
             ...     target_box=target_box_decode,
             ...     code_type="decode_center_size",
-            ...     box_normalized=False)
-            ...
+            ...     box_normalized=False,
+            ... )
     """
     if in_dynamic_or_pir_mode():
         if isinstance(prior_box_var, (core.eager.Tensor, paddle.pir.Value)):
@@ -1262,7 +1266,7 @@ def distribute_fpn_proposals(
           is [B] and data type of int32, where B is the number of images.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1993,7 +1997,7 @@ def nms(
         Tensor: 1D-Tensor with the shape of [num_boxes]. Indices of boxes kept by NMS.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -2016,12 +2020,14 @@ def nms(
             >>> scores = paddle.to_tensor([0.6, 0.7, 0.4, 0.233])
             >>> categories = [0, 1, 2, 3]
             >>> category_idxs = paddle.to_tensor([2, 0, 0, 3], dtype="int64")
-            >>> out = paddle.vision.ops.nms(boxes,
-            ...                             0.1,
-            ...                             paddle.to_tensor(scores),
-            ...                             paddle.to_tensor(category_idxs),
-            ...                             categories,
-            ...                             4)
+            >>> out = paddle.vision.ops.nms(
+            ...     boxes,
+            ...     0.1,
+            ...     paddle.to_tensor(scores),
+            ...     paddle.to_tensor(category_idxs),
+            ...     categories,
+            ...     4,
+            ... )
             >>> print(out)
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 0, 2, 3])
@@ -2218,8 +2224,8 @@ def generate_proposals(
             num_anchors is the box count of each position. Each anchor is
             in (xmin, ymin, xmax, ymax) format an unnormalized. The data type must be float32.
         variances (Tensor): A 4-D Tensor. The expanded variances of anchors with a layout of
-            [H, W, num_priors, 4]. Each variance is in
-            (xcenter, ycenter, w, h) format. The data type must be float32.
+            [H, W, A, 4]. Each variance is in (xcenter, ycenter, w, h) format.
+            The data type must be float32.
         pre_nms_top_n (float, optional): Number of total bboxes to be kept per
             image before NMS. `6000` by default.
         post_nms_top_n (float, optional): Number of total bboxes to be kept per
@@ -2242,18 +2248,19 @@ def generate_proposals(
         - rpn_rois_num (Tensor): Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
 
-            >>> scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
+            >>> scores = paddle.rand((2, 4, 5, 5), dtype=paddle.float32)
             >>> bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
             >>> img_size = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
-            >>> anchors = paddle.rand((2,5,4,4), dtype=paddle.float32)
-            >>> variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
-            >>> rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(scores, bbox_deltas,
-            ...                 img_size, anchors, variances, return_rois_num=True)
+            >>> anchors = paddle.rand((5, 5, 4, 4), dtype=paddle.float32)
+            >>> variances = paddle.rand((5, 5, 4, 4), dtype=paddle.float32)
+            >>> rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(
+            ...     scores, bbox_deltas, img_size, anchors, variances, return_rois_num=True
+            ... )
             >>> # doctest: +SKIP('random sample')
             >>> print(rois, roi_probs, roi_nums)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -2529,7 +2536,7 @@ def matrix_nms(
           the number of detected boxes in each image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.vision.ops import matrix_nms
@@ -2538,9 +2545,16 @@ def matrix_nms(
             >>> boxes[..., 2] = boxes[..., 0] + boxes[..., 2]
             >>> boxes[..., 3] = boxes[..., 1] + boxes[..., 3]
             >>> scores = paddle.rand([4, 80, 1])
-            >>> out = matrix_nms(bboxes=boxes, scores=scores, background_label=0,
-            ...                         score_threshold=0.5, post_threshold=0.1,
-            ...                         nms_top_k=400, keep_top_k=200, normalized=False)
+            >>> out = matrix_nms(
+            ...     bboxes=boxes,
+            ...     scores=scores,
+            ...     background_label=0,
+            ...     score_threshold=0.5,
+            ...     post_threshold=0.1,
+            ...     nms_top_k=400,
+            ...     keep_top_k=200,
+            ...     normalized=False,
+            ... )
     """
     if in_dynamic_or_pir_mode():
         out, index, rois_num = _C_ops.matrix_nms(

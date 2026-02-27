@@ -271,8 +271,7 @@ void CommonElementwiseBroadcastBackward(const CPUContext &dev_ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << common::make_ddim(x_dims_array)
-          << " ydim:" << common::make_ddim(y_dims_array);
+          << make_ddim(x_dims_array) << " ydim:" << make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -1161,7 +1160,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                              DX_OP dx_op,
                              DY_OP dy_op) {
   const auto gplace = dev_ctx.GetPlace();
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();
@@ -1979,8 +1978,7 @@ void CommonElementwiseBroadcastBackward(const GPUContext &dev_ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << common::make_ddim(x_dims_array)
-          << " ydim:" << common::make_ddim(y_dims_array);
+          << make_ddim(x_dims_array) << " ydim:" << make_ddim(y_dims_array);
 
   CommonGradBroadcastCUDA<T, DX_OP, DY_OP, Tout>(x,
                                                  y,

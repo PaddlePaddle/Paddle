@@ -390,7 +390,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int t_size = sizeof(CT);
 
   const phi::Place &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
 
   // 1.1 get stored data num of per block
   int kVecSize = 4;
@@ -440,7 +440,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int64_t size_count_block = need_grids + 1;
   std::vector<int64_t> dims_vec = {size_count_block * 2};
   IntArray dims_array(dims_vec);
-  DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor count_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
   // 1.3 launch CountKernel
   switch (kVecSize) {
@@ -454,7 +454,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   }
 
   // 2.1 alloc cumsum data for CoutBlock prefix
-  DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor cumsum_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *cumsum_data = cumsum_mem.data<CT>();
   // 2.2 get prefix of count_data for real out_index
   CT total_true_num = static_cast<CT>(0);  // init
@@ -480,10 +480,10 @@ void SelectKernel(const KPDevice &dev_ctx,
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
   if (SelectData == 1) {
-    out->Resize(common::make_ddim(out_dim));
+    out->Resize(make_ddim(out_dim));
   } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(static_cast<int64_t>(rank));
-    out->Resize(common::make_ddim(out_dim));
+    out->Resize(make_ddim(out_dim));
   }
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data
@@ -531,7 +531,7 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   const int t_size = sizeof(CT);
 
   const phi::Place &cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
 
   // 1.1 get stored data num of per block
   const int kVecSize = 4;
@@ -553,13 +553,13 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   const int size_count_block = need_grids + 1;
   std::vector<int> dims_vec = {size_count_block * 2};
   IntArray dims_array(dims_vec);
-  DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor count_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *count_data = count_mem.data<CT>();
   // 1.3 launch CountKernel
   GetBlockCountKernel<MT, CT, kVecSize>
       <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
   // 2.1 alloc cumsum data for CoutBlock prefix
-  DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  DenseTensor cumsum_mem = Empty<CT, KPDevice>(dev_ctx, dims_array);
   CT *cumsum_data = cumsum_mem.data<CT>();
   // 2.2 get prefix of count_data for real out_index
   // CT total_true_num = static_cast<CT>(0);  // init
@@ -577,10 +577,10 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
   if (SelectData == 1) {
-    out->Resize(common::make_ddim(out_dim));
+    out->Resize(make_ddim(out_dim));
   } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(static_cast<int64_t>(rank));
-    out->Resize(common::make_ddim(out_dim));
+    out->Resize(make_ddim(out_dim));
   }
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data

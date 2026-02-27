@@ -98,7 +98,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -113,7 +113,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -127,7 +127,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
 
     const int64_t* index_data = index.data<int64_t>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -143,7 +143,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     T* out_data = dev_ctx.template Alloc<T>(out);
     int64_t numel = out->numel();
     int64_t size = output_dim[dim];
@@ -159,7 +159,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
 
     const int* index_data = index.data<int>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -175,7 +175,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     T* out_data = dev_ctx.template Alloc<T>(out);
     int64_t numel = out->numel();
     int64_t size = output_dim[dim];
@@ -302,6 +302,7 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
@@ -312,4 +313,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}

@@ -141,7 +141,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
     if (size_0) {
       tmp_dim_vec.insert(tmp_dim_vec.begin(),
                          2);  // make the output dims as same as numpy
-      out->Resize(common::make_ddim(tmp_dim_vec));
+      out->Resize(make_ddim(tmp_dim_vec));
       dev_ctx.template Alloc<T>(out);
       return;
     }
@@ -167,7 +167,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   }
   output_dim_vec.insert(output_dim_vec.begin(),
                         2);  // make the output dims as same as numpy
-  auto output_dims = common::make_ddim(output_dim_vec);
+  auto output_dims = make_ddim(output_dim_vec);
   out->Resize(output_dims);
   VLOG(2) << "output dim:" << out->dims();
 }
@@ -183,19 +183,14 @@ struct SlogDeterminantV2Functor {
     if (input.numel() == 0) {
       dev_ctx.template Alloc<T>(sign);
       if (sign->numel() > 0) {
-        FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(sign->dims()),
-                               static_cast<T>(1),
-                               sign->dtype(),
-                               sign);
+        Full<T, Context>(dev_ctx, sign->dims(), static_cast<T>(1), sign);
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(logdet->dims()),
-                               static_cast<phi::dtype::complex<T>>(0),
-                               logdet->dtype(),
-                               logdet);
+        Full<T, Context>(dev_ctx,
+                         logdet->dims(),
+                         static_cast<phi::dtype::complex<T>>(0),
+                         logdet);
       }
       return;
     }
@@ -238,20 +233,18 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
       dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
       dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
       if (sign->numel() > 0) {
-        FullKernel<phi::dtype::complex<T>, Context>(
+        Full<phi::dtype::complex<T>, Context>(
             dev_ctx,
-            common::vectorize(sign->dims()),
+            sign->dims(),
             static_cast<phi::dtype::complex<T>>(1),
-            sign->dtype(),
             sign);
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        FullKernel<T, Context>(dev_ctx,
-                               common::vectorize(logdet->dims()),
-                               static_cast<phi::dtype::complex<T>>(0),
-                               logdet->dtype(),
-                               logdet);
+        Full<T, Context>(dev_ctx,
+                         logdet->dims(),
+                         static_cast<phi::dtype::complex<T>>(0),
+                         logdet);
       }
       return;
     }

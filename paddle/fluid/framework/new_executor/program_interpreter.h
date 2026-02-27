@@ -45,12 +45,11 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   ~ProgramInterpreter();
 
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true,
-      bool enable_job_schedule_profiler = false,
-      bool switch_stream = false) override;
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   const std::vector<DenseTensor>& feed_tensors,
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
+                                   bool switch_stream = false) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
@@ -161,7 +160,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
-               const std::vector<phi::DenseTensor>& feed_tensors,
+               const std::vector<DenseTensor>& feed_tensors,
                bool prepare_feed,
                bool switch_stream = false);
 
@@ -254,22 +253,22 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool enable_job_schedule_profiler_;
 };
 
-static inline const phi::DenseTensor& GetTensorFromVar(const Variable* var) {
-  if (var->IsType<phi::DenseTensor>()) {
-    return var->Get<phi::DenseTensor>();
+static inline const DenseTensor& GetTensorFromVar(const Variable* var) {
+  if (var->IsType<DenseTensor>()) {
+    return var->Get<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
 
-static inline phi::DenseTensor* GetMutableTensorFromVar(Variable* var) {
-  if (var->IsType<phi::DenseTensor>()) {
-    return var->GetMutable<phi::DenseTensor>();
+static inline DenseTensor* GetMutableTensorFromVar(Variable* var) {
+  if (var->IsType<DenseTensor>()) {
+    return var->GetMutable<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }

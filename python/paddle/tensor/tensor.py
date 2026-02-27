@@ -12,4 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the basic tensor classes
+# The generated `tensor.pyi` requires this file. It can not guarantee that all
+# type checkers will work without deleting this file. So it is necessary to
+# keep this file.

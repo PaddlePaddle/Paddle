@@ -318,7 +318,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           mask_host.data(),
                           place,
                           mask_dev,
@@ -344,7 +344,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
   int *keep = dev_ctx.Alloc<int>(keep_out);
   phi::memory_utils::Copy(place,
                           keep,
-                          phi::CPUPlace(),
+                          CPUPlace(),
                           keep_vec.data(),
                           sizeof(int) * num_to_keep,
                           dev_ctx.stream());

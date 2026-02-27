@@ -52,12 +52,12 @@ static void MoveOrCopyVar(framework::Variable* dst,
   }
 
   VLOG(6) << "Copy occurs when sum gradients within this graph";
-  if (src->IsType<phi::DenseTensor>()) {
-    auto& src_tensor = src->Get<phi::DenseTensor>();
-    if (!dst->IsType<phi::DenseTensor>()) {
+  if (src->IsType<DenseTensor>()) {
+    auto& src_tensor = src->Get<DenseTensor>();
+    if (!dst->IsType<DenseTensor>()) {
       dst->Clear();
     }
-    auto* dst_tensor = dst->GetMutable<phi::DenseTensor>();
+    auto* dst_tensor = dst->GetMutable<DenseTensor>();
     framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
     dst_tensor->set_lod(src_tensor.lod());
   } else if (src->IsType<phi::SelectedRows>()) {
@@ -126,11 +126,11 @@ TType* GetEmptyInnerTensor(paddle::imperative::VariableWrapper* dst) {
 
 template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst) {
-  phi::DenseTensor* dst_tensor = GetInnerMutableTensor<phi::DenseTensor>(dst);
-  const phi::DenseTensor& src_tensor = GetInnerTensor<phi::DenseTensor>(src);
+  DenseTensor* dst_tensor = GetInnerMutableTensor<DenseTensor>(dst);
+  const DenseTensor& src_tensor = GetInnerTensor<DenseTensor>(src);
 
   paddle::experimental::CheckAndTrans2Contiguous(
-      const_cast<phi::DenseTensor*>(&src_tensor));
+      const_cast<DenseTensor*>(&src_tensor));
   paddle::experimental::CheckAndTrans2Contiguous(dst_tensor);
 
   auto numel = src_tensor.numel();
@@ -253,7 +253,7 @@ template PADDLE_API void TensorAdd<paddle::Tensor>(const paddle::Tensor& src,
 
 template <typename VarType>
 void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
-  phi::DenseTensor* dst_tensor = GetInnerMutableTensor<phi::DenseTensor>(dst);
+  DenseTensor* dst_tensor = GetInnerMutableTensor<DenseTensor>(dst);
   const phi::SelectedRows& src_selected_rows =
       GetInnerTensor<phi::SelectedRows>(src);
 
@@ -306,8 +306,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
                            VarType* dst_tensor_var) {
   const phi::SelectedRows& src_selected_rows =
       GetInnerTensor<phi::SelectedRows>(src_selected_rows_var);
-  const phi::DenseTensor& src_tensor =
-      GetInnerTensor<phi::DenseTensor>(src_tensor_var);
+  const DenseTensor& src_tensor = GetInnerTensor<DenseTensor>(src_tensor_var);
 
   paddle::experimental::CheckAndTrans2Contiguous(
       const_cast<phi::SelectedRows*>(&src_selected_rows)->mutable_value());
@@ -316,8 +315,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
   auto data_type = framework::TransToProtoVarType(src_tensor.dtype());
   auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
 
-  phi::DenseTensor* dst_tensor =
-      GetInnerMutableTensor<phi::DenseTensor>(dst_tensor_var);
+  DenseTensor* dst_tensor = GetInnerMutableTensor<DenseTensor>(dst_tensor_var);
   dst_tensor->Resize(src_tensor.dims());
   dst_tensor->mutable_data(place, src_tensor.dtype());
 
@@ -434,8 +432,8 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         bool unchange_input) {
   auto& src = var->Var();
   auto* dst = dst_var->MutableVar();
-  if (dst->IsType<phi::DenseTensor>()) {
-    if (src.IsType<phi::DenseTensor>()) {
+  if (dst->IsType<DenseTensor>()) {
+    if (src.IsType<DenseTensor>()) {
       TensorAdd<framework::Variable>(src, dst);
     } else if (src.IsType<phi::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
@@ -445,7 +443,7 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
           framework::ToTypeName(dst->Type())));
     }
   } else {
-    if (src.IsType<phi::DenseTensor>()) {
+    if (src.IsType<DenseTensor>()) {
       if (unchange_input) {
         framework::Variable new_dst;
         SelectedRowsAddTensor(*dst, src, &new_dst);
@@ -468,8 +466,8 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
 
 static phi::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var) {
   phi::Place place;
-  if (var->Var().IsType<phi::DenseTensor>()) {  // NOLINT
-    place = var->Var().Get<phi::DenseTensor>().place();
+  if (var->Var().IsType<DenseTensor>()) {  // NOLINT
+    place = var->Var().Get<DenseTensor>().place();
   } else if (var->Var().IsType<phi::SelectedRows>()) {
     place = var->Var().Get<phi::SelectedRows>().place();
   } else {
@@ -502,14 +500,14 @@ void GradientAccumulator::AccumulateGrad() {
     VLOG(6) << "Leaf Var(" << var_->Name()
             << ")'s Gradient has been initialized, will accumulate on "
                "previous gradient.";
-    if (dst->IsType<phi::DenseTensor>()) {
-      if (src->IsType<phi::DenseTensor>()) {
+    if (dst->IsType<DenseTensor>()) {
+      if (src->IsType<DenseTensor>()) {
         TensorAdd<framework::Variable>(*src, dst);
       } else if (src->IsType<phi::SelectedRows>()) {
         SelectedRowsAddToTensor(*src, dst);
       }
     } else if (dst->IsType<phi::SelectedRows>()) {
-      if (src->IsType<phi::DenseTensor>()) {
+      if (src->IsType<DenseTensor>()) {
         SelectedRowsAddToTensor(*dst, src);
         *dst = std::move(*src);
       } else if (src->IsType<phi::SelectedRows>()) {
@@ -617,18 +615,18 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     }
   } else {
     if (!dst_var->Var().IsInitialized() ||
-        !dst_var->Var().Get<phi::DenseTensor>().IsInitialized()) {
+        !dst_var->Var().Get<DenseTensor>().IsInitialized()) {
       VLOG(6) << "Set StopGradient Grad: " << dst_var->Name() << " as zero ";
       auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       if (!dst_var->Var().IsInitialized()) {
-        auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
+        auto* tensor = dst_var->MutableVar()->GetMutable<DenseTensor>();
         VLOG(6) << "Dims of " << dst_var->Name()
-                << " is set as: " << var->Var().Get<phi::DenseTensor>().dims();
-        tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
+                << " is set as: " << var->Var().Get<DenseTensor>().dims();
+        tensor->Resize(var->Var().Get<DenseTensor>().dims());
         tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
-        auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
+        auto* tensor = dst_var->MutableVar()->GetMutable<DenseTensor>();
         tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
@@ -637,7 +635,7 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
 
   // Type may be changed after OP run, such as VarTypeInference
   // so synchronous VariableWrapper with Variable.
-  if (dst_var->Var().IsType<phi::DenseTensor>()) {
+  if (dst_var->Var().IsType<DenseTensor>()) {
     dst_var->SetType(framework::proto::VarType::DENSE_TENSOR);
   } else if (dst_var->Var().IsType<phi::SelectedRows>()) {
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
@@ -708,7 +706,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
             continue;
           }
 
-          PADDLE_ENFORCE_EQ(var_info.var->Var().IsType<phi::DenseTensor>(),
+          PADDLE_ENFORCE_EQ(var_info.var->Var().IsType<DenseTensor>(),
                             true,
                             common::errors::PermissionDenied(
                                 "Gradient var must be DenseTensor"));
@@ -731,7 +729,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
             continue;
           }
           PADDLE_ENFORCE_EQ(
-              var_info.var->Var().IsType<phi::DenseTensor>() ||
+              var_info.var->Var().IsType<DenseTensor>() ||
                   var_info.var->Var().IsType<phi::SelectedRows>(),
               true,
               common::errors::PermissionDenied("The type of Gradient "
@@ -755,18 +753,18 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     }
   } else {
     if (!dst_var->Var().IsInitialized() ||
-        !dst_var->Var().Get<phi::DenseTensor>().IsInitialized()) {
+        !dst_var->Var().Get<DenseTensor>().IsInitialized()) {
       VLOG(6) << "Set StopGradient Grad: " << var->Name() << " as zero";
       auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       if (!dst_var->Var().IsInitialized()) {
-        auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
+        auto* tensor = dst_var->MutableVar()->GetMutable<DenseTensor>();
         VLOG(6) << "Dims of " << dst_var->Name()
-                << " is set as: " << var->Var().Get<phi::DenseTensor>().dims();
-        tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
+                << " is set as: " << var->Var().Get<DenseTensor>().dims();
+        tensor->Resize(var->Var().Get<DenseTensor>().dims());
         tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
-        auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
+        auto* tensor = dst_var->MutableVar()->GetMutable<DenseTensor>();
         tensor->mutable_data(place, phi::TransToPhiDataType(var->DataType()));
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
@@ -775,7 +773,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     tmp_grad_vars_.clear();
   }
 
-  if (dst_var->Var().IsType<phi::DenseTensor>()) {
+  if (dst_var->Var().IsType<DenseTensor>()) {
     dst_var->SetType(framework::proto::VarType::DENSE_TENSOR);
   } else if (dst_var->Var().IsType<phi::SelectedRows>()) {
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);

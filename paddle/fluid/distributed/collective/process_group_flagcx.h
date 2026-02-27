@@ -59,7 +59,7 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
     FlagcxTask(const std::vector<Place>& places,
                int rank,
                CommType CommType,
-               const std::vector<phi::DenseTensor>& inputs);
+               const std::vector<DenseTensor>& inputs);
 
     void RemoveHolderStreamInGroup();
 
@@ -118,8 +118,8 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors,
-      const std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<DenseTensor>* out_tensors,
+      const std::vector<DenseTensor>& in_tensors,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -159,7 +159,7 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
                                              bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Gather(
-      std::vector<phi::DenseTensor>* gather_tensors_ptr,
+      std::vector<DenseTensor>* gather_tensors_ptr,
       const phi::DenseTensor& in_tensor,
       const GatherOptions& opts,
       bool sync_op,
@@ -216,7 +216,7 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::function<void(phi::distributed::FlagcxCommContext*, flagcxStream_t)>
           fn,
-      const std::vector<phi::DenseTensor>& tensors,
+      const std::vector<DenseTensor>& tensors,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
@@ -285,7 +285,7 @@ class ProcessGroupFlagcx final : public ProcessGroupWithStream {
 
   // For coalescing tensors processing (eg. batch_isend_irecv)
   bool is_coalescing_{false};
-  std::vector<std::shared_ptr<phi::DenseTensor>> coalescing_tensors_;
+  std::vector<std::shared_ptr<DenseTensor>> coalescing_tensors_;
   std::vector<std::string> coalescing_place_keys_;
 };
 

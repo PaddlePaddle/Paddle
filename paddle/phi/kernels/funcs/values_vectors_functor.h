@@ -194,7 +194,7 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                             const int64_t batch_size,
                             int *info) {
   std::vector<int> error_info(batch_size);
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      error_info.data(),
                      dev_ctx.GetPlace(),
                      info,
@@ -285,16 +285,16 @@ struct MatrixEighFunctor<CPUContext, T> {
         input.type() == phi::DataType::COMPLEX128) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
 
-      rwork_tensor.Resize(common::make_ddim({lrwork}));
+      rwork_tensor.Resize(make_ddim({lrwork}));
       rwork_data = dev_ctx.template Alloc<ValueType>(&rwork_tensor);
     }
 
     DenseTensor iwork_tensor, work_tensor;
 
-    iwork_tensor.Resize(common::make_ddim({liwork}));
+    iwork_tensor.Resize(make_ddim({liwork}));
     int *iwork_data = dev_ctx.template Alloc<int>(&iwork_tensor);
 
-    work_tensor.Resize(common::make_ddim({lwork}));
+    work_tensor.Resize(make_ddim({lwork}));
     T *work_data = dev_ctx.template Alloc<T>(&work_tensor);
 
     for (auto i = 0; i < batch_size; i++) {

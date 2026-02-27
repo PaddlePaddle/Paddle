@@ -67,10 +67,10 @@ void KLDivLossGradKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(input_grad);
 
-  auto target_t = phi::EigenVector<T>::Flatten(*target);
+  auto target_t = EigenVector<T>::Flatten(*target);
 
-  auto input_grad_t = phi::EigenVector<T>::Flatten(*input_grad);
-  auto loss_grad_t = phi::EigenVector<T>::Flatten(*loss_grad);
+  auto input_grad_t = EigenVector<T>::Flatten(*input_grad);
+  auto loss_grad_t = EigenVector<T>::Flatten(*loss_grad);
 
   auto loss_grad_expand = loss_grad_t.broadcast(Array1(expand));
   auto grad_t = loss_grad_expand;

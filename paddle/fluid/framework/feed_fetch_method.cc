@@ -29,22 +29,22 @@ namespace paddle::framework {
 class Variable;
 
 void SetVariable(Scope* scope,
-                 const phi::DenseTensor& input,
+                 const DenseTensor& input,
                  const std::string& var_name) {
   Variable* target_var = scope->FindVar(var_name);
-  if (target_var && !target_var->IsType<phi::DenseTensor>()) {
+  if (target_var && !target_var->IsType<DenseTensor>()) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "The variable you want to set is not a phi::DenseTensor, but here "
-        "you tried to convert its type to phi::DenseTensor."));
+        "The variable you want to set is not a DenseTensor, but here "
+        "you tried to convert its type to DenseTensor."));
   }
   target_var = scope->Var(var_name);
-  auto tensor = target_var->GetMutable<phi::DenseTensor>();
+  auto tensor = target_var->GetMutable<DenseTensor>();
   tensor->ShareDataWith(input);
   tensor->set_lod(input.lod());
 }
 
 void SetFeedVariable(Scope* scope,
-                     const phi::DenseTensor& input,
+                     const DenseTensor& input,
                      const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
@@ -53,11 +53,11 @@ void SetFeedVariable(Scope* scope,
   if (FLAGS_enable_pir_in_executor) {
     // shared data with input tensor
     auto feed_ele = scope->Var(var_name);
-    if (!feed_ele->IsType<phi::DenseTensor>()) {
-      VLOG(3) << "Reset " << var_name << " to phi::DenseTensor";
+    if (!feed_ele->IsType<DenseTensor>()) {
+      VLOG(3) << "Reset " << var_name << " to DenseTensor";
       feed_ele->Clear();
     }
-    auto val = feed_ele->GetMutable<phi::DenseTensor>();
+    auto val = feed_ele->GetMutable<DenseTensor>();
     val->ShareDataWith(input);
     // set lod
     val->set_lod(input.lod());
@@ -99,17 +99,17 @@ FetchType& GetFetchVariable(const Scope& scope,
   return tensor;
 }
 
-phi::DenseTensor& GetVariableTensor(const Scope& scope,
-                                    const std::string& var_name) {
+DenseTensor& GetVariableTensor(const Scope& scope,
+                               const std::string& var_name) {
   Variable* var = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
       common::errors::NotFound("Variable %s is not found in scope.", var_name));
-  PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+  PADDLE_ENFORCE_EQ(var->IsType<DenseTensor>(),
                     true,
                     common::errors::InvalidArgument(
                         "Only support DenseTensor in GetVariableTensor now."));
-  return *var->GetMutable<phi::DenseTensor>();
+  return *var->GetMutable<DenseTensor>();
 }
 
 }  // namespace paddle::framework

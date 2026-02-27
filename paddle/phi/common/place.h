@@ -238,15 +238,15 @@ PADDLE_API bool is_accelerat_allocation_type(AllocationType type);
 namespace paddle {
 namespace experimental {
 using AllocationType = phi::AllocationType;
-using GPUPinnedPlace = phi::GPUPinnedPlace;
-using XPUPlace = phi::XPUPlace;
-using XPUPinnedPlace = phi::XPUPinnedPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;
 using Place = phi::Place;
 using CPUPlace = phi::CPUPlace;
 using GPUPlace = phi::GPUPlace;
+using GPUPinnedPlace = phi::GPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using XPUPinnedPlace = phi::XPUPinnedPlace;
 
 /* NOTE [ Why need to temporarily adapt to PlaceType? ]
 

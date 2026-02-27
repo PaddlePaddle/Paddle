@@ -42,7 +42,7 @@ void IndexAddInner(const Context& dev_ctx,
 
   // copy x to output.
   // todo(@limin29): inplace do not need copy.
-  phi::Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
+  Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
   if (index.numel() == 0) return;
 
   auto slice_size = 1;
@@ -80,8 +80,8 @@ void IndexAddInner(const Context& dev_ctx,
   VLOG(3) << "Index_Add_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  output->Resize(common::make_ddim({outer_nums, input_dim[axis], slice_size}));
-  add_value->Resize(common::make_ddim({outer_nums, index_size, slice_size}));
+  output->Resize(make_ddim({outer_nums, input_dim[axis], slice_size}));
+  add_value->Resize(make_ddim({outer_nums, index_size, slice_size}));
   VLOG(3) << "output.dims: " << output->dims()
           << ", add_value.dims: " << add_value->dims();
 

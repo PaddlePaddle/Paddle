@@ -39,7 +39,7 @@ void IdentityLossKernel(const Context& dev_ctx,
       break;
     case 2:
       // none
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
     default:
       // error

@@ -36,15 +36,15 @@ class Variable;
 
 PADDLE_API void TransformData(const phi::KernelKey &expected_kernel_type,
                               const phi::KernelKey &kernel_type_for_var,
-                              const phi::DenseTensor &input_tensor,
-                              phi::DenseTensor *out,
+                              const DenseTensor &input_tensor,
+                              DenseTensor *out,
                               const phi::Place &place);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
 PADDLE_API void SetTensorToVariable(const Variable &in_var,
-                                    const phi::DenseTensor &tensor,
+                                    const DenseTensor &tensor,
                                     Variable *out_var);
 
 PADDLE_API phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(

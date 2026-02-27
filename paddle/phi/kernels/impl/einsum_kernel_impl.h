@@ -609,7 +609,7 @@ DenseTensor PerformContraction(
     }
     VLOG(5) << "PerformContraction: mul_dims: "
             << paddle::string::join_strings(mul_dims, ",");
-    trans_t.Resize(common::make_ddim(mul_dims));
+    trans_t.Resize(make_ddim(mul_dims));
     return trans_t;
   };
 
@@ -629,7 +629,7 @@ DenseTensor PerformContraction(
   if (recover_dim.empty()) recover_dim.push_back(1);
   VLOG(5) << "PerformContraction: recover_dim: "
           << paddle::string::join_strings(recover_dim, ",");
-  after_contraction.Resize(common::make_ddim(recover_dim));
+  after_contraction.Resize(make_ddim(recover_dim));
   return after_contraction;
 }
 
@@ -717,7 +717,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
   *out = TransposeToOutput<T, Context>(
       dev_ctx, after_contraction, unique_labels(right), all_labels);
   *out = PerformUndiagonal<T, Context>(dev_ctx, *out, right);
-  out->Resize(common::make_ddim(output_dims));
+  out->Resize(make_ddim(output_dims));
 }
 
 template <typename T, typename Context>

@@ -64,15 +64,15 @@ void MaskCooGPUKernel(const GPUContext& dev_ctx,
                         "the input x and mask must have the shape"));
   const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.values();
-  DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
+  DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, indices);
+  DenseTensor out_values = EmptyLike<T>(dev_ctx, values);
   if (mask.nnz() <= 0) {
     out->SetMember(out_indices, out_values, dims, true);
     return;
   }
 
   const int sparse_dim = mask.sparse_dim();
-  DenseTensor sparse_offsets = phi::Empty<GPUContext>(
+  DenseTensor sparse_offsets = Empty<GPUContext>(
       dev_ctx,
       DenseTensorMeta(DataType::INT64, {sparse_dim}, DataLayout::NCHW));
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
@@ -149,9 +149,9 @@ void MaskCsr2DGPUKernel(const GPUContext& dev_ctx,
   const DenseTensor& mask_crows = mask.crows();
   int64_t num_non_zeros = mask.nnz();
 
-  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
-  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+  DenseTensor out_cols = EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = Empty<T>(dev_ctx, {num_non_zeros});
 
   phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
   phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
@@ -159,7 +159,7 @@ void MaskCsr2DGPUKernel(const GPUContext& dev_ctx,
   const DDim& dims = x.dims();
   const int64_t non_zero_num = mask.nnz();
   int64_t sparse_dim = 2;
-  DenseTensor sparse_offsets = phi::Empty<IntT>(dev_ctx, {sparse_dim});
+  DenseTensor sparse_offsets = Empty<IntT>(dev_ctx, {sparse_dim});
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
   funcs::sparse::CalcOffsetsPerDim(dims, sparse_dim, h_sparse_offsets.data());
 
@@ -179,7 +179,7 @@ void MaskCsr2DGPUKernel(const GPUContext& dev_ctx,
   auto dims_2d = flatten_to_2d(dims, sparse_dim);
   const int cols = dims_2d[1];
 
-  DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
+  DenseTensor indices = Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
   IntT* coo_indices = indices.data<IntT>();
   IntT* batch_ptr = nullptr;
   IntT* coo_rows_data = coo_indices;
@@ -226,9 +226,9 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
   const DenseTensor& mask_crows = mask.crows();
   int64_t num_non_zeros = mask.nnz();
 
-  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
-  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
-  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+  DenseTensor out_cols = EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = Empty<T>(dev_ctx, {num_non_zeros});
 
   phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
   phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
@@ -236,7 +236,7 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
   const DDim& dims = x.dims();
   const int64_t non_zero_num = mask.nnz();
   int64_t sparse_dim = 3;
-  DenseTensor sparse_offsets = phi::Empty<IntT>(dev_ctx, {sparse_dim});
+  DenseTensor sparse_offsets = Empty<IntT>(dev_ctx, {sparse_dim});
   std::vector<int64_t> h_sparse_offsets(sparse_dim);
   funcs::sparse::CalcOffsetsPerDim(dims, sparse_dim, h_sparse_offsets.data());
 
@@ -256,8 +256,8 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
   auto dims_2d = flatten_to_2d(dims, sparse_dim);
   const int cols = dims_2d[1];
 
-  DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
-  DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {batches});
+  DenseTensor indices = Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
+  DenseTensor offsets = Empty<IntT>(dev_ctx, {batches});
   IntT* coo_indices = indices.data<IntT>();
   IntT* batch_ptr = coo_indices;
   IntT* coo_rows_data = batch_ptr + non_zero_num;
@@ -413,14 +413,13 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
   DenseTensorMeta sparse_offset_meta(
       indices_dtype, {sparse_dim}, DataLayout::NCHW);
 
-  DenseTensor x_indices =
-      phi::Empty<GPUContext>(dev_ctx, std::move(x_indices_meta));
+  DenseTensor x_indices = Empty<GPUContext>(dev_ctx, std::move(x_indices_meta));
   DenseTensor mask_meta_indices =
-      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
+      Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
   DenseTensor bound_out =
-      phi::Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
+      Empty<GPUContext>(dev_ctx, std::move(mask_indices_meta));
   DenseTensor d_sparse_offsets =
-      phi::Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
+      Empty<GPUContext>(dev_ctx, std::move(sparse_offset_meta));
   IntT* x_indices_ptr = x_indices.data<IntT>();
   IntT* mask_indices_ptr = mask_meta_indices.data<IntT>();
   IntT* bound_out_ptr = bound_out.data<IntT>();
@@ -464,15 +463,15 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
   for (int i = 0; i < sparse_dim; i++) {
     table_size *= x_dims[i];
   }
-  DenseTensor table = phi::Empty<int>(dev_ctx, {table_size});
-  DenseTensor index_flags = phi::Empty<int>(dev_ctx, {(table_size + 31) / 32});
+  DenseTensor table = Empty<int>(dev_ctx, {table_size});
+  DenseTensor index_flags = Empty<int>(dev_ctx, {(table_size + 31) / 32});
   phi::backends::gpu::GpuMemsetAsync(index_flags.data<int>(),
                                      0,
                                      index_flags.numel() * sizeof(int),
                                      dev_ctx.stream());
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
-  *out = phi::EmptyLike<T>(dev_ctx, x.values());
+  *out = EmptyLike<T>(dev_ctx, x.values());
   funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();

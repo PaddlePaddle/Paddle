@@ -23,7 +23,7 @@ namespace phi {
 template <typename Context, typename T>
 struct SparseAdagradFunctor {
   void operator()(const Context& dev_ctx,
-                  const phi::SelectedRows& grad,
+                  const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
                   DenseTensor* moment,
@@ -37,7 +37,7 @@ struct DenseAdagradFunctor {
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
                   const DenseTensor& learning_rate,
-                  const paddle::optional<DenseTensor>& master_param,
+                  const optional<DenseTensor>& master_param,
                   float epsilon_t,
                   bool multi_precision,
                   DenseTensor* param_out_tensor,
@@ -46,9 +46,9 @@ struct DenseAdagradFunctor {
 };
 
 template <typename Context, typename T>
-phi::SelectedRows SquareSelectedRows(const Context& dev_ctx,
-                                     const phi::SelectedRows& input) {
-  phi::SelectedRows out;
+SelectedRows SquareSelectedRows(const Context& dev_ctx,
+                                const SelectedRows& input) {
+  SelectedRows out;
   out.set_rows(input.rows());
   out.set_height(input.height());
   out.mutable_value()->Resize(input.value().dims());
@@ -65,7 +65,7 @@ void AdagradDenseKernel(const Context& dev_ctx,
                         const DenseTensor& grad_t,
                         const DenseTensor& moment_t,
                         const DenseTensor& learning_rate,
-                        const paddle::optional<DenseTensor>& master_param,
+                        const optional<DenseTensor>& master_param,
                         float epsilon_t,
                         bool multi_precision,
                         DenseTensor* param_out_tensor,
@@ -91,8 +91,7 @@ void AdagradSparseKernel(const Context& dev_ctx,
                          const SelectedRows& grad_t,
                          const DenseTensor& moment_t,
                          const DenseTensor& learning_rate,
-                         const paddle::optional<DenseTensor>& master_param
-                             UNUSED,
+                         const optional<DenseTensor>& master_param UNUSED,
                          float epsilon_t,
                          bool multi_precision UNUSED,
                          DenseTensor* param_out,

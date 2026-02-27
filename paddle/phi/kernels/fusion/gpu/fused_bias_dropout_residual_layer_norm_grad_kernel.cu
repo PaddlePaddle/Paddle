@@ -34,9 +34,9 @@ void FusedBiasDropoutResidualLnGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& residual,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& ln_scale,
-    const paddle::optional<DenseTensor>& ln_bias,
+    const optional<DenseTensor>& bias,
+    const optional<DenseTensor>& ln_scale,
+    const optional<DenseTensor>& ln_bias,
     const DenseTensor& ln_mean,
     const DenseTensor& ln_variance,
     const DenseTensor& bias_dropout_residual_out,
@@ -85,31 +85,14 @@ void FusedBiasDropoutResidualLnGradKernel(
                                        ln_bias_grad->numel() * sizeof(U)));
 
   if (y_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     if (ln_scale_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_scale_grad->dims())),
-          0,
-          ln_scale_grad);
+      Full<T, Context>(dev_ctx, ln_scale_grad->dims(), 0, ln_scale_grad);
     if (ln_bias_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_bias_grad->dims())),
-          0,
-          ln_bias_grad);
+      Full<T, Context>(dev_ctx, ln_bias_grad->dims(), 0, ln_bias_grad);
     if (residual_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(residual_grad->dims())),
-          0,
-          residual_grad);
-    if (bias_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(bias_grad->dims())),
-                            0,
-                            bias_grad);
+      Full<T, Context>(dev_ctx, residual_grad->dims(), 0, residual_grad);
+    if (bias_grad) Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
     return;
   }
 

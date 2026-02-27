@@ -165,24 +165,22 @@ phi::KernelKey FusedBatchNormActOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(bn_param_type,
-                    framework::TransToProtoVarType(
-                        ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-                    common::errors::PreconditionNotMet(
-                        "Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<DenseTensor>("Scale")->dtype()),
+      common::errors::PreconditionNotMet(
+          "Scale input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<DenseTensor>("Bias")->dtype()),
       common::errors::PreconditionNotMet("Bias input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Mean")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<DenseTensor>("Mean")->dtype()),
       common::errors::PreconditionNotMet("Mean input should be of float type"));
   PADDLE_ENFORCE_EQ(bn_param_type,
                     framework::TransToProtoVarType(
-                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                        ctx.Input<DenseTensor>("Variance")->dtype()),
                     common::errors::PreconditionNotMet(
                         "Variance input should be of float type"));
 
@@ -299,9 +297,9 @@ phi::KernelKey FusedBatchNormActGradOp::GetExpectedKernelType(
     PADDLE_THROW(common::errors::NotFound(
         "Can not find Y@GRAD in the execution context."));
   }
-  const phi::DenseTensor *t = nullptr;
-  if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
+  const DenseTensor *t = nullptr;
+  if (var->IsType<DenseTensor>()) {
+    t = &var->Get<DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

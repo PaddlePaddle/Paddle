@@ -21,30 +21,30 @@ limitations under the License. */
 
 namespace paddle::memory {
 
-std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size) {
+std::shared_ptr<Allocation> AllocShared(const Place& place, size_t size) {
   return allocation::AllocatorFacade::Instance().AllocShared(place, size);
 }
 
-AllocationPtr Alloc(const phi::Place& place, size_t size) {
+AllocationPtr Alloc(const Place& place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
 }
 
-uint64_t Release(const phi::Place& place) {
+uint64_t Release(const Place& place) {
   return allocation::AllocatorFacade::Instance().Release(place);
 }
 
-size_t Compact(const phi::GPUPlace& place) {
+size_t Compact(const GPUPlace& place) {
   return allocation::AllocatorFacade::Instance().Compact(place);
 }
 
-std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+std::shared_ptr<Allocation> AllocShared(const Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().AllocShared(
       place, size, stream);
 }
 
-AllocationPtr Alloc(const phi::Place& place,
+AllocationPtr Alloc(const Place& place,
                     size_t size,
                     const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size, stream);
@@ -61,7 +61,7 @@ void* GetBasePtr(const std::shared_ptr<Allocation>& allocation) {
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream) {
+uint64_t Release(const GPUPlace& place, gpuStream_t stream) {
   return allocation::AllocatorFacade::Instance().Release(place, stream);
 }
 

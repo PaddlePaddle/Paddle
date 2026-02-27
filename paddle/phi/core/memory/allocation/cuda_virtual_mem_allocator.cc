@@ -35,7 +35,7 @@ std::mutex CUDAVirtualMemAllocator::base_ptr_handle_mu_;
 std::unordered_map<void*, CUmemGenericAllocationHandle>
     CUDAVirtualMemAllocator::base_ptr_handle_map_;
 
-CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
+CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const GPUPlace& place)
     : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
 
@@ -229,7 +229,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   RegisterHandle(reinterpret_cast<void*>(ptr), handle);
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
+      reinterpret_cast<void*>(ptr), size, Place(place_));  // NOLINT
 }
 
 CUmemGenericAllocationHandle CUDAVirtualMemAllocator::GetHandleFromBasePtr(

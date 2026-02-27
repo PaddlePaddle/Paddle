@@ -175,14 +175,13 @@ AmpOperators::GetMutableBlockOps() {
 }
 
 std::shared_ptr<std::unordered_set<std::string>>
-AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
+AmpOperators::GetMutableUnsupportedOps(const DataType& data_type) {
   PADDLE_ENFORCE_EQ(
-      data_type == phi::DataType::FLOAT16 ||
-          data_type == phi::DataType::BFLOAT16,
+      data_type == DataType::FLOAT16 || data_type == DataType::BFLOAT16,
       true,
       common::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
-  if (data_type == phi::DataType::FLOAT16) {  // NOLINT
+  if (data_type == DataType::FLOAT16) {  // NOLINT
     return unsupported_fp16_ops_;
   } else {
     return unsupported_bf16_ops_;
@@ -230,7 +229,7 @@ thread_local bool AmpAttrs::use_promote_ = false;
 
 thread_local AmpLevel AmpAttrs::amp_level_ = AmpLevel::O0;
 
-thread_local phi::DataType AmpAttrs::amp_dtype_ = phi::DataType::FLOAT32;
+thread_local DataType AmpAttrs::amp_dtype_ = DataType::FLOAT32;
 
 AmpAttrs::AmpAttrs() {}
 
@@ -245,9 +244,9 @@ AmpLevel AmpAttrs::GetAmpLevel() const { return amp_level_; }
 void AmpAttrs::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
 
 std::string AmpAttrs::GetAmpDtype() const {
-  if (amp_dtype_ == phi::DataType::FLOAT16) {
+  if (amp_dtype_ == DataType::FLOAT16) {
     return std::string("float16");
-  } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+  } else if (amp_dtype_ == DataType::BFLOAT16) {
     return std::string("bfloat16");
   } else {
     return std::string("float32");
@@ -256,15 +255,15 @@ std::string AmpAttrs::GetAmpDtype() const {
 
 void AmpAttrs::SetAmpDtype(std::string amp_dtype) {
   if (amp_dtype == "float16") {
-    amp_dtype_ = phi::DataType::FLOAT16;
+    amp_dtype_ = DataType::FLOAT16;
   } else if (amp_dtype == "bfloat16") {
-    amp_dtype_ = phi::DataType::BFLOAT16;
+    amp_dtype_ = DataType::BFLOAT16;
   } else {
-    amp_dtype_ = phi::DataType::FLOAT32;
+    amp_dtype_ = DataType::FLOAT32;
   }
 }
 
-phi::DataType AmpAttrs::GetAmpPhiDtype() const { return amp_dtype_; }
+DataType AmpAttrs::GetAmpPhiDtype() const { return amp_dtype_; }
 
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {

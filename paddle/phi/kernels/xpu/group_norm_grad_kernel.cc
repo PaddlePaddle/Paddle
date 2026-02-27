@@ -30,8 +30,8 @@ namespace phi {
 template <typename T, typename Context>
 void GroupNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& scale,
+                         const optional<DenseTensor>& bias,
                          const DenseTensor& y,
                          const DenseTensor& mean,
                          const DenseTensor& var,
@@ -47,31 +47,24 @@ void GroupNormGradKernel(const Context& dev_ctx,
     if (d_scale) {
       // If batch dim is 0, we should set d_scale to zero, or else NAN
       if (x.dims().size() > 0 && x.dims()[0] == 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              0,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), 0, d_scale);
 
       } else {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(d_scale->dims())),
-                              NAN,
-                              d_scale);
+        Full<T, Context>(dev_ctx, d_scale->dims(), NAN, d_scale);
       }
     }
     if (d_bias) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+      Full<T, Context>(dev_ctx, d_bias->dims(), 0, d_bias);
     }
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int ret = 0;
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
-  const auto x_dims = common::vectorize<int64_t>(x.dims());
+  const auto x_dims = vectorize<int64_t>(x.dims());
   const int64_t N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::NCHW || data_layout == DataLayout::NCDHW;

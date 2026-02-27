@@ -941,7 +941,7 @@ static void RegisterOperatorKernel(
     op_kernel_func = func;
   }
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, phi::CPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, phi::GPUPlace());
@@ -1282,7 +1282,7 @@ RegisterOperatorWithMetaInfoMap(const paddle::OpMetaInfoMap& op_meta_info_map,
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
   auto* custom_dialect =
       ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
   std::unordered_map<std::string, std::vector<OpMetaInfo>> diff_map;

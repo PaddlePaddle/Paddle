@@ -43,6 +43,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'IndexSampleInferMeta',
     'LodResetInferMeta',
     'LogLossInferMeta',
+    'MatmulInferMeta',
     'MarginCrossEntropyInferMeta',
     'MatrixNMSInferMeta',
     'MulticlassNmsv1InferMeta',
@@ -70,6 +71,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'FusedGateAttentionGradInferMeta',
     'ResnetBasicBlockInferMeta',
     'ResnetBasicBlockGradInferMeta',
+    'LinearV2InferMeta',
     # multiary.h
     'AddNInferMeta',
     'ApVariadicInferMeta',

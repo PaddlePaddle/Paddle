@@ -50,7 +50,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
     broad_cast_times *= x_dims[dims_ref[i]];
   }
-  auto reduced_dims = common::make_ddim(reduced_dims_v);
+  auto reduced_dims = make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 
@@ -135,10 +135,10 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
                             const std::vector<int>& dims,
                             bool reduce_all = false) {
   if (reduce_all) {
-    auto x = phi::EigenVector<T>::Flatten(*input0);
-    auto x_reduce = phi::EigenVector<T>::Flatten(*input1);
-    auto x_reduce_grad = phi::EigenVector<T>::Flatten(*input2);
-    auto x_grad = phi::EigenVector<T>::Flatten(*output);
+    auto x = EigenVector<T>::Flatten(*input0);
+    auto x_reduce = EigenVector<T>::Flatten(*input1);
+    auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
+    auto x_grad = EigenVector<T>::Flatten(*output);
     auto& place = *dev_ctx.eigen_device();
     // *dev_ctx.eigen_device();
     auto broadcast_dim =

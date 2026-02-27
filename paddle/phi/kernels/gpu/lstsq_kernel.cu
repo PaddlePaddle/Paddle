@@ -43,23 +43,13 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* rank,
                  DenseTensor* singular_values) {
   if (x.numel() == 0 || y.numel() == 0) {
-    if (solution)
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(solution->dims())),
-                       0,
-                       solution);
-    if (rank)
-      Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (solution) Full<T, Context>(dev_ctx, solution->dims(), 0, solution);
+    if (rank) Full<int64_t, Context>(dev_ctx, rank->dims(), 0, rank);
     if (residuals)
       GetResidualsTensor<Context, T>(
           dev_ctx, x, y, driver_string, solution, residuals, rank);
     if (singular_values)
-      Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(singular_values->dims())),
-          0,
-          singular_values);
+      Full<T, Context>(dev_ctx, singular_values->dims(), 0, singular_values);
     return;
   }
 
@@ -84,22 +74,22 @@ void LstsqKernel(const Context& dev_ctx,
   T rcond = rcond_scalar.to<T>();
 
   DenseTensor new_x;
-  new_x.Resize(common::make_ddim({batch_count, m, n}));
+  new_x.Resize(make_ddim({batch_count, m, n}));
   dev_ctx.template Alloc<T>(&new_x);
   Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
   DenseTensor new_y;
-  new_y.Resize(common::make_ddim({batch_count, m, nrhs}));
+  new_y.Resize(make_ddim({batch_count, m, nrhs}));
   dev_ctx.template Alloc<T>(&new_y);
   Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, &new_y);
 
   // Prepare tau
-  auto tau_dims_vec = common::vectorize<int>(x_dims);
+  auto tau_dims_vec = vectorize<int>(x_dims);
   tau_dims_vec.pop_back();
   tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
 
   DenseTensor tau;
-  tau.Resize(common::make_ddim(tau_dims_vec));
+  tau.Resize(make_ddim(tau_dims_vec));
   auto tau_data = dev_ctx.template Alloc<T>(&tau);
 
   if (m >= n) {
@@ -131,7 +121,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor slice_r =
         funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
     DenseTensor res_r;
-    res_r.Resize(common::make_ddim({batch_count, min_mn, min_mn}));
+    res_r.Resize(make_ddim({batch_count, min_mn, min_mn}));
     dev_ctx.template Alloc<T>(&res_r);
     phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
@@ -156,7 +146,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor slice_r =
         funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
     DenseTensor res_r;
-    res_r.Resize(common::make_ddim({batch_count, min_mn, min_mn}));
+    res_r.Resize(make_ddim({batch_count, min_mn, min_mn}));
     dev_ctx.template Alloc<T>(&res_r);
     phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
@@ -181,7 +171,7 @@ void LstsqKernel(const Context& dev_ctx,
         phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
     Copy<Context>(dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
-  if (batch_count == 1) solution->Resize(common::make_ddim({n, nrhs}));
+  if (batch_count == 1) solution->Resize(make_ddim({n, nrhs}));
   GetResidualsTensor<Context, T>(
       dev_ctx, x, y, driver_string, solution, residuals, rank);
 }

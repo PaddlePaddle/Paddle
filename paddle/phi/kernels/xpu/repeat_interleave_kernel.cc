@@ -47,13 +47,13 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   for (int i = 0; i < input_dim[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(common::make_ddim({index_size}));
+  index.Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
-  auto xshape = common::vectorize(input_dim);
+  auto xshape = vectorize(input_dim);
   auto out_shape = xshape;
   out_shape[dim] = index_size;
-  out->Resize(common::make_ddim(out_shape));
+  out->Resize(make_ddim(out_shape));
   dev_ctx.template Alloc<T>(out);
   int ret = xpu::paddle_gather<XPUType, int>(
       dev_ctx.x_context(),
@@ -99,7 +99,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           DataTypeToString(index_type),
           DataTypeToString(phi::DataType::INT32),
           DataTypeToString(phi::DataType::INT64)));
-  auto xshape = common::vectorize(x.dims());
+  auto xshape = vectorize(x.dims());
   auto out_shape = xshape;
   if (x.numel() == 0) {
     // infer out shape
@@ -111,7 +111,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -126,7 +126,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(make_ddim(output_dim));
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -147,7 +147,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       out_shape[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(out_shape));
+    out->Resize(make_ddim(out_shape));
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int64_t>(
         dev_ctx.x_context(),
@@ -175,7 +175,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       out_shape[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(out_shape));
+    out->Resize(make_ddim(out_shape));
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int>(
         dev_ctx.x_context(),

@@ -304,6 +304,7 @@ from .nn.functional import (
     conv3d,
     group_norm,
     layer_norm,
+    relu,
 )
 from .nn.functional.distance import (
     pdist,
@@ -410,7 +411,6 @@ from .tensor.logic import (
     greater_equal_,
     greater_than,
     greater_than_,
-    gt,
     is_empty,
     is_tensor,
     isclose,
@@ -454,7 +454,6 @@ from .tensor.manipulation import (
     flatten,
     flatten_,
     flip,
-    flip as reverse,
     gather,
     gather_nd,
     hsplit,
@@ -840,6 +839,33 @@ if __is_metainfo_generated and is_compiled_with_cuda():
             cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
             set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
 
+            def _preload_nvidia_lib(nvidia_package_path: str, lib_glob: str):
+                import ctypes
+                import glob
+
+                from .version import cuda as cuda_version
+
+                cuda_major_version = cuda_version().split('.')[0]
+
+                lib_paths = []
+                lib_paths += glob.glob(
+                    os.path.join(
+                        nvidia_package_path,
+                        f'cu{cuda_major_version}',
+                        'lib',
+                        lib_glob,
+                    )
+                )
+                lib_paths += glob.glob(
+                    os.path.join(nvidia_package_path, 'lib', lib_glob)
+                )
+
+                for lib_path in lib_paths:
+                    ctypes.CDLL(lib_path)
+                    break
+
+            _preload_nvidia_lib(nvidia_package_path, "libnvrtc-builtins.so.*")
+
     elif (
         platform.system() == 'Windows'
         and platform.machine() in ('x86_64', 'AMD64')
@@ -982,7 +1008,6 @@ ne = not_equal
 lt = less_than
 less = less_than
 le = less_equal
-greater = gt
 ge = greater_equal
 swapdims = transpose
 swapaxes = transpose
@@ -1312,7 +1337,6 @@ __all__ = [
     'chunk',
     'tolist',
     'tensordot',
-    "greater",
     'greater_than',
     'greater_than_',
     'shard_index',
@@ -1500,6 +1524,7 @@ __all__ = [
     'conv3d',
     'group_norm',
     'layer_norm',
+    'relu',
     'manual_seed',
     'softmax',
     'Generator',

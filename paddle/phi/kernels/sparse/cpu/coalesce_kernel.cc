@@ -26,8 +26,8 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
                           SparseCooTensor* out) {
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.values();
-  DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x_values);
+  DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x_indices);
+  DenseTensor out_values = EmptyLike<T>(dev_ctx, x_values);
 
   const int64_t sparse_dim = x.indices().dims()[0];
   std::vector<IntT> sparse_offsets(sparse_dim), x_nnz(x.nnz());
@@ -62,9 +62,9 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
 
   out_indices.Resize({x_indices.dims()[0], out_nnz});
   if (out_values.dims().size() == 1) {
-    out_values.Resize(common::make_ddim({out_nnz}));
+    out_values.Resize(make_ddim({out_nnz}));
   } else {
-    out_values.Resize(common::make_ddim({out_nnz, x_values.dims()[1]}));
+    out_values.Resize(make_ddim({out_nnz, x_values.dims()[1]}));
   }
 
   IntT* out_indices_ptr = out_indices.data<IntT>();

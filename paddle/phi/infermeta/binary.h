@@ -615,7 +615,8 @@ PADDLE_API void MatmulInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 bool trans_x,
                                 bool trans_y,
-                                MetaTensor* out);
+                                MetaTensor* out,
+                                MetaConfig config = MetaConfig());
 
 PADDLE_API void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                            const MetaTensor& y,
@@ -775,7 +776,8 @@ PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
 
 PADDLE_API void RmsNormInferMeta(const MetaTensor& x,
                                  const MetaTensor& scale,
-                                 float epsilon,
+                                 const std::vector<int64_t>& normalized_shape,
+                                 double epsilon,
                                  MetaTensor* y,
                                  MetaTensor* invvar);
 

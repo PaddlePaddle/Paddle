@@ -67,7 +67,7 @@ __global__ void EmbeddingGrad(T* table,
     phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int64_t i = idx; i < D; i += blockDim.x) {
-      phi::CudaAtomicAdd(&tab[i], out[i]);
+      CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
     idy += blockDim.y * gridDim.x;
@@ -87,13 +87,13 @@ __global__ void CountFreqKernel(const IdT* ids_data,
 
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num_ids) {
-    phi::CudaAtomicAdd(&buf_count[ids_data[idx]], 1);
+    CudaAtomicAdd(&buf_count[ids_data[idx]], 1);
   }
 
   __syncthreads();
 
   for (int64_t i = threadIdx.x; i < num_weights; i += blockDim.x) {
-    phi::CudaAtomicAdd(&count_data[i], buf_count[i]);
+    CudaAtomicAdd(&count_data[i], buf_count[i]);
   }
 }
 
@@ -171,7 +171,7 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
       }
 
       DenseTensor count_ids =
-          phi::Empty<int, Context>(dev_ctx_, {static_cast<int64_t>(N)});
+          Empty<int, Context>(dev_ctx_, {static_cast<int64_t>(N)});
       int* count_ids_data = count_ids.data<int>();
       auto stream = dev_ctx_.stream();
 #ifdef PADDLE_WITH_HIP
@@ -190,7 +190,7 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
   }
 
  private:
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
   const DenseTensor& input_;
   const DenseTensor& weight_;
   const DenseTensor& out_grad_;

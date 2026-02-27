@@ -1,0 +1,72 @@
+name: Cleanup ccache
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # Daily at 02:00 UTC+8
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  TASK: cleanup-ccache-nightly
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cleanup-ccache:
+    name: Cleanup L2 ccache
+    if: github.repository == 'PaddlePaddle/Paddle'
+    runs-on:
+      group: GZ_BD-CPU
+
+    steps:
+      - name: Launch container
+        env:
+          work_dir: /paddle
+          PADDLE_ROOT: /paddle
+          CCACHE_MAXSIZE: 50G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
+          CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+        run: |
+          set -x
+          container_name=${TASK}-$(date +%s)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test
+          docker run -d -t --name ${container_name} \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/shared:/home/data/shared" \
+            -v "/dev/shm:/dev/shm" \
+            -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
+            -v ${{ github.workspace }}:/paddle \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e GITHUB_ENV \
+            -e CACHE_DIR \
+            -e CCACHE_DIR \
+            -e CCACHE_SECONDARY_STORAGE \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e no_proxy \
+            -w /paddle --network host ${docker_image}
+
+      - name: Cleanup L2 ccache in CFS
+        run: |
+          docker exec -t ${container_name} bash -c '
+            CFS_CCACHE_DIR="${CCACHE_SECONDARY_STORAGE#file://}"
+            ccache --trim-dir ${CFS_CCACHE_DIR} --trim-max-size 500G
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

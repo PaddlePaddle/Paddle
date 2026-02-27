@@ -76,17 +76,17 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     auto* in1_data = in1_value.data<T>();
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto out_place = dev_ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(out_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
@@ -127,7 +127,7 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
     // Since index in rows of SelectedRows can be duplicate, we can not use
     // tensor_out[index] += selected_rows[index]; Instead, we have to use
     // AtomicAdd to avoid concurrent write error.
-    phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+    CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -237,12 +237,12 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
     }
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == AllocationType::GPU,
                       true,
                       common::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
@@ -279,7 +279,7 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
   for (int64_t index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    phi::CudaAtomicAdd(tensor_out + index, selected_rows[index]);
+    CudaAtomicAdd(tensor_out + index, selected_rows[index]);
   }
 }
 }  // namespace
@@ -362,7 +362,7 @@ __global__ void MergeAddKernel(const T* input,
   input += ty * row_numel;
   out += out_idx * row_numel;
   for (int64_t index = tid; index < row_numel; index += block_size) {
-    phi::CudaAtomicAdd(out + index, input[index]);
+    CudaAtomicAdd(out + index, input[index]);
   }
 }
 
@@ -395,8 +395,8 @@ struct MergeAddImpl {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(common::make_ddim(
-        {static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(
+        make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
     dev_ctx.template Alloc<T>(out_tensor);
 
     funcs::SetConstant<DeviceContext, T> constant_functor;
@@ -467,8 +467,8 @@ struct MergeAddImpl {
     out.set_height(input_height);
 
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(common::make_ddim(
-        {static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(
+        make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
     dev_ctx.template Alloc<T>(out_tensor);
 
     funcs::SetConstant<DeviceContext, T> constant_functor;

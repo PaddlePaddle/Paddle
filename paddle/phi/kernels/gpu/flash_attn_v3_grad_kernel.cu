@@ -53,19 +53,18 @@ void FlashAttnV3GradBaseKernel(
         &out,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
     const DenseTensor
         &softmax_lse,  // (b, h, s_q) or (h, total_q) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dq_,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dk_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
-    const paddle::optional<DenseTensor>
-        &dv_,  // (b, s_k, h_k, dv) or (total_k, h_k, dv) if there is
-               // cu_seqlens_k
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,  // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &dv_,  // (b, s_k, h_k, dv) or (total_k, h_k,
+                                       // dv) if there is cu_seqlens_k
+    const optional<DenseTensor> &cu_seqlens_q_,  // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
     int max_seqlen_q_,
@@ -338,7 +337,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+    *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -357,7 +356,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+    *dk = EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -376,7 +375,7 @@ void FlashAttnV3GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size_v);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+    *dv = EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -388,20 +387,18 @@ void FlashAttnV3GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+          make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(
-          common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
   }
   if (softmax_d) {
@@ -412,31 +409,31 @@ void FlashAttnV3GradBaseKernel(
   }
   if (dq_accum) {
     if (!is_varlen) {
-      dq_accum->Resize(common::make_ddim(
+      dq_accum->Resize(make_ddim(
           {batch_size, num_heads, seqlen_q_rounded * head_size_rounded}));
     } else {
-      dq_accum->Resize(common::make_ddim(
-          {num_heads, total_q_padded_rounded * head_size_rounded}));
+      dq_accum->Resize(
+          make_ddim({num_heads, total_q_padded_rounded * head_size_rounded}));
     }
     dev_ctx.template Alloc<float>(dq_accum);
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_v_rounded}));
       }
     } else {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_v_rounded}));
       }
     }
@@ -507,13 +504,13 @@ void FlashAttnV3GradBaseKernel(
   // opts.dtype(torch::kInt32)); params.tile_count_semaphore =
   // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
   // preprocess kernel
-  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+  DenseTensor dq_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::fa3_bwd_params_set_dq_semaphore(params_handle,
                                            dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+  DenseTensor dk_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::fa3_bwd_params_get_deterministic(params_handle)) {
@@ -583,16 +580,6 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
                            DenseTensor *dk,
                            DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -701,8 +688,8 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  const DenseTensor &softmax_lse,
                                  const DenseTensor &cu_seqlens_q,
                                  const DenseTensor &cu_seqlens_k,
-                                 const paddle::optional<DenseTensor> &seqused_q,
-                                 const paddle::optional<DenseTensor> &seqused_k,
+                                 const optional<DenseTensor> &seqused_q,
+                                 const optional<DenseTensor> &seqused_k,
                                  const DenseTensor &out_grad,
                                  float const softmax_scale,
                                  const Scalar &max_seqlen_q,
@@ -716,16 +703,6 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  DenseTensor *dk,
                                  DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -828,22 +805,22 @@ void FlashMaskV2GradBaseKernel(
         &out,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
     const DenseTensor
         &softmax_lse,  // (b, h, s_q) or (h, total_q) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dq_,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dk_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &dv_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,  // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &cu_seqlens_q_,  // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
-    const paddle::optional<DenseTensor> &startend_row_indices_,
-    const paddle::optional<DenseTensor> &block_mask_,  // （(b,h,s//128,s//128)
+    const optional<DenseTensor> &startend_row_indices_,
+    const optional<DenseTensor> &block_mask_,  // （(b,h,s//128,s//128)
     int max_seqlen_q_,
     int max_seqlen_k_,
     float const softmax_scale,
@@ -1250,7 +1227,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dq), total_q, num_heads, head_size);
     }
   } else {
-    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+    *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
   if (dk_.is_initialized()) {
     *dk = dk_.get();
@@ -1269,7 +1246,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
     }
   } else {
-    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+    *dk = EmptyLike<T, Context>(dev_ctx, k);
   }
   if (dv_.is_initialized()) {
     *dv = dv_.get();
@@ -1288,7 +1265,7 @@ void FlashMaskV2GradBaseKernel(
       CHECK_SHAPE((*dv), total_k, num_heads_k, head_size);
     }
   } else {
-    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+    *dv = EmptyLike<T, Context>(dev_ctx, v);
   }
 
   // Otherwise the kernel will be launched from cuda:0 device
@@ -1300,20 +1277,18 @@ void FlashMaskV2GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+          make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(
-          common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
   }
   if (softmax_d) {
@@ -1324,31 +1299,31 @@ void FlashMaskV2GradBaseKernel(
   }
   if (dq_accum) {
     if (!is_varlen) {
-      dq_accum->Resize(common::make_ddim(
+      dq_accum->Resize(make_ddim(
           {batch_size, num_heads, seqlen_q_rounded * head_size_rounded}));
     } else {
-      dq_accum->Resize(common::make_ddim(
-          {num_heads, total_q_padded_rounded * head_size_rounded}));
+      dq_accum->Resize(
+          make_ddim({num_heads, total_q_padded_rounded * head_size_rounded}));
     }
     dev_ctx.template Alloc<float>(dq_accum);
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
       }
     } else {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_rounded}));
       }
     }
@@ -1426,13 +1401,13 @@ void FlashMaskV2GradBaseKernel(
                                                                   nullptr);
   }
 
-  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+  DenseTensor dq_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = phi::Empty<int32_t>(
+  DenseTensor dk_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = phi::Empty<int32_t>(
+  DenseTensor dv_semaphore = Empty<int32_t>(
       dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
@@ -1548,7 +1523,7 @@ void FlashMaskV2GradKernel(
     const DenseTensor &out,
     const DenseTensor &softmax_lse,
     const DenseTensor &startend_row_indices,  // TODO(xiehaoyang): remove this
-    const paddle::optional<DenseTensor> &block_mask,
+    const optional<DenseTensor> &block_mask,
     const DenseTensor &out_grad,
     float const softmax_scale,
     bool is_causal,

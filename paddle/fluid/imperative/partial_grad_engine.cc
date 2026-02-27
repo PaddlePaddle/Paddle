@@ -320,8 +320,8 @@ static void FillConstantLike(const VariableWrapper &ref_var,
                              VariableWrapper *dst_var,
                              const phi::Place &place,
                              float value) {
-  auto &ref_tensor = ref_var.Var().Get<phi::DenseTensor>();
-  auto *dst_tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto &ref_tensor = ref_var.Var().Get<DenseTensor>();
+  auto *dst_tensor = dst_var->MutableVar()->GetMutable<DenseTensor>();
   auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
   // TODO(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
@@ -799,8 +799,8 @@ PartialGradTask::PartialGradTask(
     } else {
       VLOG(10) << "Use user provided grad var for "
                << output_targets[i]->Name();
-      const auto &out_tensor = output_targets[i]->Var().Get<phi::DenseTensor>();
-      const auto &grad_tensor = output_grads[i]->Var().Get<phi::DenseTensor>();
+      const auto &out_tensor = output_targets[i]->Var().Get<DenseTensor>();
+      const auto &grad_tensor = output_grads[i]->Var().Get<DenseTensor>();
       PADDLE_ENFORCE_EQ(
           grad_tensor.dims(),
           out_tensor.dims(),

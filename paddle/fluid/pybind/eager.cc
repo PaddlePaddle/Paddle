@@ -64,7 +64,7 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::Tensor();
+    new (&(v->tensor)) Tensor();
   }
   return obj;
 }
@@ -72,13 +72,13 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 // TODO(jiabin): Overload this once we need more constructor in Python
 void EmptyTensorInitializer(TensorObject* self,
                             const std::string& name,
-                            const phi::Place& place,
+                            const Place& place,
                             bool persistable = false,
                             int stop_gradient = -1,
                             paddle::DataType dtype = paddle::DataType::FLOAT32,
                             const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
-                                paddle::framework::proto::VarType::DENSE_TENSOR,
+                                framework::proto::VarType::DENSE_TENSOR,
                             ProcessMesh* process_mesh = nullptr,
                             Placements* placements = nullptr) {
   auto ddims = common::make_ddim(dims);
@@ -101,21 +101,21 @@ void EmptyTensorInitializer(TensorObject* self,
 #endif
   } else {
     VLOG(6) << "in EmptyTensorInitializer, create DenseTensor";
-    if (var_type == paddle::framework::proto::VarType::DENSE_TENSOR) {
+    if (var_type == framework::proto::VarType::DENSE_TENSOR) {
       // TODO(jiabin): Maybe support LegacyLoD later
-      std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
+      std::shared_ptr<DenseTensor> dense_tensor = nullptr;
       if (dims.size() == 1 && dims[0] == 0) {
         std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-        dense_tensor = std::make_shared<phi::DenseTensor>(
+        dense_tensor = std::make_shared<DenseTensor>(
             allocation_ptr, phi::DenseTensorMeta(dtype, ddims));
       } else {
         // TODO(dev): we need enhance check for ddims.
-        dense_tensor = std::make_shared<phi::DenseTensor>(
-            std::make_shared<phi::Allocation>(),
-            phi::DenseTensorMeta(dtype, ddims));
+        dense_tensor =
+            std::make_shared<DenseTensor>(std::make_shared<phi::Allocation>(),
+                                          phi::DenseTensorMeta(dtype, ddims));
       }
       self->tensor.set_impl(dense_tensor);
-    } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
+    } else if (var_type == framework::proto::VarType::SELECTED_ROWS) {
       std::shared_ptr<phi::SelectedRows> tensor =
           std::make_shared<phi::SelectedRows>();
       self->tensor.set_impl(tensor);
@@ -132,12 +132,12 @@ void EmptyTensorInitializer(TensorObject* self,
 
 void EmptyStringTensorInitializer(TensorObject* self,
                                   const std::string& name,
-                                  const phi::Place& place,
+                                  const Place& place,
                                   const std::vector<int>& dims = {}) {
   auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
-  auto actual_place = phi::CPUPlace();
+  auto actual_place = CPUPlace();
   // Allocate memory
   paddle::experimental::DefaultAllocator string_allocator(actual_place);
   std::shared_ptr<phi::StringTensor> string_tensor =
@@ -151,7 +151,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
 
 void InitTensorWithNumpyValue(TensorObject* self,
                               const py::object& array,
-                              const phi::Place& place,
+                              const Place& place,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
@@ -162,10 +162,9 @@ void InitTensorWithNumpyValue(TensorObject* self,
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
 
-  phi::DenseTensor* impl_ptr =
-      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  DenseTensor* impl_ptr = static_cast<DenseTensor*>(self->tensor.impl().get());
   if (phi::is_cpu_place(place)) {
-    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
     phi::backends::xpu::SetXPUDeviceId(place.device);
@@ -186,7 +185,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
-    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
@@ -224,10 +223,10 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
           "eager tensor before init it with NumPy."));
   phi::StringTensor* impl_ptr =
       static_cast<phi::StringTensor*>(self->tensor.impl().get());
-  phi::Place place = impl_ptr->place();
+  Place place = impl_ptr->place();
   auto array = obj.cast<py::array>();
   if (phi::is_cpu_place(place)) {
-    SetStringTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place);
+    SetStringTensorFromPyArray<CPUPlace>(impl_ptr, array, place);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "StringTensor only support CPUPlace now, but receive %s",
@@ -236,8 +235,8 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
 }
 
 void InitDistTensorWithTensor(TensorObject* self,
-                              const paddle::Tensor& src,
-                              const phi::Place& place,
+                              const Tensor& src,
+                              const Place& place,
                               const std::string& name,
                               const ProcessMesh& process_mesh,
                               const Placements& placements) {
@@ -249,15 +248,15 @@ void InitDistTensorWithTensor(TensorObject* self,
   self->tensor.set_name(name);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == src.place()) {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    std::shared_ptr<DenseTensor> tensor =
+        std::static_pointer_cast<DenseTensor>(src.impl());
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
-    std::shared_ptr<phi::DenseTensor> tensor;
+    std::shared_ptr<DenseTensor> tensor;
     if (src.initialized()) {
-      tensor = std::static_pointer_cast<phi::DenseTensor>(
+      tensor = std::static_pointer_cast<DenseTensor>(
           src.copy_to(place, true).impl());
     } else {
       // lazy init branch. The src tensor is on undefined place.
@@ -265,7 +264,7 @@ void InitDistTensorWithTensor(TensorObject* self,
           src.place().GetType() == phi::AllocationType::UNDEFINED,
           common::errors::InvalidArgument("Only undefined place is support for "
                                           "uninitialized input tensor."));
-      tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl());
+      tensor = std::static_pointer_cast<DenseTensor>(src.impl());
     }
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
@@ -287,9 +286,9 @@ void InitDistTensorWithTensor(TensorObject* self,
 }
 
 void InitDistTensorWithTensor(TensorObject* self,
-                              const paddle::Tensor& local_tensor,
+                              const Tensor& local_tensor,
                               const std::vector<int>& global_dims,
-                              const phi::Place& place,
+                              const Place& place,
                               const std::string& name,
                               const ProcessMesh& process_mesh,
                               const Placements& placements) {
@@ -302,15 +301,14 @@ void InitDistTensorWithTensor(TensorObject* self,
   auto global_ddims = common::make_ddim(global_dims);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == local_tensor.place()) {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(local_tensor.impl());
+    std::shared_ptr<DenseTensor> tensor =
+        std::static_pointer_cast<DenseTensor>(local_tensor.impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(
         tensor, global_ddims, process_mesh, placements));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(
-            local_tensor.copy_to(place, true).impl());
+    std::shared_ptr<DenseTensor> tensor = std::static_pointer_cast<DenseTensor>(
+        local_tensor.copy_to(place, true).impl());
     self->tensor.set_impl(std::make_shared<DistTensor>(
         tensor, global_ddims, process_mesh, placements));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
@@ -331,8 +329,8 @@ void InitDistTensorWithTensor(TensorObject* self,
 }
 
 void InitTensorWithTensor(TensorObject* self,
-                          const paddle::Tensor& src,
-                          const phi::Place& place,
+                          const Tensor& src,
+                          const Place& place,
                           const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
@@ -352,15 +350,15 @@ void InitTensorWithTensor(TensorObject* self,
 }
 
 void InitTensorWithFrameworkTensor(TensorObject* self,
-                                   const phi::DenseTensor& src,
-                                   const phi::Place& place,
+                                   const DenseTensor& src,
+                                   const Place& place,
                                    const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
-    self->tensor.set_impl(std::make_shared<phi::DenseTensor>(src));
+    self->tensor.set_impl(std::make_shared<DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    auto temp = paddle::Tensor(std::make_shared<phi::DenseTensor>(src));
+    auto temp = Tensor(std::make_shared<DenseTensor>(src));
     self->tensor.set_impl(temp.copy_to(place, true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
@@ -368,8 +366,8 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
 }
 
 void InitStringTensorWithStringTensor(TensorObject* self,
-                                      const paddle::Tensor& src,
-                                      const phi::Place& place,
+                                      const Tensor& src,
+                                      const Place& place,
                                       const std::string& name) {
   self->tensor.set_name(name);
   auto impl = std::static_pointer_cast<phi::StringTensor>(src.impl());
@@ -406,12 +404,12 @@ py::object ParsePyArray(
   return numpy_value;
 }
 
-phi::Place ParsePlace(std::unordered_map<std::string, PyObject*> kws_map,
-                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-                      PyObject* args,
-                      bool flag_kwargs,
-                      Py_ssize_t args_num) {
-  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
+Place ParsePlace(std::unordered_map<std::string, PyObject*> kws_map,
+                 std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                 PyObject* args,
+                 bool flag_kwargs,
+                 Py_ssize_t args_num) {
+  Place place = egr::Controller::Instance().GetExpectedPlace();
 
   if (kw_order_map["place"] <= args_num) {
     place = CastPyArg2Place(PyTuple_GET_ITEM(args, kw_order_map["place"] - 1),
@@ -556,7 +554,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
       {"stop_gradient", 6}};
 
   py::object numpy_value = py::object();
-  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
+  Place place = egr::Controller::Instance().GetExpectedPlace();
   bool persistable = false;
   bool zero_copy = false;
   std::string act_name = "";
@@ -582,7 +580,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
-// initialize Tensor by Tensor or phi::DenseTensor (mix args and
+// initialize Tensor by Tensor or DenseTensor (mix args and
 // kwargs) automatically.
 void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                             std::unordered_map<std::string, PyObject*> kws_map,
@@ -604,14 +602,14 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                                                            {"process_mesh", 5},
                                                            {"placements", 6}};
 
-  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
+  Place place = egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
   if (init_by_egr_tensor) {
-    paddle::Tensor src_tensor;
+    Tensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor =
           CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -660,7 +658,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
     }
   } else {
     // init by framework tensor
-    phi::DenseTensor src_tensor;
+    DenseTensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor = CastPyArg2FrameworkTensor(
           PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -670,8 +668,8 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
-            "The first expected arguments is {value: phi::DenseTensor}, "
-            "but could not parse the first argument {value: phi::DenseTensor} "
+            "The first expected arguments is {value: DenseTensor}, "
+            "but could not parse the first argument {value: DenseTensor} "
             "successfully. "
             "Please check your input first and make sure you are on the right "
             "way."));
@@ -696,7 +694,7 @@ void AutoInitStringTensorByPyArray(
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"value", 1},
                                                            {"name", 2}};
   py::object numpy_value = py::object();
-  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
+  Place place = egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
   numpy_value =
@@ -726,7 +724,7 @@ void AutoInitStringTensorByStringTensor(
   std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"value", 1},
                                                            {"name", 2}};
 
-  phi::Place place = egr::Controller::Instance().GetExpectedPlace();
+  Place place = egr::Controller::Instance().GetExpectedPlace();
   std::string act_name = "";
 
   act_name = ParseName(kws_map,
@@ -735,7 +733,7 @@ void AutoInitStringTensorByStringTensor(
                        flag_kwargs,
                        args_num,
                        "generated_string_tensor");
-  paddle::Tensor src_tensor;
+  Tensor src_tensor;
   if (kw_order_map["value"] <= args_num) {
     src_tensor =
         CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -788,7 +786,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * parameter equals to case 1)
  * def __init__ (
  * ** value: ndarray,
- * ** place: phi::Place,
+ * ** place: Place,
  * ** persistable: bool,
  * ** zero_copy: bool,
  * ** name: std::string,
@@ -804,7 +802,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * parameter equals to case 1.)
  * def __init__ (
  * ** global_tensor: Tensor,
- * ** place: phi::Place,
+ * ** place: Place,
  * ** name: std::string,
  * ** process_mesh: phi::distributed::ProcessMesh,
  * ** placements: std::vector<Placement>)
@@ -821,7 +819,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * to case 5, zero parameter equals to case 1.)
  * def __init__ (
  * ** tensor: FrameworkTensor,
- * ** place: phi::Place,
+ * ** place: Place,
  * ** name: std::string)
  *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
@@ -953,7 +951,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           PADDLE_THROW(common::errors::InvalidArgument(
               "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
-              "or Tensor or phi::DenseTensor. "
+              "or Tensor or DenseTensor. "
               "Please check your input first and make sure you are on the "
               "right way."));
         }
@@ -1004,7 +1002,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           act_name = CastPyArg2AttrString(kw_name, 0);
         }
 
-        paddle::framework::proto::VarType::Type var_type =
+        framework::proto::VarType::Type var_type =
             CastPyArg2ProtoType(kw_type, 0);
         bool persistable = CastPyArg2AttrBoolean(kw_persistable, 0);
 
@@ -1035,7 +1033,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
-            "or tensor(Tensor or phi::DenseTensor) "
+            "or tensor(Tensor or DenseTensor) "
             "with python kwargs by this initializer, "
             "but also even support dtype to init a empty Tensor. "
             "Please check your input first and make sure you call the existed "
@@ -1068,10 +1066,10 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "We support construct Tensor from numpy value "
-          "or tensor(Tensor or phi::DenseTensor) "
+          "or tensor(Tensor or DenseTensor) "
           "with python args and kwargs by this initializer, "
           "but the first argument should be PyArray or Tensor or "
-          "phi::DenseTensor. "
+          "DenseTensor. "
           "Please check your input first and make sure you call the existed "
           "constructor."));
     }
@@ -1111,7 +1109,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         } else {
           act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 2), 2);
         }
-        paddle::framework::proto::VarType::Type var_type =
+        framework::proto::VarType::Type var_type =
             CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 3), 3);
         bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
         EmptyTensorInitializer(py_tensor_ptr,
@@ -1187,7 +1185,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         } else {
           act_name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 2), 2);
         }
-        paddle::framework::proto::VarType::Type var_type =
+        framework::proto::VarType::Type var_type =
             CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 3), 3);
         bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
         ProcessMesh process_mesh =

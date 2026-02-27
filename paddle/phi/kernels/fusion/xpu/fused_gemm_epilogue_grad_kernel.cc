@@ -24,18 +24,17 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FusedGemmEpilogueXPUGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const paddle::optional<DenseTensor>& reserve_space,
-    const DenseTensor& out_grad,
-    const bool trans_x,
-    const bool trans_y,
-    const std::string& activation_grad,
-    DenseTensor* x_grad,
-    DenseTensor* y_grad,
-    DenseTensor* bias_grad) {
+void FusedGemmEpilogueXPUGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    const optional<DenseTensor>& reserve_space,
+                                    const DenseTensor& out_grad,
+                                    const bool trans_x,
+                                    const bool trans_y,
+                                    const std::string& activation_grad,
+                                    DenseTensor* x_grad,
+                                    DenseTensor* y_grad,
+                                    DenseTensor* bias_grad) {
   // (M * K) * (K * N)
   auto x_mat_dims =
       phi::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);

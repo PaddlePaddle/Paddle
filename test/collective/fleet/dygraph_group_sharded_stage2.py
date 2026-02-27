@@ -35,6 +35,8 @@ linear_size = 1000
 
 np.random.seed(seed)
 paddle.seed(seed)
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of array equal.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 
 
 class MLP(paddle.nn.Layer):

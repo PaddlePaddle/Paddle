@@ -82,7 +82,7 @@ void QuantDequantOnednnPass::CollectInfoFromFake(
                 "The Scales variable [%s] of dequantize op is not found.",
                 var));
 
-        auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+        auto* scale_tensor = var->GetMutable<DenseTensor>();
         auto* scale_data = scale_tensor->data<float>();
         std::vector<float> thresholds{};
         for (int i = 0; i < scale_tensor->numel(); i++) {
@@ -115,7 +115,7 @@ void QuantDequantOnednnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
           common::errors::NotFound(
               "The Scales variable [%s] of dequantize op is not found.", var));
 
-      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* scale_tensor = var->GetMutable<DenseTensor>();
       auto* scale_data = scale_tensor->data<float>();
 
       auto x_var_name = op_desc->Input("X")[0];
@@ -183,7 +183,7 @@ void QuantDequantOnednnPass::CollectInputScalesFromQuantize(
           common::errors::NotFound(
               "The InScale variable [%s] of quantize op is not found.", var));
 
-      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
+      auto* scale_tensor = var->GetMutable<DenseTensor>();
       auto* scale_data = scale_tensor->data<float>();
       float scale = 1.0 / scale_data[0];
       if (std::isinf(scale) || std::isnan(scale)) {
@@ -409,7 +409,7 @@ void QuantDequantOnednnPass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantOnednnPass::TransposeWeight(phi::DenseTensor* input) const {
+void QuantDequantOnednnPass::TransposeWeight(DenseTensor* input) const {
   const auto in_dims = input->dims();
   std::vector<int> out_dim_v;
   std::vector<int> axis;
@@ -424,10 +424,10 @@ void QuantDequantOnednnPass::TransposeWeight(phi::DenseTensor* input) const {
   auto out_stride = common::stride(out_dims);
   const int count = static_cast<int>(input->numel());
 
-  phi::DenseTensor trans_tensor;
+  DenseTensor trans_tensor;
   trans_tensor.Resize(out_dims);
-  float* trans_data = trans_tensor.mutable_data<float>(phi::CPUPlace());
-  float* in_data = input->mutable_data<float>(phi::CPUPlace());
+  float* trans_data = trans_tensor.mutable_data<float>(CPUPlace());
+  float* in_data = input->mutable_data<float>(CPUPlace());
 
   for (int64_t out_idx = 0; out_idx < count; ++out_idx) {
     int64_t in_idx = 0;
@@ -454,7 +454,7 @@ bool QuantDequantOnednnPass::IsInt8Weight(
   if (var == nullptr) {
     return false;
   }
-  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
+  auto* weight_tensor = var->GetMutable<DenseTensor>();
   auto* weight_data = weight_tensor->data<float>();
   bool is_int8 = true;
   for (int i = 0; i < weight_tensor->numel(); i++) {
@@ -468,7 +468,7 @@ bool QuantDequantOnednnPass::IsInt8Weight(
 
 void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
     const std::vector<float>& scales,
-    phi::DenseTensor* weight_tensor,
+    DenseTensor* weight_tensor,
     int8_t* int8_weight_data,
     float* fp32_weight_data,
     const std::string& weight_var_name) const {
@@ -489,7 +489,7 @@ void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
 
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
-    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -531,7 +531,7 @@ void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
     }
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
-    auto* new_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
+    auto* new_weight_data = weight_tensor->mutable_data<float>(CPUPlace());
     memcpy(new_weight_data,
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
@@ -575,8 +575,8 @@ void QuantDequantOnednnPass::DequantizeOpWeights(
           "The input persistable [%s] var of [%s] op is not found.",
           weight_var_name,
           op_desc->Type()));
-  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
-  float* fp32_weight_data = weight_tensor->mutable_data<float>(phi::CPUPlace());
+  auto* weight_tensor = var->GetMutable<DenseTensor>();
+  float* fp32_weight_data = weight_tensor->mutable_data<float>(CPUPlace());
   ConvertFromINT8ToFP32(
       scales, weight_tensor, nullptr, fp32_weight_data, weight_var_name);
 }
@@ -619,9 +619,8 @@ void QuantDequantOnednnPass::DequantizeOpWeightsFromONNXFormat(
           "The input persistable [%s] var of [%s] op is not found.",
           weight_var_name,
           op_desc->Type()));
-  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
-  int8_t* int8_weight_data =
-      weight_tensor->mutable_data<int8_t>(phi::CPUPlace());
+  auto* weight_tensor = var->GetMutable<DenseTensor>();
+  int8_t* int8_weight_data = weight_tensor->mutable_data<int8_t>(CPUPlace());
 
   ConvertFromINT8ToFP32(
       scales, weight_tensor, int8_weight_data, nullptr, weight_var_name);

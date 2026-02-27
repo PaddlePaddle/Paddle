@@ -66,22 +66,22 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
   DenseTensorMeta out_grad_features_meta(
       x.dtype(), {rulebook_len, out_channels}, DataLayout::NCHW);
-  DenseTensor in_features = phi::Empty(dev_ctx, std::move(in_features_meta));
-  DenseTensor d_x_features = phi::Empty(dev_ctx, std::move(d_x_features_meta));
+  DenseTensor in_features = Empty(dev_ctx, std::move(in_features_meta));
+  DenseTensor d_x_features = Empty(dev_ctx, std::move(d_x_features_meta));
   DenseTensor out_grad_features =
-      phi::Empty(dev_ctx, std::move(out_grad_features_meta));
+      Empty(dev_ctx, std::move(out_grad_features_meta));
 
   T* in_features_ptr = in_features.data<T>();
   T* d_x_features_ptr = d_x_features.data<T>();
   T* out_grad_features_ptr = out_grad_features.data<T>();
-  *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
+  *kernel_grad = EmptyLike<T>(dev_ctx, kernel);
   T* d_kernel_ptr = kernel_grad->data<T>();
   memset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
 
   int half_kernel_size = kernel_size / 2;
   auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
-  DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
+  DenseTensor x_grad_indices = EmptyLike<IntT>(dev_ctx, x.indices());
+  DenseTensor x_grad_values = EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
   memset(x_grad_values_ptr, 0, sizeof(T) * x_grad_values.numel());
   memset(d_x_features_ptr, 0, sizeof(T) * d_x_features.numel());

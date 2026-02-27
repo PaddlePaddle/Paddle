@@ -357,19 +357,18 @@ void FisherYatesSampleNeighbors(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void GraphSampleNeighborsKernel(
-    const Context& dev_ctx,
-    const DenseTensor& row,
-    const DenseTensor& col_ptr,
-    const DenseTensor& x,
-    const paddle::optional<DenseTensor>& eids,
-    const paddle::optional<DenseTensor>& perm_buffer,
-    int sample_size,
-    bool return_eids,
-    bool flag_perm_buffer,
-    DenseTensor* out,
-    DenseTensor* out_count,
-    DenseTensor* out_eids) {
+void GraphSampleNeighborsKernel(const Context& dev_ctx,
+                                const DenseTensor& row,
+                                const DenseTensor& col_ptr,
+                                const DenseTensor& x,
+                                const optional<DenseTensor>& eids,
+                                const optional<DenseTensor>& perm_buffer,
+                                int sample_size,
+                                bool return_eids,
+                                bool flag_perm_buffer,
+                                DenseTensor* out,
+                                DenseTensor* out_count,
+                                DenseTensor* out_eids) {
   auto* row_data = row.data<T>();
   auto* col_ptr_data = col_ptr.data<T>();
   auto* x_data = x.data<T>();

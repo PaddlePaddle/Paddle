@@ -55,7 +55,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       Tensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
+      auto in_e = EigenMatrix<T>::From(in_t, make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
 
       auto reduce_dim = Eigen::array<int, 1>({{0}});
@@ -89,7 +89,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  const paddle::optional<DenseTensor>& index UNUSED,
+                  const optional<DenseTensor>& index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *dev_ctx.eigen_device();

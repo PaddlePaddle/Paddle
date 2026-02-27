@@ -59,18 +59,18 @@ void ActivationGradImpl(const Context& dev_ctx,
   if (dX->numel() == 0) {
     return;
   }
-  auto dout = phi::EigenVector<T>::Flatten(
+  auto dout = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
-  auto out = phi::EigenVector<T>::Flatten(
+  auto out = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
-  auto dx = phi::EigenVector<T>::Flatten(
+  auto dx = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
-  auto x = phi::EigenVector<T>::Flatten(
+  auto x = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
   auto* place = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     functor(*place,
             To32BitIndex(x),
@@ -182,8 +182,8 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
                           const DenseTensor& ddx,
-                          const paddle::optional<DenseTensor>& d_dout_new,
-                          const paddle::optional<DenseTensor>& d_ddout,
+                          const optional<DenseTensor>& d_dout_new,
+                          const optional<DenseTensor>& d_ddout,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx) {
@@ -274,7 +274,7 @@ void SigmoidTripleGradKernel(const Context& dev_ctx,
                              const DenseTensor& dout,
                              const DenseTensor& ddx,
                              const DenseTensor& d_dout_new,
-                             const paddle::optional<DenseTensor>& d_ddout,
+                             const optional<DenseTensor>& d_ddout,
                              DenseTensor* d_out_new,
                              DenseTensor* d_dout,
                              DenseTensor* d_ddx) {
@@ -355,7 +355,7 @@ void PowTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          const DenseTensor& ddx,
                          const DenseTensor& d_dx,
-                         const paddle::optional<DenseTensor>& d_ddout,
+                         const optional<DenseTensor>& d_ddout,
                          const Scalar& factor,
                          DenseTensor* out_d_x,
                          DenseTensor* out_d_dout,
@@ -665,10 +665,10 @@ void SinDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SinTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
-                         const paddle::optional<DenseTensor>& ddx,
+                         const optional<DenseTensor>& dout,
+                         const optional<DenseTensor>& ddx,
                          const DenseTensor& d_dx_new,
-                         const paddle::optional<DenseTensor>& d_ddout,
+                         const optional<DenseTensor>& d_ddout,
                          DenseTensor* d_x_new,
                          DenseTensor* d_dout,
                          DenseTensor* d_ddx) {
@@ -713,10 +713,10 @@ void CosDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CosTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
-                         const paddle::optional<DenseTensor>& ddx,
+                         const optional<DenseTensor>& dout,
+                         const optional<DenseTensor>& ddx,
                          const DenseTensor& d_dx_new,
-                         const paddle::optional<DenseTensor>& d_ddout,
+                         const optional<DenseTensor>& d_ddout,
                          DenseTensor* d_x_new,
                          DenseTensor* d_dout,
                          DenseTensor* d_ddx) {

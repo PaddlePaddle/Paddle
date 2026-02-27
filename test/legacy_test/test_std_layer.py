@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 
@@ -67,6 +67,76 @@ class TestStdAPI(unittest.TestCase):
             self.assertTrue(np.equal(out_ref.shape, out.shape).all())
 
 
+class TestStdAPI2(OpTest):
+    def setUp(self):
+        self.python_api = paddle.std
+        self.op_type = "std"
+        self.prim_op_type = "prim"
+        self.init_dtype_type()
+        self.attrs = {
+            'axis': self.axis,
+            'unbiased': self.unbiased,
+            'keepdim': self.keepdim,
+        }
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = ref_std(
+            x, axis=self.axis, unbiased=self.unbiased, keepdim=self.keepdim
+        )
+        self.inputs = {'x': x}
+        self.outputs = {'out': out}
+
+        def std_wrapper(x):
+            return paddle.std(
+                x, axis=self.axis, unbiased=self.unbiased, keepdim=self.keepdim
+            )
+
+        self.python_api = std_wrapper
+        self.public_python_api = std_wrapper
+
+    def init_dtype_type(self):
+        self.dtype = 'float64'
+        self.shape = [1, 3, 4, 10]
+        self.axis = [1, 3]
+        self.keepdim = False
+        self.unbiased = True
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            paddle.CPUPlace(),
+            check_prim=True,
+            check_pir=True,
+            check_symbol_infer=True,
+            check_prim_pir=True,
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(
+                paddle.CUDAPlace(0),
+                check_prim=True,
+                check_pir=True,
+                check_symbol_infer=True,
+                check_prim_pir=True,
+            )
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            paddle.CPUPlace(),
+            ['x'],
+            'out',
+            check_prim=False,
+            check_pir=True,
+            check_prim_pir=False,
+        )
+        if paddle.core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                paddle.CUDAPlace(0),
+                ['x'],
+                'out',
+                check_prim=False,
+                check_pir=True,
+                check_prim_pir=False,
+            )
+
+
 class TestStdAPI_dtype(TestStdAPI):
     def set_attrs(self):
         self.dtype = 'float32'
@@ -109,6 +179,108 @@ class TestStdAPI_alias(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestStdAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.dtype = 'float32'
+        self.shape = [1, 3, 4, 10]
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.tensor(self.x)
+        # input arg
+        out1_1 = paddle.std(x=x)
+        out1_2 = paddle.std(input=x)
+        np.testing.assert_allclose(out1_1.numpy(), out1_2.numpy(), rtol=1e-05)
+        # dim arg
+        out2_1 = paddle.std(x, axis=3)
+        out2_2 = paddle.std(x, dim=3)
+        np.testing.assert_allclose(out2_1.numpy(), out2_2.numpy(), rtol=1e-05)
+        # out arg
+        out3_1 = paddle.empty([])
+        out3_2 = paddle.std(x, out=out3_1)
+        np.testing.assert_allclose(out3_1.numpy(), out3_2.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_compatibility(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.shape, self.dtype)
+            # input arg
+            out1_1 = paddle.std(x=x)
+            out1_2 = paddle.std(input=x)
+            # dim arg
+            out2_1 = paddle.std(x, axis=3)
+            out2_2 = paddle.std(x, dim=3)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(
+                feed={'x': self.x}, fetch_list=[out1_1, out1_2, out2_1, out2_2]
+            )
+        np.testing.assert_allclose(res[0], res[1], rtol=1e-05)
+        np.testing.assert_allclose(res[2], res[3], rtol=1e-05)
+
+
+class TestStdAPI_Correction(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.dtype = 'float32'
+        self.shape = [1, 3, 4, 10]
+        self.set_attrs()
+        self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.axis:
+            axis = tuple(self.axis)
+            self.ref_out = np.std(self.x, axis, ddof=self.correction)
+        else:
+            self.ref_out = np.std(self.x, ddof=self.correction)
+        self.place = get_device_place()
+
+    def set_attrs(self):
+        self.correction = 1
+        self.axis = None
+
+    def test_dygraph_correction(self):
+        paddle.disable_static()
+        x = paddle.tensor(self.x)
+        if self.axis:
+            out = paddle.std(x, self.axis, correction=self.correction)
+        else:
+            out = paddle.std(x, correction=self.correction)
+        np.testing.assert_allclose(out.numpy(), self.ref_out, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_correction(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.shape, self.dtype)
+            if self.axis:
+                out = paddle.std(x, self.axis, correction=self.correction)
+            else:
+                out = paddle.std(x, correction=self.correction)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x}, fetch_list=[out])
+        np.testing.assert_allclose(res[0], self.ref_out, rtol=1e-05)
+
+
+class TestStdAPI_Correction2(TestStdAPI_Correction):
+    def set_attrs(self):
+        self.correction = 2
+        self.axis = None
+
+
+class TestStdAPI_CorrectionFloat(TestStdAPI_Correction):
+    def set_attrs(self):
+        self.correction = 1.5
+        self.axis = None
+
+
+class TestStdAPI_CorrectionWithAxis(TestStdAPI_Correction):
+    def set_attrs(self):
+        self.correction = 0
+        self.axis = [1, 2]
+
+
 class TestStdError(unittest.TestCase):
     def test_error(self):
         paddle.enable_static()
@@ -144,10 +316,10 @@ class Testfp16Std(unittest.TestCase):
 
 class TestStdAPI_ZeroSize1(unittest.TestCase):
     def init_data(self):
-        self.x_shape = []
-        # x = torch.tensor([])
-        # res= torch.std(x)     Here, res is nan
+        self.x_shape = [0]
+        self.dtype = 'float64'
         self.expact_out = np.nan
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
 
     def test_zerosize(self):
         self.init_data()
@@ -157,20 +329,31 @@ class TestStdAPI_ZeroSize1(unittest.TestCase):
         np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
         paddle.enable_static()
 
+    def test_static_zero(self):
+        paddle.enable_static()
+        self.init_data()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.x_shape, self.dtype)
+            out = paddle.std(x)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+            np.testing.assert_allclose(self.expact_out, res[0], rtol=1e-05)
+        paddle.disable_static()
+
 
 class TestStdAPI_UnBiased1(unittest.TestCase):
     def init_data(self):
         self.x_shape = [1]
         # x = torch.randn([1])
         # res= torch.std(x,correction=0)     Here, res is 0.
-        self.expact_out = 0.0
+        self.expect_out = 0.0
 
     def test_api(self):
         self.init_data()
         paddle.disable_static()
         x = paddle.to_tensor(np.random.random(self.x_shape))
         out1 = paddle.std(x, unbiased=False).numpy()
-        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        np.testing.assert_allclose(out1, self.expect_out, equal_nan=True)
         paddle.enable_static()
 
 
@@ -179,14 +362,65 @@ class TestStdAPI_UnBiased2(unittest.TestCase):
         self.x_shape = [1]
         # x = torch.randn([1])
         # res= torch.std(x,correction=1)     Here, res is 0.
-        self.expact_out = np.nan
+        self.expect_out = np.nan
 
     def test_api(self):
         self.init_data()
         paddle.disable_static()
         x = paddle.to_tensor(np.random.random(self.x_shape))
         out1 = paddle.std(x, unbiased=True).numpy()
-        np.testing.assert_allclose(out1, self.expact_out, equal_nan=True)
+        np.testing.assert_allclose(out1, self.expect_out, equal_nan=True)
+        paddle.enable_static()
+
+
+class TestVarAPI_Backward1(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+        self.shape = []
+        self.axis = []
+        self.x = np.random.uniform(-1, 1, self.shape).astype('float64')
+        paddle.set_device(paddle.CPUPlace())
+
+        out_ref = ref_std(self.x, self.axis, True, False)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.std(x, self.axis, True, False)
+
+        out.sum().backward()
+        paddle.enable_static()
+
+
+class TestVarAPI_Backward2(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+        self.shape = [2]
+        self.axis = []
+        self.x = np.random.uniform(-1, 1, self.shape).astype('float64')
+        paddle.set_device(paddle.CPUPlace())
+
+        out_ref = ref_std(self.x, self.axis, True, False)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.std(x, self.axis, True, False)
+
+        out.sum().backward()
+        paddle.enable_static()
+
+
+class TestStdAPI_Backward_ZeroSize1(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+        self.shape = [1, 3, 0, 10]
+        self.axis = [1, 3]
+        self.x = np.random.uniform(-1, 1, self.shape).astype('float64')
+        paddle.set_device(paddle.CPUPlace())
+
+        out_ref = ref_std(self.x, self.axis, True, False)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.std(x, self.axis, True, False)
+
+        out.sum().backward()
         paddle.enable_static()
 
 

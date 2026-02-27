@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from functools import wraps
 from typing import Callable, TypeVar
 
@@ -43,16 +42,30 @@ class SotProfiler:
         core.nvprof_stop()
 
 
-@contextmanager
-def EventGuard(event_name, event_level=1):
-    need_pop = False
-    try:
-        if ENV_SOT_EVENT_LEVEL.get() >= event_level:
-            core.nvprof_nvtx_push(event_name)
-            need_pop = True
-        yield
-    finally:
-        if need_pop:
+class EventGuard:
+    def __init__(self, event_name, event_level=1):
+        self.event_name = event_name
+        self.event_level = event_level
+        self.need_pop = False
+
+    def __call__(self, fn):
+        if ENV_SOT_EVENT_LEVEL.get() < self.event_level:
+            return fn
+
+        @wraps(fn)
+        def wrapped(*args, **kwargs):
+            with self:
+                return fn(*args, **kwargs)
+
+        return wrapped
+
+    def __enter__(self):
+        if ENV_SOT_EVENT_LEVEL.get() >= self.event_level:
+            core.nvprof_nvtx_push(self.event_name)
+            self.need_pop = True
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.need_pop:
             core.nvprof_nvtx_pop()
 
 

@@ -41,8 +41,7 @@ norm='backward')
     array([[[[0.-0.j, 0.-0.j]],
         [[0.-0.j, 0.-0.j]]]])
     */
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   const auto norm_type = funcs::get_norm_from_string(normalization, forward);
@@ -61,8 +60,7 @@ void FFTC2RKernel(const Context& dev_ctx,
   using R = typename T::value_type;  // get real type
   dev_ctx.template Alloc<R>(out);
   if (x.numel() == 0) {
-    phi::Full<R, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<R, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   const auto norm_type = funcs::get_norm_from_string(normalization, forward);
@@ -81,8 +79,7 @@ void FFTR2CKernel(const Context& dev_ctx,
   using C = phi::dtype::complex<T>;
   dev_ctx.template Alloc<C>(out);
   if (x.numel() == 0) {
-    phi::Full<C, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<C, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);

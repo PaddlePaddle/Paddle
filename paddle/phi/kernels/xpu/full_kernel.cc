@@ -32,7 +32,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (out->numel() > 0) {
     auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
@@ -52,7 +52,7 @@ void FullKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                             DataType dtype,
                                             DenseTensor* out) {
   using T = phi::complex64;
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
 
   T complex_val = val.to<T>();
@@ -142,7 +142,7 @@ void FullBatchSizeLikeKernel(const Context& dev_ctx,
     // set the correct batch size for the DenseTensor.
     auto odims = out->dims();
     odims[out_batch_size_dim] = x.lod().back().size() - 1;
-    FullKernel<T, Context>(dev_ctx, common::vectorize(odims), val, dtype, out);
+    FullKernel<T, Context>(dev_ctx, vectorize(odims), val, dtype, out);
   }
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, out);
 }

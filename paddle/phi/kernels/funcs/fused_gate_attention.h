@@ -898,8 +898,8 @@ class FlashAttnWithGating {
     AllocWithDebugInfo<float>(dev_ctx_, "softmax_lse", softmax_lse);
 
     if (VLOG_IS_ON(6)) {
-      VLOG(6) << "temp_mask_dim={" << common::make_ddim(temp_mask_dim) << "}";
-      VLOG(6) << "temp_bias_dim={" << common::make_ddim(temp_bias_dim) << "}";
+      VLOG(6) << "temp_mask_dim={" << make_ddim(temp_mask_dim) << "}";
+      VLOG(6) << "temp_bias_dim={" << make_ddim(temp_bias_dim) << "}";
       VLOG(6) << TensorDebugString(&cu_seq_q, "cu_seq_q");
       VLOG(6) << TensorDebugString(&cu_seq_k, "cu_seq_k");
       VLOG(6) << TensorDebugString(nonbatched_bias, "nonbatched_bias");
@@ -995,12 +995,12 @@ class FlashAttnWithGating {
     const T* v_ptr = k_ptr + q_size;
 
     DenseTensor qkv_transpose_out_grad;
-    qkv_transpose_out_grad.Resize(common::make_ddim({3,
-                                                     config->batch_size,
-                                                     config->seq_len_m,
-                                                     config->seq_len_r,
-                                                     config->num_heads,
-                                                     config->head_dim}));
+    qkv_transpose_out_grad.Resize(make_ddim({3,
+                                             config->batch_size,
+                                             config->seq_len_m,
+                                             config->seq_len_r,
+                                             config->num_heads,
+                                             config->head_dim}));
     AllocWithDebugInfo<T>(
         dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
 
@@ -1151,7 +1151,7 @@ class FlashAttnWithGating {
   DenseTensor CreateWorkspace(uint64_t workspace_size) {
     DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = phi::Empty<float, phi::GPUContext>(
+      workspace = Empty<float, phi::GPUContext>(
           dev_ctx_, {int64_t(workspace_size / sizeof(float))});
     }
     VLOG(5) << "Allocate workspace: workspace_size=" << workspace_size;

@@ -20,15 +20,15 @@
 
 namespace phi {
 template <typename T>
-struct RmsFunctor<T, phi::GPUContext> {
-  RmsFunctor(const phi::GPUContext &dev_ctx,
+struct RmsFunctor<T, GPUContext> {
+  RmsFunctor(const GPUContext &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,
              const DenseTensor &moment,
              const DenseTensor &learning_rate,
-             const paddle::optional<DenseTensor> &mean_grad_opt,
-             const paddle::optional<DenseTensor> &master_param,
+             const optional<DenseTensor> &mean_grad_opt,
+             const optional<DenseTensor> &master_param,
              float epsilon_t,
              float decay_t,
              float momentum_t,
@@ -46,7 +46,7 @@ struct RmsFunctor<T, phi::GPUContext> {
     auto &grad_tensor = grad;
     size_t limit = static_cast<size_t>(ms_tensor.numel());
     DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
-    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, limit);
+    funcs::ForRange<GPUContext> for_range(dev_ctx, limit);
     using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPDType *master_out_data =
         multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
@@ -94,9 +94,9 @@ struct RmsFunctor<T, phi::GPUContext> {
     }
   }
 };
-template struct RmsFunctor<phi::GPUContext, float>;
-template struct RmsFunctor<phi::GPUContext, double>;
-template struct RmsFunctor<phi::GPUContext, phi::float16>;
+template struct RmsFunctor<GPUContext, float>;
+template struct RmsFunctor<GPUContext, double>;
+template struct RmsFunctor<GPUContext, phi::float16>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(rmsprop,

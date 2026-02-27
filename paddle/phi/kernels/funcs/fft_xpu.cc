@@ -126,7 +126,7 @@ void exec_fft(const phi::XPUContext& dev_ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_input_shape_.push_back(in_sizes[axes[i]]);
   }
-  DDim collapsed_input_shape = common::make_ddim(collapsed_input_shape_);
+  DDim collapsed_input_shape = make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   DenseTensor& collapsed_input = transposed_input;
 
@@ -138,7 +138,7 @@ void exec_fft(const phi::XPUContext& dev_ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_output_shape_.push_back(out_sizes[axes[i]]);
   }
-  DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
+  DDim collapsed_output_shape = make_ddim(collapsed_output_shape_);
   DenseTensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   dev_ctx.Alloc<To>(&collapsed_output);
@@ -154,8 +154,9 @@ void exec_fft(const phi::XPUContext& dev_ctx,
   DenseTensor workspace_tensor = Empty<uint8_t>(dev_ctx, {workspace_size});
 
   // prepare cufft for execution
-  PADDLE_ENFORCE_FFT_SUCCESS(
-      phi::dynload::cufftSetStream(config->plan(), nullptr));
+  PADDLE_ENFORCE_FFT_SUCCESS(phi::dynload::cufftSetStream(
+      config->plan(),
+      reinterpret_cast<cudaStream_t>(dev_ctx.x_context()->xpu_stream)));
   PADDLE_ENFORCE_FFT_SUCCESS(
       phi::dynload::cufftSetWorkArea(config->plan(), workspace_tensor.data()));
 

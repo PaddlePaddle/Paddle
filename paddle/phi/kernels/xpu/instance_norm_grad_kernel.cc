@@ -23,8 +23,8 @@ namespace phi {
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& scale,
-                            const paddle::optional<DenseTensor>& bias UNUSED,
+                            const optional<DenseTensor>& scale,
+                            const optional<DenseTensor>& bias UNUSED,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             const DenseTensor& d_y,
@@ -48,18 +48,10 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(d_x);
   if (x.numel() == 0) {
     if (d_scale) {
-      phi::Full<float, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_scale->dims())),
-          0.f,
-          d_scale);
+      Full<float, Context>(dev_ctx, d_scale->dims(), 0.f, d_scale);
     }
     if (d_bias) {
-      phi::Full<float, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_bias->dims())),
-          0.f,
-          d_bias);
+      Full<float, Context>(dev_ctx, d_bias->dims(), 0.f, d_bias);
     }
     return;
   }

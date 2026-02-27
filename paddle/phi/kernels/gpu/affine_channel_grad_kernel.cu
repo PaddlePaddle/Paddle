@@ -98,7 +98,7 @@ void AffineChannelGradCUDAKernel(const Context& dev_ctx,
   auto* dscale = scale_grad;
   auto* dbias = bias_grad;
 
-  const DataLayout layout = common::StringToDataLayout(data_layout);
+  const DataLayout layout = StringToDataLayout(data_layout);
 
   auto dims = dy->dims();
   const int64_t num = dy->numel();

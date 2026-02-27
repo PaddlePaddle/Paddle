@@ -30,7 +30,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& offset,
                           const DenseTensor& filter,
-                          const paddle::optional<DenseTensor>& mask,
+                          const optional<DenseTensor>& mask,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
                           const std::vector<int>& dilations,
@@ -39,8 +39,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
 
@@ -74,17 +73,16 @@ void DeformableConvKernel(const Context& dev_ctx,
   int64_t K = x.dims()[1] * filter_shape_vec[2] * filter_shape_vec[3] / groups;
 
   DenseTensor weight_3d;
-  weight_3d.ShareDataWith(filter).Resize(common::make_ddim({groups, M, K}));
+  weight_3d.ShareDataWith(filter).Resize(make_ddim({groups, M, K}));
 
   DenseTensor col_buffer_3d;
-  col_buffer_3d.ShareDataWith(col_buffer)
-      .Resize(common::make_ddim({groups, K, N}));
+  col_buffer_3d.ShareDataWith(col_buffer).Resize(make_ddim({groups, K, N}));
 
   DenseTensor output_4d;
   output_4d.ShareDataWith(output_buffer)
-      .Resize(common::make_ddim({batch_size / im2col_step, groups, M, N}));
+      .Resize(make_ddim({batch_size / im2col_step, groups, M, N}));
 
-  DDim input_shape = common::slice_ddim(x.dims(), 1, x.dims().size());
+  DDim input_shape = slice_ddim(x.dims(), 1, x.dims().size());
   std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
 
   int64_t input_dim = x.numel() / x.dims()[0];
@@ -138,7 +136,7 @@ void DeformableConvKernel(const Context& dev_ctx,
           col_buffer_ptr);
     }
 
-    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(common::slice_ddim(
+    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(slice_ddim(
         output_4d.dims(),
         1,
         output_4d.dims().size()));  // group * C/group * (im2step * H * W)
@@ -146,15 +144,13 @@ void DeformableConvKernel(const Context& dev_ctx,
     // get the product of pixel and weight
     for (int g = 0; g < groups; ++g) {
       DenseTensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
-          common::slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
-      DenseTensor col_buffer_3d_slice =
-          col_buffer_3d.Slice(g, g + 1).Resize(common::slice_ddim(
-              col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
-      DenseTensor output_3d_slice =
-          output_3d.Slice(g, g + 1).Resize(common::slice_ddim(
-              output_3d.dims(),
-              1,
-              output_3d.dims().size()));  // C * ((im2col_step)*H*W))
+          slice_ddim(weight_3d.dims(), 1, weight_3d.dims().size()));
+      DenseTensor col_buffer_3d_slice = col_buffer_3d.Slice(g, g + 1).Resize(
+          slice_ddim(col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
+      DenseTensor output_3d_slice = output_3d.Slice(g, g + 1).Resize(
+          slice_ddim(output_3d.dims(),
+                     1,
+                     output_3d.dims().size()));  // C * ((im2col_step)*H*W))
       blas.MatMul(weight_3d_slice,
                   false,
                   col_buffer_3d_slice,
@@ -176,17 +172,15 @@ void DeformableConvKernel(const Context& dev_ctx,
     DenseTensor real_output_buffer = phi::Transpose<T, Context>(
         dev_ctx,
         output_4d.Resize(
-            common::make_ddim({batch_size / im2col_step,
-                               output_shape_vec[1],
-                               im2col_step,
-                               output_shape_vec[2] * output_shape_vec[3]})),
+            make_ddim({batch_size / im2col_step,
+                       output_shape_vec[1],
+                       im2col_step,
+                       output_shape_vec[2] * output_shape_vec[3]})),
         axis);
 
-    out->ShareDataWith(real_output_buffer)
-        .Resize(common::make_ddim(output_shape_vec));
+    out->ShareDataWith(real_output_buffer).Resize(make_ddim(output_shape_vec));
   } else {
-    out->ShareDataWith(output_buffer)
-        .Resize(common::make_ddim(output_shape_vec));
+    out->ShareDataWith(output_buffer).Resize(make_ddim(output_shape_vec));
   }
 }
 

@@ -63,12 +63,12 @@ class CinnJitInstruction::FnPtrImpl {
           const auto& tensor = [&]() -> phi::DenseTensor {
             phi::DenseTensor new_tensor =
                 *(kernel_tensor_args[binding_info.arg_idx]);
-            if (new_tensor.place() == phi::CPUPlace()) {
+            if (new_tensor.place() == CPUPlace()) {
               return new_tensor;
             }
             framework::TensorCopySync(
                 *(kernel_tensor_args[binding_info.arg_idx]),
-                phi::CPUPlace(),
+                CPUPlace(),
                 &new_tensor);
             return new_tensor;
           }();
@@ -260,8 +260,8 @@ class CinnJitInstruction::FnPtrImpl {
 
 CinnJitInstruction::CinnJitInstruction(
     size_t id,
-    const phi::Place& place,
-    ::pir::Operation* op,
+    const Place& place,
+    pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();

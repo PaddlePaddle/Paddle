@@ -32,14 +32,12 @@ void MatmulGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+    Full<T, Context>(dev_ctx, y.dims(), 0, dy);
     return;
   }
   if (y.numel() == 0) {
     dev_ctx.template Alloc<T>(dy);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+    Full<T, Context>(dev_ctx, x.dims(), 0, dx);
     return;
   }
 

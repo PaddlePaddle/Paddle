@@ -115,7 +115,7 @@ struct PointerToPointer {
         pre_alloced_host_ptr, in_num);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        (*dev_ins_ptr)->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        restored,
                        in_num * sizeof(T*),
                        dev_ctx.stream());
@@ -166,7 +166,7 @@ struct PointerToPointerAndCol {
         inputs_col, inputs_col_num);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        (*dev_col_ptr)->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        restored,
                        inputs_col_num * sizeof(IndexT),
                        dev_ctx.stream());

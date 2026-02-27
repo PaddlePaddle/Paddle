@@ -200,7 +200,7 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &dev_ctx,
   grid = (grid > block) ? block : grid;
 
   DenseTensor max;
-  max.Resize(common::make_ddim({grid}));
+  max.Resize(make_ddim({grid}));
   T *max_data = dev_ctx.template Alloc<T>(&max);
   FindAbsMaxKernel<T>
       <<<grid, block, 1024 * sizeof(T), dev_ctx.stream()>>>(in, num, max_data);
@@ -688,7 +688,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
                                       out_size_data);
 
   int g_find_max;
-  memory_utils::Copy(phi::CPUPlace(),
+  memory_utils::Copy(CPUPlace(),
                      &g_find_max,
                      gpu_place,
                      find_max,
@@ -697,7 +697,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
   dev_ctx.Wait();
   if (g_find_max) {
     int len;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &len,
                        gpu_place,
                        out_size_data,

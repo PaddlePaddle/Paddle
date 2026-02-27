@@ -561,6 +561,37 @@ class XPUTestGridSamplerOP(XPUOpTestWrapper):
             self.no_need_check_grad = True
 
 
+class TestGridSampleGrad5DZeroBatchXPU(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.XPUPlace(0)
+        self.dtype = 'float32'
+
+    def test_grad_5d_zero_batch(self):
+        paddle.disable_static(paddle.XPUPlace(0))
+        x = paddle.to_tensor(
+            np.random.random([0, 64, 80, 94, 311]).astype(self.dtype),
+            place=self.place,
+            stop_gradient=False,
+        )
+        grid = paddle.to_tensor(
+            np.random.random([0, 280, 376, 25, 3]).astype(self.dtype),
+            place=self.place,
+            stop_gradient=False,
+        )
+
+        out = paddle.nn.functional.grid_sample(
+            x=x,
+            grid=grid,
+            mode='bilinear',
+            padding_mode='zeros',
+            align_corners=False,
+        )
+        out.sum().backward()
+        self.assertEqual(list(x.grad.shape), [0, 64, 80, 94, 311])
+        self.assertEqual(list(grid.grad.shape), [0, 280, 376, 25, 3])
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('grid_sampler')
 for stype in support_types:
     create_test_class(globals(), XPUTestGridSamplerOP, stype)

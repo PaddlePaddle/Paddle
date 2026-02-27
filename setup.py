@@ -560,7 +560,7 @@ def show() -> None:
         cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -624,7 +624,7 @@ def nccl() -> str:
         string: Return the version information of cuda nccl. If paddle package is CPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -642,7 +642,7 @@ CUDA_FUNC_DOC = """Get cuda version of paddle package.
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -683,7 +683,7 @@ def cudnn() -> str:
         string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -699,8 +699,9 @@ def xpu() -> str:
 
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             >>> import paddle
             >>> paddle.version.xpu()
             >>> # doctest: +SKIP('Different environments yield different output.')
@@ -715,7 +716,7 @@ def xpu_xre() -> str:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -733,7 +734,7 @@ def xpu_xccl() -> str:
         string: Return the version information of xpu xccl. If paddle package is non-XPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -751,7 +752,7 @@ def xpu_xhpc() -> str:
         string: Return the version information of xpu xhpc. If paddle package is non-XPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -769,7 +770,7 @@ def cinn() -> str:
         string: Return the version information of CINN. If paddle package is not compiled with CINN, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -787,7 +788,7 @@ def tensorrt() -> str:
         string: Return the version information of TensorRT. If paddle package is not compiled with TensorRT, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -807,7 +808,7 @@ def cuda_archs():
         list[int]: Return the compiled cuda archs if with gpu. If paddle package is not compiled with gpu, it will return "".
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1134,7 +1135,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-curand-cu12==10.3.5.147; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cuda-nvrtc-cu12==12.3.107; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
@@ -1149,7 +1150,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.6.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.25.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
@@ -1164,7 +1165,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.1.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.5.4.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.6.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.25.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.6.77; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.6.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.11.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
@@ -1180,7 +1181,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.2.55; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.5.7.53; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.6.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.25.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.8.55; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.8.61; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.13.0.11; platform_system == 'Linux' and platform_machine == 'x86_64'"
@@ -1196,7 +1197,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.4.40; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.5.9.5; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.7.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.27.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1540,6 +1541,9 @@ def get_package_data_and_package_dir():
                     + ext_suffix
                 ]
                 shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
+        if os.name == 'nt':
+            package_data['paddle.libs'] += ['phi.lib']
+            shutil.copy(env_dict.get("PHI_LINK"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1804,6 +1808,18 @@ def get_package_data_and_package_dir():
                 ]
             shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+            shutil.copy(env_dict.get("XPU_XBLAS_JITC_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_JITC_LIB_NAME")
+            ]
+            shutil.copy(env_dict.get("XPU_XBLAS_LLVM_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_LLVM_LIB_NAME")
+            ]
+            shutil.copy(env_dict.get("XPU_XBLAS_CLANG_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_CLANG_LIB_NAME")
+            ]
             shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
             shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
@@ -2496,6 +2512,7 @@ def get_setup_parameters():
         'paddle',
         'paddle.libs',
         'paddle.utils',
+        'paddle.utils.data',
         'paddle.utils.gast',
         'paddle.utils.cpp_extension',
         'paddle.dataset',

@@ -90,7 +90,7 @@ void MixedPrecisionAddGradKernel(const Context& dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);
-      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+      std::vector<int64_t> dz_vector = vectorize<int64_t>(dz_dims);
 
       int ret = xpu::reduce_sum<XPUType>(
           dev_ctx.x_context(),
@@ -114,7 +114,7 @@ void MixedPrecisionAddGradKernel(const Context& dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dy->dims(), dz_dims, axis);
-      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+      std::vector<int64_t> dz_vector = vectorize<int64_t>(dz_dims);
 
       DenseTensor casted_dz;
       casted_dz.Resize(dz_dims);
@@ -212,7 +212,7 @@ void AddGradKernel(const Context& dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);
-      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+      std::vector<int64_t> dz_vector = vectorize<int64_t>(dz_dims);
 
       int ret = xpu::reduce_sum<XPUType>(
           dev_ctx.x_context(),
@@ -237,7 +237,7 @@ void AddGradKernel(const Context& dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dy->dims(), dz_dims, axis);
-      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+      std::vector<int64_t> dz_vector = vectorize<int64_t>(dz_dims);
       int ret = xpu::reduce_sum<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dz_data),

@@ -21,9 +21,9 @@ namespace phi {
 template <typename T, typename Context>
 void GRUKernel(const Context &dev_ctx,
                const DenseTensor &input,
-               const paddle::optional<DenseTensor> &h0,
+               const optional<DenseTensor> &h0,
                const DenseTensor &weight,
-               const paddle::optional<DenseTensor> &bias,
+               const optional<DenseTensor> &bias,
                const std::string &activation,
                const std::string &gate_activation,
                bool is_reverse,

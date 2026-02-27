@@ -698,7 +698,7 @@ class PADDLE_API TRTEngineManager {
   }
 
   void* GetContextMemory(PredictorID predictor_id,
-                         const phi::GPUPlace& place,
+                         const GPUPlace& place,
                          const phi::Stream& stream) {
     std::lock_guard<std::mutex> lock(mutex_);
     static auto alignment = GetAlignmentSize(place);
@@ -719,7 +719,7 @@ class PADDLE_API TRTEngineManager {
   }
 
  private:
-  size_t GetAlignmentSize(const phi::GPUPlace& place) {
+  size_t GetAlignmentSize(const GPUPlace& place) {
     const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
     return prop.textureAlignment;
   }

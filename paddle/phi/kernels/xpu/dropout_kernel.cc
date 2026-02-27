@@ -26,7 +26,7 @@ namespace phi {
 template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& seed_tensor,
+                      const optional<DenseTensor>& seed_tensor,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
@@ -48,8 +48,8 @@ void DropoutRawKernel(const Context& dev_ctx,
   if (!is_test && mask) {
     int seed_data = 0;
     if (seed_tensor.get_ptr() != nullptr) {
-      if ((seed_tensor->place()).GetType() == phi::AllocationType::XPU) {
-        memory_utils::Copy(phi::CPUPlace(),
+      if ((seed_tensor->place()).GetType() == AllocationType::XPU) {
+        memory_utils::Copy(CPUPlace(),
                            &seed_data,
                            seed_tensor->place(),
                            seed_tensor->data<int>(),

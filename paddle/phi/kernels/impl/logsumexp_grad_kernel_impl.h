@@ -72,10 +72,10 @@ void LogsumexpGradKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(in, axis, reduce_all);
 
   if (reduce_all) {
-    auto x = phi::EigenVector<T>::Flatten(in);
-    auto y = phi::EigenVector<T>::Flatten(out);
-    auto dy = phi::EigenVector<T>::Flatten(out_grad);
-    auto dx = phi::EigenVector<T>::Flatten(*in_grad);
+    auto x = EigenVector<T>::Flatten(in);
+    auto y = EigenVector<T>::Flatten(out);
+    auto dy = EigenVector<T>::Flatten(out_grad);
+    auto dx = EigenVector<T>::Flatten(*in_grad);
     auto& place = *dev_ctx.eigen_device();
     auto broadcast_dim = Eigen::array<int, 1>({{static_cast<int>(in.numel())}});
     LogsumexpGradFunctor<T>()(

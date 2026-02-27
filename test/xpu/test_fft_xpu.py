@@ -325,6 +325,16 @@ class TestFftn(unittest.TestCase):
         # ('test_axis_not_default', rand_x(5), None, (1, 2), 'backward'),
         # ('test_norm_forward', rand_x(5), None, (1, 2), 'forward'),
         # ('test_norm_ortho', rand_x(5), None, (1, 2), 'ortho'),
+        (
+            'test_xpu_0size_pad',
+            (
+                np.random.randn(50, 8, 0, 14, 14)
+                + 1j * np.random.randn(50, 8, 0, 14, 14)
+            ).astype(np.complex64),
+            (39, 14, 14),
+            None,
+            'backward',
+        ),
     ],
 )
 class TestIFftn(unittest.TestCase):

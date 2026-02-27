@@ -22,7 +22,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 std::string GetFusedElement(const std::string &elementwise_type) {
   const std::map<std::string, std::string> fused_ops = {
       {"pd_op.add", "onednn_op.fused_elementwise_add"},
@@ -258,13 +258,13 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class ElementwiseActFusePass : public pir::PatternRewritePass {
+class ElementwiseActFusePass : public PatternRewritePass {
  public:
   ElementwiseActFusePass()
-      : pir::PatternRewritePass("elementwise_act_onednn_fuse_pass", 2) {}
+      : PatternRewritePass("elementwise_act_onednn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
 
     // This ten activations have no extra attribute, can use the same pattern
     std::vector<std::string> supported_activations_name = {"abs",
@@ -339,10 +339,6 @@ class ElementwiseActFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateElementwiseActivationFusePass() {
   /**
    *  elementxx
@@ -354,4 +350,4 @@ std::unique_ptr<Pass> CreateElementwiseActivationFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(elementwise_act_onednn_fuse_pass, ElementwiseActFusePass);
+REGISTER_IR_PASS(elementwise_act_onednn_fuse_pass, pir::ElementwiseActFusePass);

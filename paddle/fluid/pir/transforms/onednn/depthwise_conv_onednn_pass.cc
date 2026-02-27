@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
  private:
@@ -80,22 +80,18 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class DepthwiseConvONEDNNPass : public pir::PatternRewritePass {
+class DepthwiseConvONEDNNPass : public PatternRewritePass {
  public:
   DepthwiseConvONEDNNPass()
-      : pir::PatternRewritePass("depthwise_conv_onednn_pass", 2) {}
+      : PatternRewritePass("depthwise_conv_onednn_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<DepthwiseConvPattern>(
         context, paddle::dialect::DepthwiseConv2dOp::name()));
     return ps;
   }
 };
-
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateDepthwiseConvONEDNNPass() {
   // pd_op.depthwise_conv  -> pd_op.conv2d
@@ -104,4 +100,4 @@ std::unique_ptr<Pass> CreateDepthwiseConvONEDNNPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(depthwise_conv_onednn_pass, DepthwiseConvONEDNNPass);
+REGISTER_IR_PASS(depthwise_conv_onednn_pass, pir::DepthwiseConvONEDNNPass);

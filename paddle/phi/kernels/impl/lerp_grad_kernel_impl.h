@@ -31,12 +31,10 @@ static void LerpGradFunction(const Context& dev_ctx,
                              DenseTensor* y_grad) {
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     return;
   }
@@ -118,7 +116,7 @@ static void LerpGradFunctionZero(const Context& dev_ctx,
                                  const DenseTensor& out_grad,
                                  DenseTensor* x_grad,
                                  DenseTensor* y_grad) {
-  auto dim = common::make_ddim(std::vector<int64_t>(1, 1));
+  auto dim = make_ddim(std::vector<int64_t>(1, 1));
   auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
   auto eigen_dout = phi::EigenTensor<T, 1>::From(out_grad, dim);
 

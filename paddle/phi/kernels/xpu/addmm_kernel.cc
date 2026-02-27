@@ -84,8 +84,8 @@ void AddmmKernel(const Context& dev_ctx,
                         out->numel(),
                         static_cast<XPUType>(beta));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-      auto input_dims_vec = common::vectorize<int64_t>(input.dims());
-      auto out_dims_vec = common::vectorize<int64_t>(out->dims());
+      auto input_dims_vec = vectorize<int64_t>(input.dims());
+      auto out_dims_vec = vectorize<int64_t>(out->dims());
       r = xpu::broadcast_mul<XPUType>(dev_ctx.x_context(),
                                       input_ptr,
                                       reinterpret_cast<XPUType*>(beta_xpu),
@@ -157,7 +157,7 @@ void AddmmKernel(const Context& dev_ctx,
       r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
                                   input_ptr,
                                   input_2d_ptr,
-                                  common::vectorize<int64_t>(input_dims),
+                                  vectorize<int64_t>(input_dims),
                                   {x_dims[0], y_dims[1]});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
     }

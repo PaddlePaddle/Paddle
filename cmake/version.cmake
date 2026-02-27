@@ -4,6 +4,7 @@ set(PADDLE_VERSION $ENV{PADDLE_VERSION})
 if(NOT PADDLE_VERSION)
   file(READ "${CMAKE_SOURCE_DIR}/version.txt" PADDLE_VERSION)
   string(STRIP "${PADDLE_VERSION}" PADDLE_VERSION)
+
   message(STATUS "Paddle version from version.txt: ${PADDLE_VERSION}")
   execute_process(
     COMMAND ${GIT_EXECUTABLE} show -s --format=%ci HEAD
@@ -14,7 +15,29 @@ if(NOT PADDLE_VERSION)
   string(REPLACE "-" "" DATE_ONLY "${DATE_ONLY}")
   # Print the last commit date
   message(STATUS "Last commit date: ${DATE_ONLY}")
-  set(PADDLE_VERSION "${PADDLE_VERSION}.dev${DATE_ONLY}")
+
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_BRANCH_NAME
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(STATUS "Current branch: ${GIT_BRANCH_NAME}")
+
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short=11 HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  message(STATUS "Commit hash: ${GIT_COMMIT_HASH}")
+
+  if(GIT_BRANCH_NAME STREQUAL "develop")
+    set(PADDLE_VERSION "${PADDLE_VERSION}.dev${DATE_ONLY}")
+  elseif(GIT_BRANCH_NAME MATCHES "^release")
+    set(PADDLE_VERSION "${PADDLE_VERSION}.post${DATE_ONLY}+${GIT_COMMIT_HASH}")
+  else()
+    set(PADDLE_VERSION "${PADDLE_VERSION}.dev${DATE_ONLY}")
+  endif()
+  message(STATUS "Final Paddle version: ${PADDLE_VERSION}")
 endif()
 
 string(REPLACE "-" "." PADDLE_VER_LIST ${PADDLE_VERSION})

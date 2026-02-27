@@ -34,7 +34,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
                            bool align_corners,
                            DenseTensor* output) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == AllocationType::GPU,
       true,
       common::errors::InvalidArgument(
           "Only support for CUDAPlace.Please switch your context from "
@@ -50,11 +50,10 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   h_size_data[1] = size_attr[1];
   h_size_data[2] = size_attr[2];
   h_size_data[3] = size_attr[3];
-  output->Resize(common::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
+  output->Resize(make_ddim({n, h_size_data[2], h_size_data[3], 2}));
   T* output_data = dev_ctx.template Alloc<T>(output);
   if (input.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
   ScopedSpatialTransformerDescriptor st_desc;

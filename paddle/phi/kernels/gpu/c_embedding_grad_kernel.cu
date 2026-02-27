@@ -51,7 +51,7 @@ __global__ void CEmbeddingGrad(T* table,
     auto id = ids[row];
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
-      phi::CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
+      CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
     }
   }
 }
@@ -140,8 +140,6 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -152,14 +150,3 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    phi::float16,
                    phi::complex64,
                    phi::complex128) {}
-#else
-PD_REGISTER_KERNEL(c_embedding_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CEmbeddingGradKernel,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::complex64,
-                   phi::complex128) {}
-#endif

@@ -228,9 +228,8 @@ inline const IntT* PrepareSubm(const Context& dev_ctx,
 
     *rulebook_len = rulebook.dims()[1];
 
-    DenseTensor out_indices =
-        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    DenseTensor out_indices = EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values = EmptyLike<T>(dev_ctx, x.non_zero_elements());
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, false);

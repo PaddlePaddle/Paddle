@@ -40,7 +40,7 @@
 namespace phi {
 
 template <typename T>
-static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+static void GesvdjBatched(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -53,7 +53,7 @@ static void GesvdjBatched(const phi::GPUContext& dev_ctx,
                           int thin_UV = 1);
 
 template <typename T>
-void SyevjBatched(const phi::GPUContext& dev_ctx,
+void SyevjBatched(const GPUContext& dev_ctx,
                   int batchSize,
                   int n,
                   T* A,
@@ -61,7 +61,7 @@ void SyevjBatched(const phi::GPUContext& dev_ctx,
                   int* info);
 
 template <>
-void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<float>(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -123,7 +123,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                           info,
                                                           gesvdj_params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -140,7 +140,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<double>(const GPUContext& dev_ctx,
                            int batchSize,
                            int m,
                            int n,
@@ -203,7 +203,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                           gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -220,7 +220,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int m,
                                    int n,
@@ -283,7 +283,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         info,
         gesvdj_params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -300,7 +300,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                     int batchSize,
                                     int m,
                                     int n,
@@ -364,7 +364,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         info,
         gesvdj_params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -381,7 +381,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<float>(const GPUContext& dev_ctx,
                          int batchSize,
                          int n,
                          float* A,
@@ -420,7 +420,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
                                                          params));
 
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -438,7 +438,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<double>(const GPUContext& dev_ctx,
                           int batchSize,
                           int n,
                           double* A,
@@ -475,7 +475,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
                                                          info,
                                                          params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -493,7 +493,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                   int batchSize,
                                   int n,
                                   phi::complex64* A,
@@ -539,7 +539,7 @@ void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         info,
         params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -557,7 +557,7 @@ void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int n,
                                    phi::complex128* A,
@@ -604,7 +604,7 @@ void SyevjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         info,
         params));
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -648,8 +648,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<int64_t>(out);
     if (out && out->numel() != 0) {
-      phi::Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -760,7 +759,7 @@ template <typename T, typename Context>
 void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& atol,
-                              const paddle::optional<DenseTensor>& rtol,
+                              const optional<DenseTensor>& rtol,
                               bool hermitian,
                               DenseTensor* out) {
   using RealType = phi::dtype::Real<T>;
@@ -774,8 +773,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     out->Resize(dim_out);
     if (out && out->numel() != 0) {
-      phi::Full<int64_t, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
     }
     return;
   }
@@ -869,7 +867,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
         dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
 
     DenseTensor zero_tensor;
-    zero_tensor = phi::FullLike<RealType, Context>(
+    zero_tensor = FullLike<RealType, Context>(
         dev_ctx, default_rtol_tensor, static_cast<RealType>(0.0));
 
     DenseTensor atol_compare_result;

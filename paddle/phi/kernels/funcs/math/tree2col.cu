@@ -59,7 +59,7 @@ class Tree2ColFunctor<phi::GPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = dev_ctx.GetPlace();
-    auto cpu_place = phi::CPUPlace();
+    auto cpu_place = CPUPlace();
     auto stream = dev_ctx.stream();
     auto feature_dims = node_features.dims();
     funcs::SetConstant<phi::GPUContext, T> constant;
@@ -136,7 +136,7 @@ class Col2TreeFunctor<phi::GPUContext, T> {
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = dev_ctx.GetPlace();
-    auto cpu_place = phi::CPUPlace();
+    auto cpu_place = CPUPlace();
     auto stream = dev_ctx.stream();
     auto output_dims = patch_grad.dims();
     funcs::SetConstant<phi::GPUContext, T> constant;

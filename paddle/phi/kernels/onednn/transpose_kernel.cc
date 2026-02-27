@@ -30,8 +30,7 @@ void TransposeKernel(const Context& dev_ctx,
   // as we are producing non-oneDNN result
   auto x_dims = x.dims();
   if ((x_dims.size() >= 3) &&
-      (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-       DataLayout::NHWC)) {
+      (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC)) {
     int axis_size = static_cast<int>(axis.size());
     std::vector<int> formatted_axis = axis;
     std::vector<int> count(axis_size, 0);

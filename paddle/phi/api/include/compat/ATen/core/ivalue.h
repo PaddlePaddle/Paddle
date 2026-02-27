@@ -96,13 +96,12 @@ using GenericList = std::vector<IValue>;
 struct GenericTuple {
   std::vector<IValue> elements;
 
-  GenericTuple() = default;
-  GenericTuple(std::vector<IValue> elems)  // NOLINT
-      : elements(std::move(elems)) {}
+  GenericTuple();
+  GenericTuple(std::vector<IValue> elems);  // NOLINT
 
-  size_t size() const { return elements.size(); }
-  IValue& operator[](size_t idx) { return elements[idx]; }
-  const IValue& operator[](size_t idx) const { return elements[idx]; }
+  size_t size() const;
+  IValue& operator[](size_t idx);
+  const IValue& operator[](size_t idx) const;
 };
 
 class IValue {
@@ -535,6 +534,16 @@ class IValue {
   template <typename T>
   friend T generic_to(const IValue& ivalue, _fake_type<T>);
 };
+
+inline GenericTuple::GenericTuple() = default;
+inline GenericTuple::GenericTuple(std::vector<IValue> elems)  // NOLINT
+    : elements(std::move(elems)) {}
+
+inline size_t GenericTuple::size() const { return elements.size(); }
+inline IValue& GenericTuple::operator[](size_t idx) { return elements[idx]; }
+inline const IValue& GenericTuple::operator[](size_t idx) const {
+  return elements[idx];
+}
 
 template <>
 inline bool generic_to(const IValue& ivalue, _fake_type<bool>) {

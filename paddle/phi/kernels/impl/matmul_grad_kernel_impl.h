@@ -155,7 +155,7 @@ static DDim RowMatrixFromVector(const DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return common::make_ddim({1, x_dim[0]});
+  return make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -166,7 +166,7 @@ static DDim ColumnMatrixFromVector(const DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return common::make_ddim({y_dim[0], 1});
+  return make_ddim({y_dim[0], 1});
 }
 
 /**
@@ -286,14 +286,12 @@ void MatmulGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+    Full<T, Context>(dev_ctx, y.dims(), 0, dy);
     return;
   }
   if (y.numel() == 0) {
     dev_ctx.template Alloc<T>(dy);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+    Full<T, Context>(dev_ctx, x.dims(), 0, dx);
     return;
   }
   if (!transpose_x && transpose_y && y.dims().size() < 2) {
@@ -386,26 +384,77 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
 
     if (transpose_x && transpose_y) {
-      CalcInputGrad<T>(dev_ctx,
-                       y_conj,
-                       true,
-                       true,
-                       out_grad_help,
-                       true,
-                       false,
-                       dx,
-                       false,
-                       true);
-      CalcInputGrad<T>(dev_ctx,
-                       out_grad_help,
-                       true,
-                       true,
-                       x_conj,
-                       true,
-                       false,
-                       dy,
-                       false,
-                       true);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm && x_help.dims().size() == 3 &&
+          y_help.dims().size() == 3) {
+        // For batched case only (both x and y are 3D after reshape): match
+        // PyTorch's backward cublas call pattern (OP_N/OP_N instead of
+        // OP_T/OP_T), compute without transposes and transpose the results.
+        // dX = (dOut @ Y_conj)^T, dY = (X_conj @ dOut)^T
+        if (dx) {
+          auto dx_dims_orig = dx->dims();
+          DenseTensor dx_tmp = EmptyLike<T, Context>(dev_ctx, *dx);
+          dx_tmp.Resize({dx_tmp.dims()[0], dx_tmp.dims()[2], dx_tmp.dims()[1]});
+          CalcInputGrad<T>(dev_ctx,
+                           out_grad_help,
+                           false,
+                           true,
+                           y_conj,
+                           false,
+                           false,
+                           &dx_tmp,
+                           false,
+                           true);
+          dev_ctx.template Alloc<T>(dx);
+          std::vector<int> axis = {0, 2, 1};
+          funcs::Transpose<Context, T, 3> trans;
+          trans(dev_ctx, dx_tmp, dx, axis);
+          dx->Resize(dx_dims_orig);
+        }
+        if (dy) {
+          auto dy_dims_orig = dy->dims();
+          DenseTensor dy_tmp = EmptyLike<T, Context>(dev_ctx, *dy);
+          dy_tmp.Resize({dy_tmp.dims()[0], dy_tmp.dims()[2], dy_tmp.dims()[1]});
+          CalcInputGrad<T>(dev_ctx,
+                           x_conj,
+                           false,
+                           true,
+                           out_grad_help,
+                           false,
+                           false,
+                           &dy_tmp,
+                           false,
+                           true);
+          dev_ctx.template Alloc<T>(dy);
+          std::vector<int> axis = {0, 2, 1};
+          funcs::Transpose<Context, T, 3> trans;
+          trans(dev_ctx, dy_tmp, dy, axis);
+          dy->Resize(dy_dims_orig);
+        }
+      } else  // NOLINT
+#endif
+      {  // NOLINT
+        CalcInputGrad<T>(dev_ctx,
+                         y_conj,
+                         true,
+                         true,
+                         out_grad_help,
+                         true,
+                         false,
+                         dx,
+                         false,
+                         true);
+        CalcInputGrad<T>(dev_ctx,
+                         out_grad_help,
+                         true,
+                         true,
+                         x_conj,
+                         true,
+                         false,
+                         dy,
+                         false,
+                         true);
+      }
     } else if (transpose_x) {
       CalcInputGrad<T>(dev_ctx,
                        y_conj,
@@ -438,16 +487,48 @@ void MatmulGradKernel(const Context& dev_ctx,
                        dx,
                        false,
                        true);
-      CalcInputGrad<T>(dev_ctx,
-                       out_grad_help,
-                       true,
-                       true,
-                       x_conj,
-                       false,
-                       true,
-                       dy,
-                       false,
-                       true);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm && x_help.dims().size() == 3 &&
+          y_help.dims().size() == 3) {
+        // For batched case only (both x and y are 3D after reshape): match
+        // PyTorch's backward cublas call pattern for dY. Compute X_conj^T @
+        // dOut into a temp buffer with transposed shape, then transpose the
+        // result. This produces the same cublas descriptor layout as PyTorch,
+        // ensuring identical algorithm selection and bitwise alignment.
+        if (dy) {
+          auto dy_dims_orig = dy->dims();
+          DenseTensor dy_tmp = EmptyLike<T, Context>(dev_ctx, *dy);
+          dy_tmp.Resize({dy_tmp.dims()[0], dy_tmp.dims()[2], dy_tmp.dims()[1]});
+          CalcInputGrad<T>(dev_ctx,
+                           x_conj,
+                           true,
+                           true,
+                           out_grad_help,
+                           false,
+                           false,
+                           &dy_tmp,
+                           false,
+                           true);
+          dev_ctx.template Alloc<T>(dy);
+          std::vector<int> axis = {0, 2, 1};
+          funcs::Transpose<Context, T, 3> trans;
+          trans(dev_ctx, dy_tmp, dy, axis);
+          dy->Resize(dy_dims_orig);
+        }
+      } else  // NOLINT
+#endif
+      {  // NOLINT
+        CalcInputGrad<T>(dev_ctx,
+                         out_grad_help,
+                         true,
+                         true,
+                         x_conj,
+                         false,
+                         true,
+                         dy,
+                         false,
+                         true);
+      }
     } else {
       CalcInputGrad<T>(dev_ctx,
                        out_grad_help,
@@ -596,8 +677,8 @@ void MatmulGradKernel(const Context& dev_ctx,
             std::vector<std::int64_t> out_grad_2d_dim{BN, dout_dims[ndim - 2]};
             std::vector<std::int64_t> y_conj_2d_dim{BN, y_dims[y_ndim - 2]};
 
-            out_grad_processed.Resize(common::make_ddim(out_grad_2d_dim));
-            y_conj_processed.Resize(common::make_ddim(y_conj_2d_dim));
+            out_grad_processed.Resize(make_ddim(out_grad_2d_dim));
+            y_conj_processed.Resize(make_ddim(y_conj_2d_dim));
             // 2D x 2D -> 2D
             MatMulFunction<Context, T>(dev_ctx,
                                        out_grad_processed,
@@ -615,7 +696,7 @@ void MatmulGradKernel(const Context& dev_ctx,
             }
             x_grad_dim[ndim - 2] = dx_help.dims()[0];
             x_grad_dim[ndim - 1] = dx_help.dims()[1];
-            dx_help.Resize(common::make_ddim(x_grad_dim));
+            dx_help.Resize(make_ddim(x_grad_dim));
 
           } else  // NOLINT
 #endif
@@ -646,8 +727,8 @@ void MatmulGradKernel(const Context& dev_ctx,
 
             DenseTensor out_grad_processed = out_grad;
             DenseTensor x_conj_processed = x_conj;
-            out_grad_processed.Resize(common::make_ddim(out_grad_2d_dim));
-            x_conj_processed.Resize(common::make_ddim(x_conj_2d_dim));
+            out_grad_processed.Resize(make_ddim(out_grad_2d_dim));
+            x_conj_processed.Resize(make_ddim(x_conj_2d_dim));
 
             MatMulFunction<Context, T>(dev_ctx,
                                        x_conj_processed,
@@ -664,7 +745,7 @@ void MatmulGradKernel(const Context& dev_ctx,
             }
             y_grad_dim[ndim - 2] = dy_help.dims()[0];
             y_grad_dim[ndim - 1] = dy_help.dims()[1];
-            dy_help.Resize(common::make_ddim(y_grad_dim));
+            dy_help.Resize(make_ddim(y_grad_dim));
 
           } else  // NOLINT
 #endif
@@ -756,8 +837,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            const paddle::optional<DenseTensor>& ddx,
-                            const paddle::optional<DenseTensor>& ddy,
+                            const optional<DenseTensor>& ddx,
+                            const optional<DenseTensor>& ddy,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* dx,
@@ -1156,11 +1237,11 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            const paddle::optional<DenseTensor>& ddx,
-                            const paddle::optional<DenseTensor>& ddy,
-                            const paddle::optional<DenseTensor>& d_dx,
-                            const paddle::optional<DenseTensor>& d_dy,
-                            const paddle::optional<DenseTensor>& d_ddout,
+                            const optional<DenseTensor>& ddx,
+                            const optional<DenseTensor>& ddy,
+                            const optional<DenseTensor>& d_dx,
+                            const optional<DenseTensor>& d_dy,
+                            const optional<DenseTensor>& d_ddout,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* out_d_x,
@@ -2196,18 +2277,17 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulWithFlattenDoubleGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const DenseTensor& out_grad,
-    const paddle::optional<DenseTensor>& x_grad_grad,
-    const paddle::optional<DenseTensor>& y_grad_grad,
-    int x_num_col_dims,
-    int y_num_col_dims,
-    DenseTensor* x_grad,
-    DenseTensor* y_grad,
-    DenseTensor* out_grad_grad) {
+void MatmulWithFlattenDoubleGradKernel(const Context& dev_ctx,
+                                       const DenseTensor& x,
+                                       const DenseTensor& y,
+                                       const DenseTensor& out_grad,
+                                       const optional<DenseTensor>& x_grad_grad,
+                                       const optional<DenseTensor>& y_grad_grad,
+                                       int x_num_col_dims,
+                                       int y_num_col_dims,
+                                       DenseTensor* x_grad,
+                                       DenseTensor* y_grad,
+                                       DenseTensor* out_grad_grad) {
   auto x_mat =
       x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims) : x;
   auto y_mat =

@@ -37,10 +37,10 @@ void FlipKernel(const Context& dev_ctx,
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  std::vector<int64_t> x_shape = common::vectorize(x.dims());
+  std::vector<int64_t> x_shape = vectorize(x.dims());
   auto x_data = reinterpret_cast<const XPUInTDType*>(x.data<T>());
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   auto numel = x.numel();

@@ -34,14 +34,14 @@ void ActivationImpl(const Context& dev_ctx,
   if (Out->numel() == 0) {
     return;
   }
-  auto x = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(&X, "Input", "X", "Activation"));
-  auto out = phi::EigenVector<U>::Flatten(
+  auto x =
+      EigenVector<T>::Flatten(GET_DATA_SAFELY(&X, "Input", "X", "Activation"));
+  auto out = EigenVector<U>::Flatten(
       GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
   auto* place = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     functor(*place, To32BitIndex(x), To32BitIndex(out));
   } else {

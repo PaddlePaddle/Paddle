@@ -168,7 +168,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
+                       CPUPlace(),
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
                        dev_ctx.stream());
@@ -224,7 +224,7 @@ void DeterminantKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());
@@ -240,12 +240,12 @@ void DeterminantKernel(const Context& dev_ctx,
                         "the input matrix should be square matrix."));
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
   DeterminantCudaFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
-  auto output_dims = common::slice_ddim(x.dims(), 0, input_dim_size - 2);
+  auto output_dims = slice_ddim(x.dims(), 0, input_dim_size - 2);
   if (input_dim_size > 2) {
     out->Resize(output_dims);
   } else {
     // when input is a two-dimension matrix, The det value is a number.
-    out->Resize(common::make_ddim({}));
+    out->Resize(make_ddim({}));
   }
   VLOG(10) << "output dim:" << out->dims();
 }

@@ -21,7 +21,7 @@ namespace fusion {
 template <typename T, typename Context>
 void YoloBoxXPUKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& x_max,
+                      const optional<DenseTensor>& x_max,
                       const DenseTensor& grid,
                       const DenseTensor& stride,
                       const DenseTensor& anchor_grid,

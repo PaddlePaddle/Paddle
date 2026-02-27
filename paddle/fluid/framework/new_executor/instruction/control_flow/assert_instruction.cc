@@ -22,8 +22,8 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle::framework {
 AssertInstruction::AssertInstruction(size_t id,
-                                     const phi::Place& place,
-                                     ::pir::Operation* op,
+                                     const Place& place,
+                                     pir::Operation* op,
                                      ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place),
       op_(op),
@@ -60,7 +60,7 @@ void AssertInstruction::Run() {
   }
 
   DeviceContext().Wait();
-  const phi::DenseTensor& cond = cond_var_->Get<phi::DenseTensor>();
+  const phi::DenseTensor& cond = cond_var_->Get<DenseTensor>();
 
   PADDLE_ENFORCE_EQ(
       cond.numel(),
@@ -77,17 +77,17 @@ void AssertInstruction::Run() {
 
   phi::funcs::TensorFormatter formatter;
   formatter.SetSummarize(
-      op_->attribute<::pir::Int64Attribute>("summarize").data());
+      op_->attribute<pir::Int64Attribute>("summarize").data());
 
   const std::vector<pir::Value>& inputs_data_val =
       op_->dyn_cast<paddle::dialect::AssertOp>()
           .data()
-          .defining_op<::pir::CombineOp>()
+          .defining_op<pir::CombineOp>()
           .inputs();
   for (pir::Value val : inputs_data_val) {
     const std::string& name = value_exe_info_->GetVarName(val);
     const phi::DenseTensor& tensor =
-        value_exe_info_->GetVarByValue(val)->Get<phi::DenseTensor>();
+        value_exe_info_->GetVarByValue(val)->Get<DenseTensor>();
     formatter.Print(tensor, name);
   }
   const std::string& error_msg = [&]() -> std::string {

@@ -48,7 +48,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
   int64_t dim_idx = idx % (stride * size) / stride;
   IndexT src_dim_idx = index[dim_idx];
   int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+  CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
 template <typename T, int VecSize>
@@ -61,16 +61,33 @@ __global__ void index_select_grad_init(T* input_grad, int64_t numel) {
   T set_value[VecSize];
 #pragma unroll
   for (int i = 0; i < VecSize; i++) {
-    set_value[i] = 0;
+    set_value[i] = static_cast<T>(0);
   }
   const VecType* vec_value = reinterpret_cast<const VecType*>(&set_value[0]);
 
+  const int64_t vectorizable_limit = numel - VecSize;
+
 #pragma unroll
   for (int64_t i = tid; i < numel; i += blockDim.x * gridDim.x * VecSize) {
-    VecType* vec_output = reinterpret_cast<VecType*>(&input_grad[tid]);
-    *vec_output = *vec_value;
+    if constexpr (VecSize == 1) {
+      VecType* vec_output = reinterpret_cast<VecType*>(&input_grad[i]);
+      *vec_output = *vec_value;
+    } else {
+      // Hint compiler to prioritize the vectorized fast path for better
+      // performance.
+      if (__builtin_expect(i <= vectorizable_limit, 1)) {
+        VecType* vec_output = reinterpret_cast<VecType*>(&input_grad[i]);
+        *vec_output = *vec_value;
+      } else {
+#pragma unroll
+        for (int64_t j = i; j < numel; j++) {
+          input_grad[j] = static_cast<T>(0);
+        }
+      }
+    }
   }
 }
+
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
     const Context& dev_ctx,
@@ -116,7 +133,13 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   int64_t numel = x_grad->numel();
   int64_t out_nums = out_grad.numel();
   auto* out_grad_data = out_grad.data<T>();
+
   dev_ctx.template Alloc<T>(x_grad);
+
+  if (numel == 0) {
+    return;
+  }
+
   auto* in_grad_data = x_grad->data<T>();
   auto stream = dev_ctx.stream();
   int vec_size = 8;
@@ -222,7 +245,9 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
+
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -231,4 +256,5 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}

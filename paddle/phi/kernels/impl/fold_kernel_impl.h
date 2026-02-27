@@ -36,7 +36,7 @@ void FoldKernel(const Context& dev_ctx,
   const int64_t batch_size = x.dims()[0];
   dev_ctx.template Alloc<T>(out);
 
-  funcs::Col2ImFunctor<funcs::ColFormat::kCFO, Context, T> col2im;
+  funcs::Col2ImFunctor<funcs::ColFormat::CFO, Context, T> col2im;
   const auto& x_dims = x.dims();
 
   int output_height = (output_sizes[0] + 2 * paddings[0] -
@@ -52,9 +52,9 @@ void FoldKernel(const Context& dev_ctx,
   int64_t n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);
 
   DDim output_shape =
-      common::make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
+      make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
 
-  DDim input_matrix_shape = common::make_ddim(
+  DDim input_matrix_shape = make_ddim(
       {1, kernel_sizes[0], kernel_sizes[1], output_height, output_width});
 
   funcs::SetConstant<Context, T> set_zero;

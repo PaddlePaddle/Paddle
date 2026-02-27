@@ -93,6 +93,7 @@ class TestGeometricInplaceDistribution(unittest.TestCase):
         )
 
 
+# Test empty tensor
 class TestGeometricInplaceEmptyTensor(unittest.TestCase):
     def test_geometric_inplace_op_empty_tensor(self):
         test_shapes = [(200, 1), (1, 200)]

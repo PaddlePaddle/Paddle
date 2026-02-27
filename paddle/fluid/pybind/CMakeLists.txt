@@ -7,8 +7,7 @@ set(PYBIND_DEPS
     standalone_executor
     executor
     fleet_wrapper
-    box_wrapper
-    metrics
+    gloo_wrapper
     prune
     feed_fetch_method
     pass
@@ -24,12 +23,9 @@ set(PYBIND_DEPS
     imperative_profiler
     imperative_flag
     dlpack_tensor
-    device_context
     gloo_wrapper
     infer_io_utils
-    heter_wrapper
     op_version_registry
-    ps_gpu_wrapper
     custom_operator
     cost_model
     global_utils
@@ -125,8 +121,6 @@ set(PYBIND_SRCS
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
     gloo_wrapper_py.cc
-    box_helper_py.cc
-    metrics_py.cc
     data_set_py.cc
     bind_cost_model.cc
     compatible.cc
@@ -140,10 +134,13 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     sot/eval_frame_tools.cc
-    sot/cpython_internals.c
     sot/frame_proxy.c
     sot/eval_frame.c
     sot/guards.cc
+    sot/cpython_internals/internals_3_11.c
+    sot/cpython_internals/internals_3_12.c
+    sot/cpython_internals/internals_3_13.c
+    sot/cpython_internals/internals_3_14.c
     op_callstack_utils.cc
     python_callable_registry.cc
     arg_pre_process.cc

@@ -174,6 +174,21 @@ class TestTakeAlongAxisAPICase1(XPUTestTakeAlongAxisAPI):
         self.axis = 0
 
 
+class TestTakeAlongAxisGradientEmptyIndicesXPU(unittest.TestCase):
+    """This case reproduces backward error when indices has zero-sized dimension."""
+
+    def test_grad_empty_indices(self):
+        place = paddle.XPUPlace(0)
+        paddle.disable_static(place)
+        x = paddle.randn([128, 1000], dtype='float32')
+        x.stop_gradient = False
+        indices = paddle.empty([128, 0], dtype='int32')
+        out = x.take_along_axis(indices=indices, axis=-1)
+        out_sum = out.sum()
+        out_sum.backward()
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('take_along_axis')
 for stype in support_types:
     create_test_class(globals(), XPUTestTakeAlongAxis, stype)

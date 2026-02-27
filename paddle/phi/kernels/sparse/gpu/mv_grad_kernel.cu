@@ -86,17 +86,13 @@ void MvCooGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCoo} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
 
     auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
     sparse_blas.SPMV(true, static_cast<T>(1), x, dout, static_cast<T>(0), dvec);
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        " vec.grad of 'sparse.mv' use cusparseSpMV, "
-        "which is supported from CUDA 11.0"));
 #endif
   }
 }
@@ -134,17 +130,13 @@ void MvCsrGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCsr} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
 
     auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
     sparse_blas.SPMV(true, static_cast<T>(1), x, dout, static_cast<T>(0), dvec);
-#else
-    PADDLE_THROW(common::errors::Unimplemented(
-        " vec.grad of 'sparse.mv' use cusparseSpMV, "
-        "which is supported from CUDA 11.0"));
 #endif
   }
 }

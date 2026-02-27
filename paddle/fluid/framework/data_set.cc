@@ -26,11 +26,6 @@
 #include "paddle/phi/core/platform/monitor.h"
 #include "paddle/phi/core/platform/timer.h"
 
-#ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
-#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
-#endif
-
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX

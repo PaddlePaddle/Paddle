@@ -22,10 +22,10 @@ namespace phi {
 template <typename T, typename Context>
 void RmsNormQuantGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& bias,
-                            const paddle::optional<DenseTensor>& residual,
+                            const optional<DenseTensor>& bias,
+                            const optional<DenseTensor>& residual,
                             const DenseTensor& norm_weight,
-                            const paddle::optional<DenseTensor>& norm_bias,
+                            const optional<DenseTensor>& norm_bias,
                             const DenseTensor& inv_var,
                             const DenseTensor& out_grad,
                             const float epsilon,
@@ -37,18 +37,10 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     if (norm_weight_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(norm_weight_grad->dims())),
-          0,
-          norm_weight_grad);
+      Full<T, Context>(dev_ctx, norm_weight_grad->dims(), 0, norm_weight_grad);
     }
     if (norm_bias_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(norm_bias_grad->dims())),
-          0,
-          norm_bias_grad);
+      Full<T, Context>(dev_ctx, norm_bias_grad->dims(), 0, norm_bias_grad);
     }
     return;
   }

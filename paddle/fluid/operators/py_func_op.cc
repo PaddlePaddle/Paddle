@@ -63,8 +63,8 @@ static std::string PythonFuncDebugString(const py::object &py_callable) {
 }
 
 static void CallPythonFunc(py::object *callable,
-                           const std::vector<phi::DenseTensor> &ins,
-                           std::vector<phi::DenseTensor *> *outs) {
+                           const std::vector<DenseTensor> &ins,
+                           std::vector<DenseTensor *> *outs) {
   py::gil_scoped_acquire guard;
   py::tuple in_args(ins.size());
   for (size_t i = 0; i < ins.size(); ++i) {
@@ -97,7 +97,7 @@ static void CallPythonFunc(py::object *callable,
             out_num));
 
     PADDLE_ENFORCE_EQ(
-        py::cast<phi::DenseTensor *>(ret_tuple[0]) == nullptr,
+        py::cast<DenseTensor *>(ret_tuple[0]) == nullptr,
         true,
         common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
@@ -111,7 +111,7 @@ static void CallPythonFunc(py::object *callable,
       continue;
     }
     try {
-      auto *py_out_tensor = py::cast<phi::DenseTensor *>(ret_tuple[i]);
+      auto *py_out_tensor = py::cast<DenseTensor *>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
                               common::errors::InvalidArgument(
                                   "Output tensor %d should not be nullptr", i));
@@ -119,7 +119,7 @@ static void CallPythonFunc(py::object *callable,
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "py::cast to phi::DenseTensor error. The %d-th output exception is "
+          "py::cast to DenseTensor error. The %d-th output exception is "
           "phi::DenseTensor",
           i));
     }
@@ -314,14 +314,14 @@ class PyFuncOp : public framework::OperatorBase {
     auto &in_arg_names = Inputs("X");
     auto &out_arg_names = Outputs("Out");
 
-    std::vector<phi::DenseTensor> inputs(in_arg_names.size());
+    std::vector<DenseTensor> inputs(in_arg_names.size());
     for (size_t i = 0; i < in_arg_names.size(); ++i) {
       auto in_var = scope.FindVar(in_arg_names[i]);
       // When py_func op is called in backward, in_var may be null
       if (in_var == nullptr) {
         continue;
       }
-      auto &in_tensor = in_var->Get<phi::DenseTensor>();
+      auto &in_tensor = in_var->Get<DenseTensor>();
       if (!in_tensor.IsInitialized()) {
         continue;
       }
@@ -333,10 +333,10 @@ class PyFuncOp : public framework::OperatorBase {
       inputs[i].set_lod(in_tensor.lod());
     }
 
-    std::vector<phi::DenseTensor *> outputs(out_arg_names.size());
+    std::vector<DenseTensor *> outputs(out_arg_names.size());
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto *out_var = scope.FindVar(out_arg_names[i]);
-      outputs[i] = out_var ? out_var->GetMutable<phi::DenseTensor>() : nullptr;
+      outputs[i] = out_var ? out_var->GetMutable<DenseTensor>() : nullptr;
     }
 
     auto callable_id =

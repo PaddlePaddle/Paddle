@@ -432,7 +432,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
               (*y_bd_dims)[i]));
       (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
     }
-    out->Resize(common::make_ddim((out_dims)));
+    out->Resize(make_ddim((out_dims)));
   }
 }
 
@@ -440,7 +440,7 @@ template <typename T, typename Context>
 void FusedMatmulKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        const DenseTensor &y,
-                       const paddle::optional<DenseTensor> &residual_data,
+                       const optional<DenseTensor> &residual_data,
                        bool transpose_x,
                        bool transpose_y,
                        const float matmul_alpha,

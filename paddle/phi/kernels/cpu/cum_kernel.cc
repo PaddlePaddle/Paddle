@@ -65,7 +65,7 @@ void ScanKernel(const Context& dev_ctx,
 
   if (x.numel() == 1) {
     auto raw_dims = out->dims();
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     out->Resize(raw_dims);
     return;
   }

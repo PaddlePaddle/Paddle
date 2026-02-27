@@ -226,7 +226,7 @@ CostData CostModel::ProfileMeasure(
   std::string device_lower_case = ToLowerCopy(device);
   if (device_lower_case == "cpu") {
     profiler_state = platform::ProfilerState::kCPU;
-    place = phi::CPUPlace();
+    place = CPUPlace();
   } else if (device_lower_case == "gpu") {
     profiler_state = platform::ProfilerState::kAll;
     place = phi::GPUPlace();

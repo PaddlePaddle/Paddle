@@ -24,18 +24,18 @@ class ValueExecutionInfo;
 class SelectInputInstruction : public InstructionBase {
  public:
   SelectInputInstruction(size_t id,
-                         const phi::Place& place,
-                         ::pir::Operation* op,
+                         const Place& place,
+                         pir::Operation* op,
                          ValueExecutionInfo* value_exe_info);
 
   void Run() override;
 
   const std::string& Name() const override { return name_; }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
  private:
-  ::pir::Operation* op_;
+  pir::Operation* op_;
 
   OpFuncType type_;
 

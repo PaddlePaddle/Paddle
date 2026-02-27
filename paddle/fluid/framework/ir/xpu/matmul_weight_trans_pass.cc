@@ -148,7 +148,7 @@ void MatmulWeightTransPass::TransMatmulV2Weight(ir::Graph* graph) const {
         scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     auto* matmul_y_t =
-        scope->GetVar(matmul_y->Name())->GetMutable<phi::DenseTensor>();
+        scope->GetVar(matmul_y->Name())->GetMutable<DenseTensor>();
     Transpose2D(matmul_y_t);
     auto from_shape = matmul_y->Var()->GetShape();
     matmul_y->Var()->SetShape({from_shape[1], from_shape[0]});

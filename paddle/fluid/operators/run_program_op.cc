@@ -67,18 +67,18 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<phi::DenseTensor>)"
+             "(vector<DenseTensor>)"
              "The input tensors of RunProgram operator, also the feed targets "
              "of loaded program.")
         .AsDuplicable();
     AddInput("Params",
-             "(vector<phi::DenseTensor or SelectedRows>)"
+             "(vector<DenseTensor or SelectedRows>)"
              "The input parameter of RunProgram operator, also the parameters "
              "of the loaded program.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
-              "(vector<phi::DenseTensor>)"
+              "(vector<DenseTensor>)"
               "The output tensors of RunProgram operator, also the fetch "
               "targets of the loaded program.")
         .AsDuplicable();
@@ -89,7 +89,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
     AddOutput("DOut",
-              "(vector<phi::DenseTensor>)"
+              "(vector<DenseTensor>)"
               "The output tensors for GRAD Tensors in RunProgram forward "
               "operator, the forward operator contains GRAD Tensors when it "
               "computes double grad.")

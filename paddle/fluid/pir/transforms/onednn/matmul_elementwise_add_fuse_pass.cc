@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
@@ -189,13 +189,13 @@ class FusedMatmulElementwiseAddFusePattern
   }
 };
 
-class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
+class MatmulElementwiseAddFusePass : public PatternRewritePass {
  public:
   MatmulElementwiseAddFusePass()
-      : pir::PatternRewritePass("matmul_elementwise_add_fuse_pass", 2) {}
+      : PatternRewritePass("matmul_elementwise_add_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     std::vector<bool> bool_set = {false, true};
     int benefit_idx = 1;
     for (auto as_x : bool_set) {
@@ -221,10 +221,6 @@ class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateMatmulElementwiseAddFusePass() {
   // pd_op.matmul + pd_op.add -> onednn_op.fused_matmul
   // onednn_op.fused_matmul + pd_op.add -> onednn_op.fused_matmul
@@ -233,4 +229,4 @@ std::unique_ptr<Pass> CreateMatmulElementwiseAddFusePass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(matmul_elementwise_add_fuse_pass,
-                 MatmulElementwiseAddFusePass);
+                 pir::MatmulElementwiseAddFusePass);

@@ -158,7 +158,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -304,7 +304,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -345,7 +345,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -393,7 +393,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -441,7 +441,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name UNUSED,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs's types when contains complex input
@@ -457,9 +457,8 @@ template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    auto &dout =
-        *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<DenseTensor>(framework::GradVarName("X"));
+    auto &dout = *context.Input<DenseTensor>(framework::GradVarName("Out"));
     phi::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };

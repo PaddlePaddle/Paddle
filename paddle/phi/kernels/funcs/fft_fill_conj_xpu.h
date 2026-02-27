@@ -23,7 +23,8 @@
 
 namespace xfft_internal::xpu {
 template <typename T>  // T supports float2, double2
-int FFTFillConj(int64_t N,
+int FFTFillConj(const XPUStream stream,
+                int64_t N,
                 const T* src_data,
                 T* dst_data,
                 const int64_t* src_strides,
@@ -35,7 +36,8 @@ int FFTFillConj(int64_t N,
                 int64_t rank);
 
 template <typename T>  // T supports float2, double2
-int FFTFillConjGrad(int N,
+int FFTFillConjGrad(const XPUStream stream,
+                    int N,
                     T* input,
                     int64_t axis,
                     int64_t stride_second_to_last_axis,
@@ -97,9 +99,8 @@ void FFTFillConj(const DeviceContext& dev_ctx,
              _is_fft_axis.get(),
              rank * sizeof(bool),
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::FFTFillConj(
+      dev_ctx.x_context()->xpu_stream,
       dst->numel(),
       reinterpret_cast<cuFloatComplex*>(src_data),
       reinterpret_cast<cuFloatComplex*>(dst_data),
@@ -111,7 +112,6 @@ void FFTFillConj(const DeviceContext& dev_ctx,
       static_cast<int64_t>(last_axis_size),
       static_cast<int64_t>(rank));
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 template <typename DeviceContext, typename C>
@@ -127,9 +127,8 @@ void FFTFillConjGrad(const DeviceContext& dev_ctx,
     stride_to_last_axis *= ddim[i + 1];
   }
   int64_t stride_second_to_last_axis = stride_to_last_axis * ddim[axes.back()];
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(dev_ctx.x_context()->xpu_stream));
   int r = xfft_internal::xpu::FFTFillConjGrad(
+      dev_ctx.x_context()->xpu_stream,
       x_grad->numel(),
       reinterpret_cast<cuFloatComplex*>(x_grad->data<C>()),
       axes.back(),
@@ -137,7 +136,6 @@ void FFTFillConjGrad(const DeviceContext& dev_ctx,
       stride_to_last_axis,
       double_length);
   PADDLE_ENFORCE_XPU_SUCCESS(r);
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
 }
 
 }  // namespace funcs

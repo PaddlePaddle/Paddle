@@ -47,8 +47,7 @@ PADDLE_API void TestHandleComplexGradToRealGradEager(
     const NameVarMap<egr::EagerVariable>& outs);
 #endif
 
-PADDLE_API const phi::DenseTensor* GetTensorFromVar(
-    const framework::Variable& var);
+PADDLE_API const DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -122,7 +121,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                 cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
-            phi::DenseTensor out;
+            DenseTensor out;
             framework::TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out, place);
             if (framework::NeedTransformDataType(kernel_type_for_var,
@@ -309,7 +308,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     if (it == ins.end()) {
       if (LIKELY(input_defs[i].type_index ==
-                 std::type_index(typeid(paddle::optional<phi::DenseTensor>)))) {
+                 std::type_index(typeid(paddle::optional<DenseTensor>)))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -320,9 +319,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                  input_defs[i].type_index ==
                      std::type_index(typeid(paddle::optional<phi::Strings>)) ||
                  input_defs[i].type_index ==
-                     std::type_index(
-                         typeid(paddle::optional<
-                                std::vector<const phi::DenseTensor*>>))) {
+                     std::type_index(typeid(
+                         paddle::optional<std::vector<const DenseTensor*>>))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -343,8 +341,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const phi::TensorBase* tensor_in = nullptr;
       auto& var = ins_vector[offset]->Var();
-      if (var.template IsType<phi::DenseTensor>()) {
-        tensor_in = &(var.template Get<phi::DenseTensor>());
+      if (var.template IsType<DenseTensor>()) {
+        tensor_in = &(var.template Get<DenseTensor>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<phi::SelectedRows>()) {
         tensor_in = &(var.template Get<phi::SelectedRows>());
@@ -391,8 +389,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset]->MutableVar();
       if (var) {
-        if (var->template IsType<phi::DenseTensor>()) {
-          tensor_out = var->template GetMutable<phi::DenseTensor>();
+        if (var->template IsType<DenseTensor>()) {
+          tensor_out = var->template GetMutable<DenseTensor>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
@@ -696,7 +694,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
-        phi::DenseTensor tmp_tensor;
+        DenseTensor tmp_tensor;
         framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
         SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());

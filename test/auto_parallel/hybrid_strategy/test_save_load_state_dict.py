@@ -18,6 +18,7 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
+# should be set to FLAGS_enable_pir_api=1
 os.environ['FLAGS_enable_pir_api'] = '0'
 
 
@@ -143,6 +144,25 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
             },
         )
         ckpt_path.cleanup()
+
+    def test_save_load_with_error_message(self):
+        """Test logger missing key and unexpected keys."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, {"device_num": ["1", "2"]}
+        )
+        for envs in envs_list:
+            envs["ckpt_path"] = ckpt_path.name
+            super().setUp(
+                num_of_devices=int(envs["device_num"]),
+                timeout=60,
+                nnode=1,
+            )
+            self.run_test_case(
+                "test_save_load_with_error_message.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path.cleanup()
 
 
 if __name__ == '__main__':

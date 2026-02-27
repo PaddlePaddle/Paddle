@@ -143,13 +143,11 @@ phi::KernelKey FusedBatchNormAddActOp::GetExpectedKernelType(
 
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<DenseTensor>("Scale")->dtype()),
       common::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(ctx.Input<DenseTensor>("Bias")->dtype()),
       common::errors::InvalidArgument("Bias input should be of float type"));
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
@@ -264,9 +262,9 @@ phi::KernelKey FusedBatchNormAddActGradOp::GetExpectedKernelType(
     PADDLE_THROW(common::errors::NotFound(
         "Can not find Y@GRAD in the execution context."));
   }
-  const phi::DenseTensor *t = nullptr;
-  if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
+  const DenseTensor *t = nullptr;
+  if (var->IsType<DenseTensor>()) {
+    t = &var->Get<DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

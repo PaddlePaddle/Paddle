@@ -155,11 +155,10 @@ __global__ void GPURoiAlignBackward(const IndexType nthreads,
         T diff3 = out_grad_this_bin * w3 / count;
         T diff4 = out_grad_this_bin * w4 / count;
         if (x_low >= 0 && x_high >= 0 && y_low >= 0 && y_high >= 0) {
-          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
-          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
-          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
-          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_high,
-                             diff4);
+          CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
+          CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
+          CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
+          CudaAtomicAdd(offset_input_grad + y_high * width + x_high, diff4);
         }
       }
     }
@@ -170,7 +169,7 @@ template <typename T, typename Context>
 void RoiAlignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& boxes,
-                        const paddle::optional<DenseTensor>& boxes_num,
+                        const optional<DenseTensor>& boxes_num,
                         const DenseTensor& out_grad,
                         int pooled_height,
                         int pooled_width,
@@ -180,9 +179,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         DenseTensor* dx) {
   if (x.numel() == 0 || boxes.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
-
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(dx->dims()), 0.0, dx->dtype(), dx);
+    Full<T>(dev_ctx, dx->dims(), 0.0, dx);
     return;
   }
 
@@ -205,7 +202,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   box_batch_id_list.Resize({rois_num});
   int* box_batch_size = dev_ctx.template HostAlloc<int>(&box_batch_id_list);
 
-  auto cplace = phi::CPUPlace();
+  auto cplace = CPUPlace();
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();

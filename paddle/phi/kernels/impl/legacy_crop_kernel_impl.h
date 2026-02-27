@@ -54,7 +54,7 @@ void CropFunction(const Context &dev_ctx,
 template <typename T, typename Context>
 void CropKernel(const Context &dev_ctx,
                 const DenseTensor &x,
-                const paddle::optional<DenseTensor> &y,
+                const optional<DenseTensor> &y,
                 const IntArray &offsets_in,
                 const std::vector<int> &shape,
                 DenseTensor *out) {
@@ -122,7 +122,7 @@ void CropGradFunction(const Context &dev_ctx,
 template <typename T, typename Context>
 void CropGradKernel(const Context &dev_ctx,
                     const DenseTensor &x,
-                    const paddle::optional<DenseTensor> &y,
+                    const optional<DenseTensor> &y,
                     const DenseTensor &out_grad,
                     const IntArray &offsets,
                     const std::vector<int> &shape,

@@ -27,24 +27,24 @@ namespace distributed {
 template <typename DeviceContext, typename T>
 struct ConcatDenseTensorByNumel {
   void operator()(const DeviceContext &context,
-                  const std::vector<phi::DenseTensor> &in,
-                  phi::DenseTensor *out) {
+                  const std::vector<DenseTensor> &in,
+                  DenseTensor *out) {
     if (out->numel() == 0) {
       return;
     }
 
     auto out_dims = common::vectorize(out->dims());
     auto flattened_out_dims = {out->numel()};
-    std::vector<phi::DenseTensor> in_flatten;
+    std::vector<DenseTensor> in_flatten;
     std::vector<std::vector<int64_t>> origin_in_dims;
 
-    phi::DenseTensor out_flatten(out->Holder(), out->meta());
+    DenseTensor out_flatten(out->Holder(), out->meta());
     out_flatten.Resize(flattened_out_dims);
 
     int64_t in_numel_sum = 0;
     for (auto &tensor : in) {
       if (tensor.numel() > 0) {
-        phi::DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
+        DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
         tensor_flatten.Resize({tensor.numel()});
         in_flatten.push_back(tensor_flatten);
         in_numel_sum += tensor.numel();
@@ -61,11 +61,10 @@ struct ConcatDenseTensorByNumel {
 };
 
 template <typename DeviceContext>
-void ConcatDenseTensorByNumelWithType(
-    const DeviceContext &dev_ctx,
-    const std::vector<phi::DenseTensor> &t_list,
-    phi::DenseTensor *p_out,
-    phi::DataType type) {
+void ConcatDenseTensorByNumelWithType(const DeviceContext &dev_ctx,
+                                      const std::vector<DenseTensor> &t_list,
+                                      DenseTensor *p_out,
+                                      phi::DataType type) {
   switch (type) {
     case phi::DataType::BOOL:
       ConcatDenseTensorByNumel<DeviceContext, bool>()(dev_ctx, t_list, p_out);
@@ -108,24 +107,24 @@ void ConcatDenseTensorByNumelWithType(
 template <typename DeviceContext, typename T>
 struct SplitDenseTensorByNumel {
   void operator()(const DeviceContext &context,
-                  const phi::DenseTensor &in,
-                  std::vector<phi::DenseTensor> *out) {
+                  const DenseTensor &in,
+                  std::vector<DenseTensor> *out) {
     if (in.numel() == 0) {
       return;
     }
 
-    phi::DenseTensor in_flatten(in.Holder(), in.meta());
+    DenseTensor in_flatten(in.Holder(), in.meta());
     in_flatten.Resize({in.numel()});
 
-    std::vector<phi::DenseTensor> out_flatten;
-    std::vector<const phi::DenseTensor *> shape_refer;
-    std::vector<phi::DenseTensor *> out_p_list;
+    std::vector<DenseTensor> out_flatten;
+    std::vector<const DenseTensor *> shape_refer;
+    std::vector<DenseTensor *> out_p_list;
 
     int64_t out_numel_sum = 0;
 
     for (auto &tensor : *out) {
       if (tensor.numel() > 0) {
-        phi::DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
+        DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
         tensor_flatten.Resize({tensor.numel()});
         out_flatten.push_back(tensor_flatten);
         out_numel_sum += tensor.numel();
@@ -148,8 +147,8 @@ struct SplitDenseTensorByNumel {
 
 template <typename DeviceContext>
 void SplitDenseTensorByNumelWithType(const DeviceContext &dev_ctx,
-                                     const phi::DenseTensor &t_in,
-                                     std::vector<phi::DenseTensor> *t_list,
+                                     const DenseTensor &t_in,
+                                     std::vector<DenseTensor> *t_list,
                                      phi::DataType type) {
   switch (type) {
     case phi::DataType::BOOL:
@@ -188,11 +187,11 @@ void SplitDenseTensorByNumelWithType(const DeviceContext &dev_ctx,
 }
 
 void ConcatTensorByNumel(const phi::DeviceContext &dev_ctx,
-                         const std::vector<phi::DenseTensor> &tensor_list,
-                         phi::DenseTensor *tensor);
+                         const std::vector<DenseTensor> &tensor_list,
+                         DenseTensor *tensor);
 
 void SplitTensorByNumel(const phi::DeviceContext &dev_ctx,
-                        const phi::DenseTensor &tensor,
-                        std::vector<phi::DenseTensor> *tensor_list);
+                        const DenseTensor &tensor,
+                        std::vector<DenseTensor> *tensor_list);
 }  // namespace distributed
 }  // namespace paddle

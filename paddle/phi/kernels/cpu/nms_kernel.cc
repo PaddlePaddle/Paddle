@@ -84,13 +84,13 @@ void NMSKernel(const Context& dev_ctx,
 
   int64_t num_boxes = boxes.dims()[0];
   DenseTensor output_tmp;
-  output_tmp.Resize(common::make_ddim({num_boxes}));
+  output_tmp.Resize(make_ddim({num_boxes}));
   auto output_tmp_data = dev_ctx.template Alloc<int64_t>(&output_tmp);
 
   int64_t num_keep_boxes =
       NMS<T>(boxes.data<T>(), output_tmp_data, threshold, num_boxes);
   auto slice_out = output_tmp.Slice(0, num_keep_boxes);
-  phi::Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
+  Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
 }
 
 }  // namespace phi

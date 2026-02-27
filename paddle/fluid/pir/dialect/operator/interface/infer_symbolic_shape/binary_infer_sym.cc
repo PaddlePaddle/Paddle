@@ -629,7 +629,7 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
   }
 
   const int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  if (axis != common::DDim::kMaxRank) {
+  if (axis != DDim::kMaxRank) {
     const int dim = axis < 0 ? axis + x_dim : axis;
     infer_context->AddEqualCstr(x_shape[dim], symbol::DimExpr{3});
     infer_context->AddEqualCstr(y_shape[dim], symbol::DimExpr{3});
@@ -973,6 +973,7 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
             "3 when the axis is not set."));
     const auto &axis_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    // NOTE(large-tensor): axis is a small integer
     axis =
         static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
   }
@@ -983,7 +984,10 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
   const std::vector<symbol::DimExpr> &index_sym_shape =
       index_shape_or_data.shape();
 
-  if (axis < 0) axis += input_sym_shape.size();
+  if (axis < 0) {
+    // NOTE(large-tensor): tensor rank is a small integer
+    axis += static_cast<int>(input_sym_shape.size());
+  }
 
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;

@@ -37,8 +37,8 @@ void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& scale,
+                     const optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -68,7 +68,7 @@ void BatchNormKernel(const Context& dev_ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = common::StringToDataLayout(data_layout_str);
+  auto data_layout = StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(
@@ -127,7 +127,7 @@ void BatchNormKernel(const Context& dev_ctx,
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
       return;
     }
 

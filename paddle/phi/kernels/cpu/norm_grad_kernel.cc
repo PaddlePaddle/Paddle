@@ -45,10 +45,10 @@ void NormGradKernel(const Context& dev_ctx,
 
   auto* place = dev_ctx.eigen_device();
 
-  auto x_e = phi::EigenVector<T>::Flatten(*in_x);
-  auto dy_e = phi::EigenVector<T>::Flatten(*in_dy);
-  auto norm_e = phi::EigenVector<T>::Flatten(*in_norm);
-  auto dx_e = phi::EigenVector<T>::Flatten(*out_dx);
+  auto x_e = EigenVector<T>::Flatten(*in_x);
+  auto dy_e = EigenVector<T>::Flatten(*in_dy);
+  auto norm_e = EigenVector<T>::Flatten(*in_norm);
+  auto dx_e = EigenVector<T>::Flatten(*out_dx);
 
   Eigen::DSizes<int64_t, 3> shape(pre, n, post);
   Eigen::DSizes<int64_t, 3> rshape(pre, static_cast<int64_t>(1), post);

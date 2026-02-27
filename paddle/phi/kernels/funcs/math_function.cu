@@ -255,7 +255,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
 
   // copy in_stride, out_stride, axis to gpu device
   const phi::Place& cuda_place = dev_ctx.GetPlace();
-  phi::CPUPlace cpu_place = phi::CPUPlace();
+  CPUPlace cpu_place = CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
   auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -298,7 +298,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::Place& cuda_place = dev_ctx.GetPlace();
-    phi::CPUPlace cpu_place = phi::CPUPlace();
+    CPUPlace cpu_place = CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
     auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -377,9 +377,9 @@ struct TensorSetConstantGPU {
 };
 
 template <>
-void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& dev_ctx,
-                                            DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<GPUPlace>(const phi::DeviceContext& dev_ctx,
+                                       DenseTensor* tensor,
+                                       float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(dev_ctx, tensor, value));
 }

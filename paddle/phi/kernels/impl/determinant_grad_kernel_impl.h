@@ -79,7 +79,7 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
                                   const DenseTensor* det) {
   auto numel = det->numel();
 
-  DenseTensor dev_tensor = phi::Empty<bool, Context>(dev_ctx, {1});
+  DenseTensor dev_tensor = Empty<bool, Context>(dev_ctx, {1});
 
   // set false
   funcs::SetConstant<Context, bool> zero;
@@ -92,7 +92,7 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
 
   // copy to host
   DenseTensor cpu_tensor;
-  Copy<Context>(dev_ctx, dev_tensor, phi::CPUPlace(), false, &cpu_tensor);
+  Copy<Context>(dev_ctx, dev_tensor, CPUPlace(), false, &cpu_tensor);
 
   // if founded zero, the matrix is not invertible
   // else the matrix is invertible

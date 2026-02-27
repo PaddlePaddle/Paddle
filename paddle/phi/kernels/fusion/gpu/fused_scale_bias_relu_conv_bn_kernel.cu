@@ -51,22 +51,21 @@ using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
  * https://docs.nvidia.com/deeplearning/cudnn/developer-guide/index.html#genstats-runtime-fusion-engine
  */
 template <typename T, typename Context>
-void FusedScaleBiasReluConvBnstatsImpl(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& w,
-    const paddle::optional<DenseTensor>& scale,
-    const paddle::optional<DenseTensor>& bias,
-    const std::vector<int>& paddings,
-    const std::vector<int>& dilations,
-    const std::vector<int>& strides,
-    const std::string& padding_algorithm,
-    bool fuse_prologue,
-    bool exhaustive_search,
-    bool deterministic,
-    DenseTensor* output,
-    DenseTensor* sum_output,
-    DenseTensor* sqsum_output) {
+void FusedScaleBiasReluConvBnstatsImpl(const Context& dev_ctx,
+                                       const DenseTensor& x,
+                                       const DenseTensor& w,
+                                       const optional<DenseTensor>& scale,
+                                       const optional<DenseTensor>& bias,
+                                       const std::vector<int>& paddings,
+                                       const std::vector<int>& dilations,
+                                       const std::vector<int>& strides,
+                                       const std::string& padding_algorithm,
+                                       bool fuse_prologue,
+                                       bool exhaustive_search,
+                                       bool deterministic,
+                                       DenseTensor* output,
+                                       DenseTensor* sum_output,
+                                       DenseTensor* sqsum_output) {
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kScaleBiasReluConvBNstats);
 
@@ -476,8 +475,8 @@ template <typename T, typename Context>
 void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& w,
-                                    const paddle::optional<DenseTensor>& scale,
-                                    const paddle::optional<DenseTensor>& bias,
+                                    const optional<DenseTensor>& scale,
+                                    const optional<DenseTensor>& bias,
                                     const DenseTensor& bn_scale,
                                     const DenseTensor& bn_bias,
                                     const DenseTensor& input_running_mean,

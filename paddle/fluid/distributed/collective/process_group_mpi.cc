@@ -35,7 +35,7 @@ void ProcessGroupMPI::MPITask::FinishMPITaskError(std::exception_ptr eptr) {
 void ProcessGroupMPI::MPITask::FinishMPITask() { Finish(); }
 
 ProcessGroupMPI::MPIAsyncTask::MPIAsyncTask(
-    MPI_Request request, const std::vector<phi::DenseTensor>& inputs)
+    MPI_Request request, const std::vector<DenseTensor>& inputs)
     : ProcessGroup::Task(-1, inputs, CommType::UNKNOWN), request_(request) {
   memset(&status_, 0, sizeof(status_));
 }
@@ -93,8 +93,8 @@ void ProcessGroupMPI::MPIAsyncTask::AppearException() {
 }
 
 void ProcessGroupMPI::MPIAsyncTask::SetOutputs(
-    std::vector<phi::DenseTensor>& outputs) {
-  outputs_ = std::make_shared<std::vector<phi::DenseTensor>>(outputs);
+    std::vector<DenseTensor>& outputs) {
+  outputs_ = std::make_shared<std::vector<DenseTensor>>(outputs);
 }
 
 int ProcessGroupMPI::mpi_thread_support = 0;
@@ -226,8 +226,7 @@ void ProcessGroupMPI::workLoop() {
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Enqueue(
-    std::unique_ptr<TaskEntry> entry,
-    const std::vector<phi::DenseTensor>& inputs) {
+    std::unique_ptr<TaskEntry> entry, const std::vector<DenseTensor>& inputs) {
   CheckTensorContiguous(inputs);
   auto task = std::make_shared<MPITask>(entry->dst_, inputs);
   std::unique_lock<std::mutex> lock(pg_mutex);
@@ -238,8 +237,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Enqueue(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<DenseTensor>& in_tensors,
+    std::vector<DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
   CheckTensorContiguous(in_tensors);
   CheckTensorContiguous(out_tensors);
@@ -264,8 +263,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllReduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<DenseTensor>& in_tensors,
+    std::vector<DenseTensor>& out_tensors,
     const AllreduceOptions& opts) {
   CheckTensorContiguous(in_tensors);
 
@@ -296,12 +295,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Barrier(
       };
   auto entry =
       std::make_unique<TaskEntry>(nullptr, nullptr, std::move(runFunc));
-  return Enqueue(std::move(entry), std::vector<phi::DenseTensor>{});
+  return Enqueue(std::move(entry), std::vector<DenseTensor>{});
 }
 
 // NOTE: MPI_send tag set gid_
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
-    std::vector<phi::DenseTensor>& tensors, int dst_rank) {
+    std::vector<DenseTensor>& tensors, int dst_rank) {
   CheckTensorContiguous(tensors);
 
   mpi::CheckValidInputs(tensors);
@@ -324,7 +323,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Send(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
-    std::vector<phi::DenseTensor>& tensors, int src_rank) {
+    std::vector<DenseTensor>& tensors, int src_rank) {
   CheckTensorContiguous(tensors);
   mpi::CheckValidInputs(tensors);
 
@@ -346,8 +345,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
+    std::vector<DenseTensor>& in_tensors,
+    std::vector<DenseTensor>& out_tensors) {
   CheckTensorContiguous(in_tensors);
   CheckTensorContiguous(out_tensors);
 
@@ -361,7 +360,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [this](std::unique_ptr<TaskEntry>& entry) {
         auto data = (entry->src_)[0];
-        std::vector<phi::DenseTensor> dst = entry->dst_;
+        std::vector<DenseTensor> dst = entry->dst_;
 
         std::unique_lock<std::mutex> lock(pg_global_mutex);
         MPI_CHECK(MPI_Allgather(data.data(),
@@ -380,8 +379,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllGather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
+    std::vector<DenseTensor>& in_tensors,
+    std::vector<DenseTensor>& out_tensors) {
   CheckTensorContiguous(in_tensors);
   CheckTensorContiguous(out_tensors);
 
@@ -415,8 +414,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::AllToAll(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
-    std::vector<phi::DenseTensor>& tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<DenseTensor>& tensors,
+    std::vector<DenseTensor>& out_tensors,
     const ReduceOptions& opts) {
   CheckTensorContiguous(tensors);
   CheckTensorContiguous(out_tensors);
@@ -445,8 +444,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Reduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<DenseTensor>& in_tensors,
+    std::vector<DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
   CheckTensorContiguous(in_tensors);
   CheckTensorContiguous(out_tensors);
@@ -459,7 +458,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Scatter(
         void* sendbuf = nullptr;
 
         if (rank_ == opts.root_rank) {
-          std::vector<phi::DenseTensor>& inputData = entry->src_;
+          std::vector<DenseTensor>& inputData = entry->src_;
           sendbuf = inputData[0].data();
         }
 

@@ -145,7 +145,8 @@ class TestSimpleNetForSemiAutoParallel:
 
     def run_dynamic(self, layer, shard_input=False, is_pp=False):
         # create loss
-        loss_fn = nn.MSELoss()
+        # MSELoss only support pir, but test_save_load_state_dict.py set FLAGS_enable_pir_api=0
+        loss_fn = nn.SmoothL1Loss()
         # run forward and backward
         if is_pp:
             input_dist_attr = (self._pp_mesh0, [Shard(0)])

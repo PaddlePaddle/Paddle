@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void SwiGluKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const paddle::optional<DenseTensor>& y,
+                  const optional<DenseTensor>& y,
                   DenseTensor* z) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();
@@ -28,7 +28,7 @@ void SwiGluKernel(const Context& dev_ctx,
   if (z->numel() == 0) return;
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
-  auto dims_vec = common::vectorize<int64_t>(dims);
+  auto dims_vec = vectorize<int64_t>(dims);
   const XPUType* y_ptr = nullptr;
 
   if (y) {

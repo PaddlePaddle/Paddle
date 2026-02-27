@@ -19,6 +19,98 @@ import numpy as np
 import paddle
 
 
+def ceil_div(x: int, y: int) -> int:
+    return (x + y - 1) // y
+
+
+def align(x: int, y: int) -> int:
+    return ceil_div(x, y) * y
+
+
+def get_tma_aligned_size(x: int, element_size: int) -> int:
+    """
+    Align x to TMA-required size.
+    Args:
+        x: size in elements
+        element_size: size of each element in bytes
+    Returns:
+        Aligned size in elements
+    """
+    kNumTMAAlignmentBytes = 16
+    assert kNumTMAAlignmentBytes % element_size == 0
+    return align(x, kNumTMAAlignmentBytes // element_size)
+
+
+def ceil_to_ue8m0_paddle(x: paddle.Tensor):
+    """
+    x > 0
+    return 2 ^ ceil(log2(x))
+    """
+    # log2(x)
+    log2_x = paddle.log(x) / paddle.log(paddle.to_tensor(2.0, dtype=x.dtype))
+    # ceil
+    ceil_log2_x = paddle.ceil(log2_x)
+    # 2^k
+    return paddle.pow(paddle.to_tensor(2.0, dtype=x.dtype), ceil_log2_x)
+
+
+def _get_mn_major_tma_aligned_packed_ue8m0_tensor_torch_impl(
+    x: paddle.Tensor,
+):
+    assert x.dtype == paddle.float and x.dim() in (2, 3)
+
+    ue8m0_tensor = (x.view(paddle.int) >> 23).to(paddle.uint8)
+
+    mn, k = x.shape[-2], x.shape[-1]
+    remove_dim = False
+
+    if x.dim() == 2:
+        x, remove_dim = x.unsqueeze(0), True
+    b = x.shape[0]
+
+    aligned_mn = get_tma_aligned_size(mn, 4)
+    aligned_k = align(k, 4)
+
+    padded = paddle.zeros(
+        (b, aligned_mn, aligned_k), device=x.device, dtype=paddle.uint8
+    )
+    padded[:, :mn, :k] = ue8m0_tensor
+
+    padded = (
+        padded.view(-1)
+        .view(dtype=paddle.int)
+        .view(b, aligned_mn, aligned_k // 4)
+    )
+
+    transposed = paddle.zeros(
+        (b, aligned_k // 4, aligned_mn), device=x.device, dtype=paddle.int
+    ).mT
+    transposed[:, :, :] = padded
+
+    aligned_x = transposed[:, :mn, :]
+
+    return aligned_x.squeeze(0) if remove_dim else aligned_x
+
+
+def transform_scale_ue8m0(sf, mn, weight_block_size=None):
+    get_mn_major_tma_aligned_packed_ue8m0_tensor = (
+        _get_mn_major_tma_aligned_packed_ue8m0_tensor_torch_impl
+    )
+    if weight_block_size:
+        assert weight_block_size == [128, 128]
+        sf = sf.index_select(-2, paddle.arange(mn, device=sf.device) // 128)
+    sf = get_mn_major_tma_aligned_packed_ue8m0_tensor(sf)
+    return sf
+
+
+def quant_ref(x_scale_fp32, mn, weight_block_size=None):
+    x_scale_fp32_ = ceil_to_ue8m0_paddle(x_scale_fp32)
+    ref_e8m0_scale = transform_scale_ue8m0(
+        x_scale_fp32_, mn=mn, weight_block_size=weight_block_size
+    )
+    return ref_e8m0_scale
+
+
 class TestActQuantDequant(unittest.TestCase):
     """Test cases for activation quantization and dequantization functions."""
 
@@ -226,6 +318,45 @@ class TestActQuantDequant(unittest.TestCase):
             self.fail(
                 f"Results don't match for shape [{height}, {width}]: {e!s}"
             )
+
+    def test_ue8m0_support(self):
+        """Test ue8m0 support in fused_act_dequant."""
+        if not hasattr(paddle.incubate.nn.functional, 'fused_act_dequant'):
+            self.skipTest(
+                "fused_act_dequant not available in this Paddle version"
+            )
+
+        height, width = 4096, 7168
+        x = paddle.clip(
+            paddle.randn([height, width]).astype("bfloat16"), min=-50, max=50
+        )
+        x_fp8, scale = paddle.incubate.nn.functional.fp8_quant_blockwise(
+            x, quant_method="1x128", output_scale_transpose=False
+        )
+
+        # 1. Align scale to ue8m0 values (2^k) in float32
+        scale_aligned_fp32 = ceil_to_ue8m0_paddle(scale)
+
+        # 2. Pack aligned scale to ue8m0 format (int32)
+        scale_packed_int32 = transform_scale_ue8m0(
+            scale_aligned_fp32, mn=height
+        )
+
+        # 3. Run fused_act_dequant with aligned float32 scale
+        out_fp32 = paddle.incubate.nn.functional.fused_act_dequant(
+            x_fp8, scale_aligned_fp32
+        )
+
+        # 4. Run fused_act_dequant with packed int32 scale
+        out_ue8m0 = paddle.incubate.nn.functional.fused_act_dequant(
+            x_fp8, scale_packed_int32
+        )
+
+        # 5. Compare
+        out_fp32_np = out_fp32.numpy()
+        out_ue8m0_np = out_ue8m0.numpy()
+
+        np.testing.assert_allclose(out_fp32_np, out_ue8m0_np, rtol=0, atol=0)
 
     def test_invalid_inputs(self):
         """Test error handling for invalid inputs."""

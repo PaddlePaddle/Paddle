@@ -109,7 +109,7 @@ void PartialConcatOpCUDAKernel(const Context &dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           tmp_in_array->ptr(),
-                          phi::CPUPlace(),
+                          CPUPlace(),
                           reinterpret_cast<void *>(in_data.data()),
                           in_data.size() * sizeof(T *),
                           dev_ctx.stream());

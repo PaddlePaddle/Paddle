@@ -29,7 +29,7 @@ template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                                                DenseTensor* tensor,
                                                T num) {
-  auto t = phi::EigenVector<T>::Flatten(*tensor);
+  auto t = EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(num));
 }
 
@@ -58,7 +58,7 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   auto* dev = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     To32BitIndex(eigen_out).device(*dev) =
         To32BitIndex(eigen_in).shuffle(permute);
@@ -83,7 +83,7 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                         out->numel()));
 
   auto in = phi::EigenMatrix<T>::From(input);
-  auto vec = phi::EigenVector<T>::Flatten(*out);
+  auto vec = EigenVector<T>::Flatten(*out);
 
   vec.device(*dev_ctx.eigen_device()) = in.sum(Eigen::array<int, 1>({{0}}));
 }
@@ -146,7 +146,7 @@ void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                         out->numel()));
 
   auto in = phi::EigenMatrix<T>::From(input);
-  auto vec = phi::EigenVector<T>::Flatten(*out);
+  auto vec = EigenVector<T>::Flatten(*out);
 
   vec.device(*dev_ctx.eigen_device()) = in.mean(Eigen::array<int, 1>({{1}}));
 }
@@ -213,7 +213,7 @@ void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                         out->numel()));
 
   auto in = phi::EigenMatrix<T>::From(input);
-  auto vec = phi::EigenVector<T>::Flatten(*out);
+  auto vec = EigenVector<T>::Flatten(*out);
 
   vec.device(*dev_ctx.eigen_device()) = in.sum(Eigen::array<int, 1>({{1}}));
 }

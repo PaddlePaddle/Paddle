@@ -35,18 +35,14 @@ static std::vector<T> ToVector(const T *x,
                                size_t n,
                                const phi::Place &place UNUSED) {
 #ifdef __NVCC__
-  if (place.GetType() == phi::AllocationType::GPU) {
+  if (place.GetType() == AllocationType::GPU) {
     using CopyT = typename std::
         conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
     std::vector<CopyT> cpu_x(n);
     auto *dev_ctx = static_cast<phi::GPUContext *>(
         phi::DeviceContextPool::Instance().Get(place));
-    memory_utils::Copy(phi::CPUPlace(),
-                       cpu_x.data(),
-                       place,
-                       x,
-                       n * sizeof(T),
-                       dev_ctx->stream());
+    memory_utils::Copy(
+        CPUPlace(), cpu_x.data(), place, x, n * sizeof(T), dev_ctx->stream());
     dev_ctx->Wait();
     return std::vector<T>(cpu_x.data(), cpu_x.data() + n);
   }

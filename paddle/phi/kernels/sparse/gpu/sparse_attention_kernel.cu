@@ -206,7 +206,7 @@ input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
-void SparseSoftmaxForward(const phi::GPUContext& dev_ctx,
+void SparseSoftmaxForward(const GPUContext& dev_ctx,
                           const DenseTensor* offset,
                           const DenseTensor* columns,
                           DenseTensor* input,
@@ -319,7 +319,7 @@ void SparseSoftmaxForward(const phi::GPUContext& dev_ctx,
 }
 
 template <typename DeviceContext, typename T>
-void SparseSoftmaxBackward(const phi::GPUContext& dev_ctx,
+void SparseSoftmaxBackward(const GPUContext& dev_ctx,
                            const DenseTensor* offset,
                            const DenseTensor* columns,
                            DenseTensor* dx,
@@ -450,7 +450,7 @@ input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
-void DotSdd(const phi::GPUContext& dev_ctx,
+void DotSdd(const GPUContext& dev_ctx,
             const DenseTensor* a,
             const DenseTensor* b,
             const DenseTensor* c_offset,
@@ -460,7 +460,7 @@ void DotSdd(const phi::GPUContext& dev_ctx,
             const int num_cols,
             const bool a_transpose,
             const bool b_transpose) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11030
+#if defined(PADDLE_WITH_CUDA)
   const T* a_data = a->data<T>();
   const T* b_data = b->data<T>();
   const int* c_offset_data = c_offset->data<int>();
@@ -550,7 +550,7 @@ input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
 output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
-void DotDsd(const phi::GPUContext& dev_ctx,
+void DotDsd(const GPUContext& dev_ctx,
             const DenseTensor* a_offset,
             const DenseTensor* a_columns,
             const DenseTensor* a_value,
@@ -560,7 +560,7 @@ void DotDsd(const phi::GPUContext& dev_ctx,
             const int num_cols,
             const bool a_transpose,
             const bool b_transpose) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   const int* a_offset_data = a_offset->data<int>();
   const int* a_columns_data = a_columns->data<int>();
   const T* a_value_data = a_value->data<T>();
@@ -656,23 +656,22 @@ std::vector<DenseTensor> GetSplitTensor(DenseTensor* input) {
   for (int i = 1; i < new_dims.size(); i++) {
     new_dims[i] = dims[i + 1];
   }
-  input->Resize(common::make_ddim(new_dims));
+  input->Resize(make_ddim(new_dims));
   return input->Split(1, 0);
 }
 
 template <typename T, typename Context>
-void SparseAttentionCUDAKernel(
-    const Context& dev_ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& offset,
-    const DenseTensor& columns,
-    const paddle::optional<DenseTensor>& key_padding_mask,
-    const paddle::optional<DenseTensor>& attn_mask,
-    DenseTensor* out,
-    DenseTensor* sparse_dot_sdd,
-    DenseTensor* softmax) {
+void SparseAttentionCUDAKernel(const Context& dev_ctx,
+                               const DenseTensor& q,
+                               const DenseTensor& k,
+                               const DenseTensor& v,
+                               const DenseTensor& offset,
+                               const DenseTensor& columns,
+                               const optional<DenseTensor>& key_padding_mask,
+                               const optional<DenseTensor>& attn_mask,
+                               DenseTensor* out,
+                               DenseTensor* sparse_dot_sdd,
+                               DenseTensor* softmax) {
 #if defined(PADDLE_WITH_CUDA)
   auto query = q;
   auto key = k;

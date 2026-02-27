@@ -52,7 +52,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
 
   // compute prefix sum of repeats to get start index of each repeat
   DenseTensor prefix;
-  prefix.Resize(common::make_ddim({num_reps}));
+  prefix.Resize(make_ddim({num_reps}));
   dev_ctx.template Alloc<RepeatsT>(&prefix);
   auto *prefix_ptr = prefix.data<RepeatsT>();
 
@@ -98,11 +98,11 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
                       stream>>>(index_ptr, prefix_ptr, repeats_ptr, num_reps);
 #else
   DenseTensor repeats_cpu_copy;
-  if (repeats.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(dev_ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
+  if (repeats.place().GetType() != AllocationType::CPU) {
+    phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT *repeats_data =
-      repeats.place().GetType() == phi::AllocationType::CPU
+      repeats.place().GetType() == AllocationType::CPU
           ? repeats.data<RepeatsT>()
           : repeats_cpu_copy.data<RepeatsT>();
 
@@ -121,7 +121,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(common::make_ddim({index_size}));
+  index->Resize(make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 #endif

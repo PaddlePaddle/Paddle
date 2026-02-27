@@ -769,8 +769,8 @@ void SetLaunchConfigInfoForChannelLast(const Context &dev_ctx,
   grid->y = grid_y;
 
   if (grid->y > 1) {
-    *block_data_tensor = phi::Empty<BnT, Context>(dev_ctx, {2 * C * grid->y});
-    *flag_tensor = phi::Empty<int, Context>(dev_ctx, {grid->x});
+    *block_data_tensor = Empty<BnT, Context>(dev_ctx, {2 * C * grid->y});
+    *flag_tensor = Empty<int, Context>(dev_ctx, {grid->x});
 
     *block_data_ptr = block_data_tensor->data<BnT>();
     *flag_ptr = flag_tensor->data<int>();

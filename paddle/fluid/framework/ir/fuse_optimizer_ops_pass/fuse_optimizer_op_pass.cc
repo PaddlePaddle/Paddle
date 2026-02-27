@@ -402,7 +402,7 @@ void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
                       true,
                       common::errors::InvalidArgument(
                           "Currently the gradient(%s) type only should be "
-                          "phi::DenseTensor when "
+                          "DenseTensor when "
                           "fusing optimizer ops.",
                           grad_var_name));
     for (auto var : iter->second) {

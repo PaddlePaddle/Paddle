@@ -216,18 +216,18 @@ void PowKernel(const Context& dev_ctx,
       out, errors::InvalidArgument("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
   if (factor.to<float>() == 0) {
-    std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+    std::vector<int64_t> vec_dims = vectorize(out->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
     return;
   }
   if (factor.to<float>() == 1) {
-    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  auto x_flatten = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
-  auto out_flatten = phi::EigenVector<T>::Flatten(
+  auto x_flatten =
+      EigenVector<T>::Flatten(GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
+  auto out_flatten = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(out, "Output", "Out", "Activation"));
   auto* place = dev_ctx.eigen_device();
   funcs::PowFunctor<T> functor;

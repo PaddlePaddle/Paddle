@@ -30,11 +30,11 @@ class ValueExecutionInfo;
 class TensorRTEngineInstruction : public InstructionBase {
  public:
   TensorRTEngineInstruction(size_t id,
-                            const phi::Place& place,
-                            ::pir::Operation* op,
+                            const Place& place,
+                            pir::Operation* op,
                             const ValueExecutionInfo* value_exec_info);
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -45,13 +45,13 @@ class TensorRTEngineInstruction : public InstructionBase {
   void InputsCheck();
   void RunTrt();
   void BindInputTensor(const std::string& input_name,
-                       const phi::DenseTensor& input_tensor,
+                       const DenseTensor& input_tensor,
                        const Scope& scope,
                        std::vector<void*>& buffers,  // NOLINT
                        std::vector<int>& shape_v,    // NOLINT
                        int* runtime_batch);
   void BindOutputTensor(std::string output_name,
-                        phi::DenseTensor* output_tensor,
+                        DenseTensor* output_tensor,
                         int output_index,
                         std::vector<void*>& buffers,  // NOLINT
                         int* runtime_batch);
@@ -68,7 +68,7 @@ class TensorRTEngineInstruction : public InstructionBase {
   std::vector<int> outputs_rank_;
   std::vector<phi::DataType> outputs_dtype_;
   std::string op_name_ = "pd_op.tensorrt_engine";
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
   std::string refit_params_path_;
   std::vector<std::string> refit_param_names_;
   std::map<std::string, std::map<std::string, std::string>>

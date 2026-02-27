@@ -31,17 +31,15 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
 
   void AddInputX() override {
-    AddInput(
-        "X",
-        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
-        "should be int32, int64, float32, float64.");
+    AddInput("X",
+             "(Variable), Tensor or DenseTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput(
-        "Y",
-        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
-        "should be int32, int64, float32, float64.");
+    AddInput("Y",
+             "(Variable), Tensor or DenseTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
   }
 
   std::string GetOpFunctionality() const override {

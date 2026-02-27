@@ -104,7 +104,7 @@ class CublasLtAlgoCache {
     }
     size_t workspace_size = heuristic_result.workspaceSize;
     auto workspace = phi::memory_utils::Alloc(
-        phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
+        GPUPlace(phi::backends::gpu::GetCurrentDeviceId()),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
@@ -712,7 +712,7 @@ class CublasLtAlgoCache {
     HashValue(seed, hash_fn, static_cast<int64_t>(epilogue));
 
     // PADDLE_ENFORCE_GPU_SUCCESS(
-    //     dyl::cublasLtMatmulDescGetAttribute(desc,
+    //     dynload::cublasLtMatmulDescGetAttribute(desc,
     //                                         CUBLASLT_MATMUL_DESC_FAST_ACCUM,
     //                                         &fast_accum,
     //                                         sizeof(fast_accum),
@@ -757,17 +757,17 @@ class CublasLtAlgoCache {
         desc, CUBLASLT_MATRIX_LAYOUT_LD, &ld, sizeof(ld), &size_to_write));
     HashValue(seed, hash_fn, RoundToNextHighPowOfTwo(ld, 32));
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutGetAttribute(
     //     desc, CUBLASLT_MATRIX_LAYOUT_ROWS, &row, sizeof(row),
     //     &size_to_write));
     // HashValue(seed, hash_fn, row);
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutGetAttribute(
     //     desc, CUBLASLT_MATRIX_LAYOUT_COLS, &col, sizeof(col),
     //     &size_to_write));
     // HashValue(seed, hash_fn, col);
 
-    // PADDLE_ENFORCE_GPU_SUCCESS(dyl::cublasLtMatrixLayoutGetAttribute(
+    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutGetAttribute(
     //     desc, CUBLASLT_MATRIX_LAYOUT_LD, &ld, sizeof(ld), &size_to_write));
     // HashValue(seed, hash_fn, ld);
 

@@ -29,27 +29,27 @@
 
 namespace paddle {
 namespace imperative {
-static inline phi::DataType GetDataType(const pir::Value& value) {
+static inline DataType GetDataType(const pir::Value& value) {
   return paddle::dialect::GetValueDataType(value);
 }
 
-static inline phi::DataType GetDataType(const paddle::Tensor& tensor) {
+static inline DataType GetDataType(const paddle::Tensor& tensor) {
   return tensor.dtype();
 }
 
 template <class T>
-static inline phi::DataType GetPromoteType(
+static inline DataType GetPromoteType(
     const std::string& op_name,
     const paddle::small_vector<std::vector<T>, egr::kSlotSmallVectorSize>&
         amp_tensors_vector,
-    const phi::DataType& amp_dtype) {
+    const DataType& amp_dtype) {
   auto dst_type = amp_dtype;
   // only consider the dtype of input(X).
   if (op_name == "batch_norm" || op_name == "layer_norm" ||
       op_name == "sync_batch_norm" ||
       op_name == "moving_average_abs_max_scale") {
-    if (GetDataType(amp_tensors_vector[0][0]) == phi::DataType::FLOAT32) {
-      dst_type = phi::DataType::FLOAT32;
+    if (GetDataType(amp_tensors_vector[0][0]) == DataType::FLOAT32) {
+      dst_type = DataType::FLOAT32;
     }
     return dst_type;
   }
@@ -59,8 +59,8 @@ static inline phi::DataType GetPromoteType(
     if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i < 3 || (i > 4 && i < 9) || i > 10) {
-          if (GetDataType(amp_tensors_vector[i][0]) == phi::DataType::FLOAT32) {
-            dst_type = phi::DataType::FLOAT32;
+          if (GetDataType(amp_tensors_vector[i][0]) == DataType::FLOAT32) {
+            dst_type = DataType::FLOAT32;
             return dst_type;
           }
         }
@@ -68,8 +68,8 @@ static inline phi::DataType GetPromoteType(
     } else if (op_name == "fused_feedforward") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i < 7 || i > 10) {
-          if (GetDataType(amp_tensors_vector[i][0]) == phi::DataType::FLOAT32) {
-            dst_type = phi::DataType::FLOAT32;
+          if (GetDataType(amp_tensors_vector[i][0]) == DataType::FLOAT32) {
+            dst_type = DataType::FLOAT32;
             return dst_type;
           }
         }
@@ -79,7 +79,7 @@ static inline phi::DataType GetPromoteType(
 
   for (const auto& tensors : amp_tensors_vector) {
     for (const auto& tensor : tensors) {
-      if (GetDataType(tensor) == phi::DataType::FLOAT32) {
+      if (GetDataType(tensor) == DataType::FLOAT32) {
         dst_type = GetDataType(tensor);
         break;
       }
@@ -89,12 +89,12 @@ static inline phi::DataType GetPromoteType(
   return dst_type;
 }
 
-static inline phi::DataType GetDtypeWithPlace(
+static inline DataType GetDtypeWithPlace(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>& amp_tensors_vector,
-    const phi::DataType amp_dtype) {
-  if (amp_dtype == phi::DataType::FLOAT32) {
+    const DataType amp_dtype) {
+  if (amp_dtype == DataType::FLOAT32) {
     return amp_dtype;
   }
   bool is_right_place = false;
@@ -119,22 +119,22 @@ static inline phi::DataType GetDtypeWithPlace(
   if (!is_right_place) {
     VLOG(6) << "Change " << op_name << "'s AMP type from " << amp_dtype
             << " to FP32";
-    return phi::DataType::FLOAT32;
+    return DataType::FLOAT32;
   }
   return amp_dtype;
 }
 
-static inline phi::DataType GetDtypeWithPlace(
+static inline DataType GetDtypeWithPlace(
     const std::string& op_name UNUSED,
     const paddle::small_vector<std::vector<pir::Value>,
                                egr::kSlotSmallVectorSize>& amp_tensors_vector
         UNUSED,
-    const phi::DataType amp_dtype) {
+    const DataType amp_dtype) {
   return amp_dtype;
 }
 
 template <class T>
-inline phi::DataType GetAmpDestDtype(
+inline DataType GetAmpDestDtype(
     const std::string& op_name,
     const paddle::small_vector<std::vector<T>, egr::kSlotSmallVectorSize>&
         amp_tensors_vector) {
@@ -157,10 +157,10 @@ inline phi::DataType GetAmpDestDtype(
     } else if (paddle::imperative::AmpOperators::Instance()
                    .GetMutableBlockOps()
                    ->count(op_name)) {
-      dst_type = phi::DataType::FLOAT32;
+      dst_type = DataType::FLOAT32;
     } else {
       if (amp_level == paddle::imperative::AmpLevel::OD) {
-        dst_type = phi::DataType::FLOAT32;
+        dst_type = DataType::FLOAT32;
       } else {
         dst_type =
             GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
@@ -171,7 +171,7 @@ inline phi::DataType GetAmpDestDtype(
     if (paddle::imperative::AmpOperators::Instance()
             .GetMutableBlockOps()
             ->count(op_name)) {
-      dst_type = phi::DataType::FLOAT32;
+      dst_type = DataType::FLOAT32;
     }
   }
 
@@ -179,7 +179,7 @@ inline phi::DataType GetAmpDestDtype(
       (paddle::imperative::AmpOperators::Instance()
            .GetMutableUnsupportedOps(amp_setting_dtype)
            ->count(op_name))) {
-    dst_type = phi::DataType::FLOAT32;
+    dst_type = DataType::FLOAT32;
   }
 
   dst_type = GetDtypeWithPlace(op_name, amp_tensors_vector, dst_type);
@@ -190,7 +190,7 @@ inline phi::DataType GetAmpDestDtype(
 }
 
 static inline bool NeedCast(const paddle::Tensor& tensor,
-                            const phi::DataType& dst_dtype) {
+                            const DataType& dst_dtype) {
   auto place = tensor.place();
   auto data_type = tensor.dtype();
   // Except CPU judgment, other conditions should be consistent with
@@ -201,9 +201,8 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
     // CudaPinnedPlace is added for varbase created by dataloader
     // Cpu place is for different place tensor, when input1 is cpu and input2
     // is gpu
-    if ((data_type == phi::DataType::FLOAT32 ||
-         data_type == phi::DataType::FLOAT16 ||
-         data_type == phi::DataType::BFLOAT16) &&
+    if ((data_type == DataType::FLOAT32 || data_type == DataType::FLOAT16 ||
+         data_type == DataType::BFLOAT16) &&
         (data_type != dst_dtype)) {
       return true;
     }
@@ -212,11 +211,10 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
 }
 
 static inline bool NeedCast(const pir::Value& value,
-                            const phi::DataType& dst_dtype) {
+                            const DataType& dst_dtype) {
   auto data_type = paddle::dialect::GetValueDataType(value);
-  if ((data_type == phi::DataType::FLOAT32 ||
-       data_type == phi::DataType::FLOAT16 ||
-       data_type == phi::DataType::BFLOAT16) &&
+  if ((data_type == DataType::FLOAT32 || data_type == DataType::FLOAT16 ||
+       data_type == DataType::BFLOAT16) &&
       (data_type != dst_dtype)) {
     return true;
   }
@@ -225,14 +223,14 @@ static inline bool NeedCast(const pir::Value& value,
 
 #if !(defined(PADDLE_NO_PYTHON) && defined(PADDLE_ON_INFERENCE))
 static inline paddle::Tensor Cast(const paddle::Tensor& input,
-                                  const phi::DataType& dst_dtype,
+                                  const DataType& dst_dtype,
                                   const bool trace_backward = true) {
   if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
     if (trace_backward) {
-      return sparse::cast_ad_func(input, phi::DataType::UNDEFINED, dst_dtype);
+      return sparse::cast_ad_func(input, DataType::UNDEFINED, dst_dtype);
     } else {
       return paddle::experimental::sparse::cast(
-          input, phi::DataType::UNDEFINED, dst_dtype);
+          input, DataType::UNDEFINED, dst_dtype);
     }
   } else {
     if (trace_backward) {
@@ -245,7 +243,7 @@ static inline paddle::Tensor Cast(const paddle::Tensor& input,
 #endif
 
 static inline pir::Value Cast(const pir::Value& input,
-                              const phi::DataType& dst_dtype,
+                              const DataType& dst_dtype,
                               const bool trace_backward UNUSED = true) {
   paddle::imperative::AutoCastGuard guard(
       egr::Controller::Instance().GetCurrentAmpAttrs(),
@@ -256,12 +254,12 @@ static inline pir::Value Cast(const pir::Value& input,
 template <class T>
 inline std::vector<T> AmpAutoCasts(const std::string& inputs_name,
                                    const std::vector<T>& inputs,
-                                   const phi::DataType& dst_dtype,
+                                   const DataType& dst_dtype,
                                    std::string op_name UNUSED,
                                    bool trace_backward UNUSED = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
-          << phi::DataTypeToString(dst_dtype) << ").";
+          << DataTypeToString(dst_dtype) << ").";
   std::vector<T> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
@@ -276,13 +274,13 @@ inline std::vector<T> AmpAutoCasts(const std::string& inputs_name,
 template <class T>
 inline T AmpAutoCast(const std::string& input_name,
                      const T& input,
-                     const phi::DataType& dst_dtype,
+                     const DataType& dst_dtype,
                      const std::string& op_name,
                      bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts: op_name(" << op_name << ")input(" << input_name
-          << ") dst_dtype(" << phi::DataTypeToString(dst_dtype) << ").";
+          << ") dst_dtype(" << DataTypeToString(dst_dtype) << ").";
 
-  if (dst_dtype == phi::DataType::FLOAT16) {
+  if (dst_dtype == DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;
     }
@@ -304,7 +302,7 @@ inline T AmpAutoCast(const std::string& input_name,
         input_name != "x") {
       return input;
     }
-  } else if (dst_dtype == phi::DataType::BFLOAT16) {
+  } else if (dst_dtype == DataType::BFLOAT16) {
     if ((op_name == "batch_norm" || op_name == "layer_norm" ||
          op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
         input_name != "x") {
@@ -321,7 +319,7 @@ inline T AmpAutoCast(const std::string& input_name,
 template <class T>
 inline paddle::optional<T> AmpAutoCast(const std::string& input_name,
                                        const paddle::optional<T>& input,
-                                       const phi::DataType& dst_dtype,
+                                       const DataType& dst_dtype,
                                        const std::string& op_name,
                                        bool trace_backward = true) {
   if (input) {
@@ -334,7 +332,7 @@ template <class T>
 inline paddle::optional<std::vector<T>> AmpAutoCasts(
     const std::string& inputs_name,
     const paddle::optional<std::vector<T>>& inputs,
-    const phi::DataType& dst_dtype,
+    const DataType& dst_dtype,
     std::string op_name,
     bool trace_backward = true) {
   if (inputs) {

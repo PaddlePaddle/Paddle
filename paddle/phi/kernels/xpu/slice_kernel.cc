@@ -63,7 +63,7 @@ void SliceKernel(const Context& dev_ctx,
       }
     }
     if (is_same) {
-      phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+      Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
       return;
     }
   }
@@ -175,7 +175,7 @@ void SliceKernel<phi::complex64, XPUContext>(
       }
     }
     if (is_same) {
-      phi::Copy<XPUContext>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+      Copy<XPUContext>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
       return;
     }
   }

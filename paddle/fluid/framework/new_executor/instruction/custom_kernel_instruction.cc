@@ -99,10 +99,10 @@ void CustomKernelInstruction::BuildCustomContext(
                             common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
-    if (var->IsType<phi::DenseTensor>()) {
-      auto dense_tensor_in = var->GetMutable<phi::DenseTensor>();
+    if (var->IsType<DenseTensor>()) {
+      auto dense_tensor_in = var->GetMutable<DenseTensor>();
 
-      std::shared_ptr<phi::DenseTensor> tensor_in(
+      std::shared_ptr<DenseTensor> tensor_in(
           dense_tensor_in, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
@@ -117,10 +117,10 @@ void CustomKernelInstruction::BuildCustomContext(
       std::vector<paddle::Tensor> vec_custom_in;
       auto& variable_array = var->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
-        if (variable_array[i]->IsType<phi::DenseTensor>()) {
+        if (variable_array[i]->IsType<DenseTensor>()) {
           phi::DenseTensor* dense_tensor_in = const_cast<phi::DenseTensor*>(
-              &(variable_array[i]->Get<phi::DenseTensor>()));
-          std::shared_ptr<phi::DenseTensor> tensor_in(
+              &(variable_array[i]->Get<DenseTensor>()));
+          std::shared_ptr<DenseTensor> tensor_in(
               dense_tensor_in, [](phi::DenseTensor* ptr) {
                 VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
               });
@@ -290,9 +290,9 @@ void CustomKernelInstruction::BuildCustomContext(
     if (out_ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
       auto dense_tensor_out =
           inner_scope->FindVar(value_exec_info_.GetVarName(out_ptr))
-              ->GetMutable<phi::DenseTensor>();
+              ->GetMutable<DenseTensor>();
       cache_out_ptrs_.push_back(dense_tensor_out);
-      std::shared_ptr<phi::DenseTensor> tensor_out(
+      std::shared_ptr<DenseTensor> tensor_out(
           dense_tensor_out, [](phi::DenseTensor* ptr) {
             VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
           });
@@ -315,11 +315,11 @@ void CustomKernelInstruction::BuildCustomContext(
               "If custom operator's outputs contains `paddle::Vec()` type "
               "without setting InplaceMap, it only can hold one output."));
       for (size_t j = 0; j < variable_array.size(); ++j) {
-        if (variable_array[j]->IsType<phi::DenseTensor>()) {
+        if (variable_array[j]->IsType<DenseTensor>()) {
           auto dense_tensor_out = const_cast<phi::DenseTensor*>(
-              &(variable_array[j]->Get<phi::DenseTensor>()));
+              &(variable_array[j]->Get<DenseTensor>()));
           cache_out_ptrs_.emplace_back(dense_tensor_out);
-          std::shared_ptr<phi::DenseTensor> tensor_out(
+          std::shared_ptr<DenseTensor> tensor_out(
               dense_tensor_out, [](phi::DenseTensor* ptr) {
                 VLOG(6) << ptr << " ptr will not be deleted by shared_ptr";
               });
@@ -352,7 +352,7 @@ void CustomKernelInstruction::BuildCustomContext(
 
 CustomKernelInstruction::CustomKernelInstruction(
     size_t id,
-    const phi::Place& place,
+    const Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
     : InstructionBase(id, place),

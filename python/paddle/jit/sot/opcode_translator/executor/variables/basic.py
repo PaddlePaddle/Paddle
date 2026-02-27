@@ -20,7 +20,7 @@ import sys
 import types
 from enum import Enum
 from functools import cached_property, reduce
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -132,6 +132,12 @@ from ..tracker import (
     Tracker,
 )
 from .base import VariableBase, VariableFactory
+
+if sys.version_info >= (3, 14):
+    from string.templatelib import Interpolation, Template
+else:
+    Interpolation = None
+    Template = None
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -2568,3 +2574,140 @@ class DataClassInstanceVariable(VariableBase):
             class_var.tracker = GetAttrTracker(var, "__class__")
             return var
         return None
+
+
+class InterpolationVariable(VariableBase):
+    def __init__(
+        self,
+        value: VariableBase,
+        graph: FunctionGraph,
+        tracker: Tracker,
+        expression: VariableBase,
+        format_spec: VariableBase,
+        conversion: Literal["a", "r", "s"] | None = None,
+    ):
+        super().__init__(graph, tracker)
+        self.value = value
+        self.expression = expression
+        self.format_spec = format_spec
+        self.conversion = conversion
+
+    def get_py_type(self):
+        return Interpolation
+
+    def get_py_value(self, allow_tensor=False):
+        return Interpolation(
+            self.value.get_py_value(),
+            self.expression.get_py_value(),
+            self.conversion,
+            self.format_spec.get_py_value(),
+        )
+
+    def _reconstruct(self, codegen: PyCodeGen) -> None:
+        codegen.gen_load_object(
+            Interpolation,
+            "___string_templatelib_Interpolation",
+        )
+        self.value.reconstruct(codegen)
+        self.expression.reconstruct(codegen)
+        if self.conversion is None:
+            codegen.gen_load_const(None)
+        else:
+            codegen.gen_load_const(self.conversion)
+        codegen.gen_load_const(self.format_spec.get_py_value())
+        codegen.gen_call_function(4)
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if sys.version_info < (3, 14):
+            return None
+        if not isinstance(value, Interpolation):
+            return None
+        expression_var = VariableFactory.from_value(
+            value.expression, graph, DanglingTracker()
+        )
+        value_var = VariableFactory.from_value(
+            value.value, graph, DanglingTracker()
+        )
+        format_spec_var = VariableFactory.from_value(
+            value.format_spec, graph, DanglingTracker()
+        )
+        var = InterpolationVariable(
+            value=value_var,
+            graph=graph,
+            tracker=tracker,
+            expression=expression_var,
+            format_spec=format_spec_var,
+            conversion=value.conversion,
+        )
+        return var
+
+
+class TemplateVariable(VariableBase):
+    def __init__(
+        self,
+        strings: VariableBase,
+        graph: FunctionGraph,
+        tracker: Tracker,
+        interpolations: VariableBase,
+    ):
+        super().__init__(graph, tracker)
+        self.value = strings
+        self.interpolations = interpolations
+
+    def _interleaved_args(self) -> list[VariableBase]:
+        strings_vars = self.value.get_wrapped_items()
+        interpolation_vars = self.interpolations.get_wrapped_items()
+
+        # see: https://docs.pythonlang.cn/3/library/string.templatelib.html#string.templatelib.Template
+        assert len(strings_vars) == len(interpolation_vars) + 1, (
+            "Template expects exactly one more string than interpolation, "
+            f"got strings={len(strings_vars)}, interps={len(interpolation_vars)}"
+        )
+
+        args: list[VariableBase] = []
+        for idx, string_var in enumerate(strings_vars):
+            args.append(string_var)
+            if idx < len(interpolation_vars):
+                args.append(interpolation_vars[idx])
+        return args
+
+    def get_py_type(self):
+        return Template
+
+    def get_py_value(self, allow_tensor=False):
+        args = [
+            arg.get_py_value(allow_tensor) for arg in self._interleaved_args()
+        ]
+        return Template(*args)
+
+    def _reconstruct(self, codegen: PyCodeGen) -> None:
+        arg_vars = self._interleaved_args()
+        codegen.gen_load_object(
+            Template,
+            "___string_templatelib_Template",
+        )
+        for arg in arg_vars:
+            arg.reconstruct(codegen)
+        codegen.gen_call_function(len(arg_vars))
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if sys.version_info < (3, 14):
+            return None
+        if not isinstance(value, Template):
+            return None
+
+        strings_var = VariableFactory.from_value(
+            value.strings, graph, DanglingTracker()
+        )
+        interpolations_var = VariableFactory.from_value(
+            value.interpolations, graph, DanglingTracker()
+        )
+
+        return TemplateVariable(
+            strings_var,
+            graph,
+            tracker,
+            interpolations_var,
+        )

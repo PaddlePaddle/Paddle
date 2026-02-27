@@ -29,8 +29,8 @@ class ValueExecutionInfo;
 class PhiKernelInstruction : public InstructionBase {
  public:
   PhiKernelInstruction(size_t id,
-                       const phi::Place& place,
-                       ::pir::Operation* op,
+                       const Place& place,
+                       pir::Operation* op,
                        const ValueExecutionInfo* value_exec_info);
 
   ~PhiKernelInstruction();
@@ -47,7 +47,7 @@ class PhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -67,7 +67,7 @@ class PhiKernelInstruction : public InstructionBase {
 
   std::string kernel_name_;
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 };

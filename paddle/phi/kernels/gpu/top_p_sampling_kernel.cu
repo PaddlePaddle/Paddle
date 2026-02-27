@@ -1069,7 +1069,7 @@ T* SafeGetTensorPtr(const DenseTensor* t) {
 }
 
 template <typename T>
-T* SafeGetTensorPtr(const paddle::optional<DenseTensor>& t) {
+T* SafeGetTensorPtr(const optional<DenseTensor>& t) {
   return t ? SafeGetTensorPtr<T>(t.get()) : nullptr;
 }
 
@@ -1077,8 +1077,8 @@ template <typename T, typename Context>
 void TopPSamplingKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& ps,
-                        const paddle::optional<DenseTensor>& threshold,
-                        const paddle::optional<DenseTensor>& topp_seed,
+                        const optional<DenseTensor>& threshold,
+                        const optional<DenseTensor>& topp_seed,
                         int64_t seed,
                         int k,
                         const std::string& mode,

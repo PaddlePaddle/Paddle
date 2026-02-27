@@ -113,7 +113,7 @@ dense_input_types_map = {
 
 dense_optional_input_types_map = {
     'Tensor': 'paddle::optional<const phi::DenseTensor&>',
-    'Tensor[]': 'paddle::optional<const std::vector<phi::DenseTensor>&>',
+    'Tensor[]': 'paddle::optional<const std::vector<DenseTensor>&>',
 }
 
 dense_output_types_map = {

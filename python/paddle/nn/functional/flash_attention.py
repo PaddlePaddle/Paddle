@@ -316,7 +316,7 @@ def flash_attention(
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -326,15 +326,31 @@ def flash_attention(
             >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
             >>> print(output)
             (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[0.34992966, 0.34456208, 0.45826620, ..., 0.39883569,
-                0.42132431, 0.39157745],
-               [0.76687670, 0.65837246, 0.69117945, ..., 0.82817286,
-                0.76690865, 0.71485823]],
-              ...,
-              [[0.71662450, 0.57275224, 0.57053083, ..., 0.48108247,
-                0.53336465, 0.54540104],
-               [0.59137970, 0.51350880, 0.50449550, ..., 0.38860250,
-                0.40526697, 0.60541755]]]]), None)
+            [[[[0.34992969, 0.34456205, 0.45826620, ..., 0.39883569,
+                0.42132437, 0.39157745],
+               [0.76687670, 0.65837246, 0.69117945, ..., 0.82817292,
+                0.76690865, 0.71485817]],
+              [[0.27992037, 0.45855168, 0.36554155, ..., 0.43579611,
+                0.32732859, 0.32411280],
+               [0.56813753, 0.49862429, 0.60471594, ..., 0.66300118,
+                0.63945228, 0.61648899]],
+              [[0.66428208, 0.69490069, 0.67286366, ..., 0.73747700,
+                0.57736880, 0.89188176],
+               [0.31396604, 0.27845621, 0.23340687, ..., 0.17776486,
+                0.29530025, 0.21338812]],
+                ...,
+              [[0.72750765, 0.68531626, 0.84076148, ..., 0.63581419,
+                0.66560036, 0.74001575],
+               [0.51681775, 0.48662624, 0.47082719, ..., 0.41591716,
+                0.45305789, 0.46688002]],
+              [[0.52381468, 0.45015901, 0.49682677, ..., 0.49888846,
+                0.46920198, 0.37457168],
+               [0.56389368, 0.53894317, 0.57543570, ..., 0.48397997,
+                0.58046442, 0.55370426]],
+              [[0.71662450, 0.57275224, 0.57053083, ..., 0.48108250,
+                0.53336459, 0.54540110],
+               [0.59137988, 0.51350886, 0.50449550, ..., 0.38860252,
+                0.40526700, 0.60541761]]]]), None)
 
     """
     head_dim = query.shape[3]
@@ -569,7 +585,7 @@ def flash_attn_qkvpacked(
         - softmax(Tensor). The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
@@ -803,7 +819,7 @@ def flash_attn_unpadded(
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -1162,7 +1178,7 @@ def flash_attn_varlen_qkvpacked(
         - softmax(Tensor). The softmax tensor. None if return_softmax is False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
@@ -1340,15 +1356,15 @@ def flashmask_attention(
         This API supports GQA.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('flash_attn need A100 compile')
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> q = paddle.rand((1, 10, 2, 32),dtype="bfloat16") # shape: [batch_size, seq_len, num_heads, head_dim]
-            >>> k = paddle.rand((1, 10, 2, 32),dtype="bfloat16") # shape: [batch_size, seq_len, num_heads, head_dim]
-            >>> v = paddle.rand((1, 10, 2, 32),dtype="bfloat16") # shape: [batch_size, seq_len, num_heads, head_dim]
-            >>> startend_row_indices = paddle.to_tensor([8]*10 + [5]*10, dtype="int32").reshape([1, 2, 10, 1])
+            >>> q = paddle.rand((1, 10, 2, 32), dtype="bfloat16")  # shape: [batch_size, seq_len, num_heads, head_dim]
+            >>> k = paddle.rand((1, 10, 2, 32), dtype="bfloat16")  # shape: [batch_size, seq_len, num_heads, head_dim]
+            >>> v = paddle.rand((1, 10, 2, 32), dtype="bfloat16")  # shape: [batch_size, seq_len, num_heads, head_dim]
+            >>> startend_row_indices = paddle.to_tensor([8] * 10 + [5] * 10, dtype="int32").reshape([1, 2, 10, 1])
             >>> output = paddle.nn.functional.flashmask_attention(q, k, v, startend_row_indices, causal=True)
             >>> print(output)
             Tensor(shape=[1, 10, 2, 32], dtype=bfloat16, place=Place(gpu:0), stop_gradient=True,
@@ -1506,7 +1522,7 @@ def flashmask_attention(
 
     To convert FlashMask's `startend_row_indices` to `dense_mask`, use the code below:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> import numpy as np
@@ -1539,7 +1555,7 @@ def flashmask_attention(
 
     For `Causal Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1554,7 +1570,7 @@ def flashmask_attention(
 
         >>> # doctest: +SKIP('Only example')
         >>> import paddle
-        >>> startend_row_indices = paddle.to_tensor([8]*10, dtype="int32").reshape([1, 1, 10, 1])
+        >>> startend_row_indices = paddle.to_tensor([8] * 10, dtype="int32").reshape([1, 1, 10, 1])
         >>> print(startend_row_indices)
         Tensor(shape=[1, 1, 10, 1], dtype=int32, place=Place(gpu:0), stop_gradient=True,
             [[[[8],
@@ -1572,7 +1588,7 @@ def flashmask_attention(
 
     For `Sliding Window Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1604,7 +1620,7 @@ def flashmask_attention(
 
     For `Causal Document Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1636,7 +1652,7 @@ def flashmask_attention(
 
     For `Document Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
           [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -1670,7 +1686,7 @@ def flashmask_attention(
 
     For `Share Question Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1702,7 +1718,7 @@ def flashmask_attention(
 
     For `Global + Sliding Window Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +SKIP('Only example')
 
@@ -1739,7 +1755,7 @@ def flashmask_attention(
 
     For `Causal Blockwise Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1773,7 +1789,7 @@ def flashmask_attention(
 
     For `Prefix LM Document Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1807,7 +1823,7 @@ def flashmask_attention(
 
     For `Prefix LM Causal Mask`, where `causal=False`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
           [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
@@ -1840,7 +1856,7 @@ def flashmask_attention(
 
     For `QK-sparse Mask`, where `causal=True`, the values of `startend_row_indices` are as follows:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
        [[[[1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
           [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1943,9 +1959,10 @@ def flashmask_attention(
         )
         assert startend_row_indices.shape[1] in [
             1,
+            query.shape[2],
             key.shape[2],
         ], (
-            "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
+            "startend_row_indices head_num must be equal to 1(broadcast) or head_num_q or head_num_k."
         )
 
         if block_mask is not None:
@@ -2127,7 +2144,7 @@ def calc_reduced_attention_scores(
         reduced_attention_scores(Tensor), The reduce sum of attention scores across seqlen_q.
         4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k]. The dtype is float32.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('reduce_attn_scores need A100 compile')
             >>> import paddle
@@ -2137,8 +2154,8 @@ def calc_reduced_attention_scores(
             >>>     calc_reduced_attention_scores
             >>> )
             >>> np.random.seed(2024)
-            >>> q_shape = (5,1024,16,128)
-            >>> k_shape = (5,2048,16,128)
+            >>> q_shape = (5, 1024, 16, 128)
+            >>> k_shape = (5, 2048, 16, 128)
             >>> dtype = 'float16'
             >>> query = np.random.random(q_shape)
             >>> key = np.random.random(k_shape)

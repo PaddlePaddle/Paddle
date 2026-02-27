@@ -34,8 +34,8 @@ void SliceCooGradCompute(const Context& dev_ctx,
   const int64_t out_grad_nnz = out_grad.nnz();
   auto sparse_dim = static_cast<int64_t>(out_grad.sparse_dim());
   DenseTensor dx_indices =
-      phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_grad_nnz});
-  DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
+      Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_grad_nnz});
+  DenseTensor dx_values = Empty<T, Context>(dev_ctx, {out_grad_nnz});
   auto* dx_indices_data = dx_indices.data<int64_t>();
   auto* dx_values_data = dx_values.data<T>();
 
@@ -116,9 +116,9 @@ void SliceCsrGrad2D(const Context& dev_ctx,
   const auto* out_grad_cols_data = out_grad.cols().data<int64_t>();
   const auto* out_grad_values_data = out_grad.values().data<T>();
 
-  DenseTensor dx_crows = phi::Empty<int64_t>(dev_ctx, {n_rows + 1});
-  DenseTensor dx_cols = phi::Empty<int64_t>(dev_ctx, {out_grad_nnz});
-  DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
+  DenseTensor dx_crows = Empty<int64_t>(dev_ctx, {n_rows + 1});
+  DenseTensor dx_cols = Empty<int64_t>(dev_ctx, {out_grad_nnz});
+  DenseTensor dx_values = Empty<T, Context>(dev_ctx, {out_grad_nnz});
   auto* dx_crows_data = dx_crows.data<int64_t>();
   auto* dx_cols_data = dx_cols.data<int64_t>();
   auto* dx_values_data = dx_values.data<T>();
@@ -157,9 +157,9 @@ void SliceCsrGrad3D(const Context& dev_ctx,
   const auto* out_grad_cols_data = out_grad.cols().data<int64_t>();
   const auto* out_grad_values_data = out_grad.values().data<T>();
 
-  DenseTensor dx_crows = phi::Empty<int64_t>(dev_ctx, {dim0 * (n_rows + 1)});
-  DenseTensor dx_cols = phi::Empty<int64_t>(dev_ctx, {out_grad_nnz});
-  DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
+  DenseTensor dx_crows = Empty<int64_t>(dev_ctx, {dim0 * (n_rows + 1)});
+  DenseTensor dx_cols = Empty<int64_t>(dev_ctx, {out_grad_nnz});
+  DenseTensor dx_values = Empty<T, Context>(dev_ctx, {out_grad_nnz});
   auto* dx_crows_data = dx_crows.data<int64_t>();
   auto* dx_cols_data = dx_cols.data<int64_t>();
   auto* dx_values_data = dx_values.data<T>();

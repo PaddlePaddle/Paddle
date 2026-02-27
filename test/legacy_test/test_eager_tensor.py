@@ -238,7 +238,7 @@ class TestEagerTensor(unittest.TestCase):
                 np.testing.assert_array_equal(x.numpy(), expected_result)
 
                 numpy_array = np.random.randn(3, 4)
-                # covert core.DenseTensor to paddle.Tensor
+                # convert core.DenseTensor to paddle.Tensor
                 dense_tensor = paddle.base.core.DenseTensor()
                 place = paddle.base.framework._current_expected_place()
                 dense_tensor.set(numpy_array, place)
@@ -247,7 +247,7 @@ class TestEagerTensor(unittest.TestCase):
                 self.assertEqual(x.type, core.VarDesc.VarType.DENSE_TENSOR)
                 self.assertEqual(str(x.place), str(place))
 
-                # covert core.DenseTensor to paddle.Tensor
+                # convert core.DenseTensor to paddle.Tensor
                 x = paddle.to_tensor(numpy_array)
                 dlpack = x.value().get_tensor()._to_dlpack()
                 tensor_from_dlpack = paddle.base.core.from_dlpack(dlpack)

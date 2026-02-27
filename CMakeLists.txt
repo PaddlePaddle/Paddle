@@ -73,6 +73,7 @@ option(WITH_PIP_TENSORRT "Paddle uses the tensorrt provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
 option(WITH_CPP_TEST "Compile PaddlePaddle skip cpp test" ON)
+option(WITH_FA_BUILD_WITH_CACHE "Compile PaddlePaddle with flash-attn cache" ON)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -352,6 +353,15 @@ option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
+
+set(WITH_SLEEF_DEFAULT ON)
+if(WIN32 OR WITH_ROCM)
+  set(WITH_SLEEF_DEFAULT OFF)
+endif()
+option(
+  WITH_SLEEF
+  "Compile PaddlePaddle with Sleef library for high precision math functions"
+  ${WITH_SLEEF_DEFAULT})
 
 if(WIN32 OR NOT WITH_GPU)
   set(WITH_CUDNN_FRONTEND

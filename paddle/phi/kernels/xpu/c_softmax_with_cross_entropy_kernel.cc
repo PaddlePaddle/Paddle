@@ -131,8 +131,8 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
       reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
       reinterpret_cast<const XPUType*>(loss->data<T>()),
       reinterpret_cast<XPUType*>(loss->data<T>()),
-      common::vectorize(predicted_logits->dims()),
-      common::vectorize(predicted_logits->dims()));
+      vectorize(predicted_logits->dims()),
+      vectorize(predicted_logits->dims()));
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "where");
 }
 template <typename T>

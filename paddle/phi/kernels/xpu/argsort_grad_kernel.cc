@@ -43,7 +43,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) return;
 
   if (rank == 0) {
-    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
 
@@ -51,9 +51,9 @@ void ArgsortGradKernel(const Context& dev_ctx,
   if (axis == -1 || axis + 1 == in_dims.size()) {
     is_need_transpose = false;
   }
-  auto len_before = common::product(common::slice_ddim(in_dims, 0, axis));
+  auto len_before = common::product(slice_ddim(in_dims, 0, axis));
   auto len_after =
-      common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
+      common::product(slice_ddim(in_dims, axis + 1, in_dims.size()));
   auto m = len_before * len_after;
   auto n = in_dims[axis];
   auto len = m * n;

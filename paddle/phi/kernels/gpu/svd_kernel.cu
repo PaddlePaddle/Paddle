@@ -28,7 +28,7 @@
 namespace phi {
 
 template <class T>
-static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+static void GesvdjBatched(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -41,7 +41,7 @@ static void GesvdjBatched(const phi::GPUContext& dev_ctx,
                           int thin_UV = 1);
 
 template <>
-void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<float>(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -105,7 +105,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -122,7 +122,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<double>(const GPUContext& dev_ctx,
                            int batchSize,
                            int m,
                            int n,
@@ -186,7 +186,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                                gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -203,7 +203,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int m,
                                    int n,
@@ -269,7 +269,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
         gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,
@@ -286,7 +286,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                     int batchSize,
                                     int m,
                                     int n,
@@ -352,7 +352,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
         gesvdj_params));
     // check the error info
     int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        &error_info,
                        dev_ctx.GetPlace(),
                        info,

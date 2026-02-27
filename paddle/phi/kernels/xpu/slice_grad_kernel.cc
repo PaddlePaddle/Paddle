@@ -38,11 +38,7 @@ void SliceGradKernel(const Context& dev_ctx,
     return;
   }
   if (out_grad.numel() == 0) {
-    phi::Full<T, XPUContext>(
-        dev_ctx,
-        phi::IntArray(common::vectorize(input_grad->dims())),
-        T(0),
-        input_grad);
+    Full<T, XPUContext>(dev_ctx, input_grad->dims(), T(0), input_grad);
     return;
   }
   // Get the accurate attribute value of starts and ends
@@ -106,11 +102,7 @@ void SliceGradKernel<phi::complex64, XPUContext>(
     return;
   }
   if (out_grad.numel() == 0) {
-    phi::Full<T, XPUContext>(
-        dev_ctx,
-        phi::IntArray(common::vectorize(input_grad->dims())),
-        T(0),
-        input_grad);
+    Full<T, XPUContext>(dev_ctx, input_grad->dims(), T(0), input_grad);
     return;
   }
 

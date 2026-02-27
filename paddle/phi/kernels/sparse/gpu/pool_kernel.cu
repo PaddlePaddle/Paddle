@@ -69,11 +69,11 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
-  DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
+  DenseTensor counter_per_kernel = Empty(dev_ctx, std::move(counter_meta));
+  DenseTensor offsets_per_kernel = Empty(dev_ctx, std::move(counter_meta));
   DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
-  DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor out_index = Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_value = Empty(dev_ctx, std::move(index_meta));
 
   // 1. product rulebook
   int rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,

@@ -38,9 +38,9 @@ template class variant<paddle::blank,
                        double,
                        paddle::experimental::Scalar,
                        std::vector<paddle::experimental::Scalar>,
-                       ::pir::Block*,
-                       std::vector<::pir::Value>,
-                       std::shared_ptr<::pir::Program>>;
+                       pir::Block*,
+                       std::vector<pir::Value>,
+                       std::shared_ptr<pir::Program>>;
 }  // namespace paddle
 REGISTER_LOG_SIMPLY_STR(paddle::framework::AttributeMap);
 REGISTER_LOG_SIMPLY_STR(paddle::framework::Attribute);

@@ -18,12 +18,7 @@ limitations under the License. */
 #include <typeindex>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
-#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/utils/test_macros.h"
 

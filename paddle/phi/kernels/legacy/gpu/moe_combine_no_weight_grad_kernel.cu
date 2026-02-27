@@ -105,8 +105,7 @@ void MoeCombineNoWeightGradKernel(const Context& dev_ctx,
   const int64_t k = scatter_index_shape[1];
 
   dev_ctx.template Alloc<T>(grad_x);
-  phi::Full<T, Context>(
-      dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
+  Full<T, Context>(dev_ctx, grad_x->dims(), 0, grad_x);
 
   moe_combine_no_weight_bwd<T>(combine_weights.data<T>(),
                                scatter_index.data<int>(),

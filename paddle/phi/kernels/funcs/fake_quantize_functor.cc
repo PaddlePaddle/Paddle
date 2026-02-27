@@ -332,7 +332,7 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
           in.data<T>() + in.numel(),
           dev_ctx.template Alloc<T>(out),
           funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
-    auto out_e = phi::EigenVector<T>::Flatten(*out);
+    auto out_e = EigenVector<T>::Flatten(*out);
     out_e.device(*dev_ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
   } else {
     trans(dev_ctx,
@@ -340,7 +340,7 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
           in.data<T>() + in.numel(),
           dev_ctx.template Alloc<T>(out),
           phi::ClipFunctor<T>(-s, s));
-    auto out_e = phi::EigenVector<T>::Flatten(*out);
+    auto out_e = EigenVector<T>::Flatten(*out);
     out_e.device(*dev_ctx.eigen_device()) =
         (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
   }

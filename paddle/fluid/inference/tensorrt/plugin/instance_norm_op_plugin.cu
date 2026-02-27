@@ -74,8 +74,8 @@ int InstanceNormPlugin::enqueue(int batch_size,
   bias_t.Resize(common::make_ddim({batch_size, c}));
   int device_id;
   cudaGetDevice(&device_id);
-  float *scale_d = scale_t.mutable_data<float>(phi::GPUPlace(device_id));
-  float *bias_d = bias_t.mutable_data<float>(phi::GPUPlace(device_id));
+  float *scale_d = scale_t.mutable_data<float>(GPUPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(GPUPlace(device_id));
 
   for (int i = 0; i < batch_size; i++) {
     cudaMemcpyAsync(scale_d + i * c,
@@ -150,8 +150,8 @@ int InstanceNormPluginEnqueue(const nvinfer1::PluginTensorDesc *inputDesc,
   bias_t.Resize(common::make_ddim({n, c}));
   int device_id;
   cudaGetDevice(&device_id);
-  float *scale_d = scale_t.mutable_data<float>(phi::GPUPlace(device_id));
-  float *bias_d = bias_t.mutable_data<float>(phi::GPUPlace(device_id));
+  float *scale_d = scale_t.mutable_data<float>(GPUPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(GPUPlace(device_id));
 
   for (int i = 0; i < n; i++) {
     cudaMemcpyAsync(scale_d + i * c,

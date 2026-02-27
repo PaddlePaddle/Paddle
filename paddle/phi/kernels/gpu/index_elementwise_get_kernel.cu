@@ -22,7 +22,7 @@
 
 namespace phi {
 template <typename T, typename OffsetT = uint32_t>
-void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
+void GPUIndexElementwiseGetKernel(const GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*>& index,
                                   const std::vector<int64_t>& input_dims,

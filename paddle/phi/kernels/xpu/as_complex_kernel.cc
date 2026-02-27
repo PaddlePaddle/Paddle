@@ -36,7 +36,8 @@ void AsComplexKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(as_complex, XPU, ALL_LAYOUT, phi::AsComplexKernel, float) {
+PD_REGISTER_KERNEL(
+    as_complex, XPU, ALL_LAYOUT, phi::AsComplexKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }
 #endif  // PADDLE_WITH_XPU_FFT

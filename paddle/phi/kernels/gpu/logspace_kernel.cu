@@ -76,13 +76,13 @@ void LogspaceKernel(const Context& dev_ctx,
   DenseTensor n_stop;
   DenseTensor n_num;
   DenseTensor n_base;
-  Copy(dev_ctx, start_t, phi::CPUPlace(), false, &n_start);
+  Copy(dev_ctx, start_t, CPUPlace(), false, &n_start);
   T start_data = n_start.data<T>()[0];
-  Copy(dev_ctx, stop_t, phi::CPUPlace(), false, &n_stop);
+  Copy(dev_ctx, stop_t, CPUPlace(), false, &n_stop);
   T stop_data = n_stop.data<T>()[0];
-  Copy(dev_ctx, number, phi::CPUPlace(), false, &n_num);
+  Copy(dev_ctx, number, CPUPlace(), false, &n_num);
   int64_t num = static_cast<int64_t>(n_num.data<int32_t>()[0]);
-  Copy(dev_ctx, base_t, phi::CPUPlace(), false, &n_base);
+  Copy(dev_ctx, base_t, CPUPlace(), false, &n_base);
   T base_data = n_base.data<T>()[0];
 
   MPType mt_start_data = static_cast<MPType>(start_data);
@@ -95,7 +95,7 @@ void LogspaceKernel(const Context& dev_ctx,
                                       "than 0, but received num is %d",
                                       num));
 
-  out->Resize(common::make_ddim({num}));
+  out->Resize(make_ddim({num}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   double step = 0;

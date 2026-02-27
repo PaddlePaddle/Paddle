@@ -477,7 +477,7 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                  void* const* outputs,
                                  void* workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
-  phi::GPUPlace place(platform::GetCurrentDeviceId());
+  GPUPlace place(platform::GetCurrentDeviceId());
   // TODO(inference): custom generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](GenerateCustomGenericPluginDataType proto_type,

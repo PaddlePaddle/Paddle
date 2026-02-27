@@ -266,8 +266,8 @@ static void SetAllocationForUninitializedDenseTensor(
 
 phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
-  if (variable.IsType<phi::DenseTensor>()) {
-    const auto& tensor = variable.Get<phi::DenseTensor>();
+  if (variable.IsType<DenseTensor>()) {
+    const auto& tensor = variable.Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(
         tensor.numel(),
         1UL,
@@ -276,7 +276,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
                                         "value, it contains `%d` values.",
                                         tensor.numel()));
     if (!phi::is_same_place(tensor.place(), expected_place)) {
-      phi::DenseTensor tmp_tensor;
+      DenseTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
       return {tmp_tensor};
     } else {
@@ -291,8 +291,8 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
 }
 
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
-  if (variable.IsType<phi::DenseTensor>()) {
-    const auto& tensor = variable.Get<phi::DenseTensor>();
+  if (variable.IsType<DenseTensor>()) {
+    const auto& tensor = variable.Get<DenseTensor>();
     return phi::IntArray(tensor);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -315,24 +315,24 @@ phi::IntArray MakePhiIntArrayFromVarList(
 
   for (auto* var : variable_list) {
     phi::DataType data_type;
-    if (var->IsType<phi::DenseTensor>()) {
-      const auto& tensor = var->Get<phi::DenseTensor>();
+    if (var->IsType<DenseTensor>()) {
+      const auto& tensor = var->Get<DenseTensor>();
       data_type = tensor.dtype();
       if (data_type == phi::DataType::INT64) {
-        const auto& tensor = var->Get<phi::DenseTensor>();
+        const auto& tensor = var->Get<DenseTensor>();
         if (tensor.IsInitialized() &&
             !phi::is_same_place(tensor.place(), expected_place)) {
-          phi::DenseTensor tmp_tensor;
+          DenseTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
       } else if (data_type == phi::DataType::INT32) {
-        const auto& tensor = var->Get<phi::DenseTensor>();
+        const auto& tensor = var->Get<DenseTensor>();
         if (tensor.IsInitialized() &&
             !phi::is_same_place(tensor.place(), expected_place)) {
-          phi::DenseTensor tmp_tensor;
+          DenseTensor tmp_tensor;
           framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
         } else {

@@ -37,7 +37,7 @@ struct StridedMemcpyFunctor<T, 0> {
                   const int64_t* dst_stride UNUSED,
                   T* dst) const {
     auto place = dev_ctx.GetPlace();
-    if (place.GetType() == phi::AllocationType::CPU) {
+    if (place.GetType() == AllocationType::CPU) {
       auto& cpu_place = place;
       memory_utils::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
     } else {
@@ -63,7 +63,7 @@ struct StridedMemcpyFunctor<T, 1> {
                   const int64_t* dst_stride UNUSED,
                   T* dst) const {
     auto place = dev_ctx.GetPlace();
-    if (place.GetType() == phi::AllocationType::CPU) {
+    if (place.GetType() == AllocationType::CPU) {
       auto& cpu_place = place;
       memory_utils::Copy(
           cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim[0]);

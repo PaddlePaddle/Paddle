@@ -85,7 +85,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                              axes.size(),
                              false);
 
-  DDim out_dims(common::make_ddim(out_dims_vector));
+  DDim out_dims(make_ddim(out_dims_vector));
 
   std::vector<int> reverse_vector(starts_local.size(), 0);
   funcs::StridedSliceFunctor(starts_local.data(),
@@ -280,11 +280,7 @@ void SetValueGradKernel(const Context& dev_ctx,
 
   if (ellipsis_flag) {
     if (x_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(x_grad->dims()),
-                             Scalar(0),
-                             x_grad->dtype(),
-                             x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), Scalar(0), x_grad);
     }
     if (value_grad) {
       if (value_grad->numel() == out_grad.numel()) {

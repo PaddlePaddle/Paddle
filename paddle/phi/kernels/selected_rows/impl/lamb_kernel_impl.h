@@ -33,8 +33,8 @@ void ComputeRowImpl(const Context& dev_ctx,
                     const DenseTensor& mom2,
                     const DenseTensor& beta1_pow,
                     const DenseTensor& beta2_pow,
-                    const paddle::optional<DenseTensor>& master_param_opt,
-                    const paddle::optional<DenseTensor>& skip_update_opt,
+                    const optional<DenseTensor>& master_param_opt,
+                    const optional<DenseTensor>& skip_update_opt,
                     float weight_decay_f,
                     float beta1_f,
                     float beta2_f,
@@ -57,8 +57,8 @@ void LambKernel(const Context& dev_ctx,
                 const DenseTensor& moment2,
                 const DenseTensor& beta1_pow,
                 const DenseTensor& beta2_pow,
-                const paddle::optional<DenseTensor>& master_param,
-                const paddle::optional<DenseTensor>& skip_update,
+                const optional<DenseTensor>& master_param,
+                const optional<DenseTensor>& skip_update,
                 float weight_decay,
                 float beta1,
                 float beta2,
@@ -130,8 +130,8 @@ void ComputeRowImpl(const Context& dev_ctx,
                     const DenseTensor& mom2,
                     const DenseTensor& beta1_pow,
                     const DenseTensor& beta2_pow,
-                    const paddle::optional<DenseTensor>& master_param_opt,
-                    const paddle::optional<DenseTensor>& skip_update_opt,
+                    const optional<DenseTensor>& master_param_opt,
+                    const optional<DenseTensor>& skip_update_opt,
                     float weight_decay_f,
                     float beta1_f,
                     float beta2_f,
@@ -160,7 +160,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      skip_update->place().GetType() == phi::AllocationType::CPU &&
+      skip_update->place().GetType() == AllocationType::CPU &&
       (*skip_update_flag)) {
     return;
   }
@@ -233,7 +233,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
-  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
+  if (dev_ctx.GetPlace().GetType() == AllocationType::GPU &&
       beta1_pow.place() == phi::CPUPlace() &&
       beta2_pow.place() == phi::CPUPlace()) {
     SparseLambMomentREGUpdateFunctor<T> moment_update_functor(
@@ -293,11 +293,11 @@ void ComputeRowImpl(const Context& dev_ctx,
   // paddle/phi/kernels/impl/lamb_kernel_impl.h Please modify it together
 
   // DenseTensor p_norm_t;
-  // p_norm_t.Resize(common::make_ddim({1}));
+  // p_norm_t.Resize(make_ddim({1}));
   // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
 
   // DenseTensor trust_ratio_div_norm_t;
-  // trust_ratio_div_norm_t.Resize(common::make_ddim({1}));
+  // trust_ratio_div_norm_t.Resize(make_ddim({1}));
   // auto* trust_ratio_div_norm_ptr =
   //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
 

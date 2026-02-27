@@ -26,4 +26,4 @@ void RenormGradKernel(const Context& dev_ctx,
                       int axis,
                       float max_norm,
                       DenseTensor* dx);
-}
+}  // namespace phi

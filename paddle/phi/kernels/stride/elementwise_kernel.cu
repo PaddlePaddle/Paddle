@@ -103,8 +103,11 @@ inline bool FastContiguous(const int64_t &numel,
           FastContiguous(y.numel(), y.dims(), y.strides(), y.offset());       \
       fast_contiguous = x_fast || y_fast;                                     \
     }                                                                         \
-                                                                              \
-    if (!FLAGS_use_stride_compute_kernel || fast_contiguous) {                \
+    bool zero_size = false;                                                   \
+    if (x.numel() == 0 || y.numel() == 0) {                                   \
+      zero_size = true;                                                       \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel || fast_contiguous || zero_size) {   \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
@@ -167,7 +170,11 @@ void AddStrideKernel(const Context &dev_ctx,
   }
   DenseTensor x_;
   DenseTensor y_;
-  if (!FLAGS_use_stride_compute_kernel || x.dtype() != y.dtype()) {
+  bool zero_size = false;
+  if (x.numel() == 0 || y.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || x.dtype() != y.dtype() || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -239,7 +246,11 @@ void ScaleStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel) {
+  bool zero_size = false;
+  if (x.numel() == 0) {
+    zero_size = true;
+  }
+  if (!FLAGS_use_stride_compute_kernel || zero_size) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {

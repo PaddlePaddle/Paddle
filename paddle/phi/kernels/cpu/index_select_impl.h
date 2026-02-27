@@ -64,10 +64,10 @@ void IndexSelectInner(const Context& dev_ctx,
   auto index_size = index.dims()[0];
 
   DenseTensor index_cpu_copy;
-  if (index.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+  if (index.place().GetType() != AllocationType::CPU) {
+    Copy(dev_ctx, index, CPUPlace(), true, &index_cpu_copy);
   }
-  const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
+  const IndexT* index_data = index.place().GetType() == AllocationType::CPU
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
   dev_ctx.template Alloc<T>(output);
@@ -108,8 +108,8 @@ void IndexSelectInner(const Context& dev_ctx,
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  input->Resize(common::make_ddim({outer_nums, input_dim[dim], slice_size}));
-  output->Resize(common::make_ddim({outer_nums, index_size, slice_size}));
+  input->Resize(make_ddim({outer_nums, input_dim[dim], slice_size}));
+  output->Resize(make_ddim({outer_nums, index_size, slice_size}));
 
   auto input_tensor = EigenTensor<T, 3>::From(*input);
   auto output_tensor = EigenTensor<T, 3>::From(*output);

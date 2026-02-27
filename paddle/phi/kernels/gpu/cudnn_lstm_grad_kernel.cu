@@ -25,8 +25,8 @@ void CudnnLSTMGradKernel(
     const DenseTensor &x,
     const DenseTensor &init_h,
     const DenseTensor &init_c,
-    const paddle::optional<std::vector<const DenseTensor *>> &weight_list,
-    const paddle::optional<DenseTensor> &sequence_length,
+    const optional<std::vector<const DenseTensor *>> &weight_list,
+    const optional<DenseTensor> &sequence_length,
     const DenseTensor &out,
     const DenseTensor &reserve,
     const DenseTensor &state_out,
@@ -75,7 +75,7 @@ void CudnnLSTMGradKernel(
   }
 
   DenseTensor weight_grad;
-  funcs::SetConstant<phi::GPUContext, T> zero;
+  funcs::SetConstant<GPUContext, T> zero;
   weight_grad.Resize({weight_numel});
   dev_ctx.template Alloc<T>(&weight_grad);
   zero(dev_ctx, &weight_grad, static_cast<T>(0.0));

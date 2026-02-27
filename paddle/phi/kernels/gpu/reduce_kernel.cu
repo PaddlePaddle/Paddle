@@ -56,7 +56,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = common::vectorize(x.dims());
+  auto update_dims = vectorize(x.dims());
   for (auto i : reduce_dims) {
     update_dims[i] = 1;
   }
@@ -64,7 +64,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(common::make_ddim(update_dims));
+  new_out_grad.Resize(make_ddim(update_dims));
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
@@ -96,7 +96,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<int> reduce_dims =
       funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
 
-  auto update_dims = common::vectorize(x.dims());
+  auto update_dims = vectorize(x.dims());
   int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
@@ -106,7 +106,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(common::make_ddim(update_dims));
+  new_out_grad.Resize(make_ddim(update_dims));
 
   // call BroadcastKernel
   dev_ctx.Alloc(x_grad, x.dtype());

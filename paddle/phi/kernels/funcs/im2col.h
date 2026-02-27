@@ -25,7 +25,7 @@ namespace phi {
 namespace funcs {
 
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
-enum class ColFormat { kCFO = 0, kOCF = 1 };
+enum class ColFormat { CFO = 0, OCF = 1 };
 
 /*
  * \brief Converts the image data of three dimensions(CHW) into a colData of
@@ -47,7 +47,7 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
  * \param paddings     padding data.
  * \param 4-dimension  [up_pad, left_pad, down_pad, right_pad].
  *
- * If the template argument Format is kCFO, the shape of colData is:
+ * If the template argument Format is CFO, the shape of colData is:
  * [input_channels, filter_height, filter_width, output_height, output_width]
  * So, it is easy to reshape into a convolution matrix for convolution
  * calculation based on matrix multiplication.
@@ -63,7 +63,7 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
  *      output_height,
  *      output_width]
  *
- * If the template argument Format is kOCF, the shape of colData is:
+ * If the template argument Format is OCF, the shape of colData is:
  * [output_height, output_width, input_channels, filter_height, filter_width]
  * So, it is easy to reshape into a sequence matrix for rnn calculation.
  * The shape of sequence matrix is [seq_length, step_size], where the seq_length

@@ -51,18 +51,17 @@ void BlhaGetMaxLenKernel(const Context& dev_ctx,
                          DenseTensor* max_enc_len_this_time,
                          DenseTensor* max_dec_len_this_time) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto& dev_ctx_cpu = *pool.Get(phi::CPUPlace());
+  auto& dev_ctx_cpu = *pool.Get(CPUPlace());
   // decoder
   max_dec_len_this_time->Resize({{1}});
   if (seq_lens_decoder.numel() > 0) {
     GetMaxLenTensor(
         dev_ctx, seq_lens_decoder, batch_size, max_dec_len_this_time);
   } else {
-    phi::Full<int, CPUContext>(
-        reinterpret_cast<const CPUContext&>(dev_ctx_cpu),
-        phi::IntArray(common::vectorize(max_dec_len_this_time->dims())),
-        0,
-        max_dec_len_this_time);
+    Full<int, CPUContext>(reinterpret_cast<const CPUContext&>(dev_ctx_cpu),
+                          max_dec_len_this_time->dims(),
+                          0,
+                          max_dec_len_this_time);
   }
 
   // encoder
@@ -71,11 +70,10 @@ void BlhaGetMaxLenKernel(const Context& dev_ctx,
     GetMaxLenTensor(
         dev_ctx, seq_lens_encoder, batch_size, max_enc_len_this_time);
   } else {
-    phi::Full<int, CPUContext>(
-        reinterpret_cast<const CPUContext&>(dev_ctx_cpu),
-        phi::IntArray(common::vectorize(max_enc_len_this_time->dims())),
-        0,
-        max_enc_len_this_time);
+    Full<int, CPUContext>(reinterpret_cast<const CPUContext&>(dev_ctx_cpu),
+                          max_enc_len_this_time->dims(),
+                          0,
+                          max_enc_len_this_time);
   }
 }
 }  // namespace fusion

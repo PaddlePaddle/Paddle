@@ -42,7 +42,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
                         "dimension size is 1. Segment_ids's shape is: [%s].",
                         segment_ids.dims()));
 
-  bool cpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU;
+  bool cpu_place = dev_ctx.GetPlace().GetType() == AllocationType::CPU;
   if (cpu_place) {
     auto dims = x.dims();
     auto* segment_ids_ptr = segment_ids.data<IndexT>();
@@ -63,7 +63,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!cpu_place) {
     DenseTensor length;
-    length.Resize(common::make_ddim({1}));
+    length.Resize(make_ddim({1}));
     IndexT* length_data = dev_ctx.template HostAlloc<IndexT>(&length);
 
     const IndexT* segment_ids_ptr = segment_ids.data<IndexT>();

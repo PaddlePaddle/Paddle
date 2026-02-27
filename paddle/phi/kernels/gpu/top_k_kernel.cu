@@ -90,10 +90,8 @@ void TopkKernel(const Context& dev_ctx,
     indices->Resize(out_dims);
   }
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
     return;
   }
   PADDLE_ENFORCE_GE(
@@ -111,7 +109,7 @@ void TopkKernel(const Context& dev_ctx,
   if (axis == in_dims.size() - 1) {
     // if get the topK from the last axis
     const int64_t& input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 
     if (k > input_width) {
@@ -121,7 +119,7 @@ void TopkKernel(const Context& dev_ctx,
     // The conclusion is drawn from the data through multiple sets of
     // statistics
     if (input_width >= 128 && k >= input_width * 0.25) {
-      auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+      auto* ctx = reinterpret_cast<const GPUContext*>(&dev_ctx);
       if (funcs::SortTopk<T>(*ctx,
                              input,
                              input_width,
@@ -172,7 +170,7 @@ void TopkKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<T>(&sorted_output);
         dev_ctx.template Alloc<int64_t>(&sorted_indices);
         dev_ctx.template Alloc<int64_t>(&gather_indices);
-        auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+        auto* ctx = reinterpret_cast<const GPUContext*>(&dev_ctx);
         if (funcs::SortTopk<T>(*ctx,
                                out,
                                k,
@@ -266,7 +264,7 @@ void TopkKernel(const Context& dev_ctx,
     trans_input.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
-    funcs::TransCompute<phi::GPUContext, T>(
+    funcs::TransCompute<GPUContext, T>(
         ndims, dev_ctx, *input, &trans_input, trans);
     // third step, calculate the topk
     // allocate the tmp cuda memory for the tmp result
@@ -277,8 +275,8 @@ void TopkKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     dev_ctx.template Alloc<T>(&trans_out);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     if (k > input_width) k = input_width;
@@ -286,7 +284,7 @@ void TopkKernel(const Context& dev_ctx,
     // The conclusion is drawn from the data through multiple sets of
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
-      auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+      auto* ctx = reinterpret_cast<const GPUContext*>(&dev_ctx);
       if (funcs::SortTopk<T>(*ctx,
                              &trans_input,
                              input_width,
@@ -296,9 +294,9 @@ void TopkKernel(const Context& dev_ctx,
                              &trans_ind,
                              largest)) {
         // last step, transpose back the indices and output
-        funcs::TransCompute<phi::GPUContext, int64_t>(
+        funcs::TransCompute<GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);
-        funcs::TransCompute<phi::GPUContext, T>(
+        funcs::TransCompute<GPUContext, T>(
             ndims, dev_ctx, trans_out, out, trans);
         return;
       } else {
@@ -351,10 +349,9 @@ void TopkKernel(const Context& dev_ctx,
     }
 
     // last step, transpose back the indices and output
-    funcs::TransCompute<phi::GPUContext, int64_t>(
+    funcs::TransCompute<GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
-    funcs::TransCompute<phi::GPUContext, T>(
-        ndims, dev_ctx, trans_out, out, trans);
+    funcs::TransCompute<GPUContext, T>(ndims, dev_ctx, trans_out, out, trans);
   }
 }
 #undef FIXED_BLOCK_DIM_BASE

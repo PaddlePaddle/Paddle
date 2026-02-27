@@ -175,7 +175,7 @@ class CoalesceGradTensorPass : public ir::Pass {
           IsDenseTensorType(GetTypeOfVar(vars_info, p_g.second)),
           true,
           common::errors::InvalidArgument(
-              "Parameter@GRAD %s is not phi::DenseTensor.", p_g.second));
+              "Parameter@GRAD %s is not DenseTensor.", p_g.second));
     }
   }
 

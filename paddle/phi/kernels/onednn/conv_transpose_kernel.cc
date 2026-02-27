@@ -127,10 +127,10 @@ class ConvTransposeOneDNNHandlerT
             "Now we only support 2d oneDNN convolution transpose op"));
 
     const auto x_dims = x->dims();
-    const auto x_data_dims = common::slice_ddim(x_dims, 2, x_dims.size());
+    const auto x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
     const auto filter_dims = filter->dims();
     const auto filter_data_dims =
-        common::slice_ddim(filter_dims, 2, filter_dims.size());
+        slice_ddim(filter_dims, 2, filter_dims.size());
     const auto ksize = common::vectorize(filter_data_dims);
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, x_data_dims, strides, ksize);
@@ -546,7 +546,7 @@ template <typename T, typename Context>
 void Conv2dTransposeBiasKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
-                               const paddle::optional<DenseTensor>& bias,
+                               const optional<DenseTensor>& bias,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
                                const std::vector<int>& output_padding UNUSED,
@@ -612,7 +612,7 @@ KernelKey ConvTransposeGetKernelTypeForVar(
       (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = common::StringToDataLayout(data_format);
+    auto dl = StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != DataLayout::ANY) {

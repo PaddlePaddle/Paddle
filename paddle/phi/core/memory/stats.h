@@ -160,7 +160,7 @@ PADDLE_API void HostMemoryStatUpdate(const std::string& stat_type,
 PADDLE_API void HostMemoryStatResetPeakValue(const std::string& stat_type,
                                              int dev_id);
 
-PADDLE_API void LogDeviceMemoryStats(const phi::Place& place,
+PADDLE_API void LogDeviceMemoryStats(const Place& place,
                                      const std::string& op_name);
 
 #define DEVICE_MEMORY_STAT_FUNC_SWITCH_CASE(item, id)               \

@@ -1445,8 +1445,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 
     // When soft_label is True, the axis column is 1.
     if (soft_label) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(loss->dims())), 0, loss);
+      Full<T, Context>(dev_ctx, loss->dims(), 0, loss);
     }
     return;
   }
@@ -1495,7 +1494,6 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    float,
                    phi::float16) {}
 #else
-#if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
                    ALL_LAYOUT,
@@ -1504,14 +1502,4 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    double,
                    phi::float16,
                    phi::bfloat16) {}
-#else
-PD_REGISTER_KERNEL(cross_entropy_with_softmax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CrossEntropyWithSoftmaxKernel,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16) {}
-#endif
 #endif

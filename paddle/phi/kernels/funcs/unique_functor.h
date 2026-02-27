@@ -100,7 +100,7 @@ struct UniqueOpFunctor {
 
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
-      count_->Resize(common::make_ddim({static_cast<int64_t>(uniq.size())}));
+      count_->Resize(make_ddim({static_cast<int64_t>(uniq.size())}));
       IndexT* count_data = dev_ctx_.template Alloc<IndexT>(count_);
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
@@ -130,7 +130,7 @@ struct UniqueOpFunctor {
       }
     }
 
-    out_->Resize(common::make_ddim({static_cast<int64_t>(uniq.size())}));
+    out_->Resize(make_ddim({static_cast<int64_t>(uniq.size())}));
     auto* out_data = dev_ctx_.template Alloc<InT>(out_);
     std::memcpy(out_data, uniq.data(), uniq.size() * sizeof(InT));
   }
@@ -178,12 +178,12 @@ static void UniqueFlattenedTensor(const Context& dev_ctx,
     unique.insert(in_data[i]);
   }
 
-  out->Resize(common::make_ddim({static_cast<int64_t>(unique.size())}));
+  out->Resize(make_ddim({static_cast<int64_t>(unique.size())}));
   auto* out_data = dev_ctx.template Alloc<InT>(out);
   std::copy(unique.begin(), unique.end(), out_data);
 
   if (return_index) {
-    indices->Resize(common::make_ddim({out->numel()}));
+    indices->Resize(make_ddim({out->numel()}));
     auto indices_data = dev_ctx.template Alloc<IndexT>(indices);
     std::unordered_map<InT, IndexT> indices_map;
     indices_map.reserve(out->numel());
@@ -197,7 +197,7 @@ static void UniqueFlattenedTensor(const Context& dev_ctx,
   }
 
   if (return_inverse) {
-    index->Resize(common::make_ddim({in.numel()}));
+    index->Resize(make_ddim({in.numel()}));
     auto inverse_data = dev_ctx.template Alloc<IndexT>(index);
     for (int64_t i = 0; i < in.numel(); ++i) {
       for (int64_t j = 0; j < out->numel(); ++j) {
@@ -210,7 +210,7 @@ static void UniqueFlattenedTensor(const Context& dev_ctx,
   }
 
   if (return_counts) {
-    count->Resize(common::make_ddim({out->numel()}));
+    count->Resize(make_ddim({out->numel()}));
     auto count_data = dev_ctx.template Alloc<IndexT>(count);
     for (int64_t i = 0; i < out->numel(); ++i) {
       IndexT cnt = 0;
@@ -279,7 +279,7 @@ static void UniqueDim(const Context& dev_ctx,
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
-  DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
+  DDim in_trans_dims = make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   dev_ctx.template Alloc<InT>(&in_trans);
   TransCompute<Context, InT>(in.dims().size(), dev_ctx, in, &in_trans, permute);
@@ -339,10 +339,10 @@ static void UniqueDim(const Context& dev_ctx,
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(common::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(make_ddim(out_trans_dims_vec));
   dev_ctx.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(common::make_ddim(out_trans_dims_vec));
+  out->Resize(make_ddim(out_trans_dims_vec));
   dev_ctx.template Alloc<InT>(out);
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   TransCompute<Context, InT>(

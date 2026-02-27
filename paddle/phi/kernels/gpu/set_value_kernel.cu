@@ -53,8 +53,8 @@ void SetTensorValueKernel(const Context& dev_ctx,
   funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
 
-  std::vector<int64_t> output_dims = common::vectorize<int64_t>(in.dims());
-  std::vector<int64_t> output_stride = common::vectorize<int64_t>(in.strides());
+  std::vector<int64_t> output_dims = vectorize<int64_t>(in.dims());
+  std::vector<int64_t> output_stride = vectorize<int64_t>(in.strides());
   int64_t output_offset = static_cast<int64_t>(in.offset());
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis_size = in.dims()[axes[i]];
@@ -177,7 +177,7 @@ void SetValueKernel(const Context& dev_ctx,
 
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
-  value_tensor.Resize(common::make_ddim(shape));
+  value_tensor.Resize(make_ddim(shape));
   SetTensorValueKernel<T, Context>(dev_ctx,
                                    in,
                                    value_tensor,

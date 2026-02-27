@@ -278,6 +278,7 @@ class CacheKey:
         'input_args_with_spec',
         'input_kwargs_with_spec',
         'class_instance',
+        'is_grad_enabled',
         'kwargs',
         '_spec_names_id',
         '_pir_flags',
@@ -305,6 +306,7 @@ class CacheKey:
         self.input_args_with_spec = input_args_with_spec
         self.input_kwargs_with_spec = input_kwargs_with_spec
         self.class_instance = class_instance
+        self.is_grad_enabled = paddle.is_grad_enabled()
         # NOTE: `kwargs` is usually not considered as basic member for `__hash__`
         self.kwargs = kwargs
         self._spec_names_id = _hash_spec_names(
@@ -363,6 +365,7 @@ class CacheKey:
                 is_train,
                 self._pir_flags,
                 use_pir_api(),
+                self.is_grad_enabled,
             )
         )
 
@@ -637,7 +640,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
             Function or Method
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
@@ -652,7 +655,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 ...         else:
                 ...             out = x - 1
                 ...         return out
-                ...
                 >>> x = paddle.randn([10, 1], 'float32')
                 >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
                 >>> out = net(x)
@@ -682,7 +684,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
         Customized behavior for copy.deepcopy, return a new StaticFunction instance.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import copy
                 >>> import paddle
@@ -697,11 +699,10 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 ...         else:
                 ...             out = x - 1
                 ...         return out
-                ...
                 >>> x = paddle.randn([10, 1], 'float32')
                 >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
 
-                >>> copy_net = copy.deepcopy(net)      # still in static graph mode
+                >>> copy_net = copy.deepcopy(net)  # still in static graph mode
         """
         if self.class_instance is not None:
             copied_static_fn = type(self)(
@@ -960,7 +961,7 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
         Returns recent ConcreteProgram instance of decorated function.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import paddle
@@ -972,7 +973,6 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
                 >>> def foo(x, y):
                 ...     z = x + y
                 ...     return z
-                ...
                 >>> # usage 1:
                 >>> decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
                 >>> print(decorated_foo.concrete_program)
@@ -1781,7 +1781,7 @@ class ProgramTranslator:
         ProgramTranslator: the singleton object.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1847,7 +1847,7 @@ def enable_to_static(enable_to_static_bool: bool) -> None:
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> @paddle.jit.to_static
@@ -1857,7 +1857,6 @@ def enable_to_static(enable_to_static_bool: bool) -> None:
             ...     else:
             ...         x_v = x + 1
             ...     return x_v
-            ...
             >>> paddle.jit.enable_to_static(False)
 
             >>> x = paddle.ones([1, 2])

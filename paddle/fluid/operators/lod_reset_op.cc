@@ -70,7 +70,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
@@ -133,7 +133,7 @@ is supported.
 
 Example 1:
 
-Given a 1-level phi::DenseTensor input(X):
+Given a 1-level DenseTensor input(X):
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -147,7 +147,7 @@ then we get a 1-level DenseTensor:
 
 Example 2:
 
-Given a 1-level phi::DenseTensor input(X):
+Given a 1-level DenseTensor input(X):
     X.lod =  [[ 0,     2,                   5      6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
@@ -163,7 +163,7 @@ then we get a 1-level DenseTensor:
 
 Example 3:
 
-Given a 1-level phi::DenseTensor input(X):
+Given a 1-level DenseTensor input(X):
     X.lod =  [[ 0,      2,                   5     6 ]]
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]

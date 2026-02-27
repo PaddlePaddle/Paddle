@@ -36,8 +36,7 @@ void ExpandGradKernel(const Context& dev_ctx,
     return;
   }
   if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   if (x_grad->dims() == out_grad.dims()) {

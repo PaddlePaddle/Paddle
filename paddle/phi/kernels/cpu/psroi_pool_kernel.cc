@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void PsroiPoolKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& rois,
-                     const paddle::optional<DenseTensor>& rois_num,
+                     const optional<DenseTensor>& rois_num,
                      int pooled_height,
                      int pooled_width,
                      int output_channels,

@@ -59,3 +59,13 @@ from .lazy_import import try_import
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 
 __all__ = ['deprecated', 'run_check', 'require_version', 'try_import']
+
+
+def __getattr__(name):
+    if name == "data":
+        from importlib import import_module
+
+        mod = import_module(".data", package=__name__)
+        globals()[name] = mod
+        return mod
+    raise AttributeError(f"module 'paddle.utils' has no attribute '{name}'")

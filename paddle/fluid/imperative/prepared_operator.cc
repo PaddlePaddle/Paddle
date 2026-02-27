@@ -70,9 +70,9 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
   return var;
 }
 
-const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var) {
-  if (var.IsType<phi::DenseTensor>()) {
-    return &(var.Get<phi::DenseTensor>());
+const DenseTensor* GetTensorFromVar(const framework::Variable& var) {
+  if (var.IsType<DenseTensor>()) {
+    return &(var.Get<DenseTensor>());
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {
@@ -103,7 +103,7 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
                 << " var `" << var->Name() << "` to "
                 << framework::DataTypeToString(var->ForwardDataType())
                 << " real var in dynamic graph.";
-        phi::DenseTensor out;
+        DenseTensor out;
         framework::TransComplexToReal(
             var->ForwardDataType(), var->DataType(), *tensor, &out);
         SetTensorToVariable(var->Var(), out, var->MutableVar());
@@ -443,7 +443,7 @@ PreparedOp PrepareImpl(
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
                 << " | kernel key: " << phi_cpu_kernel_key
                 << " | kernel: " << phi_cpu_kernel;
-        auto* cpu_ctx = pool.Get(phi::CPUPlace());
+        auto* cpu_ctx = pool.Get(CPUPlace());
         return PreparedOp(op,
                           empty_ctx,
                           phi_cpu_kernel_key,
@@ -472,7 +472,7 @@ PreparedOp PrepareImpl(
     VLOG(3) << "fluid missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = phi::CPUPlace();
+    fluid_kernel_type.place_ = CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
@@ -496,7 +496,7 @@ PreparedOp PrepareImpl(
       VLOG(3) << "fluid missing XPU kernel: " << op.Type()
               << ", expected_kernel_key:" << fluid_kernel_type
               << ", fallbacking to CPU one!";
-      fluid_kernel_type.place_ = phi::CPUPlace();
+      fluid_kernel_type.place_ = CPUPlace();
       kernel_iter = kernels.find(fluid_kernel_type);
     }
   }
@@ -507,7 +507,7 @@ PreparedOp PrepareImpl(
     VLOG(3) << "missing IPU kernel: " << op.Type()
             << ", expected_kernel_key:" << fluid_kernel_type
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = phi::CPUPlace();
+    fluid_kernel_type.place_ = CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif
@@ -517,7 +517,7 @@ PreparedOp PrepareImpl(
     VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    fluid_kernel_type.place_ = phi::CPUPlace();
+    fluid_kernel_type.place_ = CPUPlace();
     kernel_iter = kernels.find(fluid_kernel_type);
   }
 #endif

@@ -20,12 +20,9 @@
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/operators/reader/buffered_reader.h"
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/onednn_helper.h"
-#endif
 
 COMMON_DECLARE_bool(cache_inference_while_scope);
 
@@ -74,8 +71,8 @@ static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
     return VarMetaInfo(name, dtype, place);
   }
 
-  if (var->IsType<phi::DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+  if (var->IsType<DenseTensor>()) {
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
@@ -214,7 +211,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
 
   if (op_type == "batch_norm" && parameter_name == "ReserveSpace") {
     if (dynamic_cast<const OperatorWithKernel*>(&op)->kernel_type()->place_ ==
-        phi::CPUPlace()) {
+        CPUPlace()) {
       VLOG(2) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
@@ -269,7 +266,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return op.Attr<std::string>("pooltype") == "MEAN" &&
            dynamic_cast<const OperatorWithKernel*>(&op)
                    ->kernel_type()
-                   ->place_ != phi::CPUPlace();
+                   ->place_ != CPUPlace();
   }
 
   return tensor && !IsExtendedTensor(*tensor);
@@ -277,8 +274,8 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
 
 phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
   if (var) {
-    if (var->template IsType<phi::DenseTensor>()) {
-      return var->template GetMutable<phi::DenseTensor>();
+    if (var->template IsType<DenseTensor>()) {
+      return var->template GetMutable<DenseTensor>();
     } else if (var->template IsType<phi::SelectedRows>()) {
       return var->template GetMutable<phi::SelectedRows>();
     } else if (var->template IsType<phi::SparseCooTensor>()) {
@@ -345,7 +342,7 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
     }
     phi::Copy(*dev_ctx_for_copy, *tensor, place, /*blocking=*/true, tensor);
   } else {
-    if (place == phi::CPUPlace()) {
+    if (place == CPUPlace()) {
       dev_ctx.HostAlloc(tensor,
                         dtype,
                         /*requested_size=*/0,
@@ -379,9 +376,9 @@ void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                               const phi::DataType& dtype,
                               const phi::DataLayout& layout,
                               phi::TensorBase* tensor) {
-  if (phi::DenseTensor::classof(tensor)) {
+  if (DenseTensor::classof(tensor)) {
     FakeInitializeTensor(
-        dev_ctx, place, dtype, layout, dynamic_cast<phi::DenseTensor*>(tensor));
+        dev_ctx, place, dtype, layout, dynamic_cast<DenseTensor*>(tensor));
   } else if (phi::SelectedRows::classof(tensor)) {
     FakeInitializeTensor(dev_ctx,
                          place,
@@ -543,8 +540,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
     }
 
     if (var->Type() == framework::proto::VarType::DENSE_TENSOR) {
-      input_var_original_places[in_name] =
-          (var->Get<phi::DenseTensor>()).place();
+      input_var_original_places[in_name] = (var->Get<DenseTensor>()).place();
     } else {
       VLOG(10) << "[while op]"
                << "skip backup input " << in_name << " type:"
@@ -575,11 +571,11 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       if (no_copy_var_names.find(input_var_name) == no_copy_var_names.end()) {
         std::string input_var_rename = input_var_name + "@TMP_COPY";
         framework::Variable* input_var = scope.FindVar(input_var_name);
-        if (input_var->IsType<phi::DenseTensor>()) {
+        if (input_var->IsType<DenseTensor>()) {
           rename_vars.push_back(input_var_rename);
-          auto input_var_tensor = input_var->Get<phi::DenseTensor>();
-          auto* rename_input_var_tensor = current_scope.Var(input_var_rename)
-                                              ->GetMutable<phi::DenseTensor>();
+          auto input_var_tensor = input_var->Get<DenseTensor>();
+          auto* rename_input_var_tensor =
+              current_scope.Var(input_var_rename)->GetMutable<DenseTensor>();
           framework::TensorCopy(
               input_var_tensor, dev_place, rename_input_var_tensor);
           rename_input_var_tensor->set_lod(input_var_tensor.lod());
@@ -623,9 +619,9 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
 
     for (auto& name : current_scope->LocalVarNames()) {
       auto* var = current_scope->Var(name);
-      if (var->IsType<phi::DenseTensor>()) {
+      if (var->IsType<DenseTensor>()) {
         // Clear all lod information for all lod_tensors.
-        auto* t = var->GetMutable<phi::DenseTensor>();
+        auto* t = var->GetMutable<DenseTensor>();
         phi::LegacyLoD empty_lod;
         t->set_lod(empty_lod);
       } else if (var->IsType<phi::TensorArray>()) {
@@ -724,7 +720,7 @@ void FakeInitializeOutputsForOperatorBase(
         std::dynamic_pointer_cast<operators::reader::BufferedReader>(
             reader->Get());
     phi::Place target_place =
-        buffered_reader ? buffered_reader->GetPlace() : phi::CPUPlace();
+        buffered_reader ? buffered_reader->GetPlace() : CPUPlace();
 
     auto& outputs = op.Outputs("Out");
     auto& var_types = reader->VarTypes();

@@ -36,8 +36,8 @@ void BatchNormInferKernel(const Context& dev_ctx,
   // Since saved_mean and saved_variance are used regardless of whether
   // they are in test mode, temporary variables need to be created here
   // to be compatible
-  auto saved_mean = phi::EmptyLike<T, Context>(dev_ctx, *mean_out);
-  auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, *variance_out);
+  auto saved_mean = EmptyLike<T, Context>(dev_ctx, *mean_out);
+  auto saved_variance = EmptyLike<T, Context>(dev_ctx, *variance_out);
   BatchNormKernel<T, Context>(dev_ctx,
                               x,
                               mean,

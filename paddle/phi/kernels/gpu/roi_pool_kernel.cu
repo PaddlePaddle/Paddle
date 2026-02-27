@@ -108,7 +108,7 @@ template <typename T, typename Context>
 void RoiPoolKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& boxes,
-                   const paddle::optional<DenseTensor>& boxes_num,
+                   const optional<DenseTensor>& boxes_num,
                    int pooled_height,
                    int pooled_width,
                    float spatial_scale,
@@ -123,10 +123,8 @@ void RoiPoolKernel(const Context& dev_ctx,
   int64_t rois_num = boxes.dims()[0];
 
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-    phi::Full<int64_t, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(arg_max->dims())), 0, arg_max);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    Full<int64_t, Context>(dev_ctx, arg_max->dims(), 0, arg_max);
     return;
   }
 
@@ -154,7 +152,7 @@ void RoiPoolKernel(const Context& dev_ctx,
             boxes_batch_size,
             batch_size));
     std::vector<int> boxes_num_list(boxes_batch_size);
-    memory_utils::Copy(phi::CPUPlace(),
+    memory_utils::Copy(CPUPlace(),
                        boxes_num_list.data(),
                        gplace,
                        boxes_num->data<int>(),
@@ -204,7 +202,7 @@ void RoiPoolKernel(const Context& dev_ctx,
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
   memory_utils::Copy(gplace,
                      box_id_data,
-                     phi::CPUPlace(),
+                     CPUPlace(),
                      box_batch_id_data,
                      bytes,
                      dev_ctx.stream());

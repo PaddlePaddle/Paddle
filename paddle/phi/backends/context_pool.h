@@ -44,32 +44,32 @@ template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
-struct DefaultDeviceContextType<phi::CPUPlace> {
-  using TYPE = phi::CPUContext;
+struct DefaultDeviceContextType<CPUPlace> {
+  using TYPE = CPUContext;
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct DefaultDeviceContextType<phi::GPUPlace> {
-  using TYPE = phi::GPUContext;
+struct DefaultDeviceContextType<GPUPlace> {
+  using TYPE = GPUContext;
 };
 #endif
 
 #ifdef PADDLE_WITH_XPU
 template <>
-struct DefaultDeviceContextType<phi::XPUPlace> {
-  using TYPE = phi::XPUContext;
+struct DefaultDeviceContextType<XPUPlace> {
+  using TYPE = XPUContext;
 };
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <>
-struct DefaultDeviceContextType<phi::CustomPlace> {
-  using TYPE = phi::CustomContext;
+struct DefaultDeviceContextType<CustomPlace> {
+  using TYPE = CustomContext;
 };
 #else
 template <>
-struct DefaultDeviceContextType<phi::CustomPlace> {
+struct DefaultDeviceContextType<CustomPlace> {
   using TYPE = DeviceContext;
 };
 #endif
@@ -80,15 +80,14 @@ class DeviceContextPool {
   PADDLE_API static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
-  PADDLE_API static DeviceContextPool& Init(
-      const std::vector<phi::Place>& places);
+  PADDLE_API static DeviceContextPool& Init(const std::vector<Place>& places);
 
   PADDLE_API static bool IsInitialized();
 
   PADDLE_API static void SetPool(DeviceContextPool* dev_pool);
 
   /*! \brief  Return handle of single device context. */
-  PADDLE_API phi::DeviceContext* Get(const phi::Place& place);
+  PADDLE_API DeviceContext* Get(const Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -108,7 +107,7 @@ class DeviceContextPool {
                      std::shared_future<std::unique_ptr<DeviceContext>>>*);
 
  private:
-  explicit DeviceContextPool(const std::vector<phi::Place>& places);
+  explicit DeviceContextPool(const std::vector<Place>& places);
 
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;

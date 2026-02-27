@@ -37,7 +37,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                             DenseTensor* value_grad) {
   const auto& index_type = index.dtype();
   if (x_grad) {
-    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (include_self == false || reduce == "assign") {
       if (index_type == DataType::INT32) {
         funcs::cpu_scatter_input_grad_kernel<T, int32_t>(

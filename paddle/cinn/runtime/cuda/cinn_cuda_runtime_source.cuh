@@ -376,48 +376,34 @@ __device__ inline int FN_INT32(exp)(int a) {
 // int64 unary and binary operator
 #define FN_INT64(func) cinn_nvgpu_##func##_int64
 
-__device__ inline long long int FN_INT64(bitwise_and)(long long int a,
-                                                      long long int b) {
+__device__ inline int64_t FN_INT64(bitwise_and)(int64_t a, int64_t b) {
   return a & b;
 }
-__device__ inline long long int FN_INT64(bitwise_or)(long long int a,
-                                                     long long int b) {
+__device__ inline int64_t FN_INT64(bitwise_or)(int64_t a, int64_t b) {
   return a | b;
 }
-__device__ inline long long int FN_INT64(bitwise_xor)(long long int a,
-                                                      long long int b) {
+__device__ inline int64_t FN_INT64(bitwise_xor)(int64_t a, int64_t b) {
   return a ^ b;
 }
-__device__ inline long long int FN_INT64(bitwise_not)(long long int a) {
-  return ~a;
+__device__ inline int64_t FN_INT64(bitwise_not)(int64_t a) { return ~a; }
+__device__ inline int64_t FN_INT64(clz)(int64_t a) { return __clzll(a); }
+__device__ inline int64_t FN_INT64(popc)(int64_t a) { return __popcll(a); }
+__device__ inline int64_t FN_INT64(abs)(int64_t x) { return llabs(x); }
+__device__ inline int64_t FN_INT64(logical_right_shift)(int64_t a, int64_t b) {
+  return ((uint64_t)a >> b);
 }
-__device__ inline long long int FN_INT64(clz)(long long int a) {
-  return __clzll(a);
-}
-__device__ inline long long int FN_INT64(popc)(long long int a) {
-  return __popcll(a);
-}
-__device__ inline long long int FN_INT64(abs)(long long int x) {
-  return llabs(x);
-}
-__device__ inline long long int FN_INT64(logical_right_shift)(long long int a,
-                                                              long long int b) {
-  return ((unsigned long long int)a >> b);
-}
-__device__ inline long long int FN_INT64(trunc)(long long int a) { return a; }
-__device__ inline long long int FN_INT64(mod)(long long int a,
-                                              long long int b) {
-  long long int res = a % b;
+__device__ inline int64_t FN_INT64(trunc)(int64_t a) { return a; }
+__device__ inline int64_t FN_INT64(mod)(int64_t a, int64_t b) {
+  int64_t res = a % b;
   if ((res != 0) && ((b ^ res) < 0)) res += b;
   return res;
 }
-__device__ inline long long int FN_INT64(exp)(long long int a) {
+__device__ inline int64_t FN_INT64(exp)(int64_t a) {
   double res = exp(__ll2double_rd(a));
   return __double2ll_rn(res);
 }
 
-__device__ inline long long int FN_INT64(pow)(long long int a,
-                                              long long int b) {
+__device__ inline int64_t FN_INT64(pow)(int64_t a, int64_t b) {
   if (a == 0 && b < 0) {
     return 0;
   }
@@ -766,26 +752,26 @@ __device__ inline int cinn_min_int32(const int left, const int right) {
   return min(left, right);
 }
 
-#define EXPAND_REDUCE_INT64_MARCO(MARCO, ...)                          \
-  MARCO(sum_int64, 0, long long int, ##__VA_ARGS__)                    \
-  MARCO(prod_int64, 1, long long int, ##__VA_ARGS__)                   \
-  MARCO(max_int64, -9223372036854775808, long long int, ##__VA_ARGS__) \
-  MARCO(min_int64, 9223372036854775807, long long int, ##__VA_ARGS__)
+#define EXPAND_REDUCE_INT64_MARCO(MARCO, ...)                    \
+  MARCO(sum_int64, 0, int64_t, ##__VA_ARGS__)                    \
+  MARCO(prod_int64, 1, int64_t, ##__VA_ARGS__)                   \
+  MARCO(max_int64, -9223372036854775808, int64_t, ##__VA_ARGS__) \
+  MARCO(min_int64, 9223372036854775807, int64_t, ##__VA_ARGS__)
 
-__device__ inline long long int cinn_sum_int64(const long long int left,
-                                               const long long int right) {
+__device__ inline int64_t cinn_sum_int64(const int64_t left,
+                                         const int64_t right) {
   return left + right;
 }
-__device__ inline long long int cinn_prod_int64(const long long int left,
-                                                const long long int right) {
+__device__ inline int64_t cinn_prod_int64(const int64_t left,
+                                          const int64_t right) {
   return left * right;
 }
-__device__ inline long long int cinn_max_int64(const long long int left,
-                                               const long long int right) {
+__device__ inline int64_t cinn_max_int64(const int64_t left,
+                                         const int64_t right) {
   return max(left, right);
 }
-__device__ inline long long int cinn_min_int64(const long long int left,
-                                               const long long int right) {
+__device__ inline int64_t cinn_min_int64(const int64_t left,
+                                         const int64_t right) {
   return min(left, right);
 }
 
@@ -1169,7 +1155,7 @@ CINN_NVGPU_LT_NUM(fp64, double)
 CINN_NVGPU_LT_NUM(uint8, uint8_t)
 CINN_NVGPU_LT_NUM(int16, int16_t)
 CINN_NVGPU_LT_NUM(int32, int)
-CINN_NVGPU_LT_NUM(int64, long long int)
+CINN_NVGPU_LT_NUM(int64, int64_t)
 #ifdef CINN_CUDA_FP16
 CINN_NVGPU_LT_NUM(fp16, float16)
 #endif
@@ -1194,7 +1180,7 @@ CINN_NVGPU_GT_NUM(fp64, double)
 CINN_NVGPU_GT_NUM(uint8, uint8_t)
 CINN_NVGPU_GT_NUM(int16, int16_t)
 CINN_NVGPU_GT_NUM(int32, int)
-CINN_NVGPU_GT_NUM(int64, long long int)
+CINN_NVGPU_GT_NUM(int64, int64_t)
 #ifdef CINN_CUDA_FP16
 CINN_NVGPU_GT_NUM(fp16, float16)
 #endif

@@ -284,7 +284,7 @@ inline std::string GetHintString(const std::string& op_type,
 }
 
 template <typename T>
-static char* GetGpuHintStringPtr(const phi::GPUContext& dev_ctx,
+static char* GetGpuHintStringPtr(const GPUContext& dev_ctx,
                                  const std::string& op_type,
                                  const std::string& var_name,
                                  int dev_id) {
@@ -344,15 +344,14 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-static void PrintStack(const phi::GPUContext& dev_ctx,
+static void PrintStack(const GPUContext& dev_ctx,
                        const DenseTensor& stats,
                        const std::string& op_type,
                        const std::string& var_name,
                        int dev_id) {
-  auto cpu_stats =
-      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 3);
+  auto cpu_stats = phi::memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 3);
   int64_t* cpu_stats_ptr = reinterpret_cast<int64_t*>(cpu_stats->ptr());
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  phi::memory_utils::Copy(CPUPlace(),
                           cpu_stats_ptr,
                           stats.place(),
                           stats.data(),
@@ -370,7 +369,7 @@ static void PrintStack(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename MT>
-static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
+static void WriteToOutputDir(const GPUContext& dev_ctx,
                              const DenseTensor& tensor,
                              const DenseTensor& stats,
                              const DenseTensor& values,
@@ -381,11 +380,11 @@ static void WriteToOutputDir(const phi::GPUContext& dev_ctx,
   // Copy stats and values from GPU to CPU.
   DenseTensor cpu_stats;
   cpu_stats.Resize({static_cast<int64_t>(3)});
-  Copy(dev_ctx, stats, phi::CPUPlace(), false, &cpu_stats);
+  Copy(dev_ctx, stats, CPUPlace(), false, &cpu_stats);
 
   DenseTensor cpu_values;
   cpu_values.Resize({static_cast<int64_t>(3)});
-  Copy(dev_ctx, values, phi::CPUPlace(), false, &cpu_values);
+  Copy(dev_ctx, values, CPUPlace(), false, &cpu_values);
   dev_ctx.Wait();
 
   int dev_id = tensor.place().device;

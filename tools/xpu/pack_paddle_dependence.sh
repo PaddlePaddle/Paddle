@@ -81,9 +81,14 @@ function xhpc_prepare() {
   cp -r ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
   if [ "$WITH_XPU_XRE5" -eq 1 ]; then
-    check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so
+    check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so ${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so ${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so.15
     cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
     cp -r ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so* xpu/lib/
+    # FIXME(lilujia): when rpath in libxpujitc.so is set, the following code is not needed
+    patchelf --set-rpath '$ORIGIN/' xpu/lib/libxpujitc.so
 
     check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
     cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
@@ -150,6 +155,9 @@ function local_assemble() {
     if [ "$WITH_XPU_XRE5" -eq 1 ]; then
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so* xpu/lib/
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/

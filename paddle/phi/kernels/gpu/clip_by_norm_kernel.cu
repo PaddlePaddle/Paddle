@@ -51,11 +51,11 @@ void ClipByNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(tmp);
   funcs::ReduceKernel<T, float, kps::AddFunctor, kps::SquareFunctor<T, float>>(
       dev_ctx, *input, tmp, kps::SquareFunctor<T, float>(), reduce_dims);
-  auto tmp_eigen = phi::EigenVector<float>::Flatten(*tmp);
+  auto tmp_eigen = EigenVector<float>::Flatten(*tmp);
   auto x_norm = tmp_eigen.sqrt();
 
-  auto x = phi::EigenVector<T>::Flatten(*input);
-  auto out = phi::EigenVector<T>::Flatten(*output);
+  auto x = EigenVector<T>::Flatten(*input);
+  auto out = EigenVector<T>::Flatten(*output);
   auto* place = dev_ctx.eigen_device();
 
   auto temp = (x_norm <= max_norm).template cast<float>();

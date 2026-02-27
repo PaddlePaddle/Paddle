@@ -25,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void SequenceConvKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& padding_data,
+                        const optional<DenseTensor>& padding_data,
                         const DenseTensor& filter,
                         int context_length,
                         bool padding_trainable,
@@ -83,7 +83,7 @@ void SequenceConvKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SequenceConvGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& padding_data,
+                            const optional<DenseTensor>& padding_data,
                             const DenseTensor& filter,
                             const DenseTensor& out_grad,
                             int context_length,

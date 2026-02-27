@@ -42,11 +42,12 @@ __current_device_type__ = None
 def _share_tensor_ipc_meta(tensor):
     if tensor is None:
         return None
-    if (
-        paddle.core.is_compiled_with_cuda()
-        or paddle.core.is_compiled_with_xpu()
-    ) and not paddle.core.is_compiled_with_rocm():
-        return tensor.value().get_tensor()._share_device_ipc()
+
+    if paddle.is_compiled_with_xpu():
+        return tensor.value().get_tensor()._share_xpu()
+
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return tensor.value().get_tensor()._share_cuda()
     return None
 
 
@@ -245,7 +246,15 @@ class FusionStorageHelper:
         assert len(buffer_ipc_meta) in (5, 7), (
             "buffer_ipc_meta must be a tuple with length 5 when FLAGS_use_virtual_memory_auto_growth is True or 7 when FLAGS_use_virtual_memory_auto_growth is False."
         )
-        new_tensor = paddle.base.core.DenseTensor._new_from_ipc(buffer_ipc_meta)
+
+        if paddle.is_compiled_with_xpu():
+            new_tensor = paddle.base.core.DenseTensor._new_shared_xpu(
+                buffer_ipc_meta
+            )
+        else:
+            new_tensor = paddle.base.core.DenseTensor._new_shared_cuda(
+                buffer_ipc_meta
+            )
 
         self.buffer = paddle.to_tensor(new_tensor)
         self.cpu_buffer = self.buffer.pin_memory()
@@ -278,7 +287,10 @@ class FusionStorageHelper:
         last_task = self.tasks.pop(-1)
         while len(self.tasks) > 0:
             task = self.tasks.pop(0)
-            task.cuda_wait()
+            if paddle.is_compiled_with_xpu():
+                task.xpu_wait()
+            else:
+                task.cuda_wait()
         last_task.cpu_wait()
 
     def state_dict(self):

@@ -24,10 +24,10 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedLayerNormKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& bias,
-                          const paddle::optional<DenseTensor>& residual,
-                          const paddle::optional<DenseTensor>& norm_weight,
-                          const paddle::optional<DenseTensor>& norm_bias,
+                          const optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& residual,
+                          const optional<DenseTensor>& norm_weight,
+                          const optional<DenseTensor>& norm_bias,
                           const float epsilon,
                           const float residual_alpha,
                           const int begin_norm_axis,
@@ -55,6 +55,13 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   dev_ctx.template Alloc<float>(mean);
   dev_ctx.template Alloc<float>(variance);
+
+  if (m * n == 0) {
+    if (residual) {
+      dev_ctx.template Alloc<T>(residual_out);
+    }
+    return;
+  }
 
   DenseTensor residual_alpha_tmp;
   residual_alpha_tmp.Resize({1});

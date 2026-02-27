@@ -534,7 +534,7 @@ template <typename T, typename Context>
 void FasterTokenizerKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& vocab_in,
                            const phi::ExtendedTensor& text_in,
-                           const paddle::optional<phi::Strings>& text_pair_in,
+                           const optional<phi::Strings>& text_pair_in,
                            bool do_lower_case,
                            bool is_split_into_words,
                            int max_seq_len,
@@ -581,12 +581,11 @@ void FasterTokenizerKernel(const Context& dev_ctx,
     }
   }
 
-  input_ids->Resize(
-      common::make_ddim({static_cast<int64_t>(batch_size),
-                         static_cast<int64_t>(batch_max_seq_len)}));
+  input_ids->Resize(make_ddim({static_cast<int64_t>(batch_size),
+                               static_cast<int64_t>(batch_max_seq_len)}));
   auto* input_ids_data = dev_ctx.template Alloc<T>(input_ids);
-  seg_ids->Resize(common::make_ddim({static_cast<int64_t>(batch_size),
-                                     static_cast<int64_t>(batch_max_seq_len)}));
+  seg_ids->Resize(make_ddim({static_cast<int64_t>(batch_size),
+                             static_cast<int64_t>(batch_max_seq_len)}));
   auto* seg_ids_data = dev_ctx.template Alloc<T>(seg_ids);
 
   auto pad_token_id = tokenizer.GetPadTokenID();

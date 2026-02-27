@@ -38,7 +38,7 @@ namespace allocation {
 // Allocate memory using NVIDIA's virtual memory management technology
 class CUDAVirtualMemAllocator : public Allocator {
  public:
-  explicit CUDAVirtualMemAllocator(const phi::GPUPlace& place);
+  explicit CUDAVirtualMemAllocator(const GPUPlace& place);
 
   bool IsAllocThreadSafe() const override;
 
@@ -49,7 +49,7 @@ class CUDAVirtualMemAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  phi::GPUPlace place_;
+  GPUPlace place_;
   std::once_flag init_flag_;
 
   CUdeviceptr virtual_mem_base_;

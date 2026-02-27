@@ -20,14 +20,13 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/memcpy_kernel.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/phi/backends/onednn/onednn_helper.h"
-#endif
+
 namespace phi {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
@@ -70,7 +69,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(common::make_ddim(dst_dim));
+  out->Resize(make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // In GPU fp16 model, we will insert many transfer_layout ops in

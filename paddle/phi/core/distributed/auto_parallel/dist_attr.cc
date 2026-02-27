@@ -358,8 +358,7 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
 }
 
 void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
-  proto->mutable_process_mesh()->CopyFrom(
-      phi::distributed::to_proto(process_mesh_));
+  proto->mutable_process_mesh()->CopyFrom(distributed::to_proto(process_mesh_));
 
   for (size_t i = 0; i < dims_mapping_.size(); ++i) {
     proto->add_dims_mapping();
@@ -377,9 +376,9 @@ void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
 
 std::string TensorDistAttr::serialize_to_string() {
   std::string data;
-  auto proto = phi::distributed::to_proto(*this);
+  auto proto = distributed::to_proto(*this);
   proto.SerializeToString(&data);
-  PADDLE_ENFORCE_EQ(phi::distributed::to_proto(*this).SerializeToString(&data),
+  PADDLE_ENFORCE_EQ(distributed::to_proto(*this).SerializeToString(&data),
                     true,
                     errors::InvalidArgument(
                         "Failed to serialize tensor dist attr to string."));

@@ -1125,7 +1125,7 @@ static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,
 static void RegisterOpKernel(std::vector<std::string>&& op_types) {
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
 
-  phi::CPUPlace place = phi::CPUPlace();
+  CPUPlace place = CPUPlace();
   OpKernelType mkldnn_kernel_type = OpKernelType(
       proto::VarType::FP32, place, DataLayout::ANY, LibraryType::kMKLDNN);
 

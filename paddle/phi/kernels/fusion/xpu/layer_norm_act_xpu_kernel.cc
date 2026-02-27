@@ -22,8 +22,8 @@ namespace fusion {
 template <typename T, typename Context>
 void LayerNormActXPUKernel(const Context& dev_ctx,
                            const DenseTensor& x,
-                           const paddle::optional<DenseTensor>& scale,
-                           const paddle::optional<DenseTensor>& bias,
+                           const optional<DenseTensor>& scale,
+                           const optional<DenseTensor>& bias,
                            int begin_norm_axis,
                            float epsilon,
                            int act_type,

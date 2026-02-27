@@ -80,11 +80,11 @@ class SplitOp : public framework::OperatorWithKernel {
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
-      std::vector<phi::DenseTensor> sections_from_tensor;
+      std::vector<DenseTensor> sections_from_tensor;
       sections_from_tensor.reserve(sections_tensor_list_size);
       for (const auto &section_varptr : sections_varptr_list) {
         Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
-        sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
+        sections_from_tensor.emplace_back(var->Get<DenseTensor>());
       }
       sections_final = phi::IntArray(sections_from_tensor);
     } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
@@ -123,7 +123,7 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
+      const auto x_md = ctx.Input<DenseTensor>("X")->mem_desc();
       if (x_md.get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,
@@ -136,7 +136,7 @@ class SplitOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const phi::DenseTensor &tensor,
+      const DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
       return phi::KernelKey(phi::Backend::ALL_BACKEND,

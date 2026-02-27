@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops
@@ -81,7 +81,7 @@ def bernoulli(
         Tensor, A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -155,7 +155,7 @@ def bernoulli_(
         Tensor, A Tensor filled with random values sampled from the bernoulli distribution with success probability ``p`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_device('cpu')
@@ -164,18 +164,18 @@ def bernoulli_(
             >>> x.bernoulli_()
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 0., 1.],
-             [1., 1., 0., 1.],
-             [0., 1., 0., 0.]])
+            [[1., 0., 1., 0.],
+             [0., 0., 1., 0.],
+             [1., 0., 1., 1.]])
 
             >>> x = paddle.randn([3, 4])
             >>> p = paddle.randn([3, 1])
             >>> x.bernoulli_(p)
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 1., 1., 1.],
-             [0., 0., 0., 0.],
-             [0., 0., 0., 0.]])
+            [[0., 0., 0., 0.],
+             [1., 1., 1., 1.],
+             [1., 1., 1., 1.]])
     """
     x.uniform_(0.0, 1.0)
     ones_mask = x < p
@@ -206,7 +206,7 @@ def binomial(count: Tensor, prob: Tensor, name: str | None = None) -> Tensor:
         ``count`` and ``prob``. The data type is int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_device('cpu')
@@ -270,13 +270,13 @@ def poisson(x: Tensor, name: str | None = None) -> Tensor:
         Tensor, A Tensor filled with random number with the same shape and dtype as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
 
-            >>> x = paddle.uniform([2,3], min=1.0, max=5.0)
+            >>> x = paddle.uniform([2, 3], min=1.0, max=5.0)
             >>> out = paddle.poisson(x)
             >>> print(out)
             >>> # doctest: +SKIP("Random output")
@@ -316,13 +316,13 @@ def standard_gamma(x: Tensor, name: str | None = None) -> Tensor:
         Tensor, A Tensor filled with random number with the same shape and dtype as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
 
-            >>> x = paddle.uniform([2,3], min=1.0, max=5.0)
+            >>> x = paddle.uniform([2, 3], min=1.0, max=5.0)
             >>> out = paddle.standard_gamma(x)
             >>> print(out)
             >>> # doctest: +SKIP("Random output")
@@ -384,7 +384,7 @@ def log_normal(
         Tensor, A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(200)
@@ -433,7 +433,7 @@ def log_normal_(
         Tensor, A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(200)
@@ -482,12 +482,12 @@ def multinomial(
         Tensor, A Tensor filled with sampled category index after ``num_samples`` times samples.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.seed(100) # on CPU device
+            >>> paddle.seed(100)  # on CPU device
 
-            >>> x = paddle.rand([2,4])
+            >>> x = paddle.rand([2, 4])
             >>> print(x)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -495,7 +495,7 @@ def multinomial(
              [0.36369765, 0.26091650, 0.18905126, 0.56219709]])
             >>> # doctest: -SKIP
 
-            >>> paddle.seed(200) # on CPU device
+            >>> paddle.seed(200)  # on CPU device
             >>> out1 = paddle.multinomial(x, num_samples=5, replacement=True)
             >>> print(out1)
             >>> # doctest: +SKIP("Random output")
@@ -508,7 +508,7 @@ def multinomial(
             >>> # InvalidArgumentError: When replacement is False, number of samples
             >>> #  should be less than non-zero categories
 
-            >>> paddle.seed(300) # on CPU device
+            >>> paddle.seed(300)  # on CPU device
             >>> out3 = paddle.multinomial(x, num_samples=3)
             >>> print(out3)
             >>> # doctest: +SKIP("Random output")
@@ -808,16 +808,18 @@ def gaussian_(
         Tensor, The input tensor x filled with random values sampled from a gaussian
         distribution.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.randn([3, 4])
             >>> paddle.tensor.random.gaussian_(x)
             >>> print(x)
+            >>> # doctest: +SKIP("Random output")
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[ 0.86384124,  0.67328387,  0.21874231, -0.12615913],
-                [ 0.69844258,  0.42084831, -0.42476156, -0.00072985],
-                [ 1.72819555,  1.87785017,  0.48915744,  0.09235018]])
+            [[ 1.84037554, -1.04185271,  1.04286408,  0.48108253],
+             [-0.84185606,  0.18335205,  0.07997673, -0.56327361],
+             [-1.30208957, -0.20095424,  0.13392292,  0.68311596]])
+            >>> # doctest: -SKIP
     """
     if isinstance(mean, complex):
         if x.dtype not in [
@@ -875,7 +877,7 @@ def standard_normal(
             ``shape`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -920,12 +922,10 @@ def standard_normal(
             >>> out4 = paddle.standard_normal(shape_tensor, dtype='complex64')
             >>> print(out4)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[ (0.1375531256198883+0.0932074561715126j) ,
-               (0.7955012917518616-0.41801896691322327j),
-              (-0.6730020642280579-0.09163688868284225j)],
-             [ (0.17453041672706604-0.9002832770347595j),
-               (0.16270922124385834-1.3086302280426025j),
-               (0.9428746104240417+0.06869460642337799j)]])
+            [[ (0.13755313+0.09320746j),  (0.79550129-0.41801897j),
+               (-0.67300206-0.09163689j)],
+             [ (0.17453042-0.90028328j),  (0.16270922-1.30863023j),
+               (0.94287461+0.06869461j)]])
     """
 
     if dtype is not None and not isinstance(
@@ -970,6 +970,30 @@ def standard_normal(
         )
 
 
+@overload
+def randn(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def randn(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
 @size_args_decorator
 def randn(
     shape: ShapeLike,
@@ -1009,7 +1033,7 @@ def randn(
         ``shape`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1053,12 +1077,18 @@ def randn(
             >>> out4 = paddle.randn(shape_tensor, dtype='complex64')
             >>> print(out4)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[ (0.1375531256198883+0.0932074561715126j) ,
-               (0.7955012917518616-0.41801896691322327j),
-              (-0.6730020642280579-0.09163688868284225j)],
-             [ (0.17453041672706604-0.9002832770347595j),
-               (0.16270922124385834-1.3086302280426025j),
-               (0.9428746104240417+0.06869460642337799j)]])
+             [[ (0.13755313+0.09320746j),  (0.79550129-0.41801897j),
+                (-0.67300206-0.09163689j)],
+              [ (0.17453042-0.90028328j),  (0.16270922-1.30863023j),
+                (0.94287461+0.06869461j)]])
+
+            >>> # example 5: attr shape is *shape (integers as variable-length arguments).
+            >>> paddle.seed(200)
+            >>> out5 = paddle.randn(2, 3)
+            >>> print(out5)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.19452949,  0.13181525,  1.12500870],
+             [-0.59116811, -0.95176864, -0.12959413]])
     """
     device = (
         _get_paddle_place(device)
@@ -1125,13 +1155,13 @@ def randn_like(
         Tensor, A Tensor with the same size as input that is filled with random numbers from a normal distribution with mean 0 and variance 1.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # example 1:
             >>> # dtype is None and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out1 = paddle.randn_like(x)
             >>> print(out1)
             >>> # doctest: +SKIP("Random output")
@@ -1143,7 +1173,7 @@ def randn_like(
 
             >>> # example 2:
             >>> # dtype is None and the dtype of x is float64
-            >>> x = paddle.zeros((1,2)).astype("float64")
+            >>> x = paddle.zeros((1, 2)).astype("float64")
             >>> out2 = paddle.randn_like(x)
             >>> print(out2)
             >>> # doctest: +SKIP("Random output")
@@ -1155,7 +1185,7 @@ def randn_like(
 
             >>> # example 3:
             >>> # dtype is float64 and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out3 = paddle.randn_like(x, dtype="float64")
             >>> print(out3)
             >>> # doctest: +SKIP("Random output")
@@ -1218,7 +1248,7 @@ def rand_like(
         Tensor: A Tensor with the same size as input that is filled with random numbers from a uniform distribution on the interval [0, 1).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1332,7 +1362,7 @@ def normal(
         Tensor: A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1361,23 +1391,20 @@ def normal(
             >>> # doctest: -SKIP
 
             >>> paddle.seed(200)
-            >>> out4 = paddle.normal(mean=1+1j, shape=[2, 3])
+            >>> out4 = paddle.normal(mean=1 + 1j, shape=[2, 3])
             >>> print(out4)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1.137553095817566+1.0932074785232544j)  ,
-              (1.7955012321472168+0.5819810628890991j) ,
-              (0.32699793577194214+0.9083631038665771j)],
-             [(1.1745303869247437+0.09971672296524048j),
-              (1.1627092361450195-0.30863022804260254j),
-              (1.9428746700286865+1.0686945915222168j) ]])
+            [[(1.13755310+1.09320748j), (1.79550123+0.58198106j),
+              (0.32699794+0.90836310j)],
+             [(1.17453039+0.09971672j), (1.16270924-0.30863023j),
+              (1.94287467+1.06869459j)]])
 
-            >>> mean_tensor = paddle.to_tensor([1+1j, 2+2j, 3+3j])
+            >>> mean_tensor = paddle.to_tensor([1 + 1j, 2 + 2j, 3 + 3j])
             >>> out5 = paddle.normal(mean=mean_tensor)
             >>> print(out5)
             Tensor(shape=[3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [(1.136009693145752-0.11074113845825195j),
-             (2.529331684112549+2.1968750953674316j) ,
-             (2.2910101413726807+1.8114780187606812j)])
+            [(1.13600969-0.11074114j), (2.52933168+2.19687510j),
+             (2.29101014+1.81147802j)])
     """
     if not in_dynamic_mode():
         check_type(
@@ -1490,7 +1517,7 @@ def normal_(
     Returns:
         Tensor, A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.randn([3, 4])
@@ -1555,7 +1582,7 @@ def uniform(
         distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> import paddle
@@ -1721,7 +1748,7 @@ def uniform_(
         distribution in the range [``min``, ``max``).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1738,12 +1765,15 @@ def uniform_(
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
+@param_one_alias(["shape", "size"])
 def randint(
     low: int = 0,
     high: int | None = None,
     shape: ShapeLike = [1],
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
@@ -1760,19 +1790,21 @@ def randint(
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
+            Alias: ``size``.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the
             output tensor. Supported data types: int32, int64. If ``dtype``
             is None, the data type is int64. Default is None.
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1846,7 +1878,7 @@ def randint(
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place()
+            low, high, shape, dtype, _current_expected_place(), out=out
         )
     elif in_pir_mode():
         check_shape(shape, 'randint')
@@ -1854,7 +1886,7 @@ def randint(
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
         return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place()
+            low, high, shape, dtype, _current_expected_place(), out=out
         )
     else:
         check_shape(shape, 'randint')
@@ -1872,7 +1904,8 @@ def randint(
         )
 
         helper = LayerHelper("randint", **locals())
-        out = helper.create_variable_for_type_inference(dtype=dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
         helper.append_op(
             type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs
         )
@@ -1903,7 +1936,7 @@ def random_(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1971,13 +2004,13 @@ def randint_like(
         distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> # example 1:
             >>> # dtype is None and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out1 = paddle.randint_like(x, low=-5, high=5)
             >>> print(out1)
             >>> # doctest: +SKIP("Random output")
@@ -1989,7 +2022,7 @@ def randint_like(
 
             >>> # example 2:
             >>> # dtype is None and the dtype of x is float64
-            >>> x = paddle.zeros((1,2)).astype("float64")
+            >>> x = paddle.zeros((1, 2)).astype("float64")
             >>> out2 = paddle.randint_like(x, low=-5, high=5)
             >>> print(out2)
             >>> # doctest: +SKIP("Random output")
@@ -2001,7 +2034,7 @@ def randint_like(
 
             >>> # example 3:
             >>> # dtype is None and the dtype of x is int32
-            >>> x = paddle.zeros((1,2)).astype("int32")
+            >>> x = paddle.zeros((1, 2)).astype("int32")
             >>> out3 = paddle.randint_like(x, low=-5, high=5)
             >>> print(out3)
             >>> # doctest: +SKIP("Random output")
@@ -2013,7 +2046,7 @@ def randint_like(
 
             >>> # example 4:
             >>> # dtype is None and the dtype of x is int64
-            >>> x = paddle.zeros((1,2)).astype("int64")
+            >>> x = paddle.zeros((1, 2)).astype("int64")
             >>> out4 = paddle.randint_like(x, low=-5, high=5)
             >>> print(out4)
             >>> # doctest: +SKIP("Random output")
@@ -2025,7 +2058,7 @@ def randint_like(
 
             >>> # example 5:
             >>> # dtype is float64 and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out5 = paddle.randint_like(x, low=-5, high=5, dtype="float64")
             >>> print(out5)
             >>> # doctest: +SKIP("Random output")
@@ -2037,7 +2070,7 @@ def randint_like(
 
             >>> # example 6:
             >>> # dtype is bool and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out6 = paddle.randint_like(x, low=-5, high=5, dtype="bool")
             >>> print(out6)
             >>> # doctest: +SKIP("Random output")
@@ -2049,7 +2082,7 @@ def randint_like(
 
             >>> # example 7:
             >>> # dtype is int32 and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out7 = paddle.randint_like(x, low=-5, high=5, dtype="int32")
             >>> print(out7)
             >>> # doctest: +SKIP("Random output")
@@ -2061,7 +2094,7 @@ def randint_like(
 
             >>> # example 8:
             >>> # dtype is int64 and the dtype of x is float32
-            >>> x = paddle.zeros((1,2)).astype("float32")
+            >>> x = paddle.zeros((1, 2)).astype("float32")
             >>> out8 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
             >>> print(out8)
             >>> # doctest: +SKIP("Random output")
@@ -2073,7 +2106,7 @@ def randint_like(
 
             >>> # example 9:
             >>> # dtype is int64 and the dtype of x is bool
-            >>> x = paddle.zeros((1,2)).astype("bool")
+            >>> x = paddle.zeros((1, 2)).astype("bool")
             >>> out9 = paddle.randint_like(x, low=-5, high=5, dtype="int64")
             >>> print(out9)
             >>> # doctest: +SKIP("Random output")
@@ -2191,7 +2224,7 @@ def randperm(
         to n-1, with ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2200,14 +2233,14 @@ def randperm(
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [3, 0, 1, 4, 2])
-            >>> #doctest: -SKIP
+            >>> # doctest: -SKIP
 
             >>> out2 = paddle.randperm(7, 'int32')
             >>> print(out2)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[7], dtype=int32, place=Place(cpu), stop_gradient=True,
             [3, 2, 0, 6, 5, 4, 1])
-            >>> #doctest: -SKIP
+            >>> # doctest: -SKIP
 
     """
     device = (
@@ -2261,6 +2294,30 @@ def randperm(
         return out
 
 
+@overload
+def rand(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def rand(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> Tensor: ...
+
+
 @size_args_decorator
 def rand(
     shape: ShapeLike,
@@ -2299,7 +2356,7 @@ def rand(
         distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2336,6 +2393,14 @@ def rand(
             [[0.77650446, 0.12870903, 0.05153799],
              [0.27029657, 0.03963696, 0.42487794]])
             >>> # doctest: -SKIP
+
+            >>> # example 4: attr shape is *shape (integers as variable-length arguments).
+            >>> paddle.seed(200)
+            >>> out4 = paddle.rand(2, 3)
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.77663314, 0.90824795, 0.15685187],
+             [0.04279523, 0.34468332, 0.79557180]])
     """
     device = (
         _get_paddle_place(device)
@@ -2401,13 +2466,13 @@ def exponential_(
         Tensor, Input Tensor ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.set_device('cpu')
             >>> paddle.seed(100)
 
-            >>> x = paddle.empty([2,3])
+            >>> x = paddle.empty([2, 3])
             >>> x.exponential_()
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,

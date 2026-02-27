@@ -81,8 +81,8 @@ void ExpandAs(const Context& dev_ctx,
     bcast_dims[i] = repeat_times[i];
   }
 
-  DDim new_in_dims = common::make_ddim(vec_in_dims);
-  DDim out_dims = common::make_ddim(target_shape);
+  DDim new_in_dims = make_ddim(vec_in_dims);
+  DDim out_dims = make_ddim(target_shape);
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
@@ -96,7 +96,7 @@ void ExpandAs(const Context& dev_ctx,
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<DenseTensor>& y,
+                    const optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
   if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {

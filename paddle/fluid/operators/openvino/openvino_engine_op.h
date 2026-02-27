@@ -112,7 +112,7 @@ class OpenVINOEngineOp : public framework::OperatorBase {
                    OpenVINOEngine *engine) const {
     for (size_t i = 0; i < runtime_input_names_.size(); ++i) {
       auto x = runtime_input_names_[i];
-      auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<DenseTensor>(scope, x);
       auto t_shape = common::vectorize<size_t>(t.dims());
       if (t_shape.empty()) {
         PADDLE_ENFORCE_EQ(
@@ -213,7 +213,7 @@ class OpenVINOEngineOp : public framework::OperatorBase {
           fluid_v,
           common::errors::NotFound(
               "Output variable %s is not found in Openvino subgraph.", y));
-      auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+      auto *fluid_t = fluid_v->GetMutable<DenseTensor>();
       auto ov_output_shape = engine->GetOutputShape(output_names_[i], i);
       auto phi_type = engine->GetOutputType(
           output_names_[i],

@@ -81,12 +81,12 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
         errors::PermissionDenied("When bias is NULL, relu can not be true."));
     return;
   }
-  auto compute = relu ? phi::jit::KernelFuncs<phi::jit::VAddReluTuple<T>,
-                                              phi::CPUPlace>::Cache()
-                            .At(N)
-                      : phi::jit::KernelFuncs<phi::jit::VAddTuple<T>,
-                                              phi::CPUPlace>::Cache()
-                            .At(N);
+  auto compute =
+      relu
+          ? phi::jit::KernelFuncs<phi::jit::VAddReluTuple<T>, CPUPlace>::Cache()
+                .At(N)
+          : phi::jit::KernelFuncs<phi::jit::VAddTuple<T>, CPUPlace>::Cache().At(
+                N);
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
 #pragma omp parallel for
 #endif

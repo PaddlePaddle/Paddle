@@ -289,9 +289,9 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
 }
 
 template <typename BinaryOperation>
-phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
-                                      const phi::DenseTensor& vec_b,
-                                      BinaryOperation f) {
+DenseTensor tensor_apply_eltwise(const DenseTensor& vec_a,
+                                 const DenseTensor& vec_b,
+                                 BinaryOperation f) {
   PADDLE_ENFORCE_EQ(vec_a.dims(),
                     vec_b.dims(),
                     common::errors::InvalidArgument(
@@ -299,11 +299,11 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
                         "different: %s, %s.",
                         vec_a.dims(),
                         vec_b.dims()));
-  phi::DenseTensor vec_y;
+  DenseTensor vec_y;
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
   const float* b = vec_b.data<float>();
-  float* y = vec_y.mutable_data<float>(phi::CPUPlace());
+  float* y = vec_y.mutable_data<float>(CPUPlace());
   for (int i = 0; i < vec_a.numel(); i++) {
     y[i] = f(a[i], b[i]);
   }
@@ -372,7 +372,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
     }
 
     auto* eltwise_bias_tensor =
-        scope->FindVar(eltwise_bias->Name())->GetMutable<phi::DenseTensor>();
+        scope->FindVar(eltwise_bias->Name())->GetMutable<DenseTensor>();
 
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
@@ -385,7 +385,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
                         1,
                         common::errors::NotFound("Can not find var Bias."));
       auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
-      auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
+      auto* conv_bias_tensor = conv_bias_var->GetMutable<DenseTensor>();
       PADDLE_ENFORCE_EQ(
           conv_bias_tensor->dims(),
           eltwise_bias_tensor->dims(),

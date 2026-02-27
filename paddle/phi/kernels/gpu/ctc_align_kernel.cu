@@ -83,7 +83,7 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
 template <typename T, typename Context>
 void CTCAlignOpCUDAKernel(const Context& dev_ctx,
                           const DenseTensor& input,
-                          const paddle::optional<DenseTensor>& input_length,
+                          const optional<DenseTensor>& input_length,
                           int blank,
                           bool merge_repeated,
                           int padding_value,
@@ -149,7 +149,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
     if (host_out_lod0.back() == 0) {
       output->Resize({1, 1});
       dev_ctx.template Alloc<T>(output);
-      funcs::SetConstant<phi::GPUContext, T> set_constant;
+      funcs::SetConstant<GPUContext, T> set_constant;
       set_constant(dev_ctx, output, -1);
     }
   }

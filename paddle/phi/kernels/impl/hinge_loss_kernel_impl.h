@@ -29,10 +29,10 @@ void HingeLossKernel(const Context& dev_ctx,
 
   auto& place = *dev_ctx.eigen_device();
 
-  auto x = phi::EigenVector<T>::Flatten(*pred);
-  auto y = phi::EigenVector<T>::Flatten(*label);
+  auto x = EigenVector<T>::Flatten(*pred);
+  auto y = EigenVector<T>::Flatten(*label);
   dev_ctx.template Alloc<T>(loss);
-  auto l = phi::EigenVector<T>::Flatten(*loss);
+  auto l = EigenVector<T>::Flatten(*loss);
   funcs::EigenHingeLoss<std::decay_t<decltype(place)>, T>::Eval(place, l, x, y);
 }
 
@@ -48,13 +48,13 @@ void HingeLossGradKernel(const Context& dev_ctx,
   auto* dpred = logits_grad;
   auto& place = *dev_ctx.eigen_device();
 
-  auto x = phi::EigenVector<T>::Flatten(*pred);
-  auto y = phi::EigenVector<T>::Flatten(*label);
-  auto dl = phi::EigenVector<T>::Flatten(*dloss);
+  auto x = EigenVector<T>::Flatten(*pred);
+  auto y = EigenVector<T>::Flatten(*label);
+  auto dl = EigenVector<T>::Flatten(*dloss);
 
   if (dpred) {
     dev_ctx.template Alloc<T>(dpred);
-    auto dx = phi::EigenVector<T>::Flatten(*dpred);
+    auto dx = EigenVector<T>::Flatten(*dpred);
     funcs::EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
         place, dx, dl, x, y);
   }

@@ -19,13 +19,13 @@ from .cpp_extension import (
     CppExtension,
     CUDAExtension,
     _compute_worker_number,  # noqa: F401
-    _get_cuda_arch_flags,  # noqa: F401
     _get_num_workers,  # noqa: F401
     _get_pybind11_abi_build_flags,  # noqa: F401
     load,
     setup,
 )
 from .extension_utils import (
+    _get_cuda_arch_flags,  # noqa: F401
     get_build_directory,
     load_op_meta_info_and_register_op,  # noqa: F401
     parse_op_info,  # noqa: F401

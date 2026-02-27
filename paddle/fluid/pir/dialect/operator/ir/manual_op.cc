@@ -166,7 +166,7 @@ void FetchOp::Build(pir::Builder &builder,
       FetchOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FetchOp::Build(pir::Builder &builder,
@@ -205,7 +205,7 @@ void FetchOp::Build(pir::Builder &builder,
       FetchOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FetchOp::VerifySig() {
@@ -524,7 +524,7 @@ void AddNArrayOp::Build(pir::Builder &builder,             // NOLINT
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -702,7 +702,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
       FusedGemmEpilogueOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FusedGemmEpilogueOp::VerifySig() {
@@ -1027,7 +1027,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
       FusedGemmEpilogueGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void FusedGemmEpilogueGradOp::VerifySig() {}
@@ -1249,7 +1249,7 @@ void SplitGradOp::Build(pir::Builder &builder,
 
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, phi::CPUPlace());
+      std::vector<int64_t>{1}, axis, phi::DataType::FLOAT32, CPUPlace());
   pir::Value axis_ = full_axis_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
@@ -1262,7 +1262,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       SplitGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::Build(pir::Builder &builder,
@@ -1281,7 +1281,7 @@ void SplitGradOp::Build(pir::Builder &builder,
       SplitGradOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SplitGradOp::VerifySig() {
@@ -1441,7 +1441,7 @@ void CreateArrayOp::Build(pir::Builder &builder,
       CreateArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void CreateArrayOp::VerifySig() {
@@ -1575,7 +1575,7 @@ void CreateArrayLikeOp::Build(pir::Builder &builder,             // NOLINT
       CreateArrayLikeOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void CreateArrayLikeOp::VerifySig() {
@@ -1838,7 +1838,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
                         int64_t i) {
   VLOG(4) << "Start build ArrayReadOp";
   paddle::dialect::FullOp full_i_op = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{1}, i, phi::DataType::INT64, phi::CPUPlace());
+      std::vector<int64_t>{1}, i, phi::DataType::INT64, CPUPlace());
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::Value> argument_inputs = {array, full_i_op.result(0)};
@@ -1849,7 +1849,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
       ArrayReadOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::Build(pir::Builder &builder,
@@ -1866,7 +1866,7 @@ void ArrayReadOp::Build(pir::Builder &builder,
       ArrayReadOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayReadOp::VerifySig() {
@@ -2133,7 +2133,7 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   paddle::dialect::IrMetaTensor meta_array(&dense_array);
 
   paddle::dialect::DenseTensorType x_type;
-  phi::Place place = phi::CPUPlace();
+  phi::Place place = CPUPlace();
   if (x_.type().isa<paddle::dialect::DenseTensorType>()) {
     x_type = x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
   } else {
@@ -2258,7 +2258,7 @@ void ArrayToTensorOp::Build(pir::Builder &builder,             // NOLINT
       ArrayToTensorOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayToTensorOp::VerifySig() {
@@ -2496,7 +2496,7 @@ void TensorToArrayOp::Build(pir::Builder &builder,             // NOLINT
       TensorToArrayOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void TensorToArrayOp::VerifySig() {
@@ -2760,10 +2760,9 @@ phi::IntArray CalcSliceBoundsFromValue(pir::Value starts_or_ends) {
         phi::IntArray(std::vector<int64_t>(starts_or_ends_size, -1));
     starts_or_ends_list.SetFromTensor(true);
   } else if (starts_or_ends.type().isa<paddle::dialect::DenseTensorType>()) {
-    common::DDim starts_or_ends_dim =
-        starts_or_ends.type()
-            .dyn_cast<paddle::dialect::DenseTensorType>()
-            .dims();
+    DDim starts_or_ends_dim = starts_or_ends.type()
+                                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                                  .dims();
     size_t starts_or_ends_size = common::product(starts_or_ends_dim);
     if (common::contain_unknown_dim(starts_or_ends_dim)) {
       starts_or_ends_size = 1;
@@ -2794,7 +2793,7 @@ void SliceArrayOp::Build(pir::Builder &builder,             // NOLINT
   std::vector<pir::Type> argument_outputs =
       SliceArrayOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -2974,7 +2973,7 @@ void SliceArrayDenseOp::Build(pir::Builder &builder,             // NOLINT
       SliceArrayDenseOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -3090,7 +3089,7 @@ void AssignArrayOp::Build(pir::Builder &builder,
   std::vector<pir::Type> argument_outputs =
       AssignArrayOp::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void AssignArrayOp::VerifySig() {
@@ -3367,7 +3366,7 @@ void ExpandOp::Build(pir::Builder &builder,
   // Generate int_array mutable attribute: shape
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
-          shape, phi::DataType::INT64, phi::CPUPlace());
+          shape, phi::DataType::INT64, CPUPlace());
   pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
@@ -3381,7 +3380,7 @@ void ExpandOp::Build(pir::Builder &builder,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::Build(pir::Builder &builder,
@@ -3403,7 +3402,7 @@ void ExpandOp::Build(pir::Builder &builder,
   // Generate int_array mutable attribute: shape
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
-          shape, phi::DataType::INT64, phi::CPUPlace());
+          shape, phi::DataType::INT64, CPUPlace());
   pir::Value shape_ = full_shape_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
@@ -3417,7 +3416,7 @@ void ExpandOp::Build(pir::Builder &builder,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ExpandOp::Build(pir::Builder &builder,
@@ -3437,7 +3436,7 @@ void ExpandOp::Build(pir::Builder &builder,
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   argument.AddAttributes(argument_attributes);
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 bool ExpandOp::InferSymbolicShape(
@@ -3626,7 +3625,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       vec_shape = std::vector<int64_t>(shape_size, -2);
       *is_from_tensor = true;
     } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
-      common::DDim shape_dim =
+      DDim shape_dim =
           shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 
       if (shape.isa<pir::OpResult>() &&
@@ -3805,7 +3804,7 @@ void IncrementOp::Build(pir::Builder &builder,
       IncrementOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void IncrementOp::Build(pir::Builder &builder,
@@ -3834,7 +3833,7 @@ void IncrementOp::Build(pir::Builder &builder,
       IncrementOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void IncrementOp::VerifySig() {
@@ -4010,7 +4009,7 @@ void Increment_Op::Build(pir::Builder &builder,
       Increment_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void Increment_Op::Build(pir::Builder &builder,
@@ -4039,7 +4038,7 @@ void Increment_Op::Build(pir::Builder &builder,
       Increment_Op::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void Increment_Op::VerifySig() {
@@ -4405,7 +4404,7 @@ void ShapeBroadcastOp::Build(pir::Builder &builder,
       ShapeBroadcastOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ShapeBroadcastOp::InferMeta(phi::InferMetaContext *infer_meta) {
@@ -4795,7 +4794,7 @@ void ArrayPopOp::Build(pir::Builder &builder,             // NOLINT
       ArrayPopOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);
+  pir::PassStopGradientsDefaultly(argument);
 }
 
 void ArrayPopOp::InferMeta(phi::InferMetaContext *infer_meta) {

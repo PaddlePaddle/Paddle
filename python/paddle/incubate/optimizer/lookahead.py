@@ -59,7 +59,7 @@ class LookAhead(Optimizer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -72,14 +72,15 @@ class LookAhead(Optimizer):
             >>> IMAGE_SIZE = 784
             >>> CLASS_NUM = 10
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
+            ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
-            ...         label = np.random.randint(0, CLASS_NUM - 1,
-            ...                                 (1, )).astype('int64')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
             ...         return image, label
+            ...
             ...     def __len__(self):
             ...         return self.num_samples
 
@@ -88,6 +89,7 @@ class LookAhead(Optimizer):
             ...         super().__init__()
             ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
             ...         self.bias = self._linear.bias
+            ...
             ...     @paddle.jit.to_static
             ...     def forward(self, x):
             ...         return self._linear(x)
@@ -100,8 +102,7 @@ class LookAhead(Optimizer):
             ...             loss.backward()
             ...             opt.step()
             ...             opt.clear_grad()
-            ...             print("Train Epoch {} batch {}: loss = {}".format(
-            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+            ...             print("Train Epoch {} batch {}: loss = {}".format(epoch_id, batch_id, np.mean(loss.numpy())))
             >>> layer = LinearNet()
             >>> loss_fn = nn.CrossEntropyLoss()
             >>> optimizer = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
@@ -114,7 +115,8 @@ class LookAhead(Optimizer):
             ...     batch_size=BATCH_SIZE,
             ...     shuffle=True,
             ...     drop_last=True,
-            ...     num_workers=2)
+            ...     num_workers=2,
+            ... )
 
             >>> # doctest: +SKIP('The run time is too long to pass the CI check.')
             >>> train(layer, loader, loss_fn, lookahead)
@@ -182,14 +184,14 @@ class LookAhead(Optimizer):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
-                >>> inp = paddle.rand([1,10], dtype="float32")
+                >>> inp = paddle.rand([1, 10], dtype="float32")
                 >>> linear = paddle.nn.Linear(10, 1)
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
-                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
                 >>> lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
                 >>> loss.backward()
                 >>> lookahead.step()
@@ -323,7 +325,7 @@ class LookAhead(Optimizer):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -331,7 +333,7 @@ class LookAhead(Optimizer):
                 >>> linear = paddle.nn.Linear(10, 1)
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
-                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
                 >>> lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
                 >>> loss.backward()
                 >>> lookahead.minimize(loss)

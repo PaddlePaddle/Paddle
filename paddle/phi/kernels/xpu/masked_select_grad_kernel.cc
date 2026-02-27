@@ -33,8 +33,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   }
   // If out_grad is empty (e.g. mask all false), x_grad should be all zeros.
   if (out_grad.numel() == 0 && x_grad) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
 
@@ -42,8 +41,8 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   auto* input_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
   auto* out_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
 
-  auto mask_shape = common::vectorize<int64_t>(mask.dims());
-  auto xshape = common::vectorize<int64_t>(x_grad->dims());
+  auto mask_shape = vectorize<int64_t>(mask.dims());
+  auto xshape = vectorize<int64_t>(x_grad->dims());
   if (mask.dims().size() == 0) {
     mask_shape = std::vector<int64_t>({1});
   }

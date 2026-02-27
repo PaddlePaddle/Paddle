@@ -66,12 +66,12 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
   DenseTensor* sentenceIds_temp = sentence_ids;
   DenseTensor* sentenceScores_temp = sentence_scores;
 
-  if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
+  if (ids->at(0).place().GetType() == AllocationType::XPU) {
     sentenceIds = new DenseTensor();
     sentenceIds->set_lod(sentenceIds_temp->lod());
   }
 
-  if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
+  if (ids->at(0).place().GetType() == AllocationType::XPU) {
     sentenceScores = new DenseTensor();
     sentenceScores->set_lod(sentenceScores_temp->lod());
   }
@@ -80,7 +80,7 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
       *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
   bs_xpu.apply_xpu<T>();
 
-  if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
+  if (ids->at(0).place().GetType() == AllocationType::XPU) {
     int r = 0;
     r = funcs::CopyTensorByXPU<int64_t>(
         *sentenceIds, sentenceIds_temp, 1, ids->at(0).place());

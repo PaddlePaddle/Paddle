@@ -35,8 +35,8 @@ class ValueExecutionInfo;
 class CudaGraphInstruction : public InstructionBase {
  public:
   CudaGraphInstruction(size_t id,
-                       const phi::Place& place,
-                       ::pir::Operation* op,
+                       const Place& place,
+                       pir::Operation* op,
                        uint8_t* cuda_graph_state_ref,
                        int64_t cuda_graph_capture_pool_id,
                        ValueExecutionInfo* value_exe_info,
@@ -48,7 +48,7 @@ class CudaGraphInstruction : public InstructionBase {
 
   const std::string& Name() const override { return name_; }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   PirInterpreter* interpreter() const { return interpreter_; }
 
@@ -57,7 +57,7 @@ class CudaGraphInstruction : public InstructionBase {
   void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
  private:
-  const phi::Place& place_;
+  const Place& place_;
   pir::Operation* op_;
   uint8_t* cuda_graph_state_ref_ = nullptr;
   int64_t cuda_graph_capture_pool_id_ = -1;
@@ -72,8 +72,8 @@ class CudaGraphInstruction : public InstructionBase {
   std::vector<std::string> skip_gc_names_;
 
   std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph_ = nullptr;
-  std::vector<phi::DenseTensor> input_tensors_;
-  std::vector<phi::DenseTensor> output_tensors_;
+  std::vector<DenseTensor> input_tensors_;
+  std::vector<DenseTensor> output_tensors_;
 };
 
 }  // namespace framework

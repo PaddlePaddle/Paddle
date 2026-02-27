@@ -273,7 +273,7 @@ void SaveVars(const framework::Scope& scope,
   op->SetAttr("file_path", dirname + "/param");
   op->CheckAttrs();
 
-  phi::CPUPlace place;
+  CPUPlace place;
   framework::Executor exe(place);
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }

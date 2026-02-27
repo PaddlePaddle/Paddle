@@ -69,8 +69,8 @@ std::vector<std::vector<int>> GetMatmulNewShapes(
   auto& new_y_shape = new_shape[1];
   auto& out_shape = new_shape[2];
 
-  int x_dim = x_shape.size(), y_dim = y_shape.size();
-  int max_dim = std::max(x_shape.size(), y_shape.size());
+  size_t x_dim = x_shape.size(), y_dim = y_shape.size();
+  size_t max_dim = std::max(x_shape.size(), y_shape.size());
   int out_dim = max_dim >= 3 ? 3 : (max_dim <= 2 ? 2 : max_dim);
 
   auto get_input_shape = [out_dim](const std::vector<int>& old_shape) {
@@ -309,8 +309,9 @@ std::vector<Tensor> Matmul(const Tensor& A,
                            const std::string& name) {
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
-  int a_dim = shape_A.size();
-  int b_dim = shape_B.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int a_dim = static_cast<int>(shape_A.size());
+  int b_dim = static_cast<int>(shape_B.size());
   PADDLE_ENFORCE_EQ(
       a_dim == 3U || a_dim == 2U,
       true,
@@ -347,7 +348,8 @@ std::vector<Tensor> Matmul(const Tensor& A,
   auto temp = Compute(
       output_shape,
       [=](const std::vector<Expr>& indice) {
-        int out_dim = indice.size();
+        // NOTE(large-tensor): tensor dimensions are small integers
+        int out_dim = static_cast<int>(indice.size());
         std::vector<Expr> A_indice;
         std::vector<Expr> B_indice;
         PADDLE_ENFORCE_EQ(
@@ -458,13 +460,15 @@ ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
                   int axis,
                   const std::string& name) {
   // input size 1 is valid for Concat
-  int input_size = input_tensors.size();
+  // NOTE(large-tensor): input size is a small integer
+  int input_size = static_cast<int>(input_tensors.size());
   PADDLE_ENFORCE_GE(input_size,
                     1U,
                     ::common::errors::InvalidArgument(
                         "Concat should have at least 1 input tensors"));
   std::vector<Expr> output_shape = input_tensors[0]->shape;
-  int input_dim = output_shape.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int input_dim = static_cast<int>(output_shape.size());
   PADDLE_ENFORCE_EQ(
       axis >= -input_dim && axis < input_dim,
       true,
@@ -518,8 +522,9 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
                              const cinn::common::Target& target) {
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
-  int a_dim = shape_A.size();
-  int b_dim = shape_B.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int a_dim = static_cast<int>(shape_A.size());
+  int b_dim = static_cast<int>(shape_B.size());
   PADDLE_ENFORCE_EQ(
       a_dim == 3U || a_dim == 2U,
       true,
@@ -566,7 +571,8 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
       packedB_shape,
       [=](const std::vector<Expr>& indice) {
         std::vector<Expr> indice_b;
-        int indice_dim = indice.size();
+        // NOTE(large-tensor): tensor dimensions are small integers
+        int indice_dim = static_cast<int>(indice.size());
         PADDLE_ENFORCE_GE(indice_dim,
                           3,
                           ::common::errors::InvalidArgument(
@@ -590,7 +596,8 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
       [=](const std::vector<Expr>& indice) {
         std::vector<Expr> indice_a;
         std::vector<Expr> indice_b;
-        int out_dim = indice.size();
+        // NOTE(large-tensor): tensor dimensions are small integers
+        int out_dim = static_cast<int>(indice.size());
         PADDLE_ENFORCE_EQ(
             out_dim == 3U || out_dim == 2U,
             true,
@@ -635,8 +642,9 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
                         "Mkl should be used in the cpu environment."));
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
-  int a_dim = shape_A.size();
-  int b_dim = shape_B.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int a_dim = static_cast<int>(shape_A.size());
+  int b_dim = static_cast<int>(shape_B.size());
   PADDLE_ENFORCE_EQ(
       a_dim == 3U || a_dim == 2U,
       true,
@@ -930,8 +938,9 @@ std::vector<Tensor> MulMKL(const Tensor& A,
                         "Mkl should be used in the cpu environment."));
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
-  int a_dim = shape_A.size();
-  int b_dim = shape_B.size();
+  // NOTE(large-tensor): tensor dimensions are small integers
+  int a_dim = static_cast<int>(shape_A.size());
+  int b_dim = static_cast<int>(shape_B.size());
   PADDLE_ENFORCE_EQ(
       a_dim,
       2U,

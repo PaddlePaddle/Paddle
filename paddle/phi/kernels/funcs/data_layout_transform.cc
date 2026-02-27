@@ -19,13 +19,10 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-
-#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#endif
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi::funcs {
 

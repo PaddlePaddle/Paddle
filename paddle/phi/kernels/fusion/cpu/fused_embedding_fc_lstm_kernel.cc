@@ -28,17 +28,17 @@ namespace phi {
       use_peepholes, is_reverse, use_seq, gate_activation, cell_activation,  \
       candidate_activation, hidden_out, cell_out, xx_out, batched_input_out, \
       batched_hidden_out, batched_cell_out, reordered_h0_out, reordered_c0_out
-#define OP_PARAM_DECLARE                                                     \
-  const Context &dev_ctx, const DenseTensor &ids_in,                         \
-      const DenseTensor &embeddings_in, const DenseTensor &weight_h_in,      \
-      const DenseTensor &bias_in, const paddle::optional<DenseTensor>&h0_in, \
-      const paddle::optional<DenseTensor>&c0_in, bool use_peepholes,         \
-      bool is_reverse, bool use_seq, const std::string &gate_activation,     \
-      const std::string &cell_activation,                                    \
-      const std::string &candidate_activation, DenseTensor *hidden_out,      \
-      DenseTensor *cell_out, DenseTensor *xx_out,                            \
-      DenseTensor *batched_input_out, DenseTensor *batched_hidden_out,       \
-      DenseTensor *batched_cell_out, DenseTensor *reordered_h0_out,          \
+#define OP_PARAM_DECLARE                                                      \
+  const Context &dev_ctx, const DenseTensor &ids_in,                          \
+      const DenseTensor &embeddings_in, const DenseTensor &weight_h_in,       \
+      const DenseTensor &bias_in, const optional<DenseTensor>&h0_in,          \
+      const optional<DenseTensor>&c0_in, bool use_peepholes, bool is_reverse, \
+      bool use_seq, const std::string &gate_activation,                       \
+      const std::string &cell_activation,                                     \
+      const std::string &candidate_activation, DenseTensor *hidden_out,       \
+      DenseTensor *cell_out, DenseTensor *xx_out,                             \
+      DenseTensor *batched_input_out, DenseTensor *batched_hidden_out,        \
+      DenseTensor *batched_cell_out, DenseTensor *reordered_h0_out,           \
       DenseTensor *reordered_c0_out
 
 template <typename T, typename Context>

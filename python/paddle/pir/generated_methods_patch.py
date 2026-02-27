@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.tensor import magic_method_func
+
 from ..base.dygraph.generated_tensor_methods_patch import methods_map
 from . import Value
 
 
 def monkey_patch_generated_methods_for_value():
+    magic_method_dict = {v: k for k, v in magic_method_func}
+
     for method_name, method in methods_map:
         setattr(Value, method_name, method)
+        magic_name = magic_method_dict.get(method_name)
+        if magic_name:
+            setattr(Value, magic_name, method)

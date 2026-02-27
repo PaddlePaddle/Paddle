@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/addmm_kernel.h"
-
-#include <vector>
-
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -34,7 +31,7 @@ void AddmmKernelImpl(const Context& dev_ctx,
                      float beta,
                      float alpha,
                      DenseTensor* out) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   std::vector<int64_t> input_dim = common::vectorize(input.dims());
   std::vector<int64_t> x_dim = common::vectorize(x.dims());
   std::vector<int64_t> y_dim = common::vectorize(y.dims());
@@ -95,10 +92,6 @@ void AddmmKernelImpl(const Context& dev_ctx,
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(alpha), x, y, static_cast<T>(beta), out);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.addmm' use cusparseSpMM, "
-      "which is supported from CUDA 11.0"));
 #endif
 }
 

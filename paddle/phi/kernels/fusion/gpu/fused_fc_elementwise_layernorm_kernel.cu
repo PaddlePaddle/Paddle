@@ -374,21 +374,20 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FusedFCElementwiseLayerNormKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& w,
-    const DenseTensor& y,
-    const paddle::optional<DenseTensor>& bias0,
-    const paddle::optional<DenseTensor>& scale,
-    const paddle::optional<DenseTensor>& bias1,
-    const int x_num_col_dims,
-    const std::string& activation_type,
-    const float epsilon,
-    const int begin_norm_axis,
-    DenseTensor* out,
-    DenseTensor* mean,
-    DenseTensor* variance) {
+void FusedFCElementwiseLayerNormKernel(const Context& dev_ctx,
+                                       const DenseTensor& x,
+                                       const DenseTensor& w,
+                                       const DenseTensor& y,
+                                       const optional<DenseTensor>& bias0,
+                                       const optional<DenseTensor>& scale,
+                                       const optional<DenseTensor>& bias1,
+                                       const int x_num_col_dims,
+                                       const std::string& activation_type,
+                                       const float epsilon,
+                                       const int begin_norm_axis,
+                                       DenseTensor* out,
+                                       DenseTensor* mean,
+                                       DenseTensor* variance) {
   PADDLE_ENFORCE_GE(
       x_num_col_dims,
       1,

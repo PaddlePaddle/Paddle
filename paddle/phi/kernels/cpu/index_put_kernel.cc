@@ -73,7 +73,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (!is_initialized || !is_same_place) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
   const auto& x_dims = x.dims();
@@ -131,7 +131,7 @@ void IndexPutKernel(const Context& dev_ctx,
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
   if (int_indices_v.empty()) {
     if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }
@@ -161,7 +161,7 @@ void IndexPutKernel(const Context& dev_ctx,
                                      &res_dim_v);
   if (value.numel() != 1) {
     tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
+        DenseTensor(value.dtype()).Resize(make_ddim(res_dim_v)));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];

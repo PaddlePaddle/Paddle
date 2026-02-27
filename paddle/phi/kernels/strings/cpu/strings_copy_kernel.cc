@@ -42,7 +42,7 @@ void Copy(const Context& dev_ctx,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
   int64_t numel = src.numel();
 
-  if (src_place.GetType() == phi::AllocationType::CPU) {
+  if (src_place.GetType() == AllocationType::CPU) {
     for (int64_t i = 0; i < numel; ++i) {
       dst_ptr[i] = src_ptr[i];
     }

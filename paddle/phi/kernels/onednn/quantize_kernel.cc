@@ -80,7 +80,7 @@ void QuantOpKernel(const Context& dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
 
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);

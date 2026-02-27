@@ -36,11 +36,9 @@ void Pool2dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -181,11 +179,9 @@ void Pool3dKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   if (x.numel() == 0) {
     if (pooling_type == "max" || pooling_type == "avg") {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
     } else {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     return;
   }
@@ -319,19 +315,29 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const std::vector<int>& kernel_size_t,
                               const std::vector<int>& strides_t,
                               const std::vector<int>& paddings_t,
+                              const std::vector<int>& dilations_t,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode UNUSED,
                               DenseTensor* out,
                               DenseTensor* mask) {
+  // Check dilation support - XPU only supports dilation=1
+  for (size_t i = 0; i < dilations_t.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        dilations_t[i],
+        1,
+        common::errors::Unimplemented(
+            "MaxPool2dWithIndex on XPU currently does not support "
+            "dilation != 1. Got dilation[%d] = %d. Please use CPU device.",
+            static_cast<int>(i),
+            dilations_t[i]));
+  }
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
     }
     if (mask) {
-      phi::Full<int, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mask->dims())), 0, mask);
+      Full<int, Context>(dev_ctx, mask->dims(), 0, mask);
     }
     return;
   }

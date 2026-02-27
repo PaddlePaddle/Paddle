@@ -28,7 +28,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const DenseTensor &X,
                                   const DenseTensor &expert_routemap_topk,
                                   const DenseTensor &expert_prob_topk,
-                                  const paddle::optional<DenseTensor> &XScale,
+                                  const optional<DenseTensor> &XScale,
                                   const DenseTensor &expert_offsets,
                                   DenseTensor *X_unzipped,
                                   DenseTensor *zipped_expertwise_rowmap,
@@ -125,13 +125,14 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
 template <typename T, typename Context>
 void MoePermuteKernel(const Context &dev_ctx,
                       const DenseTensor &X,  // hidden_states
-                      const paddle::optional<DenseTensor> &XScale,
+                      const optional<DenseTensor> &XScale,
                       const DenseTensor &expert_routemap_topk,
                       const DenseTensor &expert_prob_topk,
                       const int num_experts,
                       const std::vector<int> &tokens_per_expert,
                       const int padding_multiplex,
                       const bool do_gather,
+                      const bool using_ue8m0_scale,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
@@ -197,14 +198,7 @@ void MoePermuteKernel(const Context &dev_ctx,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "topk should be less than INT_MAX, received topk: (%ld)", topk));
-  token_prob_unzipped->Resize({output_rows});
-  if (do_gather) {  // no gather, no resize.
-    X_unzipped->Resize({output_rows, cols});
-    if (XScale) {
-      const int quanted_cols = XScale.get_ptr()->dims()[1];
-      XScale_unzipped->Resize({output_rows, quanted_cols});
-    }
-  }
+
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);

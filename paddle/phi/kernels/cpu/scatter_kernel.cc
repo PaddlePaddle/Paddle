@@ -30,7 +30,7 @@ void ScatterKernel(const Context &dev_ctx,
                    DenseTensor *out) {
   if (index.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   if (out && out->numel() == 0) {
@@ -38,7 +38,7 @@ void ScatterKernel(const Context &dev_ctx,
     return;
   }
   // In place output: Out = X, Out[Ids] = Updates
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =

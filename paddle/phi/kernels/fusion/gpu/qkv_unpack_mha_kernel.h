@@ -25,7 +25,7 @@ void QKVMMHAKernel(const Context& dev_ctx,
                    const DenseTensor& q,
                    const DenseTensor& k,
                    const DenseTensor& v,
-                   const paddle::optional<DenseTensor>& src_mask,
+                   const optional<DenseTensor>& src_mask,
                    DenseTensor* out);
 
 }  // namespace fusion

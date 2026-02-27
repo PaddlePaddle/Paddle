@@ -1,0 +1,207 @@
+name: Cherry Pick
+
+on:
+  pull_request_target:
+    branches: [develop]
+    types: [closed, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cherry-pick:
+    if: >
+      github.event.pull_request.merged == true &&
+      (
+        github.event.action == 'labeled' ||
+        contains(join(github.event.pull_request.labels.*.name, ' '), 'cherry-pick')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Cherry Pick
+        env:
+          GH_TOKEN: ${{ secrets.CHERRY_PICK_BOT_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BOT_USERNAME: ShigureNyako
+          BOT_EMAIL: shigure_nyako@outlook.com
+          REPO_NAME: ShigureNyako/Paddle
+        run: |
+          # Function to post comment
+          post_comment() {
+            gh pr comment "$PR_NUMBER" --body "$1"
+          }
+
+          # Configure git for the original author
+          echo "Fetching author info for $PR_AUTHOR..."
+          AUTHOR_INFO=$(gh api "/users/$PR_AUTHOR" --jq '{email: .email, name: .name}')
+          AUTHOR_EMAIL=$(echo "$AUTHOR_INFO" | jq -r '.email')
+          AUTHOR_NAME=$(echo "$AUTHOR_INFO" | jq -r '.name')
+
+          if [ "$AUTHOR_EMAIL" = "null" ] || [ -z "$AUTHOR_EMAIL" ]; then
+            AUTHOR_EMAIL="${PR_AUTHOR}@users.noreply.github.com"
+            echo "Author email not found, using default: $AUTHOR_EMAIL"
+          fi
+          if [ "$AUTHOR_NAME" = "null" ] || [ -z "$AUTHOR_NAME" ]; then
+            AUTHOR_NAME="${PR_AUTHOR}"
+            echo "Author name not found, using username: $AUTHOR_NAME"
+          fi
+
+          git config user.name "$AUTHOR_NAME"
+          git config user.email "$AUTHOR_EMAIL"
+
+          # Capture current SHA to return to later
+          ORIGINAL_HEAD_SHA=$(git rev-parse HEAD)
+
+          # Get labels
+          LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name')
+
+          if [ -z "$LABELS" ]; then
+            echo "No labels found."
+            exit 0
+          fi
+
+          # Loop through labels
+          while read -r label; do
+            if [[ "$label" == cherry-pick:* ]]; then
+              TARGET_BRANCH=$(echo "${label#cherry-pick:}" | xargs)
+
+              if [ -z "$TARGET_BRANCH" ]; then
+                echo "Empty target branch for label '$label', skipping."
+                continue
+              fi
+
+              echo "Processing cherry-pick to $TARGET_BRANCH"
+
+              # Check if target branch exists on remote
+              if ! git ls-remote --exit-code --heads origin "$TARGET_BRANCH"; then
+                echo "Target branch $TARGET_BRANCH does not exist."
+                post_comment "❌ Cherry-pick failed: Target branch \`$TARGET_BRANCH\` does not exist."
+                continue
+              fi
+
+              # Create a new branch for the cherry-pick
+              NEW_BRANCH="cherry-pick/$PR_NUMBER/$TARGET_BRANCH"
+
+              # Clean up local branch if it exists (from previous run)
+              if git show-ref --verify --quiet "refs/heads/$NEW_BRANCH"; then
+                git branch -D "$NEW_BRANCH"
+              fi
+
+              # Fetch the target branch and checkout a new branch from it
+              git fetch origin "$TARGET_BRANCH"
+              git checkout -b "$NEW_BRANCH" "origin/$TARGET_BRANCH"
+
+              # Cherry pick
+              # Try standard cherry-pick first (for squash merges or single commits)
+              if git cherry-pick "$MERGE_COMMIT_SHA"; then
+                echo "Cherry-pick successful."
+              else
+                echo "Standard cherry-pick failed, trying with -m 1 (for merge commits)..."
+                git cherry-pick --abort
+                if git cherry-pick -m 1 "$MERGE_COMMIT_SHA"; then
+                  echo "Cherry-pick with -m 1 successful."
+                else
+                  echo "Cherry-pick failed."
+                  git cherry-pick --abort
+                  post_comment "❌ Cherry-pick failed: Conflicts detected when cherry-picking to \`$TARGET_BRANCH\`. Please resolve manually."
+
+                  # Cleanup
+                  git checkout "$ORIGINAL_HEAD_SHA"
+                  git branch -D "$NEW_BRANCH"
+                  continue
+                fi
+              fi
+
+              # Push
+              # Construct authenticated URL for the fork
+              FORK_URL_AUTH="https://${BOT_USERNAME}:${GH_TOKEN}@github.com/${REPO_NAME}.git"
+
+              echo "Pushing to fork..."
+              git push "$FORK_URL_AUTH" "$NEW_BRANCH" --force
+
+              # Create PR
+              # If PR_TITLE starts with "[", don't insert an extra space.
+              if [ "${PR_TITLE:0:1}" = "[" ]; then
+                NEW_TITLE="[$TARGET_BRANCH]$PR_TITLE"
+              else
+                NEW_TITLE="[$TARGET_BRANCH] $PR_TITLE"
+              fi
+
+              NEW_BODY="$PR_BODY
+
+          ---
+
+          Cherry-pick of #$PR_NUMBER (authored by @${PR_AUTHOR}) to \`$TARGET_BRANCH\`.
+
+          devPR:https://github.com/PaddlePaddle/Paddle/pull/$PR_NUMBER <!-- For pass CI -->"
+
+              # Prepare head ref for PR creation (owner:branch)
+              HEAD_REF="${BOT_USERNAME}:${NEW_BRANCH}"
+
+              # Check if PR already exists
+              EXISTING_PR=$(gh pr list --base "$TARGET_BRANCH" --head "$NEW_BRANCH" --json url --jq '.[0].url')
+
+              if [ -n "$EXISTING_PR" ]; then
+                echo "PR already exists: $EXISTING_PR"
+                post_comment "ℹ️ Cherry-pick PR already exists: $EXISTING_PR"
+              else
+                # Create PR using gh CLI, ignoring errors because of "Resource not accessible" false positives
+                gh pr create --base "$TARGET_BRANCH" --head "$HEAD_REF" --title "$NEW_TITLE" --body "$NEW_BODY" || true
+
+                # Wait a bit for eventual consistency
+                sleep 2
+
+                # Search for the created PR
+                CREATED_PR_URL=$(gh pr list --head "$NEW_BRANCH" --state all --json url --jq '.[0].url')
+
+                if [ -n "$CREATED_PR_URL" ]; then
+                  echo "Created PR: $CREATED_PR_URL"
+                  post_comment "✅ Cherry-pick successful! Created PR: $CREATED_PR_URL"
+
+                  # Request review
+                  gh pr review-request "$CREATED_PR_URL" --reviewer "$PR_AUTHOR" || true
+                else
+                  echo "Failed to create PR."
+                  post_comment "❌ Cherry-pick failed: Could not create PR to \`$TARGET_BRANCH\`."
+                  continue
+                fi
+              fi
+
+              # Cleanup for next loop
+              git checkout "$ORIGINAL_HEAD_SHA"
+              git branch -D "$NEW_BRANCH"
+            fi
+          done <<< "$LABELS"
+
+      - name: Remove Cherry Pick Labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO_NAME" --json labels --jq '.labels[].name')
+          if [ -z "$LABELS" ]; then
+            exit 0
+          fi
+          while read -r label; do
+            if [[ "$label" == cherry-pick:* ]]; then
+              echo "Removing label: $label"
+              gh pr edit "$PR_NUMBER" --repo "$REPO_NAME" --remove-label "$label"
+            fi
+          done <<< "$LABELS"

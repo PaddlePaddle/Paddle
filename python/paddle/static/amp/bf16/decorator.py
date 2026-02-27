@@ -131,8 +131,9 @@ class OptimizerWithMixedPrecision:
             use_bf16_test(bool): Whether to use bf16 testing.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
+                >>> # doctest: +SKIP("paddle.static.amp module doesn't support PIR mode")
                 >>> import numpy as np
                 >>> import paddle
                 >>> import paddle.nn.functional as F
@@ -154,15 +155,15 @@ class OptimizerWithMixedPrecision:
                 ...     # or the slow convergence in a way.
                 ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                 ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
-                ...     amp_list = paddle.static.amp.CustomOpLists(
-                ...         custom_black_list=['pool2d'])
+                ...     amp_list = paddle.static.amp.CustomOpLists(custom_black_list=['pool2d'])
                 ...     # 4) The entry of Paddle AMP.
                 ...     # Enable pure bf16 training by setting `use_pure_bf16` to True.
                 ...     optimizer = paddle.static.amp.bf16.decorate_bf16(
                 ...         optimizer,
                 ...         amp_list,
-                ...         use_pure_bf16=True)
-                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...         use_pure_bf16=True,
+                ...     )
+                ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)
                 ...     exe.run(paddle.static.default_startup_program())
@@ -264,10 +265,11 @@ def decorate_bf16(
         enabled.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-1
 
             # fp32&bf16 list based strategy example
+            >>> # doctest: +SKIP("paddle.static.amp module doesn't support PIR mode")
             >>> import paddle
             >>> import paddle.static as static
 
@@ -285,10 +287,11 @@ def decorate_bf16(
 
 
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-2
 
             # pure bf16 training example
+            >>> # doctest: +SKIP("paddle.static.amp module doesn't support PIR mode")
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn.functional as F
@@ -309,15 +312,15 @@ def decorate_bf16(
             ...     # or the slow convergence in a way.
             ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
             ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
-            ...     amp_list = paddle.static.amp.CustomOpLists(
-            ...         custom_black_list=['pool2d'])
+            ...     amp_list = paddle.static.amp.CustomOpLists(custom_black_list=['pool2d'])
             ...     # 4) The entry of Paddle AMP.
             ...     # Enable pure bf16 training by setting `use_pure_bf16` to True.
             ...     optimizer = paddle.static.amp.bf16.decorate_bf16(
             ...         optimizer,
             ...         amp_list,
-            ...         use_pure_bf16=True)
-            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...         use_pure_bf16=True,
+            ...     )
+            ...     # If you don't use the default_startup_program(), you should pass
             ...     # your defined `startup_program` into `minimize`.
             ...     optimizer.minimize(loss)
             ...     exe.run(paddle.static.default_startup_program())

@@ -59,6 +59,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/instance_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/label_smooth.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
+#include "paddle/phi/infermeta/spmd_rules/linear_v2.h"
 #include "paddle/phi/infermeta/spmd_rules/logsumexp.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/mean_all.h"

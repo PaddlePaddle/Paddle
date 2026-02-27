@@ -53,8 +53,8 @@ struct BeamSearchDecoder {
    * with word score.
    * Param:
    *  sentence_vector_list: sentence_vector for each source sentence.
-   *  id_tensor: result phi::DenseTensor for sentences of id.
-   *  score_tensor: result phi::DenseTensor for sentences of score.
+   *  id_tensor: result DenseTensor for sentences of id.
+   *  score_tensor: result DenseTensor for sentences of score.
    *  reverse: whether ids of sentence in sentence_vector_list is reversed
    *  sort_by_score: whether to sort hypotheses of each sentence by scores.
    */

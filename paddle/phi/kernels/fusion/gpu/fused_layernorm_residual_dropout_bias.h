@@ -896,6 +896,8 @@ void LaunchLayernormResidualDropoutBias(
       PADDLE_ENFORCE_GPU_SUCCESS(GPU(MemsetAsync)(
           mask_data, 0, rows * cols * sizeof(MaskType), dev_ctx.stream()));
     }
+    // TODO(large-tensor): generic kernel launch uses int32 grid dim
+    PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
     auto kGridDim = funcs::GetDesiredGridDim(rows);
     // call layernorm forward
     switch (funcs::GetDesiredBlockDim(cols)) {

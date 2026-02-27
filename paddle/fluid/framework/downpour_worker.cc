@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/fleet/metrics.h"
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 
@@ -225,8 +224,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
       continue;
     }
     phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
-    float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
-                                                 phi::CPUPlace());
+    float* ptr =
+        tensor_emb->mutable_data<float>({len, table.emb_dim()}, CPUPlace());
     memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
     LegacyLoD data_lod{tensor_lod};

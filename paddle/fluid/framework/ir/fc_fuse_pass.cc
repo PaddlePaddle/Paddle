@@ -130,7 +130,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
 
-    // Only support 2D-phi::DenseTensor as weight for FC
+    // Only support 2D-DenseTensor as weight for FC
     std::vector<int64_t> w_shape = w->Var()->GetShape();
     size_t w_rank = w_shape.size();
     if (w_rank != 2) return;
@@ -193,7 +193,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* w_node = g->CreateVarNode(&w_key);
     if (!use_gpu && use_fc_padding) {
       auto* scope = param_scope();
-      auto* weight = scope->FindVar(w->Name())->GetMutable<phi::DenseTensor>();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<DenseTensor>();
       auto* weight_data = weight->data<float>();
       auto weight_dims = weight->dims();
       int weight_num = static_cast<int>(product(weight_dims));
@@ -201,7 +201,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       int w_w = static_cast<int>(weight_dims[1]);
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* w_var = scope->Var(w_name);
-        auto* w_tensor = w_var->GetMutable<phi::DenseTensor>();
+        auto* w_tensor = w_var->GetMutable<DenseTensor>();
 
         auto* weight_data_tmp = new float[weight_num];
         for (int i = 0; i < w_h; i++) {
@@ -210,7 +210,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
                  w_w * sizeof(float));
         }
         w_tensor->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
-        auto* weight_data_new = w_tensor->mutable_data<float>(phi::CPUPlace());
+        auto* weight_data_new = w_tensor->mutable_data<float>(CPUPlace());
         for (int i = 0; i < w_h; i++) {
           memcpy(weight_data_new + i * (w_w + 4),
                  weight_data_tmp + i * w_w,

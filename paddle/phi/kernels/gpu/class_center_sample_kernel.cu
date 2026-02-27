@@ -561,11 +561,11 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   // step 14: Get sampled class center for output
   Copy<Context>(dev_ctx,
                 num_classes_per_device,
-                phi::CPUPlace(),
+                CPUPlace(),
                 true,
                 &num_classes_per_device);
   T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
-  sampled_local_class_center->Resize(common::make_ddim({actual_num_samples}));
+  sampled_local_class_center->Resize(make_ddim({actual_num_samples}));
 
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);

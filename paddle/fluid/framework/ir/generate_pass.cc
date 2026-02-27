@@ -49,7 +49,7 @@ class element_visitor {
 
 template <>
 Attribute element_visitor::operator()(
-    const std::vector<::pir::Value>& attr UNUSED) const {
+    const std::vector<pir::Value>& attr UNUSED) const {
   PADDLE_THROW(common::errors::Unimplemented("Unimplemented operand."));
 }
 

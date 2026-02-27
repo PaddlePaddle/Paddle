@@ -34,11 +34,11 @@ void MemoryEfficientAttentionForwardKernel(
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& cu_seqlens_q,
-    const paddle::optional<DenseTensor>& cu_seqlens_k,
-    const paddle::optional<DenseTensor>& causal_diagonal,
-    const paddle::optional<DenseTensor>& seqlen_k,
+    const optional<DenseTensor>& bias,
+    const optional<DenseTensor>& cu_seqlens_q,
+    const optional<DenseTensor>& cu_seqlens_k,
+    const optional<DenseTensor>& causal_diagonal,
+    const optional<DenseTensor>& seqlen_k,
     const Scalar& max_seqlen_q,
     const Scalar& max_seqlen_k,
     const bool causal,
@@ -66,14 +66,10 @@ void MemoryEfficientAttentionForwardKernel(
 
   if (query.numel() == 0 || key.numel() == 0 || value.numel() == 0) {
     if (output) {
-      Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+      Full<T, Context>(dev_ctx, output->dims(), 0, output);
     }
     if (logsumexp) {
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(logsumexp->dims())),
-                       0,
-                       logsumexp);
+      Full<T, Context>(dev_ctx, logsumexp->dims(), 0, logsumexp);
     }
     return;
   }
