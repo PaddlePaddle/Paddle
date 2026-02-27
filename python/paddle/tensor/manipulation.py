@@ -3101,7 +3101,12 @@ def tensor_split(
         )
 
 
-@param_two_alias(["x", "input"], ["num_or_indices", "indices_or_sections"])
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices_or_sections", "sections"],
+    }
+)
 def hsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
