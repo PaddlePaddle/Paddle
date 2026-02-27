@@ -16,6 +16,7 @@
 
 #include <ATen/ops/abs.h>
 #include <ATen/ops/arange.h>
+#include <ATen/ops/as_strided.h>
 #include <ATen/ops/cat.h>
 #include <ATen/ops/clamp.h>
 #include <ATen/ops/empty.h>

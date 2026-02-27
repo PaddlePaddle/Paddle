@@ -134,5 +134,3 @@ inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
 }
 
 }  // namespace at
-
-namespace torch {}  // namespace torch

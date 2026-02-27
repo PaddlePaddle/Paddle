@@ -288,64 +288,20 @@ class Tensor : public TensorBase {
   at::Tensor as_strided(
       at::IntArrayRef size,
       at::IntArrayRef stride,
-      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
-    auto src_impl = tensor_.impl();
-    auto* src_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
-    if (!src_tensor) {
-      PD_THROW("as_strided: tensor must be a DenseTensor");
-    }
-    auto new_tensor = std::make_shared<phi::DenseTensor>();
-    new_tensor->ShareDataWith(*src_tensor);
-    std::vector<int64_t> size_vec(size.begin(), size.end());
-    std::vector<int64_t> stride_vec(stride.begin(), stride.end());
-    new_tensor->Resize(common::make_ddim(size_vec));
-    new_tensor->set_strides(common::make_ddim(stride_vec));
-    int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
-    if (offset != 0) {
-      auto meta = phi::DenseTensorMeta(new_tensor->meta());
-      meta.offset = static_cast<size_t>(offset);
-      new_tensor->set_meta(meta);
-    }
-    PaddleTensor result;
-    result.set_impl(new_tensor);
-    return Tensor(result);
-  }
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
   // as_strided_: Inplace version
   const at::Tensor& as_strided_(
       at::IntArrayRef size,
       at::IntArrayRef stride,
-      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
-    auto src_impl = tensor_.impl();
-    auto* src_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
-    if (!src_tensor) {
-      PD_THROW("as_strided_: tensor must be a DenseTensor");
-    }
-    std::vector<int64_t> size_vec(size.begin(), size.end());
-    std::vector<int64_t> stride_vec(stride.begin(), stride.end());
-    src_tensor->Resize(common::make_ddim(size_vec));
-    src_tensor->set_strides(common::make_ddim(stride_vec));
-    int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
-    if (offset != 0) {
-      auto meta = phi::DenseTensorMeta(src_tensor->meta());
-      meta.offset = static_cast<size_t>(offset);
-      src_tensor->set_meta(meta);
-    }
-    return *this;
-  }
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
   // as_strided_scatter: Scatter src into a strided view
   at::Tensor as_strided_scatter(
       const at::Tensor& src,
       at::IntArrayRef size,
       at::IntArrayRef stride,
-      ::std::optional<int64_t> storage_offset = ::std::nullopt) const {
-    at::Tensor strided_view = as_strided(size, stride, storage_offset);
-    strided_view.copy_(src);
-    return strided_view;
-  }
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
   // Standard deviation functions
   Tensor std(int dim) const;
@@ -611,7 +567,14 @@ class Tensor : public TensorBase {
 
   at::Tensor& absolute_() const { return abs_(); }
 
-  Tensor operator[](int64_t index) const;
+  Tensor operator[](int64_t index) const {
+    return paddle::experimental::slice(tensor_,
+                                       /*axes=*/{0},
+                                       /*starts=*/{index},
+                                       /*ends=*/{index + 1},
+                                       /*infer_flags=*/{1},
+                                       /*decrease_axis=*/{0});
+  }
 
 #if defined(PADDLE_WITH_CUDA)
   void record_stream(const cudaStream_t& stream) const {
