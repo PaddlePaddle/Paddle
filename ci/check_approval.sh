@@ -365,6 +365,19 @@ if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
     fi
 fi
 
+if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
+    CODE_BLOCK_PYTHON_MARKER=$(git diff -U0 upstream/$BRANCH -- ${HAS_MODIFIED_PY_OR_CPP_FILES} \
+        | grep '^+' \
+        | grep -Pv '^\+\s*(#|//|/\*|\*)' \
+        | grep -P '\.\.\s+code-block::\s+python\b' || true)
+    if [ "${CODE_BLOCK_PYTHON_MARKER}" != "" ]; then
+        echo_line="Your PR adds '.. code-block:: python' marker in docstrings/comments. Please confirm whether this marker is expected and follows our docstring rules.\n"
+        echo_line=${echo_line}"The matched lines are as follows:\n${CODE_BLOCK_PYTHON_MARKER}\n"
+        echo_line=${echo_line}"If you believe this is necessary, please request one of the RD (SigureMo(Recommend), sunzhongkai588, ShigureNyako) approval for the changes.\n"
+        check_approval 1 SigureMo sunzhongkai588 ShigureNyako
+    fi
+fi
+
 PY_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- python |grep "^+")
 PY_FILE_USE_TYPE_IGNORE=`echo $PY_FILE_ADDED_LINES | grep -B5 --no-group-separator ">>>\s*#\s*type:\s*ignore" || true`
 if [ "${PY_FILE_USE_TYPE_IGNORE}" != "" ] && [ "${PR_ID}" != "" ]; then

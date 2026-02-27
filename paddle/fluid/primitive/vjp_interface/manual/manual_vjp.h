@@ -23,36 +23,36 @@ namespace paddle {
 namespace primitive {
 
 using IntArray = paddle::experimental::IntArray;
-std::vector<std::vector<paddle::Tensor>> add_n_vjp(
-    const std::vector<paddle::Tensor>& x,
+std::vector<std::vector<Tensor>> add_n_vjp(
+    const std::vector<Tensor>& x,
     const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients);
 
-std::vector<std::vector<paddle::Tensor>> reshape_vjp(
+std::vector<std::vector<Tensor>> reshape_vjp(
     const Tensor& xshape,
     const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients);
 
-std::vector<std::vector<paddle::Tensor>> fused_attention_vjp(
+std::vector<std::vector<Tensor>> fused_attention_vjp(
     const Tensor& out_grad,
     const Tensor& x,
     const Tensor& qkv_weight,
-    const paddle::optional<Tensor>& qkv_bias,
-    const paddle::optional<Tensor>& qkv_bias_out,
-    const paddle::optional<Tensor>& src_mask,
-    const paddle::optional<Tensor>& src_mask_out,
+    const optional<Tensor>& qkv_bias,
+    const optional<Tensor>& qkv_bias_out,
+    const optional<Tensor>& src_mask,
+    const optional<Tensor>& src_mask_out,
     const Tensor& out_linear_weight,
-    const paddle::optional<Tensor>& out_linear_bias,
-    const paddle::optional<Tensor>& ln_scale,
-    const paddle::optional<Tensor>& ln_bias,
-    const paddle::optional<Tensor>& ln_scale_2,
-    const paddle::optional<Tensor>& ln_bias_2,
-    const paddle::optional<Tensor>& ln_out,
-    const paddle::optional<Tensor>& ln_mean,
-    const paddle::optional<Tensor>& ln_var,
-    const paddle::optional<Tensor>& ln_mean_2,
-    const paddle::optional<Tensor>& ln_var_2,
-    const paddle::optional<Tensor>& bias_dropout_residual_out,
+    const optional<Tensor>& out_linear_bias,
+    const optional<Tensor>& ln_scale,
+    const optional<Tensor>& ln_bias,
+    const optional<Tensor>& ln_scale_2,
+    const optional<Tensor>& ln_bias_2,
+    const optional<Tensor>& ln_out,
+    const optional<Tensor>& ln_mean,
+    const optional<Tensor>& ln_var,
+    const optional<Tensor>& ln_mean_2,
+    const optional<Tensor>& ln_var_2,
+    const optional<Tensor>& bias_dropout_residual_out,
     const Tensor& qkv_out,
     const Tensor& transpose_out_2,
     const Tensor& qk_out,
@@ -81,10 +81,10 @@ std::vector<std::vector<paddle::Tensor>> fused_attention_vjp(
     int ring_id,
     const std::vector<std::vector<bool>>& stop_gradients);
 
-std::vector<std::vector<paddle::Tensor>> fused_gemm_epilogue_vjp(
+std::vector<std::vector<Tensor>> fused_gemm_epilogue_vjp(
     const Tensor& x,
     const Tensor& y,
-    const paddle::optional<Tensor>& reserve_space,
+    const optional<Tensor>& reserve_space,
     const Tensor& out_grad,
     bool trans_x,
     bool trans_y,
