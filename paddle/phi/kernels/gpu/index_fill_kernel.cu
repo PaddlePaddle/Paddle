@@ -25,35 +25,30 @@
 namespace phi {
 
 template <typename T>
-__global__ void IndexFillCudaKernel(
-    const T* x,
-    const int64_t* index,      // 1D 索引数组
-    const int64_t index_size,  // 索引数量
-    const int dim,             // 操作维度
-    const int64_t outer_size,  // dim 之前的维度乘积
-    const int64_t dim_size,    // dim 维度的大小
-    const int64_t inner_size,  // dim 之后的维度乘积
-    const T fill_value,
-    T* out) {
-  // 总共需要处理: index_size * outer_size * inner_size 个元素
-  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+__global__ void IndexFillCudaKernel(const T* x,
+                                    const int64_t* index,
+                                    const int64_t index_size,
+                                    const int dim,
+                                    const int64_t outer_size,
+                                    const int64_t dim_size,
+                                    const int64_t inner_size,
+                                    const T fill_value,
+                                    T* out) {
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int64_t total = index_size * outer_size * inner_size;
   if (idx >= total) return;
 
-  // 逆向分解索引idx = outer_idx × (index_size × inner_size)
-  //            + index_idx × inner_size
-  //            + inner_idx
   int64_t inner_idx = idx % inner_size;
   int64_t temp = idx / inner_size;
   int64_t index_idx = temp % index_size;
   int64_t outer_idx = temp / index_size;
 
-  // 获取 dim 维度的实际索引
   int64_t dim_idx = index[index_idx];
   if (dim_idx < 0) dim_idx += dim_size;
 
   if (dim_idx < 0 || dim_idx >= dim_size) return;
-  // 计算输出偏移
   int64_t offset =
       outer_idx * dim_size * inner_size + dim_idx * inner_size + inner_idx;
 
@@ -67,36 +62,29 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
                                const DenseTensor& index,
                                const Scalar& value,
                                DenseTensor* out) {
-  // 1. 获取输入数据指针
   auto* x_data = x.data<T>();
   T fill_value = value.to<T>();
 
-  // 2. 分配输出内存，并复制输入数据
   bool is_initialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (!is_initialized || (x.data<T>() != out->data<T>())) {
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
-  // 3. 获取 index 数据
   auto* index_data = index.data<int64_t>();
   int64_t index_size = index.numel();
 
-  // 如果 index 为空，直接返回
   if (index_size == 0) {
     return;
   }
 
-  // 4. 计算张量维度信息
   auto x_dims = x.dims();
   const int rank = x_dims.size();
 
-  // 处理负数 dim
   if (dim < 0) {
     dim += rank;
   }
 
-  // 5. 计算 outer_size, dim_size, inner_size
   int64_t outer_size = 1;
   int64_t inner_size = 1;
   int64_t dim_size = x_dims[dim];
@@ -108,10 +96,8 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
     inner_size *= x_dims[i];
   }
 
-  // 6. 计算需要处理的元素总数
   int64_t numel = outer_size * index_size * inner_size;
 
-  // 7. 启动 kernel
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   IndexFillCudaKernel<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
@@ -133,23 +119,19 @@ void IndexFillKernel(const Context& dev_ctx,
                      int dim,
                      const Scalar& value,
                      DenseTensor* out) {
-  // 1. 处理空输出的情况
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
 
-  // 2. 获取维度信息
   auto x_dims = x.dims();
   const int rank = x_dims.size();
 
-  // 3. 处理负数 dim
   int real_dim = dim;
   if (real_dim < 0) {
     real_dim += rank;
   }
 
-  // 4. 参数校验
   PADDLE_ENFORCE_GE(real_dim,
                     0,
                     common::errors::InvalidArgument(
@@ -171,13 +153,11 @@ void IndexFillKernel(const Context& dev_ctx,
                         "The index tensor must be 1-D, but received %d-D.",
                         index.dims().size()));
 
-  // 5. 处理 index 为空的情况，直接复制输入到输出
   if (index.numel() == 0) {
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
-  // 6. 处理 index 数据类型，转换为 int64_t
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
@@ -204,7 +184,6 @@ void IndexFillKernel(const Context& dev_ctx,
         phi::DataTypeToString(index.dtype())));
   }
 
-  // 7. 调用 Launch 函数
   LaunchIndexFillCudaKernel<T, Context>(
       dev_ctx, x, real_dim, *ptr_index, value, out);
 }

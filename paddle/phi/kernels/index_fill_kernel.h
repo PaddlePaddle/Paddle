@@ -29,4 +29,4 @@ void IndexFillKernel(const Context& dev_ctx,
                      const Scalar& value,
                      DenseTensor* out);
 
-}
+}  // namespace phi

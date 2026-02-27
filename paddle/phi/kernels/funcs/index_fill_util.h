@@ -21,7 +21,9 @@ template <typename T>
 __global__ void CastToInt64Kernel(const T* input,
                                   int64_t* output,
                                   int64_t numel) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx < numel) {
     output[idx] = static_cast<int64_t>(input[idx]);
   }

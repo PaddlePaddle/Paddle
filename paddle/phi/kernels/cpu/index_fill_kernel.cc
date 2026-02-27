@@ -33,7 +33,6 @@ void index_fill_kernel(const int64_t numel,
 #endif
   for (int64_t i = 0; i < index_size; ++i) {
     int64_t idx = index_data[i];
-    // 处理负索引
     if (idx < 0) {
       idx += dim_size;
     }
@@ -69,7 +68,6 @@ void LaunchIndexFillKernel(const Context& dev_ctx,
     return;
   }
 
-  // Handle int32/int64 index types
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
@@ -134,12 +132,11 @@ void IndexFillKernel(const Context& dev_ctx,
 
   const int64_t x_dims_size = x.dims().size();
 
-  PADDLE_ENFORCE_EQ(
-      index.dims().size(),
-      1,
-      common::errors::InvalidArgument(
-          "The dimension of index should be 1, but received %d.",
-          index.dims().size()));
+  PADDLE_ENFORCE_EQ(index.dims().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The dimension of index should be 1, but received %d.",
+                        index.dims().size()));
 
   PADDLE_ENFORCE_GT(
       x_dims_size,
@@ -152,28 +149,25 @@ void IndexFillKernel(const Context& dev_ctx,
     axis += x_dims_size;
   }
 
-  PADDLE_ENFORCE_GE(
-      axis,
-      0,
-      common::errors::InvalidArgument(
-          "Axis should be in range [-%d, %d), but received %d.",
-          x_dims_size,
-          x_dims_size,
-          axis));
+  PADDLE_ENFORCE_GE(axis,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Axis should be in range [-%d, %d), but received %d.",
+                        x_dims_size,
+                        x_dims_size,
+                        axis));
 
-  PADDLE_ENFORCE_LT(
-      axis,
-      x_dims_size,
-      common::errors::InvalidArgument(
-          "Axis should be in range [-%d, %d), but received %d.",
-          x_dims_size,
-          x_dims_size,
-          axis));
+  PADDLE_ENFORCE_LT(axis,
+                    x_dims_size,
+                    common::errors::InvalidArgument(
+                        "Axis should be in range [-%d, %d), but received %d.",
+                        x_dims_size,
+                        x_dims_size,
+                        axis));
 
   T fill_value = value.to<T>();
 
-  LaunchIndexFillKernel<T, Context>(
-      dev_ctx, x, index, axis, fill_value, out);
+  LaunchIndexFillKernel<T, Context>(dev_ctx, x, index, axis, fill_value, out);
 }
 
 }  // namespace phi

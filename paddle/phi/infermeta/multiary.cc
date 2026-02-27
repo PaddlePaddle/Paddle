@@ -3829,7 +3829,6 @@ void IndexFillInferMeta(const MetaTensor& x,
           "The rank of Input(X) should be less than 7, but received %d.",
           rank));
 
-  // 处理负数 dim
   if (dim < 0) {
     dim += rank;
   }
