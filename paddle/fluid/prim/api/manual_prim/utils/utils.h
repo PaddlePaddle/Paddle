@@ -34,13 +34,11 @@ namespace prim {
 // We put some api like utils here
 template <typename T>
 Tensor empty(const paddle::experimental::IntArray& shape,
-             phi::DataType dtype,
-             const paddle::Place& place);
+             DataType dtype,
+             const Place& place);
 
 template <typename T>
-Tensor empty_like(const Tensor& x,
-                  phi::DataType dtype,
-                  const paddle::Place& place);
+Tensor empty_like(const Tensor& x, DataType dtype, const Place& place);
 
 // copy tensor for output ptr, in static need use assign op
 template <typename T>
@@ -51,8 +49,8 @@ template <typename T>
 void set_output(const Tensor& x_tmp, Tensor* x);
 
 // These method don't need to be specified
-static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
-                                          const phi::DDim& in_dims) {
+static DDim get_reduce_dims_from_out(const DDim& dout_dims,
+                                     const DDim& in_dims) {
   int bat = dout_dims.size() - in_dims.size();
   std::vector<int64_t> result(bat);
   std::iota(result.begin(), result.end(), 0);
@@ -83,8 +81,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
   return common::make_ddim(result);
 }
 
-static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
-                                 const phi::DDim& y_dims) {
+static DDim get_reduce_dims(const DDim& x_dims, const DDim& y_dims) {
   /*
   @brief Computing reduction dim(s) from z=f(x, y) to x with right-alignment
     broadcast rule.

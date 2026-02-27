@@ -17,12 +17,12 @@
 
 namespace paddle::primitive {
 template <>
-void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+void set_output<LazyTensor>(const Tensor& x_tmp, Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
 template <>
-void by_pass<LazyTensor>(const paddle::Tensor& x, paddle::Tensor* real_out) {
+void by_pass<LazyTensor>(const Tensor& x, Tensor* real_out) {
   pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
   auto op_res = paddle::dialect::assign(x_res);
   Tensor out(std::make_shared<LazyTensor>(op_res));

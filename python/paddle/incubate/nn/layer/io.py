@@ -53,7 +53,7 @@ class ListenAndServ:
         optimizer_mode(bool): whether to run the server as a parameter server, default: True.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> from paddle.incubate.nn.layer.io import ListenAndServ
@@ -62,13 +62,9 @@ class ListenAndServ:
             >>> place = paddle.CPUPlace()
             >>> main = paddle.static.Program()
             >>> with paddle.static.program_guard(main):
-            ...     serv = ListenAndServ(
-            ...         "127.0.0.1:6170", ["X"], optimizer_mode=False)
+            ...     serv = ListenAndServ("127.0.0.1:6170", ["X"], optimizer_mode=False)
             ...     with serv.do():
-            ...         x = paddle.static.data(
-            ...             shape=[32, 32],
-            ...             dtype='float32',
-            ...             name="X")
+            ...         x = paddle.static.data(shape=[32, 32], dtype='float32', name="X")
             ...         paddle.nn.initializer.Constant(value=1.0)(x, main.global_block())
             ...         paddle.scale(x=x, scale=10.0)
 

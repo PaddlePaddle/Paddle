@@ -624,7 +624,7 @@ def save_distributed_checkpoint(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import os
             >>> from paddle.distributed.auto_parallel.static.utils import save_distributed_checkpoint
@@ -674,7 +674,7 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
         The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external files.')
             >>> from paddle.distributed.auto_parallel.static.utils import load_distributed_checkpoint
@@ -687,7 +687,10 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
             ...     './dist_attr_rank0.pdattr',
             ...     './dist_attr_rank1.pdattr',
             ... ]
-            >>> param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
+            >>> param_dict, dist_attr, add_info = load_distributed_checkpoint(
+            ...     ckpt_path,
+            ...     dist_attr_path,
+            ... )
     """
     assert _check_valid_path(checkpoint_path), (
         "'checkpoint_path' cannot be None."
@@ -720,7 +723,7 @@ def load_checkpoint_into_program(
         The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external files.')
             >>> from paddle.distributed.auto_parallel.static.utils import load_checkpoint_into_program
@@ -1051,14 +1054,14 @@ def _merge_parameter(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.distributed.auto_parallel.static.utils import _merge_parameter
 
-            >>> partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0, 1],[0, 1],[0, 2]])]
+            >>> partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0, 1], [0, 1], [0, 2]])]
             >>> param = np.array([[[1.13, 1.14]]])
-            >>> partition_index = [[0, 1],[0, 1],[2, 4]]
+            >>> partition_index = [[0, 1], [0, 1], [2, 4]]
             >>> complete_shape = [2, 2, 4]
 
             >>> _merge_parameter(partition_param_list, param, partition_index, complete_shape)
@@ -1165,7 +1168,7 @@ def _slice_parameter(complete_param, partition_index_list, length):
         sliced_param_list(list): sliced parameters with 'partition_index_list'
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.distributed.auto_parallel.static.utils import _slice_parameter
@@ -1206,7 +1209,7 @@ def _get_sliced_param_index(
         sliced_param_index(int): the index of sliced param in sliced_param_list
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.distributed.auto_parallel.static.utils import _get_sliced_param_index
@@ -1222,8 +1225,13 @@ def _get_sliced_param_index(
             >>> print(slice_param)
             [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
-            >>> index = _get_sliced_param_index(rank, complete_shape, dims_mapping,
-            ...                                 process_shape, process_group)
+            >>> index = _get_sliced_param_index(
+            ...     rank,
+            ...     complete_shape,
+            ...     dims_mapping,
+            ...     process_shape,
+            ...     process_group,
+            ... )
             >>> print(index)
             2
     """
@@ -1256,7 +1264,7 @@ def _get_split_indices(
         split_indices_list(list): the split indices of every dimension of the parameter
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.distributed.auto_parallel.static.utils import _get_split_indices
@@ -2466,7 +2474,7 @@ def wrap_data_for_completion(
       attrs: dict, attribute map of the dist op
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on other ops.')
             >>> from paddle.distributed.auto_parallel.static.utils import wrap_data_for_completion
@@ -2475,16 +2483,17 @@ def wrap_data_for_completion(
             >>> input_name_list = []
             >>> output_name_list = []
 
-            >>> input_name_list.append(op_desc.input('X')[0]) # 'X' is the arg name for op
+            >>> input_name_list.append(op_desc.input('X')[0])  # 'X' is the arg name for op
             >>> input_name_list.append(op_desc.input('Y')[0])
             >>> output_name_list.append(op_desc.output('Out')[0])
 
             >>> attr_name_list = ['trans_x', 'trans_y']
             >>> input_specs, output_specs, attrs = wrap_data_for_completion(
-            ...        dist_op,
-            ...        input_name_list,
-            ...        output_name_list,
-            ...        attr_name_list)
+            ...     dist_op,
+            ...     input_name_list,
+            ...     output_name_list,
+            ...     attr_name_list,
+            ... )
 
     """
 
