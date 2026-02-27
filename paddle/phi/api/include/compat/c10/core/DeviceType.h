@@ -81,6 +81,13 @@ inline phi::AllocationType c10DeviceTypeToPhiAllocationType(DeviceType type) {
   }
 }
 
+// 从 phi::Place 转换为 c10::Device 时，兼容 PyTorch 的 has_index 语义：
+// CPU 上默认的 device_id=0 视为“无显式 index”。
+inline constexpr bool phiPlaceHasC10DeviceIndex(phi::AllocationType type,
+                                                int index) noexcept {
+  return !(type == phi::AllocationType::CPU && index == 0) && index != -1;
+}
+
 }  // namespace c10
 
 namespace at {

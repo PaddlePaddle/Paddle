@@ -33,9 +33,16 @@ using DeviceIndex = int8_t;
 
 struct Device final {
   using Type = DeviceType;
-  Device(phi::Place place) : inner_(place) {}
-  Device(DeviceType type, DeviceIndex index = 0)
-      : inner_(c10DeviceTypeToPhiAllocationType(type), index) {}  // NOLINT
+  Device(phi::Place place)
+      : inner_(place),
+        has_index_(
+            phiPlaceHasC10DeviceIndex(place.GetType(), place.GetDeviceId())) {}
+
+  // PyTorch 兼容: Device(DeviceType, DeviceIndex)
+  // 使用单一构造函数，默认 index = -1
+  Device(DeviceType type, DeviceIndex index = -1)
+      : inner_(c10DeviceTypeToPhiAllocationType(type), index),
+        has_index_(index != -1) {}
 
   /// Constructs a `Device` from a string description, for convenience.
   /// The string supplied must follow the following schema:
@@ -44,15 +51,19 @@ struct Device final {
   /// `:<device-index>` optionally specifies a device index.
   /* implicit */ Device(const std::string& device_string);
 
-  DeviceIndex index() const noexcept { return inner_.GetDeviceId(); }
+  DeviceIndex index() const noexcept {
+    return has_index_ ? inner_.GetDeviceId() : -1;
+  }
 
-  bool has_index() const noexcept { return index() != -1; }
+  // PyTorch 兼容: has_index() = (index != -1)
+  bool has_index() const noexcept { return has_index_; }
 
   // 返回与 PyTorch 兼容的 DeviceType
   DeviceType type() const {
     return phiAllocationTypeToC10DeviceType(inner_.GetType());
   }
 
+  // PyTorch 兼容: is_cuda() 检查 CUDA 和 GPU 类型
   bool is_cuda() const noexcept {
     auto t = inner_.GetType();
     return t == phi::AllocationType::GPU;
@@ -72,6 +83,7 @@ struct Device final {
 
  private:
   phi::Place inner_;
+  bool has_index_{false};
 };
 
 std::ostream& operator<<(std::ostream& stream, const Device& device);

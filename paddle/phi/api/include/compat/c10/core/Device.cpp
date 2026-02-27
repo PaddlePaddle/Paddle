@@ -39,13 +39,13 @@ DeviceType parse_type(const std::string& device_string) {
     }
   }
   PADDLE_THROW(::common::errors::InvalidArgument(
-      "Unknown device type: '%s'. Supported device types are ",
+      "Unknown device type: '%s'. Supported device types are "
       "'cpu', 'cuda', 'gpu', 'ipu', and 'xpu'.",
       device_string));
 }
 
 Device::Device(const std::string& device_string)
-    : inner_(phi::Place(phi::AllocationType::CPU, -1)) {
+    : inner_(phi::Place(phi::AllocationType::CPU, -1)), has_index_(false) {
   TORCH_CHECK(!device_string.empty(), "Device string must not be empty");
   auto colon_pos = device_string.find(':');
   std::string type_str = colon_pos == std::string::npos
@@ -59,9 +59,8 @@ Device::Device(const std::string& device_string)
 
   DeviceType type = parse_type(type_str);
 
-  // 默认 index = -1 (PyTorch 兼容)
+  // 解析 index
   DeviceIndex index = -1;
-
   if (colon_pos != std::string::npos) {
     std::string index_str = device_string.substr(colon_pos + 1);
     try {
@@ -74,40 +73,33 @@ Device::Device(const std::string& device_string)
           "Invalid device index: '%s' is out of range.", index_str));
     }
   }
+  has_index_ = (index != -1);
 
-  // 只有显式指定了 index 才设置
-  if (index >= 0) {
-    inner_ = phi::Place(c10DeviceTypeToPhiAllocationType(type), index);
-  } else {
-    // 对于没有显式 index 的情况，根据 PyTorch 行为：
-    // - CPU: index = -1, has_index() = false
-    // - CUDA: index = 0, has_index() = true
-    if (type == DeviceType::CPU) {
-      inner_ = phi::Place(c10DeviceTypeToPhiAllocationType(type), -1);
-    } else {
-      // 非 CPU 设备默认 index=0
-      inner_ = phi::Place(c10DeviceTypeToPhiAllocationType(type), 0);
-    }
-  }
+  // 设置 inner_
+  inner_ = phi::Place(c10DeviceTypeToPhiAllocationType(type), index);
 }
 
 std::string Device::str() const {
-  // Convert to PyTorch-compatible string format
-  // CPU -> "cpu", GPU/CUDA -> "cuda"
   std::string str;
-  if (type() == DeviceType::CPU) {
-    str = "cpu";
-  } else if (type() == DeviceType::CUDA || type() == DeviceType::GPU) {
-    str = "cuda";
-  } else if (type() == DeviceType::XPU) {
-    str = "xpu";
-  } else if (type() == DeviceType::IPU) {
-    str = "ipu";
-  } else {
-    str = "unknown";
+  switch (type()) {
+    case DeviceType::CPU:
+      str = "cpu";
+      break;
+    case DeviceType::CUDA:
+    case DeviceType::GPU:
+      str = "cuda";
+      break;
+    case DeviceType::XPU:
+      str = "xpu";
+      break;
+    case DeviceType::IPU:
+      str = "ipu";
+      break;
+    default:
+      str = "unknown";
+      break;
   }
-  // Only add index if it's non-zero (PyTorch doesn't show :0 for default)
-  if (has_index() && index() != 0) {
+  if (has_index()) {
     str.push_back(':');
     str.append(std::to_string(index()));
   }
