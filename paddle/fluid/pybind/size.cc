@@ -32,7 +32,7 @@ Returns:
     Size: A special `list` subclass representing tensor dimensions.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> size = paddle.Size([2, 3, 4])
@@ -48,7 +48,7 @@ Returns:
     int: The total number of elements.
 
 Examples:
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> size = paddle.Size([2, 3, 4])

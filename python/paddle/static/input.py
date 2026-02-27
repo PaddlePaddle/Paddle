@@ -159,6 +159,31 @@ def data(
     if dtype is None:
         dtype = paddle.get_default_dtype()
 
+    if core.is_compiled_with_custom_device("iluvatar_gpu") and os.environ.get(
+        'FLAG_FORCE_FLOAT32', ''
+    ).lower() in ['1', 'true', 'on']:
+        dtype_str = dtype if isinstance(dtype, str) else str(dtype)
+        if dtype_str in ('float64', np.float64, 'f8'):
+            import warnings
+
+            warnings.warn(
+                f"Variable '{name}' dtype 'float64' is not supported on iluvatar gpu, "
+                "forcibly using 'float32'.",
+                UserWarning,
+                stacklevel=2,
+            )
+            dtype = 'float32'
+        elif dtype_str in ('complex128', np.complex128, 'c16'):
+            import warnings
+
+            warnings.warn(
+                f"Variable '{name}' dtype 'complex128' is not supported on iluvatar gpu, "
+                "forcibly using 'complex64'.",
+                UserWarning,
+                stacklevel=2,
+            )
+            dtype = 'complex64'
+
     if in_pir_mode():
         ir_dtype = dtype
         if not isinstance(ir_dtype, DataType):

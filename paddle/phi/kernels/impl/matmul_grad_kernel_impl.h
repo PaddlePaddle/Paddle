@@ -384,26 +384,77 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
 
     if (transpose_x && transpose_y) {
-      CalcInputGrad<T>(dev_ctx,
-                       y_conj,
-                       true,
-                       true,
-                       out_grad_help,
-                       true,
-                       false,
-                       dx,
-                       false,
-                       true);
-      CalcInputGrad<T>(dev_ctx,
-                       out_grad_help,
-                       true,
-                       true,
-                       x_conj,
-                       true,
-                       false,
-                       dy,
-                       false,
-                       true);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm && x_help.dims().size() == 3 &&
+          y_help.dims().size() == 3) {
+        // For batched case only (both x and y are 3D after reshape): match
+        // PyTorch's backward cublas call pattern (OP_N/OP_N instead of
+        // OP_T/OP_T), compute without transposes and transpose the results.
+        // dX = (dOut @ Y_conj)^T, dY = (X_conj @ dOut)^T
+        if (dx) {
+          auto dx_dims_orig = dx->dims();
+          DenseTensor dx_tmp = EmptyLike<T, Context>(dev_ctx, *dx);
+          dx_tmp.Resize({dx_tmp.dims()[0], dx_tmp.dims()[2], dx_tmp.dims()[1]});
+          CalcInputGrad<T>(dev_ctx,
+                           out_grad_help,
+                           false,
+                           true,
+                           y_conj,
+                           false,
+                           false,
+                           &dx_tmp,
+                           false,
+                           true);
+          dev_ctx.template Alloc<T>(dx);
+          std::vector<int> axis = {0, 2, 1};
+          funcs::Transpose<Context, T, 3> trans;
+          trans(dev_ctx, dx_tmp, dx, axis);
+          dx->Resize(dx_dims_orig);
+        }
+        if (dy) {
+          auto dy_dims_orig = dy->dims();
+          DenseTensor dy_tmp = EmptyLike<T, Context>(dev_ctx, *dy);
+          dy_tmp.Resize({dy_tmp.dims()[0], dy_tmp.dims()[2], dy_tmp.dims()[1]});
+          CalcInputGrad<T>(dev_ctx,
+                           x_conj,
+                           false,
+                           true,
+                           out_grad_help,
+                           false,
+                           false,
+                           &dy_tmp,
+                           false,
+                           true);
+          dev_ctx.template Alloc<T>(dy);
+          std::vector<int> axis = {0, 2, 1};
+          funcs::Transpose<Context, T, 3> trans;
+          trans(dev_ctx, dy_tmp, dy, axis);
+          dy->Resize(dy_dims_orig);
+        }
+      } else  // NOLINT
+#endif
+      {  // NOLINT
+        CalcInputGrad<T>(dev_ctx,
+                         y_conj,
+                         true,
+                         true,
+                         out_grad_help,
+                         true,
+                         false,
+                         dx,
+                         false,
+                         true);
+        CalcInputGrad<T>(dev_ctx,
+                         out_grad_help,
+                         true,
+                         true,
+                         x_conj,
+                         true,
+                         false,
+                         dy,
+                         false,
+                         true);
+      }
     } else if (transpose_x) {
       CalcInputGrad<T>(dev_ctx,
                        y_conj,
@@ -436,16 +487,48 @@ void MatmulGradKernel(const Context& dev_ctx,
                        dx,
                        false,
                        true);
-      CalcInputGrad<T>(dev_ctx,
-                       out_grad_help,
-                       true,
-                       true,
-                       x_conj,
-                       false,
-                       true,
-                       dy,
-                       false,
-                       true);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+      if (!FLAGS_use_legacy_gemm && x_help.dims().size() == 3 &&
+          y_help.dims().size() == 3) {
+        // For batched case only (both x and y are 3D after reshape): match
+        // PyTorch's backward cublas call pattern for dY. Compute X_conj^T @
+        // dOut into a temp buffer with transposed shape, then transpose the
+        // result. This produces the same cublas descriptor layout as PyTorch,
+        // ensuring identical algorithm selection and bitwise alignment.
+        if (dy) {
+          auto dy_dims_orig = dy->dims();
+          DenseTensor dy_tmp = EmptyLike<T, Context>(dev_ctx, *dy);
+          dy_tmp.Resize({dy_tmp.dims()[0], dy_tmp.dims()[2], dy_tmp.dims()[1]});
+          CalcInputGrad<T>(dev_ctx,
+                           x_conj,
+                           true,
+                           true,
+                           out_grad_help,
+                           false,
+                           false,
+                           &dy_tmp,
+                           false,
+                           true);
+          dev_ctx.template Alloc<T>(dy);
+          std::vector<int> axis = {0, 2, 1};
+          funcs::Transpose<Context, T, 3> trans;
+          trans(dev_ctx, dy_tmp, dy, axis);
+          dy->Resize(dy_dims_orig);
+        }
+      } else  // NOLINT
+#endif
+      {  // NOLINT
+        CalcInputGrad<T>(dev_ctx,
+                         out_grad_help,
+                         true,
+                         true,
+                         x_conj,
+                         false,
+                         true,
+                         dy,
+                         false,
+                         true);
+      }
     } else {
       CalcInputGrad<T>(dev_ctx,
                        out_grad_help,
