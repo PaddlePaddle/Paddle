@@ -52,11 +52,6 @@ Device::Device(const std::string& device_string)
                              ? device_string
                              : device_string.substr(0, colon_pos);
 
-  // Convert "gpu" to "cuda" for PyTorch compatibility
-  if (type_str == "gpu") {
-    type_str = "cuda";
-  }
-
   DeviceType type = parse_type(type_str);
 
   // 解析 index
