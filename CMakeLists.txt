@@ -59,10 +59,6 @@ option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
 option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" ${WITH_XPU})
 option(WITH_MAGMA "Compile PaddlePaddle with Magma library" OFF)
-option(
-  WITH_SLEEF
-  "Compile PaddlePaddle with Sleef library for high precision math functions"
-  OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -357,6 +353,15 @@ option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
+
+set(WITH_SLEEF_DEFAULT ON)
+if(WIN32 OR WITH_ROCM)
+  set(WITH_SLEEF_DEFAULT OFF)
+endif()
+option(
+  WITH_SLEEF
+  "Compile PaddlePaddle with Sleef library for high precision math functions"
+  ${WITH_SLEEF_DEFAULT})
 
 if(WIN32 OR NOT WITH_GPU)
   set(WITH_CUDNN_FRONTEND

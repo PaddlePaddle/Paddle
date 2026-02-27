@@ -151,10 +151,9 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         run: |
-          set -x
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source /opt/dtk-24.04.1/env.sh
-          bash -x ${ci_scripts}/run_setup.sh bdist_wheel
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           python -m pip install bce-python-sdk==0.8.74
           rm -rf `find . -name "*.a"`

@@ -29,7 +29,7 @@ class StrategyGroupBase:
         The instance of strategy group.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle.distributed as dist

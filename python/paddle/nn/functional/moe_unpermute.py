@@ -30,7 +30,8 @@ def moe_unpermute(
     token_prob_unzipped: Tensor,
     total_zipped_tokens: int,
     num_experts: int,
-    use_mix_precision: bool = True,
+    using_mix_precision: bool = True,
+    using_weighted_combine: bool = False,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
     r"""
@@ -45,8 +46,10 @@ def moe_unpermute(
             Shape: (seqlen_broadcasted, 1). Dtype: float32.
         total_zipped_tokens_num (int): The total number of tokens before permutation for output buffer allocation. Dtype: int32.
         num_experts (int): The number of experts. Dtype: int32.
-        use_mix_precision (bool, optional): Whether to use mixed precision during accumulation.
+        using_mix_precision (bool, optional): Whether to use mixed precision during accumulation.
             This option significantly improves precision when number of experts > 4. Default: True.
+        using_weighted_combine (bool, optional): Whether to use weighted token accumulation during unpermute.
+            Which utilize probs as weights to accumulate tokens. Default: False.
         name (str|None, optional): Name for the operation. Default: None.
 
     Returns:
@@ -110,6 +113,7 @@ def moe_unpermute(
             token_prob_unzipped,
             total_zipped_tokens,
             num_experts,
-            use_mix_precision,
+            using_mix_precision,
+            using_weighted_combine,
         )
         return (zipped_tokens, zipped_probs_topk)

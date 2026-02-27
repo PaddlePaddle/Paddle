@@ -55,7 +55,7 @@ class Geometric(distribution.Distribution):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import Geometric
@@ -143,7 +143,7 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
@@ -176,7 +176,7 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
@@ -206,14 +206,14 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
 
                 >>> paddle.seed(2023)
                 >>> geom = Geometric(0.5)
-                >>> print(geom.sample((2,2)))
+                >>> print(geom.sample((2, 2)))
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[0., 0.],
                  [1., 0.]])
@@ -232,14 +232,14 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
 
                 >>> paddle.seed(2023)
                 >>> geom = Geometric(0.5)
-                >>> print(geom.rsample((2,2)))
+                >>> print(geom.rsample((2, 2)))
                 Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[0., 0.],
                  [1., 0.]])
@@ -270,7 +270,7 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
@@ -300,7 +300,7 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric
@@ -334,7 +334,7 @@ class Geometric(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Geometric

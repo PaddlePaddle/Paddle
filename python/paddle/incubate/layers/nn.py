@@ -73,7 +73,7 @@ def fused_seqpool_cvm(
         Tensor : The tensor storing sequence pool and cvm of input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -303,7 +303,7 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -379,13 +379,12 @@ def partial_concat(
         Tensor: A Tensor with the same data type as input's.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.randn(name="x", shape=[1,3], dtype="float32")
-            >>> y = paddle.randn(name="y", shape=[1,3], dtype="float32")
-            >>> concat = paddle.incubate.layers.partial_concat(
-            ...     [x, y], start_index=0, length=2)
+            >>> x = paddle.randn(name="x", shape=[1, 3], dtype="float32")
+            >>> y = paddle.randn(name="y", shape=[1, 3], dtype="float32")
+            >>> concat = paddle.incubate.layers.partial_concat([x, y], start_index=0, length=2)
     """
     if not isinstance(input, list):
         warnings.warn(
@@ -456,14 +455,14 @@ def partial_sum(
         Tensor: A Tensor with the same data type as input's.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             >>> y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
-            >>> sum = paddle.incubate.layers.partial_sum([x,y], start_index=0, length=2)
+            >>> sum = paddle.incubate.layers.partial_sum([x, y], start_index=0, length=2)
     """
     for id, x in enumerate(input):
         check_variable_and_dtype(
@@ -531,23 +530,32 @@ def tdm_child(
             If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
-            >>> tree_info = [[0,0,0,1,2],
-            ...             [0,1,0,3,4],[0,1,0,5,6],
-            ...             [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+            >>> tree_info = [
+            ...     [0, 0, 0, 1, 2],
+            ...     [0, 1, 0, 3, 4],
+            ...     [0, 1, 0, 5, 6],
+            ...     [0, 2, 1, 0, 0],
+            ...     [1, 2, 1, 0, 0],
+            ...     [2, 2, 2, 0, 0],
+            ...     [3, 2, 2, 0, 0],
+            ... ]
             >>> tree_info_np = np.array(tree_info)
-            >>> tree_info_np = np.reshape(tree_info_np, (7,5))
+            >>> tree_info_np = np.reshape(tree_info_np, (7, 5))
             >>> node_nums = 7
             >>> child_nums = 2
-            >>> child, leaf_mask  = paddle.incubate.layers.tdm_child(x, node_nums, child_nums,
-            ...                     param_attr=paddle.ParamAttr(
-            ...                     initializer=paddle.nn.initializer.Assign(tree_info_np)))
+            >>> child, leaf_mask = paddle.incubate.layers.tdm_child(
+            ...     x,
+            ...     node_nums,
+            ...     child_nums,
+            ...     param_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(tree_info_np)),
+            ... )
 
     """
     helper = LayerHelper("tdm_child", **locals())
@@ -691,18 +699,18 @@ def tdm_sampler(
             Output Tensor have same type with tdm-travel and tdm-layer parameter(tree_dtype).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
-            >>> travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
-            >>> layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
+            >>> travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]]  # leaf node's travel path, shape(leaf_node_num, layer_num)
+            >>> layer_list_flat = [[1], [2], [3], [4], [5], [6]]  # shape(node_nums, 1)
 
-            >>> neg_samples_num_list = [0, 0] # negative sample nums = 0
-            >>> layer_node_num_list = [2, 4] #two layer (exclude root node)
+            >>> neg_samples_num_list = [0, 0]  # negative sample nums = 0
+            >>> layer_node_num_list = [2, 4]  # two layer (exclude root node)
             >>> leaf_node_num = 4
 
             >>> travel_array = np.array(travel_list)
@@ -714,15 +722,16 @@ def tdm_sampler(
             ...     layer_node_num_list,
             ...     leaf_node_num,
             ...     tree_travel_attr=paddle.ParamAttr(
-            ...         initializer=paddle.nn.initializer.Assign(
-            ...            travel_array)),
+            ...         initializer=paddle.nn.initializer.Assign(travel_array),
+            ...     ),
             ...     tree_layer_attr=paddle.ParamAttr(
-            ...         initializer=paddle.nn.initializer.Assign(
-            ...             layer_array)),
+            ...         initializer=paddle.nn.initializer.Assign(layer_array),
+            ...     ),
             ...     output_positive=True,
             ...     output_list=True,
             ...     seed=0,
-            ...     tree_dtype='int32')
+            ...     tree_dtype='int32',
+            ... )
 
     """
     helper = LayerHelper("tdm_sampler", **locals())
@@ -886,21 +895,24 @@ def rank_attention(
         Tensor: A Tensor with the same data type as input's.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
 
             >>> input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
             >>> rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
-            >>> out = paddle.incubate.layers.rank_attention(input=input,
-            ...                                             rank_offset=rank_offset,
-            ...                                             rank_param_shape=[18,3],
-            ...                                             rank_param_attr=
-            ...                                             paddle.ParamAttr(learning_rate=1.0,
-            ...                                                              name="ubm_rank_param.w_0"),
-            ...                                             max_rank=3,
-            ...                                             max_size=0)
+            >>> out = paddle.incubate.layers.rank_attention(
+            ...     input=input,
+            ...     rank_offset=rank_offset,
+            ...     rank_param_shape=[18, 3],
+            ...     rank_param_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="ubm_rank_param.w_0",
+            ...     ),
+            ...     max_rank=3,
+            ...     max_size=0,
+            ... )
     """
     helper = LayerHelper('rank_attention', **locals())
     dtype = helper.input_dtype(input_param_name='input')
@@ -956,22 +968,26 @@ def batch_fc(
         Tensor: A Tensor with the same data type as input's.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
 
             >>> input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
-            >>> out = paddle.incubate.layers.batch_fc(input=input,
-            ...                                     param_size=[16, 3, 10],
-            ...                                     param_attr=
-            ...                                     paddle.ParamAttr(learning_rate=1.0,
-            ...                                                      name="w_0"),
-            ...                                     bias_size=[16, 10],
-            ...                                     bias_attr=
-            ...                                     paddle.ParamAttr(learning_rate=1.0,
-            ...                                                      name="b_0"),
-            ...                                     act="relu")
+            >>> out = paddle.incubate.layers.batch_fc(
+            ...     input=input,
+            ...     param_size=[16, 3, 10],
+            ...     param_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="w_0",
+            ...     ),
+            ...     bias_size=[16, 10],
+            ...     bias_attr=paddle.ParamAttr(
+            ...         learning_rate=1.0,
+            ...         name="b_0",
+            ...     ),
+            ...     act="relu",
+            ... )
     """
 
     helper = LayerHelper("batch_fc", **locals())
@@ -1031,26 +1047,27 @@ def correlation(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
-            >>> x1 = paddle.static.data(name='x1',
-            ...                         shape=[2, 3, 4, 5],
-            ...                         dtype="float32")
-            >>> x2 = paddle.static.data(name='x2',
-            ...                         shape=[2, 3, 4, 5],
-            ...                         dtype="float32")
+            >>> x1 = paddle.static.data(name='x1', shape=[2, 3, 4, 5], dtype="float32")
+            >>> x2 = paddle.static.data(
+            ...     name='x2',
+            ...     shape=[2, 3, 4, 5],
+            ...     dtype="float32",
+            ... )
 
 
             >>> out = paddle.incubate.layers.correlation(
-            ...                 x1,
-            ...                 x2,
-            ...                 pad_size=4,
-            ...                 kernel_size=1,
-            ...                 max_displacement=4,
-            ...                 stride1=1,
-            ...                 stride2=1)
+            ...     x1,
+            ...     x2,
+            ...     pad_size=4,
+            ...     kernel_size=1,
+            ...     max_displacement=4,
+            ...     stride1=1,
+            ...     stride2=1,
+            ... )
 
     """
 
@@ -1140,7 +1157,7 @@ def fused_bn_add_act(
             Usually name is no need to set and None by default. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -1158,7 +1175,8 @@ def fused_bn_add_act(
             ...             padding=1,
             ...             act=None,
             ...             bias_attr=False,
-            ...            data_format='NHWC')
+            ...             data_format='NHWC',
+            ...         )
             ...         conv1_2 = paddle.static.nn.conv2d(
             ...             input=x,
             ...             filter_size=3,
@@ -1167,21 +1185,28 @@ def fused_bn_add_act(
             ...             padding=1,
             ...             act=None,
             ...             bias_attr=False,
-            ...             data_format='NHWC')
+            ...             data_format='NHWC',
+            ...         )
             ...         bn = paddle.static.nn.batch_norm(
-            ...            input=conv1_1,
+            ...             input=conv1_1,
             ...             act=None,
-            ...             data_layout='NHWC')
+            ...             data_layout='NHWC',
+            ...         )
             ...         fused_bn_add_act = paddle.incubate.layers.fused_bn_add_act(conv1_2, bn)
             ...         prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
             ...         loss = paddle.nn.functional.cross_entropy(
-            ...             input=prediction, label=y,
-            ...             reduction='none', use_softmax=False
+            ...             input=prediction,
+            ...             label=y,
+            ...             reduction='none',
+            ...             use_softmax=False,
             ...         )
             ...         loss = paddle.mean(loss)
             ...         sgd = paddle.optimizer.SGD(learning_rate=0.001)
             ...         sgd = paddle.static.amp.decorate(
-            ...             sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
+            ...             sgd,
+            ...             use_dynamic_loss_scaling=True,
+            ...             init_loss_scaling=128.0,
+            ...         )
             ...         sgd.minimize(loss)
             ...
             ...     return x, y, loss
@@ -1196,8 +1221,7 @@ def fused_bn_add_act(
             ...     x, y, loss = build_program(main_program, startup_program)
             ...
             ...     feeder = paddle.DataFeeder(feed_list=[x, y], place=place)
-            ...     train_reader = paddle.batch(
-            ...         paddle.dataset.mnist.train(), batch_size=batch_size)
+            ...     train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=batch_size)
     """
     helper = LayerHelper('fused_bn_add_act', **locals())
 

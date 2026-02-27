@@ -404,7 +404,7 @@ class LBFGS(Optimizer):
         loss (Tensor): the final loss of closure.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -504,7 +504,7 @@ class LBFGS(Optimizer):
             differs between optimizer classes.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -531,7 +531,6 @@ class LBFGS(Optimizer):
                 ...         return loss
                 ...
                 ...     opt.step(closure)
-                ...
                 >>> inputs = paddle.rand([10, 10], dtype="float32")
                 >>> targets = paddle.to_tensor([2 * x for x in inputs])
 
@@ -604,7 +603,7 @@ class LBFGS(Optimizer):
             and returns the loss.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -632,7 +631,6 @@ class LBFGS(Optimizer):
                 ...     opt.clear_grad()
                 ...     loss.backward()
                 ...     return loss
-                ...
                 >>> opt.step(closure)
         """
 

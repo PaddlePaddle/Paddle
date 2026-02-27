@@ -19,7 +19,6 @@
 namespace paddle {
 namespace primitive {
 
-using Tensor = paddle::Tensor;
 using IntArray = paddle::experimental::IntArray;
 
 template <typename T>
