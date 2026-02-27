@@ -105,3 +105,75 @@ TEST(TensorTTest, TInplace2D_PreservesValues) {
   ASSERT_FLOAT_EQ(t[0][1].item<float>(), 3.0f);
   ASSERT_FLOAT_EQ(t[2][1].item<float>(), 5.0f);
 }
+
+// ============================================================
+// High-dimensional tests (dim > 2):
+// t() / t_() always swap axes 0 and 1 only; remaining axes stay in place.
+// ============================================================
+
+TEST(TensorTTest, T3D_SwapsOnlyDim0AndDim1) {
+  // For a 3D tensor {A, B, C}, t() should produce shape {B, A, C}.
+  // The innermost axis (dim 2) must NOT be touched.
+  at::Tensor t = at::ones({2, 3, 4}, at::kFloat);
+  at::Tensor result = t.t();
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({3, 2, 4}));
+}
+
+TEST(TensorTTest, T3D_PreservesValues) {
+  // Verify that element access is consistent after transposing a 3D tensor.
+  // t = arange(24).reshape({2,3,4})
+  // t[i][j][k] = i*12 + j*4 + k
+  // After t(): result[j][i][k] should still equal i*12 + j*4 + k.
+  at::Tensor t = at::arange(24, at::kFloat).reshape({2, 3, 4});
+  at::Tensor r = t.t();
+
+  ASSERT_EQ(r.sizes(), c10::IntArrayRef({3, 2, 4}));
+  // r[j][i][k] == t[i][j][k]
+  for (int64_t i = 0; i < 2; ++i) {
+    for (int64_t j = 0; j < 3; ++j) {
+      for (int64_t k = 0; k < 4; ++k) {
+        ASSERT_FLOAT_EQ(r[j][i][k].item<float>(), t[i][j][k].item<float>());
+      }
+    }
+  }
+}
+
+TEST(TensorTTest, T4D_SwapsOnlyDim0AndDim1) {
+  // For a 4D tensor {A, B, C, D}, t() should produce shape {B, A, C, D}.
+  at::Tensor t = at::ones({2, 5, 3, 4}, at::kFloat);
+  at::Tensor result = t.t();
+
+  ASSERT_EQ(result.dim(), 4);
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({5, 2, 3, 4}));
+}
+
+TEST(TensorTTest, TInplace3D_SwapsOnlyDim0AndDim1) {
+  // t_() on a 3D tensor: shape {A,B,C} -> {B,A,C}, data pointer unchanged.
+  at::Tensor t = at::ones({2, 3, 4}, at::kFloat);
+  void* original_ptr = t.data_ptr();
+  t.t_();
+
+  ASSERT_EQ(t.dim(), 3);
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({3, 2, 4}));
+  ASSERT_EQ(t.data_ptr(), original_ptr);
+}
+
+TEST(TensorTTest, TInplace3D_HigherDimsUnchanged) {
+  // After t_() on a 3D tensor, verify that dim 2 is not touched.
+  at::Tensor t = at::arange(24, at::kFloat).reshape({2, 3, 4});
+  t.t_();
+  // Shape must be {3, 2, 4}: C=4 must be preserved.
+  ASSERT_EQ(t.size(2), 4);
+}
+
+TEST(TensorTTest, TInplace4D_SwapsOnlyDim0AndDim1) {
+  // t_() on a 4D tensor: shape {A,B,C,D} -> {B,A,C,D}.
+  at::Tensor t = at::ones({2, 5, 3, 4}, at::kFloat);
+  void* original_ptr = t.data_ptr();
+  t.t_();
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({5, 2, 3, 4}));
+  ASSERT_EQ(t.data_ptr(), original_ptr);
+}
