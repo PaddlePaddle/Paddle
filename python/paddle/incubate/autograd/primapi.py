@@ -55,7 +55,7 @@ def forward_grad(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Transform NOT has linearize')
             >>> import numpy as np
@@ -72,10 +72,13 @@ def forward_grad(
             ...     y = x * x
             ...     y_grad = paddle.incubate.autograd.forward_grad(y, x)
             ...     paddle.incubate.autograd.prim2orig()
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(startup_program)
-            >>> y_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[y_grad])
+            >>> y_grad = exe.run(
+            ...     main_program,
+            ...     feed={'x': np.array([2.0]).astype('float32')},
+            ...     fetch_list=[y_grad],
+            ... )
             >>> print(y_grad)
             [array([4.], dtype=float32)]
 
@@ -151,7 +154,7 @@ def grad(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Transform NOT has linearize')
             >>> import numpy as np
@@ -168,10 +171,13 @@ def grad(
             ...     y = x * x
             ...     x_grad = paddle.incubate.autograd.grad(y, x)
             ...     paddle.incubate.autograd.prim2orig()
-            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(startup_program)
-            >>> x_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[x_grad])
+            >>> x_grad = exe.run(
+            ...     main_program,
+            ...     feed={'x': np.array([2.0]).astype('float32')},
+            ...     fetch_list=[x_grad],
+            ... )
             >>> print(x_grad)
             [array([4.], dtype=float32)]
 

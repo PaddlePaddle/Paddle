@@ -21,13 +21,20 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bincount, bmm, diagonal, dot, matmul  # noqa: F401
+from paddle._C_ops import (  # noqa: F401
+    bincount,
+    bmm,
+    cross,
+    diagonal,
+    dist,
+    dot,
+    matmul,
+)
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
-    param_one_alias,
     param_two_alias,
     transpose_decorator,
 )
@@ -1258,120 +1265,6 @@ def norm(
     return output
 
 
-def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
-    r"""
-
-    Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
-    of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
-    details, please refer to the `Introduction to Tensor <../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor>`_:
-
-    - Each input has at least one dimension.
-    - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
-
-    Where, z = x - y, the shapes of x and y are broadcastable, then the shape of z can be
-    obtained as follows:
-
-    1. If the number of dimensions of x and y are not equal, prepend 1 to the dimensions of the
-    tensor with fewer dimensions.
-
-    For example, The shape of x is [8, 1, 6, 1], the shape of y is [7, 1, 5], prepend 1 to the
-    dimension of y.
-
-    x (4-D Tensor):  8 x 1 x 6 x 1
-
-    y (4-D Tensor):  1 x 7 x 1 x 5
-
-    2. Determine the size of each dimension of the output z: choose the maximum value from the
-    two input dimensions.
-
-    z (4-D Tensor):  8 x 7 x 6 x 5
-
-    If the number of dimensions of the two inputs are the same, the size of the output can be
-    directly determined in step 2. When p takes different values, the norm formula is as follows:
-
-    When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
-
-    .. math::
-
-        ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
-
-    When p = inf, the inf-norm of z is the maximum element of the absolute value of z.
-
-    .. math::
-
-        ||z||_\infty=\max_i |z_i|
-
-    When p = -inf, the negative-inf-norm of z is the minimum element of the absolute value of z.
-
-    .. math::
-
-        ||z||_{-\infty}=\min_i |z_i|
-
-    Otherwise, the p-norm of z follows the formula,
-
-    .. math::
-
-        ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
-
-    Args:
-        x (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
-        y (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
-        p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
-        name (str|None, optional): The default value is `None`. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Tensor that is the p-norm of (x - y).
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
-            >>> y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
-            >>> out = paddle.dist(x, y, 0)
-            >>> print(out)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            1.)
-
-            >>> out = paddle.dist(x, y, 2)
-            >>> print(out)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            2.)
-
-            >>> out = paddle.dist(x, y, float("inf"))
-            >>> print(out)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            2.)
-
-            >>> out = paddle.dist(x, y, float("-inf"))
-            >>> print(out)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            0.)
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.dist(x, y, p)
-
-    check_variable_and_dtype(
-        x, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'], 'dist'
-    )
-    check_variable_and_dtype(
-        y, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'], 'dist'
-    )
-    check_type(p, 'p', (float, int), 'dist')
-    helper = LayerHelper("dist", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-
-    inputs = {"X": [x], "Y": [y]}
-    outputs = {'Out': [out]}
-    attrs = {"p": float(p)}
-    helper.append_op(
-        type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return out
-
-
 def cond(
     x: Tensor,
     p: float | _POrder | None = None,
@@ -2032,112 +1925,6 @@ def t_(input, name=None):
         # 2-D tensor
         perm = [1, 0]
         out = _C_ops.transpose_(input, perm)
-        return out
-
-
-@param_one_alias(["axis", "dim"])
-def cross(
-    x: Tensor,
-    y: Tensor,
-    axis: int = 9,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the cross product between two tensors along an axis.
-
-    Inputs must have the same shape, and the length of their axes should be equal to 3.
-    If `axis` is not given, it defaults to the first axis found with the length 3.
-
-    .. note::
-        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
-
-    Args:
-        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
-        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
-        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. A Tensor with same data type as `x`.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor(
-            ...     [
-            ...         [1.0, 1.0, 1.0],
-            ...         [2.0, 2.0, 2.0],
-            ...         [3.0, 3.0, 3.0],
-            ...     ]
-            ... )
-            >>> y = paddle.to_tensor(
-            ...     [
-            ...         [1.0, 1.0, 1.0],
-            ...         [1.0, 1.0, 1.0],
-            ...         [1.0, 1.0, 1.0],
-            ...     ]
-            ... )
-            >>> z1 = paddle.cross(x, y)
-            >>> print(z1)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-1., -1., -1.],
-             [ 2.,  2.,  2.],
-             [-1., -1., -1.]])
-
-            >>> z2 = paddle.cross(x, y, axis=1)
-            >>> print(z2)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 0., 0.],
-             [0., 0., 0.],
-             [0., 0., 0.]])
-    """
-    if in_dynamic_or_pir_mode():
-        axis = K_DEFAULT_DIM if axis is None else axis
-        return _C_ops.cross(x, y, axis)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                "int32",
-                "int64",
-                "complex64",
-                "complex128",
-            ],
-            'cross',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                "int32",
-                "int64",
-                "complex64",
-                "complex128",
-            ],
-            'cross',
-        )
-        helper = LayerHelper("cross", **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        attrs = {}
-        attrs['dim'] = axis
-
-        helper.append_op(
-            type='cross',
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
         return out
 
 
