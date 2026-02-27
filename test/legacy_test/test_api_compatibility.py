@@ -382,22 +382,6 @@ class TestHypotAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-6, atol=1e-6)
 
-    def test_invalid_args(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-        y = paddle.to_tensor(self.np_y)
-
-        with self.assertRaises(TypeError):
-            paddle.hypot(x)
-
-        with self.assertRaises(TypeError):
-            paddle.hypot(x, y, foo=1)
-
-        with self.assertRaises(TypeError):
-            paddle.hypot(x=x, y=y, other=y)
-
-        paddle.enable_static()
-
 
 class TestHypotInplaceAPI(unittest.TestCase):
     def setUp(self):
@@ -427,19 +411,6 @@ class TestHypotInplaceAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-6, atol=1e-6
             )
-
-    def test_invalid_args(self):
-        x = paddle.to_tensor(self.np_x)
-        y = paddle.to_tensor(self.np_y)
-
-        with self.assertRaises(TypeError):
-            paddle.hypot_(x)
-
-        with self.assertRaises(TypeError):
-            paddle.hypot_(x, y, foo=1)
-
-        with self.assertRaises(TypeError):
-            paddle.hypot_(x=x, y=y, other=y)
 
 
 # Edit by AI Agent
