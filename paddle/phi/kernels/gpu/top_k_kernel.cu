@@ -21,9 +21,9 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/gather_topk.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
-#include "paddle/phi/kernels/funcs/gather_topk.cu.h"
 
 namespace phi {
 
@@ -56,13 +56,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void TopkKernelOld(const Context& dev_ctx,
-                const DenseTensor& x,
-                const Scalar& k_scalar,
-                int axis,
-                bool largest,
-                bool sorted,
-                DenseTensor* out,
-                DenseTensor* indices) {
+                   const DenseTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   DenseTensor* out,
+                   DenseTensor* indices) {
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     dev_ctx.template Alloc<int64_t>(indices);
@@ -369,36 +369,36 @@ void TopkKernel(const Context& dev_ctx,
                 DenseTensor* out,
                 DenseTensor* indices) {
   if (out && out->numel() == 0) {
-      dev_ctx.template Alloc<T>(out);
-      dev_ctx.template Alloc<int64_t>(indices);
-      return;
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
   }
-  
+
   const auto* input = &x;
   const auto& in_dims = input->dims();
   if (in_dims.size() == 0) {
-      Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-      dev_ctx.template Alloc<int64_t>(indices);
-      funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
-      return;
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    return;
   }
-  
+
   if (axis < 0) axis += in_dims.size();
-  
+
   int k = k_scalar.to<int>();
   if (k_scalar.FromTensor()) {
-      DDim out_dims = out->dims();
-      out_dims[axis] = k;
-      out->Resize(out_dims);
-      indices->Resize(out_dims);
+    DDim out_dims = out->dims();
+    out_dims[axis] = k;
+    out->Resize(out_dims);
+    indices->Resize(out_dims);
   }
-  
+
   if (x.numel() == 0) {
-      Full<T, Context>(dev_ctx, out->dims(), NAN, out);
-      Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
-      return;
+    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
+    return;
   }
-  
+
   PADDLE_ENFORCE_GE(
       x.numel(),
       k,
@@ -409,9 +409,9 @@ void TopkKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(indices);
 
   funcs::LaunchGatherTopK<T>(dev_ctx, x, k, axis, largest, out, indices);
-  
+
   if (sorted) {
-      funcs::SortGatheredTopK<T>(dev_ctx, out, indices, axis, largest);
+    funcs::SortGatheredTopK<T>(dev_ctx, out, indices, axis, largest);
   }
 }
 
