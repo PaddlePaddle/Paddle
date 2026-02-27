@@ -76,7 +76,8 @@ inline Tensor expand(const Tensor& self,
 
     if (can_use_paddle_expand) {
       // Reshape to right-aligned shape, then expand
-      paddle::Tensor reshaped = pd_tensor.reshape(reshape_vec);
+      paddle::Tensor reshaped =
+          paddle::experimental::reshape(pd_tensor, phi::IntArray(reshape_vec));
       paddle::Tensor result = paddle::experimental::expand(
           reshaped, phi::IntArray(target_size_vec));
       return Tensor(result);
@@ -93,7 +94,8 @@ inline Tensor expand(const Tensor& self,
       }
     }
 
-    paddle::Tensor reshaped = pd_tensor.reshape(reshape_vec);
+    paddle::Tensor reshaped =
+        paddle::experimental::reshape(pd_tensor, phi::IntArray(reshape_vec));
     paddle::Tensor result = reshaped.tile(phi::IntArray(repeat_times));
     return Tensor(result);
   } else if (input_rank == target_rank) {
