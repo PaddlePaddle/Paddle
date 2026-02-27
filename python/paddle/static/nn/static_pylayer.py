@@ -310,7 +310,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         Variable|list(Variable)|tuple(Variable): returns the output of ``forward_fn(inputs)``
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np

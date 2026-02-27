@@ -45,7 +45,7 @@ class QuantInt8OnednnPass:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # The original graph will be rewrite.
                 >>> import paddle

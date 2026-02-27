@@ -211,7 +211,7 @@ def list(
         entrypoints: A list of available entrypoint names.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -263,7 +263,7 @@ def help(
         docs
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -313,7 +313,7 @@ def load(
         paddle model.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.hub.load('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
@@ -361,11 +361,16 @@ def load_state_dict_from_url(
         Any: A target object that can be used in Paddle.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
-            >>> paddle.hub.load_state_dict_from_url(url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', model_dir="./paddle/test_load_from_url")
-            >>> paddle.hub.load_state_dict_from_url(url='https://x2paddle.bj.bcebos.com/resnet18.zip', model_dir="./paddle/test_file_is_zip")
+            >>> paddle.hub.load_state_dict_from_url(
+            ...     url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', model_dir="./paddle/test_load_from_url"
+            ... )
+            >>> paddle.hub.load_state_dict_from_url(
+            ...     url='https://x2paddle.bj.bcebos.com/resnet18.zip', model_dir="./paddle/test_file_is_zip"
+            ... )
     """
     if model_dir is None:
         hub_dir = get_dir()

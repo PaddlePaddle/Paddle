@@ -20,6 +20,7 @@ defaults:
 jobs:
   cleanup-ccache:
     name: Cleanup L2 ccache
+    if: github.repository == 'PaddlePaddle/Paddle'
     runs-on:
       group: GZ_BD-CPU
 

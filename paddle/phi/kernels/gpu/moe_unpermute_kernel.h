@@ -28,6 +28,7 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const int total_zipped_tokens_num,
                         const int num_experts,
                         const bool MP,
+                        const bool using_weighted_combine,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk);
 
