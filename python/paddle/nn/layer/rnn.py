@@ -344,7 +344,7 @@ def _rnn_static_graph(
             #     pre_state, new_states
             # )
             new_states = paddle.utils.map_structure(
-                lambda x, y: (x * step_mask + y * (1.0 - step_mask)),
+                lambda x, y: x * step_mask + y * (1.0 - step_mask),
                 new_states,
                 pre_state,
             )

@@ -181,7 +181,7 @@ class Callback:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1012,7 +1012,7 @@ class VisualDL(Callback):
         log_dir (str): The directory to save visualdl log file.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.vision.transforms as T
@@ -1021,10 +1021,12 @@ class VisualDL(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ]
+            ... )
             >>> train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             >>> eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
@@ -1032,9 +1034,11 @@ class VisualDL(Callback):
             >>> model = paddle.Model(net, inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> ## uncomment following lines to fit model with visualdl callback function
             >>> # callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
@@ -1145,7 +1149,7 @@ class WandbCallback(Callback):
         job_type(str|None, optional): the type of run, for grouping runs together. Default: None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.vision.transforms as T
@@ -1154,10 +1158,12 @@ class WandbCallback(Callback):
             >>> inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             >>> labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            >>> transform = T.Compose([
-            ...     T.Transpose(),
-            ...     T.Normalize([127.5], [127.5])
-            ... ])
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Transpose(),
+            ...         T.Normalize([127.5], [127.5]),
+            ...     ]
+            ... )
             >>> train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             >>> eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
@@ -1165,9 +1171,11 @@ class WandbCallback(Callback):
             >>> model = paddle.Model(net, inputs, labels)
 
             >>> optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-            >>> model.prepare(optimizer=optim,
-            ...             loss=paddle.nn.CrossEntropyLoss(),
-            ...             metrics=paddle.metric.Accuracy())
+            >>> model.prepare(
+            ...     optimizer=optim,
+            ...     loss=paddle.nn.CrossEntropyLoss(),
+            ...     metrics=paddle.metric.Accuracy(),
+            ... )
 
             >>> ## uncomment following lines to fit model with wandb callback function
             >>> # callback = paddle.callbacks.WandbCallback(project='paddle_mnist')

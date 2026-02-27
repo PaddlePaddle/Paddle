@@ -81,7 +81,7 @@ def reindex_graph(
         - out_nodes (Tensor), the index of unique input nodes and neighbors before reindex, where we put the input nodes `x` in the front, and put neighbor nodes in the back.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -202,7 +202,7 @@ def reindex_heter_graph(
                               nodes in the back.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

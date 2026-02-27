@@ -204,7 +204,7 @@ def convert_call(func):
         Callable: A converted function.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import paddle
@@ -217,7 +217,6 @@ def convert_call(func):
             ...     else:
             ...         x_v = x + 1
             ...     return x_v
-            ...
             >>> new_func = Call(dyfunc)
             >>> x = paddle.tensor.manipulation.fill_constant(shape=[3, 3], value=0, dtype='float64')
             >>> x_v = new_func(x)

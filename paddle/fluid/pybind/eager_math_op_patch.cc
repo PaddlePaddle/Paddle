@@ -192,6 +192,13 @@ Tensor CallScalarFunction(const Tensor& self_tensor,
                    self_tensor.dtype() == DataType::FLOAT8_E4M3FN)
                       ? DataType::FLOAT32
                       : self_tensor.dtype();
+#if !defined(PADDLE_WITH_XPU)
+    PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
+        MPType, "CallScalarFunction", ([&] {
+          ret = div_scale_ad_func(self_tensor,
+                                  phi::Scalar(static_cast<data_t>(other)));
+        }));
+#else
     PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         MPType, "CallScalarFunction", ([&] {
           ret = scale_ad_func(
@@ -201,6 +208,7 @@ Tensor CallScalarFunction(const Tensor& self_tensor,
               0.0,
               true);
         }));
+#endif
   } else if (op_type == "pow") {
     ret = pow_ad_func(self_tensor, other);
   }
@@ -636,6 +644,18 @@ static PyObject* tensor__mul__method(TensorObject* self,
       other_tensor = paddle::empty({}, DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
+      // NOTE: For string types, return NotImplemented to allow Python to try to
+      // reflected method. This is the expected behavior per Python's data
+      // model: when the left operand doesn't support the operation with the
+      // right operand type, it should return NotImplemented so that the right
+      // operand's reflected method can be attempted. This avoids unintended
+      // string-to-number conversions (e.g., "a" -> 0) in the Scalar
+      // constructor.
+      if (PyObject_CheckString(other_obj)) {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+      }
+
       paddle::experimental::Scalar value;
 
       // NOTE: call reflected method of other_obj if cast failed

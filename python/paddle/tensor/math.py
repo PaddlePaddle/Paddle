@@ -20,6 +20,7 @@ import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
@@ -59,6 +60,8 @@ from paddle._C_ops import (  # noqa: F401
     minimum,
     multiply,
     nextafter,
+    renorm,
+    renorm_,
     sign,
     sin,
     sum,
@@ -71,6 +74,7 @@ from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
+    variadic_tensor_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -89,6 +93,7 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from .creation import assign
 from .layer_function_generator import generate_layer_fn
 from .manipulation import cast, cast_
 from .ops import (  # noqa: F401
@@ -2088,7 +2093,13 @@ def trunc_(input: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.trunc_(input)
 
 
-def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
+def mm(
+    input: Tensor,
+    mat2: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
 
     Applies matrix multiplication to two tensors.
@@ -2107,6 +2118,9 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
         mat2 (Tensor): The input tensor which is a Tensor. Support data types: bfloat16, float16, float32,
             float64, int8, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keywords Argument:
+        out (Tensor, optional): The output Tensor. It must have the same data type and shape as the expected output. Default is None, and a new Tensor will be created to store the result.
 
     Returns:
         Tensor: The product Tensor, with same data type of the input Tensor.
@@ -2159,7 +2173,7 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_mode():
-        return _C_ops.matmul(input, mat2, False, False)
+        return _C_ops.matmul(input, mat2, False, False, out=out)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -2198,7 +2212,7 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
 
     __check_input(input, mat2)
     if in_pir_mode():
-        return _C_ops.matmul(input, mat2, False, False)
+        return _C_ops.matmul(input, mat2, False, False, out=out)
     else:
         helper = LayerHelper('mm', **locals())
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -2207,94 +2221,6 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
             inputs={'X': input, 'Y': mat2},
             outputs={'Out': out},
         )
-        return out
-
-
-def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
-    """
-    **renorm**
-
-    This operator is used to calculate the p-norm along the axis,
-    suppose the input-shape on axis dimension has the value of T, then
-    the tensor is split into T parts, the p-norm should be calculated for each
-    part, if the p-norm for part i is larger than max-norm, then each element
-    in part i should be re-normalized at the same scale so that part-i' p-norm equals
-    max-norm exactly, otherwise part-i stays unchanged.
-
-    Args:
-        x (Tensor): The input Tensor
-        p (float): The power of the norm operation.
-        axis (int): the dimension to slice the tensor.
-        max-norm (float): the maximal norm limit.
-
-    Returns:
-        Tensor: the renorm Tensor.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> input = [
-            ...     [[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]],
-            ...     [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]],
-            ... ]
-            >>> x = paddle.to_tensor(input, dtype='float32')
-            >>> y = paddle.renorm(x, 1.0, 2, 2.05)
-            >>> print(y)
-            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[ 0.40594056,  0.29285714, -0.41000000],
-              [ 0.60891086,  0.04392857,  0.61500001]],
-             [[ 0.40594056, -1.17142856,  0.41000000],
-              [ 0.62920785,  0.54178572,  0.61500001]]])
-
-    """
-    input_shape = x.shape
-    if not axis < len(input_shape):
-        raise ValueError(
-            f"the axis:{axis} should be less then the shape's size {len(input_shape)}:{input_shape}"
-        )
-    if not axis >= 0:
-        if not axis >= -1 * len(input_shape):
-            raise ValueError(
-                f"the axis:{axis} should not be less than -1 * length of input_shape:{-1 * len(input_shape)}"
-            )
-        axis = axis + len(input_shape)
-    if in_dynamic_or_pir_mode():
-        out = _C_ops.renorm(x, p, axis, max_norm)
-        return out
-    else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
-        inputs = {'X': x}
-        attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
-
-        helper = LayerHelper("renorm", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(
-            type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out}
-        )
-        return out
-
-
-@inplace_apis_in_dygraph_only
-def renorm_(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
-    """
-    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_renorm`.
-    """
-    input_shape = x.shape
-    if not axis < len(input_shape):
-        raise ValueError(
-            f"the axis:{axis} should be less then the shape's size {len(input_shape)}:{input_shape}"
-        )
-    if not axis >= 0:
-        if not axis >= -1 * len(input_shape):
-            raise ValueError(
-                f"the axis:{axis} should not be less than -1 * length of input_shape:{-1 * len(input_shape)}"
-            )
-        axis = axis + len(input_shape)
-    if in_dynamic_mode():
-        out = _C_ops.renorm_(x, p, axis, max_norm)
         return out
 
 
@@ -4829,7 +4755,9 @@ def deg2rad(
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
-def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def gcd(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
     Both x and y must have integer types.
@@ -4843,6 +4771,9 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor, the data type is int32, int64.
         y (Tensor): An N-D Tensor, the data type is int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Arguments:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the data type is the same with input.
@@ -4906,12 +4837,14 @@ def gcd(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
 
-        return x
+        result = x
     else:
         check_variable_and_dtype(x, 'x', ['int32', 'int64'], 'gcd')
         check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'gcd')
-        out, _ = paddle.static.nn.while_loop(_gcd_cond_fn, _gcd_body_fn, [x, y])
-        return out
+        result, _ = paddle.static.nn.while_loop(
+            _gcd_cond_fn, _gcd_body_fn, [x, y]
+        )
+    return assign(result, out) if out is not None else result
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
@@ -4959,7 +4892,9 @@ def gcd_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
-def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def lcm(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
     Both x and y must have integer types.
@@ -4973,6 +4908,9 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor, the data type is int32, int64.
         y (Tensor): An N-D Tensor, the data type is int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Arguments:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor, the data type is the same with input.
@@ -5013,10 +4951,10 @@ def lcm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     # they won't be used.
     d_equal_0 = paddle.equal(d, 0)
     d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
-    out = paddle.where(
+    result = paddle.where(
         d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe
     )
-    return out
+    return assign(result, out) if out is not None else result
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
@@ -6076,10 +6014,11 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return paddle.multiply(x, paddle.pow(two, y))
 
 
+@param_one_alias(["y", "other"])
 def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
-    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_polygamma`.
+    Inplace version of ``ldexp`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_ldexp`.
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
@@ -6151,7 +6090,14 @@ def __rrshift__(
     return bitwise_right_shift(y, x, is_arithmetic)
 
 
-def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
+@param_two_alias(['x', 'input'], ['y', 'other'])
+def copysign(
+    x: Tensor,
+    y: Tensor | float,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Create a new floating-point tensor with the magnitude of input ``x`` and the sign of ``y``, elementwise.
 
@@ -6165,8 +6111,13 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, magnitudes, the data type is bool, uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``input``.
         y (Tensor|float): contains value(s) whose signbit(s) are applied to the magnitudes in input.
+            Alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor), the output tensor. The data type is the same as the input tensor.
@@ -6225,10 +6176,11 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.copysign(x, y)
+        return _C_ops.copysign(x, y, out=out)
     else:
         helper = LayerHelper("copysign", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='copysign', inputs={'x': x, 'y': y}, outputs={'out': out}
         )
@@ -6236,6 +6188,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(['y', 'other'])
 def copysign_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``copysign`` API, the output Tensor will be inplaced with input ``x``.
@@ -6290,6 +6243,7 @@ def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(['y', 'other'])
 def hypot_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``hypot`` API, the output Tensor will be inplaced with input ``x``.
@@ -6853,14 +6807,31 @@ def isin(
         return cmp
 
 
+@overload
+def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor: ...
+
+
+@overload
+def cartesian_prod(*tensors: Tensor) -> Tensor: ...
+
+
+@variadic_tensor_decorator('x')
 def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
-    Perform Cartesian product on a given tensor sequence. This behavior is similar to the itertools.product in Python.
+    This API has two signatures:
+
+    1. ``paddle.cartesian_prod(x, name=None)`` (Paddle-style):
+        Perform Cartesian product on a sequence of tensors.
+
+    2. ``paddle.cartesian_prod(*tensors)`` (PyTorch-style):
+        Perform Cartesian product on variadic tensor arguments.
+
+    This behavior is similar to the itertools.product in Python.
     Equivalent to converting all input tensors into lists, performing itertools.product on these lists,
     and finally converting the resulting list into tensors.
 
     Args:
-        x (list[Tensor]|tuple[Tensor]): Any number of 1-D input Tensors. Supported data types: bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
+        x (list[Tensor]|tuple[Tensor]): Sequence of 1-D input Tensors. Supported data types: bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

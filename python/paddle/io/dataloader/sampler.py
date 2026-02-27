@@ -62,7 +62,7 @@ class Sampler(Generic[_T]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.io import Dataset, Sampler
@@ -73,12 +73,11 @@ class Sampler(Generic[_T]):
             ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([784]).astype('float32')
-            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         label = np.random.randint(0, 9, (1,)).astype('int64')
             ...         return image, label
             ...
             ...     def __len__(self):
             ...         return self.num_samples
-            ...
             >>> class MySampler(Sampler):  # type: ignore[type-arg]
             ...     def __init__(self, data_source):
             ...         self.data_source = data_source
@@ -88,7 +87,6 @@ class Sampler(Generic[_T]):
             ...
             ...     def __len__(self):
             ...         return len(self.data_source)  # type: ignore[arg-type]
-            ...
             >>> sampler = MySampler(data_source=RandomDataset(100))
 
             >>> for index in sampler:
@@ -134,7 +132,7 @@ class SequenceSampler(Sampler[int]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.io import Dataset, SequenceSampler
@@ -145,12 +143,11 @@ class SequenceSampler(Sampler[int]):
             ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([784]).astype('float32')
-            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         label = np.random.randint(0, 9, (1,)).astype('int64')
             ...         return image, label
             ...
             ...     def __len__(self):
             ...         return self.num_samples
-            ...
             >>> sampler = SequenceSampler(data_source=RandomDataset(100))
 
             >>> for index in sampler:
@@ -196,7 +193,7 @@ class RandomSampler(Sampler[int]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.io import Dataset, RandomSampler
@@ -208,12 +205,11 @@ class RandomSampler(Sampler[int]):
             ...
             ...     def __getitem__(self, idx):
             ...         image = np.random.random([784]).astype('float32')
-            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         label = np.random.randint(0, 9, (1,)).astype('int64')
             ...         return image, label
             ...
             ...     def __len__(self):
             ...         return self.num_samples
-            ...
             >>> sampler = RandomSampler(data_source=RandomDataset(100))
 
             >>> for index in sampler:
@@ -339,7 +335,7 @@ class WeightedRandomSampler(Sampler[int]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from paddle.io import WeightedRandomSampler
@@ -348,7 +344,7 @@ class WeightedRandomSampler(Sampler[int]):
             >>> sampler = WeightedRandomSampler(
             ...     weights=[0.1, 0.3, 0.5, 0.7, 0.2],
             ...     num_samples=5,
-            ...     replacement=True
+            ...     replacement=True,
             ... )
             >>> for index in sampler:
             ...     print(index)
@@ -397,7 +393,7 @@ class SubsetRandomSampler(Sampler[int]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.io import SubsetRandomSampler

@@ -131,6 +131,70 @@ class TestGcd(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestGcdOutParameter(unittest.TestCase):
+    def test_dygraph_out(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([12, 18, 24], dtype='int64')
+        y = paddle.to_tensor([20, 24, 36], dtype='int64')
+        out = paddle.zeros([3], dtype='int64')
+        result = paddle.gcd(x, y, out=out)
+        expected = np.gcd([12, 18, 24], [20, 24, 36])
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        self.assertIs(result, out)
+        paddle.enable_static()
+
+    def test_dygraph_out_none(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([12, 18, 24], dtype='int64')
+        y = paddle.to_tensor([20, 24, 36], dtype='int64')
+        result = paddle.gcd(x, y)
+        expected = np.gcd([12, 18, 24], [20, 24, 36])
+        np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_dygraph_out_scalar(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(12, dtype='int64')
+        y = paddle.to_tensor(20, dtype='int64')
+        out = paddle.zeros([], dtype='int64')
+        result = paddle.gcd(x, y, out=out)
+        self.assertEqual(out.numpy(), 4)
+        self.assertIs(result, out)
+        paddle.enable_static()
+
+    def test_dygraph_out_broadcast(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([12, 18, 24], dtype='int64')
+        y = paddle.to_tensor([20], dtype='int64')
+        out = paddle.zeros([3], dtype='int64')
+        result = paddle.gcd(x, y, out=out)
+        expected = np.gcd([12, 18, 24], [20])
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        self.assertIs(result, out)
+        paddle.enable_static()
+
+    def test_static_out(self):
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        else:
+            place = core.CPUPlace()
+        x_np = np.array([12, 18, 24]).astype(np.int64)
+        y_np = np.array([20, 24, 36]).astype(np.int64)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(name='x', dtype='int64', shape=[3])
+            y = paddle.static.data(name='y', dtype='int64', shape=[3])
+            out = paddle.static.data(name='out', dtype='int64', shape=[3])
+            result = paddle.gcd(x, y, out=out)
+            exe = paddle.static.Executor(place)
+            res = exe.run(
+                feed={'x': x_np, 'y': y_np, 'out': np.zeros(3, dtype=np.int64)},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(res[0], np.gcd(x_np, y_np), rtol=1e-05)
+
+
 class TestGcdInplaceAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = np.array([12, 18, 24]).astype(np.int32)

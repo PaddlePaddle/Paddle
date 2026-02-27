@@ -124,11 +124,7 @@ from .lod_tensor import (  # noqa: F401
 )
 from .param_attr import ParamAttr, WeightNormParamAttr  # noqa: F401
 from .trainer_desc import (  # noqa: F401
-    DistMultiTrainer,
-    HeterPipelineTrainer,
-    HeterXpuTrainer,
     MultiTrainer,
-    PipelineTrainer,
     TrainerDesc,
 )
 
@@ -146,8 +142,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    in_test = 'unittest' in sys.modules
-
     try:
         num_threads = int(os.getenv('OMP_NUM_THREADS', '1'))
     except ValueError:

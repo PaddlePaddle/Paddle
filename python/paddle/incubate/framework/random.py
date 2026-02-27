@@ -158,7 +158,7 @@ def set_rng_state(
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> sts = paddle.incubate.get_rng_state()
@@ -239,7 +239,7 @@ def register_rng_state_as_index(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> old_index = paddle.incubate.get_rng_state(use_index=True)
