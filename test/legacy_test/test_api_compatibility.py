@@ -2818,5 +2818,65 @@ class TestRenormInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestHypotAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_y = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        paddle_dygraph_out = []
+
+        out1 = paddle.hypot(x, y)
+        paddle_dygraph_out.append(out1)
+        out2 = paddle.hypot(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        out3 = paddle.hypot(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+        out4 = paddle.hypot(x, y=y)
+        paddle_dygraph_out.append(out4)
+        out5 = x.hypot(y)
+        paddle_dygraph_out.append(out5)
+        out6 = x.hypot(y=y)
+        paddle_dygraph_out.append(out6)
+        ref_out = np.hypot(self.np_x, self.np_y)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.hypot(x, y)
+            out2 = paddle.hypot(x=x, y=y)
+            out3 = paddle.hypot(input=x, other=y)
+            out4 = x.hypot(y)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.hypot(self.np_x, self.np_y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == '__main__':
     unittest.main()

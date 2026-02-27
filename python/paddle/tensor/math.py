@@ -6204,6 +6204,7 @@ def copysign_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.copysign_(x, y)
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Calculate the length of the hypotenuse of a right-angle triangle. The equation is:
@@ -6213,7 +6214,9 @@ def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+            Alias: ``input``.
         y (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+            Alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
