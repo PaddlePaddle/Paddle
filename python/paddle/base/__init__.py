@@ -142,8 +142,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    in_test = 'unittest' in sys.modules
-
     try:
         num_threads = int(os.getenv('OMP_NUM_THREADS', '1'))
     except ValueError:

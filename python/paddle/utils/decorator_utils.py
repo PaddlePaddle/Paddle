@@ -632,12 +632,8 @@ def index_select_decorator() -> Callable[
 ]:
     """
     Usage Example:
-    PyTorch: index_select(input, dim, index)
-        torch.index_select(input=input_tensor, dim=1, index=indices)
-        torch.index_select(input_tensor, 1, indices)
-    Paddle: index_select(x, index, axis=0)
-        paddle.index_select(x=input_tensor, index=indices, axis=1)
-        paddle.index_select(input_tensor, indices, axis=1)
+    PyTorch: torch.index_select(input, dim, index)
+    Paddle: paddle.index_select(x, index, axis)
     """
 
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
@@ -908,3 +904,78 @@ def use_first_signature(
     sig = inspect.signature(first_overload)
     func.__signature__ = sig
     return func
+
+
+def variadic_tensor_decorator(
+    param_name: str,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    """
+    Decorator to handle variadic tensor arguments.
+
+    Usage Example:
+    PyTorch: torch.block_diag(x, y, z)
+    Paddle: paddle.block_diag([x, y, z])
+
+    Args:
+        param_name: The parameter name to use for the list (e.g., 'inputs', 'input', 'x')
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # PyTorch usage: variadic tensor arguments
+            if len(args) >= 1 and isinstance(
+                args[0], (paddle.Tensor, paddle.pir.Value)
+            ):
+                kwargs[param_name] = list(args)
+                args = ()
+            # Paddle usage: list/tuple argument
+            elif len(args) >= 1 and isinstance(args[0], (list, tuple)):
+                kwargs[param_name] = args[0]
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def index_fill_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for index_fill API to handle parameter name and order differences.
+
+    Usage Example:
+    PyTorch: torch.index_fill(input, dim, index, value)
+    Paddle: paddle.index_fill(x, index, axis, value)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Handle keyword argument aliases
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs and "axis" not in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+
+            # Handle PyTorch positional argument order: (input, dim, index, value)
+            # Paddle order: (x, index, axis, value)
+            if len(args) >= 2 and isinstance(args[1], int):
+                # PyTorch order detected
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if len(args) > 2:
+                    kwargs["index"] = args[2]
+                if len(args) > 3:
+                    kwargs["value"] = args[3]
+                args = args[4:] if len(args) > 4 else ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
