@@ -15,6 +15,8 @@
 #pragma once
 
 #include <ATen/ops/abs.h>
+#include <ATen/ops/all.h>
+#include <ATen/ops/allclose.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/cat.h>
 #include <ATen/ops/empty.h>

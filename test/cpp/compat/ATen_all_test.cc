@@ -1,0 +1,156 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <ATen/Functions.h>
+#include <ATen/core/TensorBody.h>
+#include <ATen/cuda/EmptyTensor.h>
+#include <ATen/native/cuda/Resize.h>
+#include <ATen/ops/tensor.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/SymInt.h>
+#include <c10/core/TensorOptions.h>
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
+#endif
+#include "ATen/ATen.h"
+#include "gtest/gtest.h"
+#include "paddle/phi/common/float16.h"
+#include "torch/all.h"
+
+TEST(TestAll, AllNoDim) {
+  // Test all() without arguments - check all elements in tensor
+  at::Tensor tensor = at::tensor({true, true, true}, at::kBool);
+  at::Tensor result = tensor.all();
+
+  ASSERT_EQ(result.numel(), 1);
+  ASSERT_EQ(result.item<bool>(), true);
+
+  // Test with some false values
+  at::Tensor tensor_false = at::tensor({true, false, true}, at::kBool);
+  at::Tensor result_false = tensor_false.all();
+
+  ASSERT_EQ(result_false.item<bool>(), false);
+}
+
+TEST(TestAll, AllWithDim) {
+  // Test all(dim) - check along specific dimension
+  at::Tensor tensor = at::tensor({{true, true}, {false, true}}, at::kBool);
+
+  // All along dimension 0
+  at::Tensor result_dim0 = tensor.all(0);
+  ASSERT_EQ(result_dim0.sizes(), c10::IntArrayRef({2}));
+  ASSERT_EQ(result_dim0.data_ptr<bool>()[0], false);  // column 0 has false
+  ASSERT_EQ(result_dim0.data_ptr<bool>()[1], true);   // column 1 has all true
+
+  // All along dimension 1
+  at::Tensor result_dim1 = tensor.all(1);
+  ASSERT_EQ(result_dim1.sizes(), c10::IntArrayRef({2}));
+  ASSERT_EQ(result_dim1.data_ptr<bool>()[0], true);   // row 0 has all true
+  ASSERT_EQ(result_dim1.data_ptr<bool>()[1], false);  // row 1 has false
+}
+
+TEST(TestAll, AllWithDimKeepdim) {
+  // Test all(dim, keepdim) - keep the dimension
+  at::Tensor tensor = at::tensor({{true, true}, {false, true}}, at::kBool);
+
+  at::Tensor result = tensor.all(0, true);
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({1, 2}));
+}
+
+TEST(TestAll, AllWithOptionalDim) {
+  // Test all(OptionalIntArrayRef dim, keepdim)
+  at::Tensor tensor = at::tensor({{true, true}, {false, true}}, at::kBool);
+
+  // With specific dimensions
+  at::Tensor result = tensor.all(c10::IntArrayRef({0}), false);
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2}));
+}
+
+TEST(TestAll, StandaloneFunction) {
+  // Test at::all() standalone function
+  at::Tensor tensor = at::tensor({true, true, false}, at::kBool);
+  at::Tensor result = at::all(tensor);
+
+  ASSERT_EQ(result.item<bool>(), false);
+}
+
+TEST(TestAllclose, AllcloseBasic) {
+  // Test allclose - basic equal tensors
+  at::Tensor tensor1 = at::arange(6, at::kFloat).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(6, at::kFloat).reshape({2, 3});
+
+  bool result = tensor1.allclose(tensor2);
+  ASSERT_EQ(result, true);
+}
+
+TEST(TestAllclose, AllcloseWithTolerance) {
+  // Test allclose with rtol/atol tolerance
+  at::Tensor tensor1 = at::tensor({1.0, 2.0, 3.0}, at::kFloat);
+  at::Tensor tensor2 =
+      at::tensor({1.0 + 1e-6, 2.0 + 1e-6, 3.0 + 1e-6}, at::kFloat);
+
+  // Within default tolerance
+  bool result_default = tensor1.allclose(tensor2);
+  ASSERT_EQ(result_default, true);
+
+  // Within custom tolerance
+  bool result_custom = tensor1.allclose(tensor2, 1e-4, 1e-5);
+  ASSERT_EQ(result_custom, true);
+
+  // Outside tolerance
+  bool result_fail = tensor1.allclose(tensor2, 1e-10, 1e-10);
+  ASSERT_EQ(result_fail, false);
+}
+
+TEST(TestAllclose, AllcloseNotEqual) {
+  // Test allclose - tensors that are not close
+  at::Tensor tensor1 = at::tensor({1.0, 2.0, 3.0}, at::kFloat);
+  at::Tensor tensor2 = at::tensor({1.0, 2.0, 4.0}, at::kFloat);
+
+  bool result = tensor1.allclose(tensor2);
+  ASSERT_EQ(result, false);
+}
+
+TEST(TestAllclose, AllcloseEqualNan) {
+  // Test allclose with equal_nan
+  at::Tensor tensor1 = at::tensor({1.0, NAN, 3.0}, at::kFloat);
+  at::Tensor tensor2 = at::tensor({1.0, NAN, 3.0}, at::kFloat);
+
+  // With equal_nan = true
+  bool result_nan = tensor1.allclose(tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_nan, true);
+
+  // With equal_nan = false (default)
+  bool result_no_nan = tensor1.allclose(tensor2);
+  ASSERT_EQ(result_no_nan, false);
+}
+
+TEST(TestAllclose, StandaloneFunction) {
+  // Test at::allclose() standalone function
+  at::Tensor tensor1 = at::arange(6, at::kFloat).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(6, at::kFloat).reshape({2, 3});
+
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+}
+
+TEST(TestAllclose, AllcloseDifferentShapes) {
+  // Test allclose with different shapes - should return false
+  at::Tensor tensor1 = at::tensor({1.0, 2.0, 3.0}, at::kFloat);
+  at::Tensor tensor2 = at::tensor({1.0, 2.0}, at::kFloat);
+
+  bool result = tensor1.allclose(tensor2);
+  ASSERT_EQ(result, false);
+}
