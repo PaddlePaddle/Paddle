@@ -1091,7 +1091,7 @@ def get_build_directory(verbose: bool = False) -> str:
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> from paddle.utils.cpp_extension import get_build_directory
 

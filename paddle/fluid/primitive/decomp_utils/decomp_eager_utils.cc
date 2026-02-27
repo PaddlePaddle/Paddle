@@ -16,13 +16,13 @@
 
 namespace paddle::primitive {
 template <>
-void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+void set_output<Tensor>(const Tensor& x_tmp, Tensor* x) {
   x->set_impl(x_tmp.impl());
   x->set_autograd_meta(x_tmp.mutable_autograd_meta());
 }
 
 template <>
-void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
+void by_pass<Tensor>(const Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
 }
 

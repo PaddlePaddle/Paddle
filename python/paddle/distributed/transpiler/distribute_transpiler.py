@@ -173,7 +173,7 @@ class DistributeTranspilerConfig:
           .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.distributed.transpiler.distribute_transpiler import RoundRobin
             >>> import paddle.distributed.transpiler as transpiler
@@ -281,7 +281,7 @@ class DistributeTranspiler:
     mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
@@ -290,7 +290,7 @@ class DistributeTranspiler:
 
             >>> paddle.enable_static()
 
-            >>> x = paddle.static.data(name='x', shape=[1,13], dtype='float32')
+            >>> x = paddle.static.data(name='x', shape=[1, 13], dtype='float32')
             >>> y = paddle.static.data(name='y', shape=[1], dtype='float32')
             >>> y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
@@ -309,15 +309,13 @@ class DistributeTranspiler:
             >>> role = "PSERVER"
 
             >>> t = transpiler.DistributeTranspiler()
-            >>> t.transpile(
-            ...         trainer_id, pservers=pserver_endpoints, trainers=trainers)
+            >>> t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
 
             >>> if role == "PSERVER":
-            ...         pserver_program = t.get_pserver_program(current_endpoint)
-            ...         pserver_startup_program = t.get_startup_program(current_endpoint,
-            ...                                                     pserver_program)
+            ...     pserver_program = t.get_pserver_program(current_endpoint)
+            ...     pserver_startup_program = t.get_startup_program(current_endpoint, pserver_program)
             ... elif role == "TRAINER":
-            ...         trainer_program = t.get_trainer_program()
+            ...     trainer_program = t.get_trainer_program()
 
             >>> # for nccl2 mode
             >>> trainer_num = 2
@@ -331,7 +329,7 @@ class DistributeTranspiler:
             ...     use_cuda=True,
             ...     loss_name=avg_loss.name,
             ...     num_trainers=trainer_num,
-            ...     trainer_id=trainer_id
+            ...     trainer_id=trainer_id,
             ... )
 
     """
@@ -612,7 +610,7 @@ class DistributeTranspiler:
                 this argument is not used.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> t = paddle.distributed.transpiler.DistributeTranspiler()
@@ -621,7 +619,8 @@ class DistributeTranspiler:
                 ...     pservers="127.0.0.1:7000,127.0.0.1:7001",
                 ...     trainers=2,
                 ...     sync_mode=False,
-                ...     current_endpoint="127.0.0.1:7000")
+                ...     current_endpoint="127.0.0.1:7000",
+                ... )
 
         """
         from paddle.distributed.distribute_lookup_table import (
@@ -1130,7 +1129,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: trainer side program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
@@ -1279,7 +1278,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: the program for current parameter server to run.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
@@ -1290,8 +1289,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 >>> trainers = 4
 
                 >>> t = transpiler.DistributeTranspiler()
-                >>> t.transpile(
-                ...     trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                >>> t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
 
                 >>> pserver_program = t.get_pserver_program(current_endpoint)
 
@@ -1592,7 +1590,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             tuple: (main_program, startup_program), of type "Program"
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import paddle.distributed.transpiler as transpiler
@@ -1603,8 +1601,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 >>> trainers = 4
 
                 >>> t = transpiler.DistributeTranspiler()
-                >>> t.transpile(
-                ...     trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                >>> t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
                 >>> pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
 
         """
@@ -1634,7 +1631,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: parameter server side startup program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
@@ -1646,8 +1643,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 >>> t = paddle.distributed.transpiler.DistributeTranspiler()
                 >>> t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
                 >>> pserver_program = t.get_pserver_program(current_endpoint)
-                >>> pserver_startup_program = t.get_startup_program(current_endpoint,
-                ...                                                 pserver_program)
+                >>> pserver_startup_program = t.get_startup_program(current_endpoint, pserver_program)
 
         """
         s_prog = Program()

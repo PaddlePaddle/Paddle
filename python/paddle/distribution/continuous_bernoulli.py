@@ -62,7 +62,7 @@ class ContinuousBernoulli(distribution.Distribution):
             by talyor expansion. The default value is (0.499, 0.501).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import ContinuousBernoulli

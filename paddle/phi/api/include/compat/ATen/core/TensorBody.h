@@ -441,27 +441,11 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void record_stream(const gpuStream_t& stream) const {
+#if defined(PADDLE_WITH_CUDA)
+  void record_stream(const cudaStream_t& stream) const {
     paddle::memory::RecordStream(
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        stream);
-  }
-#endif
-
-#ifdef PADDLE_WITH_XPU
-  void record_stream(const XPUStream& stream) const {
-    paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        stream);
-  }
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  void record_stream(const phi::stream::stream_t& stream) const {
-    paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        stream);
+        reinterpret_cast<gpuStream_t>(stream));
   }
 #endif
 

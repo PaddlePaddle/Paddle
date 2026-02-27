@@ -46,8 +46,8 @@ void by_pass(const Tensor& x_tmp, Tensor* x);
 
 // This function determine whether dtype is in [float16, bfloat16, uint16]
 static bool is_half_dtype(const DataType& dtype) {
-  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16 ||
-      dtype == phi::DataType::UINT16) {
+  if (dtype == DataType::FLOAT16 || dtype == DataType::BFLOAT16 ||
+      dtype == DataType::UINT16) {
     return true;
   } else {
     return false;
@@ -285,17 +285,17 @@ static bool has_dynamic_shape(const std::vector<int64_t>& shape,
 
 template <typename T>
 Tensor ConvertToMT(const Tensor& x) {
-  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
-                   x.dtype() == phi::DataType::BFLOAT16 ||
-                   x.dtype() == phi::DataType::UINT16;
+  bool need_cast = x.dtype() == DataType::FLOAT16 ||
+                   x.dtype() == DataType::BFLOAT16 ||
+                   x.dtype() == DataType::UINT16;
   if (need_cast) {
-    return cast<T>(x, phi::DataType::FLOAT32);
+    return cast<T>(x, DataType::FLOAT32);
   }
   return x;
 }
 
 template <typename T>
-Tensor ConvertToOrig(const Tensor& out, phi::DataType input_dtype) {
+Tensor ConvertToOrig(const Tensor& out, DataType input_dtype) {
   bool need_cast = out.dtype() != input_dtype;
   if (need_cast) {
     return cast<T>(out, input_dtype);
@@ -607,12 +607,11 @@ class GroupNormDecompHelper {
       }
 
       split_shape_tensor_.push_back(
-          full<T>({1}, split_dim[0], phi::DataType::INT64));
+          full<T>({1}, split_dim[0], DataType::INT64));
       split_shape_tensor_.push_back(
-          full<T>({1}, split_dim[1], phi::DataType::INT64));
+          full<T>({1}, split_dim[1], DataType::INT64));
 
-      merge_shape_tensor_.push_back(
-          full<T>({1}, channel_dim, phi::DataType::INT64));
+      merge_shape_tensor_.push_back(full<T>({1}, channel_dim, DataType::INT64));
 
       if (channel_axis_ + 1 < x_rank_) {
         split_shape_tensor_.push_back(
