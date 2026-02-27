@@ -350,7 +350,9 @@ class TestHypotAPI(unittest.TestCase):
 
         ref_out = np.hypot(self.np_x, self.np_y)
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-6, atol=1e-6
+            )
         paddle.enable_static()
 
     def test_static_Compatibility(self):
