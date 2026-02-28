@@ -32,7 +32,7 @@
 TEST(TestAll, AllNoDim) {
   // Test all() without arguments - check all elements in tensor
   at::Tensor tensor = at::ones({3}, at::kBool);
-  tensor[1] = at::scalar_tensor(false, at::kBool);
+  tensor[1] = at::tensor(false);
   at::Tensor result = tensor.all();
 
   ASSERT_EQ(result.numel(), 1);
@@ -47,7 +47,7 @@ TEST(TestAll, AllNoDim) {
 TEST(TestAll, AllWithDim) {
   // Test all(dim) - check along specific dimension
   at::Tensor tensor = at::ones({2, 2}, at::kBool);
-  tensor[1][0] = at::scalar_tensor(false, at::kBool);
+  tensor[1][0] = at::tensor(false);
 
   // All along dimension 0
   at::Tensor result_dim0 = tensor.all(0);
@@ -82,7 +82,7 @@ TEST(TestAll, AllWithOptionalDim) {
 TEST(TestAll, StandaloneFunction) {
   // Test at::all() standalone function
   at::Tensor tensor = at::ones({3}, at::kBool);
-  tensor[2] = at::scalar_tensor(false, at::kBool);
+  tensor[2] = at::tensor(false);
   at::Tensor result = at::all(tensor);
 
   ASSERT_EQ(result.item<bool>(), false);
