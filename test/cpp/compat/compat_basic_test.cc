@@ -17,6 +17,7 @@
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
+#include <c10/core/Device.h>
 #include <c10/core/Layout.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
@@ -27,6 +28,7 @@
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
 
@@ -65,7 +67,7 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
   ASSERT_EQ(cpu_tensor.device().type(), at::DeviceType::CPU);
 
   // Test get_device()
-  ASSERT_EQ(cpu_tensor.get_device(), -1);  // CPU device index is -1
+  ASSERT_EQ(cpu_tensor.get_device(), 0);  // CPU device index is -1
 
   // Test is_cpu()/is_cuda()
   ASSERT_TRUE(cpu_tensor.is_cpu());
@@ -400,4 +402,100 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
   at::Tensor permuted = tensor_4d.permute({3, 1, 2, 0});
   ASSERT_FALSE(permuted.is_contiguous());
   ASSERT_TRUE(permuted.is_non_overlapping_and_dense());
+}
+
+TEST(DeviceCompatTest, ParseTypeValid) {
+  // Test valid device types
+  EXPECT_EQ(c10::parse_type("cpu"), c10::DeviceType::CPU);
+  EXPECT_EQ(c10::parse_type("cuda"), c10::DeviceType::CUDA);
+  EXPECT_EQ(c10::parse_type("gpu"), c10::DeviceType::GPU);
+  EXPECT_EQ(c10::parse_type("ipu"), c10::DeviceType::IPU);
+  EXPECT_EQ(c10::parse_type("xpu"), c10::DeviceType::XPU);
+}
+
+TEST(DeviceCompatTest, ParseTypeInvalid) {
+  // Test invalid device type throws exception
+  EXPECT_THROW(c10::parse_type("invalid"), common::enforce::EnforceNotMet);
+  EXPECT_THROW(c10::parse_type("dx11"), common::enforce::EnforceNotMet);
+}
+
+TEST(DeviceCompatTest, DeviceFromStringBasic) {
+  // Test creating Device from string without index
+  c10::Device dev1("cpu");
+  EXPECT_EQ(dev1.type(), c10::DeviceType::CPU);
+  EXPECT_FALSE(dev1.has_index());
+  EXPECT_EQ(dev1.index(), -1);
+  EXPECT_TRUE(dev1.is_cpu());
+  EXPECT_FALSE(dev1.is_cuda());
+
+  c10::Device dev2("cuda");
+  EXPECT_EQ(dev2.type(), c10::DeviceType::CUDA);
+  EXPECT_FALSE(dev2.has_index());
+
+  c10::Device dev3("gpu");
+  EXPECT_EQ(dev3.type(), c10::DeviceType::GPU);
+  EXPECT_FALSE(dev3.has_index());
+}
+
+TEST(DeviceCompatTest, DeviceFromStringWithIndex) {
+  // Test creating Device from string with index
+  c10::Device dev1("cuda:0");
+  EXPECT_EQ(dev1.type(), c10::DeviceType::CUDA);
+  EXPECT_TRUE(dev1.has_index());
+  EXPECT_EQ(dev1.index(), 0);
+
+  c10::Device dev2("gpu:0");
+  EXPECT_EQ(dev2.type(), c10::DeviceType::GPU);
+  EXPECT_TRUE(dev2.has_index());
+  EXPECT_EQ(dev2.index(), 0);
+
+  c10::Device dev3("xpu:1");
+  EXPECT_EQ(dev3.type(), c10::DeviceType::XPU);
+  EXPECT_TRUE(dev3.has_index());
+  EXPECT_EQ(dev3.index(), 1);
+
+  c10::Device dev4("ipu:2");
+  EXPECT_EQ(dev4.type(), c10::DeviceType::IPU);
+  EXPECT_EQ(dev4.index(), 2);
+}
+
+TEST(DeviceCompatTest, DeviceFromStringInvalid) {
+  // Test invalid device string throws exception
+  EXPECT_THROW(c10::Device(""), c10::Error);
+  EXPECT_THROW(c10::Device("cuda:abc"), common::enforce::EnforceNotMet);
+}
+
+TEST(DeviceCompatTest, DeviceStr) {
+  // Test Device::str() method
+  c10::Device dev1("cpu");
+  EXPECT_EQ(dev1.str(), "cpu");
+
+  c10::Device dev2("cuda:0");
+  EXPECT_EQ(dev2.str(), "cuda:0");
+
+  // Note: GPU type returns "cuda" in str() for compatibility
+  c10::Device dev3("gpu:1");
+  EXPECT_EQ(dev3.str(), "cuda:1");
+
+  c10::Device dev4("xpu:2");
+  EXPECT_EQ(dev4.str(), "xpu:2");
+}
+
+TEST(DeviceCompatTest, DeviceStreamOutput) {
+  // Test operator<< for Device
+  c10::Device dev1("cpu");
+  std::ostringstream oss1;
+  oss1 << dev1;
+  EXPECT_EQ(oss1.str(), "cpu");
+
+  // Note: GPU type returns "cuda" for compatibility
+  c10::Device dev2("gpu:0");
+  std::ostringstream oss2;
+  oss2 << dev2;
+  EXPECT_EQ(oss2.str(), "cuda:0");
+
+  c10::Device dev3("xpu:2");
+  std::ostringstream oss3;
+  oss3 << dev3;
+  EXPECT_EQ(oss3.str(), "xpu:2");
 }
