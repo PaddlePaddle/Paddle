@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Adapted from PyTorch ATen/core/Generator.h.
-// Bridges the PyTorch Generator API to Paddle's phi::Generator.
+// #The file has been adapted from pytorch project
+// #Licensed under  BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
 

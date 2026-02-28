@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Adapted from PyTorch c10::GeneratorImpl.
-// Bridges the PyTorch Generator interface to Paddle's phi::Generator.
+// #The file has been adapted from pytorch project
+// #Licensed under  BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
 
@@ -69,15 +70,15 @@ class GeneratorImpl {
 
   // ------- seed / offset API ------------------------------------------------
 
-  void set_current_seed(uint64_t seed) { gen_->SetCurrentSeed(seed); }
+  virtual void set_current_seed(uint64_t seed) { gen_->SetCurrentSeed(seed); }
 
-  uint64_t current_seed() const { return gen_->GetCurrentSeed(); }
+  virtual uint64_t current_seed() const { return gen_->GetCurrentSeed(); }
 
   /// Generate and set a new random seed; return it.
-  uint64_t seed() { return gen_->Seed(); }
+  virtual uint64_t seed() { return gen_->Seed(); }
 
   /// Set the Philox offset (supported in CUDA / MPS generators).
-  void set_offset(uint64_t offset) {
+  virtual void set_offset(uint64_t offset) {
     // phi::Generator stores offset in its state; we reset it via
     // IncrementOffset after backing up the current offset.
     auto state = gen_->GetState();
@@ -91,7 +92,7 @@ class GeneratorImpl {
     }
   }
 
-  uint64_t get_offset() const { return gen_->GetCurrentOffset(); }
+  virtual uint64_t get_offset() const { return gen_->GetCurrentOffset(); }
 
   // ------- device / dispatch ------------------------------------------------
 
