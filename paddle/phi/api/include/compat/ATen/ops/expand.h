@@ -96,7 +96,8 @@ inline Tensor expand(const Tensor& self,
 
     paddle::Tensor reshaped =
         paddle::experimental::reshape(pd_tensor, phi::IntArray(reshape_vec));
-    paddle::Tensor result = reshaped.tile(phi::IntArray(repeat_times));
+    paddle::Tensor result =
+        paddle::experimental::tile(reshaped, phi::IntArray(repeat_times));
     return Tensor(result);
   } else if (input_rank == target_rank) {
     // Same rank - check if we can use expand directly or need tile
@@ -126,12 +127,25 @@ inline Tensor expand(const Tensor& self,
       }
     }
 
-    paddle::Tensor result = pd_tensor.tile(phi::IntArray(repeat_times));
+    paddle::Tensor result =
+        paddle::experimental::tile(pd_tensor, phi::IntArray(repeat_times));
     return Tensor(result);
   } else {
-    // Input has more dimensions - this is tricky, let Paddle handle it
+    // Input has more dimensions - need to reshape first
+    // Example: {2,3,4}.expand({3,4}) -> reshape to {3,4}, then expand
+    // We take the last target_rank dimensions from input
+    std::vector<int64_t> new_shape(target_rank);
+    for (size_t i = 0; i < target_rank; ++i) {
+      new_shape[i] = input_dims[i + (input_rank - target_rank)];
+    }
+
+    // First reshape to squeeze out extra dimensions
+    paddle::Tensor reshaped =
+        paddle::experimental::reshape(pd_tensor, phi::IntArray(new_shape));
+
+    // Then expand to target size
     paddle::Tensor result =
-        paddle::experimental::expand(pd_tensor, phi::IntArray(target_size_vec));
+        paddle::experimental::expand(reshaped, phi::IntArray(target_size_vec));
     return Tensor(result);
   }
 }
