@@ -20,6 +20,7 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
+#include <limits>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
@@ -32,7 +33,7 @@
 TEST(TestAll, AllNoDim) {
   // Test all() without arguments - check all elements in tensor
   at::Tensor tensor = at::ones({3}, at::kBool);
-  tensor[1] = at::tensor(false);
+  tensor[1] = false;
   at::Tensor result = tensor.all();
 
   ASSERT_EQ(result.numel(), 1);
@@ -47,7 +48,7 @@ TEST(TestAll, AllNoDim) {
 TEST(TestAll, AllWithDim) {
   // Test all(dim) - check along specific dimension
   at::Tensor tensor = at::ones({2, 2}, at::kBool);
-  tensor[1][0] = at::tensor(false);
+  tensor[1][0] = false;
 
   // All along dimension 0
   at::Tensor result_dim0 = tensor.all(0);
@@ -82,7 +83,7 @@ TEST(TestAll, AllWithOptionalDim) {
 TEST(TestAll, StandaloneFunction) {
   // Test at::all() standalone function
   at::Tensor tensor = at::ones({3}, at::kBool);
-  tensor[2] = at::tensor(false);
+  tensor[2] = false;
   at::Tensor result = at::all(tensor);
 
   ASSERT_EQ(result.item<bool>(), false);
@@ -99,9 +100,8 @@ TEST(TestAllclose, AllcloseBasic) {
 
 TEST(TestAllclose, AllcloseWithTolerance) {
   // Test allclose with rtol/atol tolerance
-  at::Tensor tensor1 = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
-  at::Tensor tensor2 =
-      at::tensor({1.0f + 1e-6f, 2.0f + 1e-6f, 3.0f + 1e-6f}, at::kFloat);
+  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
+  at::Tensor tensor2 = tensor1 + 1e-6f;
 
   // Within default tolerance
   bool result_default = tensor1.allclose(tensor2);
@@ -118,8 +118,9 @@ TEST(TestAllclose, AllcloseWithTolerance) {
 
 TEST(TestAllclose, AllcloseNotEqual) {
   // Test allclose - tensors that are not close
-  at::Tensor tensor1 = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
-  at::Tensor tensor2 = at::tensor({1.0f, 2.0f, 4.0f}, at::kFloat);
+  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
+  at::Tensor tensor2 = tensor1.clone();
+  tensor2[2] = 4.0f;
 
   bool result = tensor1.allclose(tensor2);
   ASSERT_EQ(result, false);
@@ -127,8 +128,11 @@ TEST(TestAllclose, AllcloseNotEqual) {
 
 TEST(TestAllclose, AllcloseEqualNan) {
   // Test allclose with equal_nan
-  at::Tensor tensor1 = at::tensor({1.0f, NAN, 3.0f}, at::kFloat);
-  at::Tensor tensor2 = at::tensor({1.0f, NAN, 3.0f}, at::kFloat);
+  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
+  at::Tensor tensor2 = tensor1.clone();
+  const float nan_value = std::numeric_limits<float>::quiet_NaN();
+  tensor1[1] = nan_value;
+  tensor2[1] = nan_value;
 
   // With equal_nan = true
   bool result_nan = tensor1.allclose(tensor2, 1e-05, 1e-08, true);
@@ -150,8 +154,8 @@ TEST(TestAllclose, StandaloneFunction) {
 
 TEST(TestAllclose, AllcloseDifferentShapes) {
   // Test allclose with different shapes - should return false
-  at::Tensor tensor1 = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
-  at::Tensor tensor2 = at::tensor({1.0f, 2.0f}, at::kFloat);
+  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
+  at::Tensor tensor2 = at::arange(1, 3, at::TensorOptions().dtype(at::kFloat));
 
   bool result = tensor1.allclose(tensor2);
   ASSERT_EQ(result, false);
