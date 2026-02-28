@@ -41,7 +41,7 @@ jobs:
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
       WITH_CACHE: "OFF"
-      WITH_TPCACHE: "ON"
+      WITH_TPCACHE: "OFF"
       WITH_SCCACHE: "ON"
       WITH_SHARED_PHI: "ON"
       FLAGS_enable_eager_mode: 1
