@@ -31,36 +31,6 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "pybind11/pybind11.h"
 
-// Enumerate all phi::DataType enum names (excluding NUM_DATA_TYPES and
-// ALL_DTYPE).  The order MUST match the enum definition in
-// paddle/phi/common/data_type.h.
-//
-// NOTE: Do NOT name this PD_FOR_EACH_DATA_TYPE — that macro already exists in
-// paddle/phi/common/data_type.h with a different callback signature
-// (cpp_type, DataType).  This one takes a single NAME argument.
-// clang-format off
-#define PD_FOR_EACH_DATA_TYPE_ENUM(CB) \
-  CB(UNDEFINED)                  \
-  CB(BOOL)                       \
-  CB(UINT8)                      \
-  CB(INT8)                       \
-  CB(UINT16)                     \
-  CB(INT16)                      \
-  CB(UINT32)                     \
-  CB(INT32)                      \
-  CB(UINT64)                     \
-  CB(INT64)                      \
-  CB(FLOAT32)                    \
-  CB(FLOAT64)                    \
-  CB(COMPLEX64)                  \
-  CB(COMPLEX128)                 \
-  CB(PSTRING)                    \
-  CB(FLOAT16)                    \
-  CB(BFLOAT16)                   \
-  CB(FLOAT8_E4M3FN)             \
-  CB(FLOAT8_E5M2)
-// clang-format on
-
 namespace paddle {
 namespace pybind {
 
@@ -81,12 +51,16 @@ class DataTypeSingletonCache {
   /// py::enum_<DataType> type object. Must be called once after enum
   /// registration in PYBIND11_MODULE.
   void Init(PyTypeObject* data_type_pytype) {
-#define PD_DATA_TYPE_NAME_(NAME) #NAME,
+    // The order MUST match the enum definition in
+    // paddle/phi/common/data_type.h (excluding NUM_DATA_TYPES / ALL_DTYPE).
     static const char* kNames[] = {
-        PD_FOR_EACH_DATA_TYPE_ENUM(PD_DATA_TYPE_NAME_)};
-#undef PD_DATA_TYPE_NAME_
+        "UNDEFINED", "BOOL",     "UINT8",         "INT8",        "UINT16",
+        "INT16",     "UINT32",   "INT32",         "UINT64",      "INT64",
+        "FLOAT32",   "FLOAT64",  "COMPLEX64",     "COMPLEX128",  "PSTRING",
+        "FLOAT16",   "BFLOAT16", "FLOAT8_E4M3FN", "FLOAT8_E5M2",
+    };
     static_assert(sizeof(kNames) / sizeof(kNames[0]) == kCacheSize,
-                  "PD_FOR_EACH_DATA_TYPE_ENUM must match DataType enum size");
+                  "kNames must match DataType enum size");
 
     auto* type_obj = reinterpret_cast<PyObject*>(data_type_pytype);
     for (size_t i = 0; i < kCacheSize; ++i) {

@@ -4366,10 +4366,26 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::enum_<DataType> data_type(m, "DataType");
   g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT
-#define PD_REGISTER_DATA_TYPE_(NAME) data_type.value(#NAME, DataType::NAME);
-  PD_FOR_EACH_DATA_TYPE_ENUM(PD_REGISTER_DATA_TYPE_)
-#undef PD_REGISTER_DATA_TYPE_
-  data_type.value("ALL_DTYPE", DataType::ALL_DTYPE)
+  data_type.value("UNDEFINED", DataType::UNDEFINED)
+      .value("BOOL", DataType::BOOL)
+      .value("UINT8", DataType::UINT8)
+      .value("INT8", DataType::INT8)
+      .value("UINT16", DataType::UINT16)
+      .value("INT16", DataType::INT16)
+      .value("UINT32", DataType::UINT32)
+      .value("INT32", DataType::INT32)
+      .value("UINT64", DataType::UINT64)
+      .value("INT64", DataType::INT64)
+      .value("FLOAT32", DataType::FLOAT32)
+      .value("FLOAT64", DataType::FLOAT64)
+      .value("COMPLEX64", DataType::COMPLEX64)
+      .value("COMPLEX128", DataType::COMPLEX128)
+      .value("PSTRING", DataType::PSTRING)
+      .value("FLOAT16", DataType::FLOAT16)
+      .value("BFLOAT16", DataType::BFLOAT16)
+      .value("FLOAT8_E4M3FN", DataType::FLOAT8_E4M3FN)
+      .value("FLOAT8_E5M2", DataType::FLOAT8_E5M2)
+      .value("ALL_DTYPE", DataType::ALL_DTYPE)
       .export_values()
       .def("__dlpack_data_type__", [](const DataType &self) {
         ::DLDataType dl_dtype =
