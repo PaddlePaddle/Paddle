@@ -2939,5 +2939,248 @@ class TestHsplitAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[17], ref_out2_2d[2])
 
 
+class TestDsplitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape3d = [7, 6, 8]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_3d = np.random.rand(*self.shape3d).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x_3d = paddle.to_tensor(self.np_x_3d)
+
+        out1 = paddle.dsplit(x_3d, 2)
+        out2 = paddle.dsplit(x=x_3d, num_or_indices=2)
+        ref_out1 = np.array_split(self.np_x_3d, 2, axis=2)
+        for out in [out1, out2]:
+            self.assertEqual(len(out), 2)
+            np.testing.assert_allclose(ref_out1[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out1[1], out[1].numpy())
+
+        out3 = paddle.dsplit(x_3d, num_or_indices=[1, 4])
+        out4 = paddle.dsplit(x=x_3d, num_or_indices=[1, 4])
+        ref_out2 = np.array_split(self.np_x_3d, [1, 4], axis=2)
+        for out in [out3, out4]:
+            self.assertEqual(len(out), 3)
+            np.testing.assert_allclose(ref_out2[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out2[1], out[1].numpy())
+            np.testing.assert_allclose(ref_out2[2], out[2].numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x_3d = paddle.static.data(
+                name="x_3d", shape=self.shape3d, dtype=self.dtype
+            )
+
+            out1 = paddle.dsplit(x_3d, 2)
+            out2 = paddle.dsplit(x=x_3d, num_or_indices=2)
+            out3 = paddle.dsplit(x=x_3d, num_or_indices=[1, 4])
+
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x_3d": self.np_x_3d},
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out2[0],
+                    out2[1],
+                    out3[0],
+                    out3[1],
+                    out3[2],
+                ],
+            )
+            ref_out1 = np.array_split(self.np_x_3d, 2, axis=2)
+            np.testing.assert_allclose(fetches[0], ref_out1[0])
+            np.testing.assert_allclose(fetches[1], ref_out1[1])
+            np.testing.assert_allclose(fetches[2], ref_out1[0])
+            np.testing.assert_allclose(fetches[3], ref_out1[1])
+
+            ref_out2 = np.array_split(self.np_x_3d, [1, 4], axis=2)
+            np.testing.assert_allclose(fetches[4], ref_out2[0])
+            np.testing.assert_allclose(fetches[5], ref_out2[1])
+            np.testing.assert_allclose(fetches[6], ref_out2[2])
+
+
+class TestVsplitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape2d = [8, 6]
+        self.shape3d = [8, 6, 7]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_2d = np.random.rand(*self.shape2d).astype(self.dtype)
+        self.np_x_3d = np.random.rand(*self.shape3d).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x_2d = paddle.to_tensor(self.np_x_2d)
+        x_3d = paddle.to_tensor(self.np_x_3d)
+
+        out1_2d = paddle.vsplit(x_2d, 2)
+        out2_2d = paddle.vsplit(x=x_2d, num_or_indices=2)
+        out3_2d = paddle.vsplit(input=x_2d, indices=2)
+        out4_2d = paddle.vsplit(input=x_2d, sections=2)
+        ref_out1_2d = np.array_split(self.np_x_2d, 2, axis=0)
+        for out in [out1_2d, out2_2d, out3_2d, out4_2d]:
+            self.assertEqual(len(out), 2)
+            np.testing.assert_allclose(ref_out1_2d[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out1_2d[1], out[1].numpy())
+
+        out5_2d = paddle.vsplit(input=x_2d, indices=[1, 4])
+        out6_2d = paddle.vsplit(x=x_2d, num_or_indices=[1, 4])
+        out7_2d = paddle.vsplit(input=x_2d, sections=[1, 4])
+        ref_out2_2d = np.array_split(self.np_x_2d, [1, 4], axis=0)
+        for out in [out5_2d, out6_2d, out7_2d]:
+            self.assertEqual(len(out), 3)
+            np.testing.assert_allclose(ref_out2_2d[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out2_2d[1], out[1].numpy())
+            np.testing.assert_allclose(ref_out2_2d[2], out[2].numpy())
+
+        out1_3d = paddle.vsplit(x_3d, 2)
+        out2_3d = paddle.vsplit(x=x_3d, num_or_indices=2)
+        out3_3d = paddle.vsplit(input=x_3d, indices=2)
+        out4_3d = paddle.vsplit(input=x_3d, sections=2)
+        ref_out1_3d = np.array_split(self.np_x_3d, 2, axis=0)
+        for out in [out1_3d, out2_3d, out3_3d, out4_3d]:
+            self.assertEqual(len(out), 2)
+            np.testing.assert_allclose(ref_out1_3d[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out1_3d[1], out[1].numpy())
+
+        out5_3d = paddle.vsplit(input=x_3d, indices=[1, 4])
+        out6_3d = paddle.vsplit(x=x_3d, num_or_indices=[1, 4])
+        out7_3d = paddle.vsplit(input=x_3d, sections=[1, 4])
+        ref_out2_3d = np.array_split(self.np_x_3d, [1, 4], axis=0)
+        for out in [out5_3d, out6_3d, out7_3d]:
+            self.assertEqual(len(out), 3)
+            np.testing.assert_allclose(ref_out2_3d[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out2_3d[1], out[1].numpy())
+            np.testing.assert_allclose(ref_out2_3d[2], out[2].numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x_2d = paddle.static.data(
+                name="x_2d", shape=self.shape2d, dtype=self.dtype
+            )
+            x_3d = paddle.static.data(
+                name="x_3d", shape=self.shape3d, dtype=self.dtype
+            )
+
+            out1_2d = paddle.vsplit(x_2d, 2)
+            out2_2d = paddle.vsplit(x=x_2d, num_or_indices=2)
+            out3_2d = paddle.vsplit(input=x_2d, indices=2)
+            out4_2d = paddle.vsplit(input=x_2d, sections=2)
+            out5_2d = paddle.vsplit(x=x_2d, num_or_indices=[1, 4])
+            out6_2d = paddle.vsplit(input=x_2d, indices=[1, 4])
+            out7_2d = paddle.vsplit(input=x_2d, sections=[1, 4])
+
+            out1_3d = paddle.vsplit(x_3d, 2)
+            out2_3d = paddle.vsplit(x=x_3d, num_or_indices=2)
+            out3_3d = paddle.vsplit(input=x_3d, indices=2)
+            out4_3d = paddle.vsplit(input=x_3d, sections=2)
+            out5_3d = paddle.vsplit(x=x_3d, num_or_indices=[1, 4])
+            out6_3d = paddle.vsplit(input=x_3d, indices=[1, 4])
+            out7_3d = paddle.vsplit(input=x_3d, sections=[1, 4])
+
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x_2d": self.np_x_2d, "x_3d": self.np_x_3d},
+                fetch_list=[
+                    out1_2d[0],
+                    out1_2d[1],
+                    out2_2d[0],
+                    out2_2d[1],
+                    out3_2d[0],
+                    out3_2d[1],
+                    out4_2d[0],
+                    out4_2d[1],
+                    out5_2d[0],
+                    out5_2d[1],
+                    out5_2d[2],
+                    out6_2d[0],
+                    out6_2d[1],
+                    out6_2d[2],
+                    out7_2d[0],
+                    out7_2d[1],
+                    out7_2d[2],
+                    out1_3d[0],
+                    out1_3d[1],
+                    out2_3d[0],
+                    out2_3d[1],
+                    out3_3d[0],
+                    out3_3d[1],
+                    out4_3d[0],
+                    out4_3d[1],
+                    out5_3d[0],
+                    out5_3d[1],
+                    out5_3d[2],
+                    out6_3d[0],
+                    out6_3d[1],
+                    out6_3d[2],
+                    out7_3d[0],
+                    out7_3d[1],
+                    out7_3d[2],
+                ],
+            )
+            ref_out1_2d = np.array_split(self.np_x_2d, 2, axis=0)
+            np.testing.assert_allclose(fetches[0], ref_out1_2d[0])
+            np.testing.assert_allclose(fetches[1], ref_out1_2d[1])
+            np.testing.assert_allclose(fetches[2], ref_out1_2d[0])
+            np.testing.assert_allclose(fetches[3], ref_out1_2d[1])
+            np.testing.assert_allclose(fetches[4], ref_out1_2d[0])
+            np.testing.assert_allclose(fetches[5], ref_out1_2d[1])
+            np.testing.assert_allclose(fetches[6], ref_out1_2d[0])
+            np.testing.assert_allclose(fetches[7], ref_out1_2d[1])
+
+            ref_out2_2d = np.array_split(self.np_x_2d, [1, 4], axis=0)
+            np.testing.assert_allclose(fetches[8], ref_out2_2d[0])
+            np.testing.assert_allclose(fetches[9], ref_out2_2d[1])
+            np.testing.assert_allclose(fetches[10], ref_out2_2d[2])
+            np.testing.assert_allclose(fetches[11], ref_out2_2d[0])
+            np.testing.assert_allclose(fetches[12], ref_out2_2d[1])
+            np.testing.assert_allclose(fetches[13], ref_out2_2d[2])
+            np.testing.assert_allclose(fetches[14], ref_out2_2d[0])
+            np.testing.assert_allclose(fetches[15], ref_out2_2d[1])
+            np.testing.assert_allclose(fetches[16], ref_out2_2d[2])
+
+            ref_out1_3d = np.array_split(self.np_x_3d, 2, axis=0)
+            np.testing.assert_allclose(fetches[17], ref_out1_3d[0])
+            np.testing.assert_allclose(fetches[18], ref_out1_3d[1])
+            np.testing.assert_allclose(fetches[19], ref_out1_3d[0])
+            np.testing.assert_allclose(fetches[20], ref_out1_3d[1])
+            np.testing.assert_allclose(fetches[21], ref_out1_3d[0])
+            np.testing.assert_allclose(fetches[22], ref_out1_3d[1])
+            np.testing.assert_allclose(fetches[23], ref_out1_3d[0])
+            np.testing.assert_allclose(fetches[24], ref_out1_3d[1])
+
+            ref_out2_3d = np.array_split(self.np_x_3d, [1, 4], axis=0)
+            np.testing.assert_allclose(fetches[25], ref_out2_3d[0])
+            np.testing.assert_allclose(fetches[26], ref_out2_3d[1])
+            np.testing.assert_allclose(fetches[27], ref_out2_3d[2])
+            np.testing.assert_allclose(fetches[28], ref_out2_3d[0])
+            np.testing.assert_allclose(fetches[29], ref_out2_3d[1])
+            np.testing.assert_allclose(fetches[30], ref_out2_3d[2])
+            np.testing.assert_allclose(fetches[31], ref_out2_3d[0])
+            np.testing.assert_allclose(fetches[32], ref_out2_3d[1])
+            np.testing.assert_allclose(fetches[33], ref_out2_3d[2])
+
+
 if __name__ == '__main__':
     unittest.main()

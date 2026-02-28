@@ -3104,7 +3104,7 @@ def tensor_split(
 @ParamAliasDecorator(
     {
         "x": ["input"],
-        "num_or_indices": ["indices_or_sections", "sections"],
+        "num_or_indices": ["indices", "sections"],
     }
 )
 def hsplit(
@@ -3174,6 +3174,12 @@ def hsplit(
         return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def dsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3227,6 +3233,12 @@ def dsplit(
     return tensor_split(x, num_or_indices, axis=2, name=name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def vsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
