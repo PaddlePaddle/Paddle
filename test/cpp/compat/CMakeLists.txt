@@ -1,5 +1,6 @@
 if(NOT WIN32)
   if(WITH_GPU)
+    nv_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc)
     nv_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc)
     nv_test(compat_basic_test SRCS compat_basic_test.cc)
     nv_test(ATen_autograd_test SRCS ATen_autograd_test.cc)
