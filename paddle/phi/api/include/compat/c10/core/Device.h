@@ -39,10 +39,12 @@ struct Device final {
             phiPlaceHasC10DeviceIndex(place.GetType(), place.GetDeviceId())) {}
 
   // PyTorch 兼容: Device(DeviceType, DeviceIndex)
-  // 使用单一构造函数，默认 index = -1
+  // 注意：CPU 默认 index = -1，但转换为 phi::Place 时使用 0 以保持兼容性
+  // CUDA/GPU 默认 index = -1
   Device(DeviceType type, DeviceIndex index = -1)
-      : inner_(c10DeviceTypeToPhiAllocationType(type), index),
-        has_index_(index != -1) {}
+      : inner_(c10DeviceTypeToPhiAllocationType(type),
+               type == DeviceType::CPU ? 0 : index),  // CPU 始终使用 device=0
+        has_index_(type == DeviceType::CPU ? false : (index != -1)) {}
 
   /// Constructs a `Device` from a string description, for convenience.
   /// The string supplied must follow the following schema:
