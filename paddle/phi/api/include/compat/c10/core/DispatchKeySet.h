@@ -207,7 +207,9 @@ class DispatchKeySet final {
   }
 
   uint8_t indexOfHighestBit() const {
-    return 64 - llvm::countLeadingZeros(repr_);
+    // Use compiler built-in instead of llvm::countLeadingZeros.
+    if (repr_ == 0) return 0;
+    return static_cast<uint8_t>(64 - __builtin_clzll(repr_));
   }
 
 #if defined(C10_MOBILE_TRIM_DISPATCH_KEYS)
@@ -585,17 +587,9 @@ inline DispatchKey legacyExtractDispatchKey(DispatchKeySet s) {
 template <class T>
 using is_not_DispatchKeySet = std::negation<std::is_same<DispatchKeySet, T>>;
 
-template <class FuncType>
-using remove_DispatchKeySet_arg_from_func = guts::make_function_traits_t<
-    typename guts::infer_function_traits_t<FuncType>::return_type,
-    typename std::conditional_t<
-        std::is_same_v<DispatchKeySet,
-                       typename guts::typelist::head_with_default_t<
-                           void,
-                           typename guts::infer_function_traits_t<
-                               FuncType>::parameter_types>>,
-        guts::typelist::drop_if_nonempty_t<
-            typename guts::infer_function_traits_t<FuncType>::parameter_types,
-            1>,
-        typename guts::infer_function_traits_t<FuncType>::parameter_types>>;
+// NOTE: remove_DispatchKeySet_arg_from_func is omitted because the
+// c10::guts type-list utilities are not yet ported.  The template is
+// only used by the PyTorch dispatcher internals, which are not part
+// of this compatibility layer.
+
 }  // namespace c10
