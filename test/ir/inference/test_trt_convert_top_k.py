@@ -34,13 +34,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input1(dims, batch, attrs: list[dict[str, Any]]):
             if dims == 1:
-                return np.random.random([32]).astype(np.float32)
+                shape = [32]
             elif dims == 2:
-                return np.random.random([3, 32]).astype(np.float32)
+                shape = [3, 32]
             elif dims == 3:
-                return np.random.random([3, 32, 32]).astype(np.float32)
+                shape = [3, 32, 32]
             else:
-                return np.random.random([batch, 3, 32, 32]).astype(np.float32)
+                shape = [batch, 3, 32, 32]
+            return np.random.random(shape).argsort(axis=-1).astype(np.float32)
 
         for dims in [2, 3, 4, 5]:
             for batch in [1]:
