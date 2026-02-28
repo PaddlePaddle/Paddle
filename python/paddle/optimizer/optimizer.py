@@ -1694,7 +1694,29 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                if auto_dp:
+                from paddle.distributed.auto_parallel.fully_shard_fusion import (
+                    get_fsdp_context,
+                )
+
+                fsdp_context = get_fsdp_context()
+                if fsdp_context is not None:
+                    fsdp_context.comm_sync_and_reset_status()
+                    new_params_grads = []
+                    for group in fsdp_context.buffer_manager.buffer_groups:
+                        if not group.params_buffer.data_buffer.stop_gradient:
+                            new_params_grads.append(
+                                (
+                                    group.params_buffer.data_buffer,
+                                    group.grads_buffer.data_buffer,
+                                )
+                            )
+                    params_grads = new_params_grads
+                    if self._grad_clip is not None:
+                        self._grad_clip.should_comm_on_shard_dim = True
+                        self._grad_clip.fsdp_group = (
+                            fsdp_context.buffer_manager._fsdp_group
+                        )
+                elif auto_dp:
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
                     )
