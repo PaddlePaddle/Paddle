@@ -39,6 +39,42 @@ inline Tensor expand(const Tensor& self,
   auto input_dims = pd_tensor.dims();
   auto input_rank = input_dims.size();
 
+  auto tile_and_slice_to_target =
+      [&](const paddle::Tensor& input,
+          const std::vector<int64_t>& input_shape,
+          const std::vector<int64_t>& target_shape) -> Tensor {
+    size_t rank = target_shape.size();
+    std::vector<int64_t> repeat_times(rank, 1);
+    for (size_t i = 0; i < rank; ++i) {
+      auto in_size = input_shape[i];
+      auto target_size = target_shape[i];
+
+      if (in_size == 0 || target_size == 0) {
+        repeat_times[i] = 0;
+      } else if (target_size <= in_size) {
+        repeat_times[i] = 1;
+      } else {
+        repeat_times[i] = (target_size + in_size - 1) / in_size;
+      }
+    }
+
+    paddle::Tensor tiled =
+        paddle::experimental::tile(input, phi::IntArray(repeat_times));
+
+    std::vector<int64_t> axes(rank);
+    std::vector<int64_t> starts(rank, 0);
+    std::vector<int64_t> ends(rank);
+    std::vector<int64_t> strides(rank, 1);
+    for (size_t i = 0; i < rank; ++i) {
+      axes[i] = static_cast<int64_t>(i);
+      ends[i] = target_shape[i];
+    }
+
+    paddle::Tensor sliced =
+        paddle::experimental::slice(tiled, axes, starts, ends, strides, {});
+    return Tensor(sliced);
+  };
+
   // PyTorch's expand uses right-alignment semantics:
   // - For 1D tensor expand to 2D: {3}.expand({3,4}) treats input as {3,1},
   // expands to {3,4}
@@ -83,22 +119,10 @@ inline Tensor expand(const Tensor& self,
       return Tensor(result);
     }
 
-    // If Paddle's expand can't handle it, use tile as fallback
-    // Compute repeat_times: target_size / reshape_size
-    std::vector<int64_t> repeat_times(target_rank, 1);
-    for (size_t i = 0; i < target_rank; ++i) {
-      if (reshape_vec[i] == 0) {
-        repeat_times[i] = 0;
-      } else {
-        repeat_times[i] = target_size_vec[i] / reshape_vec[i];
-      }
-    }
-
+    // If Paddle's expand can't handle it, use tile + slice as fallback
     paddle::Tensor reshaped =
         paddle::experimental::reshape(pd_tensor, phi::IntArray(reshape_vec));
-    paddle::Tensor result =
-        paddle::experimental::tile(reshaped, phi::IntArray(repeat_times));
-    return Tensor(result);
+    return tile_and_slice_to_target(reshaped, reshape_vec, target_size_vec);
   } else if (input_rank == target_rank) {
     // Same rank - check if we can use expand directly or need tile
     bool can_use_paddle_expand = true;
@@ -117,36 +141,33 @@ inline Tensor expand(const Tensor& self,
       return Tensor(result);
     }
 
-    // Need tile fallback
-    std::vector<int64_t> repeat_times(target_rank, 1);
+    // Need tile + slice fallback
+    std::vector<int64_t> input_shape(target_rank);
     for (size_t i = 0; i < target_rank; ++i) {
-      if (input_dims[i] == 0) {
-        repeat_times[i] = 0;
-      } else {
-        repeat_times[i] = target_size_vec[i] / input_dims[i];
-      }
+      input_shape[i] = input_dims[i];
+    }
+    return tile_and_slice_to_target(pd_tensor, input_shape, target_size_vec);
+  } else {
+    // Input has more dimensions.
+    // Keep the trailing target_rank dimensions and slice leading dimensions to
+    // 1 before reshape, so total element count remains valid.
+    paddle::Tensor squeezed = pd_tensor;
+    size_t leading_dims = input_rank - target_rank;
+    for (size_t i = 0; i < leading_dims; ++i) {
+      squeezed = paddle::experimental::slice(
+          squeezed, {static_cast<int64_t>(i)}, {0}, {1}, {1}, {});
     }
 
-    paddle::Tensor result =
-        paddle::experimental::tile(pd_tensor, phi::IntArray(repeat_times));
-    return Tensor(result);
-  } else {
-    // Input has more dimensions - need to reshape first
-    // Example: {2,3,4}.expand({3,4}) -> reshape to {3,4}, then expand
-    // We take the last target_rank dimensions from input
     std::vector<int64_t> new_shape(target_rank);
     for (size_t i = 0; i < target_rank; ++i) {
       new_shape[i] = input_dims[i + (input_rank - target_rank)];
     }
 
-    // First reshape to squeeze out extra dimensions
+    // Reshape to target rank, then reuse the same expand implementation.
     paddle::Tensor reshaped =
-        paddle::experimental::reshape(pd_tensor, phi::IntArray(new_shape));
+        paddle::experimental::reshape(squeezed, phi::IntArray(new_shape));
 
-    // Then expand to target size
-    paddle::Tensor result =
-        paddle::experimental::expand(reshaped, phi::IntArray(target_size_vec));
-    return Tensor(result);
+    return expand(Tensor(reshaped), size, implicit);
   }
 }
 
