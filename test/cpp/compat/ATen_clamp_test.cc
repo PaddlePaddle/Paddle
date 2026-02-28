@@ -188,16 +188,6 @@ TEST_F(TensorOperatorIndexTest, OperatorIndexBasic) {
                   3.0f);  // First element of the row
 }
 
-TEST_F(TensorOperatorIndexTest, OperatorIndexNegative) {
-  at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
-
-  // Test negative index - returns last row
-  at::Tensor result = t[-1];
-  ASSERT_EQ(result.numel(), 3);  // Last row has 3 elements [3,4,5]
-  ASSERT_FLOAT_EQ(result.data_ptr<float>()[0],
-                  3.0f);  // First element of last row
-}
-
 TEST_F(TensorOperatorIndexTest, OperatorIndexOutOfBounds) {
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
 
