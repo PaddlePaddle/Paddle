@@ -18,7 +18,7 @@ import warnings
 
 import numpy as np
 from op_test import get_device, get_device_place, is_custom_device
-from utils import dygraph_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -1459,6 +1459,27 @@ class TestEagerTensor(unittest.TestCase):
 
         # Check that all dtypes have distinct hash values
         self.assertEqual(len({hash(t) for t in all_types}), len(all_types))
+
+        # Verify dict lookup works with dtype as key
+        dtype_map = {paddle.float32: "fp32", paddle.float64: "fp64"}
+        self.assertEqual(dtype_map[a.dtype], "fp32")
+        self.assertEqual(dtype_map[c.dtype], "fp64")
+
+    @static_guard()
+    def test_tensor_dtype_singleton_pir(self):
+        """DataType returned from PIR Value.dtype must be the same
+        singleton object as paddle.float32, etc."""
+        x = paddle.static.data('x', shape=[2], dtype='float32')
+        y = paddle.static.data('y', shape=[3], dtype='float64')
+
+        # Value.dtype (PIR path) should return singletons
+        self.assertIs(x.dtype, paddle.float32)
+        self.assertIs(y.dtype, paddle.float64)
+
+        # Dict lookup must work with PIR dtypes
+        dtype_map = {paddle.float32: "fp32", paddle.float64: "fp64"}
+        self.assertEqual(dtype_map[x.dtype], "fp32")
+        self.assertEqual(dtype_map[y.dtype], "fp64")
 
     def test___cuda_array_interface__(self):
         """test Tensor.__cuda_array_interface__"""

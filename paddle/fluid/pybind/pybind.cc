@@ -279,6 +279,17 @@ PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 PyTypeObject *g_data_type_pytype = nullptr;
 PyTypeObject *g_tensorrt_engine_params_pytype = nullptr;
 
+// Custom hash function for DataType enum that extracts the underlying integer
+// value directly from pybind11's instance layout. This is much faster than
+// pybind11's default Python-level `__hash__ = lambda self: int(self)` which
+// involves method dispatch and temporary Python int object creation.
+// The hash is value-based, consistent with pybind11's value-based `__eq__`.
+static Py_hash_t DataTypeEnumHash(PyObject *self) {
+  auto *inst = reinterpret_cast<pybind11::detail::instance *>(self);
+  return static_cast<Py_hash_t>(
+      *reinterpret_cast<DataType *>(inst->simple_value_holder[0]));
+}
+
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
   return false;
@@ -4355,36 +4366,28 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::enum_<DataType> data_type(m, "DataType");
   g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT
-  data_type.value("UNDEFINED", DataType::UNDEFINED)
-      .value("BOOL", DataType::BOOL)
-      .value("UINT8", DataType::UINT8)
-      .value("INT8", DataType::INT8)
-      .value("UINT16", DataType::UINT16)
-      .value("INT16", DataType::INT16)
-      .value("UINT32", DataType::UINT32)
-      .value("INT32", DataType::INT32)
-      .value("UINT64", DataType::UINT64)
-      .value("INT64", DataType::INT64)
-      .value("FLOAT32", DataType::FLOAT32)
-      .value("FLOAT64", DataType::FLOAT64)
-      .value("COMPLEX64", DataType::COMPLEX64)
-      .value("COMPLEX128", DataType::COMPLEX128)
-      .value("FLOAT16", DataType::FLOAT16)
-      .value("BFLOAT16", DataType::BFLOAT16)
-      .value("FLOAT8_E4M3FN", DataType::FLOAT8_E4M3FN)
-      .value("FLOAT8_E5M2", DataType::FLOAT8_E5M2)
-      .value("PSTRING", DataType::PSTRING)
-      .value("ALL_DTYPE", DataType::ALL_DTYPE)
+#define PD_REGISTER_DATA_TYPE_(NAME) data_type.value(#NAME, DataType::NAME);
+  PD_FOR_EACH_DATA_TYPE_ENUM(PD_REGISTER_DATA_TYPE_)
+#undef PD_REGISTER_DATA_TYPE_
+  data_type.value("ALL_DTYPE", DataType::ALL_DTYPE)
       .export_values()
       .def("__dlpack_data_type__", [](const DataType &self) {
         ::DLDataType dl_dtype =
             paddle::framework::PhiDataTypeToDLDataType(self);
         return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
       });
-  // Make sure the hash function of DataType is consistent with Python's default
-  // behavior by using identity hashing (object.__hash__) for the enum type.
-  // This is faster than pybind11's default hash implementation for enums.
-  g_data_type_pytype->tp_hash = PyBaseObject_Type.tp_hash;
+  // Initialize the DataType singleton cache from the registered enum
+  // attributes. After this, all C++ → Python conversions of DataType (via
+  // pybind11 auto-cast or ToPyObject) will return cached singletons,
+  // guaranteeing `paddle.float32 is value.dtype` for all code paths.
+  DataTypeSingletonCache::Instance().Init(g_data_type_pytype);
+
+  // Override the hash function with a fast C-level implementation that hashes
+  // based on the underlying enum integer value. This is faster than pybind11's
+  // default hash (which goes through Python method dispatch).
+  // With singleton caching, identity-based hash would also work, but we keep
+  // value-based hash as a safety net for any edge cases.
+  g_data_type_pytype->tp_hash = DataTypeEnumHash;
   PyType_Modified(g_data_type_pytype);
 
   py::class_<paddle::platform::EngineParams> engine_params(m,
