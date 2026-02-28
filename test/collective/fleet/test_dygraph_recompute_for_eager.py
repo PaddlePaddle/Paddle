@@ -413,6 +413,25 @@ class TestRecompute(unittest.TestCase):
                 self.assertEqual(grad_ref, grad)
 
 
+class TestPreserveExternalRngState(unittest.TestCase):
+    def test_preserve_external_rng_state(self):
+        loss_ref, param_ref, grad_ref = run_model(recompute_block=[])
+
+        for flag in [True, False]:
+            for preserve_ext in [True, False]:
+                loss, param, grad = run_model(
+                    recompute_block=[1, 3],
+                    recompute_kwargs={
+                        "preserve_rng_state": True,
+                        "preserve_external_rng_state": preserve_ext,
+                        "use_reentrant": flag,
+                    },
+                )
+                self.assertEqual(loss_ref, loss)
+                self.assertEqual(param_ref, param)
+                self.assertEqual(grad_ref, grad)
+
+
 class RandomManager:
     def __init__(self):
         self.global_random = random.Random(11)
