@@ -4382,8 +4382,8 @@ All parameter, weight, gradient are variables in Paddle.
         return py::make_tuple(dl_dtype.code, dl_dtype.bits, dl_dtype.lanes);
       });
   // Make sure the hash function of DataType is consistent with Python's default
-  // behavior. This is fast than pybind11's default hash implementation for
-  // enum.
+  // behavior by using identity hashing (object.__hash__) for the enum type.
+  // This is faster than pybind11's default hash implementation for enums.
   g_data_type_pytype->tp_hash = PyBaseObject_Type.tp_hash;
   PyType_Modified(g_data_type_pytype);
 
