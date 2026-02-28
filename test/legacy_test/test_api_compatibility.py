@@ -2821,53 +2821,30 @@ class TestRenormInplace(unittest.TestCase):
 # Test hstack compatibility
 class TestHstackAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape1 = [2, 3]
-        self.shape2 = [2, 4]
+        np.random.seed(2025)
+        self.shapes = [[2, 3], [2, 4]]
         self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_x1 = np.random.rand(*self.shape1).astype(self.dtype)
-        self.np_x2 = np.random.rand(*self.shape2).astype(self.dtype)
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor(self.np_x1)
-        x2 = paddle.to_tensor(self.np_x2)
-        paddle_dygraph_out = []
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
 
-        # 1. Paddle positional arguments
-        out1 = paddle.hstack((x1, x2))
-        paddle_dygraph_out.append(out1)
+        out1 = paddle.hstack(tuple(tensors))
+        out2 = paddle.hstack(tensors)
+        out3 = paddle.hstack(x=tuple(tensors))
+        out4 = paddle.hstack(x=tensors)
+        out5 = paddle.hstack(tensors=tuple(tensors))
+        out6 = paddle.hstack(tensors=tensors)
 
-        # 2. Paddle keyword arguments
-        out2 = paddle.hstack(x=(x1, x2))
-        paddle_dygraph_out.append(out2)
-
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.hstack(tensors=(x1, x2))
-        paddle_dygraph_out.append(out3)
-
-        # 4. Mixed arguments
-        out4 = paddle.hstack((x1, x2), name=None)
-        paddle_dygraph_out.append(out4)
-
-        # 5. Test out parameter
-        out5 = paddle.empty([2, 7], dtype=self.dtype)
-        out6 = paddle.hstack((x1, x2), out=out5)
-        paddle_dygraph_out.append(out5)
-        paddle_dygraph_out.append(out6)
-
-        # Numpy reference output
-        ref_out = np.hstack((self.np_x1, self.np_x2))
-
-        # Verify all outputs
-        for out in paddle_dygraph_out:
+        ref_out = np.hstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-5, atol=1e-8
             )
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -2875,81 +2852,54 @@ class TestHstackAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
-            x1 = paddle.static.data(
-                name="x1", shape=self.shape1, dtype=self.dtype
-            )
-            x2 = paddle.static.data(
-                name="x2", shape=self.shape2, dtype=self.dtype
-            )
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
 
-            # Position args
-            out1 = paddle.hstack((x1, x2))
-            # Paddle keyword args
-            out2 = paddle.hstack(x=(x1, x2))
-            # PyTorch keyword args (alias)
-            out3 = paddle.hstack(tensors=(x1, x2))
+            out1 = paddle.hstack(tuple(static_tensors))
+            out2 = paddle.hstack(static_tensors)
+            out3 = paddle.hstack(x=tuple(static_tensors))
+            out4 = paddle.hstack(tensors=tuple(static_tensors))
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
-                main,
-                feed={"x1": self.np_x1, "x2": self.np_x2},
-                fetch_list=[out1, out2, out3],
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
             )
-            ref_out = np.hstack((self.np_x1, self.np_x2))
+            ref_out = np.hstack(tuple(inp for inp in self.inputs))
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
 
 
-# Test vstack compatibility
 class TestVstackAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape1 = [2, 3]
-        self.shape2 = [3, 3]
+        np.random.seed(2025)
+        self.shapes = [[2, 3], [3, 3]]
         self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_x1 = np.random.rand(*self.shape1).astype(self.dtype)
-        self.np_x2 = np.random.rand(*self.shape2).astype(self.dtype)
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor(self.np_x1)
-        x2 = paddle.to_tensor(self.np_x2)
-        paddle_dygraph_out = []
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.vstack(tuple(tensors))
+        out2 = paddle.vstack(tensors)
+        out3 = paddle.vstack(x=tuple(tensors))
+        out4 = paddle.vstack(x=tensors)
+        out5 = paddle.vstack(tensors=tuple(tensors))
+        out6 = paddle.vstack(tensors=tensors)
 
-        # 1. Paddle positional arguments
-        out1 = paddle.vstack((x1, x2))
-        paddle_dygraph_out.append(out1)
-
-        # 2. Paddle keyword arguments
-        out2 = paddle.vstack(x=(x1, x2))
-        paddle_dygraph_out.append(out2)
-
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.vstack(tensors=(x1, x2))
-        paddle_dygraph_out.append(out3)
-
-        # 4. Mixed arguments
-        out4 = paddle.vstack((x1, x2), name=None)
-        paddle_dygraph_out.append(out4)
-
-        # 5. Test out parameter
-        out5 = paddle.empty([5, 3], dtype=self.dtype)
-        out6 = paddle.vstack((x1, x2), out=out5)
-        paddle_dygraph_out.append(out5)
-        paddle_dygraph_out.append(out6)
-
-        # Numpy reference output
-        ref_out = np.vstack((self.np_x1, self.np_x2))
-
-        # Verify all outputs
-        for out in paddle_dygraph_out:
+        ref_out = np.vstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-5, atol=1e-8
             )
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -2957,27 +2907,26 @@ class TestVstackAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
-            x1 = paddle.static.data(
-                name="x1", shape=self.shape1, dtype=self.dtype
-            )
-            x2 = paddle.static.data(
-                name="x2", shape=self.shape2, dtype=self.dtype
-            )
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
 
-            # Position args
-            out1 = paddle.vstack((x1, x2))
-            # Paddle keyword args
-            out2 = paddle.vstack(x=(x1, x2))
-            # PyTorch keyword args (alias)
-            out3 = paddle.vstack(tensors=(x1, x2))
+            out1 = paddle.vstack(tuple(static_tensors))
+            out2 = paddle.vstack(static_tensors)
+            out3 = paddle.vstack(x=tuple(static_tensors))
+            out4 = paddle.vstack(tensors=tuple(static_tensors))
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
-                main,
-                feed={"x1": self.np_x1, "x2": self.np_x2},
-                fetch_list=[out1, out2, out3],
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
             )
-            ref_out = np.vstack((self.np_x1, self.np_x2))
+
+            ref_out = np.vstack(tuple(inp for inp in self.inputs))
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
 
@@ -2985,53 +2934,30 @@ class TestVstackAPI(unittest.TestCase):
 # Test dstack compatibility
 class TestDstackAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape1 = [2, 3, 4]
-        self.shape2 = [2, 3, 4]
+        np.random.seed(2025)
+        self.shapes = [[2, 3, 4], [2, 3, 4]]
         self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_x1 = np.random.rand(*self.shape1).astype(self.dtype)
-        self.np_x2 = np.random.rand(*self.shape2).astype(self.dtype)
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor(self.np_x1)
-        x2 = paddle.to_tensor(self.np_x2)
-        paddle_dygraph_out = []
-
-        # 1. Paddle positional arguments
-        out1 = paddle.dstack((x1, x2))
-        paddle_dygraph_out.append(out1)
-
-        # 2. Paddle keyword arguments
-        out2 = paddle.dstack(x=(x1, x2))
-        paddle_dygraph_out.append(out2)
-
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.dstack(tensors=(x1, x2))
-        paddle_dygraph_out.append(out3)
-
-        # 4. Mixed arguments
-        out4 = paddle.dstack((x1, x2), name=None)
-        paddle_dygraph_out.append(out4)
-
-        # 5. Test out parameter
-        out5 = paddle.empty([2, 3, 8], dtype=self.dtype)
-        out6 = paddle.dstack((x1, x2), out=out5)
-        paddle_dygraph_out.append(out5)
-        paddle_dygraph_out.append(out6)
-
-        # Numpy reference output
-        ref_out = np.dstack((self.np_x1, self.np_x2))
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.dstack(tuple(tensors))
+        out2 = paddle.dstack(tensors)
+        out3 = paddle.dstack(x=tuple(tensors))
+        out4 = paddle.dstack(x=tensors)
+        out5 = paddle.dstack(tensors=tuple(tensors))
+        out6 = paddle.dstack(tensors=tensors)
 
         # Verify all outputs
-        for out in paddle_dygraph_out:
+        ref_out = np.dstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-5, atol=1e-8
             )
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -3039,27 +2965,26 @@ class TestDstackAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
-            x1 = paddle.static.data(
-                name="x1", shape=self.shape1, dtype=self.dtype
-            )
-            x2 = paddle.static.data(
-                name="x2", shape=self.shape2, dtype=self.dtype
-            )
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
 
-            # Position args
-            out1 = paddle.dstack((x1, x2))
-            # Paddle keyword args
-            out2 = paddle.dstack(x=(x1, x2))
-            # PyTorch keyword args (alias)
-            out3 = paddle.dstack(tensors=(x1, x2))
+            out1 = paddle.dstack(tuple(static_tensors))
+            out2 = paddle.dstack(static_tensors)
+            out3 = paddle.dstack(x=tuple(static_tensors))
+            out4 = paddle.dstack(tensors=tuple(static_tensors))
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
-                main,
-                feed={"x1": self.np_x1, "x2": self.np_x2},
-                fetch_list=[out1, out2, out3],
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
             )
-            ref_out = np.dstack((self.np_x1, self.np_x2))
+
+            ref_out = np.dstack(tuple(inp for inp in self.inputs))
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
 
@@ -3067,53 +2992,30 @@ class TestDstackAPI(unittest.TestCase):
 # Test column_stack compatibility
 class TestColumnStackAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape1 = [3, 2]
-        self.shape2 = [3, 3]
+        np.random.seed(2025)
+        self.shapes = [[3, 2], [3, 3]]
         self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_x1 = np.random.rand(*self.shape1).astype(self.dtype)
-        self.np_x2 = np.random.rand(*self.shape2).astype(self.dtype)
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor(self.np_x1)
-        x2 = paddle.to_tensor(self.np_x2)
-        paddle_dygraph_out = []
-
-        # 1. Paddle positional arguments
-        out1 = paddle.column_stack((x1, x2))
-        paddle_dygraph_out.append(out1)
-
-        # 2. Paddle keyword arguments
-        out2 = paddle.column_stack(x=(x1, x2))
-        paddle_dygraph_out.append(out2)
-
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.column_stack(tensors=(x1, x2))
-        paddle_dygraph_out.append(out3)
-
-        # 4. Mixed arguments
-        out4 = paddle.column_stack((x1, x2), name=None)
-        paddle_dygraph_out.append(out4)
-
-        # 5. Test out parameter
-        out5 = paddle.empty([3, 5], dtype=self.dtype)
-        out6 = paddle.column_stack((x1, x2), out=out5)
-        paddle_dygraph_out.append(out5)
-        paddle_dygraph_out.append(out6)
-
-        # Numpy reference output
-        ref_out = np.column_stack((self.np_x1, self.np_x2))
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.column_stack(tuple(tensors))
+        out2 = paddle.column_stack(tensors)
+        out3 = paddle.column_stack(x=tuple(tensors))
+        out4 = paddle.column_stack(x=tensors)
+        out5 = paddle.column_stack(tensors=tuple(tensors))
+        out6 = paddle.column_stack(tensors=tensors)
 
         # Verify all outputs
-        for out in paddle_dygraph_out:
+        ref_out = np.column_stack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-5, atol=1e-8
             )
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -3121,27 +3023,26 @@ class TestColumnStackAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
-            x1 = paddle.static.data(
-                name="x1", shape=self.shape1, dtype=self.dtype
-            )
-            x2 = paddle.static.data(
-                name="x2", shape=self.shape2, dtype=self.dtype
-            )
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
 
-            # Position args
-            out1 = paddle.column_stack((x1, x2))
-            # Paddle keyword args
-            out2 = paddle.column_stack(x=(x1, x2))
-            # PyTorch keyword args (alias)
-            out3 = paddle.column_stack(tensors=(x1, x2))
+            out1 = paddle.column_stack(tuple(static_tensors))
+            out2 = paddle.column_stack(static_tensors)
+            out3 = paddle.column_stack(x=tuple(static_tensors))
+            out4 = paddle.column_stack(tensors=tuple(static_tensors))
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
-                main,
-                feed={"x1": self.np_x1, "x2": self.np_x2},
-                fetch_list=[out1, out2, out3],
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
             )
-            ref_out = np.column_stack((self.np_x1, self.np_x2))
+
+            ref_out = np.column_stack(tuple(inp for inp in self.inputs))
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
 
@@ -3149,53 +3050,33 @@ class TestColumnStackAPI(unittest.TestCase):
 # Test row_stack compatibility
 class TestRowStackAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.shape1 = [2, 3]
-        self.shape2 = [4, 3]
+        np.random.seed(2025)
+        self.shapes = [[2, 3], [4, 3]]
         self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_x1 = np.random.rand(*self.shape1).astype(self.dtype)
-        self.np_x2 = np.random.rand(*self.shape2).astype(self.dtype)
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x1 = paddle.to_tensor(self.np_x1)
-        x2 = paddle.to_tensor(self.np_x2)
-        paddle_dygraph_out = []
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.row_stack(tuple(tensors))
+        out2 = paddle.row_stack(tensors)
+        out3 = paddle.row_stack(x=tuple(tensors))
 
-        # 1. Paddle positional arguments
-        out1 = paddle.row_stack((x1, x2))
-        paddle_dygraph_out.append(out1)
+        out4 = paddle.row_stack(x=tensors)
 
-        # 2. Paddle keyword arguments
-        out2 = paddle.row_stack(x=(x1, x2))
-        paddle_dygraph_out.append(out2)
+        out5 = paddle.row_stack(tensors=tuple(tensors))
 
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.row_stack(tensors=(x1, x2))
-        paddle_dygraph_out.append(out3)
-
-        # 4. Mixed arguments
-        out4 = paddle.row_stack((x1, x2), name=None)
-        paddle_dygraph_out.append(out4)
-
-        # 5. Test out parameter
-        out5 = paddle.empty([6, 3], dtype=self.dtype)
-        out6 = paddle.row_stack((x1, x2), out=out5)
-        paddle_dygraph_out.append(out5)
-        paddle_dygraph_out.append(out6)
-
-        # Numpy reference output (row_stack is vstack)
-        ref_out = np.vstack((self.np_x1, self.np_x2))
+        out6 = paddle.row_stack(tensors=tensors)
 
         # Verify all outputs
-        for out in paddle_dygraph_out:
+        ref_out = np.vstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-5, atol=1e-8
             )
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -3203,29 +3084,28 @@ class TestRowStackAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
-            x1 = paddle.static.data(
-                name="x1", shape=self.shape1, dtype=self.dtype
-            )
-            x2 = paddle.static.data(
-                name="x2", shape=self.shape2, dtype=self.dtype
-            )
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
 
-            # Position args
-            out1 = paddle.row_stack((x1, x2))
-            # Paddle keyword args
-            out2 = paddle.row_stack(x=(x1, x2))
-            # PyTorch keyword args (alias)
-            out3 = paddle.row_stack(tensors=(x1, x2))
+            out1 = paddle.row_stack(tuple(static_tensors))
+            out2 = paddle.row_stack(static_tensors)
+            out3 = paddle.row_stack(x=tuple(static_tensors))
+            out4 = paddle.row_stack(tensors=tuple(static_tensors))
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
-                main,
-                feed={"x1": self.np_x1, "x2": self.np_x2},
-                fetch_list=[out1, out2, out3],
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
             )
-            ref_out = np.vstack((self.np_x1, self.np_x2))
-        for out in fetches:
-            np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
+
+            ref_out = np.vstack(tuple(inp for inp in self.inputs))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
 
 
 if __name__ == '__main__':
