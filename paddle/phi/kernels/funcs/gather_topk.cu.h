@@ -215,12 +215,28 @@ TensorInfo<T, IndexType> getTensorInfo(const DenseTensor& t) {
 
 template <typename T>
 struct LTOp {
-  __device__ bool operator()(const T& a, const T& b) const { return a < b; }
+  __device__ bool operator()(const T& a, const T& b) const {
+    // Handle NaN: NaN is treated as largest value (sorted to the end)
+    // This ensures ascending sort places NaN after all normal values
+    if (isnan(static_cast<float>(a)))
+      return false;  // a is NaN, a is not less than b
+    if (isnan(static_cast<float>(b)))
+      return true;  // b is NaN, a is less than b
+    return a < b;
+  }
 };
 
 template <typename T>
 struct GTOp {
-  __device__ bool operator()(const T& a, const T& b) const { return a > b; }
+  __device__ bool operator()(const T& a, const T& b) const {
+    // Handle NaN: NaN is treated as smallest value (sorted to the end)
+    // This ensures descending sort places NaN after all normal values
+    if (isnan(static_cast<float>(a)))
+      return false;  // a is NaN, a is not greater than b
+    if (isnan(static_cast<float>(b)))
+      return true;  // b is NaN, a is greater than b
+    return a > b;
+  }
 };
 
 template <typename T>
