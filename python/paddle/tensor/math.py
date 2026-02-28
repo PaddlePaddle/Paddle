@@ -72,6 +72,7 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
     variadic_tensor_decorator,
@@ -1842,6 +1843,7 @@ def nanmean(
     )
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def count_nonzero(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1853,11 +1855,13 @@ def count_nonzero(
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+            Alias: ``input``.
         axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
             the dimension to reduce is :math:`rank + axis[i]`.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default

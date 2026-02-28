@@ -2705,6 +2705,84 @@ class TestFlipAPI(unittest.TestCase):
                 self.assertEqual(out.shape, tuple(self.shape))
 
 
+# Test count_nonzero compatibility
+class TestCountNonzeroAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [3, 4, 5]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randint(-1, 2, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_all = np.count_nonzero(self.np_x)
+        ref_axis = np.count_nonzero(self.np_x, axis=1, keepdims=True)
+
+        # Paddle positional arguments
+        out1 = paddle.count_nonzero(x, 1, True)
+
+        # Paddle keyword arguments
+        out2 = paddle.count_nonzero(x=x, axis=1, keepdim=True)
+
+        # PyTorch-style positional arguments
+        out3 = paddle.count_nonzero(x, 1)
+
+        # PyTorch keyword arguments (alias)
+        out4 = paddle.count_nonzero(input=x, dim=1, keepdim=True)
+
+        # Mixed arguments
+        out5 = paddle.count_nonzero(x, axis=1, keepdim=True)
+
+        # Tensor method - positional
+        out6 = x.count_nonzero(1, True)
+
+        # Tensor method - keyword (alias)
+        out7 = x.count_nonzero(dim=1, keepdim=True)
+
+        for out in [out1, out2, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), ref_axis)
+        np.testing.assert_allclose(out3.numpy(), np.count_nonzero(self.np_x, axis=1))
+        np.testing.assert_allclose(
+            paddle.count_nonzero(input=x).numpy(), ref_all
+        )
+
+        # Exception parameters
+        with self.assertRaises(ValueError):
+            paddle.count_nonzero(x=x, input=x)
+        with self.assertRaises(ValueError):
+            paddle.count_nonzero(x=x, axis=1, dim=1)
+        with self.assertRaises(TypeError):
+            paddle.count_nonzero(x=x, dims=1)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.count_nonzero(x, 1, True)
+            out2 = paddle.count_nonzero(x=x, axis=1, keepdim=True)
+            out3 = paddle.count_nonzero(input=x, dim=1, keepdim=True)
+            out4 = x.count_nonzero(1, True)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref = np.count_nonzero(self.np_x, axis=1, keepdims=True)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref)
+
+
 # Test renorm compatibility
 class TestRenormAPI(unittest.TestCase):
     def setUp(self):
