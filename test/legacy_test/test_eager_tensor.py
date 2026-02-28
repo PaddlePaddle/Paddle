@@ -1457,8 +1457,8 @@ class TestEagerTensor(unittest.TestCase):
             paddle.bool,
         ]
 
-        # Check no hash collision among all dtypes
-        self.assertEqual(len(set(all_types)), len(all_types))
+        # Check that all dtypes have distinct hash values
+        self.assertEqual(len({hash(t) for t in all_types}), len(all_types))
 
     def test___cuda_array_interface__(self):
         """test Tensor.__cuda_array_interface__"""
