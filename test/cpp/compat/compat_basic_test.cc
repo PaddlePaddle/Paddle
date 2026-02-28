@@ -406,79 +406,79 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
 
 TEST(DeviceCompatTest, ParseTypeValid) {
   // Test valid device types
-  EXPECT_EQ(c10::parse_type("cpu"), c10::DeviceType::CPU);
-  EXPECT_EQ(c10::parse_type("cuda"), c10::DeviceType::CUDA);
-  EXPECT_EQ(c10::parse_type("gpu"), c10::DeviceType::GPU);
-  EXPECT_EQ(c10::parse_type("ipu"), c10::DeviceType::IPU);
-  EXPECT_EQ(c10::parse_type("xpu"), c10::DeviceType::XPU);
+  ASSERT_EQ(c10::parse_type("cpu"), c10::DeviceType::CPU);
+  ASSERT_EQ(c10::parse_type("cuda"), c10::DeviceType::CUDA);
+  ASSERT_EQ(c10::parse_type("gpu"), c10::DeviceType::GPU);
+  ASSERT_EQ(c10::parse_type("ipu"), c10::DeviceType::IPU);
+  ASSERT_EQ(c10::parse_type("xpu"), c10::DeviceType::XPU);
 }
 
 TEST(DeviceCompatTest, ParseTypeInvalid) {
   // Test invalid device type throws exception
-  EXPECT_THROW(c10::parse_type("invalid"), common::enforce::EnforceNotMet);
-  EXPECT_THROW(c10::parse_type("dx11"), common::enforce::EnforceNotMet);
+  ASSERT_THROW(c10::parse_type("invalid"), common::enforce::EnforceNotMet);
+  ASSERT_THROW(c10::parse_type("dx11"), common::enforce::EnforceNotMet);
 }
 
 TEST(DeviceCompatTest, DeviceFromStringBasic) {
   // Test creating Device from string without index
   c10::Device dev1("cpu");
-  EXPECT_EQ(dev1.type(), c10::DeviceType::CPU);
-  EXPECT_FALSE(dev1.has_index());
-  EXPECT_EQ(dev1.index(), -1);
-  EXPECT_TRUE(dev1.is_cpu());
-  EXPECT_FALSE(dev1.is_cuda());
+  ASSERT_EQ(dev1.type(), c10::DeviceType::CPU);
+  ASSERT_FALSE(dev1.has_index());
+  ASSERT_EQ(dev1.index(), -1);
+  ASSERT_TRUE(dev1.is_cpu());
+  ASSERT_FALSE(dev1.is_cuda());
 
   c10::Device dev2("cuda");
-  EXPECT_EQ(dev2.type(), c10::DeviceType::CUDA);
-  EXPECT_FALSE(dev2.has_index());
+  ASSERT_EQ(dev2.type(), c10::DeviceType::CUDA);
+  ASSERT_FALSE(dev2.has_index());
 
   c10::Device dev3("gpu");
-  EXPECT_EQ(dev3.type(), c10::DeviceType::GPU);
-  EXPECT_FALSE(dev3.has_index());
+  ASSERT_EQ(dev3.type(), c10::DeviceType::GPU);
+  ASSERT_FALSE(dev3.has_index());
 }
 
 TEST(DeviceCompatTest, DeviceFromStringWithIndex) {
   // Test creating Device from string with index
   c10::Device dev1("cuda:0");
-  EXPECT_EQ(dev1.type(), c10::DeviceType::CUDA);
-  EXPECT_TRUE(dev1.has_index());
-  EXPECT_EQ(dev1.index(), 0);
+  ASSERT_EQ(dev1.type(), c10::DeviceType::CUDA);
+  ASSERT_TRUE(dev1.has_index());
+  ASSERT_EQ(dev1.index(), 0);
 
   c10::Device dev2("gpu:0");
-  EXPECT_EQ(dev2.type(), c10::DeviceType::GPU);
-  EXPECT_TRUE(dev2.has_index());
-  EXPECT_EQ(dev2.index(), 0);
+  ASSERT_EQ(dev2.type(), c10::DeviceType::GPU);
+  ASSERT_TRUE(dev2.has_index());
+  ASSERT_EQ(dev2.index(), 0);
 
   c10::Device dev3("xpu:1");
-  EXPECT_EQ(dev3.type(), c10::DeviceType::XPU);
-  EXPECT_TRUE(dev3.has_index());
-  EXPECT_EQ(dev3.index(), 1);
+  ASSERT_EQ(dev3.type(), c10::DeviceType::XPU);
+  ASSERT_TRUE(dev3.has_index());
+  ASSERT_EQ(dev3.index(), 1);
 
   c10::Device dev4("ipu:2");
-  EXPECT_EQ(dev4.type(), c10::DeviceType::IPU);
-  EXPECT_EQ(dev4.index(), 2);
+  ASSERT_EQ(dev4.type(), c10::DeviceType::IPU);
+  ASSERT_EQ(dev4.index(), 2);
 }
 
 TEST(DeviceCompatTest, DeviceFromStringInvalid) {
   // Test invalid device string throws exception
-  EXPECT_THROW(c10::Device(""), c10::Error);
-  EXPECT_THROW(c10::Device("cuda:abc"), common::enforce::EnforceNotMet);
+  ASSERT_THROW(c10::Device(""), c10::Error);
+  ASSERT_THROW(c10::Device("cuda:abc"), common::enforce::EnforceNotMet);
 }
 
 TEST(DeviceCompatTest, DeviceStr) {
   // Test Device::str() method
   c10::Device dev1("cpu");
-  EXPECT_EQ(dev1.str(), "cpu");
+  ASSERT_EQ(dev1.str(), "cpu");
 
   c10::Device dev2("cuda:0");
-  EXPECT_EQ(dev2.str(), "cuda:0");
+  ASSERT_EQ(dev2.str(), "cuda:0");
 
   // Note: GPU type returns "cuda" in str() for compatibility
   c10::Device dev3("gpu:1");
-  EXPECT_EQ(dev3.str(), "cuda:1");
+  ASSERT_EQ(dev3.str(), "cuda:1");
 
   c10::Device dev4("xpu:2");
-  EXPECT_EQ(dev4.str(), "xpu:2");
+  ASSERT_EQ(dev4.str(), "xpu:2");
 }
 
 TEST(DeviceCompatTest, DeviceStreamOutput) {
@@ -486,16 +486,16 @@ TEST(DeviceCompatTest, DeviceStreamOutput) {
   c10::Device dev1("cpu");
   std::ostringstream oss1;
   oss1 << dev1;
-  EXPECT_EQ(oss1.str(), "cpu");
+  ASSERT_EQ(oss1.str(), "cpu");
 
   // Note: GPU type returns "cuda" for compatibility
   c10::Device dev2("gpu:0");
   std::ostringstream oss2;
   oss2 << dev2;
-  EXPECT_EQ(oss2.str(), "cuda:0");
+  ASSERT_EQ(oss2.str(), "cuda:0");
 
   c10::Device dev3("xpu:2");
   std::ostringstream oss3;
   oss3 << dev3;
-  EXPECT_EQ(oss3.str(), "xpu:2");
+  ASSERT_EQ(oss3.str(), "xpu:2");
 }
