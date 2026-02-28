@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/common/place.h"
