@@ -1,0 +1,61 @@
+name: FastCI Agent
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  attempt-fix:
+    if: contains(github.event.issue.labels.*.name, 'fastci-insight') || startsWith(github.event.issue.title, '[FastCI]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        id: setup
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+          git config user.name "Cursor Agent"
+          git config user.email "cursoragent@cursor.com"
+
+          AI_PROMPT=$(echo "$ISSUE_BODY" | sed -n '/## For AI Agents/,/\`\`\`$/p' | sed -n '/\`\`\`/,/\`\`\`/p' | sed '1d;$d')
+          [ -z "$AI_PROMPT" ] && AI_PROMPT="$ISSUE_BODY"
+          echo "$AI_PROMPT" > /tmp/ai_prompt.txt
+
+          CLEAN_TITLE=$(echo "$ISSUE_TITLE" | sed 's/^\[FastCI\] //' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-' | cut -c1-40)
+          echo "branch=${ISSUE_NUMBER}-bugfix/${CLEAN_TITLE}" >> $GITHUB_OUTPUT
+
+      - name: Fix FastCI insight
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          BRANCH: ${{ steps.setup.outputs.branch }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          agent -p "Fix CI issue in $REPO. GitHub CLI (\`gh\`) is authenticated.
+
+          Issue #$ISSUE_NUM: ${{ github.event.issue.title }}
+          Task: $(cat /tmp/ai_prompt.txt)
+
+          Steps:
+          1. Create branch: $BRANCH
+          2. Implement the fix with minimal, targeted changes
+          3. Commit with message: 'Fix #$ISSUE_NUM: <description>'
+          4. Push and create PR with body containing 'Fixes #$ISSUE_NUM'
+          5. Comment on issue #$ISSUE_NUM with PR link
+
+          If fix cannot be automated, comment on the issue explaining why.
+          " --force --model composer-1 --output-format=text

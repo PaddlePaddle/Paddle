@@ -50,6 +50,10 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_doc_image }}
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   build-docker-images:
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
@@ -67,6 +71,12 @@ jobs:
       docker_dcu_image: ${{ steps.build-docker-images.outputs.docker_dcu_image }}
       docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
     steps:
+      - uses: jfrog-fastci/fastci@v0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          create_issues_from_insights: "true"
+          accept_terms: "yes"
+
       - id: build-docker-images
         name: Build docker images
         env:
