@@ -152,6 +152,8 @@ if TYPE_CHECKING:
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
+from paddle import sparse
+
 __all__ = []
 
 _supported_int_dtype_ = [
@@ -6878,3 +6880,17 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
 
     coordinates = paddle.stack(paddle.meshgrid(x), axis=-1)
     return paddle.reshape(coordinates, [-1, len(x)])
+
+def sparse_mask(x: Tensor, mask: Tensor, name: str | None = None):
+    """
+    Filter the input dense tensor using the indices of the sparse matrix `mask`.
+    
+    Args:
+        x (Tensor): The input dense tensor.
+        mask (Tensor): The mask tensor (SparseCooTensor or SparseCsrTensor).
+        name (str, optional): Name for the operation.
+    
+    Returns:
+        Tensor: A sparse tensor.
+    """
+    return sparse.mask_as(x, mask, name)
