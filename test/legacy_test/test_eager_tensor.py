@@ -1427,6 +1427,39 @@ class TestEagerTensor(unittest.TestCase):
         self.assertTrue(a.dtype is not paddle.float64)
         self.assertTrue(a.dtype is not c.dtype)
 
+    def test_tensor_dtype_hash(self):
+        a = paddle.randn([2], dtype="float32")
+        b = paddle.randn([2], dtype="float32")
+        c = paddle.randn([2], dtype="float64")
+
+        self.assertEqual(hash(a.dtype), hash(paddle.float32))
+        self.assertEqual(hash(a.dtype), hash(b.dtype))
+        self.assertNotEqual(hash(a.dtype), hash(paddle.float64))
+        self.assertNotEqual(hash(a.dtype), hash(c.dtype))
+
+        all_types = [
+            paddle.complex64,
+            paddle.complex128,
+            paddle.float8_e4m3fn,
+            paddle.float8_e5m2,
+            paddle.bfloat16,
+            paddle.float16,
+            paddle.float32,
+            paddle.float64,
+            paddle.uint8,
+            paddle.uint16,
+            paddle.uint32,
+            paddle.uint64,
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.bool,
+        ]
+
+        # Check no hash collision among all dtypes
+        self.assertEqual(len(set(all_types)), len(all_types))
+
     def test___cuda_array_interface__(self):
         """test Tensor.__cuda_array_interface__"""
         with dygraph_guard():
