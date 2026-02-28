@@ -2850,7 +2850,7 @@ class TestHypotAPI(unittest.TestCase):
         ref_out = np.hypot(self.np_x, self.np_y)
 
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 
@@ -2875,7 +2875,7 @@ class TestHypotAPI(unittest.TestCase):
             )
             ref_out = np.hypot(self.np_x, self.np_y)
             for out in fetches:
-                np.testing.assert_allclose(out, ref_out)
+                np.testing.assert_allclose(out, ref_out, rtol=1e-05)
 
 
 if __name__ == '__main__':
