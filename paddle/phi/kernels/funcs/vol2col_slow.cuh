@@ -149,8 +149,8 @@ __global__ void Vol2imKernel(const int64_t n,
   }
 }
 
-template <typename T>
-void vol2col_slow(cudaStream_t stream,
+template <typename T, typename Context>
+void vol2col_slow(const Context& dev_ctx,
                   const T* data_vol,
                   const int channels,
                   const int depth,
@@ -172,6 +172,7 @@ void vol2col_slow(cudaStream_t stream,
                   const int dilation_h,
                   const int dilation_w,
                   T* data_col) {
+  auto stream = dev_ctx.stream();
   const auto num_kernels =
       static_cast<int64_t>(channels) * depth_col * height_col * width_col;
   Vol2colKernel<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
@@ -198,8 +199,8 @@ void vol2col_slow(cudaStream_t stream,
       data_col);
 }
 
-template <typename T, typename accT>
-void col2vol_slow(cudaStream_t stream,
+template <typename T, typename accT, typename Context>
+void col2vol_slow(const Context& dev_ctx,
                   const T* data_col,
                   const int64_t channels,
                   const int64_t depth,
@@ -221,6 +222,7 @@ void col2vol_slow(cudaStream_t stream,
                   const int64_t dilation_h,
                   const int64_t dilation_w,
                   T* data_vol) {
+  auto stream = dev_ctx.stream();
   const auto num_kernels = channels * depth * height * width;
   Vol2imKernel<T, accT>
       <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(num_kernels,

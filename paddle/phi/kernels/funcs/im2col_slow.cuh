@@ -175,8 +175,8 @@ __global__ void Col2imKernel(const int64_t n,
   }
 }
 
-template <typename dt>
-void im2col_slow(cudaStream_t stream,
+template <typename dt, typename Context>
+void im2col_slow(const Context& dev_ctx,
                  const dt* data_im,
                  const int64_t channels,
                  const int64_t height,
@@ -192,6 +192,7 @@ void im2col_slow(cudaStream_t stream,
                  const int64_t dilation_height,
                  const int64_t dilation_width,
                  dt* data_col) {
+  auto stream = dev_ctx.stream();
   int64_t num_kernels = channels * height_col * width_col;
   Im2colKernel<<<GET_BLOCKS(num_kernels), 1024, 0, stream>>>(num_kernels,
                                                              data_im,
@@ -210,8 +211,8 @@ void im2col_slow(cudaStream_t stream,
                                                              data_col);
 }
 
-template <typename dt, typename accT>
-void col2im_slow(cudaStream_t stream,
+template <typename dt, typename accT, typename Context>
+void col2im_slow(const Context& dev_ctx,
                  const dt* data_col,
                  const int64_t channels,
                  const int64_t height,
@@ -227,6 +228,7 @@ void col2im_slow(cudaStream_t stream,
                  const int64_t dilation_height,
                  const int64_t dilation_width,
                  dt* data_im) {
+  auto stream = dev_ctx.stream();
   int64_t num_kernels = channels * height * width;
   Col2imKernel<dt, accT>
       <<<GET_BLOCKS(num_kernels, 512), 512, 0, stream>>>(num_kernels,
