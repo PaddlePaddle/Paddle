@@ -548,3 +548,8 @@
   name : [paddle.triu, paddle.Tensor.triu]
   args_alias :
     use_default_mapping : True
+
+- op : tensor_retain_grads
+  name : [paddle.Tensor.retain_grad]
+  args_alias :
+    use_default_mapping : True
