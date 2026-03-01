@@ -101,7 +101,7 @@ TEST(TestAllclose, AllcloseBasic) {
 TEST(TestAllclose, AllcloseWithTolerance) {
   // Test allclose with rtol/atol tolerance
   at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
-  at::Tensor tensor2 = tensor1 + 1e-6f;
+  at::Tensor tensor2 = at::add(tensor1, 1e-6f);
 
   // Within default tolerance
   bool result_default = tensor1.allclose(tensor2);
