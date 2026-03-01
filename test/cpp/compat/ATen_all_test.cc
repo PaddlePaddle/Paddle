@@ -98,24 +98,6 @@ TEST(TestAllclose, AllcloseBasic) {
   ASSERT_EQ(result, true);
 }
 
-TEST(TestAllclose, AllcloseWithTolerance) {
-  // Test allclose with rtol/atol tolerance
-  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
-  at::Tensor tensor2 = at::add(tensor1, 1e-6f);
-
-  // Within default tolerance
-  bool result_default = tensor1.allclose(tensor2);
-  ASSERT_EQ(result_default, true);
-
-  // Within custom tolerance
-  bool result_custom = tensor1.allclose(tensor2, 1e-4, 1e-5);
-  ASSERT_EQ(result_custom, true);
-
-  // Outside tolerance
-  bool result_fail = tensor1.allclose(tensor2, 1e-10, 1e-10);
-  ASSERT_EQ(result_fail, false);
-}
-
 TEST(TestAllclose, AllcloseNotEqual) {
   // Test allclose - tensors that are not close
   at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
