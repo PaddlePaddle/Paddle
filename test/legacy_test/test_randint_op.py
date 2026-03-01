@@ -384,5 +384,43 @@ class TestRandintOldStaticMode(unittest.TestCase):
             self.assertTrue(np.all(outs[0] >= 0) and np.all(outs[0] < 5))
 
 
+class TestRandintDeviceRequiresGradPinMemory(unittest.TestCase):
+    def test_device_cpu(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[3, 4], device='cpu')
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(x.place.is_cpu_place())
+        paddle.enable_static()
+
+    def test_requires_grad(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+        self.assertEqual(x.shape, [2, 3])
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_requires_grad_false(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+        self.assertTrue(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_device_and_requires_grad(self):
+        paddle.disable_static()
+        x = paddle.randint(
+            high=10, shape=[2, 3], device='cpu', requires_grad=True
+        )
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(x.place.is_cpu_place())
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_pin_memory_unsupported_device_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(RuntimeError):
+            paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

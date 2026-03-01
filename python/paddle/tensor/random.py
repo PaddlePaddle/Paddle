@@ -1774,6 +1774,9 @@ def randint(
     name: str | None = None,
     *,
     out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> Tensor: ...
 
 
@@ -1785,6 +1788,9 @@ def randint(
     name: str | None = None,
     *,
     out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> Tensor: ...
 
 
@@ -1797,6 +1803,9 @@ def randint(
     name: str | None = None,
     *,
     out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
@@ -1823,6 +1832,9 @@ def randint(
 
     Keyword Arguments:
         out (Tensor, optional): Optional output tensor. If provided, the result will be stored in this tensor. Default: None.
+        device (PlaceLike|None, optional): The desired device of returned tensor. Default: None.
+        requires_grad (bool, optional): If autograd should record operations on the returned tensor. Default: False.
+        pin_memory (bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
@@ -1904,19 +1916,41 @@ def randint(
     elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    place = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and not isinstance(place, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(place, core.CUDAPlace) or (
+            isinstance(place, core.Place) and place.is_gpu_place()
+        ):
+            place = core.CUDAPinnedPlace()
+        elif isinstance(place, core.XPUPlace) or (
+            isinstance(place, core.Place) and place.is_xpu_place()
+        ):
+            place = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {place}")
+
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
-        return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place(), out=out
-        )
+        tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        if pin_memory:
+            tensor = tensor.pin_memory()
+        return tensor
     elif in_pir_mode():
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
-        return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place(), out=out
-        )
+        return _C_ops.randint(low, high, shape, dtype, place, out=out)
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
