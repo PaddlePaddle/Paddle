@@ -2923,5 +2923,161 @@ class TestRenormInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test cummax compatibility
+class TestCummaxAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        # 1. Paddle positional args
+        out1_vals, out1_indices = paddle.cummax(x, axis=0, dtype='int64')
+        paddle_dygraph_out.append(out1_vals)
+        paddle_dygraph_out.append(out1_indices)
+
+        # 2. Paddle keyword args
+        out2_vals, out2_indices = paddle.cummax(x=x, axis=0, dtype='int64')
+        paddle_dygraph_out.append(out2_vals)
+        paddle_dygraph_out.append(out2_indices)
+
+        # 3. PyTorch positional args (using dim alias)
+        out3_vals, out3_indices = paddle.cummax(x, 0, dtype='int64')
+        paddle_dygraph_out.append(out3_vals)
+        paddle_dygraph_out.append(out3_indices)
+
+        # 4. PyTorch keyword args (using input and dim aliases)
+        out4_vals, out4_indices = paddle.cummax(input=x, dim=0, dtype='int64')
+        paddle_dygraph_out.append(out4_vals)
+        paddle_dygraph_out.append(out4_indices)
+
+        # 5. Mixed arguments
+        out5_vals, out5_indices = paddle.cummax(x, axis=1, dtype='int64')
+        paddle_dygraph_out.append(out5_vals)
+        paddle_dygraph_out.append(out5_indices)
+
+        # Verify all outputs
+        ref_cummax = np.maximum.accumulate(self.np_x, axis=0)
+        for out_vals in [out1_vals, out2_vals, out3_vals, out4_vals]:
+            np.testing.assert_allclose(out_vals.numpy(), ref_cummax, rtol=1e-6, atol=1e-6)
+
+        ref_cummax_axis1 = np.maximum.accumulate(self.np_x, axis=1)
+        for out_vals in [out5_vals]:
+            np.testing.assert_allclose(out_vals.numpy(), ref_cummax_axis1, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Create multiple outputs
+            out1_vals, out1_indices = paddle.cummax(x, axis=0, dtype='int64')
+            out2_vals, out2_indices = paddle.cummax(x=x, axis=0, dtype='int64')
+            out3_vals, out3_indices = paddle.cummax(input=x, dim=0, dtype='int64')
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1_vals, out2_vals, out3_vals],
+            )
+
+            # Verify all outputs
+            ref_cummax = np.maximum.accumulate(self.np_x, axis=0)
+            for out_vals in fetches:
+                np.testing.assert_allclose(out_vals, ref_cummax, rtol=1e-6, atol=1e-6)
+
+
+# Test cummin compatibility
+class TestCumminAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        # 1. Paddle positional args
+        out1_vals, out1_indices = paddle.cummin(x, axis=0, dtype='int64')
+        paddle_dygraph_out.append(out1_vals)
+        paddle_dygraph_out.append(out1_indices)
+
+        # 2. Paddle keyword args
+        out2_vals, out2_indices = paddle.cummin(x=x, axis=0, dtype='int64')
+        paddle_dygraph_out.append(out2_vals)
+        paddle_dygraph_out.append(out2_indices)
+
+        # 3. PyTorch positional args (using dim alias)
+        out3_vals, out3_indices = paddle.cummin(x, 0, dtype='int64')
+        paddle_dygraph_out.append(out3_vals)
+        paddle_dygraph_out.append(out3_indices)
+
+        # 4. PyTorch keyword args (using input and dim aliases)
+        out4_vals, out4_indices = paddle.cummin(input=x, dim=0, dtype='int64')
+        paddle_dygraph_out.append(out4_vals)
+        paddle_dygraph_out.append(out4_indices)
+
+        # 5. Mixed arguments
+        out5_vals, out5_indices = paddle.cummin(x, axis=1, dtype='int64')
+        paddle_dygraph_out.append(out5_vals)
+        paddle_dygraph_out.append(out5_indices)
+
+        # Verify all outputs
+        ref_cummin = np.minimum.accumulate(self.np_x, axis=0)
+        for out_vals in [out1_vals, out2_vals, out3_vals, out4_vals]:
+            np.testing.assert_allclose(out_vals.numpy(), ref_cummin, rtol=1e-6, atol=1e-6)
+
+        ref_cummin_axis1 = np.minimum.accumulate(self.np_x, axis=1)
+        for out_vals in [out5_vals]:
+            np.testing.assert_allclose(out_vals.numpy(), ref_cummin_axis1, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Create multiple outputs
+            out1_vals, out1_indices = paddle.cummin(x, axis=0, dtype='int64')
+            out2_vals, out2_indices = paddle.cummin(x=x, axis=0, dtype='int64')
+            out3_vals, out3_indices = paddle.cummin(input=x, dim=0, dtype='int64')
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1_vals, out2_vals, out3_vals],
+            )
+
+            # Verify all outputs
+            ref_cummin = np.minimum.accumulate(self.np_x, axis=0)
+            for out_vals in fetches:
+                np.testing.assert_allclose(out_vals, ref_cummin, rtol=1e-6, atol=1e-6)
+
+
 if __name__ == '__main__':
     unittest.main()

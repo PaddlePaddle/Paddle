@@ -368,5 +368,101 @@ void GeluMapper(PyObject* args,
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 
+void CummaxCumminMapper(PyObject* args,
+                     PyObject* kwargs,
+                     Tensor** x_ptr_ptr,
+                     paddle::experimental::Scalar* axis,
+                     DataType* dtype) {
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 3;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get EagerTensors from args
+  auto& x = GetTensorFromArgsOrKWArgs("cummax",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"x", "input"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
+
+  // Parse axis parameter
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+
+  // Handle axis=None: flatten tensor and set axis to -1
+  if (axis_obj == Py_None || axis_obj == nullptr) {
+    *axis = -1;
+  } else {
+    *axis = CastPyArg2Scalar(axis_obj, "cummax", 1);
+  }
+
+  // Parse dtype parameter and validate
+  PyObject* dtype_obj = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"dtype"}, nargs, &remaining_kwargs);
+
+  PADDLE_ENFORCE_NE(dtype_obj,
+                    Py_None,
+                    phi::errors::InvalidArgument(
+                        "the value of 'dtype' in cummax and cummin "
+                        "could not be None, but received None"));
+
+  *dtype = CastPyArg2DataType(dtype_obj, "cummax", 3, DataType::INT64);
+
+  // Check Remaining Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
+void CummaxCumminMapper(PyObject* args,
+                     PyObject* kwargs,
+                     pir::Value* x,
+                     pir::Value* axis,
+                     DataType* dtype) {
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 3;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get Value from args
+  PyObject* x_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"x", "input"}, nargs, &remaining_kwargs);
+  *x = CastPyArg2Value(x_obj, "cummax", 0, false);
+
+  // Parse axis parameter
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+
+  // Handle axis=None: flatten tensor and set axis to -1
+  if (axis_obj == Py_None || axis_obj == nullptr) {
+    *axis = paddle::dialect::full(
+        std::vector<int64_t>{1}, -1, DataType::INT64, CPUPlace());
+  } else if (PyObject_CheckIRValue(axis_obj)) {
+    *axis = CastPyArg2Value(axis_obj, "cummax", 1);
+  } else {
+    int64_t axis_tmp = CastPyArg2Long(axis_obj, "cummax", 1);
+    *axis = paddle::dialect::full(
+        std::vector<int64_t>{1}, axis_tmp, DataType::INT64, CPUPlace());
+  }
+
+  // Parse dtype parameter and validate
+  PyObject* dtype_obj = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"dtype"}, nargs, &remaining_kwargs);
+
+  PADDLE_ENFORCE_NE(dtype_obj,
+                    Py_None,
+                    phi::errors::InvalidArgument(
+                        "the value of 'dtype' in cummax and cummin "
+                        "could not be None, but received None"));
+
+  *dtype = CastPyArg2DataType(dtype_obj, "cummax", 3, DataType::INT64);
+
+  // Check Remaining Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
 }  // namespace pybind
 }  // namespace paddle

@@ -20,6 +20,9 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
 namespace paddle {
 
 namespace pybind {
@@ -59,6 +62,37 @@ void ArgSumMapper(PyObject* args,
                   pir::Value* axis,
                   DataType* dtype,
                   bool* keepdim);
+
+void CummaxCumminMapper(PyObject* args,
+                      PyObject* kwargs,
+                      Tensor** x_ptr_ptr,
+                      paddle::experimental::Scalar* axis,
+                      DataType* dtype);
+void CummaxCumminMapper(PyObject* args,
+                      PyObject* kwargs,
+                      pir::Value* x,
+                      pir::Value* axis,
+                      DataType* dtype);
+
+inline void CummaxCumminMapper(PyObject* args,
+                               PyObject* kwargs,
+                               Tensor** x_ptr_ptr,
+                               int* axis,
+                               DataType* dtype) {
+  paddle::experimental::Scalar axis_scalar(*axis);
+  CummaxCumminMapper(args, kwargs, x_ptr_ptr, &axis_scalar, dtype);
+}
+
+inline void CummaxCumminMapper(PyObject* args,
+                               PyObject* kwargs,
+                               pir::Value* x,
+                               int* axis,
+                               DataType* dtype) {
+  PADDLE_THROW(common::errors::Unimplemented(
+      "cummax/cummin with int axis is temporarily unsupported in static graph mode. "
+      "Please use Scalar or check ops.yaml configuration."));
+}
+
 }  // namespace pybind
 
 }  // namespace paddle

@@ -28,6 +28,8 @@ from paddle._C_ops import (  # noqa: F401
     addmm,
     addmm_,
     all,
+    cummax,
+    cummin,
     amax,
     amin,
     angle,
@@ -3287,34 +3289,6 @@ def cummax(
             >>> value, indices = paddle.cummax(data, dtype='int64')
             >>> assert indices.dtype == paddle.int64
     """
-    if axis is None:
-        axis = -1
-        x = x.flatten(0, len(x.shape) - 1)
-
-    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
-    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.cummax(x, axis, dtype)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float32', 'float64', 'int32', 'int64'],
-            'cummax',
-        )
-        check_type(x, 'x', (Variable), 'cummax')
-        helper = LayerHelper('cummax', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        indices = helper.create_variable_for_type_inference(dtype='int64')
-        helper.append_op(
-            type='cummax',
-            inputs={'x': x},
-            outputs={'out': out, 'indices': indices},
-            attrs={'axis': axis, 'dtype': dtype},
-        )
-        return out, indices
 
 
 def cummin(
@@ -3378,34 +3352,6 @@ def cummin(
             >>> value, indices = paddle.cummin(data, dtype='int64')
             >>> assert indices.dtype == paddle.int64
     """
-    if axis is None:
-        axis = -1
-        x = x.flatten(0, len(x.shape) - 1)
-
-    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
-    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.cummin(x, axis, dtype)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float32', 'float64', 'int32', 'int64'],
-            'cummin',
-        )
-        check_type(x, 'x', (Variable), 'cummin')
-        helper = LayerHelper('cummin', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        indices = helper.create_variable_for_type_inference(dtype='int64')
-        helper.append_op(
-            type='cummin',
-            inputs={'x': x},
-            outputs={'out': out, 'indices': indices},
-            attrs={'axis': axis, 'dtype': dtype},
-        )
-        return out, indices
 
 
 def logcumsumexp(

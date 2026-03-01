@@ -529,6 +529,16 @@
   args_mapper :
     func : ArgSumMapper
 
+- op : cummax
+  name : [paddle.cummax, paddle.Tensor.cummax]
+  args_mapper :
+    func : CummaxCumminMapper
+
+- op : cummin
+  name : [paddle.cummin, paddle.Tensor.cummin]
+  args_mapper :
+    func : CummaxCumminMapper
+
 - op : tan
   name : [paddle.tan, paddle.Tensor.tan]
   args_alias :
