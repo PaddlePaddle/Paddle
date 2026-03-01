@@ -49,6 +49,8 @@ jobs:
           git merge --no-ff pr
           git branch -d pr
           REM call %ci_scripts%\third_party_tag.bat
+          git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
+          git submodule update --init --recursive
 
       - name: Upload paddle to bos
         working-directory: ..
@@ -74,4 +76,6 @@ jobs:
           cd ${{ github.workspace }}
           git switch %BRANCH%
           git branch -D test
+          git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
+          git submodule update --init --recursive
           git gc
