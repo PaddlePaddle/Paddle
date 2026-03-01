@@ -194,7 +194,9 @@ def hardshrink(
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         threshold (float, optional): The value of threshold for hardthrink. Default is 0.5.
+            Alias: ``lambd``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -534,6 +536,7 @@ def prelu(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         weight (Tensor): The learnable parameter with data type same as ``x``.
             The weight shape is [], [1] or [in], where `in` is the input channel of ``x``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1102,7 +1105,7 @@ def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
-            alias: ``input``.
+            Alias: ``input``.
         inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1382,7 +1385,9 @@ def softshrink(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
+            Alias: ``input``.
+        threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5.
+            Alias: ``lambd``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1817,10 +1822,12 @@ def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         axis (int, optional): The axis along which split the input tensor. It
             should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` < 0, it works the same way as :math:`axis + D` .
             Default is -1.
+            Alias: ``dim``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

@@ -210,18 +210,18 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
   VLOG(4) << classname << ":"
           << "Construct PyLayerContext";
-  PyObject* backward_function =
-      PyObject_GetAttrString(cls, "_backward_function");
-  if (!backward_function) {
+  static PyObject* kBackwardFunctionAttr =
+      PyUnicode_InternFromString("_backward_function");
+  PyObject* backward_function = PyObject_GetAttr(cls, kBackwardFunctionAttr);
+  if (!backward_function) [[unlikely]] {
     PADDLE_THROW(
         common::errors::InvalidArgument("Get _backward_function failed."));
   }
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
-  if (!ctx) {
+  if (!ctx) [[unlikely]] {
     PADDLE_THROW(
         common::errors::External(pybind11::detail::error_string().c_str()));
-    return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
   if (FLAGS_check_cuda_error) [[unlikely]] {
@@ -249,140 +249,138 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
   VLOG(6) << classname << ":Prepare Pylayer forward args ";
   VLOG(6) << classname << ":Input size is " << inputs_size;
-  std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
+  paddle::small_vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   inputs_autograd_meta.reserve(inputs_size);
-  std::vector<std::vector<Tensor*>> inputs_tensor;
+  paddle::small_vector<std::vector<Tensor*>> inputs_tensor;
   inputs_tensor.reserve(inputs_size);
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
   std::set<phi::TensorBase*> input_tensorbases;
 
   const phi::distributed::ProcessMesh* mesh = nullptr;
-  for (size_t i = 0; i < inputs_size; i++) {
+  auto TrySetMeshFromTensor = [&mesh](PyObject* obj) {
+    if (!PyCheckTensor(obj)) return false;
+    paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(obj)->tensor;
+    if (!tensor.defined() || !tensor.is_dist_tensor()) return false;
+    mesh =
+        &(std::static_pointer_cast<phi::distributed::DistTensor>(tensor.impl())
+              ->dist_attr()
+              .process_mesh());
+    return true;
+  };
+
+  for (int64_t i = inputs_size - 1; i >= 0; --i) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
       obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
-    if (PyCheckTensor(obj)) {
-      Tensor& tensor = reinterpret_cast<TensorObject*>(obj)->tensor;
-      if (tensor.defined() && tensor.is_dist_tensor()) {
-        mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                     tensor.impl())
-                     ->dist_attr()
-                     .process_mesh());
-      }
-    } else if (PyList_Check(obj)) {
-      Py_ssize_t len = PyList_Size(obj);
-      for (Py_ssize_t j = 0; j < len; j++) {
+    bool mesh_found = false;
+    if (PyList_Check(obj)) {
+      int64_t len = PyList_Size(obj);
+      for (int64_t j = len - 1; j >= 0; --j) {
         PyObject* o = PyList_GetItem(obj, j);
-        if (PyCheckTensor(o)) {
-          Tensor& tensor = reinterpret_cast<TensorObject*>(o)->tensor;
-          if (tensor.defined() && tensor.is_dist_tensor()) {
-            mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                         tensor.impl())
-                         ->dist_attr()
-                         .process_mesh());
-          }
-        }
+        mesh_found |= TrySetMeshFromTensor(o);
       }
     } else if (PyTuple_Check(obj)) {
-      Py_ssize_t len = PyTuple_Size(obj);
-      for (Py_ssize_t j = 0; j < len; j++) {
+      int64_t len = PyTuple_Size(obj);
+      for (int64_t j = len - 1; j >= 0; --j) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        if (PyCheckTensor(o)) {
-          Tensor& tensor = reinterpret_cast<TensorObject*>(o)->tensor;
-          if (tensor.defined() && tensor.is_dist_tensor()) {
-            mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                         tensor.impl())
-                         ->dist_attr()
-                         .process_mesh());
-          }
-        }
+        mesh_found |= TrySetMeshFromTensor(o);
       }
+    } else {
+      mesh_found |= TrySetMeshFromTensor(obj);
     }
+    if (mesh_found) break;
   }
 
-  for (size_t i = 0; i < inputs_size; i++) {
-    PyObject* obj = nullptr;
-    if (i >= args_size) {
-      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
-    } else {
-      obj = PyTuple_GET_ITEM(args, i);
+  auto HandleSingleTensorObj = [&mesh,
+                                &input_tensorbases,
+                                &inputs_autograd_meta,
+                                &inputs_tensor,
+                                &require_any_grad,
+                                &ctx](TensorObject* t_obj) {
+    auto& t = t_obj->tensor;
+    if (mesh) {
+      ConvertToDistTensor(&t, mesh);
     }
-    if (PyCheckTensor(obj)) {
-      if (mesh) {
-        ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(obj)->tensor),
-                            mesh);
-      }
-      input_tensorbases.insert(
-          reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
-      auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
-          reinterpret_cast<TensorObject*>(obj)->tensor);
-      inputs_autograd_meta.push_back({autograd_meta});
-      inputs_tensor.push_back(
-          {&(reinterpret_cast<TensorObject*>(obj)->tensor)});  // NOLINT
-      bool stop_gradient =
-          autograd_meta == nullptr ? true : autograd_meta->StopGradient();
+    input_tensorbases.insert(t.impl().get());
+    auto* autograd_meta = egr::EagerUtils::nullable_autograd_meta(t);
+    inputs_autograd_meta.push_back({autograd_meta});
+
+    inputs_tensor.push_back({&t});  // NOLINT
+
+    bool stop_gradient =
+        autograd_meta == nullptr ? true : autograd_meta->StopGradient();
+    if (!stop_gradient) {
+      require_any_grad = true;
+    }
+    ctx->forward_input_tensor_is_duplicable.push_back(false);
+  };
+
+  auto CollectOneTensor = [&mesh, &input_tensorbases](
+                              TensorObject* t_obj,
+                              std::vector<paddle::Tensor*>* tensors) {
+    auto& t = t_obj->tensor;
+
+    if (mesh) {
+      ConvertToDistTensor(&t, mesh);
+    }
+
+    input_tensorbases.insert(t.impl().get());
+    tensors->push_back(&t);
+  };
+
+  auto FinalizeTensorList = [&require_any_grad,
+                             &inputs_autograd_meta,
+                             &inputs_tensor,
+                             &ctx](std::vector<paddle::Tensor*>& tensors) {
+    if (tensors.empty()) return;
+
+    auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
+    for (auto* m : autograd_meta) {
+      bool stop_gradient = (m == nullptr) ? true : m->StopGradient();
       if (!stop_gradient) {
         require_any_grad = true;
       }
-      ctx->forward_input_tensor_is_duplicable.push_back(false);
+    }
+
+    inputs_autograd_meta.push_back(autograd_meta);
+    inputs_tensor.push_back(tensors);
+    ctx->forward_input_tensor_is_duplicable.push_back(true);
+  };
+
+  for (size_t i = 0; i < inputs_size; ++i) {
+    PyObject* obj = nullptr;
+    if (i >= args_size) {
+      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
+    } else {
+      obj = PyTuple_GET_ITEM(args, i);
+    }
+
+    if (PyCheckTensor(obj)) {
+      HandleSingleTensorObj(reinterpret_cast<TensorObject*>(obj));
     } else if (PyList_Check(obj)) {
       std::vector<Tensor*> tensors;
       Py_ssize_t len = PyList_Size(obj);
-      for (Py_ssize_t j = 0; j < len; j++) {
-        PyObject* o = PyList_GetItem(obj, j);
+      for (Py_ssize_t j = 0; j < len; ++j) {
+        PyObject* o = PyList_GetItem(obj, j);  // borrowed
         if (PyCheckTensor(o)) {
-          if (mesh) {
-            ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(o)->tensor),
-                                mesh);
-          }
-          input_tensorbases.insert(
-              reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
-          tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
+          CollectOneTensor(reinterpret_cast<TensorObject*>(o), &tensors);
         }
       }
-      if (!tensors.empty()) {
-        auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
-        for (auto iter : autograd_meta) {
-          bool stop_gradient = iter == nullptr ? true : iter->StopGradient();
-          if (!stop_gradient) {
-            require_any_grad = true;
-          }
-        }
-        inputs_autograd_meta.push_back(autograd_meta);
-        inputs_tensor.push_back(tensors);
-        ctx->forward_input_tensor_is_duplicable.push_back(true);
-      }
+      FinalizeTensorList(tensors);
     } else if (PyTuple_Check(obj)) {
       std::vector<Tensor*> tensors;
       Py_ssize_t len = PyTuple_Size(obj);
-      for (Py_ssize_t j = 0; j < len; j++) {
-        PyObject* o = PyTuple_GetItem(obj, j);
+      for (Py_ssize_t j = 0; j < len; ++j) {
+        PyObject* o = PyTuple_GetItem(obj, j);  // borrowed
         if (PyCheckTensor(o)) {
-          if (mesh) {
-            ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(o)->tensor),
-                                mesh);
-          }
-          input_tensorbases.insert(
-              reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
-          tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
+          CollectOneTensor(reinterpret_cast<TensorObject*>(o), &tensors);
         }
       }
-      if (!tensors.empty()) {
-        auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
-        for (auto iter : autograd_meta) {
-          bool stop_gradient = iter == nullptr ? true : iter->StopGradient();
-          if (!stop_gradient) {
-            require_any_grad = true;
-          }
-        }
-        inputs_autograd_meta.push_back(autograd_meta);
-        inputs_tensor.push_back(tensors);
-        ctx->forward_input_tensor_is_duplicable.push_back(true);
-      }
+      FinalizeTensorList(tensors);
     }
 
     if (i < args_size) {
@@ -399,8 +397,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
       << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
   // call forward
-  auto forward_fn = PyObject_GetAttrString(cls, "forward");
-  if (!forward_fn) {
+  static PyObject* kForwardAttr = PyUnicode_InternFromString("forward");
+  auto forward_fn = PyObject_GetAttr(cls, kForwardAttr);
+  if (!forward_fn) [[unlikely]] {
     PADDLE_THROW(
         common::errors::InvalidArgument("Get forward function failed."));
   }
@@ -435,9 +434,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
-  std::vector<std::vector<Tensor*>> outputs_tensor;
+  paddle::small_vector<std::vector<Tensor*>> outputs_tensor;
   outputs_tensor.reserve(outputs_size);
-  std::vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
+  paddle::small_vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
   outputs_autograd_meta.reserve(outputs_size);
   ctx->forward_output_tensor_is_duplicable.clear();
   ctx->forward_output_tensor_is_duplicable.reserve(outputs_size);
@@ -473,10 +472,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
             if (not_inplace_tensorbases.count(
                     reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
-              PyTuple_SetItem(obj,
-                              j,
-                              new_tensor_with_impl(&(
-                                  reinterpret_cast<TensorObject*>(o)->tensor)));
+              PyList_SetItem(obj,
+                             j,
+                             new_tensor_with_impl(&(
+                                 reinterpret_cast<TensorObject*>(o)->tensor)));
             } else {
               inplace_tensors.insert(
                   &(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -520,7 +519,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
   }
-  if (outputs_tensor.empty()) {
+  if (outputs_tensor.empty()) [[unlikely]] {
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s : At least one output of `PyLayer.forward` is a `Tensor`.",
         classname));
