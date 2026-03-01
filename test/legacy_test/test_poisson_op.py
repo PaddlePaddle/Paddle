@@ -49,7 +49,7 @@ def output_hist(out, lam, a, b):
 class TestPoissonOp1(OpTest):
     def setUp(self):
         self.op_type = "poisson"
-        self.python_api = paddle.tensor.poisson
+        self.python_api = paddle.poisson
         self.init_dtype()
         self.config()
 
@@ -402,7 +402,7 @@ class TestPoissonFP16OP(TestPoissonOp1):
 class TestPoissonBF16Op(OpTest):
     def setUp(self):
         self.op_type = "poisson"
-        self.python_api = paddle.tensor.poisson
+        self.python_api = paddle.poisson
         self.__class__.op_type = self.op_type
         self.config()
         x = np.full([2048, 1024], self.lam, dtype="float32")
