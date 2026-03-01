@@ -55,6 +55,7 @@ TEST(TensorIndexTest, IndexWithSingleTensor) {
 
 TEST(TensorIndexPutTest, IndexPutInplaceWithTensor) {
   at::Tensor t = at::zeros({5}, at::kFloat);
+  float* original_data_ptr = t.data_ptr<float>();
 
   // Create index tensor [1, 3]
   at::Tensor idx = at::empty({2}, at::kLong);
@@ -70,6 +71,9 @@ TEST(TensorIndexPutTest, IndexPutInplaceWithTensor) {
 
   t.index_put_(indices, values);
 
+  // Verify data pointer unchanged (inplace)
+  ASSERT_EQ(t.data_ptr<float>(), original_data_ptr);
+
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 0.0f);
   ASSERT_FLOAT_EQ(data[1], 99.0f);
@@ -80,6 +84,7 @@ TEST(TensorIndexPutTest, IndexPutInplaceWithTensor) {
 
 TEST(TensorIndexPutTest, IndexPutInplaceWithScalar) {
   at::Tensor t = at::zeros({5}, at::kFloat);
+  float* original_data_ptr = t.data_ptr<float>();
 
   at::Tensor idx = at::empty({2}, at::kLong);
   int64_t* idx_data = idx.data_ptr<int64_t>();
@@ -90,6 +95,9 @@ TEST(TensorIndexPutTest, IndexPutInplaceWithScalar) {
   indices.push_back(idx);
 
   t.index_put_(indices, at::Scalar(7.0));
+
+  // Verify data pointer unchanged (inplace)
+  ASSERT_EQ(t.data_ptr<float>(), original_data_ptr);
 
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 7.0f);
@@ -177,6 +185,7 @@ TEST(TensorIndexTest, IndexWithOptionalNone) {
 TEST(TensorIndexPutTest, IndexPutAccumulate) {
   // Test index_put_ with accumulate=true
   at::Tensor t = at::zeros({5}, at::kFloat);
+  float* original_data_ptr = t.data_ptr<float>();
 
   at::Tensor idx = at::empty({2}, at::kLong);
   idx.data_ptr<int64_t>()[0] = 1;
@@ -189,6 +198,9 @@ TEST(TensorIndexPutTest, IndexPutAccumulate) {
 
   t.index_put_(indices, values, true);  // accumulate=true
 
+  // Verify data pointer unchanged (inplace)
+  ASSERT_EQ(t.data_ptr<float>(), original_data_ptr);
+
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 0.0f);
   ASSERT_FLOAT_EQ(data[1], 10.0f);  // 5 + 5 (accumulated)
@@ -198,6 +210,7 @@ TEST(TensorIndexPutTest, IndexPutAccumulate) {
 TEST(TensorIndexPutTest, IndexPutWith2D) {
   // Test index_put_ with 2D tensor
   at::Tensor t = at::zeros({3, 3}, at::kFloat);
+  float* original_data_ptr = t.data_ptr<float>();
 
   at::Tensor idx0 = at::arange(2, at::kLong);
   idx0.data_ptr<int64_t>()[0] = 0;
@@ -213,6 +226,9 @@ TEST(TensorIndexPutTest, IndexPutWith2D) {
   at::Tensor values = at::full({2}, 9.0f, at::kFloat);
 
   t.index_put_(indices, values);
+
+  // Verify data pointer unchanged (inplace)
+  ASSERT_EQ(t.data_ptr<float>(), original_data_ptr);
 
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 9.0f);  // [0,0]
