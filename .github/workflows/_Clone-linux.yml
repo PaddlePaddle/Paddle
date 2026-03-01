@@ -58,7 +58,7 @@ jobs:
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 
       - name: Clone paddle
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           submodules: "recursive"

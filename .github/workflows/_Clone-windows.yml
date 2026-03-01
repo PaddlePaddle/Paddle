@@ -31,7 +31,7 @@ jobs:
           git config --global core.longpaths true
 
       - name: Clone paddle
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 1000
