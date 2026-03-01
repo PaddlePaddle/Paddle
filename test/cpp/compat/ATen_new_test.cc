@@ -14,6 +14,10 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/ops/new_empty.h>
+#include <ATen/ops/new_full.h>
+#include <ATen/ops/new_ones.h>
+#include <ATen/ops/new_zeros.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>

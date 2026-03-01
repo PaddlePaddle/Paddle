@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/ops/resize.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
