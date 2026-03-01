@@ -52,7 +52,7 @@ class Binomial(distribution.Distribution):
             for each individual bernoulli trial. If the input data type is float, it will be converted to a 1-D Tensor with paddle global default dtype.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import Binomial

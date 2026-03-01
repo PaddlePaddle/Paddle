@@ -36,15 +36,15 @@ class TransformedDistribution(distribution.Distribution):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
             >>> from paddle.distribution import transformed_distribution
 
             >>> d = transformed_distribution.TransformedDistribution(
-            ...     paddle.distribution.Normal(0., 1.),
-            ...     [paddle.distribution.AffineTransform(paddle.to_tensor(1.), paddle.to_tensor(2.))]
+            ...     paddle.distribution.Normal(0.0, 1.0),
+            ...     [paddle.distribution.AffineTransform(paddle.to_tensor(1.0), paddle.to_tensor(2.0))],
             ... )
 
             >>> # doctest: +SKIP('random sample')

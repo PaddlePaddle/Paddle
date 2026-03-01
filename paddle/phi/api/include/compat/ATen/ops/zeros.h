@@ -75,7 +75,3 @@ inline at::Tensor zeros_symint(c10::SymIntArrayRef size,
 }
 
 }  // namespace at
-namespace torch {
-using at::zeros;
-using at::zeros_symint;
-}  // namespace torch

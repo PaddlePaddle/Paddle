@@ -6,8 +6,18 @@ on:
     types: [opened, synchronize, reopened, edited]
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'template'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   check:
     name: Check
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Template
     timeout-minutes: 10
@@ -17,15 +27,7 @@ jobs:
       - name: Clone paddle
         uses: actions/checkout@v4
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: template
-
       - name: Check PR Template
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           AGILE_PULL_ID: ${{ github.event.pull_request.number }}
           AGILE_COMPILE_BRANCH: ${{ github.base_ref }}

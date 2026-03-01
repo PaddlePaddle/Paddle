@@ -59,7 +59,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         Tensor: the tensor `x` annotated with sharding information.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
@@ -160,7 +160,7 @@ def shard_op(
         Outputs of `op`, each of which is annotated with sharding information.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distributed.fleet import auto
@@ -168,10 +168,12 @@ def shard_op(
             >>> x = paddle.ones([4, 6])
             >>> y = paddle.zeros([4, 6])
             >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            >>> dist_add = auto.shard_op(paddle.add,
-            ...                          mesh,
-            ...                          in_shard_specs=[["x", "y"], ["y", None]],
-            ...                          out_shard_specs=[[None, "x"]])
+            >>> dist_add = auto.shard_op(
+            ...     paddle.add,
+            ...     mesh,
+            ...     in_shard_specs=[["x", "y"], ["y", None]],
+            ...     out_shard_specs=[[None, "x"]],
+            ... )
             >>> dist_add(x, y)
 
     """
@@ -343,7 +345,7 @@ def get_mesh() -> paddle.distributed.ProcessMesh:
         mesh (paddle.distributed.ProcessMesh): the global mesh.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -369,7 +371,7 @@ def set_mesh(mesh: paddle.distributed.ProcessMesh) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist

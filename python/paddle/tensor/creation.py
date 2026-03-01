@@ -17,6 +17,7 @@ from __future__ import annotations
 import builtins
 import math
 import numbers
+import os
 import re
 import warnings
 from typing import TYPE_CHECKING, overload
@@ -231,10 +232,9 @@ def create_parameter(
         The created parameter.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
@@ -847,6 +847,25 @@ def _to_tensor_non_static(
             data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
+        if core.is_compiled_with_custom_device(
+            "iluvatar_gpu"
+        ) and os.environ.get('FLAG_FORCE_FLOAT32', '').lower() in [
+            '1',
+            'true',
+            'on',
+        ]:
+            import logging
+
+            if data.dtype == np.float64:
+                logging.warning(
+                    "Input data type is float64 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to float32!"
+                )
+                data = data.astype(np.float32)
+            elif data.dtype == np.complex128:
+                logging.warning(
+                    "Input data type is complex128 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to complex64!"
+                )
+                data = data.astype(np.complex64)
         if (
             data.dtype
             in [
@@ -4108,6 +4127,7 @@ def cauchy_(
 
 
 @dygraph_only
+@param_one_alias(['probs', 'p'])
 def geometric_(
     x: paddle.Tensor,
     probs: float | paddle.Tensor,
@@ -4119,6 +4139,7 @@ def geometric_(
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (float|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
+            Alias: ``p``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

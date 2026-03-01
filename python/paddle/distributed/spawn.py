@@ -501,7 +501,7 @@ def spawn(
         ``MultiprocessContext`` object, it hold the spawned processes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
@@ -514,6 +514,7 @@ def spawn(
             ...         super().__init__()
             ...         self._linear1 = nn.Linear(10, 10)
             ...         self._linear2 = nn.Linear(10, 1)
+            ...
             ...     def forward(self, x):
             ...         return self._linear2(self._linear1(x))
 
@@ -523,10 +524,9 @@ def spawn(
             ...     process_group = group.process_group if group else None
             ...     # 2. create data parallel layer & optimizer
             ...     layer = LinearNet()
-            ...     dp_layer = paddle.DataParallel(layer, group = process_group)  # type: ignore[arg-type]
+            ...     dp_layer = paddle.DataParallel(layer, group=process_group)  # type: ignore[arg-type]
             ...     loss_fn = nn.MSELoss()
-            ...     adam = opt.Adam(
-            ...         learning_rate=0.001, parameters=dp_layer.parameters())
+            ...     adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
             ...     # 3. run layer
             ...     inputs = paddle.randn([10, 10], 'float32')
             ...     outputs = dp_layer(inputs)
