@@ -22,6 +22,7 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
+#include "paddle/phi/api/include/compat/c10/core/Device.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
@@ -461,7 +462,7 @@ TEST(DeviceCompatTest, DeviceFromStringWithIndex) {
 
 TEST(DeviceCompatTest, DeviceFromStringInvalid) {
   // Test invalid device string throws exception
-  ASSERT_THROW(c10::Device(""), c10::Error);
+  ASSERT_THROW(c10::Device(""), common::enforce::EnforceNotMet);
   ASSERT_THROW(c10::Device("cuda:abc"), common::enforce::EnforceNotMet);
 }
 

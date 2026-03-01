@@ -90,6 +90,9 @@ struct Device final {
 
 std::ostream& operator<<(std::ostream& stream, const Device& device);
 
+// Parse device type string to DeviceType
+DeviceType parse_type(const std::string& device_string);
+
 }  // namespace c10
 
 namespace at {
