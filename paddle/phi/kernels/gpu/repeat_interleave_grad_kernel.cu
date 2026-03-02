@@ -245,7 +245,9 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
+
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -254,4 +256,5 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}

@@ -120,7 +120,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           blocking(int|None, optional): Whether the stream is executed synchronously. Default: False.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
               >>> import paddle
@@ -200,7 +200,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
               event(CustomDeviceEvent): The event to wait on.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -231,7 +231,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
               stream(CUDAStream): The stream to synchronize with.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -259,7 +259,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
               A boolean value.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -283,7 +283,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           Waits for stream tasks to complete.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -319,7 +319,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
               The record event.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -345,7 +345,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           return the cuda stream of type CustomDeviceStream as type int.
 
           Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                 >>> import paddle
@@ -373,7 +373,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           return the raw stream of type CustomDeviceStream as type int.
 
           Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                 >>> import paddle
@@ -409,7 +409,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
 
       Examples:
-          .. code-block:: python
+          .. code-block:: pycon
 
               >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
               >>> import paddle
@@ -509,7 +509,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
               stream(CustomDeviceStream, optional): The handle of custom device stream. If None, the stream is the current stream. Default: None.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -536,7 +536,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
               A boolean which indicates all work currently captured by the event has been completed.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle
@@ -560,7 +560,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
             Waits for an event to complete.
 
             Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                     >>> import paddle
@@ -585,7 +585,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           return the raw event of type CustomDeviceEvent as type int.
 
           Examples:
-              .. code-block:: python
+              .. code-block:: pycon
 
                   >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                   >>> import paddle

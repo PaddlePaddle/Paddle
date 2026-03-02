@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/truncated_normal.h"
 
@@ -38,9 +39,11 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   T* data = dev_ctx.template Alloc<T>(tensor);
 
-  std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
-                                         1.0);
-  TruncatedNormal<T> truncated_normal(mean, std, a, b);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  std::uniform_real_distribution<MPType> dist(std::numeric_limits<float>::min(),
+                                              1.0);
+  TruncatedNormal<MPType> truncated_normal(mean, std, a, b);
   int64_t size = tensor->numel();
 
   std::shared_ptr<std::mt19937_64> engine;
@@ -51,7 +54,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
   for (int64_t i = 0; i < size; ++i) {
-    data[i] = truncated_normal(dist(*engine));
+    data[i] = static_cast<T>(truncated_normal(dist(*engine)));
   }
 }
 
@@ -62,4 +65,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::bfloat16) {}

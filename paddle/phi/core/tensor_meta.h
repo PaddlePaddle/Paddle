@@ -123,7 +123,7 @@ struct SparseTensorMeta {
 
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
-  DataLayout layout{DataLayout::NCHW};
+  DataLayout layout{DataLayout::UNDEFINED};
 };
 
 inline bool operator==(const SparseTensorMeta& lhs,

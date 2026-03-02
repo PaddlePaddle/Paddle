@@ -758,7 +758,7 @@ def load_state_dict(
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1391,7 +1391,7 @@ def load_merged_state_dict(
         dict: Merged state_dict.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1401,7 +1401,7 @@ def load_merged_state_dict(
             >>> mesh = dist.ProcessMesh([0, 1])
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
             >>> state_dict = {"w1": sharded_w1}
-            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+            >>> dist.save_state_dict(state_dict, ckpt_path)  # save sharded checkpoint
 
             >>> # doctest: +SKIP('run in single-card mode.')
             >>> import paddle
@@ -1544,7 +1544,7 @@ def merge_sharded_state_dict(
         None.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1554,14 +1554,16 @@ def merge_sharded_state_dict(
             >>> mesh = dist.ProcessMesh([0, 1])
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
             >>> state_dict = {"w1": sharded_w1}
-            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+            >>> dist.save_state_dict(state_dict, ckpt_path)  # save sharded checkpoint
 
             >>> # doctest: +SKIP('run in single-card mode.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
             >>> save_path = "./merged_checkpoint"
-            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(ckpt_path, save_path)  # load unsharded and save to safetensors
+            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(
+            ...     ckpt_path, save_path
+            ... )  # load unsharded and save to safetensors
             >>> # doctest: -SKIP
     """
     if unique_id is None:

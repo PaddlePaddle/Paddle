@@ -52,7 +52,7 @@ class Gamma(exponential_family.ExponentialFamily):
             a batch_shape(refer to :ref:`api_paddle_distribution_Distribution`).
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -12,7 +12,6 @@ set(TEST_ONEDNN_CACHING_DEPS
     phi
     common
     scope
-    device_context
     generated_static_op)
 
 if(WITH_GPU OR WITH_ROCM)

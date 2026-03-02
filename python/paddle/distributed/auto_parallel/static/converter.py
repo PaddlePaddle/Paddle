@@ -95,7 +95,7 @@ class Converter:
             converted tensors(dict)
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
@@ -108,15 +108,15 @@ class Converter:
                 ...     name: {
                 ...         "process_shape": [2],
                 ...         "process_group": [0, 1],
-                ...         "dims_mapping": [0, -1]
-                ...     }
+                ...         "dims_mapping": [0, -1],
+                ...     },
                 ... }
                 >>> strategy_2 = {
                 ...     name: {
                 ...         "process_shape": [2],
                 ...         "process_group": [0, 1],
-                ...         "dims_mapping": [-1, -1]
-                ...     }
+                ...         "dims_mapping": [-1, -1],
+                ...     },
                 ... }
                 >>> converter = Converter(tensors_dict, strategy_1, strategy_2)
                 >>> result = converter.convert()
@@ -341,15 +341,15 @@ class Converter:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
                 >>> import paddle
                 >>> from paddle.distributed.auto_parallel.static.converter import Converter
-                >>> partition_tensor_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
+                >>> partition_tensor_list = [(np.array([[[1.11, 1.12]]]), [[0, 1], [0, 1], [0, 2]])]
                 >>> tensor = np.array([[[1.13, 1.14]]])
-                >>> partition_index = [[0,1],[0,1],[2,4]]
+                >>> partition_index = [[0, 1], [0, 1], [2, 4]]
                 >>> complete_shape = [3, 2]
 
                 >>> Converter.merge(partition_tensor_list, tensor, partition_index, complete_shape)
@@ -410,7 +410,7 @@ class Converter:
             sliced_tensor_list(list): sliced tensors with 'partition_index_list'
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
@@ -450,7 +450,7 @@ class Converter:
             split_indices_list(list): the split indices of every dimension of the tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
@@ -502,7 +502,7 @@ class Converter:
             sliced_tensor_index(int): the index of sliced tensor in sliced_tensor_list
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
@@ -514,8 +514,13 @@ class Converter:
                 >>> process_shape = [3]
                 >>> process_group = [0, 1, 2]
 
-                >>> index = Converter._get_sliced_index(rank, complete_shape, dims_mapping,
-                ...                                 process_shape, process_group)
+                >>> index = Converter._get_sliced_index(
+                ...     rank,
+                ...     complete_shape,
+                ...     dims_mapping,
+                ...     process_shape,
+                ...     process_group,
+                ... )
                 >>> print(index)
                 2
         """

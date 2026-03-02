@@ -241,17 +241,19 @@ class Dy2StTestMeta(type):
             mode_tuples = list(
                 filter(
                     # Filter out disabled test cases by decorator
-                    lambda mode_tuple: not Dy2StTestMeta.is_disabled_by_attr(
-                        fn_disabled_test_cases,
-                        mode_tuple,
-                    )
-                    # Filter out disabled test cases by file
-                    and not Dy2StTestMeta.is_disabled_by_file(
-                        filename,
-                        mode_tuple,
-                    )
-                    # Skip invalid test cases
-                    and mode_tuple in VALID_MODES,
+                    lambda mode_tuple: (
+                        not Dy2StTestMeta.is_disabled_by_attr(
+                            fn_disabled_test_cases,
+                            mode_tuple,
+                        )
+                        # Filter out disabled test cases by file
+                        and not Dy2StTestMeta.is_disabled_by_file(
+                            filename,
+                            mode_tuple,
+                        )
+                        # Skip invalid test cases
+                        and mode_tuple in VALID_MODES
+                    ),
                     mode_tuples,
                 )
             )
