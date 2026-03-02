@@ -287,6 +287,7 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
 
   if (FLAGS_use_stride_compute_kernel && dout.initialized() &&
       dout.numel() != 0 && !invalid_stride) {
+#if defined(PADDLE_WITH_CUDA)
     if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr) {
       ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, y, axis, dx);
       ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, x, axis, dy);
@@ -302,6 +303,26 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
       ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, x, axis, dy);
       return;
     }
+#else
+    if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr &&
+        broadcast_dim == dx->dims() && broadcast_dim == dy->dims()) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+      return;
+    }
+
+    if (y.initialized() && dx != nullptr && dy == nullptr &&
+        broadcast_dim == dx->dims()) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
+      return;
+    }
+
+    if (x.initialized() && dy != nullptr && dx == nullptr &&
+        broadcast_dim == dy->dims()) {
+      phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
+      return;
+    }
+#endif
   }
 
   if (x.initialized() && !x.meta().is_contiguous()) {
