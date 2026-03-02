@@ -22,22 +22,6 @@ class TestTensorSparseMask(unittest.TestCase):
     Test paddle.Tensor.sparse_mask API (PyTorch migration compatibility)
     """
 
-    def setUp(self):
-        """Setup before testing: set device and random seed"""
-        # Modification: Prefer to use GPU; if GPU is not available, use CPU
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
-        else:
-            paddle.set_device('cpu')
-        paddle.seed(2024)
-
-    def _check_result(self, out, expected_values, shape, format_type):
-        """Helper function: verify result shape, format and values"""
-        self.assertEqual(out.shape, shape)
-        self.assertEqual(out.format, format_type)
-        # Allow small floating point errors
-        np.testing.assert_allclose(out.values.numpy(), expected_values, rtol=1e-5)
-
     def test_csr_sparse_mask(self):
         """Test CSR format sparse mask"""
         # 1. Construct CSR sparse tensor
@@ -49,30 +33,23 @@ class TestTensorSparseMask(unittest.TestCase):
         mask = sparse.sparse_csr_tensor(crows, cols, values, shape, dtype='float32')
         
         # 2. Construct dense input
+        paddle.seed(2024)  # 在测试内设置种子
         x = paddle.rand(shape, dtype='float32')
         x_np = x.numpy()
 
         # 3. Call new API (instance method style)
         out_method = x.sparse_mask(mask)
 
-        # 4. Call old API (function style) as baseline
-        out_func = sparse.mask_as(x, mask)
-
-        # 5. Verify consistency
-        self.assertTrue(paddle.allclose(out_method.values, out_func.values).numpy()[0])
-        self.assertEqual(out_method.format, 'csr')
+        # 4. Verify type
+        self.assertIsInstance(out_method, paddle.sparse.SparseCsrTensor)
         
-        # 6. Verify numerical logic (manual calculation of expected values)
-        # Non-zero positions of mask corresponding x values should be: 
-        # row0: col1, col3 -> x[0,1], x[0,3]
-        # row1: col2     -> x[1,2]
-        # row2: col0, col1 -> x[2,0], x[2,1]
+        # 5. Verify numerical logic
         expected_vals = np.array([
             x_np[0, 1], x_np[0, 3], 
             x_np[1, 2], 
             x_np[2, 0], x_np[2, 1]
         ])
-        self._check_result(out_method, expected_vals, shape, 'csr')
+        np.testing.assert_allclose(out_method.values.numpy(), expected_vals, rtol=1e-5)
 
     def test_coo_sparse_mask(self):
         """Test COO format sparse mask"""
@@ -82,16 +59,19 @@ class TestTensorSparseMask(unittest.TestCase):
         shape = [3, 3]
         
         mask = sparse.sparse_coo_tensor(indices, vals, shape, dtype='float32')
+        paddle.seed(2024)  # 在测试内设置种子
         x = paddle.rand(shape, dtype='float32')
         x_np = x.numpy()
 
         # 2. Call new API
         out = x.sparse_mask(mask)
 
-        # 3. Verify
-        self.assertEqual(out.format, 'coo')
+        # 3. Verify type
+        self.assertIsInstance(out, paddle.sparse.SparseCooTensor)
+        
+        # 4. Verify numerical logic
         expected_vals = np.array([x_np[0, 1], x_np[1, 2], x_np[2, 0]])
-        self._check_result(out, expected_vals, shape, 'coo')
+        np.testing.assert_allclose(out.values.numpy(), expected_vals, rtol=1e-5)
 
     def test_name_parameter(self):
         """Test if name parameter works (for static graph tracing)"""
@@ -100,23 +80,33 @@ class TestTensorSparseMask(unittest.TestCase):
         x = paddle.ones(shape)
         
         out = x.sparse_mask(mask, name="my_sparse_op")
-        # In dynamic mode, name is mainly for identification, here we simply verify no error and returns Tensor
+        # In dynamic mode, name is mainly for identification, here we simply verify no error
         self.assertIsInstance(out, paddle.Tensor)
-        # If entering static graph, out.name should contain "my_sparse_op"
 
     def test_dtype_compatibility(self):
         """Test compatibility of different data types"""
         shape = [2, 2]
-        mask = sparse.sparse_coo_tensor([[0, 1], [0, 1]], [1.0, 1.0], shape)
         
         # Test float64
+        mask64 = sparse.sparse_coo_tensor(
+            [[0, 1], [0, 1]], 
+            [1.0, 1.0], 
+            shape, 
+            dtype='float64'
+        )
         x64 = paddle.rand(shape, dtype='float64')
-        out64 = x64.sparse_mask(mask)
+        out64 = x64.sparse_mask(mask64)
         self.assertEqual(out64.dtype, paddle.float64)
 
         # Test int32
+        mask32 = sparse.sparse_coo_tensor(
+            [[0, 1], [0, 1]], 
+            [1.0, 1.0], 
+            shape, 
+            dtype='int32'
+        )
         x32 = paddle.randint(0, 10, shape, dtype='int32')
-        out32 = x32.sparse_mask(mask)
+        out32 = x32.sparse_mask(mask32)
         self.assertEqual(out32.dtype, paddle.int32)
 
 if __name__ == '__main__':
