@@ -130,6 +130,36 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
   }
 }
 
+// Shuffle-down variants matching PyTorch's cuda_utils::WarpReduce pattern.
+// Used by the compatible forward block path to produce bit-identical results
+// with PyTorch's blockReduceWarp (which uses __shfl_down_sync).
+// XOR vs DOWN shuffles produce different floating-point rounding for sum.
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceSumDown(T* sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T sum_val =
+          phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = sum[i] + sum_val;
+    }
+  }
+}
+
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceMaxDown(T* sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T max_val =
+          phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = max(sum[i], max_val);
+    }
+  }
+}
+
 template <typename T>
 __inline__ __device__ void BlockReduceMax(T* val) {
   static __shared__ T shared[32];
@@ -163,6 +193,62 @@ __inline__ __device__ void BlockReduceSum(T* val) {
   int block_span = (blockDim.x + warpSize - 1) >> 5;
   *val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
   WarpReduceSum<T, 1, 32>(val);
+}
+
+// Shuffle-down block reduction matching PyTorch's blockReduceWarp pattern.
+// PyTorch uses __shfl_down_sync for the warp-level step inside block reduce,
+// then broadcasts the final result to all threads via shared memory.
+// The broadcast step is critical: without it, only thread 0 has the correct
+// result, and other threads would compute wrong log_softmax values.
+template <typename T>
+__inline__ __device__ void BlockReduceMaxDown(T* val) {
+  static __shared__ T shared[32];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  WarpReduceMaxDown<T, 1, 32>(val);
+
+  if (lane == 0) shared[wid] = *val;
+
+  __syncthreads();
+
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  *val = (lane < block_span) ? shared[lane] : -1e10f;
+  if (wid == 0) {
+    WarpReduceMaxDown<T, 1, 32>(val);
+  }
+  // Broadcast final result from thread 0 to all threads
+  if (threadIdx.x == 0) {
+    shared[0] = *val;
+  }
+  __syncthreads();
+  *val = shared[0];
+}
+
+template <typename T>
+__inline__ __device__ void BlockReduceSumDown(T* val) {
+  static __shared__ T shared[32];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  WarpReduceSumDown<T, 1, 32>(val);
+
+  __syncthreads();
+  if (lane == 0) shared[wid] = *val;
+
+  __syncthreads();
+
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  *val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  if (wid == 0) {
+    WarpReduceSumDown<T, 1, 32>(val);
+  }
+  // Broadcast final result from thread 0 to all threads
+  if (threadIdx.x == 0) {
+    shared[0] = *val;
+  }
+  __syncthreads();
+  *val = shared[0];
 }
 
 template <typename Tx, typename Ty = Tx>
@@ -293,6 +379,15 @@ template <typename Tx, typename Ty = Tx>
 struct LogSoftmaxForwardFunctor {
   HOSTDEVICE inline LogSoftmaxForwardFunctor(Tx max, Tx sum)
       : max(max), log_sum(std::log(sum)) {}
+
+  // Constructor with pre-computed log_sum for use when log(sum) was computed
+  // in higher precision (e.g. double) externally. The tag struct disambiguates
+  // from the (max, sum) constructor above.
+  struct PrecomputedLogSum {};
+  HOSTDEVICE inline LogSoftmaxForwardFunctor(Tx max,
+                                             Tx log_sum_value,
+                                             PrecomputedLogSum)
+      : max(max), log_sum(log_sum_value) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x - max - log_sum);
@@ -1265,6 +1360,9 @@ template <typename T>
 bool UseCudnnSoftmax(const GPUContext& dev_ctx,
                      int64_t softmax_dim,
                      bool last_dim) {
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return false;
+  }
   bool cudnn_available = dev_ctx.cudnn_handle();
   if (!dev_ctx.cudnn_handle()) {
     if (std::is_same<T, phi::bfloat16>::value) {
@@ -1723,8 +1821,8 @@ __global__ void SoftMaxForwardReg(T* output,
     }
   }
 
-  // Reduce to the Max for block
-  BlockReduceMax<AccT>(&threadMax);
+  // Reduce to the Max for block (shuffle-down to match PyTorch)
+  BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
   SumExpFunctor<T, AccT> sumExpFunc(max_k);
@@ -1736,7 +1834,7 @@ __global__ void SoftMaxForwardReg(T* output,
       threadExp = sumExpFunc(threadExp, reg[reg_idx]);
     }
   }
-  BlockReduceSum<AccT>(&threadExp);
+  BlockReduceSumDown<AccT>(&threadExp);
   AccT sumAll = threadExp;
 
   Function<T, AccT, T> function(max_k, sumAll);
@@ -1770,24 +1868,24 @@ __global__ void SoftMaxForward(T* output, const T* input, IndexType classes) {
   const IndexType output_shift =
       ((uint64_t)output) % SOFTMAX_ALIGN_BYTES / sizeof(T);
 
-  // max
+  // max (shuffle-down to match PyTorch)
   AccT threadMax = ThreadVecReduce<MaxFunctor, T, AccT, IndexType, VecSize>(
       input,
       classes,
       static_cast<IndexType>(shift),
       MaxFunctor<T, AccT>(),
       std::numeric_limits<AccT>::lowest());
-  BlockReduceMax<AccT>(&threadMax);
+  BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
-  // reduce all values
+  // reduce all values (shuffle-down to match PyTorch)
   AccT threadExp = ThreadVecReduce<SumExpFunctor, T, AccT, IndexType, VecSize>(
       input,
       classes,
       static_cast<IndexType>(shift),
       SumExpFunctor<T, AccT>(max_k),
       static_cast<AccT>(0.));
-  BlockReduceSum<AccT>(&threadExp);
+  BlockReduceSumDown<AccT>(&threadExp);
   AccT sumAll = threadExp;
 
   Function<T, AccT, T> function(max_k, sumAll);
@@ -1894,7 +1992,7 @@ __global__ void SoftMaxForwardSmem(T* output,
     }
   }
 
-  BlockReduceMax<AccT>(&threadMax);
+  BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
   // Reload inputs from shared memory to compute the sum. The previous reduction
@@ -1910,7 +2008,7 @@ __global__ void SoftMaxForwardSmem(T* output,
     }
   }
 
-  BlockReduceSum<AccT>(&threadExp);
+  BlockReduceSumDown<AccT>(&threadExp);
   AccT sumAll = threadExp;
 
   Function<T, AccT, T> function(max_k, sumAll);
