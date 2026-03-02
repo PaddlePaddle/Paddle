@@ -3029,6 +3029,43 @@ def cross_entropy(
             input, label, soft_label, use_softmax, True, ignore_index, axis
         )
 
+        # Compatible mode: use nll_loss for reduction to match PyTorch's
+        # nll_loss_forward_reduce_cuda_kernel_2d reduction topology.
+        if (
+            not soft_label
+            and use_softmax
+            and reduction != 'none'
+            and weight is None
+            and axis == -1
+            and paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+                "FLAGS_use_accuracy_compatible_kernel", False
+            )
+        ):
+            _nll_input = input
+            _nll_orig_dtype = input.dtype
+            # nll_loss does not support float16/bfloat16; promote to float32
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                _nll_input = paddle.cast(_nll_input, paddle.float32)
+            log_softmax_out = paddle.nn.functional.log_softmax(
+                _nll_input, axis=axis
+            )
+            # nll_loss expects label shape [N] for 2D input
+            nll_label = label
+            if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
+                nll_label = paddle.squeeze(nll_label, axis=-1)
+            # nll_loss only accepts rank 2 or 4; reshape 3D [B,S,C] -> [B*S,C]
+            if log_softmax_out.ndim == 3:
+                _C = log_softmax_out.shape[2]
+                log_softmax_out = paddle.reshape(log_softmax_out, [-1, _C])
+                nll_label = paddle.reshape(nll_label, [-1])
+            loss, _ = _C_ops.nll_loss(
+                log_softmax_out, nll_label, None, ignore_index, reduction
+            )
+            # Cast back to original dtype if promoted
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                loss = paddle.cast(loss, _nll_orig_dtype)
+            return loss
+
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label:
