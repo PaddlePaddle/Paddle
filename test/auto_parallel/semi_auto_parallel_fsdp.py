@@ -104,7 +104,9 @@ class TestSemiAutoParallelFSDP:
         opt = paddle.optimizer.AdamW(parameters=model.parameters())
 
         # use FSDP
-        model = fully_shard(model, mesh=self._mesh)
+        model = fully_shard(
+            model, mesh=self._mesh, enable_tensor_fusion_and_overlap=False
+        )
 
         stage_losses = []
         tr_loss_add = float(0)
@@ -134,7 +136,42 @@ class TestSemiAutoParallelFSDP:
         opt = paddle.optimizer.AdamW(parameters=model.parameters())
 
         # use FSDP
-        model = fully_shard(model, mesh=self._mesh)
+        model = fully_shard(
+            model, mesh=self._mesh, enable_tensor_fusion_and_overlap=False
+        )
+
+        stage_losses = []
+        tr_loss_add = float(0)
+        step = 0
+        for batch in dist_loader:
+            tr_loss = model(batch[0])
+            tr_loss.backward()
+            tr_loss_add += tr_loss
+            if (step + 1) % self.gradient_accumulation_steps == 0:
+                tr_loss_add /= self.gradient_accumulation_steps
+                tr_loss = tr_loss_add
+                opt.step()
+                opt.clear_grad()
+            step += 1
+            stage_losses.append(tr_loss._local_value()._md5sum())
+        return stage_losses
+
+    def test_fsdp_with_tensor_fusion_and_overlap(self):
+        dist.init_parallel_env()
+        dist.enable_auto_dp()
+        paddle.seed(self._seed)
+        model = paddle.nn.Linear(10, 10)
+        data_loader = self.create_dist_loader(2)
+        dist_loader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self._mesh],
+        )
+        opt = paddle.optimizer.AdamW(parameters=model.parameters())
+
+        # use FSDP with tensor_fusion and overlap
+        model = fully_shard(
+            model, mesh=self._mesh, enable_tensor_fusion_and_overlap=True
+        )
 
         stage_losses = []
         tr_loss_add = float(0)
@@ -166,6 +203,9 @@ class TestSemiAutoParallelFSDP:
 
         losses_fsdp_with_auto_dp = self.test_fsdp_with_auto_dp()
         assert losses_fsdp_with_auto_dp == losses_fsdp
+
+        losses_fsdp_fusion = self.test_fsdp_with_tensor_fusion_and_overlap()
+        assert losses_fsdp_fusion == losses_fsdp
 
 
 if __name__ == '__main__':
