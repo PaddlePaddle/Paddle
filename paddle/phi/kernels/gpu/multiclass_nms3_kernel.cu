@@ -1018,7 +1018,7 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
       rois_num_cpu = optional<DenseTensor>(rois_num_cpu_tenor);
     }
     dev_ctx.Wait();
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    DeviceContextPool& pool = DeviceContextPool::Instance();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
     MultiClassNMSKernel<T, phi::CPUContext>(*cpu_ctx,
                                             bboxes_cpu,

@@ -14,9 +14,10 @@
 
 #pragma once
 
-#include <ATen/Utils.h>
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <utils/dense_sparse_conversion.h>
+
 #include <optional>
 #include <string_view>
 
@@ -38,7 +39,7 @@ inline at::Tensor empty_like(
       self._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       place._PD_GetInner());
-  return detail::_PD_ConvertToSparseIfNeeded(dense, options.layout());
+  return compat::_PD_ConvertToSparseIfNeeded(dense, options.layout());
 }
 
 inline at::Tensor empty_like(const at::Tensor& self,
@@ -57,7 +58,7 @@ inline at::Tensor empty_like(const at::Tensor& self,
       self._PD_GetInner(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype.value_or(self.dtype())),
       device.value_or(self.device())._PD_GetInner());
-  return detail::_PD_ConvertToSparseIfNeeded(dense,
+  return compat::_PD_ConvertToSparseIfNeeded(dense,
                                              layout.value_or(c10::kStrided));
 }
 
