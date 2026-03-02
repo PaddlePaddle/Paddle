@@ -2837,7 +2837,7 @@ class TestHsplitAPI(unittest.TestCase):
 
         out1_1d = paddle.hsplit(x_1d, 2)
         out2_1d = paddle.hsplit(x=x_1d, num_or_indices=2)
-        out3_1d = paddle.hsplit(input=x_1d, indices_or_sections=2)
+        out3_1d = paddle.hsplit(input=x_1d, indices=2)
         out4_1d = paddle.hsplit(x_1d, num_or_indices=2)
         out5_1d = paddle.hsplit(x_1d, 2)
 
@@ -2849,7 +2849,7 @@ class TestHsplitAPI(unittest.TestCase):
 
         out1_2d = paddle.hsplit(x_2d, 2)
         out2_2d = paddle.hsplit(x=x_2d, num_or_indices=2)
-        out3_2d = paddle.hsplit(input=x_2d, indices_or_sections=2)
+        out3_2d = paddle.hsplit(input=x_2d, sections=2)
         out4_2d = paddle.hsplit(x_2d, num_or_indices=2)
         ref_out1_2d = np.array_split(self.np_x_2d, 2, axis=1)
         for out in [out1_2d, out2_2d, out3_2d, out4_2d]:
@@ -2857,7 +2857,7 @@ class TestHsplitAPI(unittest.TestCase):
             np.testing.assert_allclose(ref_out1_2d[0], out[0].numpy())
             np.testing.assert_allclose(ref_out1_2d[1], out[1].numpy())
 
-        out5_2d = paddle.hsplit(input=x_2d, indices_or_sections=[1, 4])
+        out5_2d = paddle.hsplit(input=x_2d, sections=[1, 4])
         out6_2d = paddle.hsplit(x=x_2d, num_or_indices=[1, 4])
         ref_out2_2d = np.array_split(self.np_x_2d, [1, 4], axis=1)
         for out in [out5_2d, out6_2d]:
@@ -2882,12 +2882,12 @@ class TestHsplitAPI(unittest.TestCase):
 
             out1_1d = paddle.hsplit(x_1d, 2)
             out2_1d = paddle.hsplit(x=x_1d, num_or_indices=2)
-            out3_1d = paddle.hsplit(input=x_1d, indices_or_sections=2)
+            out3_1d = paddle.hsplit(input=x_1d, indices=2)
             out1_2d = paddle.hsplit(x_2d, 2)
             out2_2d = paddle.hsplit(x=x_2d, num_or_indices=2)
-            out3_2d = paddle.hsplit(input=x_2d, indices_or_sections=2)
+            out3_2d = paddle.hsplit(input=x_2d, sections=2)
             out4_2d = paddle.hsplit(x=x_2d, num_or_indices=[1, 4])
-            out5_2d = paddle.hsplit(input=x_2d, indices_or_sections=[1, 4])
+            out5_2d = paddle.hsplit(input=x_2d, sections=[1, 4])
 
             exe = paddle.base.Executor()
             fetches = exe.run(
