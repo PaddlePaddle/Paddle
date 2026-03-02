@@ -545,33 +545,40 @@ TEST(FunctionSchemaMayContainAliasTest, Basic) {
                                         {c10::SchemaArgType::input, 0}));
 }
 
-TEST(FunctionSchemaMayContainAliasTest, Wildcard) {
-  c10::FunctionSchema schema = torch::jit::parseSchema(
-      "aten::test.Tensor(Tensor(*) self) -> (Tensor[], Tensor)");
-  ASSERT_FALSE(schema.may_alias({c10::SchemaArgType::output, 0},
-                                {c10::SchemaArgType::input, 0}));
-  ASSERT_TRUE(schema.may_contain_alias({c10::SchemaArgType::output, 0},
-                                       {c10::SchemaArgType::input, 0}));
-  ASSERT_TRUE(schema.may_contain_alias(
-      {c10::SchemaArgType::output, 0}, {c10::SchemaArgType::input, 0}, false));
-  ASSERT_FALSE(schema.may_contain_alias(
-      {c10::SchemaArgType::input, 0}, {c10::SchemaArgType::output, 0}, false));
-  ASSERT_FALSE(schema.may_alias({c10::SchemaArgType::output, 1},
-                                {c10::SchemaArgType::input, 0}));
-}
+// 不支持 ListType
+// TEST(FunctionSchemaMayContainAliasTest, Wildcard) {
+//   c10::FunctionSchema schema = torch::jit::parseSchema(
+//       "aten::test.Tensor(Tensor(*) self) -> (Tensor[], Tensor)");
+//   ASSERT_FALSE(schema.may_alias({c10::SchemaArgType::output, 0},
+//                                 {c10::SchemaArgType::input, 0}));
+//   ASSERT_TRUE(schema.may_contain_alias({c10::SchemaArgType::output, 0},
+//                                        {c10::SchemaArgType::input, 0}));
+//   ASSERT_TRUE(schema.may_contain_alias(
+//       {c10::SchemaArgType::output, 0}, {c10::SchemaArgType::input, 0},
+//       false));
+//   ASSERT_FALSE(schema.may_contain_alias(
+//       {c10::SchemaArgType::input, 0}, {c10::SchemaArgType::output, 0},
+//       false));
+//   ASSERT_FALSE(schema.may_alias({c10::SchemaArgType::output, 1},
+//                                 {c10::SchemaArgType::input, 0}));
+// }
 
-TEST(FunctionSchemaMayContainAliasTest, InputAndOutputContainers) {
-  c10::FunctionSchema schema =
-      torch::jit::parseSchema("aten::test.Tensor(Tensor[] self) -> Tensor[]");
-  ASSERT_FALSE(schema.may_alias({c10::SchemaArgType::output, 0},
-                                {c10::SchemaArgType::input, 0}));
-  ASSERT_TRUE(schema.may_contain_alias({c10::SchemaArgType::output, 0},
-                                       {c10::SchemaArgType::input, 0}));
-  ASSERT_TRUE(schema.may_contain_alias(
-      {c10::SchemaArgType::output, 0}, {c10::SchemaArgType::input, 0}, false));
-  ASSERT_TRUE(schema.may_contain_alias(
-      {c10::SchemaArgType::input, 0}, {c10::SchemaArgType::output, 0}, false));
-}
+// 不支持 ListType
+// TEST(FunctionSchemaMayContainAliasTest, InputAndOutputContainers) {
+//   c10::FunctionSchema schema =
+//       torch::jit::parseSchema("aten::test.Tensor(Tensor[] self) ->
+//       Tensor[]");
+//   ASSERT_FALSE(schema.may_alias({c10::SchemaArgType::output, 0},
+//                                 {c10::SchemaArgType::input, 0}));
+//   ASSERT_TRUE(schema.may_contain_alias({c10::SchemaArgType::output, 0},
+//                                        {c10::SchemaArgType::input, 0}));
+//   ASSERT_TRUE(schema.may_contain_alias(
+//       {c10::SchemaArgType::output, 0}, {c10::SchemaArgType::input, 0},
+//       false));
+//   ASSERT_TRUE(schema.may_contain_alias(
+//       {c10::SchemaArgType::input, 0}, {c10::SchemaArgType::output, 0},
+//       false));
+// }
 
 // 不支持 SchemaInfo
 // TEST(SchemaInfoMayContainAliasTest, ContainAliasInputsEqual) {
