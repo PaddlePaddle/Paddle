@@ -43,7 +43,6 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/scope_guard.h"
 #include "paddle/utils/optional.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -60,6 +59,110 @@ COMMON_DECLARE_bool(use_legacy_linear);
 
 namespace phi {
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(_WIN32) && CUDA_VERSION >= 11060
+
+// Direct cublasLt matmul+bias, bypassing MatmulPlanner/DescriptorSetter/
+// CublasLtBase. Uses persistent workspace from GPUContext.
+template <typename T>
+static void CublasLtMatmulBias(const phi::GPUContext& ctx,
+                               const T* x,
+                               const T* w,
+                               const T* bias,
+                               T* out,
+                               int64_t M,
+                               int64_t N,
+                               int64_t K,
+                               bool trans_w) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  constexpr auto compute =
+      std::is_same<T, double>::value ? CUBLAS_COMPUTE_64F : CUBLAS_COMPUTE_32F;
+  const auto dtype = phi::backends::gpu::ToCudaDataType<T>();
+  const auto stype = phi::backends::gpu::ToCudaDataType<MT>();
+
+  MT alpha = static_cast<MT>(1), beta = static_cast<MT>(0);
+  auto lt = ctx.cublaslt_handle();
+
+  // op desc
+  cublasLtMatmulDesc_t op = nullptr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cublasLtMatmulDescCreate(&op, compute, stype));
+
+  // col-major: C(N,M) = A(weight) * B(input)
+  cublasOperation_t ta = trans_w ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t tb = CUBLAS_OP_N;
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+      op, CUBLASLT_MATMUL_DESC_TRANSA, &ta, sizeof(ta)));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+      op, CUBLASLT_MATMUL_DESC_TRANSB, &tb, sizeof(tb)));
+
+  cublasLtEpilogue_t epi = CUBLASLT_EPILOGUE_BIAS;
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+      op, CUBLASLT_MATMUL_DESC_EPILOGUE, &epi, sizeof(epi)));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+      op, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &bias, sizeof(bias)));
+
+  // matrix layouts (col-major)
+  cublasLtMatrixLayout_t la = nullptr, lb = nullptr, lc = nullptr;
+  if (trans_w) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatrixLayoutCreate(&la, dtype, K, N, K));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatrixLayoutCreate(&la, dtype, N, K, N));
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cublasLtMatrixLayoutCreate(&lb, dtype, K, M, K));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cublasLtMatrixLayoutCreate(&lc, dtype, N, M, N));
+
+  // persistent workspace from context
+  constexpr size_t kWsSize = 1024 * 1024;
+  auto [ws, ws_sz] = ctx.cublaslt_workspace(kWsSize);
+
+  // heuristic
+  cublasLtMatmulPreference_t pref = nullptr;
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulPreferenceCreate(&pref));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulPreferenceSetAttribute(
+      pref, CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES, &ws_sz, sizeof(ws_sz)));
+
+  cublasLtMatmulHeuristicResult_t heur = {};
+  int n_res = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulAlgoGetHeuristic(
+      lt, op, la, lb, lc, lc, pref, 1, &heur, &n_res));
+  PADDLE_ENFORCE_GT(
+      n_res,
+      0,
+      common::errors::Unavailable("No cublasLt GEMM algorithm available."));
+  dynload::cublasLtMatmulPreferenceDestroy(pref);
+
+  // execute
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt,
+                                                     op,
+                                                     &alpha,
+                                                     w,
+                                                     la,
+                                                     x,
+                                                     lb,
+                                                     &beta,
+                                                     out,
+                                                     lc,
+                                                     out,
+                                                     lc,
+                                                     &heur.algo,
+                                                     ws,
+                                                     ws_sz,
+                                                     ctx.stream()));
+
+  // cleanup
+  dynload::cublasLtMatmulDescDestroy(op);
+  dynload::cublasLtMatrixLayoutDestroy(la);
+  dynload::cublasLtMatrixLayoutDestroy(lb);
+  dynload::cublasLtMatrixLayoutDestroy(lc);
+}
+
+#endif
+
 template <typename T, typename Context>
 void LinearV2Kernel(const Context& dev_ctx,
                     const DenseTensor& input,
@@ -72,13 +175,12 @@ void LinearV2Kernel(const Context& dev_ctx,
     return;
   }
 
-// broadcast bias, reshape input,  run_fuse, reshape output
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(_WIN32) && CUDA_VERSION >= 11060
   if (!FLAGS_use_legacy_linear) {
-    VLOG(10) << "Use LinearV2Kernel with cublaslt";
     const auto out_dim_original = out->dims();
     const auto [M, N, K] = canonicalize_dims(input, weight, transpose_weight);
-    VLOG(10) << "M: " << M << ", N: " << N << ", K: " << K;
+
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
     input_processed.Resize(common::make_ddim({M, K}));
@@ -88,47 +190,32 @@ void LinearV2Kernel(const Context& dev_ctx,
       weight_processed.Resize(common::make_ddim({K, N}));
     }
     out->Resize(common::make_ddim({M, N}));
-    VLOG(10) << "input_processed: " << input_processed.dims()
-             << ", weight_processed: " << weight_processed.dims()
-             << ", output_processed: " << out->dims();
 
     if (N > 1 && K > 1) {
       DenseTensor bias_processed;
       if (bias.numel() != N) {
-        // only broadcast to 1D bias whatsoever
-        // pass1: scalar to 1D
         phi::TileKernel<T, Context>(dev_ctx, bias, {N}, &bias_processed);
       } else {
         bias_processed = bias;
       }
-      // CublasLt path with bias add epilogue
-      phi::funcs::LinearWithCublasLt<T>::Run(
-          dev_ctx,
-          &input_processed,
-          &weight_processed,
-          out,
-          static_cast<const void*>(bias_processed.data<T>()),
-          nullptr,
-          M,
-          N,
-          K,
-          false,
-          transpose_weight,
-          phi::funcs::MatmulFusedType::kMatmulBias);
+      CublasLtMatmulBias<T>(dev_ctx,
+                            input_processed.data<T>(),
+                            weight_processed.data<T>(),
+                            bias_processed.data<T>(),
+                            out->data<T>(),
+                            M,
+                            N,
+                            K,
+                            transpose_weight);
     } else {
+      // When N=1 or K=1, {N,K} and {K,N} have identical memory layout,
+      // so just reshape to {K,N} which is what AddmmKernel expects.
+      weight_processed.Resize(common::make_ddim({K, N}));
       DenseTensor bias_processed = bias;
-      auto blas = funcs::GetBlas<Context, T>(dev_ctx);
       if (bias.numel() != (M * N)) {
         bias_processed.Resize(make_ddim({1, bias.numel()}));
-        VLOG(10) << "bias.dim(): " << bias.dims();
-        VLOG(10) << "M*N: " << M * N;
-        VLOG(10) << "bias tiling and addmm calculating";
-        // only broadcast to 1D bias whatsoever
         phi::TileKernel<T, Context>(
             dev_ctx, bias_processed, {M, 1}, &bias_processed);
-        VLOG(10) << "bias_processed.dims(): " << bias_processed.dims();
-      } else {
-        bias_processed = bias;
       }
       phi::AddmmKernel<T>(dev_ctx,
                           bias_processed,
@@ -141,10 +228,7 @@ void LinearV2Kernel(const Context& dev_ctx,
     out->Resize(out_dim_original);
   } else  // NOLINT
 #endif
-  // Fallback logic for legacy CUDA version or other hardware.
-  // Or specified by user to use a legacy behaviour.
   {  // NOLINT
-    // NOTE(Pan Zhaowu): Fallback logic for legacy CUDA version or DCU.
     std::vector<std::int64_t> input_dims_vec = common::vectorize(input.dims());
     std::vector<std::int64_t> weight_dims_vec =
         common::vectorize(weight.dims());

@@ -386,6 +386,24 @@ class TestPowOutAndParamDecorator(unittest.TestCase):
         else:
             raise ValueError(f"Unknown test type: {test_type}")
 
+    def test_param_error(self):
+        x = paddle.to_tensor(self.x_np)
+        x2 = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        y2 = paddle.to_tensor(self.y_np)
+        with self.assertRaises(ValueError) as context:
+            paddle.pow(x, y=y, exponent=y2)
+            self.assertIn(
+                "Cannot specify both 'y' and its alias 'exponent'",
+                str(context.exception),
+            )
+        with self.assertRaises(ValueError) as context:
+            paddle.pow(x=x, y=y, input=x2, exponent=y2)
+            self.assertIn(
+                "Cannot specify both 'x' and its alias 'input'",
+                str(context.exception),
+            )
+
     def test_all(self):
         out_std, x_grad_std, y_grad_std = self.do_test('raw')
         for test_type in self.test_types:

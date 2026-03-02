@@ -68,7 +68,8 @@ class GradNodePyLayer : public GradNodeBase {
   std::string name() override { return name_; }
 
   void SaveForwardOutputsMeta(
-      const std::vector<std::vector<paddle::Tensor*>>& outputs_tensor) {
+      const paddle::small_vector<std::vector<paddle::Tensor*>>&
+          outputs_tensor) {
     forward_outputs_meta_.resize(outputs_tensor.size());
     forward_outputs_place_.resize(outputs_tensor.size());
     forward_outputs_dist_attr_.resize(outputs_tensor.size());
