@@ -25,6 +25,9 @@ jobs:
       BRANCH: develop
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Checkout base repo
         uses: actions/checkout@v4
         with:

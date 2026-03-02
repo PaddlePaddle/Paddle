@@ -24,6 +24,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Clone paddle
         uses: actions/checkout@v4
 

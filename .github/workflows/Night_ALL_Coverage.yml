@@ -36,6 +36,9 @@ jobs:
     runs-on:
       group: HK-Clone
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: build-docker-images
         id: build-docker-images
         run: |
@@ -61,6 +64,9 @@ jobs:
     runs-on:
       group: GZ_BD-CPU
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
@@ -236,6 +242,9 @@ jobs:
     runs-on:
       group: BD_BJ-V100
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"

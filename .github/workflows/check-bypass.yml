@@ -24,6 +24,9 @@ jobs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     timeout-minutes: 3
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - id: check-bypass
         name: Check Bypass
         uses: PFCCLab/ci-bypass@v2

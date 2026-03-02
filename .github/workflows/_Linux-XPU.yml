@@ -47,6 +47,9 @@ jobs:
       group: XPU-build
     timeout-minutes: 120
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run  container
         env:
           WITH_SHARED_PHI: "ON"
@@ -189,6 +192,9 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Determine the runner
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`

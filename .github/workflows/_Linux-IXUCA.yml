@@ -38,6 +38,9 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check approval
         id: check-approval
         run: |

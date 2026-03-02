@@ -23,6 +23,9 @@ jobs:
       group: win-clone
     timeout-minutes: 30
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Git config
         run: |
           git config --global user.name "PaddleCI"

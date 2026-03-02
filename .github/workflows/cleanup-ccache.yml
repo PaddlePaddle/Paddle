@@ -25,6 +25,9 @@ jobs:
       group: GZ_BD-CPU
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Launch container
         env:
           work_dir: /paddle

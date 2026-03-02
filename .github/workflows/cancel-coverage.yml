@@ -20,6 +20,9 @@ jobs:
     name: Cancel Coverage for ${{ github.event.pull_request.number }}
     runs-on: ubuntu-latest
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Cancel Coverage
         run: |
           exit 0

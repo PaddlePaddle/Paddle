@@ -20,6 +20,9 @@ jobs:
     name: Cancel CI-Windows for ${{ github.event.pull_request.number }}
     runs-on: ubuntu-latest
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Cancel CI-Windows
         run: |
           exit 0

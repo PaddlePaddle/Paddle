@@ -60,6 +60,9 @@ jobs:
       WIN_UNITTEST_LEVEL: 2
       CUDA_ARCH_NAME: "Auto"
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Download Paddle and clean env
         working-directory: ..
         timeout-minutes: 30
