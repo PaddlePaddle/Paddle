@@ -575,6 +575,11 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+if(WITH_NVSHMEM)
+  include(external/nvshmem)
+  list(APPEND third_party_deps extern_nvshmem)
+endif()
+
 if(WITH_ROCM)
   include(external/flashattn)
   list(APPEND third_party_deps extern_flashattn)
@@ -635,10 +640,6 @@ if(WITH_SLEEF
   if(TARGET extern_sleef)
     list(APPEND third_party_deps extern_sleef)
   endif()
-endif()
-if(WITH_NVSHMEM)
-  include(external/nvshmem)
-  list(APPEND third_party_deps extern_nvshmem)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

@@ -55,6 +55,7 @@ extern void *flashmaskv2_dso_handle;
   __macro(flashmaskv2_run_mha_fwd_combine);       \
   __macro(flashmaskv2_run_mha_fwd);               \
   __macro(flashmaskv2_get_nvshmem_unique_id);     \
+  __macro(flashmaskv2_get_segment_size);          \
   __macro(flashmaskv2_run_mha_bwd);               \
   __macro(flashmaskv2_get_pagedkv_tma);           \
   __macro(flashmaskv2_get_pack_gqa);              \

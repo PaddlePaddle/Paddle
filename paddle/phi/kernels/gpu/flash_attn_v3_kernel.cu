@@ -1210,19 +1210,15 @@ void FlashMaskV2BaseKernel(
     const optional<DenseTensor> &page_table_,  // (b_k, max_num_pages_per_seq)
     const optional<DenseTensor>
         &kv_batch_idx_,  // b. indices to index into the KV cache
-    const optional<DenseTensor> &leftpad_k_,  // b
-    const optional<DenseTensor>
-        &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
-    const optional<DenseTensor>
-        &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
-    const optional<DenseTensor> &q_descale_,  // (b, h_k), not (b, h)
-    const optional<DenseTensor> &k_descale_,  // (b, h_k)
-    const optional<DenseTensor> &v_descale_,  // (b, h_k)
-    const optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
-    const optional<DenseTensor>
-        &startend_row_indices_,  // （b,h,s_1,[1,2,4])
-    const optional<DenseTensor>
-        &block_mask_,  // （(b,h,s// 128,s // 128)
+    const optional<DenseTensor> &leftpad_k_,   // b
+    const optional<DenseTensor> &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &q_descale_,   // (b, h_k), not (b, h)
+    const optional<DenseTensor> &k_descale_,   // (b, h_k)
+    const optional<DenseTensor> &v_descale_,   // (b, h_k)
+    const optional<DenseTensor> &scheduler_metadata_,    // (b + 1)
+    const optional<DenseTensor> &startend_row_indices_,  // （b,h,s_1,[1,2,4])
+    const optional<DenseTensor> &block_mask_,  // （(b,h,s// 128,s // 128)
     const optional<DenseTensor>
         &unique_id_,  //  used in distributed overlap NVSHMEM init with
                       //  unique_id (128B u8 CPU tensor)
@@ -2200,23 +2196,23 @@ void FlashMaskV2BaseKernel(
         params_handle, num_heads / startend_row_indices.dims()[1]);
 
     // distributed settings
-    static constexpr bool use_distributed_overlap = true;
-    if constexpr (use_distributed_overlap) {
-      dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
-      dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
-      if (unique_id_.is_initialized()) {
-        dynload::flashmaskv2_fwd_params_set_unique_id_ptr(
-            params_handle, unique_id_.get().data<uint8_t>());
-        VLOG(4) << "FlashMask overlap debug: unique_id_ptr set.";
-      } else {
-        dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle,
-                                                          nullptr);
-      }
-
-      // TODO(heqianyue): cp_size and write_ptr are not set by this for now
-      VLOG(4) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
-              << nranks;
+#ifdef PADDLE_WITH_NVSHMEM
+    dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
+    dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
+    if (unique_id_.is_initialized()) {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(
+          params_handle, unique_id_.get().data<uint8_t>());
+      VLOG(6) << "FlashMask overlap debug: unique_id_ptr set.";
+    } else {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle, nullptr);
     }
+
+    VLOG(6) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
+            << nranks;
+#else
+    VLOG(6) << "FlashMask overlap is not being used since PADDLE_WITH_NVSHMEM "
+               "is not defined.";
+#endif  // PADDLE_WITH_NVSHMEM
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_fwd_params_set_lt_end_ptr(params_handle, nullptr);

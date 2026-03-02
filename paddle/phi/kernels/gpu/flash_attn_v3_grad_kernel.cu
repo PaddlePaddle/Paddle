@@ -1166,7 +1166,30 @@ void FlashMaskV2GradBaseKernel(
                  : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
-  int const seqlen_k_rounded = round_multiple(nranks * seqlen_k, kBlockN);
+
+  // if KV head >= 4, we will consider using RS overlap
+  const int chunks_per_seg =
+      dynload::flashmaskv2_get_segment_size(seqlen_k, nranks, num_heads_k);
+  // seqlen scaler for dkv_accum and dkv, if H_k > 4: RS-overlap is used
+  bool const use_rs_overlap = nranks > 1 && num_heads_k >= 4;
+  VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
+          << ", num chunk: " << chunks_per_seg;
+  if (use_rs_overlap) {
+    PADDLE_ENFORCE_GT(
+        chunks_per_seg,
+        0,
+        common::errors::InvalidArgument(
+            "chunks_per_seg should be at least 1, but got: %d. This could be "
+            "caused by not setting `WITH_DISTRIBUTED_OVERLAP` for flashmask "
+            "compilation.",
+            chunks_per_seg));
+  }
+  int const dkv_accum_s_scaler =
+      use_rs_overlap ? chunks_per_seg : nranks;  // * cp_size
+  int const dkv_s_scaler =
+      use_rs_overlap ? 1 : nranks;  // dk, dv remains local seqlen
+  int const seqlen_k_rounded =
+      round_multiple(dkv_accum_s_scaler * seqlen_k, kBlockN);
   int const total_q_padded_rounded =
       round_multiple(total_q + batch_size * kBlockM, kBlockM);
   int const total_k_padded_rounded =
@@ -1267,7 +1290,7 @@ void FlashMaskV2GradBaseKernel(
                             "%s must have contiguous last dimension", name));
       if (!is_varlen_k) {
         CHECK_SHAPE(
-            (*dt), batch_size, seqlen_k * nranks, num_heads_k, head_size);
+            (*dt), batch_size, seqlen_k * dkv_s_scaler, num_heads_k, head_size);
       } else {
         CHECK_SHAPE((*dt), total_k, num_heads_k, head_size);
       }
@@ -1278,7 +1301,8 @@ void FlashMaskV2GradBaseKernel(
         // nranks > 1: using distributed overlap will actually compute with
         // complete size
         *dt = phi::Empty<T, Context>(
-            dev_ctx, {batch_size, seqlen_k * nranks, num_heads_k, head_size});
+            dev_ctx,
+            {batch_size, seqlen_k * dkv_s_scaler, num_heads_k, head_size});
       }
     }
   };
@@ -1424,12 +1448,17 @@ void FlashMaskV2GradBaseKernel(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = Empty<int32_t>(
-      dev_ctx,
-      {(seqlen_k * nranks + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = Empty<int32_t>(
-      dev_ctx,
-      {(seqlen_k * nranks + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+  // dk_semaphore should have the same seqlen with dk_accum
+  DenseTensor dk_semaphore =
+      Empty<int32_t>(dev_ctx,
+                     {(seqlen_k * dkv_accum_s_scaler + kBlockN - 1) / kBlockN,
+                      batch_size,
+                      num_heads_k});
+  DenseTensor dv_semaphore =
+      Empty<int32_t>(dev_ctx,
+                     {(seqlen_k * dkv_accum_s_scaler + kBlockN - 1) / kBlockN,
+                      batch_size,
+                      num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
     // xiangrui: we need to zero them out
@@ -1480,11 +1509,11 @@ void FlashMaskV2GradBaseKernel(
     dynload::flashmaskv2_bwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
 
-    static constexpr bool distributed_overlap = true;
-    if constexpr (distributed_overlap) {
-      dynload::flashmaskv2_bwd_params_set_rank(params_handle, rank);
-      dynload::flashmaskv2_bwd_params_set_nranks(params_handle, nranks);
-    }
+#ifdef PADDLE_WITH_NVSHMEM
+    // only when NVSHMEM is compiled in paddle, can we use the following
+    dynload::flashmaskv2_bwd_params_set_rank(params_handle, rank);
+    dynload::flashmaskv2_bwd_params_set_nranks(params_handle, nranks);
+#endif  // PADDLE_WITH_NVSHMEM
   } else {
     dynload::flashmaskv2_bwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_bwd_params_set_lt_end_ptr(params_handle, nullptr);

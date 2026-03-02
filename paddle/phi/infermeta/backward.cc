@@ -351,10 +351,13 @@ void FlashMaskV2GradInferMeta(const MetaTensor& q,
                               MetaTensor* dv) {
   FlashAttnGradInferMeta(q, k, v, dq, dk, dv);
 
-  // Used in distributed overlap flashmask for CP
-  // ``nranks`` is not number of PEs of the comm world
-  // but total number of PEs in the CP group
-  if (nranks > 1) {  // ``nranks`` is 1, by default
+  // TODO(large-tensor): downstream functors may still use int; guard until
+  // upgraded.
+  int64_t head_dim_k = k.dims()[2];
+  if (nranks > 1 && head_dim_k < 4) {  // ``nranks`` is 1, by default
+    // use non-splitted, shape of dK dV: (B, S_local * cp_size, H, D)
+    // if H_k > 4: RS-overlap is used, dK, dV is of shape (B, S_local, H, D)
+    // CP 4 will not use RS-overlap.
     auto ProcessMetaTensor = [nranks](const MetaTensor& t, MetaTensor* dt) {
       if (dt && t) {
         auto dims = dt->dims();
