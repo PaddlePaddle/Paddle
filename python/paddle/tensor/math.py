@@ -28,8 +28,6 @@ from paddle._C_ops import (  # noqa: F401
     addmm,
     addmm_,
     all,
-    cummax,
-    cummin,
     amax,
     amin,
     angle,
