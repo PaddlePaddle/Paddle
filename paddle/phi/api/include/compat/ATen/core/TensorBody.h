@@ -221,6 +221,8 @@ class Tensor : public TensorBase {
   template <typename T>
   T item() const;
 
+  bool equal(const at::Tensor& other) const;
+
   // Clamp functions
   at::Tensor clamp(
       const ::std::optional<at::Scalar>& min,
@@ -693,7 +695,8 @@ class Tensor : public TensorBase {
 
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
-};  // namespace at
+};  // NOLINT(readability/braces)
+}  // namespace at
 
 namespace torch {
 using at::Tensor;
