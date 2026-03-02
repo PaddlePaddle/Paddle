@@ -2715,6 +2715,7 @@ struct Log10Functor : public BaseActivationFunctor<T> {
 };
 
 // the gradient of log10(x) is 1/(x*ln(10))
+// PyTorch formula: grad / (self * 2.3025850929940456)
 template <typename T>
 struct Log10GradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
@@ -2723,7 +2724,12 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
+    // Use PyTorch's exact constant (ln(10) to 16 significant digits) and
+    // matching evaluation order: dout / (x * ln10), i.e., multiply x by the
+    // constant first, then divide. This avoids runtime log(10) computation
+    // and aligns CPU/GPU paths with PyTorch's backward for bit-exact results.
+    T log_ten = static_cast<T>(2.3025850929940456);
+    dx.device(d) = dout / (x * log_ten);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5432,12 +5438,7 @@ __device__ __forceinline__
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
 
-#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
-  // use __logf fast approximation for peak bandwidth
-  return __log10f(x);
-#else
   return ::log10(x);
-#endif
 }
 
 template <>
@@ -5453,7 +5454,11 @@ struct CudaLog10Functor : public BaseActivationFunctor<T> {
   // log10(x) = log10(x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<U>(log10_local(x));
+    // Cast to floating-point before log10_local to avoid calling
+    // host-only ::log10(int) on Windows NVCC when MPType is integral
+    using FPType =
+        std::conditional_t<std::is_integral<MPType>::value, float, MPType>;
+    return static_cast<U>(log10_local(static_cast<FPType>(x)));
   }
 };
 
@@ -5464,16 +5469,24 @@ struct CudaLog10Functor<ComplexType<T>>
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_x) const {
     return static_cast<ComplexType<T>>(log(arg_x) /
-                                       static_cast<ComplexType<T>>(log(10.0f)));
+                                       static_cast<ComplexType<T>>(log(10.0)));
   }
 };
 
 template <typename T>
 struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  T log_ten = static_cast<T>(log(static_cast<MPType>(10.0f)));
 
-  // dx = dout / (x * log(10))
+  // ln(10) = 2.30258509299404568402... (M_LN10)
+  // Using PyTorch's exact 16-digit literal from derivatives.yaml for bit-exact
+  // alignment: grad / (self * 2.3025850929940456)
+  T log_ten = static_cast<T>(2.3025850929940456);
+
+  // dx = dout / (x * ln(10))
+  // PyTorch computes: grad / (self * 2.3025850929940456)
+  //   i.e., multiply x by ln(10) first, then divide grad by the product.
+  // This matches PyTorch's evaluation order exactly: one multiplication
+  // followed by one division, rather than two sequential divisions.
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / (x * log_ten);
   }
@@ -5487,7 +5500,7 @@ struct CudaLog10GradFunctor<ComplexType<T>>
   // dx = dout / conj(x * log(10))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return dout / conj(x * static_cast<ComplexType<T>>(log(10.0f)));
+    return dout / conj(x * static_cast<ComplexType<T>>(log(10.0)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

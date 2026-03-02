@@ -1074,7 +1074,7 @@ class FusedMultiTransformer(Layer):
     sub-layers which are self (multi-head) attention and feedforward network. The
     function of one transformer layer is consistent with the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> # doctest: +SKIP('This is not an example')
         >>> if pre_layer_norm:
@@ -1087,7 +1087,7 @@ class FusedMultiTransformer(Layer):
         >>> q = out[0:1, ::]
         >>> k = out[1:2, ::]
         >>> v = out[2:3, ::]
-        >>> out = q * k^t
+        >>> out = q * k ^ t
         >>> out = attn_mask + out
         >>> out = softmax(out)
         >>> out = dropout(out)
@@ -1099,7 +1099,7 @@ class FusedMultiTransformer(Layer):
         ... else:
         ...     out = layer_norm(x + dropout(out + bias))
 
-        >>> residual = out;
+        >>> residual = out
         >>> if pre_layer_norm:
         ...     out = ffn_layer_norm(out)
         >>> out = ffn1_linear(out)

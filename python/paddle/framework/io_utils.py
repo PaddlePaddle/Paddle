@@ -94,7 +94,7 @@ def is_persistable(var):
         False if not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('ValueError: var fc.b not in this block')
             >>> import paddle
@@ -125,7 +125,7 @@ def is_parameter(var):
         False if not.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('ValueError: var fc.w not in this block')
             >>> import paddle

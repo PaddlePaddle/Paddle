@@ -246,7 +246,7 @@ class WMT14(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import WMT14
                 >>> wmt14 = WMT14(mode='train', dict_size=50)

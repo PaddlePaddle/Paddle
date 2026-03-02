@@ -126,7 +126,7 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
 
     Example:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import shutil
             >>> import tempfile
@@ -166,7 +166,7 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
             ...             "pqr.jpeg",
             ...             "stu.jpg"]}]},
             ...     "this_will_be_ignored.txt",
-            ... ]
+            ... ]  # fmt: skip
 
             >>> # You can replace this with any directory to explore the structure
             >>> # of generated data. e.g. fake_data_dir = "./temp_dir"
@@ -371,7 +371,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
 
     Example:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import shutil
             >>> import tempfile
@@ -408,7 +408,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
             ...         {"mno": [
             ...             "pqr.jpg"]}]},
             ...     "this_will_be_ignored.txt",
-            ... ]
+            ... ]  # fmt: skip
 
             >>> # You can replace this with any directory to explore the structure
             >>> # of generated data. e.g. fake_data_dir = "./temp_dir"

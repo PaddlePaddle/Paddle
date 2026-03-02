@@ -50,7 +50,7 @@ class saved_tensors_hooks:
             None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # Example1
@@ -64,15 +64,15 @@ class saved_tensors_hooks:
             ...     print("UnPacking", x)
             ...     return paddle.to_tensor(x)
 
-            >>> a = paddle.ones([3,3])
-            >>> b = paddle.ones([3,3]) * 2
+            >>> a = paddle.ones([3, 3])
+            >>> b = paddle.ones([3, 3]) * 2
             >>> a.stop_gradient = False
             >>> b.stop_gradient = False
             >>> with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
             ...     y = paddle.multiply(a, b)
             >>> y.sum().backward()
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
             >>> # Example2
@@ -88,7 +88,7 @@ class saved_tensors_hooks:
             ...
             ...     @staticmethod
             ...     def backward(ctx, dy):
-            ...         a,b = ctx.saved_tensor()
+            ...         a, b = ctx.saved_tensor()
             ...         grad_a = dy * a
             ...         grad_b = dy * b
             ...         return grad_a, grad_b
@@ -101,8 +101,8 @@ class saved_tensors_hooks:
             ...     print("UnPacking", x)
             ...     return paddle.to_tensor(x)
 
-            >>> a = paddle.ones([3,3])
-            >>> b = paddle.ones([3,3]) * 2
+            >>> a = paddle.ones([3, 3])
+            >>> b = paddle.ones([3, 3]) * 2
             >>> a.stop_gradient = False
             >>> b.stop_gradient = False
             >>> with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):

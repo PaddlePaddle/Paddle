@@ -409,7 +409,7 @@ def interpolate(*args: Any, **kwargs: Any) -> Tensor:
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
              specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
              be presumed according to its dimension. See details in :attr:`data_format`.
-            alias: ``input``.
+            Alias: ``input``.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -1249,6 +1249,7 @@ def dropout(
 
     Args:
         x (Tensor): The input tensor. The data type is float16, float32 or float64.
+            Alias: ``input``.
         p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
@@ -2006,7 +2007,7 @@ def pad(
 
     Args:
         x (Tensor): The input tensor with data type float32, float64, int32, int64, complex64 or complex128.
-        input: An alias for ``x`` , with identical behavior.
+            Alias: ``input``.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int. Refer to Note for details.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default is ``'constant'``.
 
@@ -2412,6 +2413,7 @@ def cosine_similarity(
         x1 (Tensor): First input. float32/double.
         x2 (Tensor): Second input. float32/double.
         axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
+            Alias: ``dim``.
         eps(float, optional): Small value to avoid division by zero. Default is 1e-8.
 
     Returns:
@@ -2923,24 +2925,30 @@ def fold(
 
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
-                                  data type can be float32, float64, complex64 or complex128
+                                  data type can be float32, float64, complex64 or complex128.
+            Alias: ``input``.
         output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
                                   or an integer o treated as [o, o].
+            Alias: ``output_size``.
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
+            Alias: ``kernel_size``.
         strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [stride, stride].
                                   For default, strides will be [1, 1].
+            Alias: ``stride``.
         paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
-                                  be used. For default, paddings will be [0, 0, 0, 0]
+                                  be used. For default, paddings will be [0, 0, 0, 0].
+            Alias: ``padding``.
         dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
+            Alias: ``dilation``.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`

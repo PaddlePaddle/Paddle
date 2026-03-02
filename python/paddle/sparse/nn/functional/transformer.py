@@ -69,7 +69,7 @@ def attention(
         4D tensor with shape: [batch_size, num_heads, seq_len, head_dim]. dtype is same with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle

@@ -508,6 +508,8 @@ void CheckGradNodeAccumulation(
 void CheckGradNodeAccumulation(const std::vector<paddle::Tensor>& tensors);
 void CheckGradNodeAccumulation(
     const std::vector<std::vector<paddle::Tensor*>>& tensors);
+void CheckGradNodeAccumulation(
+    const paddle::small_vector<std::vector<paddle::Tensor*>>& tensors);
 
 class LogLevelGuardBackward {
  public:

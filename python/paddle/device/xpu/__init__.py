@@ -64,7 +64,7 @@ def current_stream(device: _XPUPlaceLike | None = None) -> core.XPUStream:
             XPUStream: the stream to the device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -151,7 +151,7 @@ def synchronize(device: _XPUPlaceLike | None = None) -> int:
         If device is None, the device is the current device. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -194,7 +194,7 @@ def device_count() -> int:
         int: the number of XPUs available.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -223,7 +223,7 @@ def set_debug_level(level: int = 0) -> None:
             0x1000 for profiling (Record the execution time of each operator).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -248,7 +248,7 @@ def empty_cache() -> None:
     Because it keeps xpu memory in a pool so that next allocations can be done much faster.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -286,7 +286,7 @@ def get_device_properties(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
 
@@ -358,7 +358,7 @@ def max_memory_allocated(device: _XPUPlaceLike | None = None) -> int:
         int: The peak size of xpu memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -390,7 +390,7 @@ def max_memory_reserved(device: _XPUPlaceLike | None = None) -> int:
         int: The peak size of XPU memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -419,7 +419,7 @@ def reset_max_memory_allocated(device: _XPUPlaceLike | None = None) -> None:
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -449,7 +449,7 @@ def reset_max_memory_reserved(device: _XPUPlaceLike | None = None) -> None:
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -486,7 +486,7 @@ def memory_allocated(device: _XPUPlaceLike | None = None) -> int:
         int: The current size of xpu memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -518,7 +518,7 @@ def memory_reserved(device: _XPUPlaceLike | None = None) -> int:
         int: The current size of XPU memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -550,7 +550,7 @@ def memory_total(device: _XPUPlaceLike | None = None) -> int:
         int: The total size of XPU memory of the given device that is held by the XPU Runtime, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -582,7 +582,7 @@ def memory_used(device: _XPUPlaceLike | None = None) -> int:
         int: The used size of XPU memory of the given device that is held by the XPU Runtime, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -610,7 +610,7 @@ def get_rng_state(device: _XPUPlaceLike | None = None) -> core.GeneratorState:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -640,7 +640,7 @@ def set_rng_state(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # Save RNG state
