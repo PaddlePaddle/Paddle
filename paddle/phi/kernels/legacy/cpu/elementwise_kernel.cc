@@ -16,6 +16,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#if defined(__AVX512F__)
+#include <immintrin.h>
+#endif
 
 namespace phi {
 
@@ -93,6 +96,109 @@ void FloorDivideRawKernel(const Context& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_SLEEF
+template <typename T, typename Context>
+void ElementwisePowSameDimsHelper(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const DenseTensor& y,
+                                  int axis,
+                                  DenseTensor* out) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  if constexpr (std::is_same<MPType, float>::value ||
+                std::is_same<MPType, double>::value) {
+    bool is_contiguous = true;
+    auto x_strides = x.strides();
+    auto y_strides = y.strides();
+    auto dims = x.dims();
+    int64_t expected_stride = 1;
+    for (int i = dims.size() - 1; i >= 0; --i) {
+      if (x_strides[i] != expected_stride || y_strides[i] != expected_stride) {
+        is_contiguous = false;
+        break;
+      }
+      expected_stride *= dims[i];
+    }
+
+    if (is_contiguous) {
+      const T* x_data = x.data<T>();
+      const T* y_data = y.data<T>();
+      T* out_data = out->data<T>();
+      int64_t numel = x.numel();
+
+#if defined(__AVX512F__)
+      if constexpr (std::is_same<T, float>::value) {
+        int vec_size = 16;
+        int64_t aligned_n = (numel / vec_size) * vec_size;
+        for (int64_t i = 0; i < aligned_n; i += vec_size) {
+          _mm512_storeu_ps(
+              out_data + i,
+              funcs::compute_pow_sleef_vec(_mm512_loadu_ps(x_data + i),
+                                           _mm512_loadu_ps(y_data + i)));
+        }
+        for (int64_t i = aligned_n; i < numel; ++i) {
+          out_data[i] = static_cast<T>(std::pow(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i])));
+        }
+      } else if constexpr (std::is_same<T, double>::value) {
+        int vec_size = 8;
+        int64_t aligned_n = (numel / vec_size) * vec_size;
+        for (int64_t i = 0; i < aligned_n; i += vec_size) {
+          _mm512_storeu_pd(
+              out_data + i,
+              funcs::compute_pow_sleef_vec(_mm512_loadu_pd(x_data + i),
+                                           _mm512_loadu_pd(y_data + i)));
+        }
+        for (int64_t i = aligned_n; i < numel; ++i) {
+          out_data[i] = static_cast<T>(std::pow(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i])));
+        }
+      } else {
+        int vec_size;
+        if constexpr (std::is_same<MPType, float>::value) {
+          vec_size = 32;
+        } else if constexpr (std::is_same<MPType, double>::value) {
+          vec_size = 16;
+        }
+        int64_t aligned_n = (numel / vec_size) * vec_size;
+
+        for (int64_t i = 0; i < aligned_n; ++i) {
+          out_data[i] = funcs::compute_pow_sleef<MPType>(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i]));
+        }
+        for (int64_t i = aligned_n; i < numel; ++i) {
+          out_data[i] = static_cast<T>(std::pow(
+              static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i])));
+        }
+      }
+#else
+      int vec_size;
+      if constexpr (std::is_same<MPType, float>::value) {
+        vec_size = 32;
+      } else if constexpr (std::is_same<MPType, double>::value) {
+        vec_size = 16;
+      }
+      int64_t aligned_n = (numel / vec_size) * vec_size;
+
+      for (int64_t i = 0; i < aligned_n; ++i) {
+        out_data[i] = funcs::compute_pow_sleef<MPType>(
+            static_cast<MPType>(x_data[i]), static_cast<MPType>(y_data[i]));
+      }
+      for (int64_t i = aligned_n; i < numel; ++i) {
+        out_data[i] = static_cast<T>(std::pow(static_cast<MPType>(x_data[i]),
+                                              static_cast<MPType>(y_data[i])));
+      }
+#endif
+    } else {
+      funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
+          dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
+    }
+  } else {
+    funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
+        dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
+  }
+}
+#endif
+
 template <typename T, typename Context>
 void ElementwisePowRawKernel(const Context& dev_ctx,
                              const DenseTensor& x,
@@ -104,6 +210,12 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
+#ifdef PADDLE_WITH_SLEEF
+    if (x_dims == y_dims) {
+      ElementwisePowSameDimsHelper<T>(dev_ctx, x, y, axis, out);
+      return;
+    }
+#endif
     funcs::ElementwiseCompute<funcs::ElementwisePowFunctor<T>, T>(
         dev_ctx, x, y, funcs::ElementwisePowFunctor<T>(), out, axis);
   } else {

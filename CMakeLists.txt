@@ -354,6 +354,15 @@ option(WITH_NVCC_LAZY
        ON)
 option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
 
+set(WITH_SLEEF_DEFAULT ON)
+if(WIN32 OR WITH_ROCM)
+  set(WITH_SLEEF_DEFAULT OFF)
+endif()
+option(
+  WITH_SLEEF
+  "Compile PaddlePaddle with Sleef library for high precision math functions"
+  ${WITH_SLEEF_DEFAULT})
+
 if(WIN32 OR NOT WITH_GPU)
   set(WITH_CUDNN_FRONTEND
       OFF

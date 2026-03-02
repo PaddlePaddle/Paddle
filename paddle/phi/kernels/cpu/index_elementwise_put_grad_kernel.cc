@@ -183,7 +183,7 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
     }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(common::make_ddim(input_dims));
+      tmp_value_grad.Resize(make_ddim(input_dims));
       dev_ctx.template Alloc<T>(&tmp_value_grad);
       CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
@@ -205,7 +205,7 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
                             value_grad->dtype(),
                             false,
                             value_grad);
-    } else if (value_grad->dims() == common::make_ddim(input_dims)) {
+    } else if (value_grad->dims() == make_ddim(input_dims)) {
       dev_ctx.template Alloc<T>(value_grad);
       CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
@@ -219,7 +219,7 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
                                                    value_grad);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(common::make_ddim(input_dims));
+      tmp_value_grad.Resize(make_ddim(input_dims));
       dev_ctx.template Alloc<T>(&tmp_value_grad);
       CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
@@ -238,7 +238,7 @@ void LaunchIndexElementwisePutWithTensorGradKernel(
       funcs::CalCompressedDimsWith1AndWithout1(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
       auto pre_dims = value_grad->dims();
-      value_grad->Resize(common::make_ddim(dims_without_1));
+      value_grad->Resize(make_ddim(dims_without_1));
       IntArray v_axis(compress_dims);
       SumKernel<T, Context>(dev_ctx,
                             tmp_value_grad,

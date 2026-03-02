@@ -27,6 +27,9 @@ from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable
 
 import paddle
+from paddle.jit.sot.opcode_translator.executor.variables.basic import (
+    TemplateVariable,
+)
 from paddle.jit.utils import OrderedSet
 
 from ...profiler import EventGuard
@@ -95,6 +98,7 @@ from .variables import (
     ContainerVariable,
     DictVariable,
     ExceptionVariable,
+    InterpolationVariable,
     IterVariable,
     ListVariable,
     MethodVariable,
@@ -1230,6 +1234,45 @@ class OpcodeExecutorBase:
                 tracker=DummyTracker(val_tuple),
             )
         )
+
+    def BUILD_TEMPLATE(self, instr: Instruction):
+        interpolations = self.stack.pop()
+        strings = self.stack.pop()
+        self.stack.push(
+            TemplateVariable(
+                strings=strings,
+                interpolations=interpolations,
+                graph=self._graph,
+                tracker=DummyTracker([strings, interpolations]),
+            )
+        )
+
+    def BUILD_INTERPOLATION(self, instr: Instruction):
+        assert isinstance(instr.arg, int)
+        conversion_flag = instr.arg >> 2
+        if instr.arg & 1:
+            format_spec = self.stack.pop()
+        else:
+            format_spec = ConstantVariable.wrap_literal("", self._graph)
+        expression = self.stack.pop()
+        value = self.stack.pop()
+        if conversion_flag == FV.FVC_ASCII:
+            conversion = "a"
+        elif conversion_flag == FV.FVC_REPR:
+            conversion = "r"
+        elif conversion_flag == FV.FVC_STR:
+            conversion = "s"
+        else:
+            conversion = None
+        interpolation = InterpolationVariable(
+            value=value,
+            expression=expression,
+            conversion=conversion,
+            format_spec=format_spec,
+            graph=self._graph,
+            tracker=DummyTracker([value, expression, format_spec]),
+        )
+        self.stack.push(interpolation)
 
     def BUILD_STRING(self, instr: Instruction):
         count = instr.arg

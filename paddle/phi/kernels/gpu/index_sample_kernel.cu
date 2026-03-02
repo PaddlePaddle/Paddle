@@ -74,7 +74,7 @@ void IndexSampleKernel(const Context& dev_ctx,
   if (out && out->numel() == 0) {
     return;
   }
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   auto input_dim = x.dims();
   auto index_dim = index.dims();
   size_t batch_size = input_dim[0];

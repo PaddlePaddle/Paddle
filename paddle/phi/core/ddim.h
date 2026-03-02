@@ -16,9 +16,7 @@
 #include "paddle/common/ddim.h"
 
 namespace paddle {
-namespace framework {
 using DDim = common::DDim;
-}
 }  // namespace paddle
 
 namespace phi {

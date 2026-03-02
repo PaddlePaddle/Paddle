@@ -387,20 +387,18 @@ void FlashAttnV3GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+          make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(
-          common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
   }
   if (softmax_d) {
@@ -411,31 +409,31 @@ void FlashAttnV3GradBaseKernel(
   }
   if (dq_accum) {
     if (!is_varlen) {
-      dq_accum->Resize(common::make_ddim(
+      dq_accum->Resize(make_ddim(
           {batch_size, num_heads, seqlen_q_rounded * head_size_rounded}));
     } else {
-      dq_accum->Resize(common::make_ddim(
-          {num_heads, total_q_padded_rounded * head_size_rounded}));
+      dq_accum->Resize(
+          make_ddim({num_heads, total_q_padded_rounded * head_size_rounded}));
     }
     dev_ctx.template Alloc<float>(dq_accum);
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_v_rounded}));
       }
     } else {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_v_rounded}));
       }
     }
@@ -582,16 +580,6 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
                            DenseTensor *dk,
                            DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -715,16 +703,6 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  DenseTensor *dk,
                                  DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -1299,20 +1277,18 @@ void FlashMaskV2GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
-          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+          make_ddim({batch_size, num_heads, seqlen_q_rounded}));
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(
-          common::make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
     }
   }
   if (softmax_d) {
@@ -1323,31 +1299,31 @@ void FlashMaskV2GradBaseKernel(
   }
   if (dq_accum) {
     if (!is_varlen) {
-      dq_accum->Resize(common::make_ddim(
+      dq_accum->Resize(make_ddim(
           {batch_size, num_heads, seqlen_q_rounded * head_size_rounded}));
     } else {
-      dq_accum->Resize(common::make_ddim(
-          {num_heads, total_q_padded_rounded * head_size_rounded}));
+      dq_accum->Resize(
+          make_ddim({num_heads, total_q_padded_rounded * head_size_rounded}));
     }
     dev_ctx.template Alloc<float>(dq_accum);
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
       }
     } else {
       if (dk_accum) {
-        dk_accum->Resize(common::make_ddim(
+        dk_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(common::make_ddim(
+        dv_accum->Resize(make_ddim(
             {num_heads_k, total_k_padded_rounded, head_size_rounded}));
       }
     }
@@ -1418,11 +1394,11 @@ void FlashMaskV2GradBaseKernel(
   DenseTensor tile_count_semaphore;
   if (arch >= 90) {
     tile_count_semaphore = phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
         params_handle, tile_count_semaphore.data<int>());
   } else {
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
-                                                                  nullptr);
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
+                                                             nullptr);
   }
 
   DenseTensor dq_semaphore = Empty<int32_t>(

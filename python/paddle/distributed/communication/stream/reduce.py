@@ -114,7 +114,7 @@ def reduce(
         This API only supports the dygraph mode now.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle

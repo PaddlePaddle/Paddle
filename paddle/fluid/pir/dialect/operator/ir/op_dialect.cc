@@ -252,7 +252,7 @@ struct YieldOpInferSymbolicShapeInterfaceModel
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
-  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
 
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
   info.AttachInterface(
@@ -994,7 +994,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         for (size_t j = 0; j < value_num; ++j) {
           auto ddims = phi::make_ddim(output_shapes[value_index]);
           auto dtype = output_dtypes[value_index];
-          phi::DataLayout layout{DataLayout::NCHW};
+          DataLayout layout{DataLayout::NCHW};
           phi::LegacyLoD lod;
           auto type = paddle::dialect::DenseTensorType::get(
               pir::IrContext::Instance(),
@@ -1023,7 +1023,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       } else {
         auto ddims = phi::make_ddim(output_shapes[value_index]);
         auto dtype = output_dtypes[value_index];
-        phi::DataLayout layout{DataLayout::NCHW};
+        DataLayout layout{DataLayout::NCHW};
         phi::LegacyLoD lod;
         auto out_type = paddle::dialect::DenseTensorType::get(
             pir::IrContext::Instance(),

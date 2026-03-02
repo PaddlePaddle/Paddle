@@ -31,7 +31,7 @@ class ProcessMesh(core.ProcessMesh):
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist

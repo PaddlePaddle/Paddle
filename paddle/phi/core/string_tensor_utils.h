@@ -24,7 +24,7 @@ class StringTensorUtils {
     return &(tensor->meta_);
   }
 
-  static const std::shared_ptr<phi::Allocation>& GetHolder(
+  static const std::shared_ptr<Allocation>& GetHolder(
       const StringTensor& tensor) {
     return tensor.holder_;
   }

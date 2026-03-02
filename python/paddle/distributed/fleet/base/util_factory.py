@@ -96,7 +96,7 @@ class UtilBase:
             output(Numpy.array|None): A numpy array with the same shape as the `input` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env: DISTRIBUTED)
                 >>> # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
@@ -112,19 +112,20 @@ class UtilBase:
                 ...     role = PaddleCloudRoleMaker(
                 ...         is_collective=False,
                 ...         init_gloo=True,
-                ...         path="./tmp_gloo")
+                ...         path="./tmp_gloo",
+                ...     )
                 ...     fleet.init(role)
                 ...
                 ...     if fleet.is_server():
                 ...         input = np.array([1, 2])
                 ...         output = fleet.util.all_reduce(input, "sum", "server")
-                ...         print(output) # [2, 4]
+                ...         print(output)  # [2, 4]
                 ...     elif fleet.is_worker():
                 ...         input = np.array([3, 4])
                 ...         output = fleet.util.all_reduce(input, "sum", "worker")
-                ...         print(output) # [6, 8]
+                ...         print(output)  # [6, 8]
                 ...     output = fleet.util.all_reduce(input, "sum", "all")
-                ...     print(output) # [8, 12]
+                ...     print(output)  # [8, 12]
 
                 >>> if __name__ == "__main__":
                 ...     train()
@@ -144,7 +145,7 @@ class UtilBase:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env: DISTRIBUTED)
                 >>> # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
@@ -159,17 +160,18 @@ class UtilBase:
                 ...     role = PaddleCloudRoleMaker(
                 ...         is_collective=False,
                 ...         init_gloo=True,
-                ...         path="./tmp_gloo")
+                ...         path="./tmp_gloo",
+                ...     )
                 ...     fleet.init(role)
                 ...
                 ...     if fleet.is_server():
                 ...         fleet.util.barrier("server")
-                ...         print("all server arrive here") # all server arrive here
+                ...         print("all server arrive here")  # all server arrive here
                 ...     elif fleet.is_worker():
                 ...         fleet.util.barrier("worker")
-                ...         print("all server arrive here") # all server arrive here
+                ...         print("all server arrive here")  # all server arrive here
                 ...     fleet.util.barrier("all")
-                ...     print("all servers and workers arrive here") #all servers and workers arrive here
+                ...     print("all servers and workers arrive here")  # all servers and workers arrive here
 
                 >>> if __name__ == "__main__":
                 ...     train()
@@ -193,7 +195,7 @@ class UtilBase:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env: DISTRIBUTED)
                 >>> # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
@@ -208,19 +210,20 @@ class UtilBase:
                 ...     role = PaddleCloudRoleMaker(
                 ...         is_collective=False,
                 ...         init_gloo=True,
-                ...         path="./tmp_gloo")
+                ...         path="./tmp_gloo",
+                ...     )
                 ...     fleet.init(role)
                 ...
                 ...     if fleet.is_server():
                 ...         input = fleet.server_index()
                 ...         output = fleet.util.all_gather(input, "server")
-                ...         print(output) # [0, 1]
+                ...         print(output)  # [0, 1]
                 ...     elif fleet.is_worker():
                 ...         input = fleet.worker_index()
                 ...         output = fleet.util.all_gather(input, "worker")
-                ...         print(output) # [0, 1]
+                ...         print(output)  # [0, 1]
                 ...     output = fleet.util.all_gather(input, "all")
-                ...     print(output) # [0, 1, 0, 1]
+                ...     print(output)  # [0, 1, 0, 1]
 
                 >>> if __name__ == "__main__":
                 ...     train()
@@ -273,7 +276,7 @@ class UtilBase:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env: DISTRIBUTED)
                 >>> import paddle.distributed.fleet as fleet
@@ -285,7 +288,8 @@ class UtilBase:
                 ...     current_id=0,
                 ...     role=fleet.Role.WORKER,
                 ...     worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
-                ...     server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+                ...     server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"],
+                ... )
                 >>> fleet.init(role)
 
                 >>> files = fleet.util.get_file_shard(["file1", "file2", "file3"])
@@ -323,7 +327,7 @@ class UtilBase:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env: DISTRIBUTED)
                 >>> import paddle.distributed.fleet as fleet
@@ -335,7 +339,8 @@ class UtilBase:
                 ...     current_id=0,
                 ...     role=fleet.Role.WORKER,
                 ...     worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
-                ...     server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+                ...     server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"],
+                ... )
                 >>> fleet.init(role)
 
                 >>> fleet.util.print_on_rank("I'm worker 0", 0)

@@ -62,9 +62,8 @@ void ConvGradKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           ("XPU doesn't support data_format is NDHWC in conv grad op.")));
 
-  DDim in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
-  DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  DDim in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
   UpdatePaddingAndDilation<int64_t>(
@@ -237,9 +236,8 @@ void Conv3DGradKernel(const Context& dev_ctx,
   // that avoids modifying the variable in the Scope.
   if (!input_grad && !filter_grad) return;
 
-  DDim in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
-  DDim filter_data_dims =
-      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  DDim in_data_dims = slice_ddim(input.dims(), 2, input.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> filter_shape = vectorize<int64_t>(filter.dims());
   UpdatePaddingAndDilation<int64_t>(

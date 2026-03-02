@@ -50,7 +50,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   h_size_data[1] = size_attr[1];
   h_size_data[2] = size_attr[2];
   h_size_data[3] = size_attr[3];
-  output->Resize(common::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
+  output->Resize(make_ddim({n, h_size_data[2], h_size_data[3], 2}));
   T* output_data = dev_ctx.template Alloc<T>(output);
   if (input.numel() == 0) {
     Full<T, Context>(dev_ctx, output->dims(), 0, output);

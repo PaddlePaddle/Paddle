@@ -81,7 +81,7 @@ class Uniform(distribution.Distribution):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import Uniform
@@ -92,16 +92,17 @@ class Uniform(distribution.Distribution):
             >>> # 2 distributions [1, 3], [2, 4]
             >>> u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
             >>> # 4 distributions
-            >>> u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
-            ...             high=[[1.5, 2.5], [3.5, 4.5]])
-            ...
+            >>> u3 = Uniform(
+            ...     low=[[1.0, 2.0], [3.0, 4.0]],
+            ...     high=[[1.5, 2.5], [3.5, 4.5]],
+            ... )
             >>> # With broadcasting:
             >>> u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
             >>> # Complete example
             >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-            >>> uniform = Uniform([0.], [2.])
+            >>> uniform = Uniform([0.0], [2.0])
 
             >>> sample = uniform.sample([2])
             >>> # a random tensor created by uniform distribution with shape: [2, 1]

@@ -48,7 +48,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
   int64_t dim_idx = idx % (stride * size) / stride;
   IndexT src_dim_idx = index[dim_idx];
   int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+  CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
 template <typename T, int VecSize>
@@ -245,7 +245,9 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
+
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -254,4 +256,5 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}

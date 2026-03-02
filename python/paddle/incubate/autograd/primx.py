@@ -666,7 +666,7 @@ def prim2orig(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.incubate.autograd import enable_prim, prim_enabled, prim2orig

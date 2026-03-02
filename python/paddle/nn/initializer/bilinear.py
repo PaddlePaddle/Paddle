@@ -41,7 +41,7 @@ class Bilinear(Initializer):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import math
 
@@ -53,18 +53,21 @@ class Bilinear(Initializer):
             >>> C = 2
             >>> B = 8
             >>> H = W = 32
-            >>> w_attr = paddle.ParamAttr(learning_rate=0.,
-            ...                           regularizer=L2Decay(0.),
-            ...                           initializer=nn.initializer.Bilinear())
+            >>> w_attr = paddle.ParamAttr(
+            ...     learning_rate=0.0,
+            ...     regularizer=L2Decay(0.0),
+            ...     initializer=nn.initializer.Bilinear(),
+            ... )
             >>> data = paddle.rand([B, 3, H, W], dtype='float32')
-            >>> conv_up = nn.Conv2DTranspose(3,
-            ...                              out_channels=C,
-            ...                              kernel_size=2 * factor - factor % 2,
-            ...                              padding=int(
-            ...                                  math.ceil((factor - 1) / 2.)),
-            ...                              stride=factor,
-            ...                              weight_attr=w_attr,
-            ...                              bias_attr=False)
+            >>> conv_up = nn.Conv2DTranspose(
+            ...     3,
+            ...     out_channels=C,
+            ...     kernel_size=2 * factor - factor % 2,
+            ...     padding=int(math.ceil((factor - 1) / 2.0)),
+            ...     stride=factor,
+            ...     weight_attr=w_attr,
+            ...     bias_attr=False,
+            ... )
             >>> x = conv_up(data)
 
     Where, `out_channels=C` and `groups=C` means this is channel-wise transposed

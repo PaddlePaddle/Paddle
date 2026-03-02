@@ -48,44 +48,44 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->SetType("fill_constant");
   op->SetAttr("shape", shape.GetData());
   switch (dtype) {
-    case phi::DataType::FLOAT16:
-    case phi::DataType::BFLOAT16:
+    case DataType::FLOAT16:
+    case DataType::BFLOAT16:
       op->SetAttr("str_value", std::to_string(value.to<float>()));
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       op->SetAttr("value", value.to<float>());
       break;
-    case phi::DataType::FLOAT64: {
+    case DataType::FLOAT64: {
       std::stringstream ss;
       ss << std::setprecision(20) << value.to<double>();
       op->SetAttr("str_value", ss.str());
       break;
     }
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       op->SetAttr("str_value", std::to_string(value.to<bool>()));
       break;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       op->SetAttr("str_value", std::to_string(value.to<int8_t>()));
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       op->SetAttr("str_value", std::to_string(value.to<uint8_t>()));
       break;
-    case phi::DataType::INT16:
+    case DataType::INT16:
       op->SetAttr("str_value", std::to_string(value.to<int16_t>()));
       break;
-    case phi::DataType::UINT16:
+    case DataType::UINT16:
       op->SetAttr("str_value", std::to_string(value.to<uint16_t>()));
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       op->SetAttr("str_value", std::to_string(value.to<int32_t>()));
       break;
-    case phi::DataType::UINT32:
+    case DataType::UINT32:
       op->SetAttr("str_value", std::to_string(value.to<uint32_t>()));
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       op->SetAttr("str_value", std::to_string(value.to<int64_t>()));
       break;
-    case phi::DataType::UINT64:
+    case DataType::UINT64:
       op->SetAttr("str_value", std::to_string(value.to<uint64_t>()));
       break;
     default:
@@ -94,10 +94,10 @@ Tensor full<DescTensor>(const IntArray& shape,
           "bool/float16/bfloat16/float32/float64/int8/int16/int32/int64/uint8/"
           "uint16/"
           "uint32/uint64 for full, but we got data type: %s",
-          phi::DataTypeToString(dtype)));
+          DataTypeToString(dtype)));
   }
 
-  op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
+  op->SetAttr("dtype", framework::TransToProtoVarType(dtype));
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
@@ -108,7 +108,7 @@ Tensor full<DescTensor>(const IntArray& shape,
 
 template <>
 Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
-  Tensor out = empty<DescTensor>({}, DataType::FLOAT32, paddle::Place());
+  Tensor out = empty<DescTensor>({}, DataType::FLOAT32, Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("cast");
@@ -116,8 +116,8 @@ Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("in_dtype", paddle::framework::TransToProtoVarType(x.dtype()));
-  op->SetAttr("out_dtype", paddle::framework::TransToProtoVarType(dtype));
+  op->SetAttr("in_dtype", framework::TransToProtoVarType(x.dtype()));
+  op->SetAttr("out_dtype", framework::TransToProtoVarType(dtype));
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
@@ -137,7 +137,7 @@ Tensor slice<DescTensor>(const Tensor& input,
   op->SetInput(
       "Input",
       {std::static_pointer_cast<prim::DescTensor>(input.impl())->Name()});
-  auto out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  auto out = empty<DescTensor>({}, DataType::FLOAT32, Place());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->SetAttr("axes", unsafe_vector_cast<int64_t, int>(axes));

@@ -24,17 +24,18 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
+from paddle._C_ops import flip, index_put, index_put_, roll  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
     index_add_decorator,
+    index_fill_decorator,
     param_one_alias,
     param_two_alias,
     reshape_decorator,
-    tensor_split_decorator,
+    variadic_tensor_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -149,7 +150,7 @@ def tensor_array_to_tensor(
             tensor contains all input including tensors' sizes along the axis.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy
             >>> import paddle
@@ -240,7 +241,7 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
         Tensor, A Tensor with the same shape as input's.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -323,7 +324,7 @@ def slice(
 ) -> Tensor:
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    https://numpy.org/doc/stable/user/basics.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
@@ -376,7 +377,7 @@ def slice(
         Tensor, A ``Tensor``. The data type is same as ``input``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -562,11 +563,11 @@ def narrow(
         Tensor: A tensor that is a narrowed view of ``input``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1, 2, 3, 4],[5, 6, 7, 8]], dtype='int64')
+            >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8]], dtype='int64')
             >>> y1 = paddle.narrow(x, dim=1, start=1, length=2)
             >>> print(y1)
             Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -752,7 +753,7 @@ def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> list[Tensor]:
         list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64, complex64, complex128.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.ones(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
@@ -839,14 +840,16 @@ def shard_index(
         Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> label = paddle.to_tensor([[16], [1]], "int64")
-            >>> shard_label = paddle.shard_index(input=label,
-            ...                                  index_num=20,
-            ...                                  nshards=2,
-            ...                                  shard_id=0)
+            >>> shard_label = paddle.shard_index(
+            ...     input=label,
+            ...     index_num=20,
+            ...     nshards=2,
+            ...     shard_id=0,
+            ... )
             >>> print(shard_label.numpy())
             [[-1]
              [ 1]]
@@ -953,7 +956,7 @@ def crop(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -1145,7 +1148,7 @@ def fill_(x: Tensor, value: float) -> Tensor:
         x(Tensor), Tensor x filled with value inplace
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1178,7 +1181,7 @@ def zero_(x: Tensor) -> Tensor:
         x (Tensor), Tensor x filled with zero inplace
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1362,7 +1365,7 @@ def fill_diagonal_tensor_(
         Tensor, Tensor with diagonal filled with y.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1401,7 +1404,7 @@ def fill_diagonal_tensor(
         Tensor, Tensor with diagonal filled with y.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1433,11 +1436,11 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> t = paddle.to_tensor([0,1,2,3,4])
+            >>> t = paddle.to_tensor([0, 1, 2, 3, 4])
             >>> expectlist = t.tolist()
             >>> print(expectlist)
             [0, 1, 2, 3, 4]
@@ -1451,7 +1454,7 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
     return x.numpy(False).tolist()
 
 
-@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
+@param_two_alias(["x", "tensors"], ["axis", "dim"])
 def concat(
     x: Sequence[Tensor],
     axis: int | Tensor = 0,
@@ -1492,16 +1495,13 @@ def concat(
         Tensor, A Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x1 = paddle.to_tensor([[1, 2, 3],
-            ...                        [4, 5, 6]])
-            >>> x2 = paddle.to_tensor([[11, 12, 13],
-            ...                        [14, 15, 16]])
-            >>> x3 = paddle.to_tensor([[21, 22],
-            ...                        [23, 24]])
+            >>> x1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            >>> x2 = paddle.to_tensor([[11, 12, 13], [14, 15, 16]])
+            >>> x3 = paddle.to_tensor([[21, 22], [23, 24]])
             >>> zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             >>> # When the axis is negative, the real axis is (axis + Rank(x))
             >>> # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -1659,11 +1659,28 @@ def concat(
         return out
 
 
+@overload
+def broadcast_tensors(
+    input: Sequence[Tensor], name: str | None = None
+) -> list[Tensor]: ...
+
+
+@overload
+def broadcast_tensors(*tensors: Tensor) -> list[Tensor]: ...
+
+
+@variadic_tensor_decorator('input')
 def broadcast_tensors(
     input: Sequence[Tensor], name: str | None = None
 ) -> list[Tensor]:
     """
-    Broadcast a list of tensors following broadcast semantics
+    This API has two signatures:
+
+    1. ``paddle.broadcast_tensors(input, name=None)`` (Paddle-style):
+        Broadcast a list of tensors following broadcast semantics.
+
+    2. ``paddle.broadcast_tensors(*tensors)`` (PyTorch-style):
+        Broadcast variadic tensor arguments following broadcast semantics.
 
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -1685,7 +1702,7 @@ def broadcast_tensors(
        :align: center
 
     Args:
-        input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
+        input (list|tuple): Sequence of input tensors. Supported data types: bool,
             float16, float32, float64, int32, int64, complex64, complex128. All the Tensors in ``input`` must have same data type.
             Currently we only support tensors with rank no greater than 5.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1694,7 +1711,7 @@ def broadcast_tensors(
         list(Tensor), The list of broadcasted tensors following the same order as ``input``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x1 = paddle.rand([1, 2, 3, 4]).astype('float32')
@@ -1792,88 +1809,6 @@ def broadcast_tensors(
         return out
 
 
-def flip(
-    x: Tensor, axis: Sequence[int] | int, name: str | None = None
-) -> Tensor:
-    """
-    Reverse the order of a n-D tensor along given axis in axis.
-
-    The image below illustrates how ``flip`` works.
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/flip.png
-        :width: 500
-        :alt: legend of flip API
-        :align: center
-
-    Args:
-        x (Tensor): A Tensor with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
-            should be float32, float64, int32, int64, bool.
-        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, Tensor or DenseTensor calculated by flip layer. The data type is same with input x.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP("This has diff in xdoctest env")
-            >>> import paddle
-
-            >>> image_shape=(3, 2, 2)
-            >>> img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-            >>> tmp = paddle.flip(img, [0,1])
-            >>> print(tmp)
-            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[10, 11],
-              [8 , 9 ]],
-             [[6 , 7 ],
-              [4 , 5 ]],
-             [[2 , 3 ],
-              [0 , 1 ]]])
-
-            >>> out = paddle.flip(tmp,-1)
-            >>> print(out)
-            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[11, 10],
-              [9 , 8 ]],
-             [[7 , 6 ],
-              [5 , 4 ]],
-             [[3 , 2 ],
-              [1 , 0 ]]])
-    """
-    if isinstance(axis, int):
-        axis = [axis]
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.flip(x, axis)
-    else:
-        helper = LayerHelper("flip", **locals())
-        check_type(x, 'X', (Variable), 'flip')
-        dtype = helper.input_dtype('x')
-        check_dtype(
-            dtype,
-            'X',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'flip',
-        )
-        check_type(axis, 'axis', (list, tuple), 'flip')
-        if name is None:
-            out = helper.create_variable_for_type_inference(dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=dtype, persistable=False
-            )
-
-        helper.append_op(
-            type="flip",
-            inputs={"X": x},
-            outputs={"Out": out},
-            attrs={"axis": axis},
-        )
-        return out
-
-
 def rot90(
     x: Tensor, k: int = 1, axes: Sequence[int] = [0, 1], name: str | None = None
 ) -> Tensor:
@@ -1892,7 +1827,7 @@ def rot90(
         Tensor, Tensor or DenseTensor calculated by rot90 layer. The data type is same with input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -1907,13 +1842,13 @@ def rot90(
             [[1 3]
              [0 2]]
 
-            >>> y= paddle.rot90(data, -1, [0, 1])
+            >>> y = paddle.rot90(data, -1, [0, 1])
             >>> print(y.numpy())
             [[2 0]
              [3 1]]
 
             >>> data2 = paddle.arange(8)
-            >>> data2 = paddle.reshape(data2, (2,2,2))
+            >>> data2 = paddle.reshape(data2, (2, 2, 2))
             >>> print(data2.numpy())
             [[[0 1]
               [2 3]]
@@ -2205,7 +2140,7 @@ def flatten_(
         return _C_ops.flatten_(x, start_axis, stop_axis)
 
 
-@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
+@param_two_alias(["x", "tensors"], ["axis", "dim"])
 def stack(
     x: Sequence[Tensor],
     axis: int = 0,
@@ -2304,6 +2239,9 @@ def stack(
        :width: 1000
        :alt: Legend 1
        :align: center
+
+    .. note::
+        Alias Support: The parameter name ``tensors`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
@@ -2462,7 +2400,7 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         Tensor, The stacked tensor with same data type as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2530,7 +2468,7 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         Tensor, The stacked tensor with same data type as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2592,7 +2530,7 @@ def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         Tensor, The stacked tensor with same data type as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2646,7 +2584,7 @@ def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         Tensor, The stacked tensor with same data type as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2706,7 +2644,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         Tensor, The stacked tensor with same data type as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -2980,7 +2918,13 @@ def split(
         return outs
 
 
-@tensor_split_decorator
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices_or_sections", "indices", "sections"],
+        "axis": ["dim"],
+    }
+)
 def tensor_split(
     x: Tensor,
     num_or_indices: int | Sequence[int],
@@ -3010,7 +2954,7 @@ def tensor_split(
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split along ``axis`` at each of the indices. For instance,
             ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
-            alias: ``indices`` or ``sections``
+            alias: ``indices`` , ``sections`` , ``indices_or_sections``
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
@@ -3551,12 +3495,12 @@ def unique_consecutive(
             counts is provided only if return_counts is True.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
-            >>> output = paddle.unique_consecutive(x) #
+            >>> output = paddle.unique_consecutive(x)
             >>> print(output)
             Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 2, 3, 1, 2])
@@ -3570,7 +3514,7 @@ def unique_consecutive(
              [2, 2, 1, 2, 1])
 
             >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            >>> output = paddle.unique_consecutive(x, axis=0) #
+            >>> output = paddle.unique_consecutive(x, axis=0)
             >>> print(output)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2, 1, 3],
@@ -3578,7 +3522,7 @@ def unique_consecutive(
              [2, 1, 3]])
 
             >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            >>> output = paddle.unique_consecutive(x, axis=0) #
+            >>> output = paddle.unique_consecutive(x, axis=0)
             >>> print(output)
             Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2, 1, 3],
@@ -3823,7 +3767,7 @@ def unique(
             is True. `counts` is provided only if `return_counts` is True.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4278,12 +4222,12 @@ def gather(*args: Any, **kwargs: Any) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> input = paddle.to_tensor([[1,2],[3,4],[5,6]])
-            >>> index = paddle.to_tensor([0,1])
+            >>> input = paddle.to_tensor([[1, 2], [3, 4], [5, 6]])
+            >>> index = paddle.to_tensor([0, 1])
             >>> output = paddle.gather(input, index, axis=0)
             >>> print(output)
             Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -4333,7 +4277,7 @@ def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
         list(Tensor), The list of segmented Tensor variables.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4679,7 +4623,7 @@ def scatter(*args: Any, **kwargs: Any) -> Tensor:
         Tensor, The output is a Tensor with the same shape as x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: scatter-example-2
 
             >>> import paddle
@@ -4851,13 +4795,11 @@ def scatter_nd(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> index = paddle.to_tensor([[1, 1],
-            ...                           [0, 1],
-            ...                           [1, 3]], dtype="int64")
+            >>> index = paddle.to_tensor([[1, 1], [0, 1], [1, 3]], dtype="int64")
             >>> updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             >>> shape = [3, 5, 9, 10]
 
@@ -4866,7 +4808,7 @@ def scatter_nd(
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def chunk(
     x: Tensor, chunks: int, axis: int | Tensor = 0, name: str | None = None
 ) -> list[Tensor]:
@@ -4904,7 +4846,7 @@ def chunk(
         list(Tensor), The list of segmented Tensors.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -4937,7 +4879,7 @@ def chunk(
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
-@ParamAliasDecorator({"x": ["input"], "repeat_times": ["dims"]})
+@param_two_alias(["x", "input"], ["repeat_times", "dims"])
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -4953,6 +4895,7 @@ def tile(
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``repeat_times``.
         For example, ``tile(input=x, dims=repeat_times)`` is equivalent to ``tile(x=x, repeat_times=repeat_times)``.
+
     Args:
         x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32, int64, complex64 or complex128.
             alias: ``input``.
@@ -4965,7 +4908,7 @@ def tile(
         N-D Tensor. The data type is the same as ``x``. The size of the i-th dimension is equal to ``x[i] * repeat_times[i]``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5110,7 +5053,7 @@ def repeat(
         The total number of repeat values must match the number of dimensions in the tensor when using multiple values.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5125,7 +5068,7 @@ def repeat(
             >>> x = paddle.to_tensor([[1, 2], [3, 4]])
             >>> out = x.repeat(2)
             >>> print(out)
-            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1, 2, 1, 2],
             [3, 4, 3, 4]])
 
@@ -5133,26 +5076,26 @@ def repeat(
             >>> x = paddle.to_tensor([[1, 2], [3, 4]])
             >>> out = x.repeat([2, 3])
             >>> print(out)
-            Tensor(shape=[4, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4],
-            [1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4]])
+             [3, 4, 3, 4, 3, 4],
+             [1, 2, 1, 2, 1, 2],
+             [3, 4, 3, 4, 3, 4]])
 
             >>> # Example 4: 3D tensor - mixed repeats
             >>> x = paddle.to_tensor([[[1, 2], [3, 4]]])
             >>> out = x.repeat([2, 1, 3])
             >>> print(out)
-            Tensor(shape=[2, 2, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 2, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[[1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4]],
-            [[1, 2, 1, 2, 1, 2],
-            [3, 4, 3, 4, 3, 4]]])
+              [3, 4, 3, 4, 3, 4]],
+             [[1, 2, 1, 2, 1, 2],
+              [3, 4, 3, 4, 3, 4]]])
     """
     return tile(input, repeat_times=repeats)
 
 
-@ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
+@param_two_alias(["x", "input"], ["shape", "size"])
 def broadcast_to(
     x: Tensor,
     shape: ShapeLike,
@@ -5187,7 +5130,7 @@ def broadcast_to(
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5199,6 +5142,21 @@ def broadcast_to(
              [1, 2, 3]])
     """
     return expand(x, shape, name)
+
+
+@overload
+def expand(
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def expand(
+    input: Tensor,
+    *size: int,
+) -> Tensor: ...
 
 
 @expand_decorator()
@@ -5240,7 +5198,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5347,6 +5305,14 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+@overload
+def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
+
+
+@overload
+def reshape(input: Tensor, *shape: int) -> Tensor: ...
+
+
 @reshape_decorator()
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
@@ -5414,6 +5380,9 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.)
 
+            >>> out = paddle.reshape(x, 6, 4, 2)
+            >>> print(out.shape)
+            paddle.Size([6, 4, 2])
     """
 
     def get_attr_shape(list_shape):
@@ -5594,24 +5563,27 @@ def masked_scatter(
         Tensor, A reshaped Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2048)
             >>> x = paddle.randn([2, 2])
             >>> print(x)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[-1.24725831,  0.03843464],
-                [-0.31660911,  0.04793844]])
+            [[-1.24725831,  0.03843464],
+             [-0.31660911,  0.04793844]])
 
             >>> mask = paddle.to_tensor([[True, True], [False, False]])
-            >>> value = paddle.to_tensor([1, 2, 3, 4, 5,], dtype="float32")
+            >>> value = paddle.to_tensor(
+            ...     [1, 2, 3, 4, 5],
+            ...     dtype="float32",
+            ... )
 
             >>> out = paddle.masked_scatter(x, mask, value)
             >>> print(out)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[1,  2],
-                [-0.31660911,  0.04793844]])
+            [[ 1.        ,  2.        ],
+             [-0.31660911,  0.04793844]])
 
     """
     # make sure the dtype of x and value is the same
@@ -5709,7 +5681,7 @@ def atleast_1d(*inputs, name=None):
         List of Tensors, if there are more than one inputs.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5812,7 +5784,7 @@ def atleast_2d(*inputs, name=None):
         List of Tensors, if there are more than one inputs.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -5904,7 +5876,7 @@ def atleast_3d(*inputs, name=None):
         List of Tensors, if there are more than one inputs.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -6038,12 +6010,16 @@ def gather_nd(x: Tensor, index: Tensor, name: str | None = None) -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]],
-            ...                       [[7, 8], [9, 10], [11, 12]]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [[1, 2], [3, 4], [5, 6]],
+            ...         [[7, 8], [9, 10], [11, 12]],
+            ...     ]
+            ... )
             >>> index = paddle.to_tensor([[0, 1]])
 
             >>> output = paddle.gather_nd(x, index)
@@ -6094,8 +6070,8 @@ def strided_slice(
     name: str | None = None,
 ) -> Tensor:
     """
-    This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
-    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
+    https://numpy.org/doc/stable/user/basics.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
@@ -6159,10 +6135,10 @@ def strided_slice(
         Tensor, A ``Tensor`` with the same dimension as ``x``. The data type is same as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.zeros(shape=[3,4,5,6], dtype="float32")
+            >>> x = paddle.zeros(shape=[3, 4, 5, 6], dtype="float32")
             >>> # example 1:
             >>> # attr starts is a list which doesn't contain Tensor.
             >>> axes = [1, 2, 3]
@@ -6368,7 +6344,7 @@ def tensordot(
            while the corresponding axis sequences for ``y`` will be expanded from [1, 0] to [1, 0, 2, 3].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from typing import Literal
@@ -6626,7 +6602,7 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         Tensor, The output. Data type is 'float32' or 'float64', with the same precision as the input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
@@ -6682,15 +6658,17 @@ def view_as_complex(input: Tensor) -> Tensor:
         Tensor, The output. Data type is 'complex64' or 'complex128', sharing the same memory with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
             >>> y = paddle.as_complex(x)
             >>> print(y)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[1j      , (2+3j)  , (4+5j)  ],
-             [(6+7j)  , (8+9j)  , (10+11j)]])
+            [[(0.00000000+1.00000000j), (2.00000000+3.00000000j),
+              (4.00000000+5.00000000j)],
+             [(6.00000000+7.00000000j), (8.00000000+9.00000000j),
+              (10.00000000+11.00000000j)]])
     """
 
     return as_complex(x=input)
@@ -6715,7 +6693,7 @@ def view_as_real(input: Tensor) -> Tensor:
         Tensor, The output. Data type is 'float32' or 'float64', sharing the same memory with input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
@@ -6776,7 +6754,7 @@ def repeat_interleave(
         Tensor, A Tensor with same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -6966,6 +6944,7 @@ def moveaxis(
         return out
 
 
+@param_one_alias(["x", "input"])
 def masked_fill(
     x, mask: Tensor, value: Numeric, name: str | None = None
 ) -> Tensor:
@@ -6993,7 +6972,7 @@ def masked_fill(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -7001,13 +6980,13 @@ def masked_fill(
             >>> mask = paddle.to_tensor([[True, True, False]])
             >>> print(mask)
             Tensor(shape=[1, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
-                   [[True , True , False]])
+            [[True , True , False]])
             >>> out = paddle.masked_fill(x, mask, 2)
             >>> print(out)
             Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[2., 2., 1.],
-                    [2., 2., 1.],
-                    [2., 2., 1.]])
+            [[2., 2., 1.],
+             [2., 2., 1.],
+             [2., 2., 1.]])
     """
     if np.isscalar(value):
         value = paddle.full([], value, x.dtype)
@@ -7170,13 +7149,13 @@ def scatter_add(
         Tensor, The indexed element, same dtype with input
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
-            >>> indices = paddle.zeros((2,3)).astype("int32")
-            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> indices = paddle.zeros((2, 3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype(x.dtype)
             >>> result = paddle.scatter_add(x, 0, indices, values)
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -7190,7 +7169,7 @@ def scatter_add(
     )
 
 
-@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
+@param_two_alias(["arr", "input"], ["axis", "dim"])
 def take_along_axis(
     arr: Tensor,
     indices: Tensor,
@@ -7221,11 +7200,11 @@ def take_along_axis(
         Tensor, The indexed element, same dtype with arr.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7,8,9]])
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
             >>> index = paddle.to_tensor([[0]])
             >>> axis = 0
             >>> result = paddle.take_along_axis(x, index, axis)
@@ -7322,13 +7301,13 @@ def scatter_reduce(
         Tensor, The indexed element, same dtype with input
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
-            >>> indices = paddle.zeros((2,3)).astype("int32")
-            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> indices = paddle.zeros((2, 3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype(x.dtype)
             >>> result = paddle.scatter_reduce(x, 0, indices, values, "sum", include_self=True)
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -7387,7 +7366,7 @@ def put_along_axis(
         Tensor, The indexed element, same dtype with arr
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -7401,8 +7380,8 @@ def put_along_axis(
             [[99, 99, 99],
              [60, 40, 50]])
 
-            >>> index = paddle.zeros((2,2)).astype("int32")
-            >>> value=paddle.to_tensor([[1,2],[3,4]]).astype(x.dtype)
+            >>> index = paddle.zeros((2, 2)).astype("int32")
+            >>> value = paddle.to_tensor([[1, 2], [3, 4]]).astype(x.dtype)
             >>> result = paddle.put_along_axis(x, index, value, 0, "add", True, False)
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -7624,6 +7603,31 @@ def scatter_add_(
     )
 
 
+@overload
+def index_add(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: Number = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def index_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    *,
+    alpha: Number = 1,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
 @index_add_decorator()
 def index_add(
     x: Tensor,
@@ -7655,7 +7659,7 @@ def index_add(
         Tensor, same dimension and dtype with x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -7708,6 +7712,28 @@ def index_add(
         attrs={'axis': axis},
     )
     return out
+
+
+@overload
+def index_add_(
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: Tensor,
+    alpha: int = 1,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def index_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+    *,
+    alpha: Number = 1,
+) -> Tensor: ...
 
 
 @index_add_decorator()
@@ -7763,7 +7789,7 @@ def unflatten(
         Tensor, return the unflatten tensor of :attr:`x`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -7863,6 +7889,35 @@ def as_strided(
             >>> # the stride is [6, 1].
     """
     return _C_ops.as_strided(x, shape, stride, offset)
+
+
+@overload
+def view(
+    x: Tensor,
+    shape_or_dtype: Sequence[int] | DTypeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    dtype: DTypeLike,
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    size: Sequence[int],
+) -> Tensor: ...
+
+
+@overload
+def view(
+    x: Tensor,
+    *shape: int,
+) -> Tensor: ...
 
 
 @dygraph_only
@@ -8011,7 +8066,7 @@ def unfold(
         Tensor, A unfold Tensor with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
@@ -8081,11 +8136,30 @@ def _index_fill_impl(
         return out
 
 
+@overload
+def index_fill(
+    x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
+) -> Tensor: ...
+
+
+@overload
+def index_fill(
+    input: Tensor, dim: int, index: Tensor, value: float
+) -> Tensor: ...
+
+
+@index_fill_decorator()
 def index_fill(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
-    Fill the elements of the input tensor with value by the specific axis and index.
+    This API has two signatures:
+
+    1. ``paddle.index_fill(x, index, axis, value, name=None)`` (Paddle-style):
+        Fill the elements of the input tensor with value by the specific axis and index.
+
+    2. ``paddle.index_fill(input, dim, index, value)`` (PyTorch-style):
+        Fill the elements of the input tensor with value by the specific dimension and index.
 
     As shown below, a ``[3, 3]`` 2D tensor is updated via the index_fill operation. With ``axis=0``, ``index=[0, 2]`` and ``value=-1``, the 1st and 3rd row elements become ``-1``. The resulting tensor, still [3, 3], has updated values.
 
@@ -8095,7 +8169,7 @@ def index_fill(
        :align: center
 
     Args:
-        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        x (Tensor): The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
         axis (int): The dimension along which to index.
@@ -8105,9 +8179,8 @@ def index_fill(
     Returns:
         Tensor, same dimension and dtype with x.
 
-
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> input_tensor = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
@@ -8115,21 +8188,34 @@ def index_fill(
             >>> value = -1
             >>> res = paddle.index_fill(input_tensor, index, 0, value)
             >>> print(input_tensor)
-            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[1, 2, 3],
-                    [4, 5, 6],
-                    [7, 8, 9]])
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 3],
+             [4, 5, 6],
+             [7, 8, 9]])
             >>> print(res)
-            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [[-1, -1, -1],
-                    [ 4,  5,  6],
-                    [-1, -1, -1]])
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1, -1, -1],
+             [ 4,  5,  6],
+             [-1, -1, -1]])
 
     """
     return _index_fill_impl(x, index, axis, value, False)
 
 
+@overload
+def index_fill_(
+    input: Tensor, dim: int, index: Tensor, value: float
+) -> Tensor: ...
+
+
+@overload
+def index_fill_(
+    x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
+) -> Tensor: ...
+
+
 @inplace_apis_in_dygraph_only
+@index_fill_decorator()
 def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
@@ -8181,14 +8267,14 @@ def diagonal_scatter(
         Tensor, Tensor with diagonal embedded with ``y``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> x = paddle.arange(6.0).reshape((2, 3))
             >>> y = paddle.ones((2,))
             >>> out = x.diagonal_scatter(y)
             >>> print(out)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[1., 1., 2.],
                     [3., 1., 5.]])
 
@@ -8213,21 +8299,21 @@ def select_scatter(
         Tensor, same dtype and shape with x
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.zeros((2,3,4)).astype("float32")
-            >>> values = paddle.ones((2,4)).astype("float32")
-            >>> res = paddle.select_scatter(x,values,1,1)
+            >>> x = paddle.zeros((2, 3, 4)).astype("float32")
+            >>> values = paddle.ones((2, 4)).astype("float32")
+            >>> res = paddle.select_scatter(x, values, 1, 1)
             >>> print(res)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [[[0., 0., 0., 0.],
-                     [1., 1., 1., 1.],
-                     [0., 0., 0., 0.]],
-                    [[0., 0., 0., 0.],
-                     [1., 1., 1., 1.],
-                     [0., 0., 0., 0.]]])
+            [[[0., 0., 0., 0.],
+              [1., 1., 1., 1.],
+              [0., 0., 0., 0.]],
+             [[0., 0., 0., 0.],
+              [1., 1., 1., 1.],
+              [0., 0., 0., 0.]]])
 
     """
     x_shape = x.shape
@@ -8330,7 +8416,7 @@ def slice_scatter(
         Tensor, same dtype and shape with x
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -8416,19 +8502,35 @@ def slice_scatter(
         return output
 
 
+@overload
+def block_diag(inputs: Sequence[Tensor], name: str | None = None) -> Tensor: ...
+
+
+@overload
+def block_diag(*tensors: Tensor) -> Tensor: ...
+
+
+@variadic_tensor_decorator('inputs')
 def block_diag(inputs: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
-    Create a block diagonal matrix from provided tensors.
+    This API has two signatures:
+
+    1. ``paddle.block_diag(inputs, name=None)`` (Paddle-style):
+        Create a block diagonal matrix from a sequence of tensors.
+
+    2. ``paddle.block_diag(*tensors)`` (PyTorch-style):
+        Create a block diagonal matrix from variadic tensor arguments.
+
 
     Args:
-        inputs (list|tuple): ``inputs`` is a Tensor list or Tensor tuple, one or more tensors with 0, 1, or 2 dimensions. The data type: ``bool``, ``float16``, ``float32``, ``float64``, ``uint8``, ``int8``, ``int16``, ``int32``, ``int64``, ``bfloat16``, ``complex64``, ``complex128``.
+        inputs (list|tuple): Sequence of input tensors, one or more tensors with 0, 1, or 2 dimensions. The data type: ``bool``, ``float16``, ``float32``, ``float64``, ``uint8``, ``int8``, ``int16``, ``int32``, ``int64``, ``bfloat16``, ``complex64``, ``complex128``.
         name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:
         Tensor, A ``Tensor``. The data type is same as ``inputs``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -8439,16 +8541,16 @@ def block_diag(inputs: Sequence[Tensor], name: str | None = None) -> Tensor:
             >>> E = paddle.to_tensor([[8, 7], [7, 8]])
             >>> out = paddle.block_diag([A, B, C, D, E])
             >>> print(out)
-            Tensor(shape=[9, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 7, 6, 5, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 5, 4, 3, 0, 0],
-                [0, 0, 0, 0, 0, 2, 1, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 8, 7],
-                [0, 0, 0, 0, 0, 0, 0, 0, 7, 8]])
+            Tensor(shape=[9, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 7, 6, 5, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 5, 4, 3, 0, 0],
+             [0, 0, 0, 0, 0, 2, 1, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 8, 7],
+             [0, 0, 0, 0, 0, 0, 0, 0, 7, 8]])
     """
 
     def to_col_block(arys, i, a):

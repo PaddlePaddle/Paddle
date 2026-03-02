@@ -39,15 +39,14 @@ def symbolic_truediv(x, y):
     # as 168 * (1 / 7) = 24.00000191, which may cause some unexpected
     # bugs. So we cast the tensor and scalar both to float64 to avoid
     # this issue.
-    is_need_cast_tensor = (
-        lambda v: isinstance(v, paddle.pir.Value)
-        and v.dtype is not paddle.float64
+    is_need_cast_tensor = lambda v: (
+        isinstance(v, paddle.pir.Value) and v.dtype is not paddle.float64
     )
-    cast_tensor_if_needed = (
-        lambda v: v.cast(paddle.float64) if is_need_cast_tensor(v) else v
+    cast_tensor_if_needed = lambda v: (
+        v.cast(paddle.float64) if is_need_cast_tensor(v) else v
     )
-    cast_scalar_if_needed = (
-        lambda v: paddle.full([], v, dtype=paddle.float64)
+    cast_scalar_if_needed = lambda v: (
+        paddle.full([], v, dtype=paddle.float64)
         if isinstance(v, (int, float))
         else v
     )

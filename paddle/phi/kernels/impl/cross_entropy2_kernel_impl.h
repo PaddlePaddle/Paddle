@@ -36,7 +36,7 @@ void CrossEntropyOpKernel(const Context& dev_ctx,
 
   int rank = x.dims().size();
   auto label_dims = labels->dims();
-  DenseTensor x_2d = phi::ReshapeToMatrix(x, rank - 1);
+  DenseTensor x_2d = ReshapeToMatrix(x, rank - 1);
   DenseTensor labels_2d, y_2d;
   if (label_dims.size() < rank) {
     labels_2d.ShareDataWith(*labels);
@@ -46,8 +46,8 @@ void CrossEntropyOpKernel(const Context& dev_ctx,
     y_2d.Resize({common::product(y->dims()), 1});
 
   } else {
-    labels_2d = phi::ReshapeToMatrix(*labels, rank - 1);
-    y_2d = phi::ReshapeToMatrix(*y, rank - 1);
+    labels_2d = ReshapeToMatrix(*labels, rank - 1);
+    y_2d = ReshapeToMatrix(*y, rank - 1);
   }
 
   // TODO(large-tensor): downstream functors may still use int

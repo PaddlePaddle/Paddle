@@ -70,6 +70,16 @@ class XPUTestAtanOp(XPUOpTestWrapper):
             self.x_shape = [1]
 
 
+class TestAtanEmptyXPU(unittest.TestCase):
+    def test_atan_empty_tensor(self):
+        paddle.disable_static()
+        paddle.set_device('xpu')
+        x = paddle.empty([0, 16, 32], dtype='float16')
+        out = paddle.atan(x)
+        self.assertEqual(list(out.shape), [0, 16, 32])
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types("atan")
 for stype in support_types:
     create_test_class(globals(), XPUTestAtanOp, stype)

@@ -122,9 +122,9 @@ void ArgsortKernel(const Context& dev_ctx,
     return;
   }
 
-  int64_t len_before = common::product(common::slice_ddim(in_dims, 0, axis));
+  int64_t len_before = common::product(slice_ddim(in_dims, 0, axis));
   int64_t len_after =
-      common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
+      common::product(slice_ddim(in_dims, axis + 1, in_dims.size()));
   std::vector<int64_t> permute_vec{0, 2, 1};
   std::vector<int64_t> data_shape{len_before, n, len_after};
 

@@ -98,7 +98,7 @@ size_t PyArray_Size_(PyObject* numpy_data) {
 
 class EagerNumpyAllocation : public phi::Allocation {
  public:
-  explicit EagerNumpyAllocation(PyObject* numpy_data, phi::DataType dtype)
+  explicit EagerNumpyAllocation(PyObject* numpy_data, DataType dtype)
       : Allocation(
             static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
             phi::SizeOf(dtype) * PyArray_Size_(numpy_data),
@@ -274,13 +274,13 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
     if (meta && meta->Grad().has_allocation()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
-        case phi::DataType::FLOAT16:
+        case DataType::FLOAT16:
           ret[0].emplace_back(grad);
           break;
-        case phi::DataType::BFLOAT16:
+        case DataType::BFLOAT16:
           ret[1].emplace_back(grad);
           break;
-        case phi::DataType::FLOAT32:
+        case DataType::FLOAT32:
           ret[2].emplace_back(grad);
           break;
         default:
@@ -300,26 +300,26 @@ PyObject* eager_api_get_grads_types(PyObject* self,
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
 
-  std::vector<phi::DataType> ret;
+  std::vector<DataType> ret;
 
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
     if (!meta || meta->StopGradient()) {
-      ret.emplace_back(phi::DataType::UNDEFINED);
+      ret.emplace_back(DataType::UNDEFINED);
       continue;
     }
 
     auto& grad = meta->Grad();
     if (meta && grad.has_allocation()) {
       if ((grad.is_dense_tensor() || grad.is_dist_tensor()) &&
-          (tensor.dtype() == phi::DataType::FLOAT32 ||
-           tensor.dtype() == phi::DataType::FLOAT16 ||
-           tensor.dtype() == phi::DataType::BFLOAT16)) {
+          (tensor.dtype() == DataType::FLOAT32 ||
+           tensor.dtype() == DataType::FLOAT16 ||
+           tensor.dtype() == DataType::BFLOAT16)) {
         ret.emplace_back(tensor.dtype());
       }
     } else {
-      ret.emplace_back(phi::DataType::UNDEFINED);
+      ret.emplace_back(DataType::UNDEFINED);
     }
   }
 
@@ -533,7 +533,7 @@ static Tensor InitializedEmptyTensor() {
   std::shared_ptr<DenseTensor> dense_tensor = nullptr;
   std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
   dense_tensor = std::make_shared<DenseTensor>(
-      allocation_ptr, phi::DenseTensorMeta(phi::DataType::FLOAT32, ddims));
+      allocation_ptr, phi::DenseTensorMeta(DataType::FLOAT32, ddims));
   tensor.set_impl(dense_tensor);
   autograd_meta->SetGradNode(
       std::make_shared<egr::GradNodeAccumulation>(tensor));
@@ -594,7 +594,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       ctx.EmplaceBackInput(Tensor());
       continue;
     }
-    if (paddle::framework::detail::IsDuplicableVar(input)) {
+    if (framework::detail::IsDuplicableVar(input)) {
       std::vector<Tensor> tensors = CastPyArg2VectorOfTensor(obj, i + 1);
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
@@ -626,7 +626,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         ctx.EmplaceBackInput(Tensor());
         continue;
       }
-      if (paddle::framework::detail::IsDuplicableVar(input)) {
+      if (framework::detail::IsDuplicableVar(input)) {
         std::vector<Tensor> tensors =
             CastPyArg2VectorOfTensor(obj, i + 1, mesh);
         ctx.EmplaceBackInputs(std::move(tensors));
@@ -711,7 +711,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         const auto& input_range = ctx.InputRangeAt(in_idx);
         const auto& input_tensor = ctx.InputAt(input_range.first);
         // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
-        if (paddle::framework::detail::IsOptionalVar(output) &&
+        if (framework::detail::IsOptionalVar(output) &&
             !input_tensor.has_allocation()) {
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
@@ -720,7 +720,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
           continue;
         }
         /// inplace vector<Tensor>, initialized tensor.
-        if (paddle::framework::detail::IsDuplicableVar(output)) {
+        if (framework::detail::IsDuplicableVar(output)) {
           std::vector<Tensor> empty_tensors;
           size_t vector_size = input_range.second - input_range.first;
           empty_tensors.resize(vector_size);
@@ -750,7 +750,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         Tensor* out_tensor = ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->has_allocation()) {
           PADDLE_ENFORCE(
-              paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
+              framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
               common::errors::InvalidArgument(
                   "Custom operator[%s]'s %d-th output is not initialized. "
@@ -1421,10 +1421,9 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
                               "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (((*grad).has_allocation() || (*grad).is_dist_tensor()) &&
-        ((*grad).dtype() == phi::DataType::FLOAT16 ||
-         (*grad).dtype() == phi::DataType::BFLOAT16)) {
-      auto master_grad =
-          paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
+        ((*grad).dtype() == DataType::FLOAT16 ||
+         (*grad).dtype() == DataType::BFLOAT16)) {
+      auto master_grad = paddle::experimental::cast(*grad, DataType::FLOAT32);
       grad->set_impl(master_grad.impl());
     }
     VLOG(6) << "finish setting master_grad for tensor: " << tensor.name();

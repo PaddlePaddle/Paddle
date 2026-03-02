@@ -30,6 +30,10 @@ void BCELossGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(input_grad);
 
   auto x_numel = input.numel();
+  if (x_numel == 0) {
+    dev_ctx.template Alloc<T>(input_grad);
+    return;
+  }
   int r = xpu::bce_loss_grad<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(input.data<T>()),

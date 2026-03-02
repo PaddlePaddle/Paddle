@@ -65,7 +65,7 @@ __global__ void NumberCount(const T* numbers,
 #endif
     }
     if (threadIdx.x % WARP_SIZE == 0) {
-      phi::CudaAtomicAdd(number_count + i, x);
+      CudaAtomicAdd(number_count + i, x);
     }
   }
 }
@@ -77,7 +77,7 @@ void NumberCountKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   int64_t batch_size = numbers.numel();
 
-  DDim out_dims = common::make_ddim({upper_range});
+  DDim out_dims = make_ddim({upper_range});
   out->Resize(out_dims);
   auto out_data = dev_ctx.template Alloc<T>(out);
   const T* gate_data = numbers.data<T>();

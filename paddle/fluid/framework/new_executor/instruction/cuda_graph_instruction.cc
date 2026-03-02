@@ -40,7 +40,7 @@ namespace paddle::framework {
 
 CudaGraphInstruction::CudaGraphInstruction(
     size_t id,
-    const phi::Place& place,
+    const Place& place,
     pir::Operation* op,
     uint8_t* cuda_graph_state_ref,
     int64_t cuda_graph_capture_pool_id,

@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <c10/util/OptionalArrayRef.h>
 #include <optional>
 #include <string_view>
 
@@ -70,7 +71,16 @@ inline at::Tensor& sum_out(
 
 }  // namespace at
 
-namespace torch {
-using at::sum;
-using at::sum_out;
-}  // namespace torch
+namespace at {
+
+inline at::Tensor Tensor::sum(::std::optional<at::ScalarType> dtype) const {
+  return at::sum(*this, dtype);
+}
+
+inline at::Tensor Tensor::sum(at::OptionalIntArrayRef dim,
+                              bool keepdim,
+                              ::std::optional<at::ScalarType> dtype) const {
+  return at::sum(*this, dim, keepdim, dtype);
+}
+
+}  // namespace at

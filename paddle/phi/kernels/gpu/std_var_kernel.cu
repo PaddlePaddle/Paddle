@@ -156,10 +156,7 @@ void Std_VarKernel(const Context& dev_ctx,
                    bool take_sqrt,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(NAN),
-                          out);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(NAN), out);
     return;
   }
 
