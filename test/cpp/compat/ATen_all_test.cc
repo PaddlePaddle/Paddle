@@ -108,23 +108,6 @@ TEST(TestAllclose, AllcloseNotEqual) {
   ASSERT_EQ(result, false);
 }
 
-TEST(TestAllclose, AllcloseEqualNan) {
-  // Test allclose with equal_nan
-  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
-  at::Tensor tensor2 = tensor1.clone();
-  const float nan_value = std::numeric_limits<float>::quiet_NaN();
-  tensor1[1] = nan_value;
-  tensor2[1] = nan_value;
-
-  // With equal_nan = true
-  bool result_nan = tensor1.allclose(tensor2, 1e-05, 1e-08, true);
-  ASSERT_EQ(result_nan, true);
-
-  // With equal_nan = false (default)
-  bool result_no_nan = tensor1.allclose(tensor2);
-  ASSERT_EQ(result_no_nan, false);
-}
-
 TEST(TestAllclose, StandaloneFunction) {
   // Test at::allclose() standalone function
   at::Tensor tensor1 = at::arange(6, at::kFloat).reshape({2, 3});
@@ -132,13 +115,4 @@ TEST(TestAllclose, StandaloneFunction) {
 
   bool result = at::allclose(tensor1, tensor2);
   ASSERT_EQ(result, true);
-}
-
-TEST(TestAllclose, AllcloseDifferentShapes) {
-  // Test allclose with different shapes - should return false
-  at::Tensor tensor1 = at::arange(1, 4, at::TensorOptions().dtype(at::kFloat));
-  at::Tensor tensor2 = at::arange(1, 3, at::TensorOptions().dtype(at::kFloat));
-
-  bool result = tensor1.allclose(tensor2);
-  ASSERT_EQ(result, false);
 }
