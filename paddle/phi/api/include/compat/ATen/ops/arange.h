@@ -78,6 +78,18 @@ inline at::Tensor arange(const at::Scalar& start,
                          const at::Scalar& end,
                          const at::Scalar& step,
                          at::TensorOptions options = {}) {
+  // Match PyTorch: step must be non-zero and consistent with (end - start).
+  double s = start.to<double>();
+  double e = end.to<double>();
+  double st = step.to<double>();
+  PD_CHECK(st != 0, "arange() step must be nonzero");
+  PD_CHECK(((e > s) == (st > 0)) || (e == s),
+           "arange() upper bound and step sign inconsistent: upper=",
+           e,
+           " start=",
+           s,
+           " step=",
+           st);
   return paddle::experimental::arange(
       paddle::experimental::full(
           {}, start.to<int64_t>(), phi::DataType::FLOAT64),
@@ -95,6 +107,18 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
+  // Match PyTorch: step must be non-zero and consistent with (end - start).
+  double s = start.to<double>();
+  double e = end.to<double>();
+  double st = step.to<double>();
+  PD_CHECK(st != 0, "arange() step must be nonzero");
+  PD_CHECK(((e > s) == (st > 0)) || (e == s),
+           "arange() upper bound and step sign inconsistent: upper=",
+           e,
+           " start=",
+           s,
+           " step=",
+           st);
   return paddle::experimental::arange(
       paddle::experimental::full(
           {}, start.to<int64_t>(), phi::DataType::FLOAT64),
