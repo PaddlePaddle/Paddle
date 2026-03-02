@@ -221,480 +221,478 @@ class Tensor : public TensorBase {
   template <typename T>
   T item() const;
 
-  return *(cpu_tensor.data<T>());
-}
-
-// Clamp functions
-at::Tensor
-clamp(const ::std::optional<at::Scalar>& min,
+  // Clamp functions
+  at::Tensor clamp(
+      const ::std::optional<at::Scalar>& min,
       const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
 
-at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
-                 const ::std::optional<at::Tensor>& max = {}) const;
-
-at::Tensor& clamp_(
-    const ::std::optional<at::Scalar>& min,
-    const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
-
-at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+  at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
                    const ::std::optional<at::Tensor>& max = {}) const;
 
-at::Tensor clamp_max(const at::Scalar& max) const;
-at::Tensor clamp_max(const at::Tensor& max) const;
-at::Tensor& clamp_max_(const at::Scalar& max) const;
-at::Tensor& clamp_max_(const at::Tensor& max) const;
+  at::Tensor& clamp_(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
 
-at::Tensor clamp_min(const at::Scalar& min) const;
-at::Tensor clamp_min(const at::Tensor& min) const;
-at::Tensor& clamp_min_(const at::Scalar& min) const;
-at::Tensor& clamp_min_(const at::Tensor& min) const;
+  at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+                     const ::std::optional<at::Tensor>& max = {}) const;
 
-// as_strided: Create a tensor view with custom size, stride, and
-// storage_offset
-at::Tensor as_strided(
-    at::IntArrayRef size,
-    at::IntArrayRef stride,
-    ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+  at::Tensor clamp_max(const at::Scalar& max) const;
+  at::Tensor clamp_max(const at::Tensor& max) const;
+  at::Tensor& clamp_max_(const at::Scalar& max) const;
+  at::Tensor& clamp_max_(const at::Tensor& max) const;
 
-// as_strided_: Inplace version
-const at::Tensor& as_strided_(
-    at::IntArrayRef size,
-    at::IntArrayRef stride,
-    ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+  at::Tensor clamp_min(const at::Scalar& min) const;
+  at::Tensor clamp_min(const at::Tensor& min) const;
+  at::Tensor& clamp_min_(const at::Scalar& min) const;
+  at::Tensor& clamp_min_(const at::Tensor& min) const;
 
-// as_strided_scatter: Scatter src into a strided view
-at::Tensor as_strided_scatter(
-    const at::Tensor& src,
-    at::IntArrayRef size,
-    at::IntArrayRef stride,
-    ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+  // as_strided: Create a tensor view with custom size, stride, and
+  // storage_offset
+  at::Tensor as_strided(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
-// Standard deviation functions
-Tensor std(int dim) const;
-Tensor std(bool unbiased = true) const;
-Tensor std(at::OptionalIntArrayRef dim,
-           bool unbiased = true,
-           bool keepdim = false) const;
-Tensor std(at::OptionalIntArrayRef dim,
-           const ::std::optional<at::Scalar>& correction,
-           bool keepdim = false) const;
+  // as_strided_: Inplace version
+  const at::Tensor& as_strided_(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
-Tensor tensor_data() const {
-  PaddleTensor result;
-  if (tensor_.initialized()) {
-    auto src_impl = tensor_.impl();
-    auto* src_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
-    if (src_tensor && src_tensor->meta().is_contiguous()) {
-      result.set_impl(std::make_shared<phi::DenseTensor>());
-      auto* dst_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
-      dst_tensor->ShareDataWith(*src_tensor);
-    } else {
-      result = paddle::experimental::assign(tensor_);
+  // as_strided_scatter: Scatter src into a strided view
+  at::Tensor as_strided_scatter(
+      const at::Tensor& src,
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // Standard deviation functions
+  Tensor std(int dim) const;
+  Tensor std(bool unbiased = true) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const;
+
+  Tensor tensor_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
     }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
   }
-  // For uninitialized tensor, return an uninitialized tensor (no assign
-  // needed)
-  return Tensor(result);
-}
 
-Tensor variable_data() const {
-  PaddleTensor result;
-  if (tensor_.initialized()) {
-    auto src_impl = tensor_.impl();
-    auto* src_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
-    if (src_tensor && src_tensor->meta().is_contiguous()) {
-      result.set_impl(std::make_shared<phi::DenseTensor>());
-      auto* dst_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
-      dst_tensor->ShareDataWith(*src_tensor);
-    } else {
-      result = paddle::experimental::assign(tensor_);
+  Tensor variable_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
     }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
   }
-  // For uninitialized tensor, return an uninitialized tensor (no assign
-  // needed)
-  return Tensor(result);
-}
 
-// index: Get values at specified tensor indices
-at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
+  // index: Get values at specified tensor indices
+  at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
 
-// index_put_: Set values at specified indices in-place
-at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+  // index_put_: Set values at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Tensor& values,
+                         bool accumulate = false) const;
+
+  // index_put_: Set scalar value at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Scalar& v,
+                         bool accumulate = false) const;
+
+  // index_put: Non-inplace version of index_put_
+  at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
                        const at::Tensor& values,
                        bool accumulate = false) const;
 
-// index_put_: Set scalar value at specified indices in-place
-at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
-                       const at::Scalar& v,
-                       bool accumulate = false) const;
-
-// index_put: Non-inplace version of index_put_
-at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
-                     const at::Tensor& values,
-                     bool accumulate = false) const;
-
-at::Tensor to(
-    at::ScalarType dtype,
-    bool non_blocking = false,
-    bool copy = false,
-    ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
-  return to(
-      at::TensorOptions().dtype(dtype), non_blocking, copy, memory_format);
-}
-
-Tensor toType(ScalarType t) const {
-  return Tensor(paddle::experimental::cast(
-      tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
-}
-
-int64_t numel() const { return tensor_.numel(); }
-
-c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
-  return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
-}
-
-c10::Device device() const { return c10::Device(tensor_.place()); }
-c10::DeviceIndex get_device() const {
-  return c10::Device(tensor_.place()).index();
-}
-
-int64_t dim() const { return tensor_.dims().size(); }
-int64_t ndimension() const { return dim(); }
-
-at::Tensor contiguous(
-    c10::MemoryFormat memory_format = c10::MemoryFormat::Contiguous) const {
-  PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
-           "`MemoryFormat` other than Contiguous");
-
-  return tensor_.contiguous();
-}
-
-bool is_contiguous(
-    at::MemoryFormat memory_format = at::MemoryFormat::Contiguous) const {
-  PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
-           "`MemoryFormat` other than Contiguous");
-
-  return tensor_.is_contiguous();
-}
-
-c10::ScalarType scalar_type() const {
-  return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
-}
-
-at::Tensor flatten(int64_t start_dim, int64_t end_dim) const;
-at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const;
-at::Tensor unflatten_symint(int64_t dim, c10::SymIntArrayRef sizes) const;
-
-Tensor& fill_(const at::Scalar& value) const {
-  paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
-  return const_cast<at::Tensor&>(*this);
-}
-
-Tensor& zero_() const {
-  paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
-  return const_cast<at::Tensor&>(*this);
-}
-
-bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
-bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
-
-bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
-  return phi::is_cuda_pinned_place(tensor_.place()) ||
-         phi::is_xpu_pinned_place(tensor_.place());
-}
-
-Tensor pin_memory(::std::optional<c10::Device> device = ::std::nullopt) const {
-  if (is_pinned(device)) {
-    return *this;
+  at::Tensor to(
+      at::ScalarType dtype,
+      bool non_blocking = false,
+      bool copy = false,
+      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
+    return to(
+        at::TensorOptions().dtype(dtype), non_blocking, copy, memory_format);
   }
 
-  PaddlePlace current_place = tensor_.place();
-  PaddlePlace pinned_place;
-  if (phi::is_cpu_place(current_place)) {
-    // CPU place cannot be directly converted to pinned place
-    PD_THROW(
-        "pin_memory: Pinning memory is not supported for CPUPlace. "
-        "Please use CUDAPlace or XPUPlace tensor, or specify "
-        "CUDAPinnedPlace/XPUPinnedPlace as device.");
-  } else {
-    // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
-    // place
-    pinned_place = phi::GetPinnedPlace(current_place);
+  Tensor toType(ScalarType t) const {
+    return Tensor(paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
   }
-  return tensor_.copy_to(pinned_place, true);
-}
 
-at::Tensor narrow_copy(int64_t dim, int64_t start, int64_t length) const;
-at::Tensor narrow_copy_symint(int64_t dim,
-                              c10::SymInt start,
-                              c10::SymInt length) const;
+  int64_t numel() const { return tensor_.numel(); }
 
-at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const;
-at::Tensor narrow_symint(int64_t dim,
-                         c10::SymInt start,
-                         c10::SymInt length) const;
-at::Tensor narrow(int64_t dim, const at::Tensor& start, int64_t length) const;
-at::Tensor narrow_symint(int64_t dim,
-                         const at::Tensor& start,
-                         c10::SymInt length) const;
+  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
+    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  }
 
-at::Tensor reshape(at::IntArrayRef shape) const;
+  c10::Device device() const { return c10::Device(tensor_.place()); }
+  c10::DeviceIndex get_device() const {
+    return c10::Device(tensor_.place()).index();
+  }
 
-at::Tensor transpose(int64_t dim0, int64_t dim1) const;
-at::Tensor& transpose_(int64_t dim0, int64_t dim1) const;
+  int64_t dim() const { return tensor_.dims().size(); }
+  int64_t ndimension() const { return dim(); }
 
-at::Tensor permute(at::IntArrayRef dims) const;
+  at::Tensor contiguous(
+      c10::MemoryFormat memory_format = c10::MemoryFormat::Contiguous) const {
+    PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
+             "`MemoryFormat` other than Contiguous");
 
-at::Tensor& copy_(const at::Tensor& src, bool non_blocking = false) const {
-  const_cast<PaddleTensor&>(tensor_).copy_(
-      src._PD_GetInner(), tensor_.place(), /*blocking=*/!non_blocking);
-  return const_cast<at::Tensor&>(*this);
-}
+    return tensor_.contiguous();
+  }
 
-at::Tensor view(at::IntArrayRef size) const;
-at::Tensor view(at::ScalarType dtype) const;
+  bool is_contiguous(
+      at::MemoryFormat memory_format = at::MemoryFormat::Contiguous) const {
+    PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
+             "`MemoryFormat` other than Contiguous");
 
-at::Tensor squeeze() const;
-at::Tensor squeeze(int64_t dim) const;
-at::Tensor squeeze(at::IntArrayRef dim) const;
-at::Tensor& squeeze_() const;
-at::Tensor& squeeze_(int64_t dim) const;
-at::Tensor& squeeze_(at::IntArrayRef dim) const;
+    return tensor_.is_contiguous();
+  }
 
-at::Tensor unsqueeze() const;
-at::Tensor unsqueeze(int64_t dim) const;
-at::Tensor unsqueeze(at::IntArrayRef dim) const;
-at::Tensor& unsqueeze_() const;
-at::Tensor& unsqueeze_(int64_t dim) const;
-at::Tensor& unsqueeze_(at::IntArrayRef dim) const;
+  c10::ScalarType scalar_type() const {
+    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  }
 
-at::Tensor sum(::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
-at::Tensor sum(at::OptionalIntArrayRef dim,
-               bool keepdim = false,
-               ::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
+  at::Tensor flatten(int64_t start_dim, int64_t end_dim) const;
+  at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const;
+  at::Tensor unflatten_symint(int64_t dim, c10::SymIntArrayRef sizes) const;
 
-at::Tensor t() const;
-at::Tensor& t_() const;
+  Tensor& fill_(const at::Scalar& value) const {
+    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
+    return const_cast<at::Tensor&>(*this);
+  }
 
-at::Tensor view_as(const at::Tensor& other) const;
+  Tensor& zero_() const {
+    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
+    return const_cast<at::Tensor&>(*this);
+  }
 
-at::Tensor coalesce() const;
-bool is_coalesced() const;
+  bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
+  bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
-int64_t _nnz() const;
-at::Tensor _values() const;
+  bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
+    return phi::is_cuda_pinned_place(tensor_.place()) ||
+           phi::is_xpu_pinned_place(tensor_.place());
+  }
 
-bool is_variable() const noexcept { return true; }
+  Tensor pin_memory(
+      ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (is_pinned(device)) {
+      return *this;
+    }
 
-at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
-  return Tensor(
-      paddle::experimental::index_select(tensor_, index._PD_GetInner(), dim));
-}
+    PaddlePlace current_place = tensor_.place();
+    PaddlePlace pinned_place;
+    if (phi::is_cpu_place(current_place)) {
+      // CPU place cannot be directly converted to pinned place
+      PD_THROW(
+          "pin_memory: Pinning memory is not supported for CPUPlace. "
+          "Please use CUDAPlace or XPUPlace tensor, or specify "
+          "CUDAPinnedPlace/XPUPinnedPlace as device.");
+    } else {
+      // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
+      // place
+      pinned_place = phi::GetPinnedPlace(current_place);
+    }
+    return tensor_.copy_to(pinned_place, true);
+  }
 
-at::Tensor bitwise_right_shift(const Scalar& other) const {
-  return Tensor(paddle::experimental::bitwise_right_shift(
-      tensor_, paddle::experimental::full({}, other, other.dtype())));
-}
+  at::Tensor narrow_copy(int64_t dim, int64_t start, int64_t length) const;
+  at::Tensor narrow_copy_symint(int64_t dim,
+                                c10::SymInt start,
+                                c10::SymInt length) const;
 
-at::Tensor slice(int64_t dim = 0,
-                 ::std::optional<int64_t> start = ::std::nullopt,
-                 ::std::optional<int64_t> end = ::std::nullopt,
-                 int64_t step = 1);
+  at::Tensor narrow(int64_t dim, int64_t start, int64_t length) const;
+  at::Tensor narrow_symint(int64_t dim,
+                           c10::SymInt start,
+                           c10::SymInt length) const;
+  at::Tensor narrow(int64_t dim, const at::Tensor& start, int64_t length) const;
+  at::Tensor narrow_symint(int64_t dim,
+                           const at::Tensor& start,
+                           c10::SymInt length) const;
 
-// TODO(wangyanpeng04): modify the api to
-// Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
-at::Tensor index(const std::vector<at::indexing::Slice>& indices) const;
+  at::Tensor reshape(at::IntArrayRef shape) const;
 
-at::Tensor& floor_divide_(const at::Scalar& other) const {
-  paddle::experimental::floor_divide_(
-      const_cast<PaddleTensor&>(tensor_),
-      paddle::experimental::full({}, other, other.dtype()));
-  return const_cast<at::Tensor&>(*this);
-}
+  at::Tensor transpose(int64_t dim0, int64_t dim1) const;
+  at::Tensor& transpose_(int64_t dim0, int64_t dim1) const;
 
-// Paddle Tensor has no storage_offset, so we add it here, and it is always
-// 0.
-//   int64_t storage_offset() const { return storage_offset_; }
+  at::Tensor permute(at::IntArrayRef dims) const;
 
-inline size_t nbytes() const {
-  PD_CHECK(
-      ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
-       (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
-      "nbytes is not defined for sparse tensors.  If you want the size of "
-      "the constituent "
-      "tensors, add the nbytes of the indices and values.  If you want the "
-      "size of the  "
-      "equivalent dense tensor, multiply numel() by element_size()");
-  return tensor_.numel() * SizeOf(tensor_.dtype());
-}
+  at::Tensor& copy_(const at::Tensor& src, bool non_blocking = false) const {
+    const_cast<PaddleTensor&>(tensor_).copy_(
+        src._PD_GetInner(), tensor_.place(), /*blocking=*/!non_blocking);
+    return const_cast<at::Tensor&>(*this);
+  }
 
-size_t itemsize() const { return SizeOf(tensor_.dtype()); }
+  at::Tensor view(at::IntArrayRef size) const;
+  at::Tensor view(at::ScalarType dtype) const;
 
-int64_t element_size() const {
-  return static_cast<int64_t>(SizeOf(tensor_.dtype()));
-}
+  at::Tensor squeeze() const;
+  at::Tensor squeeze(int64_t dim) const;
+  at::Tensor squeeze(at::IntArrayRef dim) const;
+  at::Tensor& squeeze_() const;
+  at::Tensor& squeeze_(int64_t dim) const;
+  at::Tensor& squeeze_(at::IntArrayRef dim) const;
 
-inline Tensor clone() const {
-  PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
-  return Tensor(cloned_tensor);
-}
+  at::Tensor unsqueeze() const;
+  at::Tensor unsqueeze(int64_t dim) const;
+  at::Tensor unsqueeze(at::IntArrayRef dim) const;
+  at::Tensor& unsqueeze_() const;
+  at::Tensor& unsqueeze_(int64_t dim) const;
+  at::Tensor& unsqueeze_(at::IntArrayRef dim) const;
 
-at::Tensor abs() const;
+  at::Tensor sum(::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
+  at::Tensor sum(at::OptionalIntArrayRef dim,
+                 bool keepdim = false,
+                 ::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
 
-at::Tensor& abs_() const;
+  at::Tensor t() const;
+  at::Tensor& t_() const;
 
-at::Tensor absolute() const { return abs(); }
+  at::Tensor view_as(const at::Tensor& other) const;
 
-at::Tensor& absolute_() const { return abs_(); }
+  at::Tensor coalesce() const;
+  bool is_coalesced() const;
 
-Tensor operator[](int64_t index) const {
-  return paddle::experimental::slice(tensor_,
-                                     /*axes=*/{0},
-                                     /*starts=*/{index},
-                                     /*ends=*/{index + 1},
-                                     /*infer_flags=*/{1},
-                                     /*decrease_axis=*/{0});
-}
+  int64_t _nnz() const;
+  at::Tensor _values() const;
+
+  bool is_variable() const noexcept { return true; }
+
+  at::Tensor index_select(int64_t dim, const at::Tensor& index) const {
+    return Tensor(
+        paddle::experimental::index_select(tensor_, index._PD_GetInner(), dim));
+  }
+
+  at::Tensor bitwise_right_shift(const Scalar& other) const {
+    return Tensor(paddle::experimental::bitwise_right_shift(
+        tensor_, paddle::experimental::full({}, other, other.dtype())));
+  }
+
+  at::Tensor slice(int64_t dim = 0,
+                   ::std::optional<int64_t> start = ::std::nullopt,
+                   ::std::optional<int64_t> end = ::std::nullopt,
+                   int64_t step = 1);
+
+  // TODO(wangyanpeng04): modify the api to
+  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const;
+
+  at::Tensor& floor_divide_(const at::Scalar& other) const {
+    paddle::experimental::floor_divide_(
+        const_cast<PaddleTensor&>(tensor_),
+        paddle::experimental::full({}, other, other.dtype()));
+    return const_cast<at::Tensor&>(*this);
+  }
+
+  // Paddle Tensor has no storage_offset, so we add it here, and it is always
+  // 0.
+  //   int64_t storage_offset() const { return storage_offset_; }
+
+  inline size_t nbytes() const {
+    PD_CHECK(
+        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
+         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
+        "nbytes is not defined for sparse tensors.  If you want the size of "
+        "the constituent "
+        "tensors, add the nbytes of the indices and values.  If you want the "
+        "size of the  "
+        "equivalent dense tensor, multiply numel() by element_size()");
+    return tensor_.numel() * SizeOf(tensor_.dtype());
+  }
+
+  size_t itemsize() const { return SizeOf(tensor_.dtype()); }
+
+  int64_t element_size() const {
+    return static_cast<int64_t>(SizeOf(tensor_.dtype()));
+  }
+
+  inline Tensor clone() const {
+    PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
+    return Tensor(cloned_tensor);
+  }
+
+  at::Tensor abs() const;
+
+  at::Tensor& abs_() const;
+
+  at::Tensor absolute() const { return abs(); }
+
+  at::Tensor& absolute_() const { return abs_(); }
+
+  Tensor operator[](int64_t index) const {
+    return paddle::experimental::slice(tensor_,
+                                       /*axes=*/{0},
+                                       /*starts=*/{index},
+                                       /*ends=*/{index + 1},
+                                       /*infer_flags=*/{1},
+                                       /*decrease_axis=*/{0});
+  }
 
 #if defined(PADDLE_WITH_CUDA)
-void record_stream(const cudaStream_t& stream) const {
-  paddle::memory::RecordStream(
-      std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-      reinterpret_cast<gpuStream_t>(stream));
-}
+  void record_stream(const cudaStream_t& stream) const {
+    paddle::memory::RecordStream(
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
+        reinterpret_cast<gpuStream_t>(stream));
+  }
 #endif
 
-Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
+  Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
-Tensor var(bool unbiased = true) const {
-  std::vector<int64_t> empty_dims;
-  double correction = unbiased ? 1.0 : 0.0;
-  return var_impl(empty_dims, correction, false);
-}
-
-Tensor var(at::OptionalIntArrayRef dim,
-           bool unbiased = true,
-           bool keepdim = false) const {
-  // Convert unbiased to correction: unbiased=True means correction=1
-  double correction = unbiased ? 1.0 : 0.0;
-  std::vector<int64_t> dims_vec;
-  if (dim.has_value() && dim.value().size() > 0) {
-    dims_vec.assign(dim.value().begin(), dim.value().end());
-  }
-  return var_impl(dims_vec, correction, keepdim);
-}
-
-Tensor var(at::OptionalIntArrayRef dim,
-           const ::std::optional<at::Scalar>& correction,
-           bool keepdim = false) const {
-  double correction_value = 1.0;
-  if (correction.has_value()) {
-    const at::Scalar& scalar = correction.value();
-    correction_value = scalar.to<double>();
-  }
-  std::vector<int64_t> dims_vec;
-  if (dim.has_value() && dim.value().size() > 0) {
-    dims_vec.assign(dim.value().begin(), dim.value().end());
-  }
-  return var_impl(dims_vec, correction_value, keepdim);
-}
-
-private:
-Tensor var_impl(const std::vector<int64_t>& dims_vec,
-                double correction_value,
-                bool keepdim) const {
-  phi::IntArray dims_int_array(dims_vec);
-
-  PaddleTensor mean_tensor;
-  if (dims_vec.empty()) {
-    mean_tensor = paddle::experimental::mean(
-        tensor_, phi::IntArray(std::vector<int64_t>{}), true);
-  } else {
-    mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
+  Tensor var(bool unbiased = true) const {
+    std::vector<int64_t> empty_dims;
+    double correction = unbiased ? 1.0 : 0.0;
+    return var_impl(empty_dims, correction, false);
   }
 
-  PaddleTensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
-  PaddleTensor diff_squared = paddle::experimental::multiply(diff, diff);
-
-  PaddleTensor sum_squared_diff;
-  if (dims_vec.empty()) {
-    sum_squared_diff =
-        paddle::experimental::sum(diff_squared,
-                                  phi::IntArray(std::vector<int64_t>{}),
-                                  diff_squared.dtype(),
-                                  keepdim);
-  } else {
-    sum_squared_diff = paddle::experimental::sum(
-        diff_squared, dims_int_array, diff_squared.dtype(), keepdim);
+  Tensor var(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const {
+    // Convert unbiased to correction: unbiased=True means correction=1
+    double correction = unbiased ? 1.0 : 0.0;
+    std::vector<int64_t> dims_vec;
+    if (dim.has_value() && dim.value().size() > 0) {
+      dims_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return var_impl(dims_vec, correction, keepdim);
   }
 
-  int64_t n = tensor_.numel();
-  if (!dims_vec.empty()) {
-    n = 1;
-    for (int64_t d : dims_vec) {
-      int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
-      if (dim_idx >= 0 &&
-          dim_idx < static_cast<int64_t>(tensor_.dims().size())) {
-        n *= tensor_.dims()[dim_idx];
+  Tensor var(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const {
+    double correction_value = 1.0;
+    if (correction.has_value()) {
+      const at::Scalar& scalar = correction.value();
+      correction_value = scalar.to<double>();
+    }
+    std::vector<int64_t> dims_vec;
+    if (dim.has_value() && dim.value().size() > 0) {
+      dims_vec.assign(dim.value().begin(), dim.value().end());
+    }
+    return var_impl(dims_vec, correction_value, keepdim);
+  }
+
+ private:
+  Tensor var_impl(const std::vector<int64_t>& dims_vec,
+                  double correction_value,
+                  bool keepdim) const {
+    phi::IntArray dims_int_array(dims_vec);
+
+    PaddleTensor mean_tensor;
+    if (dims_vec.empty()) {
+      mean_tensor = paddle::experimental::mean(
+          tensor_, phi::IntArray(std::vector<int64_t>{}), true);
+    } else {
+      mean_tensor = paddle::experimental::mean(tensor_, dims_int_array, true);
+    }
+
+    PaddleTensor diff = paddle::experimental::subtract(tensor_, mean_tensor);
+    PaddleTensor diff_squared = paddle::experimental::multiply(diff, diff);
+
+    PaddleTensor sum_squared_diff;
+    if (dims_vec.empty()) {
+      sum_squared_diff =
+          paddle::experimental::sum(diff_squared,
+                                    phi::IntArray(std::vector<int64_t>{}),
+                                    diff_squared.dtype(),
+                                    keepdim);
+    } else {
+      sum_squared_diff = paddle::experimental::sum(
+          diff_squared, dims_int_array, diff_squared.dtype(), keepdim);
+    }
+
+    int64_t n = tensor_.numel();
+    if (!dims_vec.empty()) {
+      n = 1;
+      for (int64_t d : dims_vec) {
+        int64_t dim_idx = d < 0 ? d + tensor_.dims().size() : d;
+        if (dim_idx >= 0 &&
+            dim_idx < static_cast<int64_t>(tensor_.dims().size())) {
+          n *= tensor_.dims()[dim_idx];
+        }
       }
     }
+
+    double corrected_n = static_cast<double>(n) - correction_value;
+    if (corrected_n <= 0.0) {
+      corrected_n = static_cast<double>(n);
+    }
+
+    std::vector<int64_t> result_shape_vec;
+    for (int64_t i = 0; i < sum_squared_diff.dims().size(); ++i) {
+      result_shape_vec.push_back(sum_squared_diff.dims()[i]);
+    }
+    PaddleTensor correction_scalar =
+        paddle::experimental::full(phi::IntArray(result_shape_vec),
+                                   phi::Scalar(corrected_n),
+                                   sum_squared_diff.dtype(),
+                                   sum_squared_diff.place());
+    PaddleTensor result =
+        paddle::experimental::divide(sum_squared_diff, correction_scalar);
+
+    return Tensor(result);
   }
 
-  double corrected_n = static_cast<double>(n) - correction_value;
-  if (corrected_n <= 0.0) {
-    corrected_n = static_cast<double>(n);
+ public:
+  // Deprecated packed_accessor for compatibility with PyTorch
+  // Use packed_accessor32 or packed_accessor64 instead
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() const& {
+    return this->template generic_packed_accessor<T, N, PtrTraits, index_t>();
   }
 
-  std::vector<int64_t> result_shape_vec;
-  for (int64_t i = 0; i < sum_squared_diff.dims().size(); ++i) {
-    result_shape_vec.push_back(sum_squared_diff.dims()[i]);
-  }
-  PaddleTensor correction_scalar =
-      paddle::experimental::full(phi::IntArray(result_shape_vec),
-                                 phi::Scalar(corrected_n),
-                                 sum_squared_diff.dtype(),
-                                 sum_squared_diff.place());
-  PaddleTensor result =
-      paddle::experimental::divide(sum_squared_diff, correction_scalar);
+  template <typename T,
+            size_t N,
+            template <typename U> class PtrTraits = DefaultPtrTraits,
+            typename index_t = int64_t>
+  [[deprecated(
+      "packed_accessor is deprecated, use packed_accessor32 or "
+      "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
+                                                                 N,
+                                                                 PtrTraits,
+                                                                 index_t>
+  packed_accessor() && = delete;
 
-  return Tensor(result);
-}
-
-public:
-// Deprecated packed_accessor for compatibility with PyTorch
-// Use packed_accessor32 or packed_accessor64 instead
-template <typename T,
-          size_t N,
-          template <typename U> class PtrTraits = DefaultPtrTraits,
-          typename index_t = int64_t>
-[[deprecated(
-    "packed_accessor is deprecated, use packed_accessor32 or "
-    "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
-                                                               N,
-                                                               PtrTraits,
-                                                               index_t>
-packed_accessor() const& {
-  return this->template generic_packed_accessor<T, N, PtrTraits, index_t>();
-}
-
-template <typename T,
-          size_t N,
-          template <typename U> class PtrTraits = DefaultPtrTraits,
-          typename index_t = int64_t>
-[[deprecated(
-    "packed_accessor is deprecated, use packed_accessor32 or "
-    "packed_accessor64 instead")]] GenericPackedTensorAccessor<T,
-                                                               N,
-                                                               PtrTraits,
-                                                               index_t>
-packed_accessor() && = delete;
-
-PaddleTensor _PD_GetInner() const { return tensor_; }
-PaddleTensor& _PD_GetInner() { return tensor_; }
+  PaddleTensor _PD_GetInner() const { return tensor_; }
+  PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // namespace at
 
 namespace torch {
