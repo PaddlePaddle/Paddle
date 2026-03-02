@@ -26,6 +26,7 @@ limitations under the License. */
 #include <array>
 #include <functional>
 #include <mutex>
+#include <utility>
 
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -116,6 +117,10 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   /*! \brief  Return cublasLt handle in the device context. */
   blasLtHandle_t cublaslt_handle() const;
+
+  /*! \brief  Return persistent cublasLt workspace (grow-only, multi-stream
+   * safe). */
+  std::pair<void*, size_t> cublaslt_workspace(size_t required_size) const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;

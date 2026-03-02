@@ -199,12 +199,10 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
   }
   if (dz.numel() == 0) {
     if (dx) {
-      phi::Full<T, XPUContext>(
-          dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+      Full<T, XPUContext>(dev_ctx, x.dims(), 0, dx);
     }
     if (dy) {
-      phi::Full<T, XPUContext>(
-          dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+      Full<T, XPUContext>(dev_ctx, y.dims(), 0, dy);
     }
     return;
   }

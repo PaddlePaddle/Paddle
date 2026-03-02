@@ -23,7 +23,6 @@ set(PYBIND_DEPS
     imperative_profiler
     imperative_flag
     dlpack_tensor
-    device_context
     gloo_wrapper
     infer_io_utils
     op_version_registry
@@ -122,7 +121,6 @@ set(PYBIND_SRCS
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
     gloo_wrapper_py.cc
-    box_helper_py.cc
     data_set_py.cc
     bind_cost_model.cc
     compatible.cc

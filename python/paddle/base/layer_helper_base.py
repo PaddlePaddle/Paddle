@@ -84,7 +84,7 @@ class LayerHelperBase:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle.base as base
@@ -92,7 +92,6 @@ class LayerHelperBase:
                 >>> with base.dygraph.guard():
                 ...     x = np.ones([2, 2], np.float32)
                 ...     y = base.dygraph.to_variable(x)
-                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(
@@ -429,6 +428,11 @@ class LayerHelperBase:
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
+
+        # Normalize device string (cuda -> gpu)
+        if isinstance(device, str) and device.startswith('cuda'):
+            device = device.replace('cuda', 'gpu')
+
         if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.

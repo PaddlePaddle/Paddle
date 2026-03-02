@@ -63,12 +63,12 @@ class CudnnConvDescManager {
     bool is_sys_pad;
 
     // TODO(wilber): The destruction of cudnn descriptor depends on the
-    // phi::dynload::cudnn singleton, but when the process exits, the singleton
+    // dynload::cudnn singleton, but when the process exits, the singleton
     // destruction order cannot be determined.
-    // After testing, it is found that the phi::dynload::cudnn related singleton
+    // After testing, it is found that the dynload::cudnn related singleton
     // on Windows is destructed first, causing the descriptor to be destructed
     // and failed, while the descriptor on Linux is destructed first, and the
-    // phi::dynload::cudnn singleton is destructed later, so that it is correct.
+    // dynload::cudnn singleton is destructed later, so that it is correct.
     // To circumvent this problem, we rely entirely on freeing resources when
     // the process exits.
 
@@ -470,7 +470,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
           new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
+          dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle,
               x_desc,
               w_desc,
@@ -481,32 +481,31 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
               perf_results.get()));
       *cudnn_algo = (perf_results.get())[best_algo_idx].algo;
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardAlgorithm(
-              handle,
-              x_desc,
-              w_desc,
-              cudnn_conv_desc,
-              o_desc,
-              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit,
-              cudnn_algo));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetConvolutionForwardAlgorithm(
+          handle,
+          x_desc,
+          w_desc,
+          cudnn_conv_desc,
+          o_desc,
+          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+          workspace_size_limit,
+          cudnn_algo));
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(handle,
-                                                                x_desc,
-                                                                w_desc,
-                                                                cudnn_conv_desc,
-                                                                o_desc,
-                                                                *cudnn_algo,
-                                                                wks_bytes));
+          dynload::cudnnGetConvolutionForwardWorkspaceSize(handle,
+                                                           x_desc,
+                                                           w_desc,
+                                                           cudnn_conv_desc,
+                                                           o_desc,
+                                                           *cudnn_algo,
+                                                           wks_bytes));
     } else {
       std::array<cudnnConvolutionFwdAlgoPerf_t, phi::kNUM_CUDNN_FWD_ALGS>
           fwd_perf_stat;
       int returned_algo_count;
       auto cudnn_find_func = [&](void* cudnn_workspace) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+            dynload::cudnnFindConvolutionForwardAlgorithmEx(
                 handle,
                 x_desc,
                 transformed_input.data(),
@@ -525,7 +524,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       *cudnn_algo = fwd_perf_stat[0].algo;
 
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+          dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle,
               x_desc,
               w_desc,
@@ -569,22 +568,22 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnConvolutionForward(handle,
-                                                &alpha,
-                                                x_desc,
-                                                transformed_input.data(),
-                                                w_desc,
-                                                filter.data(),
-                                                cudnn_conv_desc,
-                                                algo,
-                                                cudnn_workspace,
-                                                workspace_size,
-                                                &beta,
-                                                o_desc,
-                                                output->data()));
+          dynload::cudnnConvolutionForward(handle,
+                                           &alpha,
+                                           x_desc,
+                                           transformed_input.data(),
+                                           w_desc,
+                                           filter.data(),
+                                           cudnn_conv_desc,
+                                           algo,
+                                           cudnn_workspace,
+                                           workspace_size,
+                                           &beta,
+                                           o_desc,
+                                           output->data()));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnAddTensor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnAddTensor(
         handle, &alpha, b_desc, bias.data(), &alpha, o_desc, output->data()));
   } else {
     // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_​PRECOMP_GEMM algo is
@@ -596,26 +595,25 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = residual.get_ptr() ? 1.0f : 0.0f;
     auto cudnn_func = [&](void* cudnn_workspace) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnConvolutionBiasActivationForward(
-              handle,
-              &alpha,
-              x_desc,
-              transformed_input.data(),
-              w_desc,
-              filter.data(),
-              cudnn_conv_desc,
-              algo,
-              cudnn_workspace,
-              workspace_size,
-              &beta,
-              o_desc,
-              residual.get_ptr() ? residual->data() : output->data(),
-              b_desc,
-              bias.data(),
-              act_desc,
-              o_desc,
-              output->data()));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBiasActivationForward(
+          handle,
+          &alpha,
+          x_desc,
+          transformed_input.data(),
+          w_desc,
+          filter.data(),
+          cudnn_conv_desc,
+          algo,
+          cudnn_workspace,
+          workspace_size,
+          &beta,
+          o_desc,
+          residual.get_ptr() ? residual->data() : output->data(),
+          b_desc,
+          bias.data(),
+          act_desc,
+          o_desc,
+          output->data()));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }

@@ -63,7 +63,7 @@ def export(
     Returns:
         None
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -74,13 +74,11 @@ def export(
             ...
             ...     def forward(self, x):
             ...         return self._linear(x)
-            ...
             >>> # Export model with 'InputSpec' to support dynamic input shape.
             >>> def export_linear_net():
             ...     model = LinearNet()
             ...     x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
             ...     paddle.onnx.export(model, 'linear_net', input_spec=[x_spec])
-            ...
             >>> # doctest: +SKIP('Need install Paddle2ONNX')
             >>> export_linear_net()
 
@@ -93,7 +91,6 @@ def export(
             ...             return x
             ...         else:
             ...             return y
-            ...
             >>> # Export model with 'Tensor' to support pruned model by set 'output_spec'.
             >>> def export_logic():
             ...     model = Logic()
@@ -103,7 +100,6 @@ def export(
             ...     paddle.jit.to_static(model)
             ...     out = model(x, y, z=True)
             ...     paddle.onnx.export(model, 'pruned', input_spec=[x, y, True], output_spec=[out], input_names_after_prune=[x.name])
-            ...
             >>> export_logic()
     """
 

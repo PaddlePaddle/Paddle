@@ -35,7 +35,7 @@ int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
 template <typename T>
-static void SortDescending(const phi::GPUContext &dev_ctx,
+static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
@@ -43,7 +43,7 @@ static void SortDescending(const phi::GPUContext &dev_ctx,
   DenseTensor index_in_t;
   index_in_t.Resize(make_ddim({num}));
   int *idx_in = dev_ctx.template Alloc<int>(&index_in_t);
-  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, num);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, num);
   for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   index_out->Resize(make_ddim({num}));
@@ -278,7 +278,7 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const phi::GPUContext &dev_ctx,
+static void NMS(const GPUContext &dev_ctx,
                 const DenseTensor &proposals,
                 const DenseTensor &sorted_indices,
                 const T nms_threshold,
@@ -340,7 +340,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
 
 template <typename T>
 static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const DenseTensor &im_shape,
     const DenseTensor &anchors,
     const DenseTensor &variances,
@@ -367,7 +367,7 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   dev_ctx.template Alloc<T>(&proposals);
 
   {
-    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, pre_nms_num);
+    funcs::ForRange<GPUContext> for_range(dev_ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
@@ -407,7 +407,7 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    funcs::SetConstant<phi::GPUContext, T> set_zero;
+    funcs::SetConstant<GPUContext, T> set_zero;
     proposals_filter.Resize(make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&proposals_filter);
     scores_filter.Resize(make_ddim({1, 1}));
@@ -490,29 +490,29 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   if (scores.numel() == 0) {
-    rpn_rois->Resize(make_ddim({0, 4}));
+    rpn_rois->Resize({0, 4});
     if (rpn_rois_num != nullptr) {
-      rpn_rois_num->Resize(make_ddim({}));
+      rpn_rois_num->Resize({});
       Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
     }
     return;
   }
 
   DenseTensor bbox_deltas_swap, scores_swap;
-  bbox_deltas_swap.Resize(make_ddim({num, h_bbox, w_bbox, c_bbox}));
+  bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);
-  scores_swap.Resize(make_ddim({num, h_score, w_score, c_score}));
+  scores_swap.Resize({num, h_score, w_score, c_score});
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  funcs::Transpose<phi::GPUContext, T, 4> trans;
+  funcs::Transpose<GPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, scores, &scores_swap, axis);
 
   DenseTensor tmp_anchors = anchors;
   DenseTensor tmp_variances = variances;
-  tmp_anchors.Resize(make_ddim({tmp_anchors.numel() / 4, 4}));
-  tmp_variances.Resize(make_ddim({tmp_variances.numel() / 4, 4}));
+  tmp_anchors.Resize({tmp_anchors.numel() / 4, 4});
+  tmp_variances.Resize({tmp_variances.numel() / 4, 4});
 
   T *rpn_rois_data = rpn_rois->data<T>();
   T *rpn_roi_probs_data = rpn_roi_probs->data<T>();

@@ -31,7 +31,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'Doc-Preview'
+      workflow-name: "Doc-Preview"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,6 +41,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -102,11 +103,10 @@ jobs:
           # Save diff to a file for the next step
           echo "$api_doc_spec_diff" > /tmp/api_doc_diff.txt
 
-          curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
           source ${{ github.workspace }}/../../../proxy
           pip3 install --progress-bar off -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --force-reinstall ${work_dir}/build/pr_whl/*.whl
-          bash "/tmp/entrypoint.sh"
+          bash ${work_dir}/ci/run_docs_preview.sh
           '
 
       - name: Generate Comment Body

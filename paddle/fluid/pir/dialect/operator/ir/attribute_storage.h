@@ -96,7 +96,7 @@ struct PlaceAttributeStorage : public pir::AttributeStorage {
 };
 
 struct DataLayoutAttributeStorage : public pir::AttributeStorage {
-  using ParamKey = phi::DataLayout;
+  using ParamKey = DataLayout;
 
   explicit DataLayoutAttributeStorage(const ParamKey &key) { data_ = key; }
 
@@ -105,7 +105,7 @@ struct DataLayoutAttributeStorage : public pir::AttributeStorage {
   }
 
   static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<phi::DataLayout>()(key);
+    return std::hash<DataLayout>()(key);
   }
 
   bool operator==(const ParamKey &key) const { return data_ == key; }
@@ -113,7 +113,7 @@ struct DataLayoutAttributeStorage : public pir::AttributeStorage {
   ParamKey GetAsKey() const { return data_; }
 
  private:
-  phi::DataLayout data_;
+  DataLayout data_;
 };
 
 }  // namespace dialect

@@ -206,7 +206,7 @@ input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
-void SparseSoftmaxForward(const phi::GPUContext& dev_ctx,
+void SparseSoftmaxForward(const GPUContext& dev_ctx,
                           const DenseTensor* offset,
                           const DenseTensor* columns,
                           DenseTensor* input,
@@ -319,7 +319,7 @@ void SparseSoftmaxForward(const phi::GPUContext& dev_ctx,
 }
 
 template <typename DeviceContext, typename T>
-void SparseSoftmaxBackward(const phi::GPUContext& dev_ctx,
+void SparseSoftmaxBackward(const GPUContext& dev_ctx,
                            const DenseTensor* offset,
                            const DenseTensor* columns,
                            DenseTensor* dx,
@@ -450,7 +450,7 @@ input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
-void DotSdd(const phi::GPUContext& dev_ctx,
+void DotSdd(const GPUContext& dev_ctx,
             const DenseTensor* a,
             const DenseTensor* b,
             const DenseTensor* c_offset,
@@ -550,7 +550,7 @@ input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
 output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
-void DotDsd(const phi::GPUContext& dev_ctx,
+void DotDsd(const GPUContext& dev_ctx,
             const DenseTensor* a_offset,
             const DenseTensor* a_columns,
             const DenseTensor* a_value,

@@ -185,7 +185,7 @@ static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
 // Sort by flag descending, True: descending. False: Ascending.
 // Default is false.
 template <typename T, typename IndType>
-void ArgFullSort(const phi::GPUContext& dev_ctx,
+void ArgFullSort(const GPUContext& dev_ctx,
                  const DenseTensor* input,
                  DenseTensor* output,
                  DenseTensor* indices,
@@ -275,7 +275,7 @@ void ArgFullSort(const phi::GPUContext& dev_ctx,
   }
 }
 template <typename T, typename IndType>
-void PerSort(const phi::GPUContext& dev_ctx,
+void PerSort(const GPUContext& dev_ctx,
              T* out_data,
              int64_t* ids_data,
              IndType start,

@@ -268,7 +268,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   nan_counts_ptr = nan_counts.data<int64_t>();
   nan_indices.Resize(make_ddim({pre_dim}));
   dev_ctx.template Alloc<int64_t>(&nan_indices);
-  funcs::SetConstant<phi::GPUContext, int64_t> set_const;
+  funcs::SetConstant<GPUContext, int64_t> set_const;
   set_const(dev_ctx, &nan_indices, numel);
   nan_indices_ptr = nan_indices.data<int64_t>();
 

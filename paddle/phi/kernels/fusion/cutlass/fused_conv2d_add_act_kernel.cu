@@ -197,7 +197,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       nullptr,
   };
 
-  void* dlhandler = phi::dynload::GetCutlassConv2dHandle();
+  void* dlhandler = dynload::GetCutlassConv2dHandle();
   func conv_func = NULL;
   PADDLE_ENFORCE_NOT_NULL(
       dlhandler,

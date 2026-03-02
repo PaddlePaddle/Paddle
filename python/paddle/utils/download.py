@@ -83,7 +83,7 @@ def get_weights_path_from_url(url: str, md5sum: str | None = None) -> str:
         str: a local path to save downloaded weights.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.utils.download import get_weights_path_from_url
 

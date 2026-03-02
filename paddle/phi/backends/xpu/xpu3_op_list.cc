@@ -88,6 +88,8 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({FLOAT32, FLOAT64, FLOAT16, INT32, INT64})},
       {"bilinear_interp_v2", XPUKernelSet({FLOAT32, FLOAT16})},
       {"bilinear_interp_v2_grad", XPUKernelSet({FLOAT32})},
+      {"bicubic_interp_v2",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"bitwise_not", XPUKernelSet({BOOL})},
       {"bitwise_and", XPUKernelSet({BOOL})},
       {"bitwise_or", XPUKernelSet({BOOL})},
@@ -1011,6 +1013,7 @@ XPUOpMap& get_kl3_ops() {
       // AddMore
       {"sequence_unpad", XPUKernelSet({FLOAT32})},
       // Fused op
+      {"squeeze_excitation_block", XPUKernelSet({FLOAT32, FLOAT16})},
       {"resnet_basic_block_grad", XPUKernelSet({FLOAT32})},
       {"resnet_basic_block", XPUKernelSet({FLOAT32})},
       {"fused_bias_act", XPUKernelSet({FLOAT16, BFLOAT16})},

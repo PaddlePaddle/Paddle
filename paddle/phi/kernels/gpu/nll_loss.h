@@ -271,8 +271,8 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
       partial_sums, blockDim.x, acc_weight, thrust::plus<AccT>(), (AccT)0);
 
   if (threadIdx.x == 0) {
-    phi::CudaAtomicAdd(total_weight_data, acc_weight);
-    phi::CudaAtomicAdd(out_data, input_sum);
+    CudaAtomicAdd(total_weight_data, acc_weight);
+    CudaAtomicAdd(out_data, input_sum);
   }
 }
 

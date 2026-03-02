@@ -16,21 +16,22 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/program.h"
 
-namespace paddle {
-namespace dialect {
+using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using GPUPlace = phi::GPUPlace;
 
-pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
+namespace pir {
 
-TEST_API std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
-    pir::Program* prog, phi::Place place = CPUPlace());
+Type ConvertOpTypeToKernelType(Type op_type);
 
-void ProcessBlock(
-    const phi::Place& place,
-    pir::Block* block,
-    pir::Block* new_block,
-    pir::IrContext* ctx,
-    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair,
-    bool for_if_block = false);
-}  // namespace dialect
-}  // namespace paddle
+TEST_API std::unique_ptr<Program> PdOpLowerToKernelPass(
+    Program* prog, Place place = CPUPlace());
+
+void ProcessBlock(const Place& place,
+                  Block* block,
+                  Block* new_block,
+                  IrContext* ctx,
+                  std::unordered_map<Operation*, Operation*>* map_op_pair,
+                  std::unordered_map<Value, Value>* map_value_pair,
+                  bool for_if_block = false);
+}  // namespace pir

@@ -34,13 +34,11 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
         input_parameters = op_desc.input_names()
         output_parameters = op_desc.output_names()
-        is_input_arg_exist = (
-            lambda parameter: parameter in input_parameters
-            and op_desc.input(parameter)
+        is_input_arg_exist = lambda parameter: (
+            parameter in input_parameters and op_desc.input(parameter)
         )
-        is_output_arg_exist = (
-            lambda parameter: parameter in output_parameters
-            and op_desc.output(parameter)
+        is_output_arg_exist = lambda parameter: (
+            parameter in output_parameters and op_desc.output(parameter)
         )
 
         q = op_desc.input('q')[0]

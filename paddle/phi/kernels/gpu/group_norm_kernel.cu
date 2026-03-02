@@ -936,8 +936,8 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
       // WarpReduce will result in all zeros. It seems to be an internal problem
       // of hipcub on DCU.
       if (blockDim.x < phi::kps::details::kWarpSize) {
-        phi::CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
-        phi::CudaAtomicAdd(&var[bid * groups + gid], x_var);
+        CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
+        CudaAtomicAdd(&var[bid * groups + gid], x_var);
       } else {
         CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
         CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);

@@ -29,7 +29,7 @@ namespace phi {
 
 template <typename T, typename IndexT = int, typename OffsetT = uint32_t>
 void GPUIndexElementwisePutGradKernel(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     const DenseTensor& out_grad,
     const std::vector<const DenseTensor*>& index,
     const std::vector<int64_t>& input_dims,
