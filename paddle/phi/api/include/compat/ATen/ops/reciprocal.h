@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,27 +15,22 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
-#include <c10/core/TensorOptions.h>
-#include <optional>
-#include <string_view>
-
-#include "paddle/phi/api/include/api.h"
 
 namespace at {
 
-inline at::Tensor abs(const at::Tensor& self) {
-  return paddle::experimental::abs(self._PD_GetInner());
+inline at::Tensor reciprocal(const at::Tensor& self) {
+  return Tensor(paddle::experimental::reciprocal(self._PD_GetInner()));
 }
 
 }  // namespace at
 
 namespace at {
 
-inline at::Tensor Tensor::abs() const { return at::abs(*this); }
+inline at::Tensor Tensor::reciprocal() const { return at::reciprocal(*this); }
 
-inline at::Tensor& Tensor::abs_() const {
+inline at::Tensor& Tensor::reciprocal_() const {
   PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
-  paddle::experimental::abs_(inner);
+  paddle::experimental::reciprocal_(inner);
   return const_cast<at::Tensor&>(*this);
 }
 
