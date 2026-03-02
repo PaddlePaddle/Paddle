@@ -3029,8 +3029,8 @@ def cross_entropy(
             input, label, soft_label, use_softmax, True, ignore_index, axis
         )
 
-        # Compatible mode: use nll_loss for reduction to match PyTorch's
-        # nll_loss_forward_reduce_cuda_kernel_2d reduction topology.
+        # Accuracy-compatible mode: decompose into log_softmax + nll_loss
+        # for precision alignment with mainstream frameworks.
         if (
             not soft_label
             and use_softmax

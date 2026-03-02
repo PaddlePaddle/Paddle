@@ -130,10 +130,7 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
   }
 }
 
-// Shuffle-down variants matching PyTorch's cuda_utils::WarpReduce pattern.
-// Used by the compatible forward block path to produce bit-identical results
-// with PyTorch's blockReduceWarp (which uses __shfl_down_sync).
-// XOR vs DOWN shuffles produce different floating-point rounding for sum.
+// Shuffle-down warp reduction (vs XOR in WarpReduceSum/Max).
 template <typename T, int BatchSize, int WarpSize>
 __device__ __forceinline__ void WarpReduceSumDown(T* sum) {
 #pragma unroll
@@ -195,11 +192,7 @@ __inline__ __device__ void BlockReduceSum(T* val) {
   WarpReduceSum<T, 1, 32>(val);
 }
 
-// Shuffle-down block reduction matching PyTorch's blockReduceWarp pattern.
-// PyTorch uses __shfl_down_sync for the warp-level step inside block reduce,
-// then broadcasts the final result to all threads via shared memory.
-// The broadcast step is critical: without it, only thread 0 has the correct
-// result, and other threads would compute wrong log_softmax values.
+// Block reduction using shuffle-down with broadcast to all threads.
 template <typename T>
 __inline__ __device__ void BlockReduceMaxDown(T* val) {
   static __shared__ T shared[32];
@@ -1821,7 +1814,6 @@ __global__ void SoftMaxForwardReg(T* output,
     }
   }
 
-  // Reduce to the Max for block (shuffle-down to match PyTorch)
   BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
@@ -1868,7 +1860,6 @@ __global__ void SoftMaxForward(T* output, const T* input, IndexType classes) {
   const IndexType output_shift =
       ((uint64_t)output) % SOFTMAX_ALIGN_BYTES / sizeof(T);
 
-  // max (shuffle-down to match PyTorch)
   AccT threadMax = ThreadVecReduce<MaxFunctor, T, AccT, IndexType, VecSize>(
       input,
       classes,
@@ -1878,7 +1869,6 @@ __global__ void SoftMaxForward(T* output, const T* input, IndexType classes) {
   BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
-  // reduce all values (shuffle-down to match PyTorch)
   AccT threadExp = ThreadVecReduce<SumExpFunctor, T, AccT, IndexType, VecSize>(
       input,
       classes,
