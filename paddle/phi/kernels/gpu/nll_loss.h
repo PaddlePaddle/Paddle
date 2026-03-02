@@ -98,9 +98,7 @@ __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
   }
 }
 
-// Compute thread count matching PyTorch's
-// nll_loss_forward_reduce_cuda_kernel_2d Formula: clamp(1 << round(log2(N/16)),
-// 32, 1024)
+// Compute thread count: clamp(round_pow2(N/16), 32, 1024).
 inline int nll_loss_threads(int64_t batch_size) {
   int x = static_cast<int>((batch_size + 15) / 16);
   // Round to nearest power of 2
@@ -119,10 +117,7 @@ inline int nll_loss_threads(int64_t batch_size) {
   return std::min(std::max(rounded, 32), 1024);
 }
 
-// Compatible NLL loss forward 1D with reduce kernel.
-// Matches PyTorch's nll_loss_forward_reduce_cuda_kernel_2d (Loss.cu:224-271)
-// for bit-exact precision alignment.
-// Uses power-of-2 tree reduction in shared memory with AccT accumulation.
+// Accuracy-compatible NLL loss with tree reduction in shared memory.
 template <typename T, typename AccT>
 __global__ void GPUNLLLossForward1D_with_reduce_compatible(
     T* out_data,

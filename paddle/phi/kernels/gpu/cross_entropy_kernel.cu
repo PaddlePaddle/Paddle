@@ -983,13 +983,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
   auto stream = dev_ctx.stream();
 
   if (FLAGS_use_accuracy_compatible_kernel && D == 1) {
-    // When accuracy-compatible mode is enabled, always decompose into
-    // log_softmax + soft-label cross entropy to match PyTorch's architecture.
-    // PyTorch computes cross_entropy(soft_label) as:
-    //   log_softmax = log_softmax(logits)
-    //   loss = -sum(label * log_softmax)
-    // The fused warp kernel below computes softmax + CE in one pass with
-    // a different reduction structure, causing precision divergence.
+    // Decompose into log_softmax + soft-label CE in accuracy-compatible mode.
     SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, logits, axis, softmax);
     softmax_data = softmax->data<T>();
 
@@ -1672,30 +1666,10 @@ void LaunchVectorizedSoftmaxForward(StoreT* loss,
                                     const int ignore_index,
                                     gpuStream_t stream) {
   using AccT = typename dtype::MPTypeTrait<T>::Type;
-  // Match PyTorch's ILP=4 pattern for consistent per-thread accumulation order.
-  // PyTorch computes ILP = sizeof(float4) / sizeof(scalar_t), giving ILP=4 for
-  // float32 (see aten/src/ATen/native/cuda/SoftMax.cu:1108). Each thread loads
-  // 4 consecutive floats via vectorized load (float4), processes them in
-  // register, then strides by blockDim.x * 4.
-  //
-  // Round 7: Changed from vec_size=2 to vec_size=4. With vec_size=2, Paddle's
-  // threads each processed 2 consecutive elements per iteration (stride =
-  // blockDim.x * 2), grouping elements differently from PyTorch's ILP=4 which
-  // processes 4 consecutive elements per iteration (stride = blockDim.x * 4).
-  // The different per-thread grouping changes which elements are summed locally
-  // before warp/block reduction, producing different floating-point rounding
-  // since addition is non-associative in IEEE 754.
+  // Use vec_size=4 and block_size=min(mid_dim, 1024) aligned to warp size,
+  // matching mainstream framework accumulation order for precision alignment.
   constexpr int vec_size = 4;
   const int max_num_threads = 1024;
-  // Match PyTorch's SoftMaxForward_getBlockSize: block_size = min(dim_size,
-  // 1024) rounded to the next warp-size multiple.  PyTorch does NOT divide
-  // by ILP/vec_size when computing the block size; it uses the raw dim_size.
-  // Each thread then iterates ceil(dim / (block_size * ILP)) times with
-  // vectorized loads.  The previous calculation
-  //   max_block_size = min(mid_dim / vec_size, 1024)
-  // produced half the block size for mid_dim in [1024, 4096), changing which
-  // elements each thread accumulates locally and thus altering the
-  // floating-point summation order vs PyTorch.
   int raw_max = std::min(mid_dim, max_num_threads);
   int warp_size = kps::details::kWarpSize;
   int block_size;
@@ -1751,24 +1725,12 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
           << ", dim = " << dim << ", D = " << D;
   auto* logits_data = logits.data<T>();
   auto stream = dev_ctx.stream();
-  // Warp-level persistent softmax threshold. PyTorch uses persistent warp
-  // softmax for dim_size <= 2048 && dim_size*sizeof(scalar_t) <= 8192
-  // (i.e., dim <= 2048 for float32). Paddle's warp kernels support
-  // log2_elements 0-10 (dim up to 1024). Values above 1024 fall through to the
-  // block-level VectorizedSoftmaxForward path. This threshold was previously
-  // 320, causing dims 321-1024 to use block-level kernels (shuffle-down
-  // reduction) while PyTorch used warp-level (XOR reduction), producing
-  // different rounding.
+  // Warp softmax for dim <= 1024 (log2_elements 0-10).
   constexpr int max_dim = 1024;
   if (D == 1) {
     if (FLAGS_use_accuracy_compatible_kernel &&
         std::is_same<StoreT, T>::value) {
-      // When accuracy-compatible mode is enabled, always decompose into
-      // log_softmax + nll_loss to match PyTorch's cross_entropy architecture
-      // (which calls log_softmax then nll_loss as two separate kernels).
-      // This applies to ALL dim sizes, including small dims (dim <= 1024).
-      // The fused warp/block paths below compute softmax + CE in one pass with
-      // a different reduction structure, causing precision divergence.
+      // Decompose into log_softmax + nll_loss for precision-compatible mode.
       auto* softmax_data = softmax->data<T>();
       SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, logits, axis, softmax);
       int threads = 128;
@@ -1851,6 +1813,11 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                        int axis,
                                        DenseTensor* softmax,
                                        DenseTensor* loss) {
+  // Use numeric-stable path in accuracy-compatible mode.
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    numeric_stable_mode = true;
+  }
+
   VLOG(7) << "logits.shape={" << logits.dims() << "}, label.shape={"
           << label.dims() << "}, soft_label=" << soft_label
           << ", use_softmax=" << use_softmax
@@ -1948,13 +1915,6 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
   const int axis_v = funcs::CanonicalAxis(axis, rank);
   int64_t axis_dim = logits.dims()[axis_v];
 
-  bool numeric_stable = numeric_stable_mode;
-  if (!numeric_stable && FLAGS_use_accuracy_compatible_kernel) {
-    // Avoid cuDNN softmax path under accuracy-compatible mode to align with
-    // PyTorch (log_softmax + nll_loss) numerics.
-    numeric_stable = true;
-  }
-
   const int64_t n = funcs::SizeToAxis(axis_v, logits.dims());
   const int64_t d = funcs::SizeFromAxis(axis_v, logits.dims());
 
@@ -1983,7 +1943,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                         axis_dim,
                                         d / axis_dim);
   } else {
-    if (!numeric_stable) {
+    if (!numeric_stable_mode) {
       auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
       auto* loss_data = dev_ctx.template Alloc<T>(loss);
       // CUDNN kernel only suppoer 2-D tensor and perform softmax on last dim
