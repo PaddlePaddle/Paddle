@@ -367,11 +367,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                                      kernel_key.dtype()});
   }
 
-  if (kernel_iter == iter->second.end()) {
-    bool in_black_list = phi::backends::custom_device::is_in_custom_black_list(
-        TransToFluidOpName(kernel_name));
-  }
-
   if (FLAGS_enable_api_kernel_fallback &&
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(
