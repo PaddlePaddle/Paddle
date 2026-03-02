@@ -3104,20 +3104,23 @@ def cross_entropy(
             not soft_label
             and use_softmax
             and reduction != 'none'
-            and weight is None
-            and axis == -1
+            and (axis == -1 or axis == len(input.shape) - 1)
             and paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
                 "FLAGS_use_accuracy_compatible_kernel", False
             )
         ):
             _nll_input = input
             _nll_orig_dtype = input.dtype
-            # nll_loss does not support float16/bfloat16; promote to float32
-            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
-                _nll_input = paddle.cast(_nll_input, paddle.float32)
             log_softmax_out = paddle.nn.functional.log_softmax(
                 _nll_input, axis=axis
             )
+            _nll_weight = weight
+            # nll_loss does not support float16/bfloat16; promote to float32
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                log_softmax_out = paddle.cast(log_softmax_out, paddle.float32)
+                # Cast weight to match promoted dtype if needed
+                if weight is not None:
+                    _nll_weight = paddle.cast(weight, paddle.float32)
             # nll_loss expects label shape [N] for 2D input
             nll_label = label
             if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
@@ -3128,7 +3131,11 @@ def cross_entropy(
                 log_softmax_out = paddle.reshape(log_softmax_out, [-1, _C])
                 nll_label = paddle.reshape(nll_label, [-1])
             loss, _ = _C_ops.nll_loss(
-                log_softmax_out, nll_label, None, ignore_index, reduction
+                log_softmax_out,
+                nll_label,
+                _nll_weight,
+                ignore_index,
+                reduction,
             )
             # Cast back to original dtype if promoted
             if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
