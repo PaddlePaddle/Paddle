@@ -336,15 +336,6 @@ class Tensor : public TensorBase {
                        const at::Tensor& values,
                        bool accumulate = false) const;
 
-  at::Tensor to(
-      at::ScalarType dtype,
-      bool non_blocking = false,
-      bool copy = false,
-      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
-    return to(
-        at::TensorOptions().dtype(dtype), non_blocking, copy, memory_format);
-  }
-
   Tensor toType(ScalarType t) const {
     return Tensor(paddle::experimental::cast(
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
