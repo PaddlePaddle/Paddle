@@ -647,7 +647,6 @@ class Tensor : public TensorBase {
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
-
 }  // namespace at
 namespace torch {
 using at::Tensor;
