@@ -775,7 +775,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     auto handle = dev_ctx.cudnn_handle();
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSoftmaxForward_V2(
         handle,
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
@@ -1202,7 +1202,7 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     auto handle = dev_ctx.cudnn_handle();
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSoftmaxForward_V2(
         handle,
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
