@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
+#include "paddle/phi/kernels/funcs/sleef_vectorized_math.h"
 // #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -46,6 +47,65 @@ void ActivationImpl(const Context& dev_ctx,
     functor(*place, To32BitIndex(x), To32BitIndex(out));
   } else {
     functor(*place, x, out);
+  }
+}
+
+// Vectorized Sin implementation for CPU - matches PyTorch precision
+// Only enabled for float/double on CPU to ensure bit-level alignment
+template <typename T, typename Context>
+void VectorizedSinImpl(const Context& dev_ctx,
+                       const DenseTensor& X,
+                       DenseTensor* Out) {
+  PADDLE_ENFORCE_NOT_NULL(Out,
+                          errors::NotFound("Output Out should not be nullptr"));
+  dev_ctx.template Alloc<T>(Out);
+  if (Out->numel() == 0) {
+    return;
+  }
+
+  const T* x_data = X.data<T>();
+  T* out_data = Out->data<T>();
+  int64_t numel = X.numel();
+
+  // Check if data is contiguous and use vectorized path
+  if (funcs::sleef_vec::should_use_vectorized_path(x_data, out_data, numel)) {
+    funcs::sleef_vec::vsin(out_data, x_data, numel);
+  } else {
+    // Fallback to Eigen-based implementation
+    auto x = EigenVector<T>::Flatten(GET_DATA_SAFELY(&X, "Input", "X", "Sin"));
+    auto out =
+        EigenVector<T>::Flatten(GET_DATA_SAFELY(Out, "Output", "Out", "Sin"));
+    auto* place = dev_ctx.eigen_device();
+    out.device(*place) = x.unaryExpr(funcs::Sine<T>()).eval();
+  }
+}
+
+// Vectorized Cos implementation for CPU - matches PyTorch precision
+template <typename T, typename Context>
+void VectorizedCosImpl(const Context& dev_ctx,
+                       const DenseTensor& X,
+                       DenseTensor* Out) {
+  PADDLE_ENFORCE_NOT_NULL(Out,
+                          errors::NotFound("Output Out should not be nullptr"));
+  dev_ctx.template Alloc<T>(Out);
+  if (Out->numel() == 0) {
+    return;
+  }
+
+  const T* x_data = X.data<T>();
+  T* out_data = Out->data<T>();
+  int64_t numel = X.numel();
+
+  // Check if data is contiguous and use vectorized path
+  if (funcs::sleef_vec::should_use_vectorized_path(x_data, out_data, numel)) {
+    funcs::sleef_vec::vcos(out_data, x_data, numel);
+  } else {
+    // Fallback to Eigen-based implementation
+    auto x = EigenVector<T>::Flatten(GET_DATA_SAFELY(&X, "Input", "X", "Cos"));
+    auto out =
+        EigenVector<T>::Flatten(GET_DATA_SAFELY(Out, "Output", "Out", "Cos"));
+    auto* place = dev_ctx.eigen_device();
+    out.device(*place) = x.unaryExpr(funcs::Cosine<T>()).eval();
   }
 }
 
