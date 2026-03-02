@@ -846,7 +846,7 @@ static PyObject* tensor_method__new_shared_tensor(TensorObject* self,
       auto* dense_tensor =
           dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
       if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
-        auto tmp = std::make_shared<DenseTensor>(
+        auto tmp = std::make_shared<phi::DenseTensor>(
             std::make_shared<phi::Allocation>(
                 nullptr, 0, dense_tensor->Holder()->place()),
             dense_tensor->meta());
