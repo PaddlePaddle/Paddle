@@ -1816,10 +1816,6 @@ def rot90(
     """
     Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes and the absolute value of k. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dims`` can be used as an alias for ``axes``.
-        For example, ``rot90(input=tensor_x, k=1, dims=[0, 1])`` is equivalent to ``rot90(x=tensor_x, k=1, axes=[0, 1])``.
-
     Args:
         x (Tensor): The input Tensor. The data type of the input Tensor x
             should be float16, float32, float64, int32, int64, bool. float16 is only supported on gpu.

@@ -356,58 +356,51 @@ create_test_zero_size_class("rot90", "int32", [3, 4, 0, 3, 4], (0, 1))
 
 
 class TestRot90Alias(unittest.TestCase):
-    """Test rot90 PyTorch-style alias arguments (input, dims)."""
+    """Test rot90 alias arguments (input, dims)."""
 
-    def test_dygraph_alias_input_dims(self):
+    def setUp(self):
+        self.shape = [2, 3]
+        self.x_np = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+
+    def test_alias_dygraph(self):
         paddle.disable_static()
-        data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
-        out1 = paddle.rot90(x=data, k=1, axes=[0, 1])
-        out2 = paddle.rot90(input=data, k=1, dims=[0, 1])
-        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        try:
+            data = paddle.to_tensor(self.x_np)
+            out1 = paddle.rot90(x=data, k=1, axes=[0, 1])
+            out2 = paddle.rot90(input=data, k=1, dims=[0, 1])
+            np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        finally:
+            paddle.enable_static()
+
+    def test_alias_static(self):
         paddle.enable_static()
-
-    def test_dygraph_alias_dims_tuple(self):
-        paddle.disable_static()
-        data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
-        out1 = paddle.rot90(x=data, k=1, axes=[0, 1])
-        out2 = paddle.rot90(input=data, k=1, dims=(0, 1))
-        np.testing.assert_allclose(out1.numpy(), out2.numpy())
-        paddle.enable_static()
-
-    def test_dygraph_alias_3d(self):
-        paddle.disable_static()
-        data = paddle.to_tensor(
-            [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dtype='float32'
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data('X', self.shape, dtype='float32')
+            out1 = paddle.rot90(x=x, k=1, axes=[0, 1])
+            out2 = paddle.rot90(input=x, k=1, dims=[0, 1])
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(startup_program)
+        res1, res2 = exe.run(
+            main_program,
+            feed={'X': self.x_np},
+            fetch_list=[out1, out2],
         )
-        out1 = paddle.rot90(x=data, k=1, axes=[1, 2])
-        out2 = paddle.rot90(input=data, k=1, dims=[1, 2])
-        np.testing.assert_allclose(out1.numpy(), out2.numpy())
-        paddle.enable_static()
+        np.testing.assert_allclose(res1, res2)
 
-    def test_static_graph_alias(self):
-        paddle.enable_static()
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(train_program, startup_program):
-            input_var = paddle.static.data(
-                name='input_alias', dtype='float32', shape=[2, 3]
+    def test_alias_conflict(self):
+        paddle.disable_static()
+        try:
+            data = paddle.to_tensor(self.x_np)
+            with self.assertRaises(ValueError) as context:
+                paddle.rot90(x=data, input=data, k=1, axes=[0, 1])
+            self.assertIn(
+                "Cannot specify both 'x' and its alias 'input'",
+                str(context.exception),
             )
-            out1 = paddle.rot90(x=input_var, k=1, axes=[0, 1])
-            out2 = paddle.rot90(input=input_var, k=1, dims=[0, 1])
-            place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda() or is_custom_device():
-                place = get_device_place()
-            exe = base.Executor(place)
-            exe.run(startup_program)
-
-            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res1, res2 = exe.run(
-                train_program,
-                feed={'input_alias': img},
-                fetch_list=[out1, out2],
-            )
-
-            np.testing.assert_allclose(res1, res2)
+        finally:
+            paddle.enable_static()
 
 
 if __name__ == "__main__":
