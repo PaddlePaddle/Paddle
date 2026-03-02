@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <ATen/ops/_local_scalar_dense.h>
+#include <ATen/ops/_nnz.h>
+#include <ATen/ops/_values.h>
 #include <ATen/ops/abs.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/as_strided.h>
@@ -21,6 +24,8 @@
 #include <ATen/ops/clamp.h>
 #include <ATen/ops/empty.h>
 #include <ATen/ops/empty_like.h>
+#include <ATen/ops/equal.h>
+#include <ATen/ops/eye.h>
 #include <ATen/ops/flatten.h>
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
@@ -40,5 +45,6 @@
 #include <ATen/ops/unflatten.h>
 #include <ATen/ops/unsqueeze.h>
 #include <ATen/ops/view.h>
+#include <ATen/ops/view_as.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>

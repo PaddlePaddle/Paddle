@@ -128,6 +128,40 @@
     x : [input]
     y : [mat2]
 
+- op : cross
+  name : [paddle.cross, paddle.Tensor.cross]
+  args_alias :
+    use_default_mapping : True
+
+- op : dist
+  name : [paddle.dist, paddle.Tensor.dist]
+  args_alias :
+    use_default_mapping : True
+
+- op : flip
+  name : [paddle.flip, paddle.Tensor.flip, paddle.reverse, paddle.Tensor.reverse]
+  args_alias :
+    x : [input]
+    axis : [dims]
+
+- op : renorm
+  name : [paddle.renorm, paddle.Tensor.renorm]
+  args_alias :
+    x : [input]
+    axis : [dim]
+    max_norm : [maxnorm]
+  pre_process :
+    func : NegativeAxisPreProcess(x, axis)
+
+- op : renorm_
+  name : [paddle.renorm_, paddle.Tensor.renorm_]
+  args_alias :
+    x : [input]
+    axis : [dim]
+    max_norm : [maxnorm]
+  pre_process :
+    func : NegativeAxisPreProcess(x, axis)
+
 - op : bincount
   name : [paddle.bincount, paddle.Tensor.bincount]
   args_alias :
@@ -280,7 +314,7 @@
     func : GeluMapper
 
 - op : greater_than
-  name : [paddle.greater_than, paddle.Tensor.greater_than]
+  name : [paddle.greater_than, paddle.Tensor.greater_than, paddle.gt, paddle.Tensor.gt, paddle.greater, paddle.Tensor.greater]
   args_alias :
     use_default_mapping : True
 

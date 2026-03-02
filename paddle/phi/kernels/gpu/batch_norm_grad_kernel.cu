@@ -694,18 +694,18 @@ void BatchNormGradFunctor(const Context &dev_ctx,
     miopenBatchNormMode_t mode_;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenCreateTensorDescriptor(&data_desc_));
+        dynload::miopenCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
+        dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+        dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+        dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 #endif
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -740,22 +740,22 @@ void BatchNormGradFunctor(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
     // TODO(wangran16): wait for MIOpen to improve the performance of BN
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         data_desc_,
         CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4,
         const_cast<int *>(dims.data()),
         const_cast<int *>(strides.data())));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDeriveBNTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
         data_desc_,
         CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4,
         dims.data(),
         strides.data()));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 #endif
 
@@ -786,27 +786,26 @@ void BatchNormGradFunctor(const Context &dev_ctx,
 #ifdef PADDLE_WITH_HIP
       if (compute_format == DataLayout::NCHW) {
         if (FLAGS_batch_norm_use_miopen == true) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::miopenBatchNormalizationBackward(
-                  dev_ctx.cudnn_handle(),
-                  mode_,
-                  CudnnDataType<T>::kOne(),
-                  CudnnDataType<T>::kZero(),
-                  CudnnDataType<T>::kOne(),
-                  CudnnDataType<T>::kZero(),
-                  data_desc_,
-                  transformed_x.template data<T>(),
-                  data_desc_,
-                  transformed_d_y.template data<T>(),
-                  data_desc_,
-                  dev_ctx.template Alloc<T>(&transformed_d_x),
-                  bn_param_desc_,
-                  new_scale.template data<BatchNormParamType<T>>(),
-                  dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                  dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
-                  epsilon,
-                  saved_mean_data,
-                  saved_var_data));
+          PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenBatchNormalizationBackward(
+              dev_ctx.cudnn_handle(),
+              mode_,
+              CudnnDataType<T>::kOne(),
+              CudnnDataType<T>::kZero(),
+              CudnnDataType<T>::kOne(),
+              CudnnDataType<T>::kZero(),
+              data_desc_,
+              transformed_x.template data<T>(),
+              data_desc_,
+              transformed_d_y.template data<T>(),
+              data_desc_,
+              dev_ctx.template Alloc<T>(&transformed_d_x),
+              bn_param_desc_,
+              new_scale.template data<BatchNormParamType<T>>(),
+              dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+              dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
+              epsilon,
+              saved_mean_data,
+              saved_var_data));
         } else {
           BNBackward<T, block, DataLayout::NCHW>
               <<<grid2, block, 0, dev_ctx.stream()>>>(
@@ -995,7 +994,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
         auto reserve_space_size = reserve_space->memory_size();
         // --------------- cudnn batchnorm workspace ---------------
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+            dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
                 /*handle=*/dev_ctx.cudnn_handle(),
                 /*mode=*/mode_,
                 /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
@@ -1016,66 +1015,64 @@ void BatchNormGradFunctor(const Context &dev_ctx,
           reserve_space_ptr =
               const_cast<uint8_t *>(reserve_space->template data<uint8_t>());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cudnnBatchNormalizationBackwardEx(
-                /*handle=*/dev_ctx.cudnn_handle(),
-                /*mode=*/mode_,
-                /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
-                /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
-                /*betaDataDiff=*/CudnnDataType<T>::kZero(),
-                /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
-                /*betaParamDiff=*/CudnnDataType<T>::kZero(),
-                /*xDesc=*/data_desc_,
-                /*xData=*/transformed_x.template data<T>(),
-                /*yDesc=*/nullptr,
-                /*yData=*/nullptr,
-                /*dyDesc=*/data_desc_,
-                /*dyData=*/transformed_d_y.template data<T>(),
-                /*dzDesc=*/nullptr,
-                /*dzData=*/nullptr,
-                /*dxDesc=*/data_desc_,
-                /*dxData=*/dev_ctx.template Alloc<T>(&transformed_d_x),
-                /*dBnScaleBiasDesc=*/bn_param_desc_,
-                /*bnScaleData=*/
-                new_scale.template data<BatchNormParamType<T>>(),
-                /*bnBiasData=*/nullptr,
-                /*dBnScaleData=*/
-                dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                /*dBnBiasData=*/
-                dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
-                /*epsilon=*/epsilon,
-                /*savedMean=*/saved_mean_data,
-                /*savedInvVariance=*/saved_var_data,
-                /*activationDesc=*/nullptr,
-                /*workspace=*/workspace_ptr,
-                /*workSpaceSizeInBytes=*/workspace_size,
-                /*reserveSpace=*/
-                // const_cast<uint8_t *>(reserve_space->template
-                // data<uint8_t>()),
-                reserve_space_ptr,
-                /*reserveSpaceSizeInBytes=*/reserve_space_size));
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationBackwardEx(
+            /*handle=*/dev_ctx.cudnn_handle(),
+            /*mode=*/mode_,
+            /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
+            /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
+            /*betaDataDiff=*/CudnnDataType<T>::kZero(),
+            /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
+            /*betaParamDiff=*/CudnnDataType<T>::kZero(),
+            /*xDesc=*/data_desc_,
+            /*xData=*/transformed_x.template data<T>(),
+            /*yDesc=*/nullptr,
+            /*yData=*/nullptr,
+            /*dyDesc=*/data_desc_,
+            /*dyData=*/transformed_d_y.template data<T>(),
+            /*dzDesc=*/nullptr,
+            /*dzData=*/nullptr,
+            /*dxDesc=*/data_desc_,
+            /*dxData=*/dev_ctx.template Alloc<T>(&transformed_d_x),
+            /*dBnScaleBiasDesc=*/bn_param_desc_,
+            /*bnScaleData=*/
+            new_scale.template data<BatchNormParamType<T>>(),
+            /*bnBiasData=*/nullptr,
+            /*dBnScaleData=*/
+            dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+            /*dBnBiasData=*/
+            dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
+            /*epsilon=*/epsilon,
+            /*savedMean=*/saved_mean_data,
+            /*savedInvVariance=*/saved_var_data,
+            /*activationDesc=*/nullptr,
+            /*workspace=*/workspace_ptr,
+            /*workSpaceSizeInBytes=*/workspace_size,
+            /*reserveSpace=*/
+            // const_cast<uint8_t *>(reserve_space->template
+            // data<uint8_t>()),
+            reserve_space_ptr,
+            /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #else
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cudnnBatchNormalizationBackward(
-                dev_ctx.cudnn_handle(),
-                mode_,
-                CudnnDataType<T>::kOne(),
-                CudnnDataType<T>::kZero(),
-                CudnnDataType<T>::kOne(),
-                CudnnDataType<T>::kZero(),
-                data_desc_,
-                transformed_x.template data<T>(),
-                data_desc_,
-                transformed_d_y.template data<T>(),
-                data_desc_,
-                dev_ctx.template Alloc<T>(&transformed_d_x),
-                bn_param_desc_,
-                new_scale.template data<BatchNormParamType<T>>(),
-                dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
-                epsilon,
-                saved_mean_data,
-                saved_var_data));
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationBackward(
+            dev_ctx.cudnn_handle(),
+            mode_,
+            CudnnDataType<T>::kOne(),
+            CudnnDataType<T>::kZero(),
+            CudnnDataType<T>::kOne(),
+            CudnnDataType<T>::kZero(),
+            data_desc_,
+            transformed_x.template data<T>(),
+            data_desc_,
+            transformed_d_y.template data<T>(),
+            data_desc_,
+            dev_ctx.template Alloc<T>(&transformed_d_x),
+            bn_param_desc_,
+            new_scale.template data<BatchNormParamType<T>>(),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
+            epsilon,
+            saved_mean_data,
+            saved_var_data));
 #endif  // CUDNN_VERSION_MIN(7, 4, 1)
       }
 #endif
@@ -1180,15 +1177,15 @@ void BatchNormGradFunctor(const Context &dev_ctx,
     // TODO(wangran16): wait for MIOpen to improve the performance of BN
     // clean when exit.
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenDestroyTensorDescriptor(data_desc_));
+        dynload::miopenDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
+        dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
 #else
     // clean when exit.
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+        dynload::cudnnDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+        dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #endif
 
   } else {
