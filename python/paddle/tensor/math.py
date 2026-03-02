@@ -152,7 +152,6 @@ if TYPE_CHECKING:
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from paddle import sparse
 
 __all__ = []
 
@@ -6912,4 +6911,5 @@ def sparse_mask(x: Tensor, mask: Tensor, name: str | None = None):
     Returns:
         Tensor: A sparse tensor.
     """
+    from paddle import sparse
     return sparse.mask_as(x, mask, name)
