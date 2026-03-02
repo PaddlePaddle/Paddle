@@ -22,7 +22,6 @@
 
 #include "gtest/gtest.h"
 #include "test/cpp/utils/exception_test_utils.h"
-#include "torch/csrc/jit/schema_type_parser.h"
 
 // -----  test/cpp/jit/test_misc.cpp start -----
 
