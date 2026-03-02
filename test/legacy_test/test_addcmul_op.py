@@ -19,7 +19,6 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     get_device_place,
-    is_custom_device,
 )
 
 import paddle
@@ -143,10 +142,6 @@ class TestAddcmulOp_0D(TestAddcmulOp):
         self.attrs = {'value': 0.5}
 
 
-@unittest.skipIf(
-    is_custom_device(),
-    "addcmul is not supported on custom devices",
-)
 class TestAddcmulFP16Op(TestAddcmulOp):
     """Test float16 dtype"""
 
@@ -163,9 +158,8 @@ class TestAddcmulFP16Op(TestAddcmulOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(get_device_place()),
-    "core is not compiled with CUDA or not support the bfloat16",
+    not core.is_bfloat16_supported(get_device_place()),
+    "not support the bfloat16",
 )
 class TestAddcmulBF16Op(OpTest):
     """Test bfloat16 dtype"""
@@ -279,10 +273,6 @@ class TestAddcmulBroadcast3D(OpTest):
         )
 
 
-@unittest.skipIf(
-    is_custom_device(),
-    "addcmul is not supported on custom devices",
-)
 class TestAddcmulOpError(unittest.TestCase):
     """Test error cases"""
 
@@ -307,10 +297,6 @@ class TestAddcmulOpError(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skipIf(
-    is_custom_device(),
-    "addcmul is not supported on custom devices",
-)
 class TestAddcmulAPI(unittest.TestCase):
     """Test Python API compatibility"""
 
@@ -382,10 +368,6 @@ class TestAddcmulAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skipIf(
-    is_custom_device(),
-    "addcmul is not supported on custom devices",
-)
 class TestAddcmulGradEmptyTensor(unittest.TestCase):
     """Test gradient with empty tensors - covers numel==0 branch"""
 
@@ -410,10 +392,6 @@ class TestAddcmulGradEmptyTensor(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skipIf(
-    is_custom_device(),
-    "addcmul is not supported on custom devices",
-)
 class TestAddcmulSelectiveGrad(unittest.TestCase):
     """Test gradient with selective stop_gradient - covers null grad pointer branches"""
 
@@ -472,10 +450,6 @@ class TestAddcmulSelectiveGrad(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skipIf(
-    is_custom_device(),
-    "addcmul is not supported on custom devices",
-)
 class TestAddcmulGrad0DScalar(unittest.TestCase):
     """Test 0D scalar gradient - covers AddcmulGradZero"""
 
@@ -522,10 +496,6 @@ class TestAddcmulGrad0DScalar(unittest.TestCase):
         paddle.enable_static()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "CINN requires CUDA",
-)
 class TestAddcmulCINNSymbolic(unittest.TestCase):
     """
     Test CINN symbolic shape inference for addcmul operator.
@@ -534,6 +504,8 @@ class TestAddcmulCINNSymbolic(unittest.TestCase):
     """
 
     def setUp(self):
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CINN requires CUDA")
         paddle.disable_static()
         paddle.seed(2024)
 
@@ -554,9 +526,7 @@ class TestAddcmulCINNSymbolic(unittest.TestCase):
         # Run without CINN (dynamic graph reference)
         dy_out = fn(*inputs)
 
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), rtol=1e-5, atol=1e-5
-        )
+        np.testing.assert_array_equal(cinn_out.numpy(), dy_out.numpy())
         return cinn_out
 
     def test_cinn_same_shape(self):
@@ -662,10 +632,6 @@ class TestAddcmulCINNSymbolic(unittest.TestCase):
         self._run_with_cinn(addcmul_fn, input_specs, x, t1, t2)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "CINN requires CUDA",
-)
 class TestAddcmulCINNGrad(unittest.TestCase):
     """
     Test CINN gradient computation for addcmul operator.
@@ -673,6 +639,8 @@ class TestAddcmulCINNGrad(unittest.TestCase):
     """
 
     def setUp(self):
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CINN requires CUDA")
         paddle.disable_static()
         paddle.seed(2024)
 
@@ -707,9 +675,7 @@ class TestAddcmulCINNGrad(unittest.TestCase):
         )
 
         cinn_loss = net_cinn(x, t1, t2)
-        np.testing.assert_allclose(
-            cinn_loss.numpy(), dy_loss.numpy(), rtol=1e-5, atol=1e-5
-        )
+        np.testing.assert_array_equal(cinn_loss.numpy(), dy_loss.numpy())
 
     def test_cinn_grad_broadcast(self):
         """Test gradient with CINN for broadcast tensors."""
@@ -742,9 +708,7 @@ class TestAddcmulCINNGrad(unittest.TestCase):
         )
 
         cinn_loss = net_cinn(x, t1, t2)
-        np.testing.assert_allclose(
-            cinn_loss.numpy(), dy_loss.numpy(), rtol=1e-5, atol=1e-5
-        )
+        np.testing.assert_array_equal(cinn_loss.numpy(), dy_loss.numpy())
 
 
 # ============================================================
