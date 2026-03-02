@@ -55,6 +55,10 @@ inline constexpr int kMaxNumExpertsForOptKernel = 32;
 inline constexpr int kFp8CumsumBlockSize = 32;
 inline constexpr int kFp8BlockDimX = 256;
 
+// Unified permute kernel constants (always warp-ballot based)
+inline constexpr int kPermuteBlockSize = 32;   // rows per block = warp size
+inline constexpr int kPermuteBlockDimX = 256;  // threads per block
+
 }  // namespace moe
 
 // ============================================================================
@@ -140,6 +144,23 @@ inline void ScaleType(bool using_ue8m0, F&& f) {
   }
 }
 
+// Bucketed TOPK dispatch: compile-time topk for shared memory sizing.
+// Buckets: 1, 2, 4, 8, 16
+template <typename F>
+inline void TopK(int topk, F&& f) {
+  if (topk <= 1) {
+    f(std::integral_constant<int, 1>{});
+  } else if (topk <= 2) {
+    f(std::integral_constant<int, 2>{});
+  } else if (topk <= 4) {
+    f(std::integral_constant<int, 4>{});
+  } else if (topk <= 8) {
+    f(std::integral_constant<int, 8>{});
+  } else {
+    f(std::integral_constant<int, 16>{});
+  }
+}
+
 }  // namespace dispatch
 
 // ============================================================================
@@ -159,6 +180,20 @@ struct ExpertSlotInfo {
     prob = other.prob;
     return *this;
   }
+};
+
+// Compact per-token-expert slot for the unified permute kernel.
+// Stores only topk entries per row instead of num_experts entries.
+template <typename ProbT>
+struct CompactSlot {
+  int output_row;
+  int expert_id;
+  ProbT prob;
+
+  __device__ __host__ CompactSlot()
+      : output_row(-1), expert_id(-1), prob(ProbT(0)) {}
+  __device__ __host__ CompactSlot(int row, int eid, ProbT p)
+      : output_row(row), expert_id(eid), prob(p) {}
 };
 
 template <paddle::DataType DType>
