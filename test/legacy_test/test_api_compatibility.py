@@ -2850,7 +2850,9 @@ class TestCountNonzeroAPI(unittest.TestCase):
 
         for out in [out1, out2, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), ref_axis)
-        np.testing.assert_allclose(out3.numpy(), np.count_nonzero(self.np_x, axis=1))
+        np.testing.assert_allclose(
+            out3.numpy(), np.count_nonzero(self.np_x, axis=1)
+        )
         np.testing.assert_allclose(
             paddle.count_nonzero(input=x).numpy(), ref_all
         )
