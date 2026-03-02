@@ -17,3 +17,5 @@ if(NOT WIN32)
   endif()
   cc_test(schema_parser_type_test SRCS schema_parser_type_test.cc)
 endif()
+
+add_subdirectory(torch)

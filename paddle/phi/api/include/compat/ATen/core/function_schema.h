@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// #The file has been adapted from pytorch project
+// #Licensed under  BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 #pragma once
 #include <ATen/core/alias_info.h>
 #include <ATen/core/ivalue.h>
@@ -24,6 +28,18 @@ namespace c10 {
 
 struct Argument;
 struct FunctionSchema;
+enum class SchemaArgType;
+struct SchemaArgument;
+
+enum class SchemaArgType {
+  input,
+  output,
+};
+
+struct SchemaArgument {
+  SchemaArgType type;
+  size_t index;
+};
 
 struct PADDLE_API Argument {
   Argument(std::string name = "",
@@ -212,6 +228,17 @@ struct PADDLE_API FunctionSchema {
   bool is_vararg() const { return is_vararg_; }
 
   bool is_varret() const { return is_varret_; }
+
+  std::optional<int> argumentIndexWithName(const std::string& name) const;
+  const std::vector<Argument>& getCorrectList(
+      const SchemaArgument& argument) const;
+  bool is_aliasing(const SchemaArgument& argument) const;
+  bool is_mutable(const SchemaArgument& argument) const;
+  bool is_mutable(const std::string& name) const;
+  bool may_alias(const SchemaArgument& lhs, const SchemaArgument& rhs) const;
+  bool may_contain_alias(const SchemaArgument& lhs,
+                         const SchemaArgument& rhs,
+                         bool bidirectional = true) const;
 
   friend PADDLE_API std::ostream& operator<<(std::ostream& out,
                                              const FunctionSchema& schema);

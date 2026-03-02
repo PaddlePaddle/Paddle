@@ -186,6 +186,17 @@ struct PADDLE_API Type {
   using TypePtr = SingletonOrSharedTypePtr<Type>;
 
   virtual bool isSubtypeOfExt(const Type& rhs, std::ostream* why_not) const;
+  bool isSubtypeOf(const Type& rhs) const {
+    return isSubtypeOfExt(rhs, nullptr);
+  }
+
+  // Compatibility shims to accommodate existing code that passes shared_ptrs
+  // around. Ideally, we would just delete this, but it should be harmless.
+  template <typename T>
+  std::enable_if_t<std::is_base_of_v<Type, T>, bool> isSubtypeOf(
+      const std::shared_ptr<T>& rhs) const {
+    return isSubtypeOf(*rhs);
+  }
 
   virtual std::string str() const = 0;
 
