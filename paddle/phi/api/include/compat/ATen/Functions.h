@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <ATen/ops/_local_scalar_dense.h>
+#include <ATen/ops/_nnz.h>
+#include <ATen/ops/_values.h>
 #include <ATen/ops/abs.h>
 #include <ATen/ops/any.h>
 #include <ATen/ops/arange.h>
@@ -26,6 +29,8 @@
 #include <ATen/ops/from_blob.h>
 #include <ATen/ops/full.h>
 #include <ATen/ops/index.h>
+#include <ATen/ops/is_coalesced.h>
+#include <ATen/ops/item.h>
 #include <ATen/ops/narrow.h>
 #include <ATen/ops/narrow_copy.h>
 #include <ATen/ops/ones.h>
@@ -36,9 +41,13 @@
 #include <ATen/ops/sparse_coo_tensor.h>
 #include <ATen/ops/sparse_csr_tensor.h>
 #include <ATen/ops/squeeze.h>
+#include <ATen/ops/sum.h>
+#include <ATen/ops/t.h>
+#include <ATen/ops/to.h>
 #include <ATen/ops/transpose.h>
 #include <ATen/ops/unflatten.h>
 #include <ATen/ops/unsqueeze.h>
 #include <ATen/ops/view.h>
+#include <ATen/ops/view_as.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>

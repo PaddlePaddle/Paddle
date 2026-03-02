@@ -32,7 +32,7 @@ class LazyTensor : public phi::ExtendedTensor,
 
   static const char* name() { return "LazyTensor"; }
 
-  const phi::DDim& dims() const override { return dims_; }
+  const DDim& dims() const override { return dims_; }
 
   int64_t numel() const override { return product(dims()); }
 
@@ -51,8 +51,8 @@ class LazyTensor : public phi::ExtendedTensor,
 
  private:
   pir::Value value_;
-  mutable phi::DDim dims_;
-  phi::Place place_;
+  mutable DDim dims_;
+  Place place_;
 };
 
 }  // namespace primitive
