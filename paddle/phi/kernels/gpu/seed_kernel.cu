@@ -32,7 +32,7 @@ void GPUSeedKernel(const Context &dev_ctx,
 
   bool cpu_place = force_cpu || dev_ctx.GetPlace() == CPUPlace();
   if (cpu_place) {
-    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+    DeviceContextPool &pool = DeviceContextPool::Instance();
     auto &dev_ctx_cpu = *pool.Get(CPUPlace());
     dev_ctx_cpu.Alloc<T>(out);
     funcs::SetConstant<phi::CPUContext, T> functor;

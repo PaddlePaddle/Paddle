@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/pybind/data_type_caster.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/pir.h"
@@ -1253,14 +1254,15 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
 }
 
 PyObject* ToPyObject(const DataType& dtype) {
-  static const std::vector<std::string> dtype_names = {
-      "UNDEFINED", "BOOL",     "UINT8",         "INT8",        "UINT16",
-      "INT16",     "UINT32",   "INT32",         "UINT64",      "INT64",
-      "FLOAT32",   "FLOAT64",  "COMPLEX64",     "COMPLEX128",  "PSTRING",
-      "FLOAT16",   "BFLOAT16", "FLOAT8_E4M3FN", "FLOAT8_E5M2",
-  };
-  return PyObject_GetAttrString(reinterpret_cast<PyObject*>(g_data_type_pytype),
-                                dtype_names[static_cast<int>(dtype)].c_str());
+  auto& cache = paddle::pybind::DataTypeSingletonCache::Instance();
+  PyObject* cached = cache.Get(dtype);
+  if (cached) {
+    Py_INCREF(cached);
+    return cached;
+  }
+  // Fallback: cache not initialized yet (should not happen in normal flow)
+  PADDLE_THROW(common::errors::Fatal(
+      "DataTypeSingletonCache is not initialized when ToPyObject is called."));
 }
 
 PyObject* ToPyObject(const std::vector<DataType>& dtypes) {

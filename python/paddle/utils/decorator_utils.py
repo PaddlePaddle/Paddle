@@ -178,8 +178,13 @@ def param_one_alias(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if not kwargs:
                 return func(*args, **kwargs)
-            if (alias_list[0] not in kwargs) and (alias_list[1] in kwargs):
-                kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
+            if alias_list[1] in kwargs:
+                if alias_list[0] not in kwargs:
+                    kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{alias_list[0]}' and its alias '{alias_list[1]}'"
+                    )
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
@@ -196,10 +201,20 @@ def param_two_alias(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if not kwargs:
                 return func(*args, **kwargs)
-            if (alias_list1[0] not in kwargs) and (alias_list1[1] in kwargs):
-                kwargs[alias_list1[0]] = kwargs.pop(alias_list1[1])
-            if (alias_list2[0] not in kwargs) and (alias_list2[1] in kwargs):
-                kwargs[alias_list2[0]] = kwargs.pop(alias_list2[1])
+            if alias_list1[1] in kwargs:
+                if alias_list1[0] not in kwargs:
+                    kwargs[alias_list1[0]] = kwargs.pop(alias_list1[1])
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{alias_list1[0]}' and its alias '{alias_list1[1]}'"
+                    )
+            if alias_list2[1] in kwargs:
+                if alias_list2[0] not in kwargs:
+                    kwargs[alias_list2[0]] = kwargs.pop(alias_list2[1])
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{alias_list2[0]}' and its alias '{alias_list2[1]}'"
+                    )
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
