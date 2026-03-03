@@ -255,7 +255,7 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
     if (mask != 0u) {
       chain_offset = __shfl_sync(0xFFFFFFFF, chain_offset, 0);
       const bool lane_active = (mask & (1u << lane_id)) != 0;
-      if (lane_active) {
+      if (lane_active && row_valid) {
         if (use_prefix) {
           final_pos = expert_base_offset[expert_id] + chain_offset +
                       __popc(mask & ((1u << lane_id) - 1));
@@ -282,6 +282,9 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   }
 
   // ===================== Phase 2: Token data movement ======================
+  // All warps must finish Phase 1b before shared memory is repurposed.
+  __syncthreads();
+
   if constexpr (do_gather) {
     // Flush output_rows from registers to shared memory (reuse bitmask region).
     // reg_output_row[k] was set by whichever warp processed the matching
