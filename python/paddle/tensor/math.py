@@ -3971,17 +3971,27 @@ def gammaln_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.gammaln_(x)
 
 
-def digamma(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def digamma(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Calculates the digamma of the given input tensor, element-wise.
 
     .. math::
         Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``digamma(input=tensor_x)`` is equivalent to ``digamma(x=tensor_x)``.
+
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32,
             float64, uint8, int8, int16, int32, int64.
+            alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, result will be stored in this Tensor. Default: None.
+
     Returns:
         Tensor, the digamma of the input Tensor, the shape and data type is the same with input
             (integer types are autocasted into float32).
@@ -4000,7 +4010,10 @@ def digamma(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.digamma(x)
+        if out is None:
+            return _C_ops.digamma(x)
+        else:
+            return _C_ops.digamma(x, out)
     else:
         check_variable_and_dtype(
             x,
@@ -4019,9 +4032,14 @@ def digamma(x: Tensor, name: str | None = None) -> Tensor:
             'digamma',
         )
         helper = LayerHelper('digamma', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
-        return out
+        out_tensor = helper.create_variable_for_type_inference(x.dtype)
+        if out is not None:
+            helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out_tensor})
+            paddle.assign(out_tensor, out)
+            return out
+        else:
+            helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out_tensor})
+            return out_tensor
 
 
 @inplace_apis_in_dygraph_only
