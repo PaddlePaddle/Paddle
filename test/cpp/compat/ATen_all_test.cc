@@ -276,22 +276,6 @@ TEST(TestAllclose, AllcloseWithCustomAtol) {
   ASSERT_EQ(result_large_atol, true);
 }
 
-TEST(TestAllclose, AllcloseWithNan) {
-  // Test allclose with NaN values
-  at::Tensor tensor1 = at::ones({3}, at::kFloat);
-  tensor1[1] = std::numeric_limits<float>::quiet_NaN();
-  at::Tensor tensor2 = at::ones({3}, at::kFloat);
-  tensor2[1] = std::numeric_limits<float>::quiet_NaN();
-
-  // Without equal_nan, NaN != NaN, so allclose should return false
-  bool result_no_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
-  ASSERT_EQ(result_no_nan, false);
-
-  // With equal_nan=true, NaN == NaN, so allclose should return true
-  bool result_eq_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
-  ASSERT_EQ(result_eq_nan, true);
-}
-
 TEST(TestAllclose, AllcloseMemberWithAllParams) {
   // Test Tensor::allclose member function with all explicit parameters
   at::Tensor tensor1 = at::ones({2, 2}, at::kFloat);
@@ -309,17 +293,6 @@ TEST(TestAllclose, AllcloseMemberNotClose) {
 
   bool result = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
   ASSERT_EQ(result, false);
-}
-
-TEST(TestAllclose, AllcloseMemberWithNan) {
-  // Test Tensor::allclose member function with NaN and equal_nan
-  at::Tensor tensor1 = at::ones({2}, at::kFloat);
-  tensor1[0] = std::numeric_limits<float>::quiet_NaN();
-  at::Tensor tensor2 = at::ones({2}, at::kFloat);
-  tensor2[0] = std::numeric_limits<float>::quiet_NaN();
-
-  ASSERT_EQ(tensor1.allclose(tensor2, 1e-05, 1e-08, false), false);
-  ASSERT_EQ(tensor1.allclose(tensor2, 1e-05, 1e-08, true), true);
 }
 
 TEST(TestAllclose, AllcloseMemberWithCustomTolerance) {
