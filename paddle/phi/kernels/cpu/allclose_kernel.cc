@@ -55,6 +55,13 @@ void AllCloseKernel(const Context& dev_ctx,
         "Input (Atol) type must be double or float, but get %s.",
         atol.dtype()));
   }
+  // Use default values instead of NaN if the conversion failed
+  if (std::isnan(rtol_v)) {
+    rtol_v = 1e-05;
+  }
+  if (std::isnan(atol_v)) {
+    atol_v = 1e-08;
+  }
   VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
   auto* in_a = x.data<T>();
   auto* in_b = y.data<T>();
