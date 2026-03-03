@@ -46,6 +46,13 @@ class MaxPool {
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   HOSTDEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y UNUSED) {}
+  DEVICE inline void finalize(const T& kh UNUSED,
+                              const T& kw UNUSED,
+                              T* y UNUSED) {}
+  DEVICE inline void finalize(const T& kd UNUSED,
+                              const T& kh UNUSED,
+                              const T& kw UNUSED,
+                              T* y UNUSED) {}
 };
 
 template <class T>
@@ -66,6 +73,18 @@ class AvgPool {
   DEVICE inline void finalize(const T& pool_field, T* y) {
     *y = static_cast<T>(intermediate_res / (static_cast<MT>(pool_field)));
   }
+
+  // Sequential division for 2D pooling
+  DEVICE inline void finalize(const T& kh, const T& kw, T* y) {
+    *y = static_cast<T>(intermediate_res / static_cast<MT>(kh) /
+                        static_cast<MT>(kw));
+  }
+
+  // Sequential division for 3D pooling
+  DEVICE inline void finalize(const T& kd, const T& kh, const T& kw, T* y) {
+    *y = static_cast<T>(intermediate_res / static_cast<MT>(kd) /
+                        static_cast<MT>(kh) / static_cast<MT>(kw));
+  }
 };
 
 template <class T>
@@ -85,6 +104,15 @@ class LPPool {
   }
 
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+  }
+  DEVICE inline void finalize(const T& kh UNUSED, const T& kw UNUSED, T* y) {
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+  }
+  DEVICE inline void finalize(const T& kd UNUSED,
+                              const T& kh UNUSED,
+                              const T& kw UNUSED,
+                              T* y) {
     *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
   }
 };
@@ -128,7 +156,8 @@ class LPPoolGrad {
  */
 template <typename T = int64_t>
 HOSTDEVICE inline T AdaptStartIndex(T ph, T input_size, T output_size) {
-  return (ph * input_size) / output_size;
+  return (ph / output_size) * input_size +
+         ((ph % output_size) * input_size) / output_size;
 }
 
 template <typename T = int64_t>
@@ -335,6 +364,7 @@ class MaxPool2dWithIndexFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -349,6 +379,7 @@ class MaxPool2dWithIndexGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -361,6 +392,7 @@ class MaxPool3dWithIndexFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -375,6 +407,7 @@ class MaxPool3dWithIndexGradFunctor {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -478,17 +511,25 @@ inline T PoolOutputSize(T input_size,
   return output_size;
 }
 
-inline int MaxPoolOutputSize(
-    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
+inline int MaxPoolOutputSize(int input_size,
+                             int filter_size,
+                             int stride,
+                             int padding,
+                             int dilation,
+                             bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
       common::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
+  // Effective filter size with dilation
+  int effective_filter_size = dilation * (filter_size - 1) + 1;
   if (ceil_mode) {
-    return (input_size - filter_size + 2 * padding + stride - 1) / stride + 1;
+    return (input_size - effective_filter_size + 2 * padding + stride - 1) /
+               stride +
+           1;
   } else {
-    return (input_size - filter_size + 2 * padding) / stride + 1;
+    return (input_size - effective_filter_size + 2 * padding) / stride + 1;
   }
 }
 

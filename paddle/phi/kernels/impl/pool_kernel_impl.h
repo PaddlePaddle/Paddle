@@ -21,33 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/phi/kernels/gpu/reduce.h"
-#endif
-
 namespace phi {
-
-inline int64_t GetReduceNum(const DenseTensor& input,
-                            const DenseTensor* output,
-                            const bool channel_last,
-                            std::vector<int>* reduce_dim) {
-  int64_t reduce_num = 0;
-  const int output_height =
-      channel_last ? output->dims()[1] : output->dims()[2];
-  const int output_width = channel_last ? output->dims()[2] : output->dims()[3];
-  if ((output_height == 1) && (output_width == 1)) {
-    if (channel_last) {
-      reduce_dim->push_back(1);
-      reduce_dim->push_back(2);
-      reduce_num = input.dims()[1] * input.dims()[2];
-    } else {
-      reduce_dim->push_back(2);
-      reduce_dim->push_back(3);
-      reduce_num = input.dims()[2] * input.dims()[3];
-    }
-  }
-  return reduce_num;
-}
 
 template <typename T, typename Context>
 void PoolRawKernel(const Context& dev_ctx,
@@ -125,42 +99,18 @@ void PoolRawKernel(const Context& dev_ctx,
                        pool_process);
 
       } else if (true_type == "avg") {
-        std::vector<int> reduce_dim;
-        int64_t reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
-        if (reduce_num > 0 &&
-            adaptive) {  // for adaptive_avg_pool2d && output_size == 1
-#if defined(__HIPCC__) || defined(__NVCC__)
-          auto stream = dev_ctx.stream();
-          funcs::ReduceGpuKernel<T, T, kps::MeanOps>(
-              dev_ctx, x, out, reduce_dim);
-#else  // for cpu
-          funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
-          funcs::AvgPool<T> pool_process;
-          pool2d_forward(dev_ctx,
-                         x,
-                         kernel_size_,
-                         strides,
-                         paddings_,
-                         data_format,
-                         exclusive,
-                         adaptive,
-                         out,
-                         pool_process);
-#endif
-        } else {  // avgpool_2d or  adaptive_avg_pool2d && output_size != 1
-          funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
-          funcs::AvgPool<T> pool_process;
-          pool2d_forward(dev_ctx,
-                         x,
-                         kernel_size_,
-                         strides,
-                         paddings_,
-                         data_format,
-                         exclusive,
-                         adaptive,
-                         out,
-                         pool_process);
-        }
+        funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
+        funcs::AvgPool<T> pool_process;
+        pool2d_forward(dev_ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
       } else {  // lp_pool2d
         funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
         funcs::LPPool<T> pool_process;
