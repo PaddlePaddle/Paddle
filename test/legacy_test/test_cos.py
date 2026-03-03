@@ -60,5 +60,141 @@ class TestCosOutAndParamDecorator(unittest.TestCase):
             )
 
 
+class TestCosSleefVectorized(unittest.TestCase):
+    """Test cos with shapes that exercise Sleef vectorized paths.
+
+    For AVX2:
+    - float32: VEC_SIZE = 8, so shapes >= 8 trigger vectorized path
+    - float64: VEC_SIZE = 4, so shapes >= 4 trigger vectorized path
+
+    Test both:
+    1. Shapes that are exact multiples of VEC_SIZE (only vectorized loop)
+    2. Shapes with remainder (vectorized loop + scalar tail)
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_cos_float32_vectorized_exact(self):
+        """Test float32 cos with shape that's exact multiple of 8.
+        Covers vcos_avx2_f32 main loop.
+        """
+        # Shape 16 = 8 * 2, exercises only vectorized loop
+        x_np = np.random.uniform(-np.pi, np.pi, size=(16,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_cos_float32_vectorized_with_tail(self):
+        """Test float32 cos with shape that has remainder when divided by 8.
+        Covers vcos_avx2_f32 both main loop and scalar tail.
+        """
+        # Shape 13 = 8 + 5, exercises both vectorized loop and scalar tail
+        x_np = np.random.uniform(-np.pi, np.pi, size=(13,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_cos_float64_vectorized_exact(self):
+        """Test float64 cos with shape that's exact multiple of 4.
+        Covers vcos_avx2_f64 main loop.
+        """
+        # Shape 12 = 4 * 3, exercises only vectorized loop
+        x_np = np.random.uniform(-np.pi, np.pi, size=(12,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_cos_float64_vectorized_with_tail(self):
+        """Test float64 cos with shape that has remainder when divided by 4.
+        Covers vcos_avx2_f64 both main loop and scalar tail.
+        """
+        # Shape 11 = 4 * 2 + 3, exercises both vectorized loop and scalar tail
+        x_np = np.random.uniform(-np.pi, np.pi, size=(11,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_cos_float32_large_shape(self):
+        """Test float32 cos with large shape for comprehensive coverage."""
+        x_np = np.random.uniform(-np.pi, np.pi, size=(1024,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_cos_float64_large_shape(self):
+        """Test float64 cos with large shape for comprehensive coverage."""
+        x_np = np.random.uniform(-np.pi, np.pi, size=(1024,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_cos_float32_2d_shape(self):
+        """Test float32 cos with 2D shape to verify flattened processing."""
+        # Shape (4, 5) = 20 elements, exercises vectorized path
+        x_np = np.random.uniform(-np.pi, np.pi, size=(4, 5)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_cos_float64_2d_shape(self):
+        """Test float64 cos with 2D shape to verify flattened processing."""
+        # Shape (3, 5) = 15 elements, exercises vectorized path with tail
+        x_np = np.random.uniform(-np.pi, np.pi, size=(3, 5)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_cos_float32_small_shape_fallback(self):
+        """Test float32 cos with small shape (numel < 8) to cover Eigen fallback path.
+        Covers VectorizedCosImpl fallback branch (lines 102-109 in activation_impl.h).
+        """
+        # Shape 5 < 8, triggers Eigen fallback instead of SIMD
+        x_np = np.random.uniform(-np.pi, np.pi, size=(5,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_cos_float64_small_shape_fallback(self):
+        """Test float64 cos with small shape (numel < 8) to cover Eigen fallback path.
+        Covers VectorizedCosImpl fallback branch (lines 102-109 in activation_impl.h).
+        """
+        # Shape 3 < 8, triggers Eigen fallback instead of SIMD
+        x_np = np.random.uniform(-np.pi, np.pi, size=(3,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        result = paddle.cos(x)
+        expected = np.cos(x_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
