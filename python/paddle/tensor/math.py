@@ -6899,37 +6899,3 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
 
     coordinates = paddle.stack(paddle.meshgrid(x), axis=-1)
     return paddle.reshape(coordinates, [-1, len(x)])
-
-def sparse_mask(self: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Mimics PyTorch's sparse tensor interface.
-    This is a Tensor method extension for convenience, equivalent to `paddle.sparse.mask_as`.
-    
-    Args:
-        self (Tensor): The input dense tensor (will be filtered).
-        mask (Tensor): Sparse tensor (SparseCooTensor or SparseCsrTensor) used as mask.
-        name (str, optional): Operation name (ignored in this implementation).
-
-    Returns:
-        SparseTensor: A sparse tensor with the same indices as `mask`, 
-        containing values from `self` at mask positions.
-        
-    Examples:
-        >>> import paddle
-        >>> paddle.set_device('cpu')
-        >>> 
-        >>> # CSR sparse tensor
-        >>> crows = [0, 2, 3, 5]
-        >>> cols = [1, 3, 2, 0, 1]
-        >>> values = [1.0, 2.0, 3.0, 4.0, 5.0]
-        >>> dense_shape = [3, 4]
-        >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-        >>> x = paddle.rand(dense_shape)
-        >>> out = x.sparse_mask(csr)  # ✅ Your binding in action
-        >>> print(out)
-        Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
-        crows=[0, 2, 3, 5],
-        cols=[1, 3, 2, 0, 1],
-        values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
-    """
-    return paddle.sparse_mask_as(self, mask)

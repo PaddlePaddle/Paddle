@@ -431,7 +431,6 @@ from .math import (  # noqa: F401
     subtract,
     subtract_,
     sum,
-    sparse_mask,
     take,
     tan,
     tan_,
@@ -946,7 +945,6 @@ tensor_method_func = [
     'clamp',
     'clamp_',
     'split_with_sizes',
-    'sparse_mask',
 ]
 
 
