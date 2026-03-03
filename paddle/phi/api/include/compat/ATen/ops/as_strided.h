@@ -44,7 +44,9 @@ inline at::Tensor Tensor::as_strided(
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
   if (offset != 0) {
     auto meta = phi::DenseTensorMeta(new_tensor->meta());
-    meta.offset = static_cast<size_t>(offset);
+    // meta.offset is in bytes; storage_offset is in elements
+    meta.offset =
+        static_cast<size_t>(offset) * phi::SizeOf(new_tensor->dtype());
     new_tensor->set_meta(meta);
   }
   PaddleTensor result;
@@ -70,19 +72,27 @@ inline const at::Tensor& Tensor::as_strided_(
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
   if (offset != 0) {
     auto meta = phi::DenseTensorMeta(src_tensor->meta());
-    meta.offset = static_cast<size_t>(offset);
+    // meta.offset is in bytes; storage_offset is in elements
+    meta.offset =
+        static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
     src_tensor->set_meta(meta);
   }
   return *this;
 }
 
 // as_strided_scatter: Scatter src into a strided view
+// Returns a new tensor (copy of self) with the strided window filled by src.
+// The original tensor is NOT modified.
 inline at::Tensor Tensor::as_strided_scatter(
     const at::Tensor& src,
     at::IntArrayRef size,
     at::IntArrayRef stride,
     ::std::optional<int64_t> storage_offset) const {
-  at::Tensor strided_view = as_strided(size, stride, storage_offset);
+  // Clone self to an independent copy so the original tensor is left unchanged
+  PaddleTensor self_copy = tensor_.copy_to(tensor_.place(), /*blocking=*/true);
+  at::Tensor copy_tensor(self_copy);
+  at::Tensor strided_view =
+      copy_tensor.as_strided(size, stride, storage_offset);
   strided_view.copy_(src);
   return strided_view;
 }
