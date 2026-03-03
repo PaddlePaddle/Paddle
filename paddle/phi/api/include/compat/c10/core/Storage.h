@@ -168,10 +168,16 @@ struct Storage {
   }
 
   // Get the underlying allocation as DataPtr (LibTorch compatible: data_ptr())
-  DataPtr data_ptr() const { return DataPtr(allocation_); }
+  DataPtr data_ptr() const {
+    return allocation_ ? DataPtr(allocation_->ptr(), allocation_->place())
+                       : DataPtr();
+  }
 
   // Get the underlying allocation as mutable DataPtr reference
-  DataPtr mutable_data_ptr() const { return DataPtr(allocation_); }
+  DataPtr mutable_data_ptr() const {
+    return allocation_ ? DataPtr(allocation_->ptr(), allocation_->place())
+                       : DataPtr();
+  }
 
   // Get the underlying allocation
   std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
@@ -206,35 +212,20 @@ struct Storage {
            isSharedStorageAlias(*this, other);
   }
 
-  // Unsafe release of the underlying allocation (for advanced usage)
-  phi::Allocation* unsafeReleaseAllocation() {
-    auto* ptr = allocation_.get();
-    allocation_.reset();
-    return ptr;
-  }
-
-  // Unsafe get of the underlying allocation pointer
-  phi::Allocation* unsafeGetAllocation() const noexcept {
-    return allocation_.get();
-  }
-
   // Set data pointer (swap and return old) - accepts DataPtr
   DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
-    DataPtr old_data_ptr(allocation_);
-    allocation_ = new_data_ptr.allocation();
+    DataPtr old_data_ptr = data_ptr();
+    // DataPtr does not expose allocation(); just reset the internal pointer
+    // by wrapping the raw pointer without ownership transfer
+    allocation_.reset(static_cast<phi::Allocation*>(new_data_ptr.get()),
+                      [](phi::Allocation*) {});
     return old_data_ptr;
-  }
-
-  // Set data pointer (swap and return old) - accepts shared_ptr
-  std::shared_ptr<phi::Allocation> set_data_ptr(
-      std::shared_ptr<phi::Allocation> data_ptr) {
-    std::swap(allocation_, data_ptr);
-    return data_ptr;
   }
 
   // Set data pointer (no swap) - accepts DataPtr
   void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
-    allocation_ = new_data_ptr.allocation();
+    allocation_.reset(static_cast<phi::Allocation*>(new_data_ptr.get()),
+                      [](phi::Allocation*) {});
   }
 
   // Set data pointer (no swap) - accepts shared_ptr

@@ -177,41 +177,6 @@ TEST(StorageTest, AllocatorAPI) {
   (void)allocator;
 }
 
-TEST(StorageTest, UnsafeAllocationAPIs) {
-  // Test unsafeGetAllocation() API
-  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
-  c10::Storage storage = tensor.storage();
-
-  // Test unsafeGetAllocation()
-  phi::Allocation* alloc_ptr = storage.unsafeGetAllocation();
-  ASSERT_NE(alloc_ptr, nullptr);
-  ASSERT_EQ(alloc_ptr->size(), 2 * 3 * sizeof(float));
-
-  // Test that the pointer matches the data pointer
-  ASSERT_EQ(alloc_ptr->ptr(), storage.data());
-}
-
-TEST(StorageTest, SetDataPtrAPIs) {
-  // Test set_data_ptr() and set_data_ptr_noswap() APIs
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
-
-  c10::Storage storage1 = tensor1.storage();
-  c10::Storage storage2 = tensor2.storage();
-
-  auto alloc1 = storage1.allocation();
-  auto alloc2 = storage2.allocation();
-
-  // Test set_data_ptr() - swaps and returns old
-  auto old_alloc = storage1.set_data_ptr(alloc2);
-  ASSERT_EQ(old_alloc, alloc1);
-  ASSERT_EQ(storage1.allocation(), alloc2);
-
-  // Test set_data_ptr_noswap()
-  storage1.set_data_ptr_noswap(alloc1);
-  ASSERT_EQ(storage1.allocation(), alloc1);
-}
-
 TEST(StorageTest, StorageCopyAndMove) {
   // Test copy and move constructors/operators
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);

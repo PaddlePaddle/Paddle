@@ -18,13 +18,17 @@
 
 #pragma once
 
+#include <c10/core/Device.h>
+#include <c10/core/DeviceType.h>
+#include <c10/util/Exception.h>
+#include <c10/util/UniqueVoidPtr.h>
+
 #include <cstddef>
 #include <cstring>
 #include <functional>
 #include <memory>
 #include <utility>
 
-#include "c10/util/Exception.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 
@@ -37,65 +41,74 @@ using DeleterFnPtr = void (*)(void*);
 // Wraps a pointer with associated device and deleter
 class DataPtr {
  public:
-  DataPtr() : ptr_(nullptr), device_(phi::CPUPlace()) {}
+  DataPtr() : device_(DeviceType::CPU) {}
 
-  explicit DataPtr(void* data, phi::Place device = phi::CPUPlace())
-      : ptr_(data), device_(device) {}
-
-  DataPtr(void* data,
-          void* ctx,
-          DeleterFnPtr ctx_deleter,
-          phi::Place device = phi::CPUPlace())
-      : ptr_(data), ctx_(ctx), deleter_(ctx_deleter), device_(device) {}
-
-  // Construct from phi::Allocation
-  explicit DataPtr(const std::shared_ptr<phi::Allocation>& alloc)
-      : ptr_(alloc ? alloc->ptr() : nullptr),
-        device_(alloc ? alloc->place() : phi::CPUPlace()),
-        allocation_(alloc) {}
-
-  DataPtr(const DataPtr&) = default;
-  DataPtr& operator=(const DataPtr&) = default;
-  DataPtr(DataPtr&&) = default;
-  DataPtr& operator=(DataPtr&&) = default;
-
-  void* get() const { return ptr_; }
-
-  void* operator->() const { return ptr_; }
-
-  explicit operator bool() const { return ptr_ != nullptr; }
-
-  phi::Place device() const { return device_; }
-
-  DeleterFnPtr get_deleter() const { return deleter_; }
-
-  void* get_context() const { return ctx_; }
-
-  void clear() {
-    ptr_ = nullptr;
-    ctx_ = nullptr;
-    deleter_ = nullptr;
-    allocation_.reset();
+  DataPtr(void* data, Device device) : ptr_(data) {
+    switch (device.type()) {
+      case DeviceType::CPU:
+        device_ = phi::CPUPlace();
+        break;
+      case DeviceType::CUDA:
+        device_ = phi::GPUPlace();
+        break;
+      default:
+        device_ = phi::Place();
+        break;
+    }
   }
 
-  // Release context ownership without calling deleter.
-  // The caller takes responsibility for freeing via the deleter.
-  // Used by raw_allocate() / raw_deallocate() API.
-  void* release_context() {
-    void* ctx = ctx_;
-    ctx_ = nullptr;
-    deleter_ = nullptr;
-    ptr_ = nullptr;
-    allocation_.reset();
-    return ctx;
+  DataPtr(void* data, void* ctx, DeleterFnPtr ctx_deleter, Device device)
+      : ptr_(data, ctx, ctx_deleter), deleter_(ctx_deleter) {
+    switch (device.type()) {
+      case DeviceType::CPU:
+        device_ = phi::CPUPlace();
+        break;
+      case DeviceType::CUDA:
+        device_ = phi::GPUPlace();
+        break;
+      default:
+        device_ = phi::Place();
+        break;
+    }
   }
 
-  // Get the underlying allocation (if available)
-  std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
+  void* operator->() const { return ptr_.get(); }
+
+  inline bool /* success */ unsafe_reset_data_and_ctx(void* new_data_and_ctx) {
+    return ptr_.unsafe_reset_data_and_ctx(new_data_and_ctx);
+  }
+
+  void clear() { ptr_.clear(); }
+  void* get() const { return ptr_.get(); }
+  void* mutable_get() { return ptr_.get(); }
+  void* get_context() const { return ptr_.get_context(); }
+  void* release_context() { return ptr_.release_context(); }
+
+  std::unique_ptr<void, DeleterFnPtr>&& move_context() {
+    return ptr_.move_context();
+  }
+
+  operator bool() const { return static_cast<bool>(ptr_); }
+
+  template <typename T>
+  T* cast_context(DeleterFnPtr expected_deleter) const {
+    return ptr_.cast_context<T>(expected_deleter);
+  }
+
+  DeleterFnPtr get_deleter() const { return ptr_.get_deleter(); }
+
+  Device device() const {
+    if (phi::is_cpu_place(device_)) {
+      return Device(DeviceType::CPU);
+    } else if (phi::is_gpu_place(device_)) {
+      return Device(DeviceType::CUDA);
+    } else {
+      return Device(DeviceType::UNDEFINED);
+    }
+  }
 
  private:
-  void* ptr_ = nullptr;
-  void* ctx_ = nullptr;
+  c10::detail::UniqueVoidPtr ptr_;
   DeleterFnPtr deleter_ = nullptr;
   phi::Place device_;
   std::shared_ptr<phi::Allocation> allocation_;
