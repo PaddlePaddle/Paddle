@@ -341,9 +341,9 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 
   // (B*S, hidden)
   const DenseTensor input_matrix =
-      phi::ReshapeToMatrix(input, 2 /*x_num_col_dims */);
+      ReshapeToMatrix(input, 2 /*x_num_col_dims */);
   // (hidden, 3 * all_head_size)
-  const DenseTensor w_matrix = phi::ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
+  const DenseTensor w_matrix = ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
 
   DenseTensor temp_out_tensor;
   auto temp_out_dims = make_ddim({batch, seq_len, 3, head_number, head_size});

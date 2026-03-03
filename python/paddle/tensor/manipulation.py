@@ -24,16 +24,18 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import index_put, index_put_, roll  # noqa: F401
+from paddle._C_ops import flip, index_put, index_put_, roll  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
     index_add_decorator,
+    index_fill_decorator,
     param_one_alias,
     param_two_alias,
     reshape_decorator,
+    variadic_tensor_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -1657,11 +1659,28 @@ def concat(
         return out
 
 
+@overload
+def broadcast_tensors(
+    input: Sequence[Tensor], name: str | None = None
+) -> list[Tensor]: ...
+
+
+@overload
+def broadcast_tensors(*tensors: Tensor) -> list[Tensor]: ...
+
+
+@variadic_tensor_decorator('input')
 def broadcast_tensors(
     input: Sequence[Tensor], name: str | None = None
 ) -> list[Tensor]:
     """
-    Broadcast a list of tensors following broadcast semantics
+    This API has two signatures:
+
+    1. ``paddle.broadcast_tensors(input, name=None)`` (Paddle-style):
+        Broadcast a list of tensors following broadcast semantics.
+
+    2. ``paddle.broadcast_tensors(*tensors)`` (PyTorch-style):
+        Broadcast variadic tensor arguments following broadcast semantics.
 
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -1683,7 +1702,7 @@ def broadcast_tensors(
        :align: center
 
     Args:
-        input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
+        input (list|tuple): Sequence of input tensors. Supported data types: bool,
             float16, float32, float64, int32, int64, complex64, complex128. All the Tensors in ``input`` must have same data type.
             Currently we only support tensors with rank no greater than 5.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1787,88 +1806,6 @@ def broadcast_tensors(
             attrs={},
         )
 
-        return out
-
-
-def flip(
-    x: Tensor, axis: Sequence[int] | int, name: str | None = None
-) -> Tensor:
-    """
-    Reverse the order of a n-D tensor along given axis in axis.
-
-    The image below illustrates how ``flip`` works.
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/flip.png
-        :width: 500
-        :alt: legend of flip API
-        :align: center
-
-    Args:
-        x (Tensor): A Tensor with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
-            should be float32, float64, int32, int64, bool.
-        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, Tensor or DenseTensor calculated by flip layer. The data type is same with input x.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> # doctest: +SKIP("This has diff in xdoctest env")
-            >>> import paddle
-
-            >>> image_shape = (3, 2, 2)
-            >>> img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-            >>> tmp = paddle.flip(img, [0, 1])
-            >>> print(tmp)
-            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[10, 11],
-              [8 , 9 ]],
-             [[6 , 7 ],
-              [4 , 5 ]],
-             [[2 , 3 ],
-              [0 , 1 ]]])
-
-            >>> out = paddle.flip(tmp, -1)
-            >>> print(out)
-            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[11, 10],
-              [9 , 8 ]],
-             [[7 , 6 ],
-              [5 , 4 ]],
-             [[3 , 2 ],
-              [1 , 0 ]]])
-    """
-    if isinstance(axis, int):
-        axis = [axis]
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.flip(x, axis)
-    else:
-        helper = LayerHelper("flip", **locals())
-        check_type(x, 'X', (Variable), 'flip')
-        dtype = helper.input_dtype('x')
-        check_dtype(
-            dtype,
-            'X',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'flip',
-        )
-        check_type(axis, 'axis', (list, tuple), 'flip')
-        if name is None:
-            out = helper.create_variable_for_type_inference(dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=dtype, persistable=False
-            )
-
-        helper.append_op(
-            type="flip",
-            inputs={"X": x},
-            outputs={"Out": out},
-            attrs={"axis": axis},
-        )
         return out
 
 
@@ -8199,11 +8136,30 @@ def _index_fill_impl(
         return out
 
 
+@overload
+def index_fill(
+    x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
+) -> Tensor: ...
+
+
+@overload
+def index_fill(
+    input: Tensor, dim: int, index: Tensor, value: float
+) -> Tensor: ...
+
+
+@index_fill_decorator()
 def index_fill(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
     """
-    Fill the elements of the input tensor with value by the specific axis and index.
+    This API has two signatures:
+
+    1. ``paddle.index_fill(x, index, axis, value, name=None)`` (Paddle-style):
+        Fill the elements of the input tensor with value by the specific axis and index.
+
+    2. ``paddle.index_fill(input, dim, index, value)`` (PyTorch-style):
+        Fill the elements of the input tensor with value by the specific dimension and index.
 
     As shown below, a ``[3, 3]`` 2D tensor is updated via the index_fill operation. With ``axis=0``, ``index=[0, 2]`` and ``value=-1``, the 1st and 3rd row elements become ``-1``. The resulting tensor, still [3, 3], has updated values.
 
@@ -8213,7 +8169,7 @@ def index_fill(
        :align: center
 
     Args:
-        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        x (Tensor): The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
         index (Tensor): The 1-D Tensor containing the indices to index.
             The data type of ``index`` must be int32 or int64.
         axis (int): The dimension along which to index.
@@ -8222,7 +8178,6 @@ def index_fill(
 
     Returns:
         Tensor, same dimension and dtype with x.
-
 
     Examples:
         .. code-block:: pycon
@@ -8247,7 +8202,20 @@ def index_fill(
     return _index_fill_impl(x, index, axis, value, False)
 
 
+@overload
+def index_fill_(
+    input: Tensor, dim: int, index: Tensor, value: float
+) -> Tensor: ...
+
+
+@overload
+def index_fill_(
+    x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
+) -> Tensor: ...
+
+
 @inplace_apis_in_dygraph_only
+@index_fill_decorator()
 def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
@@ -8534,12 +8502,28 @@ def slice_scatter(
         return output
 
 
+@overload
+def block_diag(inputs: Sequence[Tensor], name: str | None = None) -> Tensor: ...
+
+
+@overload
+def block_diag(*tensors: Tensor) -> Tensor: ...
+
+
+@variadic_tensor_decorator('inputs')
 def block_diag(inputs: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
-    Create a block diagonal matrix from provided tensors.
+    This API has two signatures:
+
+    1. ``paddle.block_diag(inputs, name=None)`` (Paddle-style):
+        Create a block diagonal matrix from a sequence of tensors.
+
+    2. ``paddle.block_diag(*tensors)`` (PyTorch-style):
+        Create a block diagonal matrix from variadic tensor arguments.
+
 
     Args:
-        inputs (list|tuple): ``inputs`` is a Tensor list or Tensor tuple, one or more tensors with 0, 1, or 2 dimensions. The data type: ``bool``, ``float16``, ``float32``, ``float64``, ``uint8``, ``int8``, ``int16``, ``int32``, ``int64``, ``bfloat16``, ``complex64``, ``complex128``.
+        inputs (list|tuple): Sequence of input tensors, one or more tensors with 0, 1, or 2 dimensions. The data type: ``bool``, ``float16``, ``float32``, ``float64``, ``uint8``, ``int8``, ``int16``, ``int32``, ``int64``, ``bfloat16``, ``complex64``, ``complex128``.
         name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:
