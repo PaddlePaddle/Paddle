@@ -68,6 +68,7 @@ if(WITH_CUSTOM_DEVICE)
     BACKENDS_SRCS
     custom/custom_context.cc
     custom/custom_device.cc
+    custom/custom_device_func.cc
     custom/custom_device_op_list.cc
     custom/cuda_graph.h
     custom/cuda_graph.cc)
