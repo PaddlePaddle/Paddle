@@ -2773,5 +2773,287 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
 
 
+class CrossEntropyLossCompatible(unittest.TestCase):
+    """
+    Test cross_entropy under FLAGS_use_accuracy_compatible_kernel=True.
+    Verifies that the accuracy-compatible kernel path (log_softmax + nll_loss
+    decomposition) produces results consistent with the numpy reference for
+    hard-label cross_entropy with various reductions, ignore_index, and weight.
+    """
+
+    def setUp(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
+        self.dtype = (
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
+        )
+
+    def tearDown(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': False})
+
+    def test_cross_entropy_loss_compatible_1d_mean(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='mean',
+        )
+        expected = cross_entropy_loss_1d(input_np, label_np, reduction='mean')[
+            0
+        ]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_1d_sum(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='sum',
+        )
+        expected = cross_entropy_loss_1d(input_np, label_np, reduction='sum')[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_1d_none(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='none',
+        )
+        expected = cross_entropy_loss_1d(input_np, label_np, reduction='none')
+        np.testing.assert_allclose(
+            np.squeeze(dy_ret.numpy()), expected, rtol=1e-05
+        )
+
+    def test_cross_entropy_loss_compatible_1d_mean_ignore(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        label_np[0] = -100
+        label_np[5] = -100
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            ignore_index=-100,
+            reduction='mean',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, reduction='mean', ignore_index=-100
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_1d_sum_ignore(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        label_np[0] = -100
+        label_np[5] = -100
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            ignore_index=-100,
+            reduction='sum',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, reduction='sum', ignore_index=-100
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_1d_none_ignore(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        label_np[0] = -100
+        label_np[5] = -100
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            ignore_index=-100,
+            reduction='none',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, reduction='none', ignore_index=-100
+        )
+        np.testing.assert_allclose(
+            np.squeeze(dy_ret.numpy()), expected, rtol=1e-05
+        )
+
+    def test_cross_entropy_loss_compatible_1d_weight_mean(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        weight_np = np.random.random([C]).astype(self.dtype)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            weight=paddle.to_tensor(weight_np),
+            reduction='mean',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np, reduction='mean'
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_1d_weight_sum(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        weight_np = np.random.random([C]).astype(self.dtype)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            weight=paddle.to_tensor(weight_np),
+            reduction='sum',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np, reduction='sum'
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_1d_weight_none(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        weight_np = np.random.random([C]).astype(self.dtype)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            weight=paddle.to_tensor(weight_np),
+            reduction='none',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np, reduction='none'
+        )
+        np.testing.assert_allclose(
+            np.squeeze(dy_ret.numpy()), expected, rtol=1e-05
+        )
+
+    def test_cross_entropy_loss_compatible_1d_weight_mean_ignore(self):
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        label_np[0] = -100
+        label_np[5] = -100
+        weight_np = np.random.random([C]).astype(self.dtype)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            weight=paddle.to_tensor(weight_np),
+            ignore_index=-100,
+            reduction='mean',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np,
+            label_np,
+            weight=weight_np,
+            reduction='mean',
+            ignore_index=-100,
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_2d_mean(self):
+        np.random.seed(0)
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)
+        label_np = np.random.randint(0, 3, size=(2, 2, 2)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='mean',
+        )
+        expected = cross_entropy_loss_2d(input_np, label_np, reduction='mean')[
+            0
+        ]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_compatible_2d_none(self):
+        np.random.seed(0)
+        input_np = np.random.random(size=(2, 2, 2, 3)).astype(self.dtype)
+        label_np = np.random.randint(0, 3, size=(2, 2, 2)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='none',
+        )
+        expected = cross_entropy_loss_2d(input_np, label_np, reduction='none')
+        np.testing.assert_allclose(
+            np.squeeze(dy_ret.numpy()), expected, rtol=1e-05
+        )
+
+    def test_cross_entropy_loss_compatible_class_api(self):
+        """Test paddle.nn.loss.CrossEntropyLoss class API with compatible flag."""
+        N = 100
+        C = 200
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+
+        paddle.disable_static()
+        for reduction in ['mean', 'sum', 'none']:
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                reduction=reduction
+            )
+            dy_ret = cross_entropy_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+            )
+            expected = cross_entropy_loss_1d(
+                input_np, label_np, reduction=reduction
+            )
+            if reduction != 'none':
+                expected = expected[0]
+            np.testing.assert_allclose(
+                np.squeeze(dy_ret.numpy()), expected, rtol=1e-05
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
