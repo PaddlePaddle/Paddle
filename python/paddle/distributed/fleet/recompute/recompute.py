@@ -760,7 +760,10 @@ def recompute(function, *args, **kwargs):
                 )
             else:
                 raise ValueError("Unknown parameter kind.")
-
+        # Make a shallow copy of each Tensor to prevent the release of some Tensors reserved for backward in some special scenarios (such as scheduling logic of parallel pipelines)
+        for idx, arg in enumerate(input_args):
+            if isinstance(arg, core.eager.Tensor):
+                input_args[idx] = arg._new_shared_tensor()
         return RecomputeFunction.apply(
             function,
             preserve,

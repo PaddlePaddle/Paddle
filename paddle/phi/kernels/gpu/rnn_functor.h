@@ -125,7 +125,7 @@ class RNNDescriptors {
 #ifdef PADDLE_WITH_HIP
     if (!is_initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
+          dynload::miopenDropoutGetStatesSize(handle, &state_size));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
@@ -145,7 +145,7 @@ class RNNDescriptors {
     // kernel.
     if (!is_test_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+          dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
@@ -160,7 +160,7 @@ class RNNDescriptors {
 
 // ------------------- cudnn rnn descriptors ---------------------
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetRNNDescriptor_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetRNNDescriptor_V2(
         rnn_desc_.desc(),
         hidden_size_,
         num_layers_,
@@ -172,7 +172,7 @@ class RNNDescriptors {
         miopenRNNdefault,
         cudnn_type));
 #elif CUDNN_VERSION >= 90000
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v8(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNDescriptor_v8(
         rnn_desc_.desc(),
         CUDNN_RNN_ALGO_STANDARD,
         mode_,
@@ -190,7 +190,7 @@ class RNNDescriptors {
         seqlen_is_empty ? CUDNN_RNN_PADDED_IO_DISABLED
                         : CUDNN_RNN_PADDED_IO_ENABLED));
 #elif CUDNN_VERSION >= 6000
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v6(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNDescriptor_v6(
         handle,
         rnn_desc_.desc(),
         hidden_size_,
@@ -202,7 +202,7 @@ class RNNDescriptors {
         CUDNN_RNN_ALGO_STANDARD,
         cudnn_type));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNDescriptor(
         rnn_desc_.desc(),
         hidden_size_,
         num_layers_,
@@ -215,20 +215,20 @@ class RNNDescriptors {
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION < 90000 && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNPaddingMode(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
 #endif
 
     // ------------------- cudnn weights_size ---------------------
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
 #elif CUDNN_VERSION >= 90000
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNWeightSpaceSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetRNNWeightSpaceSize(
         handle, rnn_desc_.desc(), &weights_size_));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
 #endif
 
@@ -245,29 +245,29 @@ class RNNDescriptors {
 // ------------------- cudnn workspace, reserve size ---------------------
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenGetRNNWorkspaceSize(handle,
-                                                rnn_desc_.desc(),
-                                                seq_length_,
-                                                x_descs_.data(),
-                                                workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNTrainingReserveSize(
+        dynload::miopenGetRNNWorkspaceSize(handle,
+                                           rnn_desc_.desc(),
+                                           seq_length_,
+                                           x_descs_.data(),
+                                           workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
 #elif CUDNN_VERSION >= 90000
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnGetRNNTempSpaceSizes(handle,
-                                                rnn_desc_.desc(),
-                                                CUDNN_FWD_MODE_TRAINING,
-                                                x_seq_desc_.desc(),
-                                                workspace_size,
-                                                reserve_size));
+        dynload::cudnnGetRNNTempSpaceSizes(handle,
+                                           rnn_desc_.desc(),
+                                           CUDNN_FWD_MODE_TRAINING,
+                                           x_seq_desc_.desc(),
+                                           workspace_size,
+                                           reserve_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnGetRNNWorkspaceSize(handle,
-                                               rnn_desc_.desc(),
-                                               seq_length_,
-                                               x_descs_.data(),
-                                               workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNTrainingReserveSize(
+        dynload::cudnnGetRNNWorkspaceSize(handle,
+                                          rnn_desc_.desc(),
+                                          seq_length_,
+                                          x_descs_.data(),
+                                          workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
 #endif
   }
