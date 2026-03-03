@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,27 +15,26 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
-#include <c10/core/TensorOptions.h>
-#include <optional>
-#include <string_view>
-
-#include "paddle/phi/api/include/api.h"
 
 namespace at {
 
-inline at::Tensor abs(const at::Tensor& self) {
-  return paddle::experimental::abs(self._PD_GetInner());
+inline at::Tensor detach(const at::Tensor& self) {
+  // Create a new Tensor that shares data but has no autograd history
+  PaddleTensor detached_tensor(self._PD_GetInner().impl());
+  detached_tensor.set_autograd_meta(nullptr);
+  return Tensor(detached_tensor);
 }
 
 }  // namespace at
 
 namespace at {
 
-inline at::Tensor Tensor::abs() const { return at::abs(*this); }
+inline at::Tensor Tensor::detach() const { return at::detach(*this); }
 
-inline at::Tensor& Tensor::abs_() const {
+inline at::Tensor& Tensor::detach_() const {
+  // In-place version: clear autograd meta of current tensor
   PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
-  paddle::experimental::abs_(inner);
+  inner.set_autograd_meta(nullptr);
   return const_cast<at::Tensor&>(*this);
 }
 

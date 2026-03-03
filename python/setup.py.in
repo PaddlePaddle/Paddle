@@ -1133,6 +1133,11 @@ if os.name != 'nt':
 else:
     package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
+custom_device_dir = '${PADDLE_BINARY_DIR}/python/paddle/paddle_custom_device'
+if os.path.isdir(custom_device_dir):
+    packages.append('paddle.paddle_custom_device')
+    package_data['paddle.paddle_custom_device'] = ['*.so', 'include/**']
+
 package_data['paddle.base'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 
 whl_cinn_config_path = '${PADDLE_BINARY_DIR}/python/paddle/cinn_config'
@@ -1161,6 +1166,8 @@ package_dir={
     'paddle.base.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
     'paddle.base.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
     'paddle.base': '${PADDLE_BINARY_DIR}/python/paddle/base',
+    **({'paddle.paddle_custom_device': custom_device_dir}
+       if os.path.isdir(custom_device_dir) else {}),
 }
 
 # put all thirdparty libraries in paddle.libs

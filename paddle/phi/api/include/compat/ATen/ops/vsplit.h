@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,28 +15,30 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
-#include <c10/core/TensorOptions.h>
-#include <optional>
-#include <string_view>
-
-#include "paddle/phi/api/include/api.h"
+#include <ATen/ops/tensor_split.h>
 
 namespace at {
 
-inline at::Tensor abs(const at::Tensor& self) {
-  return paddle::experimental::abs(self._PD_GetInner());
+inline std::vector<at::Tensor> vsplit(const at::Tensor& self,
+                                      int64_t sections) {
+  return at::tensor_split(self, sections, 0);
+}
+
+inline std::vector<at::Tensor> vsplit(const at::Tensor& self,
+                                      at::IntArrayRef indices) {
+  return at::tensor_split(self, indices, 0);
 }
 
 }  // namespace at
 
 namespace at {
 
-inline at::Tensor Tensor::abs() const { return at::abs(*this); }
+inline std::vector<at::Tensor> Tensor::vsplit(int64_t sections) const {
+  return at::vsplit(*this, sections);
+}
 
-inline at::Tensor& Tensor::abs_() const {
-  PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
-  paddle::experimental::abs_(inner);
-  return const_cast<at::Tensor&>(*this);
+inline std::vector<at::Tensor> Tensor::vsplit(at::IntArrayRef indices) const {
+  return at::vsplit(*this, indices);
 }
 
 }  // namespace at
