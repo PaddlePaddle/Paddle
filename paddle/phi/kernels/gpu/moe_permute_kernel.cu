@@ -38,14 +38,15 @@ using moe::kPermuteBlockSize;
 // ============================================================================
 // Register-centric scheduling: metadata lives in registers, not shared memory.
 // Shared memory layout (phases are non-overlapping):
-//   Phase 0-1: uint32_t[num_experts] expert bitmask
+//   Phase 1:   uint32_t[num_experts] expert bitmask
 //   Phase 2:   int[ROWS_PER_BLOCK * TOPK] output_rows (reuses bitmask region)
 //   TMA only:  ping/pong buffers + routemap/probs (after max(bitmask, outrows))
 //
-// Phase 0: Pre-fill routemap with -1 (all threads, vectorized int4)
+// Rowmap is pre-filled with -1 by host cudaMemsetAsync before kernel launch.
 // Phase 1a: Scatter routemap->bitmask, cache expert/prob in registers
-// Phase 1b: Cumsum + direct global writes (routemap, probs, indices)
-// Phase 2: Flush output_rows to smem once, then zero-sync data movement
+// Phase 1b: Progressive cumsum + direct global writes (routemap, probs,
+// indices) Phase 2:  Flush output_rows to smem once, then zero-sync data
+// movement
 //
 template <typename TokenT,
           typename IndexT,
@@ -90,12 +91,11 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   const int block_row_base = block_index_in_X * ROWS_PER_BLOCK;
   const int block_row_end =
       min(block_row_base + ROWS_PER_BLOCK, total_zipped_tokens_num);
-  const int active_rows = block_row_end - block_row_base;
 
   // ===================== Shared memory layout =============================
-  // Section 1 (Phase 0-1b): uint32_t[num_experts] expert bitmask
-  // Section 1 (Phase 2):    int[ROWS_PER_BLOCK * TOPK] output_rows (overlaps)
-  // Section 2 (USE_TMA):    ping/pong + routemap + probs
+  // Section 1 (Phase 1a-1b): uint32_t[num_experts] expert bitmask
+  // Section 1 (Phase 2):     int[ROWS_PER_BLOCK * TOPK] output_rows (reuses)
+  // Section 2 (USE_TMA):     ping/pong + routemap + probs
   extern __shared__ char smem_raw[];
   uint32_t *expert_bitmask = reinterpret_cast<uint32_t *>(smem_raw);
 
@@ -110,22 +110,6 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   // Initialize expert bitmask
   for (int i = threadIdx.x; i < num_experts; i += BLOCK_DIM_X) {
     expert_bitmask[i] = 0u;
-  }
-
-  // ===================== Phase 0: Pre-fill routemap with -1 ================
-  {
-    const int total_entries = active_rows * num_experts;
-    int *rowmap_base = &zipped_expertwise_rowmap[block_row_base * num_experts];
-    const int4 neg_ones = make_int4(-1, -1, -1, -1);
-    const int num_vec4 = total_entries >> 2;
-    int4 *rowmap_vec = reinterpret_cast<int4 *>(rowmap_base);
-    for (int i = threadIdx.x; i < num_vec4; i += BLOCK_DIM_X) {
-      rowmap_vec[i] = neg_ones;
-    }
-    for (int i = (num_vec4 << 2) + threadIdx.x; i < total_entries;
-         i += BLOCK_DIM_X) {
-      rowmap_base[i] = -1;
-    }
   }
 
   // ===================== TMA setup ========================================
@@ -154,7 +138,7 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
         reinterpret_cast<ProbT *>(reinterpret_cast<char *>(shared_routemap) +
                                   ROWS_PER_BLOCK * topk * sizeof(IndexT));
 
-    const int local_elems = active_rows * topk;
+    const int local_elems = (block_row_end - block_row_base) * topk;
     pipe.producer_acquire();
     cuda::memcpy_async(
         cg_block,
@@ -193,6 +177,8 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   }
 
   // ===================== Phase 1a: Scatter into bitmasks ===================
+  // Every lane loads ALL its topk columns into registers so that Phase 1b
+  // can always match reg_expert[k] == expert_id regardless of warp id.
   int reg_expert[TOPK];
   ProbT reg_prob[TOPK];
 #pragma unroll
@@ -204,7 +190,8 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   const int global_row = block_row_base + lane_id;
   const bool row_valid = global_row < total_zipped_tokens_num;
 
-  for (int col = warp_id; col < topk; col += warp_num) {
+  // Each lane reads all its topk entries; warps collaborate on atomicOr.
+  for (int col = 0; col < topk; col++) {
     int expert = -1;
     ProbT prob = ProbT(0);
     if (row_valid) {
@@ -217,82 +204,78 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
       }
     }
     if (expert >= 0 && expert < num_experts) {
-      atomicOr(&expert_bitmask[expert], 1u << lane_id);
+      // Only one warp per column does atomicOr (idempotent, but reduces
+      // traffic)
+      if (col % warp_num == warp_id) {
+        atomicOr(&expert_bitmask[expert], 1u << lane_id);
+      }
       reg_expert[col] = expert;
       reg_prob[col] = prob;
     }
   }
   __syncthreads();
 
-  // ===================== Phase 1b: Cumsum + global metadata writes =========
+  // ===================== Phase 1b: Progressive cumsum + global writes =======
+  // Chain layout (even blockIdx = prefix, odd = suffix):
+  //   prefix: block 0 →  block 2 →  block 4 → ...  (recv from blockIdx-2)
+  //   suffix: block 1 →  block 3 →  block 5 → ...  (recv from blockIdx-2)
+  // Root blocks (prefix: blockIdx==0, suffix: blockIdx==1) have no predecessor.
+  // When mask==0u for an expert, lane 0 still receives & forwards the offset
+  // (with local_count==0) so the chain never breaks.
   int reg_output_row[TOPK];
 #pragma unroll
   for (int k = 0; k < TOPK; k++) reg_output_row[k] = -1;
 
+  const bool is_chain_root = (use_prefix ? blockIdx.x == 0 : blockIdx.x == 1);
+
   for (int expert_id = warp_id; expert_id < num_experts;
        expert_id += warp_num) {
     const uint32_t mask = expert_bitmask[expert_id];
-    if (mask == 0u) continue;
     const int local_count = __popc(mask);
-    const bool lane_active = (mask & (1u << lane_id)) != 0;
 
-    int final_pos = -1;
-
-    if (use_prefix) {
-      int cumsum_offset = 0;
-      if (lane_id == 0) {
-        const int base = expert_base_offset[expert_id];
+    // --- Inter-block cumsum: lane 0 receives from predecessor, sends to
+    //     successor.  Always executes regardless of mask to keep chain alive.
+    int chain_offset = 0;
+    if (lane_id == 0) {
+      if (!is_chain_root) {
         const int recv_idx = blockIdx.x * num_experts + expert_id;
-        const int send_idx = (blockIdx.x + 2) * num_experts + expert_id;
-        if (blockIdx.x != 0) {
-          while ((cumsum_offset = atomicAdd(
-                      &global_expertwise_block_cumsum[recv_idx], 0)) ==
-                 kCumsumInvalidTag) {
-          }
+        while ((chain_offset =
+                    atomicAdd(&global_expertwise_block_cumsum[recv_idx], 0)) ==
+               kCumsumInvalidTag) {
         }
-        global_expertwise_block_cumsum[send_idx] = cumsum_offset + local_count;
-        cumsum_offset += base;
       }
-      cumsum_offset = __shfl_sync(0xFFFFFFFF, cumsum_offset, 0);
-      if (lane_active) {
-        final_pos = cumsum_offset + __popc(mask & ((1u << lane_id) - 1));
-      }
-    } else {
-      int suffix_offset = 0;
-      if (lane_id == 0) {
-        const int end_offset = expert_base_offset_end[expert_id];
-        const int recv_idx = blockIdx.x * num_experts + expert_id;
-        const int send_idx = (blockIdx.x + 2) * num_experts + expert_id;
-        if (blockIdx.x != 1) {
-          while ((suffix_offset = atomicAdd(
-                      &global_expertwise_block_cumsum[recv_idx], 0)) ==
-                 kCumsumInvalidTag) {
-          }
-        }
-        global_expertwise_block_cumsum[send_idx] = suffix_offset + local_count;
-        suffix_offset = end_offset - suffix_offset;
-      }
-      suffix_offset = __shfl_sync(0xFFFFFFFF, suffix_offset, 0);
-      if (lane_active) {
-        const uint32_t bits_above =
-            (lane_id < 31) ? (mask >> (lane_id + 1)) : 0u;
-        final_pos = suffix_offset - __popc(bits_above);
-      }
+      const int send_idx = (blockIdx.x + 2) * num_experts + expert_id;
+      atomicExch(&global_expertwise_block_cumsum[send_idx],
+                 chain_offset + local_count);
     }
 
-    // Direct global writes + cache output_row in register
-    if (lane_active) {
-      zipped_expertwise_rowmap[global_row * num_experts + expert_id] =
-          final_pos;
+    // --- Intra-block position assignment (only when this expert has tokens)
+    // ---
+    int final_pos = -1;
+    if (mask != 0u) {
+      chain_offset = __shfl_sync(0xFFFFFFFF, chain_offset, 0);
+      const bool lane_active = (mask & (1u << lane_id)) != 0;
+      if (lane_active) {
+        if (use_prefix) {
+          final_pos = expert_base_offset[expert_id] + chain_offset +
+                      __popc(mask & ((1u << lane_id) - 1));
+        } else {
+          final_pos = expert_base_offset_end[expert_id] - chain_offset -
+                      __popc((lane_id < 31) ? (mask >> (lane_id + 1)) : 0u);
+        }
+
+        zipped_expertwise_rowmap[global_row * num_experts + expert_id] =
+            final_pos;
 #pragma unroll
-      for (int k = 0; k < TOPK; k++) {
-        if (reg_expert[k] == expert_id) {
-          reg_output_row[k] = final_pos;
-          probs_unzipped[final_pos] = reg_prob[k];
-          if constexpr (return_expert_indices) {
-            expert_indices[final_pos] = expert_id;
+        for (int k = 0; k < TOPK; k++) {
+          if (reg_expert[k] == expert_id) {
+            reg_output_row[k] = final_pos;
+            probs_unzipped[final_pos] = reg_prob[k];
+            if constexpr (return_expert_indices) {
+              expert_indices[final_pos] = expert_id;
+            }
+            break;
           }
-          break;
         }
       }
     }
@@ -301,10 +284,19 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   // ===================== Phase 2: Token data movement ======================
   if constexpr (do_gather) {
     // Flush output_rows from registers to shared memory (reuse bitmask region).
-    // Each warp writes only its owned columns to avoid write conflicts.
+    // reg_output_row[k] was set by whichever warp processed the matching
+    // expert; other warps still hold -1 for that k.  Pre-fill with -1 then
+    // only write non-(-1) values to avoid race conditions.
     int *shared_output_rows = reinterpret_cast<int *>(smem_raw);
-    for (int k = warp_id; k < topk; k += warp_num) {
-      shared_output_rows[lane_id * TOPK + k] = reg_output_row[k];
+    for (int i = threadIdx.x; i < ROWS_PER_BLOCK * TOPK; i += BLOCK_DIM_X) {
+      shared_output_rows[i] = -1;
+    }
+    __syncthreads();
+#pragma unroll
+    for (int k = 0; k < TOPK; k++) {
+      if (reg_output_row[k] >= 0) {
+        shared_output_rows[lane_id * TOPK + k] = reg_output_row[k];
+      }
     }
     __syncthreads();
 
@@ -744,6 +736,13 @@ void MoePermuteKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
   dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
   dev_ctx.template Alloc<int>(&global_expertwise_block_cumsum);
+
+  // Pre-fill rowmap with -1 via bulk DMA (replaces scattered per-block writes)
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaMemsetAsync(zipped_expertwise_rowmap->data<int>(),
+                      -1,
+                      zipped_expertwise_rowmap->numel() * sizeof(int),
+                      dev_ctx.stream()));
 
   if (cumsum_blocknum > 1) {
     PADDLE_ENFORCE_GPU_SUCCESS(

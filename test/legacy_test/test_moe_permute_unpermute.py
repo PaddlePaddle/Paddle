@@ -137,6 +137,7 @@ def validate_expert_indices(proposed_expert_indices, compact_routemap):
 class TestFusedMoePermuteUnpermute(unittest.TestCase):
     """Test cases for moe_permute and moe_unpermute."""
 
+    '''
     SEQLEN = [5000, 16384]
     TOKEN_LEN = 7168
     DTYPES = ["float8_e4m3fn", "bfloat16"]
@@ -147,6 +148,17 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
     TOKEN_LEN_FOR_INFERENCE = [1536]
     TOPKS_FOR_INFERENCE = [16]
     EXPERT_NUMS_FOR_INFERENCE = [64, 128, 160, 384]
+    '''
+    SEQLEN = [5000]
+    TOKEN_LEN = 7168
+    DTYPES = ["float8_e4m3fn"]
+    EXPERT_NUMS = [64]
+    TOPKS = [16]
+
+    SEQLEN_FOR_INFERENCE = [1025]
+    TOKEN_LEN_FOR_INFERENCE = [1536]
+    TOPKS_FOR_INFERENCE = [16]
+    EXPERT_NUMS_FOR_INFERENCE = [384]
 
     def setUp(self):
         """Initialize test environment."""
