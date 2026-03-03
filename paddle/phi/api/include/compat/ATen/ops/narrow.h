@@ -30,7 +30,7 @@ inline at::Tensor narrow(const at::Tensor& self,
   int64_t ndim = self.dim();
   if (dim < 0) dim += ndim;
   PD_CHECK(dim >= 0 && dim < ndim,
-           "Dimension out of range (expected to be in range of [",
+           "start out of range (expected to be in range of [",
            -ndim,
            ", ",
            ndim - 1,
@@ -41,11 +41,10 @@ inline at::Tensor narrow(const at::Tensor& self,
   int64_t cur_size = self.sizes()[dim];
 
   // Wrap negative start (matching PyTorch: only wrap when start != cur_size)
-  if (start != cur_size && start < 0) {
-    start += cur_size;
+  if (start < 0) {
+    start = start + cur_size;
   }
-
-  PD_CHECK(start >= 0 && start + length <= cur_size,
+  PD_CHECK(start <= cur_size - length,
            "start (",
            start,
            ") + length (",

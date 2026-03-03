@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
+#include <ATen/native/RangeUtils.h>
 #include <c10/core/TensorOptions.h>
 #include <optional>
 
@@ -79,21 +80,12 @@ inline at::Tensor arange(const at::Scalar& start,
                          const at::Scalar& step,
                          at::TensorOptions options = {}) {
   // Match PyTorch: step must be non-zero and consistent with (end - start).
-  double s = start.to<double>();
-  double e = end.to<double>();
-  double st = step.to<double>();
-  PD_CHECK(st != 0, "arange() step must be nonzero");
-  PD_CHECK(((e > s) == (st > 0)) || (e == s),
-           "arange() upper bound and step sign inconsistent: upper=",
-           e,
-           " start=",
-           s,
-           " step=",
-           st);
+  at::native::arange_check_bounds(start, end, step);
   return paddle::experimental::arange(
-      paddle::experimental::full({}, s, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, e, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, st, phi::DataType::FLOAT64),
+      paddle::experimental::full(
+          {}, start.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
       options._PD_GetPlace());
 }
@@ -106,21 +98,12 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
   // Match PyTorch: step must be non-zero and consistent with (end - start).
-  double s = start.to<double>();
-  double e = end.to<double>();
-  double st = step.to<double>();
-  PD_CHECK(st != 0, "arange() step must be nonzero");
-  PD_CHECK(((e > s) == (st > 0)) || (e == s),
-           "arange() upper bound and step sign inconsistent: upper=",
-           e,
-           " start=",
-           s,
-           " step=",
-           st);
+  at::native::arange_check_bounds(start, end, step);
   return paddle::experimental::arange(
-      paddle::experimental::full({}, s, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, e, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, st, phi::DataType::FLOAT64),
+      paddle::experimental::full(
+          {}, start.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
       device.value_or(at::kCPU)._PD_GetInner());
