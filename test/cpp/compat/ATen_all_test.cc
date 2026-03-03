@@ -331,3 +331,138 @@ TEST(TestAllclose, AllcloseHighDim) {
   bool result_member = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
   ASSERT_EQ(result_member, true);
 }
+
+TEST(TestAllclose, AllcloseEqualNanDefaultFalse) {
+  // Test allclose default behavior: NaN != NaN when equal_nan not set
+  at::Tensor tensor1 = at::zeros({3}, at::kFloat);
+  tensor1[1] = std::numeric_limits<float>::quiet_NaN();
+  at::Tensor tensor2 = tensor1.clone();
+
+  // Default equal_nan=false: NaN is not equal to NaN, so result is false
+  bool result_standalone = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result_standalone, false);
+
+  bool result_member = tensor1.allclose(tensor2);
+  ASSERT_EQ(result_member, false);
+}
+
+TEST(TestAllclose, AllcloseEqualNanTrue) {
+  // Test allclose with equal_nan=true: NaN == NaN should yield true
+  at::Tensor tensor1 = at::zeros({3}, at::kFloat);
+  tensor1[1] = std::numeric_limits<float>::quiet_NaN();
+  at::Tensor tensor2 = tensor1.clone();
+
+  // equal_nan=true: NaN is treated as equal to NaN
+  bool result = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result, true);
+}
+
+TEST(TestAllclose, AllcloseEqualNanTrueAllNan) {
+  // Test allclose with equal_nan=true on all-NaN tensors
+  const float nan_val = std::numeric_limits<float>::quiet_NaN();
+  at::Tensor tensor1 = at::full({4}, nan_val, at::kFloat);
+  at::Tensor tensor2 = at::full({4}, nan_val, at::kFloat);
+
+  bool result_equal_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_equal_nan, true);
+
+  // Without equal_nan, all-NaN tensors should not be close
+  bool result_no_equal_nan =
+      at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_no_equal_nan, false);
+}
+
+TEST(TestAllclose, AllcloseMemberEqualNanTrue) {
+  // Test Tensor::allclose member function with equal_nan=true
+  at::Tensor tensor1 = at::zeros({4}, at::kFloat);
+  tensor1[0] = std::numeric_limits<float>::quiet_NaN();
+  tensor1[3] = std::numeric_limits<float>::quiet_NaN();
+  at::Tensor tensor2 = tensor1.clone();
+
+  bool result_true = tensor1.allclose(tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_true, true);
+
+  bool result_false = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_false, false);
+}
+
+TEST(TestAllclose, AllcloseMixedNanAndValues) {
+  // Test allclose where some elements match and one is NaN
+  at::Tensor tensor1 = at::ones({4}, at::kFloat);
+  tensor1[2] = std::numeric_limits<float>::quiet_NaN();
+  at::Tensor tensor2 = at::ones({4}, at::kFloat);
+  tensor2[2] = std::numeric_limits<float>::quiet_NaN();
+
+  // NaN-aware comparison: non-NaN elements are equal, NaN treated equal
+  bool result_eq_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_eq_nan, true);
+
+  // Without equal_nan: NaN elements fail the check
+  bool result_no_eq_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_no_eq_nan, false);
+}
+
+TEST(TestAllclose, AllcloseDouble) {
+  // Test allclose with double-precision (float64) tensors
+  at::Tensor tensor1 = at::arange(6, at::kDouble).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(6, at::kDouble).reshape({2, 3});
+
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+
+  bool result_member = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_member, true);
+
+  // Introduce a small difference
+  tensor2[1][2] = 5.001;
+  bool result_diff = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result_diff, false);
+}
+
+TEST(TestAllclose, AllcloseDoubleEqualNan) {
+  // Test allclose with double-precision tensors and NaN
+  const double nan_val = std::numeric_limits<double>::quiet_NaN();
+  at::Tensor tensor1 = at::zeros({3}, at::kDouble);
+  tensor1[0] = nan_val;
+  at::Tensor tensor2 = tensor1.clone();
+
+  bool result_false = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_false, false);
+
+  bool result_true = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_true, true);
+}
+
+TEST(TestAllclose, AllcloseStandaloneWithExplicitParams) {
+  // Test at::allclose() standalone with all explicit parameters
+  at::Tensor tensor1 = at::ones({3}, at::kFloat);
+  at::Tensor tensor2 = at::ones({3}, at::kFloat);
+
+  // All explicit parameters including equal_nan
+  bool result_false_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_false_nan, true);
+
+  bool result_true_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_true_nan, true);
+}
+
+TEST(TestAllclose, AllcloseInfinityValues) {
+  // Test allclose with infinity values
+  const float inf_val = std::numeric_limits<float>::infinity();
+  at::Tensor tensor1 = at::ones({3}, at::kFloat);
+  tensor1[0] = inf_val;
+  at::Tensor tensor2 = tensor1.clone();
+
+  // Identical infinity values should be close
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+
+  bool result_member = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_member, true);
+
+  // Different infinity signs should not be close
+  at::Tensor tensor3 = tensor1.clone();
+  tensor3[0] = -inf_val;
+  bool result_diff_inf = at::allclose(tensor1, tensor3);
+  ASSERT_EQ(result_diff_inf, false);
+}
