@@ -978,8 +978,8 @@ def randn(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -989,8 +989,8 @@ def randn(
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -1002,8 +1002,8 @@ def randn(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a standard
@@ -1024,8 +1024,8 @@ def randn(
             For more information, please refer to :ref:`api_guide_Name`.
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a standard
@@ -1775,8 +1775,8 @@ def randint(
     *,
     out: Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -1789,8 +1789,8 @@ def randint(
     *,
     out: Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -1804,8 +1804,8 @@ def randint(
     *,
     out: Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
@@ -1833,8 +1833,8 @@ def randint(
     Keyword Arguments:
         out (Tensor, optional): Optional output tensor. If provided, the result will be stored in this tensor. Default: None.
         device (PlaceLike|None, optional): The desired device of returned tensor. Default: None.
-        requires_grad (bool, optional): If autograd should record operations on the returned tensor. Default: False.
         pin_memory (bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False.
+        requires_grad (bool, optional): If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
@@ -1940,17 +1940,12 @@ def randint(
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
-        if requires_grad is True:
-            tensor.stop_gradient = False
-        if pin_memory:
-            tensor = tensor.pin_memory()
-        return tensor
     elif in_pir_mode():
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
-        return _C_ops.randint(low, high, shape, dtype, place, out=out)
+        tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
@@ -1974,6 +1969,11 @@ def randint(
         )
         out.stop_gradient = True
         return out
+    if requires_grad is True:
+        tensor.stop_gradient = False
+    if pin_memory and in_dynamic_mode():
+        tensor = tensor.pin_memory()
+    return tensor
 
 
 def random_(
@@ -2262,8 +2262,8 @@ def randperm(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a 1-D Tensor filled with random permutation values from 0
@@ -2279,8 +2279,8 @@ def randperm(
             refer to :ref:`api_guide_Name`.
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A 1-D Tensor filled with random permutation values from 0
@@ -2365,8 +2365,8 @@ def rand(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -2376,8 +2376,8 @@ def rand(
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -2389,8 +2389,8 @@ def rand(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -2411,8 +2411,8 @@ def rand(
             refer to :ref:`api_guide_Name`.
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a uniform
