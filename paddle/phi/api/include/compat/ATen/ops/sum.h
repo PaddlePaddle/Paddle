@@ -70,3 +70,17 @@ inline at::Tensor& sum_out(
 }
 
 }  // namespace at
+
+namespace at {
+
+inline at::Tensor Tensor::sum(::std::optional<at::ScalarType> dtype) const {
+  return at::sum(*this, dtype);
+}
+
+inline at::Tensor Tensor::sum(at::OptionalIntArrayRef dim,
+                              bool keepdim,
+                              ::std::optional<at::ScalarType> dtype) const {
+  return at::sum(*this, dim, keepdim, dtype);
+}
+
+}  // namespace at

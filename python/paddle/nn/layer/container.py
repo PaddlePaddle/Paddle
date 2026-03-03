@@ -335,6 +335,7 @@ class ParameterDict(Layer):
 
     Parameters:
         parameters (iterable, optional): a mapping (dictionary) of (string : Any) or an iterable of key-value pairs of type (string, Any)
+            alias: values
 
     Examples:
         .. code-block:: pycon
@@ -375,6 +376,7 @@ class ParameterDict(Layer):
             paddle.Size([5, 4])
     """
 
+    @param_one_alias(["parameters", "values"])
     def __init__(
         self,
         parameters: (
@@ -418,7 +420,10 @@ class ParameterDict(Layer):
             + type(parameters).__name__
         )
 
-        if isinstance(parameters, (OrderedDict, ParameterDict, Mapping)):
+        if isinstance(parameters, ParameterDict):
+            for key, parameter in parameters._parameters.items():
+                self.add_parameter(key, parameter)
+        elif isinstance(parameters, (OrderedDict, Mapping)):
             for key, parameter in parameters.items():
                 self.add_parameter(key, parameter)
         else:

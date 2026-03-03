@@ -1828,6 +1828,15 @@ void CheckGradNodeAccumulation(
   }
 }
 
+void CheckGradNodeAccumulation(
+    const paddle::small_vector<std::vector<paddle::Tensor*>>& tensors) {
+  for (const auto& sub_tensors : tensors) {
+    for (const auto& tensor : sub_tensors) {
+      CheckGradNodeAccumulation(*tensor);
+    }
+  }
+}
+
 LogLevelGuardBackward::LogLevelGuardBackward(bool need_backward_vlog_guard,
                                              GradNodeBase* node) {
   //

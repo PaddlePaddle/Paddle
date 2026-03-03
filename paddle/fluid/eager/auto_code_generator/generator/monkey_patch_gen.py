@@ -28,62 +28,47 @@ from paddle.tensor import magic_method_func
 from .. import core
 """
 
-FUNCTION_NAME_TEMPLATE = """
-def {func_name}():
+
+GENERATED_OP_FUNC_TEMPLATE = """
+def _{op_name}(*args, **kwargs):
+    return _C_ops.{op_name}(*args, **kwargs)
 """
 
-# Unified template entry format: ('module.path', 'method_name', _op_name)
-UNIFIED_NAME_METHOD_MAPPING_TEMPLATE = (
-    """  ('{module_path}', '{method_name}', _{op_name})"""
-)
+METHOD_OP_MAP_TEMPLATE = """  ('{module_path}', '{method_name}', _{op_name})"""
 
-# Unified map template for all module paths
-UNIFIED_FUNCS_MAP_TEMPLATE = """
-# Unified map: (module_path, method_name, func) for all APIs
-_all_funcs_map = [
+MONKYE_PATCH_TEMPLATE = """
+# (module_path, method_name, _op_name) for all APIs
+_all_method_op_map = [
 {}
 ]
 
-# Backward-compatible exports derived from unified map
-methods_map = [(name, func) for path, name, func in _all_funcs_map if path == 'paddle.Tensor']
-funcs_map = [(name, func) for path, name, func in _all_funcs_map if path == 'paddle']
-nn_funcs_map = [(name, func) for path, name, func in _all_funcs_map if path == 'paddle.nn.functional']
+methods_map = [(name, func) for path, name, func in _all_method_op_map if path == 'paddle.Tensor']
+funcs_map = [(name, func) for path, name, func in _all_method_op_map if path == 'paddle']
+nn_funcs_map = [(name, func) for path, name, func in _all_method_op_map if path == 'paddle.nn.functional']
 
-"""
-
-METHOD_TEMPLATE = """
-def _{name}(*args, **kwargs):
-    return _C_ops.{name}(*args, **kwargs)
-"""
-
-SET_UNIFIED_FUNCTION_TEMPLATE = """
+def monkey_patch_generated_methods_for_tensor():
     # set methods and functions for all modules using unified approach
     local_tensor = core.eager.Tensor
-    magic_method_dict = {v: k for k, v in magic_method_func}
+    magic_method_dict = {{v: k for k, v in magic_method_func}}
 
-    for module_path, method_name, method in _all_funcs_map:
+    for module_path, method_name, _op_name in _all_method_op_map:
         try:
             # Special handling for paddle.Tensor (not a real module)
             if module_path == 'paddle.Tensor':
-                setattr(local_tensor, method_name, method)
+                setattr(local_tensor, method_name, _op_name)
                 magic_name = magic_method_dict.get(method_name)
                 if magic_name:
-                    setattr(local_tensor, magic_name, method)
+                    setattr(local_tensor, magic_name, _op_name)
                 # Also set on paddle.tensor module
-                setattr(paddle.tensor, method_name, method)
+                setattr(paddle.tensor, method_name, _op_name)
             else:
                 module = importlib.import_module(module_path)
-                setattr(module, method_name, method)
+                setattr(module, method_name, _op_name)
         except Exception as e:
             raise RuntimeError(
-                f"Failed to set {method_name} on module {module_path}: {e}"
+                f"Failed to set {{method_name}} on module {{module_path}}: {{e}}"
             )
 """
-
-# Unified map: list of (module_path, method_name, func) for all module paths
-unified_func_map = []
-# The python api info in python_api_info.yaml
-python_api_info_from_yaml = {}
 
 
 def ExtractPrefix(full_name):
@@ -93,16 +78,13 @@ def ExtractPrefix(full_name):
     return res
 
 
-def GenerateMethod(name):
-    return METHOD_TEMPLATE.format(name=name)
-
-
 def ClassifyAPIByPrefix(python_api_info, op_name):
     """Classify API by prefix and add to unified map.
 
     All APIs are stored in a unified format: (module_path, method_name, func)
     """
     python_api_names = python_api_info["name"]
+    method_op_map = []
     for name in python_api_names:
         prefix = ExtractPrefix(name)
         method_name = name.split(".")[
@@ -114,48 +96,51 @@ def ClassifyAPIByPrefix(python_api_info, op_name):
 
         # Remove trailing dot to get module_path
         module_path = prefix.rstrip('.')
-        unified_mapping = UNIFIED_NAME_METHOD_MAPPING_TEMPLATE.format(
-            module_path=module_path,
-            method_name=method_name,
-            op_name=op_name,
+        method_op_map.append(
+            METHOD_OP_MAP_TEMPLATE.format(
+                module_path=module_path,
+                method_name=method_name,
+                op_name=op_name,
+            )
         )
-        unified_func_map.append(unified_mapping)
+    return method_op_map
 
 
 class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
-    def __init__(self, path):
+    def __init__(self, api_yaml_path, python_api_info_yaml_path):
         # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
-        GeneratorBase.__init__(self, path)
+        GeneratorBase.__init__(self, api_yaml_path)
 
         # Generated Result
         self.MonkeyPatchTensorMethods_str = ""
+        self.python_api_info_yaml_path = python_api_info_yaml_path
 
     def GenerateMonkeyPatchTensorMethods(self):
         self.MonkeyPatchTensorMethods_str += IMPORT_TEMPLATE
 
-        method_str = ""
-        # python api in python_api_info.yaml
-        for ops_name, python_api_info in python_api_info_from_yaml.items():
-            method_str += GenerateMethod(ops_name)
-            ClassifyAPIByPrefix(python_api_info, ops_name)
+        # list of (module_path, method_name, op)
+        all_method_op_map = []
+        # The python api info in python_api_info.yaml
+        python_api_info_from_yaml = ParsePythonAPIInfoFromYAML(
+            self.python_api_info_yaml_path
+        )
 
-        self.MonkeyPatchTensorMethods_str += method_str
-        # Use unified map for all module paths
-        result = ',\n '.join(unified_func_map)
-        self.MonkeyPatchTensorMethods_str += UNIFIED_FUNCS_MAP_TEMPLATE.format(
-            result
+        # python api in python_api_info.yaml
+        for op_name, python_api_info in python_api_info_from_yaml.items():
+            self.MonkeyPatchTensorMethods_str += (
+                GENERATED_OP_FUNC_TEMPLATE.format(op_name=op_name)
+            )
+            all_method_op_map += ClassifyAPIByPrefix(python_api_info, op_name)
+
+        self.MonkeyPatchTensorMethods_str += MONKYE_PATCH_TEMPLATE.format(
+            ',\n '.join(all_method_op_map)
         )
-        self.MonkeyPatchTensorMethods_str += FUNCTION_NAME_TEMPLATE.format(
-            func_name="monkey_patch_generated_methods_for_tensor"
-        )
-        self.MonkeyPatchTensorMethods_str += SET_UNIFIED_FUNCTION_TEMPLATE
 
     def run(self):
         # Read Yaml file
-        self.ParseForwardYamlContents()
         self.GenerateMonkeyPatchTensorMethods()
 
 
@@ -184,10 +169,8 @@ if __name__ == "__main__":
     output_path = args.output_path
     python_api_info_yaml_path = args.python_api_info_yaml_path
 
-    python_api_info_from_yaml = ParsePythonAPIInfoFromYAML(
-        python_api_info_yaml_path
+    gen = MonkeyPatchTensorMethodsGenerator(
+        api_yaml_path, python_api_info_yaml_path
     )
-
-    gen = MonkeyPatchTensorMethodsGenerator(api_yaml_path)
     gen.run()
     GenerateMonkeyPathFile(output_path, gen.MonkeyPatchTensorMethods_str)
