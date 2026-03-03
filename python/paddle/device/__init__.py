@@ -404,7 +404,9 @@ def _convert_to_place(device: PlaceLike) -> Place:
             elif device.is_xpu_place():
                 return core.XPUPlace(device.xpu_device_id())
             elif device.is_custom_place():
-                return core.CustomPlace(device.custom_device_type(), device.custom_device_id())
+                return core.CustomPlace(
+                    device.custom_device_type(), device.custom_device_id()
+                )
         return device
 
     lower_device = device.lower()

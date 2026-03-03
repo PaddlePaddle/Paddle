@@ -461,6 +461,7 @@ class TestNvtx(unittest.TestCase):
         with self.assertRaises(TypeError):
             paddle.device.nvtx.range_push(123)
 
+
 class TestDeviceDvice(unittest.TestCase):
     def test_device_device(self):
         current = paddle.device.get_device()
@@ -488,12 +489,12 @@ class TestDeviceDvice(unittest.TestCase):
 
             # Test: passing gpu tensor.place with non-zero device id
             if device_count > 1:
-                gpu_tensor_1 = paddle.empty(
-                    1, dtype="float32", device='cuda:1'
-                )
+                gpu_tensor_1 = paddle.empty(1, dtype="float32", device='cuda:1')
                 with paddle.device.device(gpu_tensor_1.place):
                     self.assertEqual(paddle.device.get_device(), 'gpu:1')
                 self.assertEqual(paddle.device.get_device(), current)
+
+
 class TestCudaDvice(unittest.TestCase):
     def test_device_device(self):
         current = paddle.device.get_device()
