@@ -304,6 +304,7 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
       return;
     }
 #else
+    auto broadcast_dim = dout.dims();
     if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr &&
         broadcast_dim == dx->dims() && broadcast_dim == dy->dims()) {
       phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, y, dx);
