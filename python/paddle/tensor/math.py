@@ -6900,7 +6900,6 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     coordinates = paddle.stack(paddle.meshgrid(x), axis=-1)
     return paddle.reshape(coordinates, [-1, len(x)])
 
-@dygraph_only
 def sparse_mask(self: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
     r"""
     Mimics PyTorch's sparse tensor interface.
@@ -6933,5 +6932,4 @@ def sparse_mask(self: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         cols=[1, 3, 2, 0, 1],
         values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
     """
-    return _C_ops.sparse_mask_as(self, mask)
-    
+    return paddle.sparse_mask_as(self, mask)

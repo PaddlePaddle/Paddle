@@ -83,6 +83,27 @@ class TestVariable(unittest.TestCase):
             np.testing.assert_array_equal(x_grad, loss.gradient() * b)
             np.testing.assert_array_equal(y_grad, loss.gradient() * a)
 
+    def test_retain_grad(self):
+        """Test custom retain_grad() API (as Tensor method) against legacy retain_grads()"""
+        with base.dygraph.guard():
+            a = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+            b = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+            x = paddle.to_tensor(a)
+            y = paddle.to_tensor(b)
+            x.stop_gradient = False
+            y.stop_gradient = False
+
+            # Use new API as a Tensor method (not top-level function)
+            x.retain_grad()
+            y.retain_grad()
+
+            loss = _legacy_C_ops.elementwise_mul(x, y)
+            loss.backward()
+
+            # Verify gradients match expected values (x.grad = b, y.grad = a)
+            np.testing.assert_array_equal(x.gradient(), b)
+            np.testing.assert_array_equal(y.gradient(), a)
+
 
 if __name__ == '__main__':
     unittest.main()
