@@ -420,7 +420,7 @@ def get_window(
         Tensor: The window represented as a tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -533,7 +533,7 @@ def hamming_window(
         Tensor: A 1-D tensor of shape `(window_length,)` containing the Hamming window.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -582,7 +582,7 @@ def hann_window(
         Tensor: A 1-D tensor of shape `(window_length,)` containing the Hann window.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -629,7 +629,7 @@ def kaiser_window(
         Tensor: A 1-D tensor of shape `(window_length,)` containing the Kaiser window.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -676,7 +676,7 @@ def blackman_window(
         Tensor: A 1-D tensor of shape `(window_length,)` containing the Blackman window.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -721,7 +721,7 @@ def bartlett_window(
         Tensor: A 1-D tensor of shape `(window_length,)` containing the Bartlett window.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

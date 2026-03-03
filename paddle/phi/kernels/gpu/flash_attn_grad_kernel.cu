@@ -316,7 +316,7 @@ void FlashAttnUnpaddedGradBaseKernel(const Context& dev_ctx,
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
-  bool succ = phi::dynload::flash_attn_varlen_bwd(
+  bool succ = dynload::flash_attn_varlen_bwd(
       dout.data(),
       q.data(),
       k.data(),
@@ -719,7 +719,7 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
   }
 
 #ifdef PADDLE_WITH_HIP
-  bool succ = phi::dynload::flash_attn_bwd(
+  bool succ = dynload::flash_attn_bwd(
       dout.data(),
       q.data(),
       k.data(),
@@ -818,7 +818,7 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
     RaiseNotSupportedError(3);
 #endif
   } else {
-    succ = phi::dynload::flash_attn_bwd(
+    succ = dynload::flash_attn_bwd(
         dout.data(),
         q.data(),
         k.data(),

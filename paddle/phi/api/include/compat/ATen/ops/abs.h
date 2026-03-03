@@ -27,21 +27,16 @@ inline at::Tensor abs(const at::Tensor& self) {
   return paddle::experimental::abs(self._PD_GetInner());
 }
 
-inline at::Tensor& abs_(at::Tensor& self) {  // NOLINT(runtime/references)
-  paddle::experimental::abs_(self._PD_GetInner());
-  return self;
-}
+}  // namespace at
 
-// Tensor member function implementations
+namespace at {
+
 inline at::Tensor Tensor::abs() const { return at::abs(*this); }
 
 inline at::Tensor& Tensor::abs_() const {
-  return at::abs_(const_cast<at::Tensor&>(*this));
+  PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
+  paddle::experimental::abs_(inner);
+  return const_cast<at::Tensor&>(*this);
 }
 
 }  // namespace at
-
-namespace torch {
-using at::abs;
-using at::abs_;
-}  // namespace torch

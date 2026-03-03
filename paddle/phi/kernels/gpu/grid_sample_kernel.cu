@@ -362,44 +362,41 @@ void GridSampleKernel(const Context& dev_ctx,
 
     // Create and set Tensor descriptors (NCHW) for x and out
     cudnnTensorDescriptor_t x_desc, y_desc;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&y_desc));
 
     const cudnnDataType_t cudnn_dtype =
         std::is_same<T, float>::value ? CUDNN_DATA_FLOAT : CUDNN_DATA_DOUBLE;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnSetTensor4dDescriptor(x_desc,
-                                                 CUDNN_TENSOR_NCHW,
-                                                 cudnn_dtype,
-                                                 static_cast<int>(N),
-                                                 static_cast<int>(C),
-                                                 static_cast<int>(H_in),
-                                                 static_cast<int>(W_in)));
+        dynload::cudnnSetTensor4dDescriptor(x_desc,
+                                            CUDNN_TENSOR_NCHW,
+                                            cudnn_dtype,
+                                            static_cast<int>(N),
+                                            static_cast<int>(C),
+                                            static_cast<int>(H_in),
+                                            static_cast<int>(W_in)));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
-                                                 CUDNN_TENSOR_NCHW,
-                                                 cudnn_dtype,
-                                                 static_cast<int>(N),
-                                                 static_cast<int>(C),
-                                                 static_cast<int>(H_out),
-                                                 static_cast<int>(W_out)));
+        dynload::cudnnSetTensor4dDescriptor(y_desc,
+                                            CUDNN_TENSOR_NCHW,
+                                            cudnn_dtype,
+                                            static_cast<int>(N),
+                                            static_cast<int>(C),
+                                            static_cast<int>(H_out),
+                                            static_cast<int>(W_out)));
 
     // Spatial Transformer descriptor: specifies sampler type and output
     // dimension (N, C, H_out, W_out)
     cudnnSpatialTransformerDescriptor_t st_desc;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateSpatialTransformerDescriptor(&st_desc));
+        dynload::cudnnCreateSpatialTransformerDescriptor(&st_desc));
     int st_dims[4] = {static_cast<int>(N),
                       static_cast<int>(C),
                       static_cast<int>(H_out),
                       static_cast<int>(W_out)};
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnSetSpatialTransformerNdDescriptor(
-            st_desc, CUDNN_SAMPLER_BILINEAR, cudnn_dtype, 4, st_dims));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetSpatialTransformerNdDescriptor(
+        st_desc, CUDNN_SAMPLER_BILINEAR, cudnn_dtype, 4, st_dims));
 
     const T* x_data = x.data<T>();
     const T* grid_data = grid.data<T>();
@@ -408,7 +405,7 @@ void GridSampleKernel(const Context& dev_ctx,
     const AlphaBetaT alpha = static_cast<AlphaBetaT>(1.0);
     const AlphaBetaT beta = static_cast<AlphaBetaT>(0.0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSpatialTfSamplerForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSpatialTfSamplerForward(
         handle,
         st_desc,
         static_cast<const void*>(&alpha),
@@ -421,11 +418,9 @@ void GridSampleKernel(const Context& dev_ctx,
 
     // resource release
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnDestroySpatialTransformerDescriptor(st_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
+        dynload::cudnnDestroySpatialTransformerDescriptor(st_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(y_desc));
     return;
   }
 #endif

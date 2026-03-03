@@ -60,8 +60,8 @@ class DescTensor : public phi::ExtendedTensor,
   // TODO(jiabin): This is really ugly, but we have to hold a dims here so that
   // we can inherit from ExtendedTensor Remove this when we make VarDesc's as
   // same as Tensor, or make Tensor's dims more lightly.
-  mutable phi::DDim dims_;
-  phi::Place place_;
+  mutable DDim dims_;
+  Place place_;
 };
 
 }  // namespace prim

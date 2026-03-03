@@ -65,15 +65,15 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1., 2., 3.]))
+            >>> dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1.0, 2.0, 3.0]))
             >>> print(dirichlet.entropy())
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             -1.24434423)
 
-            >>> print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
+            >>> print(dirichlet.prob(paddle.to_tensor([0.3, 0.5, 0.6])))
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             10.80000019)
     """
