@@ -6933,6 +6933,5 @@ def sparse_mask(self: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         cols=[1, 3, 2, 0, 1],
         values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
     """
-    # 保持内部调用官方API
     return _C_ops.sparse_mask_as(self, mask)
     
