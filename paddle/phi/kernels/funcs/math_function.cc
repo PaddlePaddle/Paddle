@@ -198,7 +198,7 @@ struct TensorSetConstantCPU {
 };
 
 template <>
-void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place<phi::XPUPlace>(const DeviceContext& dev_ctx,
                                             DenseTensor* tensor,
                                             float value) {
 #ifdef PADDLE_WITH_XPU
@@ -211,14 +211,14 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& dev_ctx,
 }
 
 template <>
-void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place<phi::IPUPlace>(const DeviceContext& dev_ctx,
                                             DenseTensor* tensor,
                                             float value) {
   PADDLE_THROW(common::errors::Unimplemented("IPUPlace is not supported"));
 }
 
 template <>
-void set_constant_with_place<CustomPlace>(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place<CustomPlace>(const DeviceContext& dev_ctx,
                                           DenseTensor* tensor,
                                           float value) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -228,7 +228,7 @@ void set_constant_with_place<CustomPlace>(const phi::DeviceContext& dev_ctx,
        DataLayout::ALL_LAYOUT,
        paddle::experimental::ParseDataType(tensor->dtype())});
   const auto& kernel = kernel_result.kernel;
-  using kernel_signature = void (*)(const phi::DeviceContext&,
+  using kernel_signature = void (*)(const DeviceContext&,
                                     const phi::IntArray&,
                                     const phi::Scalar&,
                                     DataType,
@@ -245,22 +245,23 @@ void set_constant_with_place<CustomPlace>(const phi::DeviceContext& dev_ctx,
 }
 
 template <>
-void set_constant_with_place<CPUPlace>(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place<CPUPlace>(const DeviceContext& dev_ctx,
                                        DenseTensor* tensor,
                                        float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 template <>
-void set_constant_with_place<phi::GPUPinnedPlace>(
-    const phi::DeviceContext& dev_ctx, DenseTensor* tensor, float value) {
+void set_constant_with_place<phi::GPUPinnedPlace>(const DeviceContext& dev_ctx,
+                                                  DenseTensor* tensor,
+                                                  float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace {
   using argument_type = phi::Place;
   using result_type = void;
-  TensorSetConstantWithPlace(const phi::DeviceContext& dev_ctx,
+  TensorSetConstantWithPlace(const DeviceContext& dev_ctx,
                              DenseTensor* tensor,
                              float value)
       : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
@@ -270,12 +271,12 @@ struct TensorSetConstantWithPlace {
     set_constant_with_place<Place>(dev_ctx_, tensor_, value_);
   }
 
-  const phi::DeviceContext& dev_ctx_;
+  const DeviceContext& dev_ctx_;
   DenseTensor* tensor_;
   float value_;
 };
 
-void set_constant(const phi::DeviceContext& dev_ctx,
+void set_constant(const DeviceContext& dev_ctx,
                   DenseTensor* tensor,
                   float value) {
   TensorSetConstantWithPlace func(dev_ctx, tensor, value);

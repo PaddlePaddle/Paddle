@@ -169,7 +169,7 @@ static void AppendProposals(DenseTensor* dst,
 }
 
 template <class T>
-void ClipTiledBoxes(const phi::DeviceContext& dev_ctx,
+void ClipTiledBoxes(const DeviceContext& dev_ctx,
                     const DenseTensor& im_info,
                     const DenseTensor& input_boxes,
                     DenseTensor* out,
@@ -203,7 +203,7 @@ void ClipTiledBoxes(const phi::DeviceContext& dev_ctx,
 
 // Filter the box with small area
 template <class T>
-void FilterBoxes(const phi::DeviceContext& dev_ctx,
+void FilterBoxes(const DeviceContext& dev_ctx,
                  const DenseTensor* boxes,
                  float min_size,
                  const DenseTensor& im_info,
@@ -244,7 +244,7 @@ void FilterBoxes(const phi::DeviceContext& dev_ctx,
 }
 
 template <class T>
-static void BoxCoder(const phi::DeviceContext& dev_ctx,
+static void BoxCoder(const DeviceContext& dev_ctx,
                      DenseTensor* all_anchors,
                      DenseTensor* bbox_deltas,
                      DenseTensor* variances,

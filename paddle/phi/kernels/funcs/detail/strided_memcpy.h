@@ -30,7 +30,7 @@ struct StridedMemcpyFunctor;
 
 template <typename T>
 struct StridedMemcpyFunctor<T, 0> {
-  void operator()(const phi::DeviceContext& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const T* src,
                   const int64_t* src_stride UNUSED,
                   const int64_t* dst_dim UNUSED,
@@ -56,7 +56,7 @@ struct StridedMemcpyFunctor<T, 0> {
 
 template <typename T>
 struct StridedMemcpyFunctor<T, 1> {
-  void operator()(const phi::DeviceContext& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const T* src,
                   const int64_t* src_stride UNUSED,
                   const int64_t* dst_dim,
@@ -87,7 +87,7 @@ struct StridedMemcpyFunctor<T, 1> {
 
 template <typename T, int Rank>
 struct StridedMemcpyFunctor {
-  void operator()(const phi::DeviceContext& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const T* src,
                   const int64_t* src_stride,
                   const int64_t* dst_dim,
@@ -104,7 +104,7 @@ struct StridedMemcpyFunctor {
 
 template <typename T>
 struct StridedCopyDimVisitor {
-  StridedCopyDimVisitor(const phi::DeviceContext& dev_ctx,
+  StridedCopyDimVisitor(const DeviceContext& dev_ctx,
                         const T* src,
                         const phi::DDim& src_stride,
                         const phi::DDim& dst_stride,
@@ -126,7 +126,7 @@ struct StridedCopyDimVisitor {
             dst_);
   }
 
-  const phi::DeviceContext& dev_ctx_;
+  const DeviceContext& dev_ctx_;
   const T* src_;
   const phi::DDim& src_stride_;
   const phi::DDim& dst_stride_;
