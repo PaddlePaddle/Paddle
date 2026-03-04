@@ -609,7 +609,7 @@ def edit_distance(
 
     return edit_distance_out, sequence_num
 
-
+@param_one_alias(["label", "target"])
 def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -653,6 +653,9 @@ def binary_cross_entropy(
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
             ``input``. The target labels which values should be numbers between 0 and 1.
             Available dtype is float16, float32, float64.
+
+            Alias Support: The parameter name ``label`` can be used as an alias for ``target``.
+            For example, ``binary_cross_entropy(label=tensor)`` is equivalent to ``binary_cross_entropy(target=tensor)``.
         weight (Tensor, optional): A manual rescaling weight given to the loss of each
             batch element. If given, has to be a Tensor of size nbatch and the data type
             is float32, float64. Default is ``'None'``.

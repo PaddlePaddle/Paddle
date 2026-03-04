@@ -238,6 +238,37 @@ class TestBCELoss(unittest.TestCase):
         )
         paddle.enable_static()
 
+    def test_BCELoss_target_alias(self):
+        paddle.disable_static()
+        try:
+            input_np = np.random.uniform(0.1, 0.8, size=(4, 5)).astype(np.float32)
+            label_np = np.random.randint(0, 2, size=(4, 5)).astype(np.float32)
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
+
+            out1 = paddle.nn.functional.binary_cross_entropy(
+                input=input, label=label, reduction="none"
+            )
+            out2 = paddle.nn.functional.binary_cross_entropy(
+                input=input, target=label, reduction="none"
+            )
+            np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-5)
+
+            out3 = paddle.nn.functional.binary_cross_entropy(
+                input=input, label=label, reduction="mean"
+            )
+            out4 = paddle.nn.functional.binary_cross_entropy(
+                input=input, target=label, reduction="mean"
+            )
+            np.testing.assert_allclose(out3.numpy(), out4.numpy(), rtol=1e-5)
+
+            with self.assertRaises((TypeError, ValueError)):
+                paddle.nn.functional.binary_cross_entropy(
+                    input=input, label=label, target=label, reduction="none"
+                )
+        finally:
+            paddle.enable_static()
+
 
 def bce_loss(input, label):
     return -1 * (label * np.log(input) + (1.0 - label) * np.log(1.0 - input))
