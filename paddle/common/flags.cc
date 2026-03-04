@@ -954,6 +954,20 @@ PHI_DEFINE_EXPORTED_bool(use_fast_math,
 #endif
 
 /**
+ * CUDNN related FLAG
+ * Name: conv3d_disable_cudnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Disable cudnn in conv3d.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DEFINE_EXPORTED_bool(conv3d_disable_cudnn,
+                         false,
+                         "Disable cudnn in conv3d");
+#endif
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_get_host_by_name_time
  * Since Version: 2.2.0
