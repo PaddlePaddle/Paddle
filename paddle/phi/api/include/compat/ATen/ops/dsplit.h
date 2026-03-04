@@ -1,0 +1,44 @@
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <ATen/core/Tensor.h>
+#include <ATen/ops/tensor_split.h>
+
+namespace at {
+
+inline std::vector<at::Tensor> dsplit(const at::Tensor& self,
+                                      int64_t sections) {
+  return tensor_split(self, sections, 2);
+}
+
+inline std::vector<at::Tensor> dsplit(const at::Tensor& self,
+                                      at::IntArrayRef indices) {
+  return tensor_split(self, indices, 2);
+}
+
+}  // namespace at
+
+namespace at {
+
+inline std::vector<at::Tensor> Tensor::dsplit(int64_t sections) const {
+  return at::dsplit(*this, sections);
+}
+
+inline std::vector<at::Tensor> Tensor::dsplit(at::IntArrayRef indices) const {
+  return at::dsplit(*this, indices);
+}
+
+}  // namespace at

@@ -5151,6 +5151,29 @@
   backward : slogdet_v2_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : slow_conv2d_dilated
+  args : (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1}, int groups=1, str data_format="NCHW")
+  output : Tensor
+  infer_meta :
+    func : SlowConvDilatedInferMeta
+  kernel :
+    func : slow_conv2d_dilated
+    data_type : input
+  optional : bias
+  backward : slow_conv2d_dilated_grad
+  interfaces :  paddle::dialect::LayoutTransformationInterface
+
+- op : slow_conv3d_dilated
+  args : (Tensor input, Tensor filter, Tensor bias, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCDHW")
+  output : Tensor
+  infer_meta :
+    func : SlowConv3DDilatedInferMeta
+  kernel :
+    func : slow_conv3d_dilated
+    data_type : input
+  optional : bias
+  backward : slow_conv3d_dilated_grad
+
 - op : softplus
   args : (Tensor x, double beta = 1.0, double threshold = 20.0)
   output : Tensor

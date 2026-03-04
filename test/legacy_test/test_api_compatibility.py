@@ -308,6 +308,111 @@ class TestAtan2API_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+class TestHypotAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        paddle_dygraph_out = []
+
+        # Paddle positional args
+        out1 = paddle.hypot(x, y)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.hypot(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+
+        # PyTorch keyword args
+        out3 = paddle.hypot(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+
+        # Mixed args
+        out4 = paddle.hypot(x, y=y)
+        paddle_dygraph_out.append(out4)
+
+        # Test out parameter
+        out5 = paddle.empty_like(x)
+        out6 = paddle.hypot(x, y, out=out5)
+        paddle_dygraph_out.append(out5)
+        paddle_dygraph_out.append(out6)
+
+        ref_out = np.hypot(self.np_x, self.np_y)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-6, atol=1e-6
+            )
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+
+            # Paddle positional args
+            out1 = paddle.hypot(x, y)
+            # Paddle keyword args
+            out2 = paddle.hypot(x=x, y=y)
+            # PyTorch keyword args
+            out3 = paddle.hypot(input=x, other=y)
+            # Mixed args
+            out4 = paddle.hypot(x, y=y)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.hypot(self.np_x, self.np_y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6, atol=1e-6)
+
+
+class TestHypotInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.disable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_InplaceCompatibility(self):
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        ref_out = np.hypot(self.np_x, self.np_y)
+
+        for out in [
+            x.clone().hypot_(y),
+            x.clone().hypot_(y=y),
+            x.clone().hypot_(other=y),
+            paddle.hypot_(x.clone(), y),
+            paddle.hypot_(x=x.clone(), y=y),
+            paddle.hypot_(input=x.clone(), other=y),
+        ]:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+
 # Edit by AI Agent
 # Test fmax compatibility
 class TestFmaxAPI(unittest.TestCase):
@@ -2816,6 +2921,80 @@ class TestRenormInplace(unittest.TestCase):
         self.assertIs(out4, x4)
 
         paddle.enable_static()
+
+
+class TestCloneAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        paddle.enable_static()
+        self.shape = [3, 4]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        out1 = paddle.clone(x)
+        paddle_dygraph_out.append(out1)
+
+        out2 = paddle.clone(x=x)
+        paddle_dygraph_out.append(out2)
+
+        out3 = paddle.clone(input=x)
+        paddle_dygraph_out.append(out3)
+
+        out4 = x.clone()
+        paddle_dygraph_out.append(out4)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(out.numpy(), self.np_x)
+            self.assertIsNot(out, x)
+
+        x_grad = paddle.to_tensor(self.np_x)
+        x_grad.stop_gradient = False
+        x_grad.retain_grads()
+        clone_x_grad = paddle.clone(x_grad)
+        clone_x_grad.retain_grads()
+        y = clone_x_grad * 2
+        y.backward()
+        self.assertIsNotNone(x_grad.grad)
+        self.assertIsNotNone(clone_x_grad.grad)
+        np.testing.assert_allclose(
+            clone_x_grad.grad.numpy(), 2 * np.ones_like(self.np_x)
+        )
+        np.testing.assert_allclose(
+            x_grad.grad.numpy(), 2 * np.ones_like(self.np_x)
+        )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.clone(x)
+            out2 = paddle.clone(x=x)
+            out3 = paddle.clone(input=x)
+            out4 = x.clone()
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            # Verify all outputs match input
+            for out in fetches:
+                np.testing.assert_allclose(out, self.np_x)
 
 
 class TestHsplitAPI(unittest.TestCase):

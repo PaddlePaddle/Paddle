@@ -6191,7 +6191,6 @@ void MoePermuteInferMeta(const MetaTensor& X,
                         "Input expert_prob_topk's dtype should be FLOAT32"));
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
-  const int64_t topk = expert_routemap_topk.dims()[1];
   int64_t output_rows = 0;
 
   // Using -1 as default value for not overriding buffer size,

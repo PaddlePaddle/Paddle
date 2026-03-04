@@ -26,11 +26,6 @@ SpmdInfo ClipInferSpmd(const DistMetaTensor& x,
                        const Scalar& min,
                        const Scalar& max);
 
-SpmdInfo ClipInferSpmdReverse(const DistMetaTensor& x,
-                              const DistMetaTensor& out,
-                              const Scalar& min,
-                              const Scalar& max);
-
 SpmdInfo ClipGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
                            const Scalar& min,
