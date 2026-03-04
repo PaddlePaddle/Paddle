@@ -337,7 +337,7 @@ class DistributedStrategy:
     def __setattr__(self, key: str, value: Any) -> None:
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
-                f"{key} is not a attribute of {self.__class__.__name__}"
+                f"{key} is not an attribute of {self.__class__.__name__}"
             )
         object.__setattr__(self, key, value)
 
