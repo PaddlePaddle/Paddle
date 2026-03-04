@@ -2832,6 +2832,10 @@ class CrossEntropyLossCompatible(unittest.TestCase):
         )[0]
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
+    @unittest.skipIf(
+        not base.core.is_compiled_with_cuda(),
+        "float16 cross_entropy kernel is only registered on GPU",
+    )
     def test_compatible_float16_weight(self):
         """Covers float16 promotion + weight cast + cast-back."""
         N, C = 8, 5
