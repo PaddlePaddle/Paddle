@@ -60,9 +60,9 @@ inline void BoxToDelta(const int box_num,
                        const float* weights,
                        const bool normalized,
                        DenseTensor* box_delta) {
-  auto ex_boxes_et = phi::EigenTensor<T, 2>::From(ex_boxes);
-  auto gt_boxes_et = phi::EigenTensor<T, 2>::From(gt_boxes);
-  auto trg = phi::EigenTensor<T, 2>::From(*box_delta);
+  auto ex_boxes_et = EigenTensor<T, 2>::From(ex_boxes);
+  auto gt_boxes_et = EigenTensor<T, 2>::From(gt_boxes);
+  auto trg = EigenTensor<T, 2>::From(*box_delta);
   T ex_w, ex_h, ex_ctr_x, ex_ctr_y, gt_w, gt_h, gt_ctr_x, gt_ctr_y;
   for (int64_t i = 0; i < box_num; ++i) {
     ex_w = ex_boxes_et(i, 2) - ex_boxes_et(i, 0) + (normalized == false);
@@ -103,9 +103,9 @@ template <typename T>
 void BboxOverlaps(const DenseTensor& r_boxes,
                   const DenseTensor& c_boxes,
                   DenseTensor* overlaps) {
-  auto r_boxes_et = phi::EigenTensor<T, 2>::From(r_boxes);
-  auto c_boxes_et = phi::EigenTensor<T, 2>::From(c_boxes);
-  auto overlaps_et = phi::EigenTensor<T, 2>::From(*overlaps);
+  auto r_boxes_et = EigenTensor<T, 2>::From(r_boxes);
+  auto c_boxes_et = EigenTensor<T, 2>::From(c_boxes);
+  auto overlaps_et = EigenTensor<T, 2>::From(*overlaps);
   // TODO(large-tensor): downstream functors may still use int
   int64_t r_num = r_boxes.dims()[0];
 

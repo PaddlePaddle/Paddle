@@ -70,16 +70,16 @@ void GRUUnitKernel(const Context& dev_ctx,
   int64_t batch_size = input_p->dims()[0];
   int64_t frame_size = hidden_prev_p->dims()[1];
 
-  auto x = phi::EigenMatrix<T>::From(input);
-  auto h_p = phi::EigenMatrix<T>::From(hidden_prev);
-  auto g = phi::EigenMatrix<T>::From(*gate);
-  auto r_h_p = phi::EigenMatrix<T>::From(*reset_hidden_prev);
-  auto h = phi::EigenMatrix<T>::From(*hidden);
+  auto x = EigenMatrix<T>::From(input);
+  auto h_p = EigenMatrix<T>::From(hidden_prev);
+  auto g = EigenMatrix<T>::From(*gate);
+  auto r_h_p = EigenMatrix<T>::From(*reset_hidden_prev);
+  auto h = EigenMatrix<T>::From(*hidden);
   auto& place = *dev_ctx.eigen_device();
 
   // calculate unactivated gate outputs
   if (bias) {
-    auto b = phi::EigenMatrix<T>::From(bias.get());
+    auto b = EigenMatrix<T>::From(bias.get());
     g.device(place) =
         x + b.reshape(Eigen::array<int64_t, 2>({{1, frame_size * 3}}))
                 .broadcast(Eigen::array<int64_t, 2>({{batch_size, 1}}));
@@ -205,11 +205,11 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   T* reset_hidden_prev_grad_data =
       dev_ctx.template Alloc<T>(&reset_hidden_prev_grad);
 
-  auto h_p = phi::EigenMatrix<T>::From(hidden_prev);
-  auto g = phi::EigenMatrix<T>::From(gate);
-  auto d_h = phi::EigenMatrix<T>::From(hidden_grad);
-  auto d_g = phi::EigenMatrix<T>::From(gate_grad);
-  auto d_r_h_p = phi::EigenMatrix<T>::From(reset_hidden_prev_grad);
+  auto h_p = EigenMatrix<T>::From(hidden_prev);
+  auto g = EigenMatrix<T>::From(gate);
+  auto d_h = EigenMatrix<T>::From(hidden_grad);
+  auto d_g = EigenMatrix<T>::From(gate_grad);
+  auto d_r_h_p = EigenMatrix<T>::From(reset_hidden_prev_grad);
   auto& place = *dev_ctx.eigen_device();
 
   int64_t batch_size = input.dims()[0];
@@ -303,7 +303,7 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   // backward for hidden_prev
   if (hidden_prev_grad) {
     T* hidden_prev_grad_data = dev_ctx.template Alloc<T>(hidden_prev_grad);
-    auto d_h_p = phi::EigenMatrix<T>::From(*hidden_prev_grad);
+    auto d_h_p = EigenMatrix<T>::From(*hidden_prev_grad);
     if (origin_mode) {
       d_h_p.device(place) = d_r_h_p * r + d_h * u;
     } else {
@@ -326,7 +326,7 @@ void GRUUnitGradKernel(const Context& dev_ctx,
   // backward for input
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
-    auto d_x = phi::EigenMatrix<T>::From(*input_grad);
+    auto d_x = EigenMatrix<T>::From(*input_grad);
     d_x.device(place) = d_g;
   }
   // backward for bias
