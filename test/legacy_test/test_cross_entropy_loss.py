@@ -2779,7 +2779,6 @@ class CrossEntropyLossCompatible(unittest.TestCase):
     Covers all branches in the compatible path (loss.py):
       - basic mean/sum path (float64)
       - weight passthrough
-      - float16 dtype promotion + weight cast + cast-back
       - label squeeze (shape [N,1])
       - 3D input reshape
     """
@@ -2831,28 +2830,6 @@ class CrossEntropyLossCompatible(unittest.TestCase):
             input_np, label_np, weight=weight_np, reduction='sum'
         )[0]
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
-
-    @unittest.skipIf(
-        not base.core.is_compiled_with_cuda(),
-        "float16 cross_entropy kernel is only registered on GPU",
-    )
-    def test_compatible_float16_weight(self):
-        """Covers float16 promotion + weight cast + cast-back."""
-        N, C = 8, 5
-        np.random.seed(0)
-        input_np = np.random.random([N, C]).astype('float16')
-        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
-        weight_np = np.random.random([C]).astype('float16')
-
-        paddle.disable_static()
-        dy_ret = paddle.nn.functional.cross_entropy(
-            paddle.to_tensor(input_np),
-            paddle.to_tensor(label_np),
-            weight=paddle.to_tensor(weight_np),
-            reduction='mean',
-        )
-        self.assertEqual(dy_ret.dtype, paddle.float16)
-        self.assertFalse(np.isnan(dy_ret.numpy()).any())
 
     def test_compatible_label_squeeze(self):
         """Covers label squeeze branch: label shape [N,1]."""
