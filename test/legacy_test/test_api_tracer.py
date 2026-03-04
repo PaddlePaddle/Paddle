@@ -129,5 +129,48 @@ class TestStartStopApiTracer(unittest.TestCase):
         self.assertNotIn("paddle._C_ops.abs", apis_traced)
 
 
+class TestErrorHandling(unittest.TestCase):
+    """Test exception handling code paths in api_tracer."""
+
+    def setUp(self):
+        self.save_dir = tempfile.mkdtemp()
+        self.api_yaml = os.path.join(self.save_dir, "apis.yaml")
+        self.trace_log = os.path.join(self.save_dir, "trace.log")
+
+    def tearDown(self):
+        if _hooked_apis:
+            stop_api_tracer()
+        shutil.rmtree(self.save_dir)
+
+    def test_nonexistent_api_skipped(self):
+        """start_api_tracer should skip APIs that cannot be resolved
+        (eval/getattr failure) instead of raising."""
+        with open(self.api_yaml, "w") as f:
+            yaml.dump(
+                {
+                    "apis": [
+                        "paddle.nonexistent_api_xyz",
+                        "no_such_module.func",
+                    ]
+                },
+                f,
+            )
+        start_api_tracer(self.api_yaml, self.trace_log)
+        self.assertNotIn("paddle.nonexistent_api_xyz", _hooked_apis)
+        self.assertNotIn("no_such_module.func", _hooked_apis)
+        stop_api_tracer()
+
+    def test_expand_wildcard_invalid_module(self):
+        """expand_wildcard should return [] for a non-existent module."""
+        result = expand_wildcard("nonexistent_module_xyz.*")
+        self.assertEqual(result, [])
+
+    def test_dump_item_str_unrecognized_type(self):
+        """dump_item_str should return '' for an unrecognized type."""
+        dumper = ConfigDump()
+        result = dumper.dump_item_str("test_api", object())
+        self.assertEqual(result, "")
+
+
 if __name__ == '__main__':
     unittest.main()
