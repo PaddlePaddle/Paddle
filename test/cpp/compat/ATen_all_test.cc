@@ -334,8 +334,10 @@ TEST(TestAllclose, AllcloseHighDim) {
 
 TEST(TestAllclose, AllcloseEqualNanDefaultFalse) {
   // Test allclose default behavior: NaN != NaN when equal_nan not set
-  at::Tensor tensor1 = at::zeros({3}, at::kFloat);
-  tensor1[1] = std::numeric_limits<float>::quiet_NaN();
+  // Use from_blob to avoid triggering fill_ operation which doesn't support NaN
+  const float nan_val = std::numeric_limits<float>::quiet_NaN();
+  float data1[3] = {0.0f, nan_val, 0.0f};
+  at::Tensor tensor1 = at::from_blob(data1, {3}, at::kFloat);
   at::Tensor tensor2 = tensor1.clone();
 
   // Default equal_nan=false: NaN is not equal to NaN, so result is false
@@ -348,8 +350,10 @@ TEST(TestAllclose, AllcloseEqualNanDefaultFalse) {
 
 TEST(TestAllclose, AllcloseEqualNanTrue) {
   // Test allclose with equal_nan=true: NaN == NaN should yield true
-  at::Tensor tensor1 = at::zeros({3}, at::kFloat);
-  tensor1[1] = std::numeric_limits<float>::quiet_NaN();
+  // Use from_blob to avoid triggering fill_ operation which doesn't support NaN
+  const float nan_val = std::numeric_limits<float>::quiet_NaN();
+  float data1[3] = {0.0f, nan_val, 0.0f};
+  at::Tensor tensor1 = at::from_blob(data1, {3}, at::kFloat);
   at::Tensor tensor2 = tensor1.clone();
 
   // equal_nan=true: NaN is treated as equal to NaN
@@ -359,9 +363,12 @@ TEST(TestAllclose, AllcloseEqualNanTrue) {
 
 TEST(TestAllclose, AllcloseEqualNanTrueAllNan) {
   // Test allclose with equal_nan=true on all-NaN tensors
+  // Use from_blob to avoid triggering fill_ operation which doesn't support NaN
   const float nan_val = std::numeric_limits<float>::quiet_NaN();
-  at::Tensor tensor1 = at::full({4}, nan_val, at::kFloat);
-  at::Tensor tensor2 = at::full({4}, nan_val, at::kFloat);
+  float data1[4] = {nan_val, nan_val, nan_val, nan_val};
+  float data2[4] = {nan_val, nan_val, nan_val, nan_val};
+  at::Tensor tensor1 = at::from_blob(data1, {4}, at::kFloat);
+  at::Tensor tensor2 = at::from_blob(data2, {4}, at::kFloat);
 
   bool result_equal_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
   ASSERT_EQ(result_equal_nan, true);
@@ -374,9 +381,10 @@ TEST(TestAllclose, AllcloseEqualNanTrueAllNan) {
 
 TEST(TestAllclose, AllcloseMemberEqualNanTrue) {
   // Test Tensor::allclose member function with equal_nan=true
-  at::Tensor tensor1 = at::zeros({4}, at::kFloat);
-  tensor1[0] = std::numeric_limits<float>::quiet_NaN();
-  tensor1[3] = std::numeric_limits<float>::quiet_NaN();
+  // Use from_blob to avoid triggering fill_ operation which doesn't support NaN
+  const float nan_val = std::numeric_limits<float>::quiet_NaN();
+  float data1[4] = {nan_val, 0.0f, 0.0f, nan_val};
+  at::Tensor tensor1 = at::from_blob(data1, {4}, at::kFloat);
   at::Tensor tensor2 = tensor1.clone();
 
   bool result_true = tensor1.allclose(tensor2, 1e-05, 1e-08, true);
@@ -388,10 +396,12 @@ TEST(TestAllclose, AllcloseMemberEqualNanTrue) {
 
 TEST(TestAllclose, AllcloseMixedNanAndValues) {
   // Test allclose where some elements match and one is NaN
-  at::Tensor tensor1 = at::ones({4}, at::kFloat);
-  tensor1[2] = std::numeric_limits<float>::quiet_NaN();
-  at::Tensor tensor2 = at::ones({4}, at::kFloat);
-  tensor2[2] = std::numeric_limits<float>::quiet_NaN();
+  // Use from_blob to avoid triggering fill_ operation which doesn't support NaN
+  const float nan_val = std::numeric_limits<float>::quiet_NaN();
+  float data1[4] = {1.0f, 1.0f, nan_val, 1.0f};
+  float data2[4] = {1.0f, 1.0f, nan_val, 1.0f};
+  at::Tensor tensor1 = at::from_blob(data1, {4}, at::kFloat);
+  at::Tensor tensor2 = at::from_blob(data2, {4}, at::kFloat);
 
   // NaN-aware comparison: non-NaN elements are equal, NaN treated equal
   bool result_eq_nan = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
@@ -421,9 +431,10 @@ TEST(TestAllclose, AllcloseDouble) {
 
 TEST(TestAllclose, AllcloseDoubleEqualNan) {
   // Test allclose with double-precision tensors and NaN
+  // Use from_blob to avoid triggering fill_ operation which doesn't support NaN
   const double nan_val = std::numeric_limits<double>::quiet_NaN();
-  at::Tensor tensor1 = at::zeros({3}, at::kDouble);
-  tensor1[0] = nan_val;
+  double data1[3] = {nan_val, 0.0, 0.0};
+  at::Tensor tensor1 = at::from_blob(data1, {3}, at::kDouble);
   at::Tensor tensor2 = tensor1.clone();
 
   bool result_false = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
@@ -448,9 +459,10 @@ TEST(TestAllclose, AllcloseStandaloneWithExplicitParams) {
 
 TEST(TestAllclose, AllcloseInfinityValues) {
   // Test allclose with infinity values
+  // Use from_blob to avoid triggering fill_ operation
   const float inf_val = std::numeric_limits<float>::infinity();
-  at::Tensor tensor1 = at::ones({3}, at::kFloat);
-  tensor1[0] = inf_val;
+  float data1[3] = {inf_val, 1.0f, 1.0f};
+  at::Tensor tensor1 = at::from_blob(data1, {3}, at::kFloat);
   at::Tensor tensor2 = tensor1.clone();
 
   // Identical infinity values should be close
@@ -461,8 +473,9 @@ TEST(TestAllclose, AllcloseInfinityValues) {
   ASSERT_EQ(result_member, true);
 
   // Different infinity signs should not be close
-  at::Tensor tensor3 = tensor1.clone();
-  tensor3[0] = -inf_val;
+  // Create a new tensor with -inf instead of cloning and modifying
+  float data3[3] = {-inf_val, 1.0f, 1.0f};
+  at::Tensor tensor3 = at::from_blob(data3, {3}, at::kFloat);
   bool result_diff_inf = at::allclose(tensor1, tensor3);
   ASSERT_EQ(result_diff_inf, false);
 }
