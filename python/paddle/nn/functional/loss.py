@@ -3034,7 +3034,6 @@ def cross_entropy(
         if (
             not soft_label
             and use_softmax
-            and reduction != 'none'
             and (axis == -1 or axis == len(input.shape) - 1)
             and paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
                 "FLAGS_use_accuracy_compatible_kernel", False
@@ -3056,11 +3055,18 @@ def cross_entropy(
             nll_label = label
             if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
                 nll_label = paddle.squeeze(nll_label, axis=-1)
-            # nll_loss only accepts rank 2 or 4; reshape 3D [B,S,C] -> [B*S,C]
-            if log_softmax_out.ndim == 3:
-                _C = log_softmax_out.shape[2]
+            # Save original label shape before reshape for reduction='none'
+            _nll_label_shape = list(nll_label.shape)
+            _did_reshape = False
+            # nll_loss only accepts rank 2 or 4; reshape N-D [B,d1,...,dk,C] -> [B*d1*...*dk, C]
+            if log_softmax_out.ndim >= 3:
+                _C = log_softmax_out.shape[-1]
                 log_softmax_out = paddle.reshape(log_softmax_out, [-1, _C])
                 nll_label = paddle.reshape(nll_label, [-1])
+                _did_reshape = True
+            # nll_loss requires int64 labels
+            if nll_label.dtype != paddle.int64:
+                nll_label = paddle.cast(nll_label, paddle.int64)
             loss, _ = _C_ops.nll_loss(
                 log_softmax_out,
                 nll_label,
@@ -3068,6 +3074,16 @@ def cross_entropy(
                 ignore_index,
                 reduction,
             )
+            # For reduction='none', reshape loss back to original label shape
+            if reduction == 'none' and _did_reshape:
+                loss = paddle.reshape(loss, _nll_label_shape)
+            # Match output shape with non-compatible path:
+            # - If user passed label without trailing 1 (input_dims-1==label_dims),
+            #   the non-compatible path squeezes; our output is already correct.
+            # - If user passed label with trailing 1 (input_dims==label_dims),
+            #   the non-compatible path keeps [B,S,1]; we need to unsqueeze back.
+            if reduction == 'none' and input_dims == label_dims:
+                loss = paddle.unsqueeze(loss, axis=axis)
             # Cast back to original dtype if promoted
             if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
                 loss = paddle.cast(loss, _nll_orig_dtype)
