@@ -3733,6 +3733,7 @@ def unique(
 ) -> Tensor | tuple[Tensor, ...]: ...
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique(
     x,
     return_index=False,
@@ -3746,8 +3747,13 @@ def unique(
     r"""
     Returns the unique elements of `x` in ascending order.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unique(input=tensor_x, dim=0)`` is equivalent to ``unique(x=tensor_x, axis=0)``.
+
     Args:
         x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+            alias: ``input``.
         return_index(bool, optional): If True, also return the indices of the input tensor that
             result in the unique Tensor.
         return_inverse(bool, optional): If True, also return the indices for where elements in
@@ -3755,6 +3761,7 @@ def unique(
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
             Default: None.
+            alias: ``dim``.
         dtype(str|paddle.dtype|np.dtype, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
             Default: int64.
         sorted(bool, optional): Does not affect the return result, same as PyTorch.

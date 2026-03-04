@@ -2923,5 +2923,120 @@ class TestRenormInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test unique compatibility
+class TestUniqueAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_1d = np.array([3, 1, 2, 1, 3]).astype('int64')
+        self.x_2d = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]]).astype('int64')
+
+    def test_dygraph_input_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_1d)
+
+        # Paddle keyword args
+        out1 = paddle.unique(x=x)
+        # Torch keyword args (input alias)
+        out2 = paddle.unique(input=x)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_dim_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_2d)
+
+        # Paddle axis kwarg
+        out1 = paddle.unique(x, axis=0)
+        # Torch dim alias
+        out2 = paddle.unique(x, dim=0)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+
+        # Tensor method - dim alias
+        out3 = x.unique(dim=0)
+        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_sorted_param(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_1d)
+
+        out1 = paddle.unique(x)
+        out2 = paddle.unique(x, sorted=True)
+        out3 = paddle.unique(x, sorted=False)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
+
+        # Tensor method with sorted
+        out4 = x.unique(sorted=True)
+        out5 = x.unique(sorted=False)
+        np.testing.assert_array_equal(out1.numpy(), out4.numpy())
+        np.testing.assert_array_equal(out1.numpy(), out5.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_combined_aliases(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_2d)
+
+        # Both input and dim aliases together
+        out1 = paddle.unique(x, axis=0)
+        out2 = paddle.unique(input=x, dim=0)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_static_input_alias(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype='int64')
+            out1 = paddle.unique(x=x)
+            out2 = paddle.unique(input=x)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            res = exe.run(
+                main,
+                feed={"x": self.x_1d},
+                fetch_list=[out1, out2],
+            )
+            np.testing.assert_array_equal(res[0], res[1])
+
+    def test_static_dim_alias(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 3], dtype='int64')
+            out1 = paddle.unique(x, axis=0)
+            out2 = paddle.unique(x, dim=0)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            res = exe.run(
+                main,
+                feed={"x": self.x_2d},
+                fetch_list=[out1, out2],
+            )
+            np.testing.assert_array_equal(res[0], res[1])
+
+    def test_static_sorted_param(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype='int64')
+            out1 = paddle.unique(x)
+            out2 = paddle.unique(x, sorted=True)
+            out3 = paddle.unique(x, sorted=False)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            res = exe.run(
+                main,
+                feed={"x": self.x_1d},
+                fetch_list=[out1, out2, out3],
+            )
+            np.testing.assert_array_equal(res[0], res[1])
+            np.testing.assert_array_equal(res[0], res[2])
+
+
 if __name__ == '__main__':
     unittest.main()
