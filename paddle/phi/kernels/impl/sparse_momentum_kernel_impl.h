@@ -387,12 +387,12 @@ void InnerCompute(const Context& dev_ctx,
     PADDLE_THROW(common::errors::Unimplemented(
         "sparse_momentum %s is not supported.", dev_ctx.GetPlace()));
   }
-  using MT = MultiPrecisionType<T>;
+  using MPDType = MultiPrecisionType<T>;
   IndexMomentumFunctor<T, MT, IndexT, UpdateMethod> functor(
       param->data<T>(),
       grad->data<T>(),
       velocity->data<MT>(),
-      learning_rate->data<MT>(),
+      learning_rate->data<MPDType>(),
       master_in_data,
       mu,
       rescale_grad,
@@ -429,15 +429,15 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
                             DenseTensor* param_out,
                             DenseTensor* velocity_out,
                             DenseTensor* master_param_out) {
-  using MT = MultiPrecisionType<T>;
+  using MPDType = MultiPrecisionType<T>;
 
   auto index = &index_in;
   const auto& index_type = index->dtype();
   if (multi_precision) {
     if (use_nesterov) {
-      auto update_method = UseNesterov<MT>();
+      auto update_method = UseNesterov<MPDType>();
       if (index_type == phi::DataType::INT32) {
-        InnerCompute<T, Context, MT, int, UseNesterov<MT>>(
+        InnerCompute<T, Context, MPDType, int, UseNesterov<MPDType>>(
             dev_ctx,
             param,
             grad,
@@ -457,7 +457,7 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
             master_param_out,
             update_method);
       } else {
-        InnerCompute<T, Context, MT, int64_t, UseNesterov<MT>>(
+        InnerCompute<T, Context, MPDType, int64_t, UseNesterov<MPDType>>(
             dev_ctx,
             param,
             grad,
@@ -478,28 +478,29 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
             update_method);
       }
     } else {
-      auto update_method = NoNesterov<MT>();
+      auto update_method = NoNesterov<MPDType>();
       if (index_type == phi::DataType::INT32) {
-        InnerCompute<T, Context, MT, int, NoNesterov<MT>>(dev_ctx,
-                                                          param,
-                                                          grad,
-                                                          velocity,
-                                                          index_in,
-                                                          learning_rate,
-                                                          master_param,
-                                                          mu,
-                                                          axis,
-                                                          use_nesterov,
-                                                          regularization_method,
-                                                          regularization_coeff,
-                                                          multi_precision,
-                                                          rescale_grad,
-                                                          param_out,
-                                                          velocity_out,
-                                                          master_param_out,
-                                                          update_method);
+        InnerCompute<T, Context, MPDType, int, NoNesterov<MPDType>>(
+            dev_ctx,
+            param,
+            grad,
+            velocity,
+            index_in,
+            learning_rate,
+            master_param,
+            mu,
+            axis,
+            use_nesterov,
+            regularization_method,
+            regularization_coeff,
+            multi_precision,
+            rescale_grad,
+            param_out,
+            velocity_out,
+            master_param_out,
+            update_method);
       } else {
-        InnerCompute<T, Context, MT, int64_t, NoNesterov<MT>>(
+        InnerCompute<T, Context, MPDType, int64_t, NoNesterov<MPDType>>(
             dev_ctx,
             param,
             grad,
