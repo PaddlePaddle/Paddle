@@ -72,7 +72,6 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
     variadic_tensor_decorator,
@@ -1843,7 +1842,7 @@ def nanmean(
     )
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def count_nonzero(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
