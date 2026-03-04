@@ -56,7 +56,16 @@ def default_collate_fn(batch):
         batch = np.stack(batch, axis=0)
         return batch
     elif isinstance(sample, paddle.Tensor):
-        return paddle.stack(batch, axis=0)
+        # In worker process, CUDA context is not valid after fork, so we must
+        # avoid any CUDA operations and use numpy for stacking
+        from .worker import get_worker_info
+        if get_worker_info() is not None:
+            # In worker subprocess: convert to numpy, stack, return CPU tensor
+            stacked = np.stack([t.numpy() for t in batch], axis=0)
+            return paddle.to_tensor(stacked, place=paddle.CPUPlace())
+        else:
+            # In main process: can use paddle.stack normally
+            return paddle.stack(batch, axis=0)
     elif isinstance(sample, numbers.Number):
         batch = np.array(batch)
         return batch
