@@ -1474,6 +1474,7 @@ def l1_loss(
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
+@param_one_alias(["label", "target"])
 def nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1492,7 +1493,7 @@ def nll_loss(
              But in K-dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`.
              The data type is float32, float64.
          label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
-             The data type is int64.
+             The data type is int64. Alias: ``target``.
          weight (Tensor, optional): Weight tensor, a manual rescaling weight given
              to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
              it treated as if having all ones. the data type is
