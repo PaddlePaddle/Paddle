@@ -4170,6 +4170,7 @@ def triplet_margin_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 def multi_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4202,7 +4203,7 @@ def multi_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes.
 
-        label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,)
+        label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,). Alias: ``target``.
 
         p (int, optional): The power num. Default: :math:`1`.
 
