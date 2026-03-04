@@ -225,7 +225,8 @@ void ConvTransposeCudnnKernelImplV8(const DenseTensor* transformed_x,
                                           input_data,
                                           filter_data,
                                           handle,
-                                          &workspace_handle);
+                                          &workspace_handle,
+                                          transformed_x->dtype());
 
   helper::ExecutePlansAndCache(handle,
                                &workspace_handle,
