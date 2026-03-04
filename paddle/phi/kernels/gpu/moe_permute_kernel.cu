@@ -627,6 +627,26 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
                                     DenseTensor *expert_offset_end,
                                     DenseTensor *expert_indices) {
   constexpr int BLOCK_SIZE = 1024;
+
+  // Determine grid size: block 0 does histogram+prefix-sum, all blocks
+  // collaborate on Phase 3 (expert_indices fill).  When FillExpertIndices is
+  // false we only need 1 block.  When true, scale blocks to cover
+  // override_buffer_size with good occupancy (each thread writes ~8-16 slots).
+  const int fill_blocks =
+      return_expert_indices ? max(1,
+                                  (override_buffer_size + BLOCK_SIZE * 16 - 1) /
+                                      (BLOCK_SIZE * 16))
+                            : 1;
+  // Cap to avoid over-subscription (diminishing returns past ~32 blocks)
+  const int grid_size = min(fill_blocks, 32);
+
+  // Allocate a single int for the inter-block ready flag, initialized to 0
+  DenseTensor digest_ready_flag;
+  digest_ready_flag.Resize({1});
+  dev_ctx.template Alloc<int>(&digest_ready_flag);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+      digest_ready_flag.data<int>(), 0, sizeof(int), dev_ctx.stream()));
+
   dispatch::Bools(
       [&](auto fill_expert_indices_tag) {
         constexpr bool FillExpertIndices =
@@ -634,7 +654,7 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
         const int smem_bytes =
             static_cast<int>(sizeof(int32_t)) * num_experts * 2;
         routemap_digest_kernel<FillExpertIndices, BLOCK_SIZE>
-            <<<1, BLOCK_SIZE, smem_bytes, dev_ctx.stream()>>>(
+            <<<grid_size, BLOCK_SIZE, smem_bytes, dev_ctx.stream()>>>(
                 expert_routemap_topk.data<int32_t>(),
                 expert_offset->data<int32_t>(),
                 expert_offset_end->data<int32_t>(),
@@ -642,7 +662,8 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
                 expert_routemap_topk.numel(),
                 num_experts,
                 padding_alignment,
-                override_buffer_size);
+                override_buffer_size,
+                digest_ready_flag.data<int32_t>());
       },
       return_expert_indices);
 }

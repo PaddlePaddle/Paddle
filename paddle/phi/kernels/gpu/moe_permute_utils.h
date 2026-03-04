@@ -380,79 +380,128 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
   }
 }
 template <bool FillExpertIndices, int BLOCK_SIZE>
-__global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
-                                       int32_t* __restrict__ expert_offset,
-                                       int32_t* __restrict__ expert_offset_end,
-                                       int32_t* __restrict__ expert_indices,
-                                       int32_t numel,
-                                       int32_t num_experts,
-                                       int32_t padding_alignment,
-                                       int32_t override_buffer_size) {
+__global__ void routemap_digest_kernel(
+    const int32_t* __restrict__ topk_ids,
+    int32_t* __restrict__ expert_offset,
+    int32_t* __restrict__ expert_offset_end,
+    int32_t* __restrict__ expert_indices,
+    int32_t numel,
+    int32_t num_experts,
+    int32_t padding_alignment,
+    int32_t override_buffer_size,
+    int32_t* __restrict__ digest_ready_flag) {
   extern __shared__ int32_t shared[];
   int32_t* hist = shared;                       // [0, ne)
   int32_t* offset_smem = shared + num_experts;  // [ne, 2*ne)
 
-  //  Phase 1: Histogram
-  for (int i = threadIdx.x; i < num_experts; i += BLOCK_SIZE) hist[i] = 0;
-  __syncthreads();
+  // ===== Block 0: Phase 1 (Histogram) + Phase 2 (Prefix-sum) =====
+  if (blockIdx.x == 0) {
+    //  Phase 1: Histogram
+    for (int i = threadIdx.x; i < num_experts; i += BLOCK_SIZE) hist[i] = 0;
+    __syncthreads();
 
-  // Vectorized int4 bulk: each thread loads 4 int32s per iteration
-  const int num_vec4 = numel >> 2;
-  const int4* topk_vec4 = reinterpret_cast<const int4*>(topk_ids);
+    // Vectorized int4 bulk: each thread loads 4 int32s per iteration
+    const int num_vec4 = numel >> 2;
+    const int4* topk_vec4 = reinterpret_cast<const int4*>(topk_ids);
 
-  for (int i = threadIdx.x; i < num_vec4; i += BLOCK_SIZE) {
-    int4 vec = topk_vec4[i];
-    int32_t elems[4] = {vec.x, vec.y, vec.z, vec.w};
+    for (int i = threadIdx.x; i < num_vec4; i += BLOCK_SIZE) {
+      int4 vec = topk_vec4[i];
+      int32_t elems[4] = {vec.x, vec.y, vec.z, vec.w};
 #pragma unroll
-    for (int k = 0; k < 4; k++) {
-      int32_t expert_id = elems[k];
+      for (int k = 0; k < 4; k++) {
+        int32_t expert_id = elems[k];
+        if (expert_id >= 0 && expert_id < num_experts)
+          atomicAdd(&hist[expert_id], 1);
+      }
+    }
+
+    // Scalar tail
+    for (int i = (num_vec4 << 2) + threadIdx.x; i < numel; i += BLOCK_SIZE) {
+      int32_t expert_id = topk_ids[i];
       if (expert_id >= 0 && expert_id < num_experts)
         atomicAdd(&hist[expert_id], 1);
     }
-  }
-
-  // Scalar tail
-  for (int i = (num_vec4 << 2) + threadIdx.x; i < numel; i += BLOCK_SIZE) {
-    int32_t expert_id = topk_ids[i];
-    if (expert_id >= 0 && expert_id < num_experts)
-      atomicAdd(&hist[expert_id], 1);
-  }
-  __syncthreads();
-
-  //  Phase 2: Padded prefix-sum (thread 0)
-  if (threadIdx.x == 0) {
-    int32_t offset = 0;
-    for (int i = 0; i < num_experts; i++) {
-      int32_t count = hist[i];
-      int32_t padded_count = align_up(count, padding_alignment);
-      expert_offset[i] = offset;
-      expert_offset_end[i] = offset + count - 1;
-      offset_smem[i] = offset;
-      offset += padded_count;
-    }
-  }
-  if constexpr (FillExpertIndices) {
     __syncthreads();
-    //  Phase 3: Fill expert_indices – per-expert loop, single pass
-    //    For each expert: write expert_id for valid slots, -1 for padding.
-    for (int expert = 0; expert < num_experts; expert++) {
-      int32_t offset = offset_smem[expert];
-      int32_t count = hist[expert];
-      int32_t padded_count = align_up(count, padding_alignment);
-      for (int j = threadIdx.x; j < padded_count; j += BLOCK_SIZE) {
-        int32_t write_pos = offset + j;
-        if (write_pos < override_buffer_size)
-          expert_indices[write_pos] = (j < count) ? expert : -1;
+
+    //  Phase 2: Padded prefix-sum (thread 0)
+    if (threadIdx.x == 0) {
+      int32_t offset = 0;
+      for (int i = 0; i < num_experts; i++) {
+        int32_t count = hist[i];
+        int32_t padded_count = align_up(count, padding_alignment);
+        expert_offset[i] = offset;
+        expert_offset_end[i] = offset + count - 1;
+        offset_smem[i] = offset;
+        offset += padded_count;
       }
     }
-    // Phase 3b: Fill the rest of the buffer with -1 (parallel)
-    // Total filled size = offset of last expert + its padded_count
-    int32_t total_filled = offset_smem[num_experts - 1] +
-                           align_up(hist[num_experts - 1], padding_alignment);
-    // All threads parallel fill remaining positions
-    for (int i = total_filled + threadIdx.x; i < override_buffer_size;
-         i += BLOCK_SIZE)
-      expert_indices[i] = -1;
+
+    if constexpr (FillExpertIndices) {
+      // Signal other blocks that offset/hist data is ready in global memory
+      __syncthreads();
+      if (threadIdx.x == 0) {
+        __threadfence();
+        atomicExch(digest_ready_flag, 1);
+      }
+    }
+  } else {
+    // ===== Blocks 1..N-1: Wait for Phase 1+2, then help with Phase 3 =====
+    if constexpr (FillExpertIndices) {
+      if (threadIdx.x == 0) {
+        while (atomicAdd(digest_ready_flag, 0) == 0) {
+        }
+      }
+      __syncthreads();
+      __threadfence();
+    }
+  }
+
+  if constexpr (FillExpertIndices) {
+    // ===== All blocks: Phase 3 — multi-block parallel fill =====
+    // Load expert_offset and expert_offset_end into shared memory for fast
+    // binary search.  Reuse the shared[] allocation (Phase 1/2 data no longer
+    // needed):
+    //   smem_offset     = shared[0 .. ne)
+    //   smem_offset_end = shared[ne .. 2*ne)
+    int32_t* smem_offset = shared;
+    int32_t* smem_offset_end = shared + num_experts;
+
+    // All blocks (including block 0) load from global memory.
+    // Block 0 wrote expert_offset/end in Phase 2 and issued __threadfence()
+    // before signaling, so all blocks see consistent data.
+    for (int i = threadIdx.x; i < num_experts; i += BLOCK_SIZE) {
+      smem_offset[i] = expert_offset[i];
+      smem_offset_end[i] = expert_offset_end[i];
+    }
+    __syncthreads();
+
+    // Phase 3+3b fused: fill ALL of [0, override_buffer_size) in one pass.
+    // For each position, binary-search smem_offset[] to find the owning expert.
+    const int global_tid = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+    const int total_threads = gridDim.x * BLOCK_SIZE;
+
+    for (int pos = global_tid; pos < override_buffer_size;
+         pos += total_threads) {
+      // Binary search: find the largest expert e such that smem_offset[e] <=
+      // pos
+      int lo = 0, hi = num_experts - 1;
+      int expert_id = 0;
+      while (lo <= hi) {
+        int mid = (lo + hi) >> 1;
+        if (smem_offset[mid] <= pos) {
+          expert_id = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      // Determine if this position is valid token or padding/tail
+      if (pos <= smem_offset_end[expert_id]) {
+        expert_indices[pos] = expert_id;
+      } else {
+        expert_indices[pos] = -1;
+      }
+    }
   }
 }
 }  // namespace phi
