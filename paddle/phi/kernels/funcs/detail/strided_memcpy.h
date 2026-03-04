@@ -116,7 +116,7 @@ struct StridedCopyDimVisitor {
         dst_(dst) {}
 
   template <int D>
-  void operator()(const phi::Dim<D>& dst_dim) const {
+  void operator()(const Dim<D>& dst_dim) const {
     StridedMemcpyFunctor<T, D> functor;
     functor(dev_ctx_,
             src_,
