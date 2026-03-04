@@ -554,6 +554,15 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   }
 }
 
+void PixelShufflePreProcess(std::string* data_format) {
+  if (*data_format != "NCHW" && *data_format != "NHWC") {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Attr(data_format) should be 'NCHW' or 'NHWC'."
+        "But receive Attr(data_format): %s",
+        *data_format));
+  }
+}
+
 // Inplace API broadcast validation for dygraph
 void InplaceShapePreProcess(Tensor* x, Tensor* y) {
   auto x_shape = x->dims();

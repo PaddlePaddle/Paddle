@@ -1834,5 +1834,74 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+import paddle.nn.functional as F
+
+
+# Test pixel_shuffle compatibility
+class TestPixelShuffleAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [2, 9, 4, 4]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        # Position args
+        out1 = F.pixel_shuffle(x, 3)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = F.pixel_shuffle(x=x, upscale_factor=3)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args (input alias)
+        out3 = F.pixel_shuffle(input=x, upscale_factor=3)
+        paddle_dygraph_out.append(out3)
+
+        # Mixed args
+        out4 = F.pixel_shuffle(x, upscale_factor=3)
+        paddle_dygraph_out.append(out4)
+
+        # Verify all outputs have same shape
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                out1.numpy(), out.numpy(), rtol=1e-5, atol=1e-5
+            )
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Position args
+            out1 = F.pixel_shuffle(x, 3)
+            # Paddle keyword args
+            out2 = F.pixel_shuffle(x=x, upscale_factor=3)
+            # Torch keyword args (input alias)
+            out3 = F.pixel_shuffle(input=x, upscale_factor=3)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3],
+            )
+            for out in fetches[1:]:
+                np.testing.assert_allclose(
+                    fetches[0], out, rtol=1e-5, atol=1e-5
+                )
+
+
 if __name__ == '__main__':
     unittest.main()
