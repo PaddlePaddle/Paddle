@@ -17,7 +17,9 @@
 #include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBase.h>
 #include <c10/core/Backend.h>
+#include <c10/core/Device.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/Stream.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -30,12 +32,6 @@
 #include <cuda_runtime_api.h>
 #endif
 
-#include <c10/core/Device.h>
-#include <c10/core/List.h>
-#include <c10/core/ScalarType.h>
-#include <c10/core/SymIntArrayRef.h>
-#include <limits>
-#include <optional>
 #include <utility>
 #include <vector>
 #include "paddle/common/ddim.h"
@@ -60,6 +56,8 @@ using PaddlePlace = phi::Place;
 
 // Stub for DimnameList (not supported in Paddle)
 using DimnameList = c10::ArrayRef<std::string>;
+
+using Stream = c10::Stream;
 
 class Tensor : public TensorBase {
  public:
@@ -666,13 +664,31 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#if defined(PADDLE_WITH_CUDA)
-  void record_stream(const cudaStream_t& stream) const {
+  void record_stream(at::Stream s) const {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+    PD_CHECK(dense_tensor != nullptr,
+             "record_stream only supports DenseTensor, but got a non-dense "
+             "tensor implementation.");
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
     paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        reinterpret_cast<gpuStream_t>(stream));
-  }
+        dense_tensor->Holder(),
+        reinterpret_cast<gpuStream_t>(s.native_handle()));
+#elif defined(PADDLE_WITH_XPU)
+    paddle::memory::RecordStream(
+        dense_tensor->Holder(), reinterpret_cast<XPUStream>(s.native_handle()));
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    paddle::memory::RecordStream(
+        dense_tensor->Holder(),
+        reinterpret_cast<phi::stream::stream_t>(s.native_handle()));
+#else
+    (void)dense_tensor;
+    PD_THROW(
+        "record_stream is not supported: no GPU/XPU/Custom device enabled "
+        "in this build.");
 #endif
+  }
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
