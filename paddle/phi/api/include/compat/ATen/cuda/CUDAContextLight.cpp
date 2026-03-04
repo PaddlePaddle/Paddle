@@ -110,11 +110,11 @@ void* getCUDABlasLtWorkspace() {
       .first;
 }
 
-#if defined(CUDART_VERSION) || defined(USE_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 cusolverDnHandle_t getCurrentCUDASolverDnHandle() {
   return getCurrentGPUContext()->cusolver_dn_handle();
 }
-#endif  // CUDART_VERSION || USE_ROCM
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #if defined(USE_CUDSS)
 cudssHandle_t getCurrentCudssHandle() {

@@ -19,32 +19,21 @@
 #pragma once
 // Light-weight version of CUDAContext.h with fewer transitive includes
 
-#include <cublas_v2.h>
-#include <cuda_runtime_api.h>
-#include <cusparse.h>
-
-#include <cstdint>
-#include <map>
-#include <shared_mutex>
-
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
-#include <cublasLt.h>
-
-#ifdef CUDART_VERSION
-#include <cusolverDn.h>
-#endif
 
 #if defined(USE_CUDSS)
 #include <cudss.h>
 #endif
 
-#if defined(USE_ROCM)
-#include <hipsolver/hipsolver.h>
-#endif
-
 #include <c10/core/Allocator.h>
 #include <c10/cuda/CUDAFunctions.h>
+
+#include <cstdint>
+#include <map>
+#include <shared_mutex>
+
+#include "paddle/phi/backends/gpu/forwards.h"
 
 namespace c10 {
 struct Allocator;
@@ -112,7 +101,7 @@ size_t getChosenWorkspaceSize();
 size_t getCUDABlasLtWorkspaceSize();
 void* getCUDABlasLtWorkspace();
 
-#if defined(CUDART_VERSION) || defined(USE_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 cusolverDnHandle_t getCurrentCUDASolverDnHandle();
 #endif
 
