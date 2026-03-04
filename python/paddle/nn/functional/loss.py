@@ -21,7 +21,7 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import param_one_alias, param_two_alias
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -744,6 +744,7 @@ def binary_cross_entropy(
             return out
 
 
+@param_two_alias(["logit", "input"], ["label", "target"])
 def binary_cross_entropy_with_logits(
     logit: Tensor,
     label: Tensor,
@@ -793,9 +794,10 @@ def binary_cross_entropy_with_logits(
         logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``logit``
             is usually the output of Linear layer. Available dtype is float32, float64.
+            Alias: ``input``.
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
             ``logit``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float32, float64.
+            Available dtype is float32, float64. Alias: ``target``.
         weight (Tensor, optional): A manual rescaling weight given to the loss of each
             batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
             The data type is float32, float64. Default is ``'None'``.
