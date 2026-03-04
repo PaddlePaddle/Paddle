@@ -34,7 +34,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: win-gpu-test
-    timeout-minutes: 360
+    timeout-minutes: 720
     env:
       PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
