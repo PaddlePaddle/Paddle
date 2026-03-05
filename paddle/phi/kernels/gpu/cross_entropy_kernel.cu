@@ -728,6 +728,12 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                                              int N,
                                              int dim,
                                              int D) {
+  // Handle zero-size tensor to avoid invalid kernel configuration
+  // (e.g., when dim is 0, std::log2(0) is undefined behavior)
+  if (dim == 0 || N == 0) {
+    return;
+  }
+
   constexpr int kMaxBlockDim = 512;
   auto* logits_data = logits.data<T>();
   auto* softmax_data = softmax->data<T>();
@@ -1163,6 +1169,12 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                              const int ignore_index) {
   VLOG(7) << "rank=" << rank << ", axis = " << axis << ", N = " << N
           << ", dim = " << dim << ", D = " << D;
+
+  // Handle zero-size tensor to avoid invalid kernel configuration
+  if (dim == 0 || N == 0) {
+    return;
+  }
+
   auto* logits_data = logits.data<T>();
   auto stream = dev_ctx.stream();
   constexpr int max_dim = 320;
@@ -1334,6 +1346,17 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
 
   const int64_t n = funcs::SizeToAxis(axis_v, logits.dims());
   const int64_t d = funcs::SizeFromAxis(axis_v, logits.dims());
+
+  // Handle zero-size tensor to avoid invalid kernel configuration
+  if (axis_dim == 0 || n == 0) {
+    auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
+    auto* loss_data = dev_ctx.template Alloc<T>(loss);
+
+    funcs::SetConstant<GPUContext, T> set_constant;
+    set_constant(dev_ctx, softmax, static_cast<T>(0));
+    set_constant(dev_ctx, loss, static_cast<T>(0));
+    return;
+  }
 
   if (axis_dim == 1) {
     auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
