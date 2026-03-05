@@ -73,19 +73,29 @@ void FullLikeKernel(const Context& dev_ctx,
 
   if (!std::is_same<T, phi::complex64>::value &&
       !std::is_same<T, phi::complex128>::value) {
-    auto value = val.to<double>();
+    // For integer types, use direct conversion to avoid precision loss
+    // when converting through double (e.g., int64 max value 9223372036854775807
+    // becomes 9223372036854775808 when converted to double and back)
     using CommonType = typename std::common_type<
         float,
         typename std::conditional<std::is_same<T, phi::float16>::value ||
                                       std::is_same<T, phi::bfloat16>::value,
                                   float,
                                   T>::type>::type;
+
+    // For integer types, get the value directly without going through double
+    auto value = val.to<T>();
     auto common_type_value = static_cast<CommonType>(value);
 
     // Check whether the filled value is valid
     bool is_out_range = true;
-    if (std::isinf(value) || std::isnan(value)) {
-      is_out_range = false;
+    if (std::is_same<T, phi::float16>::value ||
+        std::is_same<T, phi::bfloat16>::value ||
+        std::is_same<T, float>::value || std::is_same<T, double>::value) {
+      double double_value = val.to<double>();
+      if (std::isinf(double_value) || std::isnan(double_value)) {
+        is_out_range = false;
+      }
     }
 
     if ((common_type_value >=
@@ -105,7 +115,7 @@ void FullLikeKernel(const Context& dev_ctx,
             typeid(T).name(),
             static_cast<CommonType>(std::numeric_limits<T>::lowest()),
             static_cast<CommonType>(std::numeric_limits<T>::max()),
-            static_cast<float>(value)));
+            static_cast<float>(common_type_value)));
 
     if (numel > 0) {
       funcs::ElementwiseKernel<T>(
