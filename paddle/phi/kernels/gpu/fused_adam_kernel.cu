@@ -31,36 +31,36 @@ namespace phi {
 
 template <typename T, bool CPUBetaPows /*=true*/>
 struct FusedAdamBetaPowInfo {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  FusedAdamBetaPowInfo(const MPDType* beta1pow, const MPDType* beta2pow) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = *beta1pow;
     beta2pow_ = *beta2pow;
   }
 
-  DEVICE MPDType GetBeta1PowValue() const { return beta1pow_; }
+  DEVICE MT GetBeta1PowValue() const { return beta1pow_; }
 
-  DEVICE MPDType GetBeta2PowValue() const { return beta2pow_; }
+  DEVICE MT GetBeta2PowValue() const { return beta2pow_; }
 
  private:
-  MPDType beta1pow_;
-  MPDType beta2pow_;
+  MT beta1pow_;
+  MT beta2pow_;
 };
 
 template <typename T>
 struct FusedAdamBetaPowInfo<T, /*CPUBetaPows=*/false> {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  FusedAdamBetaPowInfo(const MPDType* beta1pow, const MPDType* beta2pow) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
   }
 
-  DEVICE MPDType GetBeta1PowValue() const { return *beta1pow_; }
+  DEVICE MT GetBeta1PowValue() const { return *beta1pow_; }
 
-  DEVICE MPDType GetBeta2PowValue() const { return *beta2pow_; }
+  DEVICE MT GetBeta2PowValue() const { return *beta2pow_; }
 
  private:
-  const MPDType* __restrict__ beta1pow_;
-  const MPDType* __restrict__ beta2pow_;
+  const MT* __restrict__ beta1pow_;
+  const MT* __restrict__ beta2pow_;
 };
 
 template <typename T,
@@ -330,7 +330,7 @@ PADDLE_API void FusedAdamKernel(
     std::vector<DenseTensor*> beta1_pows_out,
     std::vector<DenseTensor*> beta2_pows_out,
     std::vector<DenseTensor*> master_params_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   auto n = params.size();
   auto beta1_pow_first = beta1_pows[0];
@@ -388,8 +388,8 @@ PADDLE_API void FusedAdamKernel(
     return;
   }
 
-  MPDType beta1_tmp = beta1.to<MPDType>();
-  MPDType beta2_tmp = beta2.to<MPDType>();
+  MT beta1_tmp = beta1.to<MT>();
+  MT beta2_tmp = beta2.to<MT>();
 
   std::vector<std::vector<DenseTensor*>> input_vector;
   input_vector.reserve(5);
@@ -416,9 +416,9 @@ PADDLE_API void FusedAdamKernel(
     constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;             \
     constexpr int kBlockSize = 512;                                          \
     FusedAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info(                 \
-        beta1_pow_first->data<MPDType>(), beta2_pow_first->data<MPDType>()); \
+        beta1_pow_first->data<MT>(), beta2_pow_first->data<MT>());           \
     FusedAdamFunctor<T,                                                      \
-                     MPDType,                                                \
+                     MT,                                                     \
                      __vec_size,                                             \
                      __multi_precision,                                      \
                      __is_cpu_betapow,                                       \
@@ -440,9 +440,9 @@ PADDLE_API void FusedAdamKernel(
         beta1_tmp,                                                           \
         beta2_tmp,                                                           \
         beta_pow_info,                                                       \
-        epsilon.to<MPDType>(),                                               \
-        learning_rate.data<MPDType>(),                                       \
-        static_cast<MPDType>(weight_decay));                                 \
+        epsilon.to<MT>(),                                                    \
+        learning_rate.data<MT>(),                                            \
+        static_cast<MT>(weight_decay));                                      \
   } while (0)
 
 #define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(__vec_size) \
@@ -527,13 +527,13 @@ PADDLE_API void FusedAdamKernel(
   } break
 
   int vec_size = GetVecSizeFromTensors<T>(params_out);
-  vec_size = GetVecSizeFromTensors<MPDType>(moments1_out, vec_size);
-  vec_size = GetVecSizeFromTensors<MPDType>(moments2_out, vec_size);
+  vec_size = GetVecSizeFromTensors<MT>(moments1_out, vec_size);
+  vec_size = GetVecSizeFromTensors<MT>(moments2_out, vec_size);
   if (amsgrad) {
-    vec_size = GetVecSizeFromTensors<MPDType>(moments2_max_out, vec_size);
+    vec_size = GetVecSizeFromTensors<MT>(moments2_max_out, vec_size);
   }
   if (master_params) {
-    vec_size = GetVecSizeFromTensors<MPDType>(master_params_out, vec_size);
+    vec_size = GetVecSizeFromTensors<MT>(master_params_out, vec_size);
   }
 
   switch (vec_size) {
@@ -550,12 +550,10 @@ PADDLE_API void FusedAdamKernel(
     if (is_cpu_betapow) {
       for (size_t i = 0; i < n; i++) {
         VLOG(10) << "CPU Update BetaPow here...";
-        auto* beta1_ptr =
-            dev_ctx.template HostAlloc<MPDType>(beta1_pows_out[i]);
+        auto* beta1_ptr = dev_ctx.template HostAlloc<MT>(beta1_pows_out[i]);
         (*beta1_ptr) *= beta1_tmp;
 
-        auto* beta2_ptr =
-            dev_ctx.template HostAlloc<MPDType>(beta2_pows_out[i]);
+        auto* beta2_ptr = dev_ctx.template HostAlloc<MT>(beta2_pows_out[i]);
         (*beta2_ptr) *= beta2_tmp;
       }
     } else {
@@ -565,13 +563,13 @@ PADDLE_API void FusedAdamKernel(
       for (size_t i = 0; i < group_num; ++i) {
         size_t start = i * kGroupSize;
         size_t end = std::min((i + 1) * kGroupSize, n);
-        Array<MPDType*, kGroupSize> beta1_ptrs, beta2_ptrs;
+        Array<MT*, kGroupSize> beta1_ptrs, beta2_ptrs;
         for (size_t j = start; j < end; ++j) {
           size_t idx = j - start;
-          beta1_ptrs[idx] = dev_ctx.template Alloc<MPDType>(beta1_pows_out[j]);
-          beta2_ptrs[idx] = dev_ctx.template Alloc<MPDType>(beta2_pows_out[j]);
+          beta1_ptrs[idx] = dev_ctx.template Alloc<MT>(beta1_pows_out[j]);
+          beta2_ptrs[idx] = dev_ctx.template Alloc<MT>(beta2_pows_out[j]);
         }
-        UpdateBetaPowGroup<MPDType, kGroupSize>
+        UpdateBetaPowGroup<MT, kGroupSize>
             <<<1, kGroupSize, 0, dev_ctx.stream()>>>(
                 beta1_ptrs, beta2_ptrs, beta1_tmp, beta2_tmp, end - start);
       }
