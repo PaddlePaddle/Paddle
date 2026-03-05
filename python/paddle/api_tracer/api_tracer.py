@@ -248,6 +248,7 @@ def start_api_tracer(api_path, save_config_path):
     sample_apis = []
     for api in raw_apis:
         sample_apis.extend(expand_wildcard(api))
+    sample_apis = list(dict.fromkeys(sample_apis))
     print(f"[api_tracer] Expanded to {len(sample_apis)} APIs")
 
     for api in sample_apis:
