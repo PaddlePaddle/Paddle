@@ -1897,6 +1897,18 @@ def randint(
             [7])
             >>> # doctest: -SKIP
 
+            >>> # example 6:
+            >>> # Use 'size' as an alias for 'shape'
+            >>> out6 = paddle.randint(high=10, size=[2, 3])
+            >>> print(out6.shape)
+            [2, 3]
+
+            >>> # example 7:
+            >>> # Use requires_grad=True so that stop_gradient=False
+            >>> out7 = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+            >>> print(out7.stop_gradient)
+            False
+
     """
     if isinstance(high, (list, tuple)):
         shape = high
@@ -1940,12 +1952,20 @@ def randint(
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
+        if pin_memory:
+            tensor = tensor.pin_memory()
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        return tensor
     elif in_pir_mode():
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
         tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        return tensor
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
@@ -1969,11 +1989,6 @@ def randint(
         )
         out.stop_gradient = True
         return out
-    if requires_grad is True:
-        tensor.stop_gradient = False
-    if pin_memory and in_dynamic_mode():
-        tensor = tensor.pin_memory()
-    return tensor
 
 
 def random_(

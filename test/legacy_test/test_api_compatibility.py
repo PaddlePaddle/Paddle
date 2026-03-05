@@ -1834,5 +1834,116 @@ class TestTensorCumsumInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestRandintAPI_Compatibility(unittest.TestCase):
+    def test_dygraph_basic(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3])
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_dygraph_size_alias(self):
+        paddle.disable_static()
+        # 'size' is an alias for 'shape'
+        x = paddle.randint(high=10, size=[3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        paddle.enable_static()
+
+    def test_dygraph_requires_grad_true(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_dygraph_requires_grad_false(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+        self.assertTrue(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_dygraph_value_range(self):
+        paddle.disable_static()
+        x = paddle.randint(low=5, high=10, shape=[100])
+        arr = x.numpy()
+        self.assertTrue(np.all(arr >= 5) and np.all(arr < 10))
+        paddle.enable_static()
+
+    def test_dygraph_torch_style_positional(self):
+        paddle.disable_static()
+        # torch.randint(high, size) style: second positional arg as shape
+        x = paddle.randint(10, [3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 10))
+        paddle.enable_static()
+
+    def test_dygraph_dtype_str(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[3], dtype='int32')
+        self.assertEqual(x.dtype, paddle.int32)
+        paddle.enable_static()
+
+    def test_dygraph_out_param(self):
+        paddle.disable_static()
+        out = paddle.zeros([2, 3], dtype='int64')
+        result = paddle.randint(high=10, shape=[2, 3], out=out)
+        # result and out refer to same storage
+        self.assertEqual(out.shape, [2, 3])
+        np.testing.assert_array_equal(result.numpy(), out.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_out_with_requires_grad(self):
+        paddle.disable_static()
+        out = paddle.zeros([2, 3], dtype='int64')
+        result = paddle.randint(
+            high=10, shape=[2, 3], out=out, requires_grad=True
+        )
+        self.assertFalse(result.stop_gradient)
+        paddle.enable_static()
+
+    def test_pir_basic(self):
+        """Test randint in PIR (default static) mode."""
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, shape=[2, 3])
+            self.assertEqual(x.shape, [2, 3])
+            self.assertTrue(x.stop_gradient)
+
+    def test_pir_requires_grad_true(self):
+        """Test requires_grad=True is handled explicitly in PIR mode."""
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+            self.assertFalse(x.stop_gradient)
+
+    def test_pir_requires_grad_false(self):
+        """Test requires_grad=False (default) in PIR mode."""
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+            self.assertTrue(x.stop_gradient)
+
+    def test_pir_size_alias(self):
+        """Test size alias works in PIR mode."""
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, size=[2, 3])
+            self.assertEqual(x.shape, [2, 3])
+
+    def test_pir_dtype_str(self):
+        """Test string dtype in PIR mode."""
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, shape=[3], dtype='int32')
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(startup)
+            result = exe.run(main, fetch_list=[x])
+            self.assertEqual(result[0].dtype, np.int32)
+
+
 if __name__ == '__main__':
     unittest.main()
