@@ -5131,3 +5131,44 @@ add_doc_and_signature(
     """,
     """def poisson(x: Tensor, name: str | None = None) -> Tensor""",
 )
+
+add_doc_and_signature(
+    "neg",
+    r"""
+    Returns a new Tensor with the negative of the elements of input tensor, element-wise.
+
+    .. math::
+
+        Out = -x
+
+    Args:
+        x (Tensor): Input tensor, must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: A new tensor containing the negated values of the input tensor.
+
+    Examples:
+
+        .. code-block:: pycon
+            >>> # type: ignore
+            >>> import paddle
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.neg(x)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40000001, 0.20000000, -0.10000000, -0.30000001])
+""",
+    """
+def neg(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
