@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
 
 #include <ATen/cuda/CUDABlas.h>
 
@@ -198,4 +198,4 @@ void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16)) {
 
 }  // namespace at::cuda::blas
 
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_CUDA
