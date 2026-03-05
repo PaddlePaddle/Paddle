@@ -1478,6 +1478,12 @@ def get_package_data_and_package_dir():
                 env_dict.get("FLUID_CORE_NAME") + '.lib',
             ]
         }
+    custom_device_dir = (
+        env_dict.get("PADDLE_BINARY_DIR")
+        + '/python/paddle/paddle_custom_device'
+    )
+    if os.path.isdir(custom_device_dir):
+        package_data['paddle.paddle_custom_device'] = ['*.so', 'include/**']
     package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
@@ -1514,6 +1520,8 @@ def get_package_data_and_package_dir():
             'paddle.base': env_dict.get("PADDLE_BINARY_DIR")
             + '/python/paddle/base',
         }
+        if os.path.isdir(custom_device_dir):
+            package_dir['paddle.paddle_custom_device'] = custom_device_dir
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
@@ -2697,6 +2705,13 @@ def get_setup_parameters():
         'paddle.api_tracer',
         'paddle.testing',
     ]
+
+    custom_device_dir = (
+        env_dict.get("PADDLE_BINARY_DIR")
+        + '/python/paddle/paddle_custom_device'
+    )
+    if os.path.isdir(custom_device_dir):
+        packages.append('paddle.paddle_custom_device')
 
     if (
         env_dict.get("WITH_GPU") == 'ON'
