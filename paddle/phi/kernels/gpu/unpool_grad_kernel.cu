@@ -106,6 +106,10 @@ class Unpool2dMaxGradFunctor {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
+    // Early return for zero-size input to avoid invalid CUDA kernel launch
+    if (input.numel() == 0) {
+      return;
+    }
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
@@ -170,6 +174,10 @@ class Unpool3dMaxGradFunctor {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
+    // Early return for zero-size input to avoid invalid CUDA kernel launch
+    if (input.numel() == 0) {
+      return;
+    }
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
