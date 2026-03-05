@@ -2810,6 +2810,86 @@ class TestFlipAPI(unittest.TestCase):
                 self.assertEqual(out.shape, tuple(self.shape))
 
 
+# Test count_nonzero compatibility
+class TestCountNonzeroAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [3, 4, 5]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randint(-1, 2, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_all = np.count_nonzero(self.np_x)
+        ref_axis = np.count_nonzero(self.np_x, axis=1, keepdims=True)
+
+        # Paddle positional arguments
+        out1 = paddle.count_nonzero(x, 1, True)
+
+        # Paddle keyword arguments
+        out2 = paddle.count_nonzero(x=x, axis=1, keepdim=True)
+
+        # PyTorch-style positional arguments
+        out3 = paddle.count_nonzero(x, 1)
+
+        # PyTorch keyword arguments (alias)
+        out4 = paddle.count_nonzero(input=x, dim=1, keepdim=True)
+
+        # Mixed arguments
+        out5 = paddle.count_nonzero(x, axis=1, keepdim=True)
+
+        # Tensor method - positional
+        out6 = x.count_nonzero(1, True)
+
+        # Tensor method - keyword (alias)
+        out7 = x.count_nonzero(dim=1, keepdim=True)
+
+        for out in [out1, out2, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), ref_axis)
+        np.testing.assert_allclose(
+            out3.numpy(), np.count_nonzero(self.np_x, axis=1)
+        )
+        np.testing.assert_allclose(
+            paddle.count_nonzero(input=x).numpy(), ref_all
+        )
+
+        # Exception parameters
+        with self.assertRaises(ValueError):
+            paddle.count_nonzero(x=x, input=x)
+        with self.assertRaises(ValueError):
+            paddle.count_nonzero(x=x, axis=1, dim=1)
+        with self.assertRaises(TypeError):
+            paddle.count_nonzero(x=x, dims=1)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.count_nonzero(x, 1, True)
+            out2 = paddle.count_nonzero(x=x, axis=1, keepdim=True)
+            out3 = paddle.count_nonzero(input=x, dim=1, keepdim=True)
+            out4 = x.count_nonzero(1, True)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref = np.count_nonzero(self.np_x, axis=1, keepdims=True)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref)
+
+
 # Test renorm compatibility
 class TestRenormAPI(unittest.TestCase):
     def setUp(self):
@@ -2995,6 +3075,204 @@ class TestCloneAPI(unittest.TestCase):
             # Verify all outputs match input
             for out in fetches:
                 np.testing.assert_allclose(out, self.np_x)
+
+
+class TestHsplitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape2d = [7, 8]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_2d = np.random.rand(*self.shape2d).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x_2d = paddle.to_tensor(self.np_x_2d)
+
+        out1 = paddle.hsplit(x_2d, 2)
+        out2 = paddle.hsplit(x=x_2d, num_or_indices=2)
+        out3 = paddle.hsplit(input=x_2d, indices=2)
+        out4 = paddle.hsplit(input=x_2d, sections=2)
+        out5 = paddle.hsplit(x_2d, num_or_indices=2)
+        out6 = x_2d.hsplit(2)
+        out7 = x_2d.hsplit(num_or_indices=2)
+
+        ref_out = np.array_split(self.np_x_2d, 2, axis=1)
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            self.assertEqual(len(out), 2)
+            np.testing.assert_allclose(ref_out[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out[1], out[1].numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x_2d = paddle.static.data(
+                name="x_2d", shape=self.shape2d, dtype=self.dtype
+            )
+
+            out1 = paddle.hsplit(x_2d, 2)
+            out2 = paddle.hsplit(x=x_2d, num_or_indices=2)
+            out3 = paddle.hsplit(input=x_2d, indices=2)
+            out4 = paddle.hsplit(input=x_2d, sections=2)
+
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x_2d": self.np_x_2d},
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out2[0],
+                    out2[1],
+                    out3[0],
+                    out3[1],
+                    out4[0],
+                    out4[1],
+                ],
+            )
+
+            ref_out = np.array_split(self.np_x_2d, 2, axis=1)
+            for i in range(0, 8, 2):
+                np.testing.assert_allclose(fetches[i], ref_out[0])
+                np.testing.assert_allclose(fetches[i + 1], ref_out[1])
+
+
+class TestDsplitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape3d = [7, 6, 8]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_3d = np.random.rand(*self.shape3d).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x_3d = paddle.to_tensor(self.np_x_3d)
+
+        out1 = paddle.dsplit(x_3d, 2)
+        out2 = paddle.dsplit(x=x_3d, num_or_indices=2)
+        out3 = paddle.dsplit(input=x_3d, indices=2)
+        out4 = paddle.dsplit(input=x_3d, sections=2)
+        out5 = paddle.dsplit(x_3d, num_or_indices=2)
+        out6 = x_3d.dsplit(2)
+        out7 = x_3d.dsplit(num_or_indices=2)
+
+        ref_out = np.array_split(self.np_x_3d, 2, axis=2)
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            self.assertEqual(len(out), 2)
+            np.testing.assert_allclose(ref_out[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out[1], out[1].numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x_3d = paddle.static.data(
+                name="x_3d", shape=self.shape3d, dtype=self.dtype
+            )
+
+            out1 = paddle.dsplit(x_3d, 2)
+            out2 = paddle.dsplit(x=x_3d, num_or_indices=2)
+            out3 = paddle.dsplit(input=x_3d, indices=2)
+            out4 = paddle.dsplit(input=x_3d, sections=2)
+
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x_3d": self.np_x_3d},
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out2[0],
+                    out2[1],
+                    out3[0],
+                    out3[1],
+                    out4[0],
+                    out4[1],
+                ],
+            )
+
+            ref_out = np.array_split(self.np_x_3d, 2, axis=2)
+            for i in range(0, 8, 2):
+                np.testing.assert_allclose(fetches[i], ref_out[0])
+                np.testing.assert_allclose(fetches[i + 1], ref_out[1])
+
+
+class TestVsplitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape2d = [8, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_2d = np.random.rand(*self.shape2d).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x_2d = paddle.to_tensor(self.np_x_2d)
+
+        out1 = paddle.vsplit(x_2d, 2)
+        out2 = paddle.vsplit(x=x_2d, num_or_indices=2)
+        out3 = paddle.vsplit(input=x_2d, indices=2)
+        out4 = paddle.vsplit(input=x_2d, sections=2)
+        out5 = paddle.vsplit(x_2d, num_or_indices=2)
+        out6 = x_2d.vsplit(2)
+        out7 = x_2d.vsplit(num_or_indices=2)
+
+        ref_out = np.array_split(self.np_x_2d, 2, axis=0)
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            self.assertEqual(len(out), 2)
+            np.testing.assert_allclose(ref_out[0], out[0].numpy())
+            np.testing.assert_allclose(ref_out[1], out[1].numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x_2d = paddle.static.data(
+                name="x_2d", shape=self.shape2d, dtype=self.dtype
+            )
+
+            out1 = paddle.vsplit(x_2d, 2)
+            out2 = paddle.vsplit(x=x_2d, num_or_indices=2)
+            out3 = paddle.vsplit(input=x_2d, indices=2)
+            out4 = paddle.vsplit(input=x_2d, sections=2)
+
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x_2d": self.np_x_2d},
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out2[0],
+                    out2[1],
+                    out3[0],
+                    out3[1],
+                    out4[0],
+                    out4[1],
+                ],
+            )
+
+            ref_out = np.array_split(self.np_x_2d, 2, axis=0)
+            for i in range(0, 8, 2):
+                np.testing.assert_allclose(fetches[i], ref_out[0])
+                np.testing.assert_allclose(fetches[i + 1], ref_out[1])
 
 
 # Test hstack compatibility
