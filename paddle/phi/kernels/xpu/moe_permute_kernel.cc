@@ -133,10 +133,13 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const int padding_multiplex,
                       const bool do_gather,
                       const bool using_ue8m0_scale,
+                      const bool return_expert_indices,
+                      const int override_buffer_size,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
-                      DenseTensor *XScale_unzipped) {
+                      DenseTensor *XScale_unzipped,
+                      DenseTensor *expert_indices) {
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
   PADDLE_ENFORCE_LE(
