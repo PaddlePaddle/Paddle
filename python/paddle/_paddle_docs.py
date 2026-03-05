@@ -4120,7 +4120,7 @@ add_doc_and_signature(
     Computes frequency of each value in the input tensor.
 
     Args:
-        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor. Alias: ``input``.
         weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
         minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
         name (str|None, optional): Normally there is no need for user to set this property.
@@ -4133,21 +4133,21 @@ add_doc_and_signature(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([1, 2, 1, 4, 5])
-            >>> result1 = paddle.bincount(x)
+            >>> input = paddle.to_tensor([1, 2, 1, 4, 5])
+            >>> result1 = paddle.bincount(input)
             >>> print(result1)
             Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1, 0, 1, 1])
 
             >>> w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
-            >>> result2 = paddle.bincount(x, weights=w)
+            >>> result2 = paddle.bincount(input, weights=w)
             >>> print(result2)
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
 """,
     """
 def bincount(
-    x: Tensor,
+    input: Tensor,
     weights: Tensor | None = None,
     minlength: int = 0,
     name: str | None = None,
