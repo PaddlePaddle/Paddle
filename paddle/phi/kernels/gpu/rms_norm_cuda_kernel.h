@@ -888,6 +888,12 @@ void RMSNormFwdKernel(const Context& dev_ctx,
                       DenseTensor* invvar) {
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
 
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    dev_ctx.template Alloc<T_ACC>(invvar);
+    return;
+  }
+
   int begin_norm_axis = x.dims().size() - normalized_shape.size();
 
   auto matrix_dim = common::flatten_to_2d(x.dims(), begin_norm_axis);
@@ -978,6 +984,16 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                       DenseTensor* dX,
                       DenseTensor* dscale) {
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  if (X.numel() == 0) {
+    if (dX) {
+      dev_ctx.template Alloc<T>(dX);
+    }
+    if (dscale) {
+      dev_ctx.template Alloc<T_ACC>(dscale);
+    }
+    return;
+  }
 
   int begin_norm_axis = X.dims().size() - normalized_shape.size();
 
