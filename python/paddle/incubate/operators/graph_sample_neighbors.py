@@ -127,7 +127,7 @@ def graph_sample_neighbors(
         - out_eids (Tensor): If `return_eids` is True, we will return the eid information of the sample edges.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
@@ -143,8 +143,8 @@ def graph_sample_neighbors(
             ...     row,
             ...     colptr,
             ...     nodes,
-            ...     sample_size=sample_size
-            ... ) # type: ignore[operator]
+            ...     sample_size=sample_size,
+            ... )  # type: ignore[operator]
 
     """
 

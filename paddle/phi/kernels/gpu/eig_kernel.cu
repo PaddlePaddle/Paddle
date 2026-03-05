@@ -33,7 +33,7 @@ void EigKernel(const Context& dev_ctx,
   }
 
   auto cpu_place = CPUPlace();
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  DeviceContextPool& pool = DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
 
   // prepare cpu Tensor here, since magma requires output on cpu

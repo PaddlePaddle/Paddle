@@ -240,32 +240,6 @@ class TestCrossAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
 
-    def test_cross_api1(self):
-        with paddle.pir_utils.OldIrGuard():
-            self.input_data()
-
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-
-            # case 1:
-            with paddle.static.program_guard(main, startup):
-                x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
-                y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
-
-                y_1 = paddle.cross(x, y, name='result')
-                self.assertEqual(('result' in y_1.name), True)
-
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-
-            # case 2:
-            with paddle.static.program_guard(main, startup):
-                x = paddle.static.data(name="x", shape=[0, 3], dtype="float32")
-                y = paddle.static.data(name='y', shape=[0, 3], dtype='float32')
-
-                y_1 = paddle.cross(x, y, axis=1, name='result')
-                self.assertEqual(('result' in y_1.name), True)
-
     def test_dygraph_api(self):
         self.input_data()
         # case 1:

@@ -55,7 +55,7 @@ def fused_rotary_position_embedding(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -85,8 +85,11 @@ def fused_rotary_position_embedding(
             >>> position_ids = paddle.randint(high=2, shape=[2, 2], dtype='int64')
 
             >>> # out_q, out_k, out_v: [batch_size, seq_len, num_heads, head_dim]
-            >>> out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False)
+            >>> out_q, out_k, out_v = fused_rotary_position_embedding(
+            ...     q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False
+            ... )
             >>> print(out_q)
+            >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 2, 2, 2], dtype=float16, place=Place(gpu:0), stop_gradient=True,
             [[[[-0.54931641,  0.64990234],
                [-1.08691406,  1.18261719]],
@@ -96,6 +99,7 @@ def fused_rotary_position_embedding(
                [-0.73730469, -0.16735840]],
               [[ 0.07116699, -0.90966797],
                [-0.03628540, -0.20202637]]]])
+            >>> # doctest: -SKIP
     """
     if (sin is None) or (cos is None):
         assert position_ids is None, (

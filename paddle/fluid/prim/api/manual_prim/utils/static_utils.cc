@@ -24,10 +24,9 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 namespace paddle::prim {
-using Tensor = Tensor;
 template <>
 TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                                  phi::DataType dtype,
+                                  DataType dtype,
                                   const Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
@@ -40,7 +39,7 @@ TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
 
 template <>
 Tensor empty_like<DescTensor>(const Tensor& x,
-                              phi::DataType dtype,
+                              DataType dtype,
                               const Place& place) {
   return empty<prim::DescTensor>(
       paddle::experimental::IntArray(x.shape()), x.dtype(), Place());

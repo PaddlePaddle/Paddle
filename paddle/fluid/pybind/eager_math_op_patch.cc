@@ -192,6 +192,13 @@ Tensor CallScalarFunction(const Tensor& self_tensor,
                    self_tensor.dtype() == DataType::FLOAT8_E4M3FN)
                       ? DataType::FLOAT32
                       : self_tensor.dtype();
+#if !defined(PADDLE_WITH_XPU)
+    PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
+        MPType, "CallScalarFunction", ([&] {
+          ret = div_scale_ad_func(self_tensor,
+                                  phi::Scalar(static_cast<data_t>(other)));
+        }));
+#else
     PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
         MPType, "CallScalarFunction", ([&] {
           ret = scale_ad_func(
@@ -201,6 +208,7 @@ Tensor CallScalarFunction(const Tensor& self_tensor,
               0.0,
               true);
         }));
+#endif
   } else if (op_type == "pow") {
     ret = pow_ad_func(self_tensor, other);
   }

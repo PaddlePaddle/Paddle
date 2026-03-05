@@ -45,8 +45,7 @@ UNK_IDX = 0
 
 class Conll05st(Dataset):
     """
-    Implementation of `Conll05st <https://www.cs.upc.edu/~srlconll/soft.html>`_
-    test dataset.
+    This class implements the Conll05st test dataset. For details, please refer to the relevant documentation:https://aclanthology.org/W05-0620.pdf
 
     Note: only support download test dataset automatically for that
           only test dataset of Conll05st is public.
@@ -72,7 +71,7 @@ class Conll05st(Dataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.text.datasets import Conll05st
@@ -88,13 +87,13 @@ class Conll05st(Dataset):
             >>> conll05st = Conll05st()
 
             >>> for i in range(10):
-            ...     pred_idx, mark, label= conll05st[i][-3:]
+            ...     pred_idx, mark, label = conll05st[i][-3:]
             ...     pred_idx = paddle.to_tensor(pred_idx)
             ...     mark = paddle.to_tensor(mark)
             ...     label = paddle.to_tensor(label)
             ...
             ...     model = SimpleNet()
-            ...     pred_idx, mark, label= model(pred_idx, mark, label)
+            ...     pred_idx, mark, label = model(pred_idx, mark, label)
             ...     print(pred_idx.item(), mark.item(), label.item())
             >>> # doctest: +SKIP('label will change')
             65840 5 1991
@@ -373,7 +372,7 @@ class Conll05st(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import Conll05st
 
@@ -389,7 +388,7 @@ class Conll05st(Dataset):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> from paddle.text.datasets import Conll05st
 

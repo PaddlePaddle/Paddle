@@ -65,18 +65,18 @@ class Categorical(distribution.Distribution):
         name(str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import Categorical
 
-            >>> paddle.seed(100) # on CPU device
+            >>> paddle.seed(100)  # on CPU device
             >>> x = paddle.rand([6])
             >>> print(x)
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-            >>> paddle.seed(200) # on CPU device
+            >>> paddle.seed(200)  # on CPU device
             >>> y = paddle.rand([6])
             >>> print(y)
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -85,7 +85,7 @@ class Categorical(distribution.Distribution):
             >>> cat = Categorical(x)
             >>> cat2 = Categorical(y)
 
-            >>> paddle.seed(1000) # on CPU device
+            >>> paddle.seed(1000)  # on CPU device
             >>> print(cat.sample([2, 3]))
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 5],
@@ -158,12 +158,12 @@ class Categorical(distribution.Distribution):
             Tensor: A tensor with prepended dimensions shape.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
-                >>> paddle.seed(100) # on CPU device
+                >>> paddle.seed(100)  # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -171,7 +171,7 @@ class Categorical(distribution.Distribution):
 
                 >>> # doctest: +SKIP('Random output')
                 >>> cat = Categorical(x)
-                >>> paddle.seed(1000) # on CPU device
+                >>> paddle.seed(1000)  # on CPU device
                 >>> print(cat.sample([2, 3]))
                 Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[0, 1, 5],
@@ -215,18 +215,18 @@ class Categorical(distribution.Distribution):
             Tensor: kl-divergence between two Categorical distributions.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
-                >>> paddle.seed(100) # on CPU device
+                >>> paddle.seed(100)  # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                >>> paddle.seed(200) # on CPU device
+                >>> paddle.seed(200)  # on CPU device
                 >>> y = paddle.rand([6])
                 >>> print(y)
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -269,12 +269,12 @@ class Categorical(distribution.Distribution):
             Tensor: Shannon entropy of Categorical distribution. The data type is float32.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
-                >>> paddle.seed(100) # on CPU device
+                >>> paddle.seed(100)  # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -313,12 +313,12 @@ class Categorical(distribution.Distribution):
             Tensor: probability according to the category index.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
-                >>> paddle.seed(100) # on CPU device
+                >>> paddle.seed(100)  # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -360,12 +360,12 @@ class Categorical(distribution.Distribution):
             Tensor: Log probability.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Categorical
 
-                >>> paddle.seed(100) # on CPU device
+                >>> paddle.seed(100)  # on CPU device
                 >>> x = paddle.rand([6])
                 >>> print(x)
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,

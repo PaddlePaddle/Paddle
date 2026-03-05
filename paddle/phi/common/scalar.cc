@@ -23,8 +23,7 @@ namespace paddle::experimental {
 
 // The Tensor must have one dim
 template <>
-PADDLE_API ScalarBase<phi::DenseTensor>::ScalarBase(
-    const phi::DenseTensor& tensor_in)
+PADDLE_API ScalarBase<DenseTensor>::ScalarBase(const DenseTensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
@@ -34,7 +33,7 @@ PADDLE_API ScalarBase<phi::DenseTensor>::ScalarBase(
                         tensor_in.numel()));
   auto cpu_place = phi::CPUPlace();
   if (tensor_in.place().GetType() != phi::AllocationType::CPU) {
-    phi::DenseTensor tensor;
+    DenseTensor tensor;
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto dev_ctx = pool.Get(tensor_in.place());
     phi::Copy(*dev_ctx, tensor_in, cpu_place, true, &tensor);

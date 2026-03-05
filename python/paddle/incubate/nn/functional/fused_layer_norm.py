@@ -96,7 +96,7 @@ def fused_layer_norm(
         Tensor: the output Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle

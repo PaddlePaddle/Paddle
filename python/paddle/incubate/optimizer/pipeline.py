@@ -46,7 +46,7 @@ class PipelineOptimizer:
         start_cpu_core_id (int): The first cpu core id to use. [Optional. Default:0].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.base as base
@@ -61,7 +61,8 @@ class PipelineOptimizer:
             ...         feed_list=[x, y],
             ...         capacity=64,
             ...         use_double_buffer=True,
-            ...         iterable=False)
+            ...         iterable=False,
+            ...     )
 
             ...     emb_x = layers.embedding(input=x, param_attr=base.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
             ...     emb_y = layers.embedding(input=y, param_attr=base.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
@@ -86,8 +87,7 @@ class PipelineOptimizer:
             >>> exe.run(paddle.static.default_startup_program())
             >>> batch_size = 1
             >>> data_loader.start()
-            >>> exe.train_from_dataset(
-            ...         paddle.static.default_main_program())
+            >>> exe.train_from_dataset(paddle.static.default_main_program())
             >>> data_loader.reset()
     """
 

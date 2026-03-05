@@ -75,6 +75,10 @@ struct ForRange<phi::GPUContext> {
 
   template <typename Function>
   inline void operator()(Function func) const {
+    // Handle zero-size case: early return to avoid invalid CUDA kernel launch
+    if (limit_ == 0) {
+      return;
+    }
 #if WITH_NV_JETSON
     // JETSON_NANO will throw core dump when threads > 128
     int num_thread = 256;
