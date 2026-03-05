@@ -136,4 +136,22 @@ void LegacyNearestInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output);
+
+template <typename T, typename Context>
+void InterpAntialiasKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<double>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* output);
+
 }  // namespace phi
