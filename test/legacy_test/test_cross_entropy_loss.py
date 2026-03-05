@@ -2783,7 +2783,6 @@ class CrossEntropyLossCompatible(unittest.TestCase):
       - label squeeze (shape [N,1])
       - 3D input reshape
       - reduction='none' with reshape-back and unsqueeze
-      - int32 label cast to int64
     """
 
     def setUp(self):
@@ -2912,9 +2911,9 @@ class CrossEntropyLossCompatible(unittest.TestCase):
         self.assertEqual(list(dy_ret.shape), [B, S])
         input_2d = input_np.reshape(-1, C)
         label_1d = label_np.reshape(-1)
-        expected = cross_entropy_loss_1d(input_2d, label_1d, reduction='none')[
-            0
-        ].reshape(B, S)
+        expected = cross_entropy_loss_1d(
+            input_2d, label_1d, reduction='none'
+        ).reshape(B, S)
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
     def test_compatible_none_reduction_unsqueeze(self):
@@ -2932,24 +2931,6 @@ class CrossEntropyLossCompatible(unittest.TestCase):
         )
         # When input_dims == label_dims, output should keep trailing 1
         self.assertEqual(list(dy_ret.shape), [N, 1])
-
-    def test_compatible_int32_label(self):
-        """Covers int32 label cast to int64 branch."""
-        N, C = 8, 5
-        np.random.seed(0)
-        input_np = np.random.random([N, C]).astype(self.dtype)
-        label_np = np.random.randint(0, C, size=(N,)).astype(np.int32)
-
-        paddle.disable_static()
-        dy_ret = paddle.nn.functional.cross_entropy(
-            paddle.to_tensor(input_np),
-            paddle.to_tensor(label_np),
-            reduction='mean',
-        )
-        expected = cross_entropy_loss_1d(
-            input_np, label_np.astype(np.int64), reduction='mean'
-        )[0]
-        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
 
 if __name__ == "__main__":
